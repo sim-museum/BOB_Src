@@ -18,7 +18,7 @@ enum	QuitGameConditions {ALT_X = 0,STANDARDQUIT,SEENBYLEADER , COMECLOSETOLEADER
 							
 							};
 //These are matched by identical equates in SquadNum
-enum	PlaneTypeSelect											//RDH 06Aug96
+enum	PlaneTypeSelect : int									//RDH 06Aug96
 		{
 			PT_BRIT_FLYABLE,PT_RAF_FLYABLE=PT_BRIT_FLYABLE,
 			PT_SPIT_A=PT_BRIT_FLYABLE,PT_SPIT_B, PT_HURR_A,PT_HURR_B,

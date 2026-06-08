@@ -123,6 +123,22 @@
 // MSVC fixed-width types (identical re-typedef vs compat_types.h is fine in C++)
 typedef long long           __int64;
 typedef unsigned long long  __uint64;
+// MSVC calling-convention keywords. bob headers (e.g. ViewSel.h pointer-to-member
+// typedefs) use these and assume the Windows SDK defined them; on Linux/x86-32
+// they are all the default convention, so define them empty here, the earliest
+// universally-included header (compat_types.h also defines some, guarded).
+#ifndef __cdecl
+#define __cdecl
+#endif
+#ifndef _cdecl
+#define _cdecl
+#endif
+#ifndef __stdcall
+#define __stdcall
+#endif
+#ifndef _stdcall
+#define _stdcall
+#endif
 #endif
 #ifdef	__WATCOMC__
 #pragma warning	389	9				// value may be truncated

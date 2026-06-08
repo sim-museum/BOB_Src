@@ -39,7 +39,7 @@ struct	OptionRef													  //JIM 22/01/99
 																  //JIM 22/01/99
 	bool	UserMsgDecision(AirStrucPtr callee,ItemBasePtr trg,			  //JIM 22/01/99
 		AirStrucPtr caller,ArtInt* artint,MESSAGE_STRUC* PriorityMessage);
-	virtual OptionRef*	GetMsgOptions()=NULL;								  //JIM 22/01/99
+	virtual OptionRef*	GetMsgOptions()=0;								  //JIM 22/01/99 (=NULL -> =0 for GCC pure specifier)
 	virtual	bool													  //JIM 22/01/99
 		AutoMsgDecision(AirStrucPtr callee,ItemBasePtr trg,			  //JIM 22/01/99
 		AirStrucPtr caller,ArtInt* artint,MESSAGE_STRUC* PriorityMessage=NULL)=0;						  //JIM 22/01/99

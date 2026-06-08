@@ -227,6 +227,24 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     * 3 fstream-by-value (deleted copy ctor), 3 `RNDCOLOUR`->`DNDCOLOR` ambiguous
       conversion, `va_start`/`va_end` (need `<cstdarg>`).
 
+- **2026-06-08 (9)**: **LIB3D module BUILDS** -> `libbob_lib3d.a`, wired into
+  SRC/CMakeLists.txt next to MATH. `ninja` now produces both static libs.
+  LIB3D.CPP (18k-line rasteriser): **196 -> 0 errors**. Finished what (8) started:
+  ~60 for-loop-scope leaks hoisted surgically; ClipSetCols const-correctness
+  (decl+def); R3DCOLOUR ambiguity (drop value `operator ULong()`, keep ref one)
+  + reinterpret-cast at SetColLighting sites; getNextToken fstream-by-ref; `0i64`
+  -> `0LL`. New **`compat/bob_dx_extra.h`** supplies the missing Win32/DDraw/D3D
+  symbols (D3DERR_* codes, DEVMODE, DDGAMMARAMP, IDirectDrawGammaControl, the
+  DLL_/DM_/CDS_ constants, ChangeDisplaySettings/EnumDisplaySettings/StretchDIBits
+  /_i64toa stubs, IIDs) and is pulled in from windows.h. Adding `#include
+  <windows.h>` to LIB3D.CPP (it only had ddraw/d3d/objbase) cleared ~59 at once.
+  `ALLOC.C` `new` identifier renamed; the .C files build as C++.
+
+  **Two modules now build: bob_math + bob_lib3d.** General-purpose recipes that
+  recur tree-wide and are now proven: inline-asm conversion, for-scope hoisting
+  (surgical only), MSVC opaque enums, `interface`/`__int64`/`0i64`/`i64toa`
+  -isms, and the bob_dx_extra compat header for DirectX symbols.
+
 ### NEXT ACTIONS (resume here)
 1. Convert inline asm in the shared math/input headers (same recipe as
    vector.h/mathasm.h): `H/FASTMATH.H`, `H/POLYGON.H`, `H/MYVECTOR.H`,
