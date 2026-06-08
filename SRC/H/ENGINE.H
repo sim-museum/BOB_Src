@@ -10,15 +10,13 @@
 #define	ENGINE_Included
 
 
-enum ENGINE_TYPE
-{
+enum ENGINE_TYPE {
 	ET_VOID,
 	ET_PISTON,
 	ET_JET
 };
 
-enum PROP_TYPE
-{
+enum PROP_TYPE {
 	PT_VOID,
 	PT_FIXED,
 	PT_2PITCH,
@@ -26,15 +24,13 @@ enum PROP_TYPE
 	PT_CONSTSPEED
 };
 
-enum STARTER_TYPE
-{
+enum STARTER_TYPE {
 	ES_VOID,
 	ES_ELECTRIC,
 	ES_INERTIA
 };
 
-enum MAGNETO_TYPE
-{
+enum MAGNETO_TYPE {
 	MT_VOID,
 	MT_2SWITCHES,
 	MT_4POSITION

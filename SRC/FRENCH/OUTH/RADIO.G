@@ -10,8 +10,7 @@
 
 #define	DEFAULT_RADIO 0
 
-enum	PhraseTables
-{
+enum	PhraseTables : int {
 	PHRASE_PUNCTUATION	= 0x0,
 #ifdef	USE_PHRASE_PUNCTUATION
 	PHRASE_COLON,
@@ -2584,8 +2583,7 @@ enum	PhraseTables
 };
 
 
-enum	ScriptTables
-{
+enum	ScriptTables : int {
 	SCRIPT_NULL	= 0xFF0000,
 	SCRIPT_CRITTARGSACK = 0x20001,
 	SCRIPT_CRITTARGSACK_OPT_0 = 0x10002,

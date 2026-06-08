@@ -70,7 +70,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "RStaticP.h"
 #include "messages.h"
 #include "Fileman.h"
-#include "..\mfc\resource.h"
+#include "../mfc/resource.h"
 
 #ifdef _DEBUG
 //#define new DEBUG_NEW

@@ -66,13 +66,13 @@ struct FragScreenBody
 
 	struct ButtonPos
 	{
-		enum	CommandPosition	{CP_LEADER, CP_SECOND, CP_OTHER};
+		enum	CommandPosition {CP_LEADER, CP_SECOND, CP_OTHER};
 
 		POINT	coords;
 		int		callsign;
 		CommandPosition	commandposition;
 	};
-	enum	FormationTypes{FT_RAF, FT_LWESCORT, FT_LWSTRIKEVIC3, FT_LWSTRIKEVIC5, FT_MAX};
+	enum	FormationTypes {FT_RAF, FT_LWESCORT, FT_LWSTRIKEVIC3, FT_LWSTRIKEVIC5, FT_MAX};
 	static	ButtonPos	buttonpos[FT_MAX][16];
 	
 };

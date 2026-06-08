@@ -123,8 +123,7 @@ DEFINE_GUID(IID_ID3DXContext,
 // All the surface classes are represented here.  
 //
 //-------------------------------------------------------------------------
-typedef enum _D3DX_SURFACEFORMAT
-{
+typedef enum _D3DX_SURFACEFORMAT {
     D3DX_SF_UNKNOWN    = 0,
     D3DX_SF_R8G8B8     = 1,
     D3DX_SF_A8R8G8B8   = 2,
@@ -173,8 +172,7 @@ typedef enum _D3DX_SURFACEFORMAT
 // D3DX_FT_LINEAR:  Bi-linear filtering
 //
 //-------------------------------------------------------------------------
-typedef enum _D3DX_FILTERTYPE
-{
+typedef enum _D3DX_FILTERTYPE {
     D3DX_FT_POINT    = 0x01,
     D3DX_FT_LINEAR   = 0x02,
     D3DX_FT_DEFAULT  = D3DX_DEFAULT

@@ -78,7 +78,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
-#include <c:\Program Files\DevStudio\Vc\include\math.h>
+#include <c:/Program Files/DevStudio/Vc/include/math.h>
 //DeadCode JIM 02Apr98 #include <c:\watcom\h\math.h>
 
 //#include "myworldinc.h"
@@ -1599,7 +1599,7 @@ ULong Curve::DuplicateCl (ULong code)
 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		WriteCurves
 //Author		Andrew McRae
 //Date			Tue 11 Feb 1997

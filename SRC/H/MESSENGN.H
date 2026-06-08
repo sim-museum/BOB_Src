@@ -23,8 +23,7 @@ class	MessageBuffer
 {
 	friend class	Sound;												//RJS 29Sep00
 
-	enum	BufferStuffer
-	{
+	enum	BufferStuffer {
 		OLDBUFFERSIZE = 50,
 		NEWBUFFERSIZE = 30,
 		INVALIDMSG = -1,

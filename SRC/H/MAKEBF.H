@@ -11,8 +11,7 @@
 
 #define	DEFAULT_MAKEBF 0
 
-enum	UsageType
-		{
+enum	UsageType {
 			U_typename,				//just the name of the type
 			U_enumequiv,			//equivalent enum name
 			U_value,			//specific enum value for type
@@ -20,12 +19,10 @@ enum	UsageType
 			U_punctuation
 		};
 
-enum	Defined
-		{	D_dontcare=0,D_used=1,D_defined=2,D_defused=3};
+enum	Defined {	D_dontcare=0,D_used=1,D_defined=2,D_defused=3};
 
 
-enum	TokenCode
-		{
+enum	TokenCode {
 			//this is the set of system types
 			T_sortentry,T_unknown,	//Key to sorting system
 			T_brktopen,T_brktclose,T_comma,T_equals,T_times,//punctuator

@@ -43,7 +43,7 @@ public:
 protected:
 	DamageDef	*damagedelements;
 	int			numdamagedelts;
-	enum		Mode	{M_DAMAGED,M_ALL,M_SPECIFIC}	mode;
+	enum		Mode {M_DAMAGED,M_ALL,M_SPECIFIC}	mode;
 	UniqueID	specificelt;
 	int			specificeltdamage;
 	ShapeNum	specificeltshape;

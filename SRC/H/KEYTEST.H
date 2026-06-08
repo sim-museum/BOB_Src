@@ -37,13 +37,13 @@
 //#include "display.h"
 
 //DEADCODE DAW 29/01/00 #include	"files.g"
-enum	FileNum;
+enum	FileNum : int;
 #define	DEFAULT_KEYTEST 0
 
-const	MAXqueuesize=32;	//Pointer to end of queue
-const	TOTALKEYBITFLAGS=768;
+const	int	MAXqueuesize=32;	//Pointer to end of queue
+const	int	TOTALKEYBITFLAGS=768;
 
-enum	KeyBounce	{KEYHIT,KEYDBLHIT,KEYHELD,KEYREL,KEYHOT,KEYENDOFLIST};
+enum	KeyBounce {KEYHIT,KEYDBLHIT,KEYHELD,KEYREL,KEYHOT,KEYENDOFLIST};
 
 //Keyshifts: 8 in total. 
 //Lowest numbered has priority. 
@@ -57,22 +57,22 @@ enum	KeyBounce	{KEYHIT,KEYDBLHIT,KEYHELD,KEYREL,KEYHOT,KEYENDOFLIST};
 //bit 6: RHS Shift
 //bit 7: LHS Shift		//LHS shift			//RHS shift			//Both shifts
 //
-//DEADCODE AMM 07/12/99 enum	KeyShifts	{	KEYSH_none=0,		KEYSH_norm=1,		KEYSH_extsh=2, KEYSH_normext = 3,
+//DEADCODE AMM 07/12/99 enum	KeyShifts {	KEYSH_none=0,		KEYSH_norm=1,		KEYSH_extsh=2, KEYSH_normext = 3,
 //DEADCODE AMM 07/12/99 						KEYSH_AltL=4,		KEYSH_AltGR=8,		KEYSH_Alt=12,
 //DEADCODE AMM 07/12/99 						KEYSH_CtrlL=16,		KEYSH_CtrlR=32,		KEYSH_Ctrl=48,
 //DEADCODE AMM 07/12/99 						KEYSH_ShiftL=64,	KEYSH_ShiftR=128,	KEYSH_Shift=192
 //DEADCODE AMM 07/12/99 					};
 
-//DEADCODE AMM 07/12/99 enum	KeyShift_BN	{	KEYSH_BN_norm=0,
+//DEADCODE AMM 07/12/99 enum	KeyShift_BN : int {	KEYSH_BN_norm=0,
 //DEADCODE AMM 07/12/99 						KEYSH_BN_extsh=1,
 //DEADCODE AMM 07/12/99 						KEYSH_BN_AltL=2,		KEYSH_BN_AltGR=3,
 //DEADCODE AMM 07/12/99 						KEYSH_BN_CtrlL=4,		KEYSH_BN_CtrlR=5,
 //DEADCODE AMM 07/12/99 						KEYSH_BN_ShiftL=6,		KEYSH_BN_ShiftR=7
 //DEADCODE AMM 07/12/99 					};
-enum	KeyValUI	{KeyValUI_MAX=32767};
+enum	KeyValUI {KeyValUI_MAX=32767};
 #ifdef __BCPLUSPLUS__
-enum	KeyVal3D	{keyVal3D_MAX=TOTALKEYBITFLAGS};
-enum	KeyShift_BN	{	KEYSH_BN_norm=0,
+enum	KeyVal3D : int {keyVal3D_MAX=TOTALKEYBITFLAGS};
+enum	KeyShift_BN : int {	KEYSH_BN_norm=0,
 						KEYSH_BN_extsh=1,
 						KEYSH_BN_AltL=2,		
 						KEYSH_BN_CtrlL=3,		
@@ -82,9 +82,9 @@ enum	KeyShift_BN	{	KEYSH_BN_norm=0,
 						KEYSH_BN_Overlay=7
 					};
 #else
-enum	KeyShift_BN	;
-enum	KeyVal3D;//	{keyVal3D_MAX=TOTALKEYBITFLAGS};
-enum	FileNum;
+enum	KeyShift_BN : int;
+enum	KeyVal3D : int;//	{keyVal3D_MAX=TOTALKEYBITFLAGS};
+enum	FileNum : int;
 #endif
 struct	UIKeyNoMouse		//This is used by joystick key emulators and similar
 {							//to generate key presses in ECX probably.
@@ -143,15 +143,13 @@ UByte	bitflags[(TOTALKEYBITFLAGS+7)/4];
 
 
 
-enum	MouseMode
-{	
+enum	MouseMode {	
 	PANNING=0,
 	INTERACTIVE,
 	GUNNER
 };
 
-enum	DeviceMode
-{
+enum	DeviceMode {
 	NORMAL=0,
 	SHIFTED
 };

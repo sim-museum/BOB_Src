@@ -66,10 +66,14 @@ private:
 
 	R3DVALUE fpSqrt(R3DVALUE num) const
 	{
+#if defined(BOB_LINUX)
+		return (R3DVALUE)__builtin_sqrt((double)num);
+#else
     	__asm	fld 	num;
 		__asm	fsqrt;
 		__asm	fstp	num;
 		return num;
+#endif
 	}
 
 	void BuildSqrtTable()
@@ -183,10 +187,14 @@ public:
 	//
 	inline void FloatToInt(SLong *int_pointer,R3DVALUE f) const
 	{
+#if defined(BOB_LINUX)
+		*int_pointer = (SLong)__builtin_lrint((double)f);
+#else
 	 	__asm	fld		f;
 		__asm	mov		edx,int_pointer;
 		__asm	frndint;
 		__asm	fistp	dword ptr [edx];
+#endif
 	}
 	//
 	// Fast outcode calc

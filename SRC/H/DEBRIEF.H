@@ -18,7 +18,7 @@
 //DEADCODE DAW 29/01/00 class	Debrief
 //DEADCODE DAW 29/01/00 {
 //DEADCODE DAW 29/01/00 public:
-//DEADCODE DAW 29/01/00 	enum	Types	{	REDAC, MIG,YAK, AAA,
+//DEADCODE DAW 29/01/00 	enum	Types {	REDAC, MIG,YAK, AAA,
 //DEADCODE DAW 29/01/00 						SUPPLY,MARTYARD,
 //DEADCODE DAW 29/01/00 						RAILBRIDGE,ROADBRIDGE,
 //DEADCODE DAW 29/01/00 						TRAIN,TRUCK,
@@ -104,7 +104,7 @@
 //DEADCODE DAW 29/01/00 	//If it's an ongoing battle node you see the Army form instead
 //DEADCODE DAW 29/01/00 	//Thus, army requests in the DIS can be general.
 //DEADCODE DAW 29/01/00 
-//DEADCODE DAW 29/01/00 		enum	DisEntry	{
+//DEADCODE DAW 29/01/00 		enum	DisEntry {
 //DEADCODE DAW 29/01/00 			L2_DISTITLE_0,
 //DEADCODE DAW 29/01/00 			T_DefendWest01_H,
 //DEADCODE DAW 29/01/00 			T_DefendWest02_H,
@@ -229,7 +229,7 @@
 //DEADCODE DAW 29/01/00 		return false;
 //DEADCODE DAW 29/01/00 	}
 //DEADCODE DAW 29/01/00 
-//DEADCODE DAW 29/01/00 	enum	TypeFlag	{TARGUID,DATE,NAME,DISCARDTARGUID};
+//DEADCODE DAW 29/01/00 	enum	TypeFlag {TARGUID,DATE,NAME,DISCARDTARGUID};
 //DEADCODE DAW 29/01/00 	struct	DisLog
 //DEADCODE DAW 29/01/00 	{	//4 bytes per item
 //DEADCODE DAW 29/01/00 		ULong	typeflag:2,	

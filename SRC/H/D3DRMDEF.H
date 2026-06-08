@@ -51,8 +51,7 @@ typedef struct _D3DRMBOX
 typedef void (*D3DRMWRAPCALLBACK)
     (LPD3DVECTOR, int* u, int* v, LPD3DVECTOR a, LPD3DVECTOR b, LPVOID);
 
-typedef enum _D3DRMLIGHTTYPE
-{   D3DRMLIGHT_AMBIENT,
+typedef enum _D3DRMLIGHTTYPE {   D3DRMLIGHT_AMBIENT,
     D3DRMLIGHT_POINT,
     D3DRMLIGHT_SPOT,
     D3DRMLIGHT_DIRECTIONAL,
@@ -99,8 +98,7 @@ typedef DWORD D3DRMRENDERQUALITY, *LPD3DRMRENDERQUALITY;
 #define D3DRMRENDERMODE_VIEWDEPENDENTSPECULAR   16
 #define D3DRMRENDERMODE_DISABLESORTEDALPHAZWRITE 32
 
-typedef enum _D3DRMTEXTUREQUALITY
-{   D3DRMTEXTURE_NEAREST,               /* choose nearest texel */
+typedef enum _D3DRMTEXTUREQUALITY {   D3DRMTEXTURE_NEAREST,               /* choose nearest texel */
     D3DRMTEXTURE_LINEAR,                /* interpolate 4 texels */
     D3DRMTEXTURE_MIPNEAREST,            /* nearest texel in nearest mipmap  */
     D3DRMTEXTURE_MIPLINEAR,             /* interpolate 2 texels from 2 mipmaps */
@@ -126,16 +124,14 @@ typedef enum _D3DRMTEXTUREQUALITY
  */
 #define D3DRMSHADOW_TRUEALPHA               0x00000001 /* shadow should render without artifacts when true alpha is on */
 
-typedef enum _D3DRMCOMBINETYPE
-{   D3DRMCOMBINE_REPLACE,
+typedef enum _D3DRMCOMBINETYPE {   D3DRMCOMBINE_REPLACE,
     D3DRMCOMBINE_BEFORE,
     D3DRMCOMBINE_AFTER
 } D3DRMCOMBINETYPE, *LPD3DRMCOMBINETYPE;
 
 typedef D3DCOLORMODEL D3DRMCOLORMODEL, *LPD3DRMCOLORMODEL;
 
-typedef enum _D3DRMPALETTEFLAGS
-{   D3DRMPALETTE_FREE,                  /* renderer may use this entry freely */
+typedef enum _D3DRMPALETTEFLAGS {   D3DRMPALETTE_FREE,                  /* renderer may use this entry freely */
     D3DRMPALETTE_READONLY,              /* fixed but may be used by renderer */
     D3DRMPALETTE_RESERVED               /* may not be used by renderer */
 } D3DRMPALETTEFLAGS, *LPD3DRMPALETTEFLAGS;
@@ -179,8 +175,7 @@ typedef struct _D3DRMIMAGE
                                    elements. */
 } D3DRMIMAGE, *LPD3DRMIMAGE;
 
-typedef enum _D3DRMWRAPTYPE
-{   D3DRMWRAP_FLAT,
+typedef enum _D3DRMWRAPTYPE {   D3DRMWRAP_FLAT,
     D3DRMWRAP_CYLINDER,
     D3DRMWRAP_SPHERE,
     D3DRMWRAP_CHROME,
@@ -195,8 +190,7 @@ typedef enum _D3DRMWRAPTYPE
  * Do not use righthanded perspective in Viewport2::SetProjection().
  * Set up righthanded mode by using IDirect3DRM3::SetOptions().
  */
-typedef enum _D3DRMPROJECTIONTYPE
-{   D3DRMPROJECT_PERSPECTIVE,
+typedef enum _D3DRMPROJECTIONTYPE {   D3DRMPROJECT_PERSPECTIVE,
     D3DRMPROJECT_ORTHOGRAPHIC,
     D3DRMPROJECT_RIGHTHANDPERSPECTIVE, /* Only valid pre-DX6 */
     D3DRMPROJECT_RIGHTHANDORTHOGRAPHIC /* Only valid pre-DX6 */
@@ -205,8 +199,7 @@ typedef enum _D3DRMPROJECTIONTYPE
 #define D3DRMOPTIONS_LEFTHANDED  0x00000001L /* Default */
 #define D3DRMOPTIONS_RIGHTHANDED 0x00000002L
 
-typedef enum _D3DRMXOFFORMAT
-{   D3DRMXOF_BINARY,
+typedef enum _D3DRMXOFFORMAT {   D3DRMXOF_BINARY,
     D3DRMXOF_COMPRESSED,
     D3DRMXOF_TEXT
 } D3DRMXOFFORMAT, *LPD3DRMXOFFORMAT;
@@ -220,25 +213,21 @@ typedef DWORD D3DRMSAVEOPTIONS;
 #define D3DRMXOFSAVE_TEMPLATES 16
 #define D3DRMXOFSAVE_TEXTURETOPOLOGY 32
 
-typedef enum _D3DRMCOLORSOURCE
-{   D3DRMCOLOR_FROMFACE,
+typedef enum _D3DRMCOLORSOURCE {   D3DRMCOLOR_FROMFACE,
     D3DRMCOLOR_FROMVERTEX
 } D3DRMCOLORSOURCE, *LPD3DRMCOLORSOURCE;
 
-typedef enum _D3DRMFRAMECONSTRAINT
-{   D3DRMCONSTRAIN_Z,           /* use only X and Y rotations */
+typedef enum _D3DRMFRAMECONSTRAINT {   D3DRMCONSTRAIN_Z,           /* use only X and Y rotations */
     D3DRMCONSTRAIN_Y,           /* use only X and Z rotations */
     D3DRMCONSTRAIN_X            /* use only Y and Z rotations */
 } D3DRMFRAMECONSTRAINT, *LPD3DRMFRAMECONSTRAINT;
 
-typedef enum _D3DRMMATERIALMODE
-{   D3DRMMATERIAL_FROMMESH,
+typedef enum _D3DRMMATERIALMODE {   D3DRMMATERIAL_FROMMESH,
     D3DRMMATERIAL_FROMPARENT,
     D3DRMMATERIAL_FROMFRAME
 } D3DRMMATERIALMODE, *LPD3DRMMATERIALMODE;
 
-typedef enum _D3DRMFOGMODE
-{   D3DRMFOG_LINEAR,            /* linear between start and end */
+typedef enum _D3DRMFOGMODE {   D3DRMFOG_LINEAR,            /* linear between start and end */
     D3DRMFOG_EXPONENTIAL,       /* density * exp(-distance) */
     D3DRMFOG_EXPONENTIALSQUARED /* density * exp(-distance*distance) */
 } D3DRMFOGMODE, *LPD3DRMFOGMODE;

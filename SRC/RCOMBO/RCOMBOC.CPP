@@ -154,7 +154,7 @@ Combo_Art=
 	TA_LEFT,3,	0.0,
 },
 *combo_styles[]=	{&Combo_Square,&Combo_Round,&Combo_Big,&Combo_SquareC,&Combo_SquareR,&Combo_Art};
-enum	ComboStyles	{CS_SQUARE,CS_ROUND,CS_BIG,CS_SQUARE_C,CS_SQUARE_R,CS_ART};
+enum	ComboStyles {CS_SQUARE,CS_ROUND,CS_BIG,CS_SQUARE_C,CS_SQUARE_R,CS_ART};
 
 /////////////////////////////////////////////////////////////////////////////
 // Message map

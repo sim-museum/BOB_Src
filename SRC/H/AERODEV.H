@@ -16,8 +16,7 @@ class AeroDevice
 
 public:
 
-	enum DT_TYPE
-	{
+	enum DT_TYPE {
 		DT_VOID,
 		DT_GEAR,
 		DT_FLAPS,
@@ -27,14 +26,12 @@ public:
 		DT_CANOPY,
 	};
 
-	enum CONTROL_TYPE
-	{
+	enum CONTROL_TYPE {
 		CT_KEYS,
 		CT_AUTO
 	};
 
-	enum POWER_TYPE
-	{
+	enum POWER_TYPE {
 		PT_VOID,
 		PT_MANUAL,
 		PT_ELECTRIC,

@@ -23,7 +23,7 @@ public:
 	static View3d*	tmpview;//=NULL;
 	static int	setup3dstatus;
 	static Rtestsh1* THISTHIS;
-	enum	Setup3dStatuses	{S3D_STOPPED=0,S3D_STARTSETUP=1,S3D_DONESHEET=2,S3D_DONEBACK=4,S3D_NEED=3,S3D_GOING=8};
+	enum	Setup3dStatuses {S3D_STOPPED=0,S3D_STARTSETUP=1,S3D_DONESHEET=2,S3D_DONEBACK=4,S3D_NEED=3,S3D_GOING=8};
 	bool wasrunning;
 	bool	nestedcallsblocker;
 	~Rtestsh1();

@@ -9,10 +9,14 @@
 #define	MATH_Included
 
 //stuff stolen from the system includes - why we have to use system file names - who knows
+#if defined(BOB_LINUX)
+#include <cmath>	// use the system math decls (correct noexcept specifiers)
+#else
 extern "C" {
 extern double	pow( double __x, double __y );
 extern double	exp( double __x );
 }
+#endif
 
 
 #define	DEFAULT_MATH 0
@@ -21,7 +25,7 @@ extern double	exp( double __x );
 
 #include	"mathasm.h"
 
-enum	RndVal	{	RndValMIN=0,
+enum	RndVal {	RndValMIN=0,
 					RND10PC=6553,
 					RND25PC=16384,
 					RND33PC=21843,	//CSB 28/06/99	
@@ -177,7 +181,10 @@ inline	Angles	operator + (ANGLES a,RndVal b)	{return (Angles)((SWord)a+(SWord)b)
 //inline	Angles	operator += (ANGLES a,SLong b)  {return (Angles)(a=((SWord)a+(SWord)b));}
 
 extern	MathLib	Math_Lib;										//PD 29Nov95
-#ifndef	__BCPLUSPLUS__
+#if defined(BOB_LINUX)
+inline Float FPATan(Float opp,Float adj){ return (Float)__builtin_atan2((double)opp,(double)adj); }
+inline Float FPACos(Float x){ return (Float)__builtin_acos((double)x); }
+#elif !defined(__BCPLUSPLUS__)
 inline Float FPATan(Float opp,Float adj)
 {
 	Float	ans;

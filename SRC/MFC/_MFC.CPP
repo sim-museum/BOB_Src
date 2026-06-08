@@ -65,37 +65,37 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "stdafx.h"
 #include "_mfc.h"
 
-#include ".\MIGView.cpp"
+#include "./MIGView.cpp"
 
 //DEADCODE DAW 24/11/99 #include ".\CntrItem.cpp"
 //DEADCODE MS 14/12/99 #include ".\Fullpane.cpp"
-#include "..\Input\Keystub.cpp"
-#include ".\MainFrm.cpp"
-#include ".\MapDlg.cpp"
+#include "../Input/Keystub.cpp"
+#include "./MainFrm.cpp"
+#include "./MapDlg.cpp"
 
-#include ".\MIG.cpp"
-#include ".\MIGDoc.cpp"
+#include "./MIG.cpp"
+#include "./MIGDoc.cpp"
 #include "uiicons.cpp"
-#include ".\RDEmptyP.cpp"
-#include ".\RDEmptyD.cpp"
+#include "./RDEmptyP.cpp"
+#include "./RDEmptyD.cpp"
 
 #include "RDEmpty.cpp"
-#include ".\RDialog.cpp"
+#include "./RDialog.cpp"
 //DEADCODE MS 02/02/00 #include ".\Stub3d.cpp"
 #include "hintbox.cpp"
 #include "listbx.cpp"	
 
 #ifndef	BOB_DEMO_VER
-	#include ".\thumnail.cpp"
+	#include "./thumnail.cpp"
 #endif
 #include "rdiallog.cpp"
-#include ".\RowTasks.cpp"
-#include ".\Rradio.cpp"
-#include ".\rstatic.cpp"
+#include "./RowTasks.cpp"
+#include "./Rradio.cpp"
+#include "./rstatic.cpp"
 
-#include ".\Rtestsh1.cpp"
-#include ".\rmdldlg.cpp"
-#include ".\MTChild.cpp"
+#include "./Rtestsh1.cpp"
+#include "./rmdldlg.cpp"
+#include "./MTChild.cpp"
 #include	"fullpsys.cpp"
 
 

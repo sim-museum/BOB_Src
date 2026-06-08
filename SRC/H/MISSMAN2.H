@@ -316,7 +316,7 @@ struct	CampaignZero:CampaignZPilots
 	SLong			accumulator;
 	bool			directivespopup;
 	bool			autoscramble;
-	enum	AccelType	{ACCEL_PAUSED,ACCEL_NORMAL,
+	enum	AccelType {ACCEL_PAUSED,ACCEL_NORMAL,
 				ACCEL_NONRAIDSPD,ACCEL_RECONNSPD,ACCEL_RAIDSPD,ACCEL_DIALOGSPEED, 
 				ACCEL_MAX};
 	AccelType		curracceltype;
@@ -423,7 +423,7 @@ struct	CampaignZero:CampaignZPilots
 	void	MoveDeadPilots();
 	void	SetOldPackScore(int packnum);
 	bool	GetMissionSuccess(int packnum);
-	enum	TimeColours	{TC_RED,TC_YELLOW,TC_BLUE,TC_OLD};
+	enum	TimeColours {TC_RED,TC_YELLOW,TC_BLUE,TC_OLD};
 	static bool	AnyDialogsOpen();
 	static void	GlobalRefreshData();
 	TimeColours	TimeColour(int timetotest=0);	//

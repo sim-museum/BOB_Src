@@ -48,7 +48,7 @@ template	<class	src,int minval,int maxval> class	MakeField
 	friend 	MakeField;								
 //public:	class	Make;									
 public:													
-enum	fieldsize	{	MAX=+maxval,MIN=+minval,
+enum	fieldsize {	MAX=+maxval,MIN=+minval,
 						RANGE=(+MAX- +MIN)+1,
 						BYTES=(+MAX- +MIN+8)/8
 					};									

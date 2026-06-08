@@ -247,7 +247,7 @@ public:
 
 };
 
-enum Angles;
+enum Angles : int;
 const UWord NULL_LAND_TEXT_REF = 0xFFFF;
 
 typedef ULong HDRIVER;
@@ -256,8 +256,7 @@ typedef ULong HMODE;
 typedef ULong HTEXTUREMAP;
 //DeadCode JON 17Sep00 typedef ULong HRENDERTARGET;
 
-enum RENDERTARGET_TYPE
-{
+enum RENDERTARGET_TYPE {
 	RENDERTARGET_PRIMARY = 0,
 	RENDERTARGET_LANDSCAPE,
 	RENDERTARGET_MIRROR
@@ -303,8 +302,7 @@ public:
 
 typedef enum HMATRIX {MATRIX_PROJECTION,MATRIX_VIEWER,MATRIX_OBJECT} HMATRIX;
 typedef enum HAXIS {AXIS_PITCH,AXIS_HEADING,AXIS_ROLL} HAXIS;
-typedef enum LIGHTFLAG 
-{
+typedef enum LIGHTFLAG {
 	LF_ALPHA,
 	LF_LIGHTSOURCE,
 	LF_VERTEX,
@@ -316,8 +314,7 @@ typedef enum LIGHTFLAG
 	LF_MAPCOLBIT = 8, // must be a bit...  (	see SetVertexCol )
 	LF_DUMMY = 0xff
 } LIGHTFLAG;
-typedef enum HINTS 
-{
+typedef enum HINTS {
 	HINT_TRILINEAR,			HINT_BILINEAR,			HINT_NOBLEND,
 	HINT_FULL_RES_TEXTURE,	HINT_HALF_RES_TEXTURE,	HINT_QUARTER_RES_TEXTURE,	HINT_EIGHTH_RES_TEXTURE,
 	HINT_ALIASEDGES,		HINT_ALIASNONE,			HINT_CLIPPING_OFF,			HINT_CLIPPING_ON,
@@ -325,8 +322,7 @@ typedef enum HINTS
 	HINT_MAX_HINT
 }
 HINTS;
-typedef enum TOGGLES 
-{
+typedef enum TOGGLES {
 	TOGGLE_GLOBALALPHA=0,
 	TOGGLE_GLOBALTRANSPARENCY=TOGGLE_GLOBALALPHA,
 	TOGGLE_GLOBALLUMINOSITY=TOGGLE_GLOBALALPHA,
@@ -336,14 +332,12 @@ typedef enum TOGGLES
 	TOGGLE_TEXTURE_QUALITY // only use when texture quality must be forced, otherwise use hint	//JON 19Jul00
 }
 TOGGLES;
-typedef enum TRANSFORMFLAGS
-{
+typedef enum TRANSFORMFLAGS {
 	TF_NULL=0,
 	TF_NOCOPY
 }
 TRANSFORMFLAGS;
-typedef enum TCFLAGS
-{
+typedef enum TCFLAGS {
 	TC_NULL			= 0x00000000,
 	TC_RENDERTARGET	= 0x00000001
 }
@@ -384,8 +378,7 @@ enum TextIdType {
 }; // note that if value==0 then the texture needs uploading...
 
 enum { MSK_NONE = 0, MSK_MASKED, MSK_TRANS };
-enum	AlphaBlendTypes
-{
+enum	AlphaBlendTypes {
 	BLEND_NULL=0,
 	BLEND_SRCALPHA_DESTSOLID,
 	BLEND_ADDALPHA = BLEND_SRCALPHA_DESTSOLID,
@@ -543,8 +536,7 @@ public: // we will steal these 8 bytes as we never use 3 textures
 const UWord UNIQUE_DOPOINTNUM = 0x0000;
 #endif
 
-enum DoPointFlags
-{
+enum DoPointFlags {
 	ALL_INVALID			= 0x00000000,
 	TEXTURE_COUNT1		= 1,//0x00000001, // used to count number of textures needed - comes later	//0
 	TEXTURE_COUNT2		= 1<<1,//0x00000002, // used to count number of textures needed - comes later	//1
@@ -904,8 +896,7 @@ public:
 	ULong clipcode;			
 	UWord vertIndex;
 	static UWord copyCount;
-	enum COUNTFLAGS
-	{
+	enum COUNTFLAGS {
 		ODD_FRAME=1<<15,
 		EVEN_FRAME=1<<14,
 		FRAME_MASK=ODD_FRAME+EVEN_FRAME,

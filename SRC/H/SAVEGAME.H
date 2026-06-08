@@ -18,7 +18,7 @@
 
 enum	{PLAYERNAMELEN			= 21};
 
-enum	FlightDifficulty		{FD_MIN = 0,
+enum	FlightDifficulty {FD_MIN = 0,
 				FD_SPINS,
 				FD_ENGINEMANAGMENT,
 				FD_PROPPITCH,
@@ -48,7 +48,7 @@ enum	FlightDifficulty		{FD_MIN = 0,
 MAKEFIELD(FlightDifficulty,FD_MIN,FD_MAX);
 
 
-enum	GameDifficulty		{GD_MIN = 0,
+enum	GameDifficulty {GD_MIN = 0,
 
 		GD_UNLIMITEDARM = 0,									//RJS 06May99
 //DeadCode AMM 9Oct00 		GD_RELOADARMS,											//RJS 25Jan99
@@ -105,7 +105,7 @@ enum	GameDifficulty		{GD_MIN = 0,
 
 MAKEFIELD(GameDifficulty,GD_MIN,GD_MAX);
 
-enum	HardwareConfig		{	HW_MIN = 0,
+enum	HardwareConfig {	HW_MIN = 0,
 								HW_FRONTART,
 								HW_MAPEVENTS,
 								HW_OPTIONSDIALOG,
@@ -127,7 +127,7 @@ enum	HardwareConfig		{	HW_MIN = 0,
 								HW_MAX
 							};
 MAKEFIELD(HardwareConfig, HW_MIN, HW_MAX );
-enum	SG_Detail_3D		{DETAIL3D_MIN = 0,
+enum	SG_Detail_3D {DETAIL3D_MIN = 0,
 							DETAIL3D_HORIZONFADE=0,
 							DETAIL3D_HORIZONDIST,
 							DETAIL3D_INCONSEQUENTIALS,
@@ -146,8 +146,7 @@ enum	SG_Detail_3D		{DETAIL3D_MIN = 0,
 MAKEFIELD(SG_Detail_3D,DETAIL3D_MIN,DETAIL3D_MAX);
 
 // Cockpit detail switches...									//RJS 23Jan98
-enum	SG_Detail_Cockpit3D
-{
+enum	SG_Detail_Cockpit3D {
 	COCK3D_MIN = 0,
 	COCK3D_PANELPLAIN = 0,		//plain panel behind dials
 	COCK3D_PANELHOODPLAIN,		//plain cowling
@@ -175,8 +174,7 @@ enum	SG_Detail_Cockpit3D
 //this gives 1 bit per flag above
 MAKEFIELD(SG_Detail_Cockpit3D,COCK3D_MIN,COCK3D_MAX);			//RJS 23Jan98
 
-enum	MapFilters	
-{
+enum	MapFilters {
 	MAPFILTERSMIN,
 //DeadCode RDH 06Jan100 	FILT_BLUE_CIVILIAN,
 //DeadCode RDH 06Jan100 	FILT_BLUE_SUPPLY,
@@ -260,17 +258,16 @@ enum	MapFilters
 	MAPFILTERSMAX
 };
 MAKEFIELD(MapFilters,MAPFILTERSMIN,MAPFILTERSMAX);
-enum	ToolBars	
-{	TB_TITLE,TB_MAIN,TB_REPORT,TB_MISC,TB_COMMS,TB_FILTERS,TB_STATUS,TB_SCALE,TB_SPACE,TB_TOTAL};
+enum	ToolBars {	TB_TITLE,TB_MAIN,TB_REPORT,TB_MISC,TB_COMMS,TB_FILTERS,TB_STATUS,TB_SCALE,TB_SPACE,TB_TOTAL};
 MAKEFIELD(ToolBars,0,TB_TOTAL);
 
 
 
 enum ProcType {PROC_SLOW=0,PROC_MIN,PROC_MED,PROC_MAX};
 
-enum	TargetSize		{TS_MIN = 0,TS_SMALL=0,TS_MEDIUM,TS_LARGE,TS_MAX};//PD 30Aug96
+enum	TargetSize {TS_MIN = 0,TS_SMALL=0,TS_MEDIUM,TS_LARGE,TS_MAX};//PD 30Aug96
 //DeadCode RDH 24Oct96 	enum					{MAXWEATHERNUM = 3};
-//DEADCODE RDH 10/03/00 enum	LWPlots	{
+//DEADCODE RDH 10/03/00 enum	LWPlots {
 //DEADCODE RDH 10/03/00 	LARGEPLOTS, ONEPLOTPERRAID,ONEPLOTPERGESCHWADER, 
 //DEADCODE RDH 10/03/00 		ONEPLOTPERGRUPPE,  ONEPLOTPERSTAFFEL};
 
@@ -283,7 +280,7 @@ enum	TargetSize		{TS_MIN = 0,TS_SMALL=0,TS_MEDIUM,TS_LARGE,TS_MAX};//PD 30Aug96
 //
 //Inputs		
 //------------------------------------------------------------------------------
-enum	DateOrder	{DO_UK_DMY,DO_US_MDY,DO_JP_YMD};
+enum	DateOrder {DO_UK_DMY,DO_US_MDY,DO_JP_YMD};
 
 struct	DistanceFactors
 {
@@ -349,12 +346,12 @@ struct	VolumeFactors
 	int		nametype;
 	int		abbrtype;
 };
-enum	PlotLevels	{PL_REALISTIC,PL_RAID,PL_GESH,PL_GRUP,PL_STAFF};
+enum	PlotLevels {PL_REALISTIC,PL_RAID,PL_GESH,PL_GRUP,PL_STAFF};
 class	SaveDataSoftware			//Only this portion is saved in a savegame
 {
 public:
-	enum	Units		{METRIC,IMPERIAL,UNITS_LEN};
-	enum	Currency	{ENGLISH,CURRENCY_LEN};
+	enum	Units {METRIC,IMPERIAL,UNITS_LEN};
+	enum	Currency {ENGLISH,CURRENCY_LEN};
 	enum	{NAMEARRAYSIZE = 20};
 	FlightDifficultyField	flightdifficulty;
 	GameDifficultyField	gamedifficulty;
@@ -401,8 +398,8 @@ class	SaveDataLoad:public SaveDataSoftware  //Both portions saved on exit
 {		//NOTE THIS SECTION IS FOR HARDWARE SETTINGS
 		//IT IS NOT SAVED IN A SAVEGAME. IT IS NOT TRANSMITTED IN COMMS!
 public:
-	enum	ResUI		{UIR_SMACKER,UIR_SCRAMBLE,UIR_MAP,UIR_FRAG,UIR_FIRST,UIR_FIRSTH,UIR_FIRSTFREQ,UIR_FIRST_DEPTH,UIR_FIRST_FLAGS,UIR_APPBARSIDES_ON,UIR_APPBARSIDES_TOP,UIR_MAX};
-	enum	ResUICopy	{UIRC_DESK,UIRC_MAP};	
+	enum	ResUI {UIR_SMACKER,UIR_SCRAMBLE,UIR_MAP,UIR_FRAG,UIR_FIRST,UIR_FIRSTH,UIR_FIRSTFREQ,UIR_FIRST_DEPTH,UIR_FIRST_FLAGS,UIR_APPBARSIDES_ON,UIR_APPBARSIDES_TOP,UIR_MAX};
+	enum	ResUICopy {UIRC_DESK,UIRC_MAP};	
 	//GameSettings	gameSettings;
 	HardwareConfigField		hardwareconfig;
 	SWord	ui_horizontalres[UIR_MAX];

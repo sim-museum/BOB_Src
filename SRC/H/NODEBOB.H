@@ -74,7 +74,7 @@ struct	TargetFactory;
 struct	TargetFighterField;
 struct	TargetConvoy;
 
-enum	SquadNum;
+enum	SquadNum : int;
 
 typedef	TargetSateliteField		*TargetSateliteFieldPtr	;
 typedef	TargetSectorField		*TargetSectorFieldPtr	;
@@ -98,8 +98,7 @@ struct	II_TargetConvoy;
 
 BASESTRUCT	(Target)
 #define	virtual	/*fake virtual*/
-enum	Defenses
-		{AAA_NONE=0x00,AAA_LOW=0x20,AAA_MED=0x40,AAA_HIGH=0x60,AAA_DANGER=0x90,
+enum	Defenses {AAA_NONE=0x00,AAA_LOW=0x20,AAA_MED=0x40,AAA_HIGH=0x60,AAA_DANGER=0x90,
  		 BALL_NONE=0x0,BALL_LOW=0x2,BALL_MED=0x4,BALL_HIGH=0x6,BALL_DANGER=0x9,
 		 BAL_NONE=0x00,BAL_LOW=0x02,BAL_MED=0x04,BAL_HIGH=0x06,BAL_DANGER=0x09,
 		MASK_AAA	=	0x000000f0,
@@ -114,8 +113,7 @@ enum	Defenses
 		DEF_LW_SE	=	0x80000000,	//if A/F from this region is used, then used AF in this region is key to route
 		};
 //NOTE: I AM USING HIGHER BITS OF DEFENSES TO SPECIFY CASTING TYPE OF TARGET
-enum	TargetStrucSize
-{	
+enum	TargetStrucSize {	
 	TSS_TargetNoDetail			=0x00100,TSS_SetTargetNoDetail		=0x000100,	
 	TSS_TargetGroup				=0x00200,TSS_SetTargetGroup			=0x000300,
 	TSS_TargetRadar				=0x00400,TSS_SetTargetRadar			=0x000700,	
@@ -128,8 +126,7 @@ enum	TargetStrucSize
 
 };
 	
-	enum	TargType
-		{	TT_AS_KNOWN,
+	enum	TargType {	TT_AS_KNOWN,
 //TEMPCODE RDH 05/01/00 			TT_SECTORAF,TT_SATELLITEAF,
 			TT_DUMMY0, TT_DUMMY1,
 			TT_FIGHTERAF,TT_NAVALAF,TT_BOMBERAF,TT_OTHERAF,
@@ -144,8 +141,7 @@ enum	TargetStrucSize
 			TT_MAX
 		};
 
-	enum	TargPriority
-		{	TP_NODETAILS,TP_AS_KNOWN,
+	enum	TargPriority {	TP_NODETAILS,TP_AS_KNOWN,
 			TP_PRIMARYCOASTALAF,TP_SECONDARYCOASTALAF,
 			TP_PRIMARYINLANDAF,TP_SECONDARYINLANDAF,
 			TP_NON_GR11_PRIMARYAF,TP_NON_GR11_SECONDARYAF,
@@ -187,23 +183,20 @@ enum	TargetStrucSize
 //DeadCode JON 4Sep00 	Target::TS_NEARLYDESTROYED
 //DeadCode JON 4Sep00	Target::TS_FLAG_UNKNOWN
 		
-	enum	TargStatus
-		{	TS_NEARPERFECT=5,TS_LIGHTDAMAGE=20,TS_BADDAMAGE=60,TS_NEARLYDESTROYED=90,TS_DESTROYED=100,TS_MAXIMUM=250,
+	enum	TargStatus {	TS_NEARPERFECT=5,TS_LIGHTDAMAGE=20,TS_BADDAMAGE=60,TS_NEARLYDESTROYED=90,TS_DESTROYED=100,TS_MAXIMUM=250,
 			TS_FLAG1=251,TS_FLAG2=252,TS_FLAG3=253,TS_FLAG4=254,
 			TS_FLAG_UNKNOWN=255
 		};
 
-	enum	OutputStatus
-		{	OS_NORMAL, OS_OUTFORDAY, OS_DISPERSED,
+	enum	OutputStatus {	OS_NORMAL, OS_OUTFORDAY, OS_DISPERSED,
 	  		OS_DEST1PERIODLEFT,   OS_DEST2PERIODSLEFT,  OS_DEST3PERIODSLEFT,
 		  	OS_DEST4PERIODSLEFT,  OS_DEST5PERIODSLEFT,  OS_DEST6PERIODSLEFT,
   			OS_DEST7PERIODSLEFT,  OS_DEST8PERIODSLEFT,  OS_DEST9PERIODSLEFT,
 		  	OS_DEST10PERIODSLEFT, OS_DEST11PERIODSLEFT, OS_DEST12PERIODSLEFT,
 		  	OS_DEST13PERIODSLEFT, OS_DEST14PERIODSLEFT, OS_DEST15PERIODSLEFT}; 
-enum	Location		{LOC_COAST,LOC_S_LON,LOC_N_LON,LOC_WEST,LOC_NORTH};
+enum	Location {LOC_COAST,LOC_S_LON,LOC_N_LON,LOC_WEST,LOC_NORTH};
 
-enum	Days
-	{	//BOB days
+enum	Days {	//BOB days
 		D_0July=-10,	//before battle proper
 		D_1July=-9,
 
@@ -232,8 +225,7 @@ enum	Days
 		D_=4,		//this is subtracted off damage date so damage date can't exceed 63
 		D_FIRSTDAMAGEDDATE=D_
 	};
-enum	DamageLevel
-	{
+enum	DamageLevel {
 		DL_NONE=0,
 		DL_LOW=64,
 		DL_MED=128,
@@ -365,7 +357,7 @@ SUBSTRUCT(TargetFighterField,TargetGroup)
 	char		maxsquads;
 	UniqueID	satelitelist;
 	Location	location;
-	enum		SubDamageLevels	{SDL_REPAIR,SDL_FUEL,SDL_RUNWAY, SDL_STAFF};
+	enum		SubDamageLevels {SDL_REPAIR,SDL_FUEL,SDL_RUNWAY, SDL_STAFF};
 	UByte		subdamagelevels[4];
 
 	TargetSateliteField*	nextsatelite();
@@ -394,12 +386,11 @@ struct II_Gruppen;
 struct	Squadron;
 struct	BritSquadron;
 struct	Gruppen;
-enum	PlaneTypeSelect;
+enum	PlaneTypeSelect : int;
 class	CString;
 BASESTRUCT(Squadron)
 	
-enum	WaderNum
-{				//on 10th
+enum	WaderNum {				//on 10th
 
 	WN_JG_3,	//y	
 	WN_JG_26,	
@@ -434,15 +425,14 @@ enum	WaderNum
 	GN_2=1,
 	GN_3=2
 };
-enum	ACMarkings
-{
+enum	ACMarkings {
 	ACM_STANDARD
 
 
 };
 
 BODYSTRUCT(Squadron)
-	enum	PeriodStatus	{LEAD_KILLED,LEAD_GOTKILL,OTHER_GOTKILL,GOT_LOSSES,GOT_ACTION,NO_ACTION,NO_FLYING,ON_LEAVE,BAD_WEATHER, GRP_13};
+	enum	PeriodStatus {LEAD_KILLED,LEAD_GOTKILL,OTHER_GOTKILL,GOT_LOSSES,GOT_ACTION,NO_ACTION,NO_FLYING,ON_LEAVE,BAD_WEATHER, GRP_13};
 
 	ONLYFIELDI(UByte,SquadNum,	squadron);
 	UWord	leadername;
@@ -485,7 +475,7 @@ ENDSTRUCT(Squadron);
 
 SUBSTRUCT(BritSquadron,Squadron)
 	enum	{MAX_AC=20};
-	enum	ACMarkings 	{};
+	enum	ACMarkings {};
 
 	UByte	totetimer;
 	ONLYFIELDI(UByte,PlaneTypeSelect,	actype);
@@ -522,11 +512,10 @@ ENDSTRUCT(Gruppen);
 
 #ifndef	DEFAULT_NODEBOB
 //PUT STANDARD STUFF HERE
-//enum	WaderName	{WN_JG,WN_LG,WN_ZG,WN_KG,WN_SG};
-enum	WaderName	{WN_JG,WN_SG,WN_ZG,WN_KG,WN_BETTERRULE};						  //RDH 20/12/99
-enum	LuftFlotteNum	{LF_DET=0,LF_1=1,LF_2,LF_3,LF_4,LF_5};
-enum	SquadNum
-{
+//enum	WaderName {WN_JG,WN_LG,WN_ZG,WN_KG,WN_SG};
+enum	WaderName {WN_JG,WN_SG,WN_ZG,WN_KG,WN_BETTERRULE};						  //RDH 20/12/99
+enum	LuftFlotteNum {LF_DET=0,LF_1=1,LF_2,LF_3,LF_4,LF_5};
+enum	SquadNum : int {
 	SQ_ZERO=0,
 	SQ_QMSPITA=SQ_ZERO,	//these entries are intended to make PT to PT conversion transparent.
 	SQ_QMSPITB,
@@ -675,13 +664,13 @@ struct	HistoricInfo
 ////////////////////////////////////////////////////////////////////////
 class	BOStream;
 class	BIStream;
-enum	AccelSwitches;
-enum	MapSFX;													//RJS 08May00
+enum	AccelSwitches : int;
+enum	MapSFX : int;													//RJS 08May00
 struct	IntelMsg
 {
-	enum	Priority	{LOWEST,VLOW,LOW,MED,HIGH,VHIGH,ALWAYS};
-	enum	Voice		{PILOT,MAN,WOMAN,EXTERNAL,LUFT=4,LWMAN=LUFT+MAN,LWWOMAN=LUFT+WOMAN};
-	enum	About		{FLIGHT,ENGAGEMENT,SPOTTING,TARGETSTATUS,MANAGEMENT,ANNOUNCEMENT};
+	enum	Priority {LOWEST,VLOW,LOW,MED,HIGH,VHIGH,ALWAYS};
+	enum	Voice {PILOT,MAN,WOMAN,EXTERNAL,LUFT=4,LWMAN=LUFT+MAN,LWWOMAN=LUFT+WOMAN};
+	enum	About {FLIGHT,ENGAGEMENT,SPOTTING,TARGETSTATUS,MANAGEMENT,ANNOUNCEMENT};
 	enum	{MAXBODYSCRIPT=32};
 	struct	PVA
 	{
@@ -719,7 +708,7 @@ inline IntelMsg::PVA PVA(IntelMsg::Priority p,IntelMsg::Voice 	v,IntelMsg::About
 inline IntelMsg::PVA PVA(IntelMsg::Priority p,IntelMsg::Voice 	v,IntelMsg::About a,MapSFX s)
 	{IntelMsg::PVA rv;rv.about=a;rv.priority=p;rv.voice=v;rv.sfxTrigger=s;return rv;}		//2 bits
 
-enum	ScriptTables;
+enum	ScriptTables : int;
 struct	TargetIndexes;
 class	CString;	
 class	DeadStream;
@@ -766,8 +755,7 @@ struct	ReviewBuffer:IntelBuffer
 //DeadCode JIM 13Nov00 	static	 ScriptTables unrepeatablescripts[];
 	struct 	UnrepeatableScripts
 	{
-		enum	Script	
-		{
+		enum	Script {
 			SCRIPT_LUFPAC,SCRIPT_SEALIONONCOURSE,SCRIPT_SEALIONDOUBTS,SCRIPT_RDFHOLES,
 			SCRIPT_BIGWINGUSED,SCRIPT_RAFRADIONET, SCRIPT_RAFRADIONETSUCCESS,SCRIPT_PILOTSHORTAGE,
 			SCRIPT_LUFTWAFFEBOMBLONDON,SCRIPT_RAFBOMBBERLIN,SCRIPT_THOUSANDBOMBER,SCRIPT_BIGESCORT,

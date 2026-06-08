@@ -63,8 +63,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 */
 
 #include "_AI.h"
-#include "..\AI\Aaa.cpp"
-#include "..\AI\Msgai.cpp"
-#include "..\AI\Spotted.cpp"
-#include "..\ai\usermsg.cpp"
-#include "..\ai\grid.cpp"
+#include "../AI/Aaa.cpp"
+#include "../AI/Msgai.cpp"
+#include "../AI/Spotted.cpp"
+#include "../ai/usermsg.cpp"
+#include "../ai/grid.cpp"

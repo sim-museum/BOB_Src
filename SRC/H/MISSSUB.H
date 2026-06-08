@@ -107,7 +107,7 @@ MAKEFIELD (NewsEvent,NewsEventMIN,NewsEventMAX);
 
 
 
-enum	pilotstatus	{NOTFLYING = 0,FLYING, WOUNDED, MIA, IS_DEAD = MIA, KIA};
+enum	pilotstatus {NOTFLYING = 0,FLYING, WOUNDED, MIA, IS_DEAD = MIA, KIA};
 //moved to flyinit.h											//RDH 23Sep96
 //DeadCode JIM 10Jun96 enum	SkillType
 //DeadCode JIM 10Jun96 		{SKILL_NOVICE = 0,SKILL_STAGE = 1,SKILL_POOR,SKILL_REGULAR,SKILL_VETERAN,SKILL_ACE,SKILL_HERO};
@@ -158,11 +158,11 @@ enum	HatMissionFamily {HP_VOLUNTEER = 0,
 			HP_NOCHOICE = 0, HP_BALLOON,HP_PATROL,HP_ESCORT,HP_ROVING};
 
 enum	SquadPanelSelection {PERSONNEL = 0, CONFIGURE, PREFERENCES, PAINTSHOP,SAVEGAME};
-enum	ConfigureSelection	{SAVECONFIGURE,RETURNFROMCONFIGURE,CANCELCONFIGURE,GOTOJOYSTICKCONFIG,
+enum	ConfigureSelection {SAVECONFIGURE,RETURNFROMCONFIGURE,CANCELCONFIGURE,GOTOJOYSTICKCONFIG,
 								CANCELSCRNCONFIG,ACCEPTSCREENCONFIG,TRYSELECTEDSCREENCONFIG
 
 								};
-enum	CtrlVar	{
+enum	CtrlVar {
 								GOTOACCEL,GOTOMAP
 				};
 enum	FlightInfoSelection { FLYNOW= 0, JUSTRETURN};
@@ -334,8 +334,7 @@ struct PilotHist
 };
 
 //structure redefined 11/8/98 rdh
-enum	HideSkills
-{
+enum	HideSkills {
 	HSflyingskill=0,
 	HScombatskill=8,
 	HSflyingpotential=16,
@@ -430,7 +429,7 @@ enum	HideSkills
 
 //DEADCODE JIM 24/05/00  	enum		{MAX_PACKAGE_NUM = 5,MAX_COMPONENT_NUM = 4};
 //DEADCODE JIM 24/05/00 
-//DEADCODE JIM 24/05/00 	enum	FamilyType{PFT_NULL = 4,
+//DEADCODE JIM 24/05/00 	enum	FamilyType {PFT_NULL = 4,
 //DEADCODE JIM 24/05/00 					PFT_HEAVYSTRIKE = 0,
 //DEADCODE JIM 24/05/00 					PFT_STRIKE = 1,		
 //DEADCODE JIM 24/05/00 					PFT_PATROL = 2,		
@@ -440,7 +439,7 @@ enum	HideSkills
 //DEADCODE JIM 24/05/00 inline	SWord&	operator *(FamilyType& f){return(SWord&) f;}
 //DEADCODE JIM 24/05/00 					
 //DEADCODE JIM 24/05/00 
-//DEADCODE JIM 24/05/00 	enum	Type{
+//DEADCODE JIM 24/05/00 	enum	Type {
 //DEADCODE JIM 24/05/00 			HS_BASE = 0,	
 //DEADCODE JIM 24/05/00 			HS_ALPHADIRECT = HS_BASE,	
 //DEADCODE JIM 24/05/00 			HS_ALPHAINDIRECT,	
@@ -471,7 +470,7 @@ enum	HideSkills
 //DEADCODE JIM 24/05/00 inline	SWord&	operator *(Type& f){return(SWord&) f;}
 //DEADCODE JIM 24/05/00 
 //DEADCODE JIM 24/05/00 
-//DEADCODE JIM 24/05/00 enum	Stores	{
+//DEADCODE JIM 24/05/00 enum	Stores {
 //DEADCODE JIM 24/05/00 				GUNSONLY = 0,	B29_STD = 0,
 //DEADCODE JIM 24/05/00 				LR_BOMB = 1,	B29_TARZON = 1,
 //DEADCODE JIM 24/05/00 				LR_HDBOMB,
@@ -485,7 +484,7 @@ enum	HideSkills
 //DEADCODE JIM 24/05/00 
 //DEADCODE JIM 24/05/00 inline	SWord&	operator *(Stores& f){return(SWord&) f;}
 
-//DEADCODE DAW 25/11/99 enum	Squadron{
+//DEADCODE DAW 25/11/99 enum	Squadron {
 //DEADCODE DAW 25/11/99 		F86Squad = 0,
 //DEADCODE DAW 25/11/99 		F84Squad,
 //DEADCODE DAW 25/11/99 		F80Squad,
@@ -504,7 +503,7 @@ enum	HideSkills
 //DEADCODE JIM 25/03/99 			PASSIVE,ACTIVE,SIBLING,CONTROL
 //DEADCODE JIM 25/03/99 		};	
 //DEADCODE JIM 25/03/99 
-//DEADCODE JIM 25/03/99 enum	ListControl{LISTINACTIVE,LISTACTIVE};
+//DEADCODE JIM 25/03/99 enum	ListControl {LISTINACTIVE,LISTACTIVE};
 //DEADCODE JIM 25/03/99 enum	{LISTCONTROLMAX = 16, STORESPERACMAX = 8,CONFIGSTORESAC = 6};
 
 //MARK, this is the list of events in the order of use			//MS 04Mar99
@@ -781,8 +780,8 @@ enum	HideSkills
 //DEADCODE JIM 28/01/00 
 //DEADCODE JIM 28/01/00 };
 
-//DEADCODE ROD 17/12/99 enum	AccelSwitches	{AS_FAVE,AS_ENG,AS_TARG,AS_COAST,AS_TAKEOFF,AS_RECONCOAST,AS_MAX};
-enum	AccelSwitches	{	AS_NOTSWITCH,
+//DEADCODE ROD 17/12/99 enum	AccelSwitches : int {AS_FAVE,AS_ENG,AS_TARG,AS_COAST,AS_TAKEOFF,AS_RECONCOAST,AS_MAX};
+enum	AccelSwitches : int {	AS_NOTSWITCH,
 							AS_RAID_FORMING,
 							AS_TAKEOFF,
 							AS_COAST,
@@ -794,7 +793,7 @@ enum	AccelSwitches	{	AS_NOTSWITCH,
 							AS_MAX};
 MAKEFIELD(AccelSwitches,0,AS_MAX);
 
-enum	HostileListFilters	{
+enum	HostileListFilters {
 							HL_FORMING,
 							HL_INCOMING,	
 							HL_TARGETAREA,
@@ -809,7 +808,7 @@ enum	HostileListFilters	{
 
 MAKEFIELD(HostileListFilters,0,HL_MAX);
 
-enum	SelectTargetMode	{STM_NORMAL,STM_LWAC,STM_RAFAC,STM_GROUND};
+enum	SelectTargetMode : int {STM_NORMAL,STM_LWAC,STM_RAFAC,STM_GROUND};
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -853,7 +852,7 @@ struct	Directives
 							LWHISTORICALPHASE3A, LWHISTORICALPHASE3B, LWHISTORICALPHASE3C, LWHISTORICALPHASE3D, 
 							LWHISTORICALPHASE4A, LWHISTORICALPHASE4B, LWHISTORICALPHASE4C, LWHISTORICALPHASE4D, 
 							MAXHISTTYPES};
-		enum	Ju87Usage	{JU_NONE,JU_AM,JU_MD,JU_PM,JU_ANY};
+		enum	Ju87Usage {JU_NONE,JU_AM,JU_MD,JU_PM,JU_ANY};
 		MAKEFIELD(AttackMethod,Profile::AM_FIELD_MIN,Profile::AM_FIELD_MAX);
 
 		struct	Targ	//Describes one target category
@@ -959,7 +958,7 @@ struct	Directives
 		struct	Dir		//Describes the RAF directives
 		{
 			MissTypesField	sanctioned;
-			enum  GeneralSize	{ONESQ,PAIRED,BIGW};	//I guess these are patrol sizes
+			enum  GeneralSize {ONESQ,PAIRED,BIGW};	//I guess these are patrol sizes
 			ONLYFIELD(UByte,AttackMethod,	approach);	//tactics is not on directives????
 
 			int		restifcatbelow,restifavailbelow;

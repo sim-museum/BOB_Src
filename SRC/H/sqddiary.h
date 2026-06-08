@@ -1,0 +1,1 @@
+SQDDIARY.H

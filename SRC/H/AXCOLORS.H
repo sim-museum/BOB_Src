@@ -2,8 +2,7 @@
 #define	axcolors_Included
 
 // ActiveX colours
-enum	FixedActiveXColours
-{
+enum	FixedActiveXColours {
 //DEADCODE RDH 04/11/99 	AXC_DARKEDGE=RGB(103,132,198),
 //DEADCODE RDH 04/11/99 	AXC_LITEDGE=RGB(103,132,198),
 //DEADCODE RDH 04/11/99 	AXC_DISABLEDDARKEDGE=RGB(179,194,226),

@@ -11,8 +11,7 @@
 #define	DEFAULT_MAPSFX 0
 
 
-enum	MapSFX
-{
+enum	MapSFX : int {
 	SFX_NULL=0,
 	SFX_PhoneIn,
 	SFX_PhoneOut,

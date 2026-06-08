@@ -11,8 +11,7 @@
 #define	DEFAULT_ANIMMOVE 0
 
 
-enum	AnimMoves						
-{
+enum	AnimMoves {
 	BLOKE_NULL = -1,		// basic moves
 	BLOKE_STAND = 0,
 	BLOKE_WALK,													//RJS 22Dec99
@@ -36,8 +35,7 @@ enum	AnimMoves
 	BLOKE_SHOT													//RJS 22Dec99
 };
 
-enum	tAnimation
-{
+enum	tAnimation {
 	ANIMATION_STAND = 0,
 	ANIMATION_BORED,											//RJS 12Jan00
 	ANIMATION_WALK,

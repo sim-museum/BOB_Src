@@ -80,7 +80,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include	"uniqueid.h"  
 #include "flyinit.h"													//RDH 07/03/00
 #include "cstring.h"
-#include "..\mfc\resource.h"
+#include "../mfc/resource.h"
 
 #include "movement.h"
 #include "package.h"
@@ -4405,7 +4405,7 @@ UID_DUMMY	=UID_NULL;
 	{UID_NULL}
 };
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		britsquadinst
 //Author		Jim
 //Date			Tue 23 Nov 1999
@@ -4417,8 +4417,7 @@ UID_DUMMY	=UID_NULL;
 //Returns	
 //
 //------------------------------------------------------------------------------
-enum	MARKINGLETTERS
-{
+enum	MARKINGLETTERS {
 	ML_A=0,
 	ML_B,
 	ML_C,

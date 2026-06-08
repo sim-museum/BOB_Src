@@ -11,9 +11,7 @@
 
 #ifndef	UNIQUEIDBAND_Included
 #define	UNIQUEIDBAND_Included
-enum	UniqueIDBand
-												
-	{						 									//MS 14Oct98
+enum	UniqueIDBand {						 									//MS 14Oct98
 		PilotedAcBAND			=	0x0000,	  /**/ NULL_BAND=0x0000,
 //DeadCode MS 15Nov99 		RedRailBand				=	0x0800,
 //DeadCode MS 15Nov99 		RedRoadBAND				=	0x0C00,
@@ -122,8 +120,7 @@ enum	UniqueIDBand
 #ifndef	UNIQUEIDVALS_Included
 #define	UNIQUEIDVALS_Included
 
-enum	UniqueID
-	{
+enum	UniqueID : int {
 		#include	"uidvals.g"
 		UID_Null				=	0x000,
 		UID_NULL				=	0x000,

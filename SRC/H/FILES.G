@@ -18,8 +18,7 @@
 #endif
 #endif
 
-enum	FileNum
-{
+enum	FileNum : int {
 	FIL_NULL			=0x0000,
 	RCH_DIRBASE			=0xFF00,
 	DIRNUMSH			=0x0008,

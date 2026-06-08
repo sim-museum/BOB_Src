@@ -2,11 +2,11 @@
 #ifndef TPaintWlH
 #define TPaintWlH
 //---------------------------------------------------------------------------
-#include <vcl\SysUtils.hpp>
-#include <vcl\Controls.hpp>
-#include <vcl\Classes.hpp>
-#include <vcl\Forms.hpp>
-#include <vcl\ExtCtrls.hpp>
+#include <vcl/SysUtils.hpp>
+#include <vcl/Controls.hpp>
+#include <vcl/Classes.hpp>
+#include <vcl/Forms.hpp>
+#include <vcl/ExtCtrls.hpp>
 //---------------------------------------------------------------------------
 #ifndef WM_MOUSEWHEEL
 #define WM_MOUSEWHEEL (WM_MOUSELAST+1)  // message that will be supported

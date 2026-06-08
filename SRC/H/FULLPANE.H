@@ -33,8 +33,7 @@ struct FullScreen
 		
 		int ListX,ListY;
 	} resolutions [6];
-	enum Align
-	{	
+	enum Align {	
 		LEFT=0,RIGHT,CENTRE,ONSPACE,
 		VERT=0,HORIZ=4,
 		TOP=0,BOT=8,MID=16
@@ -59,7 +58,7 @@ inline FullScreen::Align operator +
 {return (a|b);}
 
 class	SquadronBase;													//RJS 4Sep00
-enum	SquadNum;														//RJS 4Sep00
+enum	SquadNum : int;														//RJS 4Sep00
 /////////////////////////////////////////////////////////////////////////////
 // RFullPanelDial dialog
 class	RFullPanelDial;
@@ -74,11 +73,11 @@ class RFullPanelDial : public RowanDialog
 
 public:
 	static	bool	incomms,in3d,specialevent;
-	enum	GameStates	{TITLE,QUICK,HOT,MATCH, PILOT, COMMANDER, DIARY};
+	enum	GameStates {TITLE,QUICK,HOT,MATCH, PILOT, COMMANDER, DIARY};
 //DEADCODE RDH 06/04/00 		CAMP,WAR,MATCH, PILOT, COMMANDER, DIARY};
 		
 	static	GameStates	gamestate;
-	enum	GameSide	{SIDE_RAF, SIDE_LW};
+	enum	GameSide {SIDE_RAF, SIDE_LW};
 	static	GameSide	gameside;
 	RFullPanelDial(CWnd* pParent = NULL);   // standard constructor
 	RFullPanelDial::~RFullPanelDial();
@@ -386,4 +385,4 @@ public:
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
 #endif // !defined(AFX_FULLPANE_H__F4F91440_EF0E_11D1_A1F0_0080C8582DE4__INCLUDED_)
-
+

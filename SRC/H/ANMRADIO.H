@@ -15,8 +15,7 @@
 
 
 
-enum	VoxRandoms
-{
+enum	VoxRandoms {
 	VOX_RAND_1IN2 = 32768,
 	VOX_RAND_1IN4 = 16384,
 	VOX_RAND_1IN8 = 8192,
@@ -27,8 +26,7 @@ enum	VoxRandoms
 	VOX_RAND = VOX_RAND_1IN16
 };
 
-enum	RadioDamage
-{
+enum	RadioDamage {
 	RADIO_NULL = 0,
 	RADIO_GENERAL_LV1,
 	RADIO_GENERAL_LV2,

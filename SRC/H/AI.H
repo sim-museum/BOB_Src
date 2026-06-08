@@ -13,9 +13,9 @@
 //DEADCODE MS 31/01/00 	typedef	int	PhraseTables;
 //DEADCODE MS 31/01/00 #endif
 #ifndef	__BCPLUSPLUS__
-enum	PhraseTables;
-enum	ScriptTables;
-enum	MsgType;
+enum	PhraseTables : int;
+enum	ScriptTables : int;
+enum	MsgType : int;
 #else
 typedef	int	PhraseTables,ScriptTables,MsgType;
 #endif
@@ -25,6 +25,7 @@ typedef	int	PhraseTables,ScriptTables,MsgType;
 
 class	AirStruc;
 //fake class interface between derivatives of ArtInt
+class	ArtInt;		// Linux port: forward-declare (used below as ArtInt*)
 class	MESSAGE_STRUC;
 class	DecisionAI													  //JIM 22/01/99
 {

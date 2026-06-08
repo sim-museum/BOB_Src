@@ -43,7 +43,7 @@ class	Collide
 
 	public:
 
-		enum	Pos{NOTTOUCHED=0,
+		enum	Pos {NOTTOUCHED=0,
 					LANDED_OK,
 					WHEEL_AND_WING_TOUCH,
 					LANDED_BELLY,								//RJS 27Aug98

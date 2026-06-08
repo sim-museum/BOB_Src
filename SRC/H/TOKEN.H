@@ -15,8 +15,7 @@
 
 
 
-enum	MaxFile
-{
+enum	MaxFile {
 	MaxFileCount 	=	32,
 	MaxTotFileCount =	250,
 	MaxFileBits		=	5

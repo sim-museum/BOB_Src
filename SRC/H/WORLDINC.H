@@ -41,7 +41,7 @@ const	AnimSizeField	ANIM_NULL = 0;							//RJS 30Nov99
 typedef	char	(MinAnimData::*Animfieldref);
 typedef	char	(MinAnimData::*AFR);
 
-enum TAKEOFFPOINT{														  //CSB 16/12/99
+enum TAKEOFFPOINT {														  //CSB 16/12/99
 		TP_SQUADRONSTART,
 		TP_SQUADRONTOUCHDOWN,
 		TP_RUNWAYEND,
@@ -223,17 +223,17 @@ typedef	void	*weapptr;
 struct	PlaneType;
 typedef	PlaneType	*ClassPtr;
 
-//DeadCode RDH 28Feb96 enum	DUTYDESC	{dummy_duty = 0,DUTY_ALIGN=255};
+//DeadCode RDH 28Feb96 enum	DUTYDESC {dummy_duty = 0,DUTY_ALIGN=255};
 //moved to h\movement.h											//RDH 19Feb96
-//DeadCode RDH 19Feb96 enum	MANOEUVRE	{MANOEUVRE_SELECT=0,MANOEUVRE_IMMELMAN,MANOEUVRE_LOOP,MANOEUVRE_BARREL,MANOEUVRE_STALL};
+//DeadCode RDH 19Feb96 enum	MANOEUVRE {MANOEUVRE_SELECT=0,MANOEUVRE_IMMELMAN,MANOEUVRE_LOOP,MANOEUVRE_BARREL,MANOEUVRE_STALL};
 //
 //Blues are aggressive friendly forces (do the killing)
 //Reds are aggressive unfriendly forces (get killed)
 //green are non-aggressive neutral forces (bugger 'em)
 //amber are aggressive neutral forces (bugger me)
-//DeadCode RDH 26Oct95 enum	CONTROLMODE	{AUTO = 0,MANUAL};
-//MovedTo3ddefs.h DAW 28Nov95 enum	Obj3DType	{STATIC = 0, MOBILE};
-//DeadCode PD 07Mar96 enum	SHAPETYPE	{DUMMY_TYPE = 0};
+//DeadCode RDH 26Oct95 enum	CONTROLMODE {AUTO = 0,MANUAL};
+//MovedTo3ddefs.h DAW 28Nov95 enum	Obj3DType {STATIC = 0, MOBILE};
+//DeadCode PD 07Mar96 enum	SHAPETYPE {DUMMY_TYPE = 0};
 //TempCode DAW 28Nov95 typedef	Obj3DType	OBJ3DTYPE;
 
 
@@ -265,7 +265,7 @@ struct	UNIQUE_ID
 //							spare:4;
 //			};
 
-enum	ITEM_SIZE	{	ItemBaseSize,WayPointSize,	//this layout is intended
+enum	ITEM_SIZE {	ItemBaseSize,WayPointSize,	//this layout is intended
 						ItemSize,					//to show the hierachy of
 						HdgSize,					//ItemBase derived types.
 						HPSize,
@@ -307,7 +307,7 @@ struct	ITEM_STATUS
 //				Drawn:		1;
 //	ITEM_SIZE	size:		5;
 //	UByte		deadtime:	5,	//max=32
-//				deadscale:	2;	//¬hours/2hours/days/weeks
+//				deadscale:	2;	//ï¿½hours/2hours/days/weeks
 //	ITEM_STATUS() {};
 
 	ITEM_STATUS()
@@ -357,8 +357,8 @@ struct	EventLogPtr:EventLog
 //DEADCODE DAW 08/03/00 typedef	EventLog	*EventLogPtr;
 
 typedef Bool	TellLeader;										//DAW 30Jun96
-enum	NextLeadAct		{NL_OnCourse,NL_CircleFlights,NL_CircleSingles,NL_Flights,NL_DoubleFlighs,NL_PrevRipple,NL_PrevDouble,NL_align=255};
-enum	NextFollAct		{NF_PersonalThreat,NF_CircleSingle,NF_Single,NF_Double,NF_ReDouble,NF_align=255};
+enum	NextLeadAct {NL_OnCourse,NL_CircleFlights,NL_CircleSingles,NL_Flights,NL_DoubleFlighs,NL_PrevRipple,NL_PrevDouble,NL_align=255};
+enum	NextFollAct {NF_PersonalThreat,NF_CircleSingle,NF_Single,NF_Double,NF_ReDouble,NF_align=255};
 class	ItemBase		;
 class	item			;
 class	hdgitem			;
@@ -807,8 +807,11 @@ class	mobileitem:public	MovingItem	//o2C
 	friend class BoxCol;											//RJS 05Aug96
 //LastModified:	JIM 24Sep96
 
-private:
+public:
+// MoveList made public for the Linux port: GCC rejects a friend declaration
+// (World.h) that names it while private; MSVC tolerated it.
 static	void MoveList(MobileItemPtr entry,WorldStuff& world);
+private:
 static	MobileItemPtr	MobileList;
 protected:
 static	void MoveItem(MobileItemPtr entry,WorldStuff&);				//PD 02May96
@@ -1041,8 +1044,7 @@ struct	ai_info						//contains floats	//o??s60
 	AirStrucPtr	attacker;											//o08s04//save
 	ONLYFIELD(UByte,SkillType,combatskill); // unchanged?
 //DEADCODE JIM 01/12/99 	ONLYFIELD(UByte,SkillType,flyingskill);
-		enum	SubMethod
-		{
+		enum	SubMethod {
 			SM_ANYA2A,
 			SM_NOTBOMBERS		=1,
 			SM_NOTFIGHTERS		=2,

@@ -20,25 +20,24 @@
 
 
 #include	"bitcount.h"
-enum FileNum;
-enum	Ranges;
-enum	SquadNum;
-enum	FormationTypeIndex;
-enum	BFieldWaypointActions;
-enum	Nationality;
+enum FileNum : int;
+enum	Ranges : int;
+enum	SquadNum : int;
+enum	FormationTypeIndex : int;
+enum	BFieldWaypointActions : int;
+enum	Nationality : int;
 struct	lchpak;
 struct	SquadList;
 struct	Squadron;
 struct	info_airgrp;
-enum	PlaneTypeSelect;
+enum	PlaneTypeSelect : int;
 struct	info_waypoint;
 class	BOStream;
 class	BIStream;
-enum	SquadNum;
+enum	SquadNum : int;
 class	CString;
 
-enum	SavedGlobrefs
-{
+enum	SavedGlobrefs : int {
 	SGR_Pack_BlankZero=0,
 	SGR_Pack_Takeoff=1,	//package key points
 	SGR_Pack_DogLeg,
@@ -91,8 +90,7 @@ struct	Profile
 {
 	enum	{MAXRAFPLANNEDSQUADRONS = 32, MAXRAFPATROLS = 30,MAXLWPLANNEDSTAFFELN = 96}; 
 	enum	{MAX_PACKS=512,MAX_TARGETS=10,MAX_NEGTARGETS=3,MAX_SQUADS=96};
-	enum	AttackMethod	
-	{
+	enum	AttackMethod {
 	AM_RAF=0,			AM_PATROL=0,AM_INTERCEPT,
 	AM_FIELD_MIN=8,
 	AM_LWPACKS=8,		AM_DECOYPATROL,AM_RECON,AM_DIVEBOMB,AM_LEVELBOMB,AM_CHAINBOMB,
@@ -107,8 +105,7 @@ struct	Profile
 	AM_GOODLIMIT=40
 	};
 	typedef MakeField<AttackMethod, AM_FIELD_MIN,AM_FIELD_MAX> AttackMethodField;
-	enum	PackageStatus	
-	{	//squad status	//tote status
+	enum	PackageStatus {	//squad status	//tote status
 		PS_SPARE,		PS_OFFBASE=PS_SPARE,
 		PS_ORDER_30,
 		PS_AT_30,	
@@ -136,8 +133,7 @@ struct	Profile
 		PS_AIRFIELDOUT
 	};
 
-	enum	BetterRule
-	{	//Rules playes can set to select aircraft types more precicely
+	enum	BetterRule {	//Rules playes can set to select aircraft types more precicely
 		BR_NONE			=	0,
 		BR_WIDESTPOSSIBLE=0x0ffff,	//I have coded this in select routines
 		BR_B_SPITONLY	=0x0000D,		//spitfire from any group with/without leader. These can choose a squad with enough aircraft who's
@@ -175,8 +171,7 @@ struct	Profile
 		BR_R_JU88ONLY	=0x08000,
 	};
 
-	enum	RaidNumEntryCounts
-	{
+	enum	RaidNumEntryCounts {
 		RNEC_RAF=2,
 		RNEC_MAXLWBOMBERS=MAX_TARGETS,
 		RNEC_LWCLOSEESCORT=MAX_TARGETS,
@@ -187,8 +182,7 @@ struct	Profile
 
 		RNEC_LISTVALISLASTREC=255, //put in	squadliststart field
 	};
-		enum	SubMethod
-		{
+		enum	SubMethod {
 			SM_ANYA2A,
 			SM_NOTBOMBERS=1,
 			SM_NOTFIGHTERS=2,
@@ -329,7 +323,7 @@ struct	Profile
 	SquadListRef		squadlist;	//Pointer to array of Squad
 	Squad&		operator[](int i)	{return squadlist[i];}
 
-//DEADCODE DAW 25/11/99 	enum	WaveSplitting	{WS_SINGLE_PRIMARY};
+//DEADCODE DAW 25/11/99 	enum	WaveSplitting {WS_SINGLE_PRIMARY};
 
 //DEADCODE AMM 12/01/00 	char		packname[MAX_TARGETS];		//basis of file-name, probably
 	union
@@ -611,7 +605,7 @@ static	UniqueID	ReorderZero(UniqueID u);
 
 	bool	GetSquadEntry(SquadNum s,int&p,int&sq=*(int*)NULL);
 	bool	GetACSquadEntry(UniqueID ac,int&p,int&sq=*(int*)NULL);
-	enum	WPTargSpecials	{WPTS_NONE=-1,WPTS_MAINTAKEOFF=-2,WPTS_DOGLEG=-3,WPTS_LOCALTAKEOFF=-4};
+	enum	WPTargSpecials {WPTS_NONE=-1,WPTS_MAINTAKEOFF=-2,WPTS_DOGLEG=-3,WPTS_LOCALTAKEOFF=-4};
 	bool	GetWPTargEntry(UniqueID wp,int&p,int&trg=*(int*)NULL);	 
 	bool	GetTargEntry(UniqueID t,int&p,int&trg=*(int*)NULL);
 

@@ -146,7 +146,7 @@ void CScaleBar::OnSize(UINT nType, int cx, int cy)
 	Invalidate();
 }
 
-enum	RPointEntry{RP_SCALEEDGE,RP_SMALLSCALE,RP_MEDSCALE,RP_BIGSCALE,RP_NUMBER,RP_UNIT,RP_MAX};
+enum	RPointEntry {RP_SCALEEDGE,RP_SMALLSCALE,RP_MEDSCALE,RP_BIGSCALE,RP_NUMBER,RP_UNIT,RP_MAX};
 class	RPoint
 {
 public:
@@ -168,7 +168,7 @@ class	RPointBot:public RPoint
 	{	return CPoint(along,indexes[across]);	}
 } R_PointBot;
 
-//enum	RPointEntry{RP_SCALEEDGE,RP_SMALLSCALE,RP_MEDSCALE,RP_BIGSCALE,RP_NUMBER,RP_UNIT,RP_MAX};
+//enum	RPointEntry {RP_SCALEEDGE,RP_SMALLSCALE,RP_MEDSCALE,RP_BIGSCALE,RP_NUMBER,RP_UNIT,RP_MAX};
 enum	{M_WIDTH=48};
 //DEADCODE RDH 13/04/00 RPoint::RPointPos	RPointTop::indexes=		{2,10,12,14,30,45};
 //DEADCODE RDH 13/04/00 RPoint::RPointPos	RPointBot::indexes=		{M_WIDTH-2,M_WIDTH-10,M_WIDTH-12,M_WIDTH-14,15,30};

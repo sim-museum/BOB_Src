@@ -11,8 +11,7 @@
 
 
 // control types
-enum CTRL_TYPE
-{
+enum CTRL_TYPE {
 	CT_INACTIVE,
 	CT_ROTATION,
 	CT_AERODYNAMIC

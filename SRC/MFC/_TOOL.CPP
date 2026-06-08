@@ -77,13 +77,13 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #ifndef	BOB_DEMO_VER
 
 //tool bars
-#include ".\Rtoolbar.cpp"
-#include ".\sysbox.cpp"
+#include "./Rtoolbar.cpp"
+#include "./sysbox.cpp"
 #include "msctlbr.cpp"
 #include "titlebar.cpp"
-#include ".\Maintbar.cpp"
-#include ".\Scalebar.cpp"
-#include ".\MapFltrs.cpp"
+#include "./Maintbar.cpp"
+#include "./Scalebar.cpp"
+#include "./MapFltrs.cpp"
 #include	"statbar.cpp"
 #include	"teletype.cpp"
 

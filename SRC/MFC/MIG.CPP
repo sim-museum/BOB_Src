@@ -142,7 +142,7 @@ public:
 	void ParseParam( LPCTSTR lpszParam, BOOL bFlag, BOOL bLast );
 };
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ParseParam
 //Author		Paul.   
 //Date			Thu 25 Jun 1998
@@ -213,16 +213,14 @@ CFont* (g_AllFonts[MAXFONTS][4])={{NULL}};
 CDC g_OffScreenDC;
 
 
-enum	FontInitListFlags
-{
+enum	FontInitListFlags {
 	FI_4VER=		0x40000000,
 	FI_BOLDMASK=	0x0000ffff,
 	FI_ITAL=		0x00100000,
 	FI_UL=			0x00200000,
 	FI_STRIKE=		0x00400000
 };
-enum	Fonts
-{
+enum	Fonts {
 	FO_ARIAL=0,
 	FO_FUSIONBOLD,
 	FO_INTEL,

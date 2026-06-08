@@ -14,7 +14,7 @@
 //
 #ifndef AXIS_USES
 #define	AXIS_USES
-enum	AxisUses		{	AU_UNASSIGNED=-1,
+enum	AxisUses {	AU_UNASSIGNED=-1,
 							AU_AILERON=0,AU_ELEVATOR,AU_RUDDER,AU_THROTTLE,
 							AU_UI_X=4,AU_UI_Y,
 							AU_COLLECTIVE=6,AU_COOLIEHAT=7,

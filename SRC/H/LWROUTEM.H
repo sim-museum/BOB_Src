@@ -24,7 +24,7 @@ public:
 
 	LWRouteMain(int t, CWnd* pParent = NULL);   // standard constructor
 
-	enum WpState	{FIRST, FIRSTTAKEOFF, TAKEOFF, INGRESS, TARGETSTRIKE, TARGETESCORT, EGRESS, LANDING, LAST};
+	enum WpState {FIRST, FIRSTTAKEOFF, TAKEOFF, INGRESS, TARGETSTRIKE, TARGETESCORT, EGRESS, LANDING, LAST};
 	enum	{MAXWPS = 100};
 	UniqueID	WpList[MAXWPS];
 	int maxentry;

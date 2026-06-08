@@ -22,7 +22,7 @@ const	int	MaxTrails = 128;											//JIM 28Jun00
 const	int	RealMaxTransients = 384;									//JIM 28Jun00
 
 const SWord	BOMBWEIGHT = 80;	//Newtons
-enum	DeathType	{	DT_BigGround=0,							//PD 07May96
+enum	DeathType {	DT_BigGround=0,							//PD 07May96
 						DT_GroundSmoke,							//PD 07May96
 						DT_AirDelay,							//PD 07May96
 						DT_AirInstant							//PD 07May96

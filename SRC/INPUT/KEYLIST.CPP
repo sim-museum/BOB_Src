@@ -81,7 +81,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //DEADCODE JIM 10/02/00 #include	"DosDefs.h"
 typedef	unsigned short	UWord;
 //#include	"Files.g"
-enum	FileNum;
+enum	FileNum : int;
 //DEADCODE JIM 10/02/00 #include	"fileman.h"
 
 //#include	"hardpasm.h"										//ARM 04Jun96

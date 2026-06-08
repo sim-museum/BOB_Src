@@ -66,9 +66,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "stdafx.h"
 #include "_mfc.h"
 
-#include ".\Damage.cpp"
-#include ".\filing.cpp"
-#include ".\load.cpp"
+#include "./Damage.cpp"
+#include "./filing.cpp"
+#include "./load.cpp"
 #ifndef BOB_DEMO_VER
 
 //DEADCODE DAW 26/11/99 #include ".\Frag.cpp"
@@ -80,11 +80,11 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //DEADCODE DAW 29/01/00 #include ".\LstMsnlg.cpp"
 //DEADCODE DAW 29/01/00 #include ".\Misn_log.cpp"
 //DEADCODE DAW 29/01/00 #include ".\General.cpp"
-#include ".\dosbut.cpp"
+#include "./dosbut.cpp"
 //DEADCODE DAW 29/01/00 #include ".\Dossier.cpp"
 //#include ".\Notes.cpp"
 //DEADCODE DAW 29/01/00 #include ".\Plyr_log.cpp"
-#include ".\Weather.cpp"
+#include "./Weather.cpp"
 
 
 //New sheets

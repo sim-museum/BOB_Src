@@ -16,7 +16,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // SquadronDetails dialog
-enum	SquadNum;
+enum	SquadNum : int;
 class SquadronDetails : public RowanDialog
 {
 // Construction

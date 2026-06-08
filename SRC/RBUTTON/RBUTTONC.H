@@ -54,7 +54,7 @@ protected:
 	long m_hintResourceNumber;
 	OLE_COLOR m_ShadowColor;
 	BOOL m_bShowShadow;
-	enum	ButtonPos	{Pressed,ClosePressed,TickPressed,HelpPressed,NotPressed};
+	enum	ButtonPos {Pressed,ClosePressed,TickPressed,HelpPressed,NotPressed};
 	ButtonPos	m_buttonpos;
 	BOOL	m_b[NotPressed];
 	HICON m_closeUpIcon;

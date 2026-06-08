@@ -12,7 +12,7 @@
 
 #include "globdefs.h"
 #include "files.g"
-enum IconsUI;
+enum IconsUI : int;
 class CREdtBtCtrl : public COleControl
 {
 	DECLARE_DYNCREATE(CREdtBtCtrl)

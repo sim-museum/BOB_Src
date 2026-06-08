@@ -1,0 +1,1 @@
+LWDIARY.H

@@ -425,30 +425,27 @@ class	item			;
 class	AirStruc		;
 typedef item			Item,*ItemPtr,*itemptr;
 typedef	AirStruc		*AirStrucPtr;
-enum	ShapeNum;
+enum	ShapeNum : int;
 class	MovingItem		;
 
 class DPlay {
 
 public:
 
-	enum	HostPrefs
-	{
+	enum	HostPrefs {
 		AIR2AIR=0,
 		GROUND,
 		WEAPON,
 		ENGINEMAN
 	};
 
-	enum	CommsEntryStage
-	{
+	enum	CommsEntryStage {
 		STAGE_BFIELDS=0,
 		STAGE_RANDOMLIST,
 		STAGE_MAX
 	};
 
-	enum PlayerType
-	{
+	enum PlayerType {
 		PLAYER_HOST=1,
 		PLAYER_GUEST
 	};
@@ -1001,8 +998,7 @@ public:
 	void	ProcessPlayerMessagePacket(UByteP,ULong);
 	void	DisplayPlayerMessage(ItemPtr victim, ItemPtr hitter, UByte script_type,UByte messnum=0);
 
-	enum	Script_Type
-	{
+	enum	Script_Type {
 		ST_PLAYERKILLEDCOMMS=0,
 		ST_PLAYERKILLEDPLAYER,
 		ST_PLAYERKILLEDFRIENDLY,
@@ -1059,8 +1055,7 @@ public:
 	void	SendAccelGearUpMessage();
 	void	ProcessAccelGearUpPacket();
 
-	enum AccelTypeComms
-	{
+	enum AccelTypeComms {
 		ACCEL_NONE=0,
 		ACCEL_FORWARD,
 		ACCEL_NEXTWP,

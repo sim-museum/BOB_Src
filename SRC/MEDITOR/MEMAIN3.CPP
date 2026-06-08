@@ -92,8 +92,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "Static.h"
 #include	"stdio.h"
 //---------------------------------------------------------------------------
-#include <vcl\vcl.h>
-#include	<vcl\clipbrd.hpp>
+#include <vcl/vcl.h>
+#include	<vcl/clipbrd.hpp>
 //#include	"loadsave.h"
 #pragma hdrstop
 //DEADCODE JIM 09/02/00 #include "text.h"

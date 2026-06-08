@@ -11,15 +11,13 @@
 #define	DEFAULT_INTCOCK 0
 
 
-enum	InstDirection
-{
+enum	InstDirection {
 	INSTDIR_NULL = 0,
 	INSTDIR_LEFTRIGHT,
 	INSTDIR_UPDOWN
 };
 
-enum	InstrumentKey
-{
+enum	InstrumentKey {
 	INST_NULL = 0,
 // Interactive levers/buttons/switches...
 	INST_MAP,
@@ -93,8 +91,7 @@ enum	InstrumentKey
 	INST_MAXINSTRUMENT
 };
 
-enum	InstControlType
-{
+enum	InstControlType {
 	ICT_NULL = 0,
 	ICT_SWITCH = 1,
 	ICT_SELECT = 2,

@@ -60,12 +60,11 @@ class CString;
 #include "package.h"
 //TempCode JIM 17Mar99 #include "debrief.h"
 
-enum	SupplyPriority	{SP_NONE = 0,SP_HIGH = 1000,SP_ALIGN = 65535};
+enum	SupplyPriority {SP_NONE = 0,SP_HIGH = 1000,SP_ALIGN = 65535};
 
 enum	{NUM_OF_SUPPLYROUTES = 3};
 
-enum	LandStores
-	{//1 unit = 10 tonnes
+enum	LandStores {//1 unit = 10 tonnes
 		STORES_NIL							= 0,
 		//MAXMOBILESONDOUBLETRACK				= 10,
 		//MAXMOBILESONSINGLETRACK				= 5,
@@ -97,7 +96,7 @@ enum	LandStores
 	};
 
 
-enum	Initiative	{	REDINITIATIVE,BLUEINITIATIVE,
+enum	Initiative {	REDINITIATIVE,BLUEINITIATIVE,
 						REDATTACKING,BLUEATTACKING,
 						REDWON,BLUEWON,
 						REDLOST,BLUELOST
@@ -119,7 +118,7 @@ enum	Initiative	{	REDINITIATIVE,BLUEINITIATIVE,
 //Each supply line has a set of properties:
 struct	SupplyNode;
 struct	SupplyRoute;
-enum	SupplyLineNum	{SLN_EAST,SLN_CENTRAL,SLN_WEST};
+enum	SupplyLineNum {SLN_EAST,SLN_CENTRAL,SLN_WEST};
 
 struct	SupplyLine
 {									//SEE SAVEGAME.CPP
@@ -148,14 +147,14 @@ struct	SupplyLine
 //------------------------------------------------------------------------------
 //Node Structure
 
-enum	NodeType{NOCONTEST, BATTLEFIELD,LASTONE					//either a battlefield or not
+enum	NodeType {NOCONTEST, BATTLEFIELD,LASTONE					//either a battlefield or not
 			};
 
-enum	Status{	BEHINDREDLINES,
+enum	Status {	BEHINDREDLINES,
 				FRONTLINE,
 				BEHINDBLUELINES 
 			};
-enum	AirFieldType	{AFT_PROPONLY,AFT_LIGHTBOMBER,AFT_JET, AFT_LOADEDJET};
+enum	AirFieldType {AFT_PROPONLY,AFT_LIGHTBOMBER,AFT_JET, AFT_LOADEDJET};
 
 
 struct	SupplyFightFiles
@@ -251,7 +250,7 @@ struct	SupplyNode
 //
 //
 
-enum	SR_Status	{SR_RESTING,SR_ACTIVE,SR_LASTONE};				
+enum	SR_Status {SR_RESTING,SR_ACTIVE,SR_LASTONE};				
 struct	SupplyRoute
 {
 		SupplyRoute*	next;				//C-followed
@@ -817,7 +816,7 @@ static SupplyRoute
 
 public:
 static AirFieldInfo	airfieldinfo[];			//S
-	enum	Supply2UID	{S2U_NOTHERE=0,S2U_MAIN,S2U_AF0,S2U_AF1,S2U_AF2,S2U_ROUTE0,S2U_ROUTE1,S2U_ROUTE2};
+	enum	Supply2UID {S2U_NOTHERE=0,S2U_MAIN,S2U_AF0,S2U_AF1,S2U_AF2,S2U_ROUTE0,S2U_ROUTE1,S2U_ROUTE2};
 static SupplyNode*	FindSupplyNodeForItem(UniqueID,Supply2UID* rel=NULL);
 static	SupplyRoute*	SupplyTree::FindBridge(UniqueID u,SupplyRoute* route);
 static SupplyNode*	FindSupplyNodeForNodeItem(UniqueID,Supply2UID* rel=NULL);

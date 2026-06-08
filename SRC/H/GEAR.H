@@ -12,8 +12,7 @@
 
 #define	DEFAULT_GEAR 0
 
-enum UC_STATUS
-{
+enum UC_STATUS {
 	OFFGROUND,
 	TOUCHING,
 	BOTTOMEDOUT,
@@ -22,8 +21,7 @@ enum UC_STATUS
 	UNDEFINED
 };
 
-enum GEAR_IDENT
-{
+enum GEAR_IDENT {
 	NOSE,
 	TAIL,
 	PORT,

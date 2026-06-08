@@ -88,8 +88,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //#include "Static.h"
 
 //---------------------------------------------------------------------------
-#include <vcl\vcl.h>
-#include	<vcl\clipbrd.hpp>
+#include <vcl/vcl.h>
+#include	<vcl/clipbrd.hpp>
 #include	"loadsave.h"
 #pragma hdrstop
 //DEADCODE JIM 09/02/00 #include "text.h"
@@ -1377,7 +1377,7 @@ AnsiString	RScrollBar::vtext(int i)
     int s=i/3080;
     i=i%3080;
 
-	sprintf(buff,"%02d° %02d\" %02d' %02dm ",
+	sprintf(buff,"%02dï¿½ %02d\" %02d' %02dm ",
 	s/(60*60),(s%(60*60))/60,s%60,i/100);
 	return((AnsiString)buff);
 }
@@ -1387,7 +1387,7 @@ AnsiString	RScrollBar::htext(int i)
     int s=i/2500;
     s+=120*60*60;			//left long
     i=i%2500;
-	sprintf(buff,"%02d° %02d\" %02d' %02dm ",
+	sprintf(buff,"%02dï¿½ %02d\" %02d' %02dm ",
 	s/(60*60),(s%(60*60))/60,s%60,i/100);
 	return((AnsiString)buff);
 }

@@ -272,8 +272,7 @@ int	index;
 }
 
 
-enum	AaaGunTypes
-{
+enum	AaaGunTypes {
 	AAA_HITSTATICS,
 	AAA_ANTIAIRCRAFT,
 	AAA_ANTIAIRCRAFTNOTSAG,

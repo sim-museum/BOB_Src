@@ -78,13 +78,13 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 ////////////////////////////////////////////////////////////////////////		
 #include "_AIRC.h"
 
-#include "..\AIRCRAFT\Dt_SPITF.cpp"	//CSB 22/09/99	
-#include "..\AIRCRAFT\Dt_HURRI.cpp"	//CSB 22/09/99	
-#include "..\AIRCRAFT\Dt_BF109.cpp"	//CSB 22/09/99	
-#include "..\AIRCRAFT\Dt_BF110.cpp"	//CSB 22/09/99	
-#include "..\AIRCRAFT\Dt_JU87B.cpp"	//CSB 22/09/99	
+#include "../AIRCRAFT/Dt_SPITF.cpp"	//CSB 22/09/99	
+#include "../AIRCRAFT/Dt_HURRI.cpp"	//CSB 22/09/99	
+#include "../AIRCRAFT/Dt_BF109.cpp"	//CSB 22/09/99	
+#include "../AIRCRAFT/Dt_BF110.cpp"	//CSB 22/09/99	
+#include "../AIRCRAFT/Dt_JU87B.cpp"	//CSB 22/09/99	
 
-#include "..\AIRCRAFT\Cd_BOB.cpp"	//CSB 22/09/99	
+#include "../AIRCRAFT/Cd_BOB.cpp"	//CSB 22/09/99	
 
-#include "..\AIRCRAFT\Dt_Other.cpp"
+#include "../AIRCRAFT/Dt_Other.cpp"
 

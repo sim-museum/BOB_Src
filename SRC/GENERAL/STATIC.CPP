@@ -113,7 +113,7 @@ SLong	item::Range;
 #include <objbase.h>
 #include <initguid.h>
 #define	LIB3D_Included	//the GUID is outside (it always was)
-#include "..\lib3d\lib3d.h"		//IID_ILib3D    
+#include "../lib3d/lib3d.h"		//IID_ILib3D    
 #ifndef	BOB_DEMO_VER	//MIGALLEY_GUID	
 DEFINE_GUID(BOB_GUID,
 0xc3a51900, 0xef77, 0x11d3, 0x81, 0x63, 0x00, 0xa0, 0xd2, 0x1b, 0x17, 0x13);

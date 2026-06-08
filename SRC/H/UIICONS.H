@@ -14,8 +14,7 @@
 enum	{BIGGEST_ICON_RADIUS=33};
 
 
-enum	IconsUI
-{
+enum	IconsUI : int {
 	ICON_NO_ICON=0,
 	ICON_MAXICONPAGES=1,
 	ICON_PAGE_MASK  =0x00ff0000,
@@ -41,8 +40,7 @@ enum	IconsUI
 	ICON_SELECT_6=0x6000000,
 	ICON_SELECT_7=0x7000000,
 };
-enum	IconModes
-{	IM_UPUNSEL,IM_UPSEL,
+enum	IconModes {	IM_UPUNSEL,IM_UPSEL,
 	IM_DOWNUNSEL,IM_DOWNSEL,
 	IM_DISUNSEL,IM_DISSEL
 };
@@ -60,11 +58,11 @@ struct	IconPlace
 	UByte	modes[MAX_DIRECTIONS];
 };
 class	IconDescUI;
-enum	FileNum;
+enum	FileNum : int;
 class	IconDescUI
 {  
 	friend class	CMIGApp;
-	enum	Alignment	{MINIMUM,CENTRE,MAXIMUM};
+	enum	Alignment {MINIMUM,CENTRE,MAXIMUM};
 	CDC*	imagemap;
 	static	CDC	imagemapinstances[];
 	static	IconPlace*	iconplaces[];

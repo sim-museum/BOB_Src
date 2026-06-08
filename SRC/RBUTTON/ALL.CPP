@@ -74,9 +74,9 @@ static char THIS_FILE[] = __FILE__;
 
 #include	"getfile.cpp"
 
-#include	"..\mfc\getshadw.cpp"
+#include	"../mfc/getshadw.cpp"
 
-#include	"..\mfc\getresrc.cpp"
+#include	"../mfc/getresrc.cpp"
 
 #include	"rbutton.cpp"
 

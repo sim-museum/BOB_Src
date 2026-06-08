@@ -28,12 +28,11 @@ class	CHintBox;
 class	CListBx;
 class	CRScrlBar;
 typedef RDialog * RDialogPtr;
-enum	PosnControl	{POSN_ABS,POSN_MIN,POSN_CENTRE,POSN_MAX,POSN_CALLER};
+enum	PosnControl {POSN_ABS,POSN_MIN,POSN_CENTRE,POSN_MAX,POSN_CALLER};
 CRect	Place(PosnControl px,PosnControl py,int x=0,int y=0,RDialog* parent=NULL);
 struct	HideEdgeControl
 {
-	enum	EdgeCtrl
-	{	
+	enum	EdgeCtrl {	
 		ALIGN_MIN=		0,		//align with parent top/left
 		ALIGN_MAX=		1,		//align with parent bot/right
 		ALIGN_SPLIT=	2,		//align with splitter bar in parent
@@ -83,7 +82,7 @@ struct	DialMake
 {
 	const	Edges* edges;
 	FileNum	art;
-	enum	ChildType	{NONE,CLUMP,SPLITH,SPLITV,TABT,TABR}	childtype;
+	enum	ChildType {NONE,CLUMP,SPLITH,SPLITV,TABT,TABR}	childtype;
 protected:
 	DialMake(const Edges *e,FileNum artnum)
 	{	art=artnum;childtype=NONE;edges=e;	}
@@ -155,7 +154,7 @@ protected:
 
 struct	IdEntry
 {
-	enum	IdType	{T_IDT,T_CHAR,T_GAP}
+	enum	IdType {T_IDT,T_CHAR,T_GAP}
 	idtype;
 	union
 	{
@@ -374,7 +373,7 @@ public:
 	Edges	edges;
 	CPoint	lastdown;
 	FileNum	artnum;
-	enum	DragSide	{DRAG_NO=0,DRAG_INIT=-2,DRAG_DIALOG=-1,
+	enum	DragSide {DRAG_NO=0,DRAG_INIT=-2,DRAG_DIALOG=-1,
 						DRAG_LEFT=1,DRAG_RIGHT=2,DRAG_TOP=4,DRAG_BOT=8,
 						DRAG_MOVE=16,DRAG_SCROLL=32,DRAG_SHUTDOWN=64}
 			dragstate;

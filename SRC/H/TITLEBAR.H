@@ -14,7 +14,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // TitleBar dialog
-enum	SelectTargetMode;
+enum	SelectTargetMode : int;
 class TitleBar : public CRToolBar
 {
 	friend class	CMIGView;

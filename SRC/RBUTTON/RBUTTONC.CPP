@@ -72,7 +72,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "RButtonC.h"
 #include "RButtonP.h"
 #include "messages.h"
-#include "..\mfc\resource.h"
+#include "../mfc/resource.h"
 #include	"uiicons.h"
 
 #ifdef _DEBUG

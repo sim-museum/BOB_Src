@@ -447,8 +447,7 @@
 		UI_53=0x16e7,
 		UI_54=0x16e6,
 		UI_55=0x16e5,
-#endif
-x27fd,
+		UI_56=0x27fd,
 		UI_57=0x27fc,
 		UI_58=0x27fb,
 		UI_59=0x27fa,

@@ -294,7 +294,7 @@ class LandScape
 
 	
 public:
-	enum MigLandConsts{
+	enum MigLandConsts {
 
 #ifndef	__BCPLUSPLUS__
 		//General constants...

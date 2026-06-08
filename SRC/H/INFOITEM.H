@@ -110,9 +110,8 @@ EventVal	uid,						//not saved for aircraft	//negative for key waypoints
 protected:
 	info_base()	{SGT=UID_Null;(int&)Next=-1;bfieldindex=1023;}
 public:
-	enum	VisibilityConditionSlot	 {VCS_BEFORE=0,VCS_AFTER,VCS_ICON,VCS_TABLESIZE};
-	enum	VisibilityCondition 
-			{	VC_KNOWN=2,VC_DRAWN=4,VC_DRAWNLAST=1,
+	enum	VisibilityConditionSlot {VCS_BEFORE=0,VCS_AFTER,VCS_ICON,VCS_TABLESIZE};
+	enum	VisibilityCondition {	VC_KNOWN=2,VC_DRAWN=4,VC_DRAWNLAST=1,
 				VC_ALL=7,
 				VC_REFRESHMASK=7,VC_DRAWMASK=6,	VC_NODRAW=2,
 				VCW_HILIGHT=8
@@ -175,7 +174,7 @@ EventVal	band,						//not set up
 #endif
 };
 #ifndef __BCPLUSPLUS__
-enum	SavedGlobrefs;
+enum	SavedGlobrefs : int;
 #endif
 struct	info_waypoint
 					:info_base//,info_debug
@@ -301,7 +300,7 @@ EventVal	inform,						//saved
 };
 struct	Profile;
 #ifndef	__BCPLUSPLUS__
-enum	IconsUI;
+enum	IconsUI : int;
 #endif
 struct	info_airgrp
 					:info_grndgrp

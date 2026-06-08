@@ -128,7 +128,7 @@ static bool	SqIsAvail(int gruppindex,AircraftUnit::TypesToList typestolist)
 	Gruppen& gruppe=Node_Data.gruppe[gruppindex];
 	if (gruppe.Busy())
 		return false;
-	//enum	TypesToList	{TTL_RECONN,TTL_JU87,TTL_110,TTL_FIGHTER,TTL_BOMBER,TTL_SPITFIRE,TTL_HURRICANE};
+	//enum	TypesToList {TTL_RECONN,TTL_JU87,TTL_110,TTL_FIGHTER,TTL_BOMBER,TTL_SPITFIRE,TTL_HURRICANE};
  	Geshwader&		geschwader=Node_Data.geschwader[gruppe.wadernum];
 	switch (typestolist)
 	{

@@ -53,7 +53,7 @@ enum	DeathViewType											//RJS 02Sep98
 	DEATH_TUMBLE												//RJS 23Mar00
 };																//RJS 03Sep98
 
-enum	QuickView	{QV_NULL=0,									//PD 28Jan97
+enum	QuickView {QV_NULL=0,									//PD 28Jan97
 					 QV_NorthEast,		QV_East,
 					 QV_SouthEast,		QV_South,
 					 QV_SouthWest,		QV_West,
@@ -69,18 +69,18 @@ enum	QuickView	{QV_NULL=0,									//PD 28Jan97
 					};
 
 
-enum	DeathZoom	{DZ_Slow = 2,
+enum	DeathZoom {DZ_Slow = 2,
 					DZ_Medium = 1,
 					DZ_Fast	= 0};								//RJS 05Nov96
 
-enum	ViewTarg	{VT_Player = 0,								//PD 14Jun96
+enum	ViewTarg {VT_Player = 0,								//PD 14Jun96
 					VT_Unlocked = VT_Player,					//PD 14Jun96
 					VT_Enemy,	  VT_Friendly,
 					VT_GroundTarg,VT_WayPoint,
 					VT_Message,VT_AIUnfriendly,
 					VT_Escortee};								//PD 02Sep96
 
-enum	ViewMode	{VM_InPadlock = 0,
+enum	ViewMode {VM_InPadlock = 0,
 					VM_Inside,
 					VM_OutPadlock,
 					VM_Track,
@@ -97,9 +97,9 @@ enum	ViewMode	{VM_InPadlock = 0,
 					VM_Prefs, //PD 03/12/99
 					VM_RovingCamera}; //PD 03/12/99
 
-enum	ViewSpec	{VS_Null = 0x00,VS_Impact = 0x01,VS_Missile = 0x02};//PD 26Jun96
+enum	ViewSpec {VS_Null = 0x00,VS_Impact = 0x01,VS_Missile = 0x02};//PD 26Jun96
 
-enum	ZmRtFlags	{ZR_NULL=0,
+enum	ZmRtFlags {ZR_NULL=0,
 					ZR_ZoomIn = 0x01,	ZR_ZoomOut = 0x02,
 					ZR_RotUp = 0x04,	ZR_RotDn = 0x08,
 					ZR_RotLft = 0x10,	ZR_RotRght = 0x20,
@@ -109,13 +109,13 @@ enum	ZmRtFlags	{ZR_NULL=0,
 					ZR_HeadDown = 0x80,									//RJS 4Oct00
 					ZR_BIG=0x90};								//RJS 02May00
 
-enum	VisFlags	{	VF_DontCare = 0,						//PD 27Jun96
+enum	VisFlags {	VF_DontCare = 0,						//PD 27Jun96
 						VF_CheckDeadArea,
 						VF_CheckVisibleArea};
 
 /* */const	Angles		VIEWANGLESTEP = (Angles)(int(ANGLES_180Deg)/50);	//gives 360 deg rotation in 30 sec//RDH 19Mar96
 
-enum	ViewPanRate	{PR_MediumPan = 50, PR_FastPan = 100, PR_SlowPan = 25, PR_SlowMediumPan = 35};
+enum	ViewPanRate {PR_MediumPan = 50, PR_FastPan = 100, PR_SlowPan = 25, PR_SlowMediumPan = 35};
 enum	ViewCutType {Instant,Gradual,VSlow,Floating};					//PD 13Nov96
 
 const	SLong		ViewRangeMin  = 0x00a0;

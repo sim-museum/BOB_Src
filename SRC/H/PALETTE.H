@@ -23,8 +23,7 @@ typedef	SWord	ColourRange;
 //	We expect time of day to effect B-N consistantly,
 //  but A and O entries may be specials -eg bright at night!
 //
-enum	Colour
-		{
+enum	Colour : int {
 		//First 32 first - actually 16
 
 		BLACK = 0,												//RJS 15Jun98

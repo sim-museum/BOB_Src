@@ -34,7 +34,7 @@ class	ManualPilot
 	ViewPoint*	View_Point;
 	WorldStuff*	myworld;										//PD 25Jun96
 public:
-	enum	CONTROLMODE	{AUTO = 0,
+	enum	CONTROLMODE {AUTO = 0,
 						MANUAL,
 						PILOTDEAD,
 						TOGGLE,

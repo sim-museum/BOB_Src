@@ -11,8 +11,7 @@
 #define	DEFAULT_MOVEMENT 0
 
 
-enum	BFieldWaypointActions
-	{	
+enum	BFieldWaypointActions : int {	
 	wpacnoactionno			,
 	wpatakeoffno			,
 	wpacircleno				,//DeadCode RDH 11Oct96 	wpacruiseformno			,//DeadCode RDH 11Oct96 	wpaccombatformno		,
@@ -84,7 +83,7 @@ enum	BFieldWaypointActions
 	};
 
 
-enum	MANOEUVRE	{											//JIM 16Jul96
+enum	MANOEUVRE {											//JIM 16Jul96
 	MANOEUVRE_SELECT=0,											//JIM 16Jul96
 	MANOEUVRE_LOOKROUND,										//JIM 16Jul96
 	MANOEUVRE_WELDEDWINGMAN,										//RDH 03Mar98
@@ -191,7 +190,7 @@ enum	MANOEUVRE	{											//JIM 16Jul96
 	MANOEUVRE_ALIGNMENT=255
 	};
 
-//DeadCode RDH 30Mar98 enum ATTACKMANOEUVRE	{
+//DeadCode RDH 30Mar98 enum ATTACKMANOEUVRE {
 //DeadCode RDH 30Mar98 	NO_ATTACKMANOEUVRE = 0,
 //DeadCode RDH 30Mar98 	ATTACKMANOEUVRE_LOWGYOYO,
 //DeadCode RDH 30Mar98 	ATTACKMANOEUVRE_HEADONOFFSET,
@@ -203,7 +202,7 @@ enum	MANOEUVRE	{											//JIM 16Jul96
 //DeadCode RDH 30Mar98 	ATTACKMANOEUVRE_LAST
 //DeadCode RDH 30Mar98 	};					
 
-//DeadCode RDH 30Mar98 enum DEFENDMANOEUVRE	{
+//DeadCode RDH 30Mar98 enum DEFENDMANOEUVRE {
 //DeadCode RDH 30Mar98 	NO_DEFENDMANOEUVRE = 0,
 //DeadCode RDH 30Mar98 	DEFENDMANOEUVRE_BARRELROLL,
 //DeadCode RDH 30Mar98 	DEFENDMANOEUVRE_SPLITS,
@@ -228,7 +227,7 @@ enum	MANOEUVRE	{											//JIM 16Jul96
 //	Put any ordinary movecodes in groups 
 //	between AUTO_FOLLOWWP and AUTO_COMBAT, thanks!
 //
-enum	AutoMoveCodeTypeSelect	{
+enum	AutoMoveCodeTypeSelect : int {
 	AutoMoveCodeMask=63,
 
 //Aircraft movecodes
@@ -448,7 +447,7 @@ enum	AutoMoveCodeTypeSelect	{
 		};
 
 
-enum PhaseNumber	{
+enum PhaseNumber {
 	PHASE0 = 0,PHASESTEP = 1,
 	PHASE1 = 1, 
 	PHASE2 = 2, 
@@ -492,7 +491,7 @@ enum	TakeOffEnum	//Goes into manstep
 	TO_TURNCLIMBTIME=120*100	//120 seconds	//CSB 19/04/99	
 };
 
-//DEADCODE DAW 22/11/99 enum	PhaseFAC	{	FAC_WAIT=0,			FAC_WAITRECONNECT,			FAC_WELCOME_LONGRANGE,		FAC_WINGWAGGLE,
+//DEADCODE DAW 22/11/99 enum	PhaseFAC {	FAC_WAIT=0,			FAC_WAITRECONNECT,			FAC_WELCOME_LONGRANGE,		FAC_WINGWAGGLE,
 //DEADCODE DAW 22/11/99 							FAC_WAITCLOSER,	FAC_WELCOME_CLOSE,			FAC_WAITTOUCHING,			
 //DEADCODE DAW 22/11/99 						FAC_TARGETAREA=16,	FAC_TARGETAREARECONNECT,	FAC_NEXTTARGASBOMBERCLIMBS,	FAC_DESCRIBETARGETS,	
 //DEADCODE DAW 22/11/99 							FAC_FLYTOAREA,	FAC_HOMEFORCES,				FAC_TARGETBMBCLOSER,		FAC_TARGETTOOCLOSE,
@@ -504,8 +503,7 @@ enum	TakeOffEnum	//Goes into manstep
 //DEADCODE DAW 22/11/99 							FAC_NOMORETARGETS,
 //DEADCODE DAW 22/11/99 						FAC_STAGEMASK=-16,FAC_SUBSTAGEMASK=15
 //DEADCODE DAW 22/11/99 					};
-enum	WPNames
-{	//these are indexed by WPP index
+enum	WPNames {	//these are indexed by WPP index
 	WPNAME_None,
 	WPNAME_TakeOff,
 	WPNAME_BombRendezvous,

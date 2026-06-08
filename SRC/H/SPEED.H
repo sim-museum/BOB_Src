@@ -13,7 +13,7 @@
 
 
 //speeds in um/cs units //CSB 09/11/99
-enum	speeds	{												//JIM 18Dec96 //CSB 08/11/99
+enum	speeds {												//JIM 18Dec96 //CSB 08/11/99
 				MPH00	=	0,
 				MPHHALF	=	2235,
 				MPH01	=	VEL_1MPH,

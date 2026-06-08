@@ -16,9 +16,9 @@
 #include "RCOMBO.H"
 
 //DeadCode JIM 10Mar99 #include "rsheets.h"	 
-enum	FileNum;
+enum	FileNum : int;
 
-enum	FileNum;														//MS 29Sep00
+enum	FileNum : int;														//MS 29Sep00
 //DeadCode MS 29Sep00 #define	F_BATTLE
 //DeadCode MS 29Sep00 #include "files.G"
 #include "RComboX.h"

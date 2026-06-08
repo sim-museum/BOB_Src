@@ -26,8 +26,8 @@ struct	KeyMapping
 	UWord	bitflag;
 };
 #ifndef __BCPLUSPLUS__
-enum	KeyVal3D	{keyVal3D_MAX=TOTALKEYBITFLAGS};
-enum	KeyShift_BN	{	KEYSH_BN_norm=0,
+enum	KeyVal3D : int {keyVal3D_MAX=TOTALKEYBITFLAGS};
+enum	KeyShift_BN : int {	KEYSH_BN_norm=0,
 						KEYSH_BN_extsh=1,
 						KEYSH_BN_AltL=2,
 						KEYSH_BN_CtrlL=3,
@@ -546,7 +546,7 @@ KeyName(768,TOTALKEYBITFLAGS2)
 #include	<dinput.h>
 /**/enum	{KEYS_PER_STICK=40};
 
-enum Raw_Keys	{
+enum Raw_Keys {
 		Raw_esc		=DIK_ESCAPE   	,	//01,
 		Raw_n1		=DIK_1        	,	//02,
 		Raw_n2		=DIK_2        	,	//03,

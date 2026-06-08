@@ -50,7 +50,7 @@ public:
 
 struct	WinMode
 {
-	enum	Mode	{
+	enum	Mode {
 		NONE=-1,
 		FULL=0x0000,WIN=0x1000,DUAL=0x2000,
 		SOFT=0x000,HARD=0x100,
@@ -60,7 +60,7 @@ struct	WinMode
 		H_24=0x180,
 		H_24_32=0x1C0,H_30_32=0x1D0,H_32=0x1E0
 	};
-	enum	Mask	{DISP=0xf000,HW=0x0f00,SLOT=0x01f0,DEPTH=0x010f};
+	enum	Mask {DISP=0xf000,HW=0x0f00,SLOT=0x01f0,DEPTH=0x010f};
 };
 inline WinMode::Mode operator | (WinMode::Mode a,WinMode::Mode b)
 {return WinMode::Mode(int(a)|int(b));}

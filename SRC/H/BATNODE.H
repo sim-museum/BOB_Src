@@ -9,8 +9,7 @@ struct	SuperBattleNode
 {
 	struct	IntraLink
 	{
-		enum	TerrainType
-		{
+		enum	TerrainType {
 			ATTACKEASY=1024-30,
 			ATTACKADV=1024-10,
 			NOADV=1024,
@@ -40,8 +39,7 @@ struct	SuperBattleNode
 	};
 	struct	FlankLink
 	{
-		enum	NonLinks
-		{	ALL_LINKS_GOOD=0,
+		enum	NonLinks {	ALL_LINKS_GOOD=0,
 			NOT_OL=1,	NOT_OR=2,	NOT_OUT=3,
 			NOT_ML=4,	NOT_MR=8,	NOT_MID=12,
 			NOT_IL=16,	NOT_IR=32,	NOT_IN=48,
@@ -66,10 +64,10 @@ BITABLE(SuperBattleNode::IntraLink::TerrainType);
 
 struct	TeamDef
 {	//all saved
-enum	Team		{HOME,AWAY};
+enum	Team {HOME,AWAY};
 
-enum	ForceType	{TROOPSONLY,MORTAR,MORTARTRUCK,TANKS,ARTILLARY,MAXFORCETYPES,MAXFORCENAMES};
-enum	Action	{	STAY_HERE,
+enum	ForceType {TROOPSONLY,MORTAR,MORTARTRUCK,TANKS,ARTILLARY,MAXFORCETYPES,MAXFORCENAMES};
+enum	Action {	STAY_HERE,
 					TELEPORT,
 					LOSE_FORCE,
 					MERGE_FORCE,

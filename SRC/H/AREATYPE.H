@@ -13,8 +13,7 @@
 #include <ImageMap.g>
 #include "Ranges.h"
 //Landscape area type enums
-enum AreaType
-{
+enum AreaType {
 	AT_darkGrass=0, AT_midGrass,	AT_lightGrass,	AT_garden,
 	AT_golfCourse,	AT_field1,		AT_field2,		AT_field3,		
 	AT_field4,		AT_field5,		AT_spread1,		AT_spread2,		

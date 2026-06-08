@@ -65,17 +65,17 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 #include "_MISS.h"
 //#pragma warnmsg("here")
-#include "..\MISSMAN\Formatn.cpp"
+#include "../MISSMAN/Formatn.cpp"
 //#pragma warnmsg("here")
-#include "..\MISSMAN\Missinit.cpp"
+#include "../MISSMAN/Missinit.cpp"
 //#pragma warnmsg("here")
 //DEADCODE RJS 16/11/99 #include "..\MISSMAN\Node.cpp"
-#include "..\MISSMAN\packages.cpp"
+#include "../MISSMAN/packages.cpp"
 //#pragma warnmsg("here")
-#include "..\MISSMAN\Savegame.cpp"
+#include "../MISSMAN/Savegame.cpp"
 //#pragma warnmsg("here")
-#include	"..\missman\uimsg.cpp"
-#include "..\MISSMAN\Sqddiary.cpp"
+#include	"../missman/uimsg.cpp"
+#include "../MISSMAN/Sqddiary.cpp"
 #undef MMC
 Campaign&	MMC=Miss_Man.camp;
 

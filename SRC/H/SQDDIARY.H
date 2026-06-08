@@ -14,8 +14,7 @@
 // Raid Pack....
 
 
-enum		MissResult	
-{
+enum		MissResult {
 	MR_NULL=0,
 	MR_PATROLUNEVENTFUL,	//German free escorts will set these
 	MR_INTERCEPTMISSED,		//RAF fighters will print them
@@ -32,10 +31,9 @@ enum		MissResult
 
 	MR_MISSCOMPLETEFLAG=0x80	//If this is not flagged then don't report status!
 };
-enum		MissType	{MT_RAID,MT_RECON, MT_PATROL,MT_ESCORT,MT_CLOSEESCORT};
+enum		MissType {MT_RAID,MT_RECON, MT_PATROL,MT_ESCORT,MT_CLOSEESCORT};
 
-enum	InterceptDesc
-{
+enum	InterceptDesc {
 	INT_UID_MASK = 0x0000FFFF,
 	INT_UID_SHIFT = 0,
 	INT_DIR_MASK = 0x000F0000,
@@ -44,8 +42,7 @@ enum	InterceptDesc
 	INT_RANGE_SHIFT = 20
 };
 
-enum	DiaryDamage
-{
+enum	DiaryDamage {
 	DIARY_LEFTWING=0,
 	DIARY_RIGHTWING,
 	DIARY_ENGINE,
@@ -68,7 +65,7 @@ class	CString;														//RJS 9Nov00
 
 // Gruppen Record...
 
-enum		LeadKilled	{LK_NONE,LK_1ST,LK_2ND,LK_OTHER};
+enum		LeadKilled {LK_NONE,LK_1ST,LK_2ND,LK_OTHER};
 
 class	SquadronBase
 {
@@ -112,8 +109,7 @@ public:
 
 // Player Record...
 
-enum	EndFlightStatus
-{
+enum	EndFlightStatus {
 	EFS_NULL = 0,			//*			Uneventful.
 	EFS_LandedOK,			// Craig	Safe landing.
 	EFS_LandedOtherAF,		// Craig	Landed away from home.
@@ -130,8 +126,7 @@ enum	EndFlightStatus
 
 
 // Diary Master Control...
-enum	DiaryOneDay
-{
+enum	DiaryOneDay {
 	D1DAY_PLAYER = 5,
 	D1DAY_SQUAD = 35,
 	D1DAY_GRUPPEN = 60,
@@ -145,14 +140,13 @@ enum	DiaryOneDay
 
 struct	Profile;
 struct	PackageList;
-enum	SquadNum;
+enum	SquadNum : int;
 
 
 
 class	Diary
 {
-	enum	DSearchDir
-	{
+	enum	DSearchDir {
 		DSEARCH_BACK, DSEARCH_FORWARD
 	};
 

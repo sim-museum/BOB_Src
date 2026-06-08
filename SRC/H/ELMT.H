@@ -11,8 +11,7 @@
 
 
 // Aircraft Element Types (order specific)
-enum ELMT_TYPE
-{
+enum ELMT_TYPE {
 	AET_INACTIVE,
 	AET_SURFACE,
 	AET_MASS,
@@ -22,8 +21,7 @@ enum ELMT_TYPE
 };
 
 // surface types
-enum SURFACE_TYPE
-{
+enum SURFACE_TYPE {
 	ST_VOID,
 	ST_PLANE,
 	ST_MAINPLANE,
@@ -32,8 +30,7 @@ enum SURFACE_TYPE
 	ST_SYMETRICAL
 };
 
-enum SURFACE_DESCRIPTION
-{
+enum SURFACE_DESCRIPTION {
 	SD_VOID,
 	SD_INNERPORTWING,
 	SD_INNERSTBDWING,
@@ -49,8 +46,7 @@ enum SURFACE_DESCRIPTION
 	
 
 // thrust types
-enum THRUST_TYPE
-{
+enum THRUST_TYPE {
 	TT_JET,
 	TT_PROP
 };

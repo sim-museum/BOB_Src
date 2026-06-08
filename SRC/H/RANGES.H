@@ -20,8 +20,7 @@ enum	rel_altitude {LOWER = 0, SAME_ALT,HIGHER};
 
 
 //changed to cm from mm									//RDH 27Feb96
-enum 	Ranges
-{
+enum 	Ranges : int {
 	METRES00 = 0,
 	METRES01 = 100,
 	METRES02 = 200,												//JIM 09Apr96

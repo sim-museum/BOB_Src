@@ -111,7 +111,7 @@ private:
 //	static Bool	locked;												//AMM 01May97
 //	static UByte	locklevel;											//AMM 01May97
 
-//	enum	ScreenPages	{SCREEN_PHYSICAL=-1,SCREEN_SPARE=+1,SCREEN_LOGICAL=0};
+//	enum	ScreenPages {SCREEN_PHYSICAL=-1,SCREEN_SPARE=+1,SCREEN_LOGICAL=0};
 	//-------------------------------------------------------
 	//3 mouse areas are required in 3 screen system.
 	//2 areas (X,Y) are needed to swap the existing mouse position
@@ -328,7 +328,7 @@ protected:
 //		VirtualHeight=H;
 //	};
 //};
-//enum	WinShiftDef	{WINSH_SAME,WINSH_MIN,WINSH_MID,WINSH_MAX,WINSH_ALIGN=65535};
+//enum	WinShiftDef {WINSH_SAME,WINSH_MIN,WINSH_MID,WINSH_MAX,WINSH_ALIGN=65535};
 //-------------------------------------------------------
 //
 // Translation between colour space and virtual resolution

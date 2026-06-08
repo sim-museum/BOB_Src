@@ -21,13 +21,13 @@ typedef MakeField<ShapeNum,ShapeNumMIN,ShapeNumMAX> ShapeNumField ;
 typedef	ShapeNumField *ShapeNumFieldPtr;
 struct EventVar;
 #ifndef	MAKEBF_Included
-enum	TokenCode	{};
+enum	TokenCode {};
 #endif
 //------------------------------------------------------------------------------
 //DEADCODE JIM 17/03/99 typedef	struct	EventRec*	EventRecPtr;
 //DEADCODE JIM 17/03/99 struct	EventSet
 //DEADCODE JIM 17/03/99 {
-//DEADCODE JIM 17/03/99 enum	fixedgvars	{GV_EVENT_START=-1,GV_EVENT_WINDOW=-2,GV_EVENT_EVENT=-3,GV_EVENT_NEST=-4};
+//DEADCODE JIM 17/03/99 enum	fixedgvars {GV_EVENT_START=-1,GV_EVENT_WINDOW=-2,GV_EVENT_EVENT=-3,GV_EVENT_NEST=-4};
 //DEADCODE JIM 17/03/99 	int	Index;
 //DEADCODE JIM 17/03/99 	union	{int	Value;EventRec* Nesting;};
 //DEADCODE JIM 17/03/99 };
@@ -65,7 +65,7 @@ struct	PosCtrl
 	COORDS3D	pos;
 	UNIQUE_ID	refUID;
 	ItemBasePtr		refptr;
-	enum	AbsAxes	{ABS_REL=0,ABS_X=1,ABS_Y=2,ABS_Z=4,ABS_ABS=7}
+	enum	AbsAxes {ABS_REL=0,ABS_X=1,ABS_Y=2,ABS_Z=4,ABS_ABS=7}
 				absaxes;
 	PosCtrl()	{	pos.X=0;pos.Y=0;pos.Z=00;absaxes=ABS_REL;
 					refUID.count=IllegalSepID;refptr=NULL;
@@ -74,8 +74,7 @@ struct	PosCtrl
 BITABLE(PosCtrl::AbsAxes);
 
 //------------------------------------------------------------------------------
-enum	UILogType
-{
+enum	UILogType {
     ptrcopy         = 1,
     worldcopy,
     addworldcopy,
@@ -213,8 +212,8 @@ extern	ULong&	GR_firstobject;
 #define	firstobject ((UniqueID&)GR_firstobject)
 
 //------------------------------------------------------------------------------
-enum	PaintSchemes	{PS_PLAYER,PS_AUTOPLAYER,PS_PAINTSHOP,PS_RANDOM,PS_DEFINED};
-enum	Cols	{COLS_MAP_SIZE=6,COLS_DAMAGE=6,COLS_BOMBS=8,COLS_ALL=10};
+enum	PaintSchemes {PS_PLAYER,PS_AUTOPLAYER,PS_PAINTSHOP,PS_RANDOM,PS_DEFINED};
+enum	Cols {COLS_MAP_SIZE=6,COLS_DAMAGE=6,COLS_BOMBS=8,COLS_ALL=10};
 
 struct	ContourList;
 struct	BfieldDesc;
@@ -256,8 +255,7 @@ public:
 
 	char usedevents[32];
 	Bool	UsedFixedUID;
-	enum	JustScanning
-			{
+	enum	JustScanning {
 				LOAD,
 				SCANNAMES,
 				SCANSQUADS,
@@ -265,7 +263,7 @@ public:
 				NAMESQUAD
 			}
 			justscanning;	//The (int) casts are for the mission editor...
-enum	BattlefieldType	{	MAINWORLDBF = 0,
+enum	BattlefieldType {	MAINWORLDBF = 0,
 							BFMAXCOUNTER = 255,BFTYPE = 256,
 
 							BFPHASESMASK=	+BFMAXCOUNTER*+BFTYPE,
@@ -566,8 +564,7 @@ class	Persons3:public	Persons2
 {
 	friend class	ArtInt;
 	friend class	Mast3d;
-enum	TakeOffState
-{TOS_SIMPLE,TOS_SECRET,TOS_MIGTAKEOFF,TOS_INAIR,TOS_TAKENOFF,TOS_TAKINGOFF,TOS_RUNWAY,TOS_NEXTFLIGHTS,TOS_TAXIING,TOS_HOLDING};
+enum	TakeOffState {TOS_SIMPLE,TOS_SECRET,TOS_MIGTAKEOFF,TOS_INAIR,TOS_TAKENOFF,TOS_TAKINGOFF,TOS_RUNWAY,TOS_NEXTFLIGHTS,TOS_TAXIING,TOS_HOLDING};
 //DEADCODE JIM 09/12/99 	static	AirStrucPtr	migsq[2];
 	AirStrucPtr	pilotedaircraft;
 	int	gotgrpflags;int gotgrpnum;
@@ -654,7 +651,7 @@ static void		Reset3dAC(AirStrucPtr currac,PlaneTypeSelect type);
 
 //DEADCODE JIM 09/12/99 static PlaneTypeSelect Squad2Type(int);
 private:
-//DEADCODE JIM 28/02/00 	enum	GearState	{GS_INAIR,GS_GEAR,GS_PARKED};
+//DEADCODE JIM 28/02/00 	enum	GearState {GS_INAIR,GS_GEAR,GS_PARKED};
 //DEADCODE JIM 28/02/00 GearState	setpositionMIG(AirStrucPtr currac,EventVal* pos,TakeOffState	takeoffstate,int takeofftimesecs);						//RDH 17Jun96
 
 //void		adduidrequest(ItemBasePtr trgitemptr,UniqueID srcuid,EventVal& pos,UILogType request)

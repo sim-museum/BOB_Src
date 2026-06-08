@@ -13,16 +13,14 @@
 //typedef class Model *PMODEL;
 #include "modvec.h"
 
-enum	AnimSteps
-{
+enum	AnimSteps {
 	ARC_IMMEDIATE = 1,
 	ARC_1SEC = 100,
 	ARC_30SEC = 3000,
 	ARC_240SEC = 24000
 };
 
-enum	SrcBaseType
-{
+enum	SrcBaseType {
 	SBASE_DEFAULT = 0,
 	SBASE_AC,
 	SBASE_ANIM

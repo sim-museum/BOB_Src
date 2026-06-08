@@ -15,7 +15,7 @@ typedef	struct	Land_Obj 	LandObj3D,	*LandObj3DPtr;
 typedef struct	Obj_3D		Obj3D,		*Obj3DPtr;
 //DEAD typedef struct	Vert_Ex	 	landvertex,	*landvertexptr;
 
-enum	ObjectType;
+enum	ObjectType : int;
 
  struct	Obj_3D : public Base_Obj3D	//moved from 3ddefs to cut dependency on worldinc//JIM 14May96
  {

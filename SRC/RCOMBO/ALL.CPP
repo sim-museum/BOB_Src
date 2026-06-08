@@ -74,7 +74,7 @@ static char THIS_FILE[] = __FILE__;
 
 #include "rcomboc.cpp"
 
-#include	"..\mfc\getshadw.cpp"
+#include	"../mfc/getshadw.cpp"
 
 #include "rcombo.cpp"			   
 								

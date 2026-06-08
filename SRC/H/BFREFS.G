@@ -206,7 +206,7 @@ GlobalRef	BFieldGlobalTable[]=	{
 		{(void*) &GR_PackTrgNum},
 		{(void*) &GR_firstobject},
 		NULL};
-eTime_W2G1},
+eTime_W2G1},
 		{(void*) &GR_Pack_TakeTime_W3G1},
 		{(void*) &GR_Pack_TakeTime_W4G1},
 		{(void*) &GR_Pack_TakeTime_W5G1},
@@ -225,7 +225,7 @@ GlobalRef	BFieldGlobalTable[]=	{
 		{(void*) &GR_FormType02},
 		{(void*) &GR_TruckMoveCode},
 		NULL};
-fendBarageShape},
+fendBarageShape},
 		{(void*) &GR_Truck1Shape},
 		{(void*) &GR_Truck2Shape},
 		{(void*) &GR_TentsShape},

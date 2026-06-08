@@ -20,8 +20,8 @@ const	int		MAX_WEAP_LAUNCHERS =	5;							//RJS 15Nov99
 //enum	ItemState {DEAD = -1,ALIVE,DAMMAGED,DYING};
 enum	ItemState {ALIVE=0,DAMMAGED,DYING,DEAD};				//RJS 23Nov99
 
-enum	WarningLights	{STALLON=1,PRESTALLON=2,BRAKEON=4,WBRAKEON=8};
-enum	ToggleLights	{FLAPSON=1,GEARON=2,WBREAKON=4,BREAKON=8};
+enum	WarningLights {STALLON=1,PRESTALLON=2,BRAKEON=4,WBRAKEON=8};
+enum	ToggleLights {FLAPSON=1,GEARON=2,WBREAKON=4,BREAKON=8};
 
 
 class	MinAnimData

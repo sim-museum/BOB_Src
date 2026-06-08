@@ -194,7 +194,13 @@ extern void FXPowerY (FP& x, FP& y, FP& ans);
 parm	[eax] [ebx] [ecx]			\
 
 #else
-#ifdef	__MSVC__
+#if defined(BOB_LINUX)
+inline FP FSqrt(FP n)     { return (FP)__builtin_sqrt((double)n); }
+inline FP FSin(FP n)      { return (FP)__builtin_sin((double)n); }
+inline FP FCos(FP n)      { return (FP)__builtin_cos((double)n); }
+// matches the MSVC asm (shipped build): 2^(x*log2(y))
+inline FP FXPowerY(FP x,FP y){ return (FP)__builtin_exp2((double)x * __builtin_log2((double)y)); }
+#elif defined(__MSVC__)
 
 inline FP FSqrt(FP n)
 {

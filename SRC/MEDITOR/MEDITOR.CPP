@@ -64,7 +64,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 //---------------------------------------------------------------------------
 
-#include <vcl\vcl.h>
+#include <vcl/vcl.h>
 #include <dir.h>
 #include "loadsave.h" 
 #include "memain.h"

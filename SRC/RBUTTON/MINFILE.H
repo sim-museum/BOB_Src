@@ -197,7 +197,7 @@ class	fileman
 
 	fileblocklink	*allfreedfiles,
 					*allactivefiles;
-	enum	DirNameInd	{FIRSTdirnameind=0,MAXDIRIND=254,ALIASDIRIND=255};
+	enum	DirNameInd {FIRSTdirnameind=0,MAXDIRIND=254,ALIASDIRIND=255};
 private:
 //Status info
 dirindex	currdirnum;

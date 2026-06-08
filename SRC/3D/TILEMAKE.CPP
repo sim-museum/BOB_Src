@@ -97,7 +97,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "shapenum.g"
 #include "fastmath.h"
 //DEADCODE MS 02/02/00 #include <initguid.h>
-#include "..\lib3d\lib3d.h"
+#include "../lib3d/lib3d.h"
 
 const	SWord	SHIFT_StartIndex		=	4;
 const	SWord	SHIFT_MultIndex			=	8;
@@ -393,7 +393,7 @@ static CLib3D*	g_lpLib3d=NULL;
 //DeadCode JON 18Oct00 
 //DeadCode JON 18Oct00 void DDSymLine(ROWANSURFACEDESC*,SLong,SLong,SLong,SLong);
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		Swap<VData>
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -409,7 +409,7 @@ static CLib3D*	g_lpLib3d=NULL;
 //DeadCode JON 18Oct00  	*(UWord*)&a.y^=*(UWord*)&b.y;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		Swap<Edge>
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 6 Nov 1998
@@ -435,7 +435,7 @@ static	ULong	shadColourNear = shadColour;
 static	ULong	shadColourFar = shadColour;
 
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SetClipFlags
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -465,7 +465,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 typedef void (*plotpixelfn) (SLong,SLong);
 //DeadCode JON 18Oct00 typedef void (*ddpixelfn) (ROWANSURFACEDESC*,SLong,SLong);
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DrawSpan8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -479,7 +479,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	for (;x<xx;*bp++=*t,t+=pixelSkip,x++) {}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DarkSpan8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 22 Oct 1998
@@ -492,7 +492,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	for (;x<xx;*bp++=0,x++) {}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DrawSpan16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 16 Jul 1998
@@ -506,7 +506,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	for (;x<xx;*bp++=palLookup[*t],t+=pixelSkip,x++) {}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DarkSpan16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 22 Oct 1998
@@ -519,7 +519,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	for (;x<xx;x++) *bp++=((*bp)>>2)&~UWord(0x0618);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		EdgeScan
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -534,7 +534,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 inline EdgePtr EdgeSetup(const VData*,const VData*);
 //DeadCode JON 18Oct00 inline EdgePtr EdgeSetup2(const VData&,const VData&);
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SetDestTexturePtr
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -549,7 +549,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 //TempCode PD 03Dec99 		pdsttxt=NULL;	//fix software version if we want one
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		GetPalLookup
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 21 Jul 1998
@@ -560,7 +560,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 //TempCode PD 03Dec99 		palLookup=(UWord*)win->DoGetLandPalLookup();
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SetPalLookup
 //DeadCode JON 18Oct00 //Author		PAul
 //DeadCode JON 18Oct00 //Date			Mon 16 Nov 1998
@@ -571,7 +571,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 //TempCode PD 03Dec99 		win->DoSetLandPalLookup(imagePalette);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		CreateLandTBuffer
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Sat 17 Apr 1999
@@ -600,7 +600,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	num8=SOFT_8_TEXTURES;
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DoFreeLandTextureBuffers
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Sat 17 Apr 1999
@@ -651,7 +651,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	if (hText!=HTEXTNULL) landTextureUsage[hText()]=0x00;
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		DoFreeTextures
 //Author		Paul.   
 //Date			Sat 17 Apr 1999
@@ -661,7 +661,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	for (int i=255;i>=0;i--) landTextureUsage[i]=0;
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		DoAllocateTexture
 //Author		Paul.   
 //Date			Sat 17 Apr 1999
@@ -719,7 +719,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	return HTEXTNULL;
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DoCreateLandTBuffers
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Sat 17 Apr 1999
@@ -758,7 +758,7 @@ static	ULong	shadColourFar = shadColour;
 //DeadCode JON 18Oct00 	DoFreeTextures();
 //DeadCode JON 18Oct00 }
 inline void ClearTexturePointers();
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SetTexturePointers
 //Author		Paul.   
 //Date			Wed 15 Jul 1998
@@ -802,7 +802,7 @@ void SetTexturePointers()
 //DeadCode JON 18Oct00 		}
 	}
 }
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetImageFromArea
 //Author		Paul.   
 //Date			Fri 28 Jan 2000
@@ -814,7 +814,7 @@ ImageMapDescPtr GetImageFromArea(UByte at)
 	imgp=imagePtrs[(at&0x1F)];
 	return imgp;
 }
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ClearTexturePointers
 //Author		Paul.   
 //Date			Thu 16 Jul 1998
@@ -832,7 +832,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	landPalette=NULL;
 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ResetMem
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -858,7 +858,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ClearRecords
 //Author		Paul.   
 //Date			Wed 15 Jul 1998
@@ -879,7 +879,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	curEdge=EdgeList;
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		MakeRecIndex
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -889,7 +889,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return (a>=b)?b*recordsUsed+a:a*recordsUsed+b;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		EdgeSetup
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -926,7 +926,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return e;
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		EdgeSetup
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 10 Nov 1998
@@ -963,7 +963,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return e;
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		EdgeSetup2
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 16 Jul 1998
@@ -989,7 +989,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return e;
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ScaledTextureWidth
 //Author		Paul.   
 //Date			Wed 15 Jul 1998
@@ -1010,7 +1010,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		BoxClipTest
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1051,7 +1051,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 						VData v0,VData v1,VData v2,
 //DeadCode JON 18Oct00 						SWord scale);
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		Triangle
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1082,7 +1082,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 
 //DeadCode JON 18Oct00 typedef void (*clipfn) (const XData*,const XData*,XData*);
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ClipToTop
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1108,7 +1108,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	else									vclip->cf=cf_null;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ClipToBot
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1134,7 +1134,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	else									vclip->cf=cf_null;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ClipToLft
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1155,7 +1155,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	vclip->cf=cf_null;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ClipToRgt
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1176,7 +1176,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	vclip->cf=cf_null;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		Clip
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 16 Jul 1998
@@ -1209,7 +1209,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DoClip
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1289,7 +1289,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return newpc;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		Triangle2
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 16 Jul 1998
@@ -1304,7 +1304,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	else				SortedTriangle216(v1,v2,v3);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ClippedTriangle
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 15 Jul 1998
@@ -1345,7 +1345,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 void DoLine(const SWord,const SWord);
 //DeadCode JON 18Oct00 void DoLClip(const SWord,const SWord);
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		Render2Map
 //Author		Paul.   
 //Date			Wed 15 Jul 1998
@@ -1614,7 +1614,7 @@ inline void ClearTexturePointers()
 //DEADCODE JON 4/14/00 	}
 //DEADCODE JON 4/14/00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SetInitialLandTextureCoordinates
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 17 Jul 1998
@@ -1656,7 +1656,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		CheckForLandUpdate
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 17 Jul 1998
@@ -1700,7 +1700,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return retval;
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SetLandBaseDetail
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -1711,7 +1711,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 //DeadCode JON 18Oct00 	detail_min=dl;
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ScrollTexture
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -1729,7 +1729,7 @@ inline void ClearTexturePointers()
 //DEADCODE PD 03/12/99 	else assert(false&&"code needed for software version here");
 //DEADCODE PD 03/12/99 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		WaitForTextureScrollComplete
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -1743,7 +1743,7 @@ inline void ClearTexturePointers()
 //DEADCODE PD 03/12/99 		win->DoWaitTextureScrollComplete(lvl);
 //DEADCODE PD 03/12/99 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		PartialTextureUpload
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 17 Jul 1998
@@ -1756,14 +1756,14 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 //TempCode PD 03Dec99 		assert(false);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SetTargetClip
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 17 Jul 1998
 //DeadCode JON 18Oct00 //------------------------------------------------------------------------------
 //DeadCode JON 18Oct00 inline void SetTargetClip(const Box& b) {targetBox=b;}
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		MakeDataGridIndex
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Mon 20 Jul 1998
@@ -1780,7 +1780,7 @@ inline void ClearTexturePointers()
 //DeadCode JON 18Oct00 	return (zi*dataGridSize)+xi;
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		MakeDataGridIndex
 //Author		Paul.   
 //Date			Mon 9 Nov 1998
@@ -1793,7 +1793,7 @@ inline SLong MakeDataGridIndex(const UWord offset)
 //DeadCode JON 25Aug00 void RenderShadow(ROWANSURFACEDESC*,ShapeDescPtr,SLong,SLong,SLong);
 //DeadCode JON 25Aug00 void RenderShadowRotated(ROWANSURFACEDESC*,ShapeDescPtr,SLong,SLong,SLong,SLong);
 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderRotatedShad
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Tue 23 Feb 1999
@@ -1852,7 +1852,7 @@ inline SLong MakeDataGridIndex(const UWord offset)
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		RenderShadow
 //Author		Jon   
 //Date			Fri 14 Apr 2000
@@ -2014,7 +2014,7 @@ inline void RenderShadow(CLib3D* lib3d, vector2d* corners, float& shapeDX, float
 	lib3d->EndPoly();
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		RenderObjectShadow
 //Author		Jon   
 //Date			Fri 14 Apr 2000
@@ -2140,7 +2140,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 	RenderShadow( lib3d, corners+maxI, shapeDX, shapeDZ );
 }
 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant0
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2205,7 +2205,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant1
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2285,7 +2285,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant2
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2350,7 +2350,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant3
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2430,7 +2430,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant4
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2495,7 +2495,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant5
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2575,7 +2575,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant6
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2641,7 +2641,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/12/00 	}
 //DeadCode JON 25Aug00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadOctant7
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Mon 26 Oct 1998
@@ -2740,7 +2740,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/14/00 	else if (shadowDX<0 && shadowDZ>0)	RenderShadOctant7(lib3d,sdp,x,z,lvl);
 //DeadCode JON 25Aug00 //DEADCODE JON 4/14/00 }
 //DeadCode JON 25Aug00 
-//DeadCode JON 25Aug00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 25Aug00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 25Aug00 //Procedure		RenderShadowRotated
 //DeadCode JON 25Aug00 //Author		Paul.   
 //DeadCode JON 25Aug00 //Date			Tue 23 Feb 1999
@@ -2804,7 +2804,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DeadCode JON 25Aug00 //DEADCODE JON 4/14/00 	RenderRotatedShad(lib3d,x,z,lvl);
 //DeadCode JON 25Aug00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		PatchColorData
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -2872,7 +2872,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DEADCODE JON 4/14/00 	}
 //DEADCODE JON 4/14/00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		UpdateColorData
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -2905,7 +2905,7 @@ inline void RenderObjectShadow(CLib3D* lib3d,ShapeDescPtr sdp,SLong& x,SLong& z,
 //DEADCODE JON 4/14/00 	PartialTextureUpload(src_rect,dst_rect,lvl);
 //DEADCODE JON 4/14/00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		UpdateGridRecords
 //Author		Paul.   
 //Date			Mon 20 Jul 1998
@@ -2947,7 +2947,7 @@ inline void UpdateGridRecords(const SLong x,const SLong z)
 	}
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		InitGridRecords
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -3005,7 +3005,7 @@ void InitGridRecords(const SLong x,const SLong z)
 	} 
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ProcessLandUpdateRequests
 //Author		Paul.   
 //Date			Fri 17 Jul 1998
@@ -3047,7 +3047,7 @@ void InitGridRecords(const SLong x,const SLong z)
 //DEADCODE JON 4/14/00 	}
 //DEADCODE JON 4/14/00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetBlock
 //Author		Paul.   
 //Date			Wed 22 Jul 1998
@@ -3063,7 +3063,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 	return gridRecords[(iz*dataGridSize)+ix];
 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		GetSquares
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 22 Jul 1998
@@ -3085,7 +3085,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		MakeClipRects
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Mon 27 Jul 1998
@@ -3175,7 +3175,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	delete[]squares;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		GetClipRegion
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Mon 27 Jul 1998
@@ -3192,7 +3192,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 
 //DeadCode JON 18Oct00 SquareClips* wholeAreaClips;
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		clip_recurse
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 29 Jul 1998
@@ -3391,7 +3391,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	clip_recurse(newxvals,newzvals,level,psqc);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		TileClipCone
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 29 Jul 1998
@@ -3457,7 +3457,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		GetTileClipData
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 30 Jul 1998
@@ -3467,7 +3467,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	psc=wholeAreaClips;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		PrepareNoiseFn
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -3477,7 +3477,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	for (int x=0;x<256;x++) tileRnd[x]=Math_Lib.rnd(SLong(0xFF));
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		AliasPixel8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -3490,7 +3490,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	*ptxtadr=currentRouteColor8;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		AliasPixel8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -3503,7 +3503,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	*ptxtadr=currentRouteColor8;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		AliasPixel16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -3516,7 +3516,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	*ptxtadr=currentRouteColor16;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		AliasPixel16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -3530,7 +3530,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SDDAliasPixel8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 11 Nov 1998
@@ -3541,7 +3541,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	*ptxtadr=currentRouteColor8;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		NDDAliasPixel8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 11 Nov 1998
@@ -3552,7 +3552,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	*ptxtadr=currentRouteColor8;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SDDAliasPixel16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 11 Nov 1998
@@ -3563,7 +3563,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	*ptxtadr=currentRouteColor16;
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		NDDAliasPixel16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 11 Nov 1998
@@ -3652,7 +3652,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	SymLine(linedef[0]->x,linedef[0]->y,linedef[1]->x,linedef[1]->y);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DoLine
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 13 Aug 1998
@@ -3669,7 +3669,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	SymLine(x1,y1,x2,y2);
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SymLine
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -3849,7 +3849,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DDSymLine
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Wed 11 Nov 1998
@@ -4029,7 +4029,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		PolyOutline
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 7 Aug 1998
@@ -4067,7 +4067,7 @@ inline DataRecord GetBlock(const SLong x,const SLong z)
 //DeadCode JON 18Oct00 	}	
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		AllocateBuffers
 //Author		Paul.   
 //Date			Tue 6 Oct 1998
@@ -4105,7 +4105,7 @@ void AllocateBuffers()
 //DEADCODE JON 4/14/00 	curSec=-1L;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ReleaseBuffers
 //Author		Paul.   
 //Date			Tue 6 Oct 1998
@@ -4122,7 +4122,7 @@ inline void ReleaseBuffers()
 //DeadCode JON 18Oct00 	delete[]wholeAreaClips,wholeAreaClips=NULL;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		FrameInit
 //Author		Jon
 //Date			Fri 14 Apr	2000
@@ -4163,7 +4163,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 
 }
 
-//DEADCODE JON 4/14/00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DEADCODE JON 4/14/00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DEADCODE JON 4/14/00 //Procedure		BuildShadowList
 //DEADCODE JON 4/14/00 //Author		Paul.   
 //DEADCODE JON 4/14/00 //Date			Thu 22 Oct 1998
@@ -4212,7 +4212,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DEADCODE JON 4/14/00 			shadowSectors[numShadows++]=worldPtr->makeindex(cs_x,cs_y);
 //DEADCODE JON 4/14/00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SortedTriangle8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 27 Oct 1998
@@ -4273,7 +4273,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SortedTriangle16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 27 Oct 1998
@@ -4333,7 +4333,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ShadowTriangle8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 27 Oct 1998
@@ -4388,7 +4388,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		ShadowTriangle16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 27 Oct 1998
@@ -4442,7 +4442,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SortedTriangle28
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 27 Oct 1998
@@ -4502,7 +4502,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		SortedTriangle216
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 27 Oct 1998
@@ -4561,7 +4561,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DDSortedTriangle8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 6 Nov 1998
@@ -4660,7 +4660,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DDSortedTriangle16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Fri 6 Nov 1998
@@ -4758,7 +4758,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DrawShadowTriangle
 //DeadCode JON 18Oct00 //Author		Jon
 //DeadCode JON 18Oct00 //Date			Wed 13th Apr 2000
@@ -4788,7 +4788,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 //DEADCODE JON 5/23/00 	lib3d->EndPoly();
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DDShadowTriangle8
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 1 Dec 1998
@@ -4879,7 +4879,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 //DeadCode JON 18Oct00 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		DDShadowTriangle16
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Tue 1 Dec 1998
@@ -4970,7 +4970,7 @@ inline void FrameInit(WorldStuff *wP,LightVec& sunLight)
 //DeadCode JON 18Oct00 	}
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		RenderTile2Surface
 //Author		Paul.   
 //Date			Fri 6 Nov 1998
@@ -5337,7 +5337,7 @@ inline SWord RenderEdgeStrip(SWord x1,SWord y1,SWord x2,SWord y2,SWord right_ix,
 	return right_ix;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		Render2Surface
 //Author		Paul.   
 //Date			Mon 9 Nov 1998
@@ -6192,7 +6192,7 @@ bool CheckCache()
 	}
 	return true;
 }
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetMinMaxAlt
 //Author		Paul.   
 //Date			Wed 16 Dec 1998
@@ -6223,7 +6223,7 @@ void GetMinMaxAlt(const SLong x,const SLong z,const SWord dir,SLong& min,SLong& 
 	if (aph->maxAlt>max) max=aph->maxAlt;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetMinMaxAlt
 //Author		Paul.   
 //Date			Wed 16 Dec 1998
@@ -6254,7 +6254,7 @@ void GetMinMaxAlt(const SLong x,const SLong z,SLong& min,SLong& max)
 
 using namespace TileMake;
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		Init
 //Author		Paul.   
 //Date			Thu 16 Jul 1998
@@ -6283,7 +6283,7 @@ void TMake::Init(const SLong x,const SLong z,CLib3D* lib3d) const
 //DeadCode JON 18Oct00 	SetInitialLandTextureCoordinates(x,z);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		Exit
 //Author		Paul.   
 //Date			Thu 16 Jul 1998
@@ -6294,7 +6294,7 @@ void TMake::Exit() const
 	g_lpLib3d=NULL;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ChkUpdate
 //Author		Paul.   
 //Date			Mon 20 Jul 1998
@@ -6305,7 +6305,7 @@ void TMake::ChkUpdate(const SLong x,const SLong z) const
 	UpdateGridRecords(x,z);
 }
 
-//DEADCODE JON 4/14/00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DEADCODE JON 4/14/00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DEADCODE JON 4/14/00 //Procedure		BuildShadowList
 //DEADCODE JON 4/14/00 //Author		Paul.   
 //DEADCODE JON 4/14/00 //Date			Thu 22 Oct 1998
@@ -6316,7 +6316,7 @@ void TMake::ChkUpdate(const SLong x,const SLong z) const
 //DEADCODE JON 4/14/00 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		FrameInit
 //Author		Jon   
 //Date			Fri 14 Apr 2000
@@ -6326,7 +6326,7 @@ void TMake::FrameInit(WorldStuff* wp, LightVec& sunLight)
 	TileMake::FrameInit( wp, sunLight );
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetBlock
 //Author		Paul.   
 //Date			Wed 22 Jul 1998
@@ -6336,7 +6336,7 @@ DataRecord TMake::GetBlock(const SLong x,const SLong z) const
 	return TileMake::GetBlock(x,z);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetSquares
 //Author		Paul.   
 //Date			Wed 22 Jul 1998
@@ -6350,7 +6350,7 @@ DataRecord TMake::GetBlock(const SLong x,const SLong z) const
 //DeadCode JON 18Oct00 	TileMake::GetSquares(squares);
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetClipRegion
 //Author		Paul.   
 //Date			Mon 27 Jul 1998
@@ -6360,7 +6360,7 @@ DataRecord TMake::GetBlock(const SLong x,const SLong z) const
 //DeadCode JON 18Oct00 	TileMake::GetClipRegion(index,clip);
 //DeadCode JON 18Oct00 }
 
-//DeadCode JON 18Oct00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode JON 18Oct00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode JON 18Oct00 //Procedure		GetTileClipData
 //DeadCode JON 18Oct00 //Author		Paul.   
 //DeadCode JON 18Oct00 //Date			Thu 30 Jul 1998
@@ -6370,7 +6370,7 @@ DataRecord TMake::GetBlock(const SLong x,const SLong z) const
 //DeadCode JON 18Oct00 	TileMake::GetTileClipData(psc);
 //DeadCode JON 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		TMake
 //Author		Paul.   
 //Date			Thu 6 Aug 1998
@@ -6381,7 +6381,7 @@ TMake::TMake()
 	AllocateBuffers();
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		TMake
 //Author		Paul.   
 //Date			Tue 6 Oct 1998
@@ -6391,7 +6391,7 @@ TMake::~TMake()
  	ReleaseBuffers();
 }
 
-//DEADCODE JON 4/14/00 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DEADCODE JON 4/14/00 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DEADCODE JON 4/14/00 //Procedure		RenderTile2Surface
 //DEADCODE JON 4/14/00 //Author		Paul.   
 //DEADCODE JON 4/14/00 //Date			Fri 6 Nov 1998
@@ -6401,7 +6401,7 @@ TMake::~TMake()
 //DEADCODE JON 4/12/00 	TileMake::RenderTile2Surface(pdata,prsd);
 //DEADCODE JON 4/14/00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		Render2Surface
 //Author		Paul.   
 //Date			Mon 9 Nov 1998
@@ -6411,7 +6411,7 @@ void TMake::Render2Surface(const HTEXT& hTexture,UByte rezTexture,UWord offset)
 	TileMake::Render2Surface(hTexture,rezTexture,offset);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetMinMaxAlt
 //Author		Paul.   
 //Date			Wed 16 Dec 1998
@@ -6421,7 +6421,7 @@ void TMake::Render2Surface(const HTEXT& hTexture,UByte rezTexture,UWord offset)
 //DEADCODE JON 1/27/00 	TileMake::GetMinMaxAlt(x,z,min,max);
 //DEADCODE JON 1/27/00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetMinMaxAlt
 //Author		Paul.   
 //Date			Wed 16 Dec 1998

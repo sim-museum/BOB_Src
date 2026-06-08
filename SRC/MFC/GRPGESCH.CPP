@@ -69,7 +69,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "bob.h"
 #include "GrpGesch.h"
 #include "cstring.h"
-#include "..\mfc\resource.h"
+#include "../mfc/resource.h"
 #include "persons2.h"
 
 

@@ -9,9 +9,9 @@
 #ifndef	ANGLES_Included
 #define	ANGLES_Included
 
-enum	AnglesFract			{ANGLES_FRACT=32768};
-enum	AnglesShift			{ANGLES_SHIFT=15};
-enum	AnglesShiftTwice	{ANGLES_SHIFT_TWICE=30};
+enum	AnglesFract {ANGLES_FRACT=32768};
+enum	AnglesShift {ANGLES_SHIFT=15};
+enum	AnglesShiftTwice {ANGLES_SHIFT_TWICE=30};
 
 inline	int	operator	/	(int i,AnglesFract)	{return((i+16384)>>15);}
 inline	int	operator	>>	(int i,AnglesShift)	{return((i+16384)>>15);}
@@ -20,8 +20,7 @@ inline	SLong	operator	/	(SLong i,AnglesFract)	{return((i+16384)>>15);}
 inline	SLong	operator	>>	(SLong i,AnglesShift)	{return((i+16384)>>15);}
 inline	ULong	operator	/	(ULong i,AnglesFract)	{return((i+16384)>>15);}
 inline	ULong	operator	>>	(ULong i,AnglesShift)	{return((i+16384)>>15);}
-enum	AnglePoint
-{
+enum	AnglePoint {
 	ANGPT_001Deg	=1,
 
 	ANGPT_500Deg	=91,
@@ -29,8 +28,7 @@ enum	AnglePoint
 	ANGPT_999Deg	=182,
 };
 
-enum	Angles
-{
+enum	Angles : int {
 	ANGLES_0Deg = 0x00000,
 	ANGLES_BitDeg = 0x00001,
 	ANGLES_FifthDeg = 0x00020,

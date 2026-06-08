@@ -82,8 +82,8 @@ enum	PlaneTypeSelect											//RDH 06Aug96
 //Translation between squad and planetype takes place in Persons3::Squad2Type()
 //
 
-//DEADCODE RDH 03/03/99 enum	AcPosition{ FLIGHTLEADER, ELEMENTLEADER, WINGMAN, LONER };
-enum	tThreatLevel	{
+//DEADCODE RDH 03/03/99 enum	AcPosition { FLIGHTLEADER, ELEMENTLEADER, WINGMAN, LONER };
+enum	tThreatLevel {
 		BANDITNEVER,						//never engage, used if damaged
 		BANDITINENGAGERANGEOFFRIENDLY,		//used for bait
 		BANDITFIRING,
@@ -93,7 +93,7 @@ enum	tThreatLevel	{
 		BANDITINCOMBATRANGE,
 		BANDITANYWHERE
 		};
-enum	tAggressionLevel	{
+enum	tAggressionLevel {
 		AL_STOODDOWN,			//don't launch
 		AL_MIN = AL_STOODDOWN,
 		AL_TRAINING,			//launch but will not engage
@@ -112,8 +112,7 @@ enum AcTactics {WELDEDWING, TOPCOVER, SWORDANDSHIELD, LOOSEDEUCE};
 
 #define	MAX_NUM_AC_IN_SQUADRON 19
 
-enum	tFirstEncounterTactics
-			{
+enum	tFirstEncounterTactics {
 				TACTIC_NULL,
 				TACTIC_DIVEANDZOOM,
 				TACTIC_HEADONATTACK,
@@ -203,8 +202,7 @@ enum	tFirstEncounterTactics
 //DEADCODE JIM 24/03/99 			DUTY_ALIGN=0xffff};		//RDH 18Feb97
 
 //DEADCODE DAW 22/03/00 inline	SWord&	operator *(DutyType& f){return(SWord&) f;}
-enum	PackageAttackMethodAliases
-{
+enum	PackageAttackMethodAliases {
 	PACK_AM_RAF=0,
 	PACK_AM_LWSTART=8,
 		PACK_AM_DECOYPATROL,	//probably fighter patrol
@@ -243,8 +241,7 @@ enum	InFormation	 //got 6 bits!
 	IF_NEAR_POS = 1														  //CSB 05/01/00
 };
 
-enum	FormationTypeIndex
-{
+enum	FormationTypeIndex : int {
 		FTT_BIGV		=	0,
 		FTT_LONGLINE	=	1,
 		FTT_SHIPCONVOY1	=	2,
@@ -386,7 +383,7 @@ inline	FormationTypeIndex	operator&=(FormationTypeIndex& a,FormationTypeIndex b)
 inline	FormationTypeIndex	operator%=(FormationTypeIndex& a,FormationTypeIndex b)	{return a=a%b;}					
 struct	FormationType;
 FormationType*	GetEscortTable(FormationTypeIndex fi);
-//DEADCODE JIM 09/02/00 enum	SquadronTypeIndex	{STI_DUMMY};
+//DEADCODE JIM 09/02/00 enum	SquadronTypeIndex {STI_DUMMY};
 MINMAX(FormationIndex,0,255);
 MINMAX(InWing,0,15);		//high field
 MINMAX(InForm,0,15);	//low field
@@ -402,10 +399,8 @@ inline	FormationIndex	operator	+	(FormationIndex I,InForm F)	{return (  (Formati
 inline	FormationIndex	operator	&	(FormationIndex I,InWing W)	{return   (FormationIndex)  ( ((int)I>>4) & (int)W  );}	//RDH 13May96
 inline	FormationIndex	operator	&	(FormationIndex I,InForm F)	{return (  (FormationIndex)  ( (int)I & (int)F )  );}
 
-enum	CharacterType
-		{CHAR_TACTICIAN = 0,CHAR_MRAVERAGE,CHAR_CAVALIER,CHAR_TIMID,CHAR_align=255};		
-enum	SkillType
-		{	SKILL_NOVICE = 0,	SKILL_NOVICE1=15,SKILL_NOVICE2=30,
+enum	CharacterType {CHAR_TACTICIAN = 0,CHAR_MRAVERAGE,CHAR_CAVALIER,CHAR_TIMID,CHAR_align=255};		
+enum	SkillType {	SKILL_NOVICE = 0,	SKILL_NOVICE1=15,SKILL_NOVICE2=30,
 			SKILL_POOR = 45,	SKILL_POOR1 = 60,SKILL_POOR2 = 75,
 			SKILL_REGULAR=90,	SKILL_REGULAR1=105,SKILL_REGULAR2=120,
 			SKILL_VETERAN=135,	SKILL_VETERAN1=150,SKILL_VETERAN2=165,
@@ -426,8 +421,7 @@ enum	SkillType
 //DEADCODE DAW 16/02/00 			POTENTIAL_VERYPOOR	=3,
 //DEADCODE DAW 16/02/00 			POTENTIAL_NONE		=0
 //DEADCODE DAW 16/02/00 		};
-enum	MoraleType
-		{MORALE_ROCKBOTTOM = 0,MORALE_VERYPOOR = 40,MORALE_STAGE = 40,MORALE_HALFSTAGE = 20,
+enum	MoraleType {MORALE_ROCKBOTTOM = 0,MORALE_VERYPOOR = 40,MORALE_STAGE = 40,MORALE_HALFSTAGE = 20,
 //DeadCode RDH 27Mar98 			MORALE_MINUSHALFSTAGE = -20,
 		MORALEINC_STEP = 120,
 		MORALE_POOR =80,MORALE_MEDIUM = 120,MORALE_GOOD =160,MORALE_VERYGOOD = 200,MORALE_EXCELLENT = 240,MORALE_TOPMORALE = 255 };
@@ -436,8 +430,7 @@ enum	MoraleType
 //DeadCode RDH 27Mar98 enum	DispositionType
 //DeadCode RDH 27Mar98 		{	PESSIMISTIC = 0, REALISTIC,OPTIMISTIC
 //DeadCode RDH 27Mar98 			};
-enum	MeritType
-		{MERIT_ROCKBOTTOM = 0,MERIT_INITIAL = 1000,MERIT_2LFTEXPERIENCED =5000,
+enum	MeritType {MERIT_ROCKBOTTOM = 0,MERIT_INITIAL = 1000,MERIT_2LFTEXPERIENCED =5000,
 		MERIT_LFT = 8000,
 		MERIT_CAPTAIN = 12000,MERIT_MAJOR =18000,MERIT_MAJORHONOUR = 27000,
 		MERIT_MAJORHONOURPLUS = 30000,MERIT_TOP = 65534,MERIT_IMPOSSIBLE = 65535,
@@ -449,8 +442,7 @@ enum	MeritType
 		};
 //aims is to get 30000 merit points by end of campaign			//RDH 23Sep96
 //Circus	36 kills: 2 kills a mission, 20 missions -> 750 merit per kill
-enum	DeltaMeritType
-		{
+enum	DeltaMeritType {
 //DeadCode RDH 08Dec96 		MERIT_TARGET_DESTROYED = 3000,
 		MERIT_TARGET_DESTROYED = 2000,							//RDH 08Dec96
 		MERIT_KILL = 750,
@@ -483,7 +475,7 @@ enum 	AerobaticFactor {AEROBATIC_LOW,			//medium bomber
 						AEROBATIC_HIGHEST
 						};
  
-//DEADCODE AMM 12/01/00 enum	CallNames	{	Call_Pilot0=1,Call_Pilot29=30,
+//DEADCODE AMM 12/01/00 enum	CallNames {	Call_Pilot0=1,Call_Pilot29=30,
 //DEADCODE AMM 12/01/00 						Call_FAC0,Call_FAC1,Call_FAC2,
 //DEADCODE AMM 12/01/00 						Call_TAC0,Call_TAC1,Call_TAC2,
 //DEADCODE AMM 12/01/00 						Call_Dentist,Call_Tower,
@@ -511,11 +503,10 @@ enum 	AerobaticFactor {AEROBATIC_LOW,			//medium bomber
 //green are non-aggressive neutral forces (bugger 'em)
 //amber are aggressive neutral forces (bugger me)
 //	 moved from worldinc 7/8/98
-enum	Nationality	{NAT_RED=1,NAT_BLUE=2,NAT_GREEN=0,NAT_AMBER=3,NAT_ALIGN=255, NAT_RAF = NAT_RED, NAT_LUF = NAT_BLUE}; //CSB 17/12/99
-enum FuelTankType	{FT_FIXED=0, FT_DROPTANK=1};
+enum	Nationality : int {NAT_RED=1,NAT_BLUE=2,NAT_GREEN=0,NAT_AMBER=3,NAT_ALIGN=255, NAT_RAF = NAT_RED, NAT_LUF = NAT_BLUE}; //CSB 17/12/99
+enum FuelTankType {FT_FIXED=0, FT_DROPTANK=1};
 
-enum	QuickMissDamageTypes
-{
+enum	QuickMissDamageTypes {
 	QMD_RANDOMTYPE,					//Chooses unused slot from list below.
 
 	QMD_LEFTWINGOUT,				//Add LEVEL*int or RANDOMLEVEL or RANDOMLEVEL+LEVEL*int

@@ -69,7 +69,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //Date           Wed 23 Jul 1997
 //Description    Mission editor save functionality
 //------------------------------------------------------------------------------
-#include <vcl\vcl.h>
+#include <vcl/vcl.h>
 
 	#include	"dosdefs.h"
 	#include	"files.g"

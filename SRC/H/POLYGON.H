@@ -25,7 +25,16 @@
 
 typedef float R3DVALUE;
 
-#ifdef __MSVC__
+#if defined(BOB_LINUX)
+// Indirect register-ABI call into a horiline raster routine (GRAFPASM):
+//   esi=fn, eax=num2, edx=&num3, ebx=&num4. fn ptr kept in edi here.
+inline void	ASM_Call(HoriLineRtnPtr num1,UWord * num2, VERTEX& num3, VERTEX& num4)
+{
+	__asm__ __volatile__("call *%%edi"
+		:: "D"(num1), "a"(num2), "d"(&num3), "b"(&num4)
+		: "ecx","esi","cc","memory");
+}
+#elif defined(__MSVC__)
 inline void	ASM_Call(HoriLineRtnPtr num1,UWord * num2, VERTEX& num3, VERTEX& num4)
 {
     __asm
@@ -51,7 +60,7 @@ class	polygon;												//PD 30Jan96
 
 class	polygon
 		{
-			enum	DIRECTION	{BACKWARDS = -1,FORWARDS = 1};
+			enum	DIRECTION {BACKWARDS = -1,FORWARDS = 1};
 
 			enum	CLIPPERFLAG {CLIPF_NULL=0,CLIPF_TEXTURE=1,CLIPF_INTENSITY=2};
 

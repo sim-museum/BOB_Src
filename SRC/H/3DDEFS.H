@@ -9,7 +9,7 @@
 #define	D3DDEFS_Included
 
 		#include	"Palette.h"
-#include "..\lib3d\lib3d.h"
+#include "../lib3d/lib3d.h"
 
 #define	DEFAULT_D3DDEFS 0
 
@@ -39,7 +39,7 @@ enum	LUMINOSITYTYPE											//RJS 19Jan98
 	LUM_MAX														//RJS 19Jan98
 };																//RJS 19Jan98
 
-enum	ObjectType	{DUFF_OBJECT=0, //PD 06/12/99
+enum	ObjectType : int {DUFF_OBJECT=0, //PD 06/12/99
 //DEADCODE PD 06/12/99 	GROUND_TILE_OBJECT=0,
 //DEAD					NRGRND_TILE_OBJECT,							//PD 18Mar96
 //DEAD					SKY_TILE_OBJECT,
@@ -56,7 +56,7 @@ enum	ObjectType	{DUFF_OBJECT=0, //PD 06/12/99
 					XXX_DUMMYTYPE = 0x07FFF						//PD 23Aug96
 					};
 
-enum	TDFadeType	{_BLACKOUT = 0,_REDOUT,_WHITEOUT,_NOWTOUT};	//PD 27Nov96
+enum	TDFadeType {_BLACKOUT = 0,_REDOUT,_WHITEOUT,_NOWTOUT};	//PD 27Nov96
 
 class	fileblock;								//RJS 06Feb98
 
@@ -121,8 +121,7 @@ typedef ImageMap_Desc									//PD 01Aug96
 				ImageMapDesc,									//PD 01Aug96
 				*ImageMapDescPtr;								//PD 01Aug96
 
-enum	TileSeg
-		{
+enum	TileSeg {
 			TS_Whole=0,
 			TS_TopLeft,
 			TS_TopRight,
@@ -257,7 +256,7 @@ const ULong CF3D_ONE_LOW=0x00000000;
 }*/
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure	_clipFB
 //------------------------------------------------------------------------------
 //Author	Paul.   
@@ -275,7 +274,7 @@ const ULong CF3D_ONE_LOW=0x00000000;
 }
 */
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure	_clipLR
 //------------------------------------------------------------------------------
 //Author	Paul.   
@@ -310,7 +309,7 @@ inline void _clipLR(UWord& cf,Float x,Float z)
 //Old_Code PD 26Feb99 			cf|=CF3D_OFFRIGHT;
 //Old_Code PD 26Feb99 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure	_clipTB
 //------------------------------------------------------------------------------
 //Author	Paul.   
@@ -371,8 +370,8 @@ typedef	DoPointStruc	*dopointptr;
 
 typedef	struct	vertex	VERTEX, *VERTEX_PTR;					//PD 30Oct95
 
-enum	OBJ3DTYPE		{STATIC = 0, MOBILE};					//PD 31Oct95
-enum	SCANLINETYPE	{PLAIN=0,
+enum	OBJ3DTYPE {STATIC = 0, MOBILE};					//PD 31Oct95
+enum	SCANLINETYPE {PLAIN=0,
 						GOURAUD,
 						NDGOURAUD,		//no dither				//PD 10Oct96
 						IMAPPED,
@@ -440,7 +439,7 @@ struct	Vert_Ex
 //TempCode PD 07Jan97 }
 //TempCode PD 07Jan97 wvert, *wvertptr;
 
-enum	GREY3DTYPE	{NOGREY3D=0x00,								//PD 07Jan96
+enum	GREY3DTYPE {NOGREY3D=0x00,								//PD 07Jan96
 					CLOUD01,CLOUD02,CLOUD03,CLOUD04,
 					CLOUD05,CLOUD06,CLOUD07,CLOUD08,
 					CLOUD09,CLOUD0A,CLOUD0B,CLOUD0C,
@@ -456,7 +455,7 @@ const	SLong	ObjectTreeSize	 = 1024;						//PD 13Mar96
 const	SLong	AircraftTreeSize	= 64;						//PD 28Oct98
 
 //typedef
-//DeadCode PD 03Mar98 enum PInOut{pio_NULL 	= 0x0000,
+//DeadCode PD 03Mar98 enum PInOut {pio_NULL 	= 0x0000,
 //DeadCode PD 03Mar98 	 		pio_Top		= 0x0020,
 //DeadCode PD 03Mar98 	 		pio_Bottom	= 0x0010,
 //DeadCode PD 03Mar98 	 		pio_North	= 0x0008,
@@ -470,8 +469,7 @@ class PointType
 {
 	public:
 
-	enum	PointTypes
-	{
+	enum	PointTypes {
 		PT_PlainColour=0,
 		PT_ShadeColour=1,
 		PT_MAX=0xFFFF
@@ -497,8 +495,7 @@ class	LineType
 {
 	public:
 
-	enum	LineTypes
-	{
+	enum	LineTypes {
 		LT_PlainColour=0,
 		LT_ShadeColour=1,
 		LT_MAX=0xFFFF
@@ -526,8 +523,7 @@ class PolyType
 {
 	public:
 	
-	enum	PolyTypes
-	{
+	enum	PolyTypes {
 		PT_PlainColour=0,
 		PT_ShadeColour=1,
 		PT_PlainImagem=2,
@@ -565,8 +561,7 @@ POLYTYPE,
 *LPPOLYTYPE;
 
 typedef															//PD 02Jun97
-enum	TwoDeeEffect
-{
+enum	TwoDeeEffect {
 	TDE_NULL=0,
 	TDE_INSIDE2OUT,	//Fade starts from the centre of the screen and works outwards
 	TDE_OUTSIDE2IN,	//Fade starts from the edge of the screen and works inwards

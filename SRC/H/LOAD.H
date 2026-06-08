@@ -71,7 +71,7 @@ public:
 	//-ve is error and don't display
 };
 
-enum	LSD_State	{LSD_LOAD,LSD_SAVE,LDS_DISABLE_SEP=4,LSD_LOAD_DESELECT=4,LSD_SAVE_DESELECT};
+enum	LSD_State {LSD_LOAD,LSD_SAVE,LDS_DISABLE_SEP=4,LSD_LOAD_DESELECT=4,LSD_SAVE_DESELECT};
 
 class CLoad : public RowanDialog
 {
@@ -134,4 +134,3 @@ protected:
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
 #endif // !defined(AFX_LOAD_H__11348503_787F_11D2_9FD5_D0EC00C10000__INCLUDED_)
-

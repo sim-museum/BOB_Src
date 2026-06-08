@@ -36,7 +36,7 @@ CString		GetRelativeName(ItemBase* trg,Coords3D* src,bool exact=true,bool nametr
 CString		GetRelativeName(UniqueID trg,Coords3D* src,bool exact=true,bool nametrg=false);
 
 
-enum	DateFormat	{DATE_SHORT,DATE_LONG,DATE_PERIOD};
+enum	DateFormat {DATE_SHORT,DATE_LONG,DATE_PERIOD};
 CString		GetDateName(int date,DateFormat form=DATE_SHORT,int time=0);
 CString		GetTimeName(int time);
 
@@ -133,4 +133,3 @@ char*	trunc(char* s,int l);
 
 
 #endif // !defined(AFX_RCOMBOX_H__E28400A1_FEC1_11D1_9FD6_D0EC00C10000__INCLUDED_)
-

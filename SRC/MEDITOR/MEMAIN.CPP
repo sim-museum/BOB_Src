@@ -88,8 +88,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "MissText.h"
 #include "Static.h"
 //---------------------------------------------------------------------------
-#include <vcl\vcl.h>
-#include	<vcl\clipbrd.hpp>
+#include <vcl/vcl.h>
+#include	<vcl/clipbrd.hpp>
 #include	"loadsave.h"
 #pragma hdrstop
 #include "files.g"

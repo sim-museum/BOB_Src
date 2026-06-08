@@ -82,7 +82,7 @@ static char THIS_FILE[] = __FILE__;
 #endif
 #endif
 /////////////////////////////////////////////////////////////////////////////
-//	enum	AllowAliasing	{AA_NONE,AA_GUNNER_JOYVIEW,AA_THROTTLE2_PROP1};
+//	enum	AllowAliasing {AA_NONE,AA_GUNNER_JOYVIEW,AA_THROTTLE2_PROP1};
 
 Analogue::AliassingOption
 	Analogue::Aliassing_List[]={

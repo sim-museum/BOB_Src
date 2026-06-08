@@ -63,7 +63,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 */
 
 #include "_COMM.h"
-#include "..\COMMS\Aggrgtor.cpp"
-#include "..\COMMS\Comms.cpp"
-#include "..\COMMS\Replay.cpp"
-#include "..\COMMS\Winmove.cpp"
+#include "../COMMS/Aggrgtor.cpp"
+#include "../COMMS/Comms.cpp"
+#include "../COMMS/Replay.cpp"
+#include "../COMMS/Winmove.cpp"

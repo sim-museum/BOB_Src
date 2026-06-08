@@ -1,0 +1,9 @@
+# Linux native port — build output
+build/
+build-*/
+*.o
+*.a
+compile_commands.json
+
+# Case-alias symlinks under SRC/** are committed (relative, needed at compile time);
+# regenerate after adding files with new-cased #includes:  python3 fix_include_case.py

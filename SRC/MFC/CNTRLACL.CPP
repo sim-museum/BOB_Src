@@ -252,7 +252,7 @@ BOOL ControlAccel::OnInitDialog()
 
 	//set tick boxes using decelon, do similiar for controlfly
 	//curraccelrate changed by toolbar
-	//change enum	AccelType	{ACCEL_PAUSED,ACCEL_NORMAL,ACCEL_MAJORACT,ACCEL_MINORACT,ACCEL_NOACT,ACCEL_MAX};
+	//change enum	AccelType {ACCEL_PAUSED,ACCEL_NORMAL,ACCEL_MAJORACT,ACCEL_MINORACT,ACCEL_NOACT,ACCEL_MAX};
 	//in missman2.h 
 	//ACCEL_PAUSED,ACCEL_NORMAL,ACCEL_NONRAID,ACCEL_RECONN,ACCEL_RAID,ACCEL_MAX
 	//fill accelrates in missman2 from spins

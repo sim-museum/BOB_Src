@@ -3,42 +3,42 @@
 #define MainH
 //---------------------------------------------------------------------------
 
-#include <vcl\Classes.hpp>
-#include <vcl\Controls.hpp>
-#include <vcl\StdCtrls.hpp>
-#include <vcl\ExtCtrls.hpp>
-#include <vcl\Buttons.hpp>
-#include <vcl\ComCtrls.hpp>
-#include <vcl\Forms.hpp>
-#include <vcl\Menus.hpp>
-#include <vcl\Dialogs.hpp>
+#include <vcl/Classes.hpp>
+#include <vcl/Controls.hpp>
+#include <vcl/StdCtrls.hpp>
+#include <vcl/ExtCtrls.hpp>
+#include <vcl/Buttons.hpp>
+#include <vcl/ComCtrls.hpp>
+#include <vcl/Forms.hpp>
+#include <vcl/Menus.hpp>
+#include <vcl/Dialogs.hpp>
 
 
-#include <vcl\ExtCtrls.hpp>
-#include <vcl\Buttons.hpp>
-#include <vcl\ComCtrls.hpp>
-#include <vcl\Forms.hpp>
-#include <vcl\Menus.hpp>
-#include <vcl\Dialogs.hpp>
+#include <vcl/ExtCtrls.hpp>
+#include <vcl/Buttons.hpp>
+#include <vcl/ComCtrls.hpp>
+#include <vcl/Forms.hpp>
+#include <vcl/Menus.hpp>
+#include <vcl/Dialogs.hpp>
 
-#include <vcl\Buttons.hpp>
-#include <vcl\ComCtrls.hpp>
-#include <vcl\Forms.hpp>
-#include <vcl\Menus.hpp>
-#include <vcl\Dialogs.hpp>
+#include <vcl/Buttons.hpp>
+#include <vcl/ComCtrls.hpp>
+#include <vcl/Forms.hpp>
+#include <vcl/Menus.hpp>
+#include <vcl/Dialogs.hpp>
 
-#include <vcl\Forms.hpp>
-#include <vcl\ExtCtrls.hpp>
-#include <vcl\Buttons.hpp>
-#include <vcl\ComCtrls.hpp>
-#include <vcl\Menus.hpp>
-#include <vcl\Dialogs.hpp>
+#include <vcl/Forms.hpp>
+#include <vcl/ExtCtrls.hpp>
+#include <vcl/Buttons.hpp>
+#include <vcl/ComCtrls.hpp>
+#include <vcl/Menus.hpp>
+#include <vcl/Dialogs.hpp>
 
-#include <vcl\ExtCtrls.hpp>
-#include <vcl\Buttons.hpp>
-#include <vcl\ComCtrls.hpp>
-#include <vcl\Menus.hpp>
-#include <vcl\Dialogs.hpp>
+#include <vcl/ExtCtrls.hpp>
+#include <vcl/Buttons.hpp>
+#include <vcl/ComCtrls.hpp>
+#include <vcl/Menus.hpp>
+#include <vcl/Dialogs.hpp>
 
 
 
@@ -50,7 +50,7 @@
 //#include <angles.h>
 class info_base;
 //---------------------------------------------------------------------------
-enum	UidBandNum{
+enum	UidBandNum {
 		PilotedAcBANDNum		,//		=	0x0000,
 		WayPointBANDNum			,
 		MissileBANDNum			,
@@ -103,7 +103,7 @@ enum	UidBandNum{
 		IllegalBANDNum
                     };
 
-enum	iconbitmaps{
+enum	iconbitmaps {
 						wpbmp,
 						hi_wpbmp,
 						Eventbmp,
@@ -171,7 +171,7 @@ enum	{ NEUTRAL = 0,  CENTRALPOWERS = 1, ALLIES = 2};
 const	int	ICONW = 18;
 const	int	ZOOMINITIAL = 200;
 const int	MAXMISSIONSPERCAMPAIGN = 40;
-enum	Transient	{T_NONE,T_WAYPOINT,T_AIRCRAFT,T_TANK,T_TRUCK,T_TRAIN,T_BATTERY,T_AAA,
+enum	Transient {T_NONE,T_WAYPOINT,T_AIRCRAFT,T_TANK,T_TRUCK,T_TRAIN,T_BATTERY,T_AAA,
 						T_BALLOON,T_TROOP,T_SETTLEMENT, T_GROUPPOPULATE,T_SINGLEPOPULATE,T_EVENT
 					};
 #ifdef INTABLE
@@ -184,7 +184,7 @@ enum	Transient	{T_NONE,T_WAYPOINT,T_AIRCRAFT,T_TANK,T_TRUCK,T_TRAIN,T_BATTERY,T_
 //const int MAXEVENTVAR = 50;
 
 enum	FormPosnType {POSN_OPPOSITE,POSN_CENTER,POSN_USER};
-enum	FormId		{AcItemFormId,WayPointFormId,EventWayPointFormId,EventFormId,ChooseBfFormId};
+enum	FormId {AcItemFormId,WayPointFormId,EventWayPointFormId,EventFormId,ChooseBfFormId};
 
 struct	FormPosnInfo
 {
@@ -975,7 +975,7 @@ void	BarMoved(int newx,int newy,double newscale);
     void __fastcall RescaleArt(MapBlock& block);
 public:
    void __fastcall NewSuperGroup(UniqueID uid);
-    enum	GridConsts	{REALMAXPAINT=6,GRIDMAXPAINT=8,GRIDMAXSIZE=16};
+    enum	GridConsts {REALMAXPAINT=6,GRIDMAXPAINT=8,GRIDMAXSIZE=16};
     struct PaintRow
     {
     	MapBlock*	row[GRIDMAXSIZE];
@@ -1002,7 +1002,7 @@ void	StartDragBox(int x,int y,int w,int h);
 void	MoveDragPix(int X,int Y);
 void	MoveDrag(int x,int y);
 void	EndDrag();
-enum 	DragOrds	{D_B1,D_B2,D_A,D_C,D_W};
+enum 	DragOrds {D_B1,D_B2,D_A,D_C,D_W};
 void	TMissionEditor::GetDragLine(DragOrds d,int& X,int& Y);
 void	DrawDrag(MapBlock& block);
 void	PushScreenDrag(PtPair & a);

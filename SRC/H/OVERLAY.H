@@ -222,7 +222,7 @@ class	ViewPoint;
 class CString;
 //DEADCODE JON 5/22/00 struct R3DVERTEX;
 //DEADCODE RDH 5/19/00 typedef R3DVERTEX DoPointStruc;
-enum	Colour;
+enum	Colour : int;
 class __declspec(dllimport) CLib3D;
 
 struct	ScreenShot
@@ -289,15 +289,13 @@ public:
 
 	struct ScrollyText
 	{
-		enum State 
-		{
+		enum State {
 			WaitingToScroll=0,
 			ScrollingToEnd,
 			WaitingToScrollBack,
 			ScrollingToFront
 		};
-		enum TimerValues 
-		{
+		enum TimerValues {
 			WaitToScrollTime=2*100, // time in milliseconds
 			ScrollToEndTime=10*100,
 			WaitToScrollBackTime=WaitToScrollTime,

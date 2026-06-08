@@ -9,7 +9,7 @@
 #define	Dinstr_Included
 
 
-//DeadCode RJS 21Apr99 enum	AnimSizes	{MINANIM=0,									//RJS 11Feb97
+//DeadCode RJS 21Apr99 enum	AnimSizes {MINANIM=0,									//RJS 11Feb97
 //DeadCode RJS 21Apr99 					AIRCRAFTANIM,
 //DeadCode RJS 21Apr99 					WEAPANIM,									//PD 01Apr96
 //DeadCode RJS 21Apr99 					DIRECTANIM,
@@ -40,7 +40,7 @@
 //Offset in animdata...
 //DeadCode RJS 30Nov99#define	ABITOFF		9											//RJS 21Apr99
 
-enum	AnimSizes	{MINANIM=0,									//RJS 30Nov99
+enum	AnimSizes {MINANIM=0,									//RJS 30Nov99
 					AIRCRAFTANIM,
 					SIMPLEAIRCRAFTANIM,	   						//RJS 17Nov99
 					BLOKESANIM,									//RJS 01Jun99
@@ -70,10 +70,10 @@ enum	AnimSizes	{MINANIM=0,									//RJS 30Nov99
 					TWOGUNANIM  										//RJS 27Jun00
 					};								
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 
-enum	LnchrType	{LT_BULLET = 0, LT_BULLET_RAF = 0, LT_BULLET_LUF, LT_BULLET_REAR,
+enum	LnchrType {LT_BULLET = 0, LT_BULLET_RAF = 0, LT_BULLET_LUF, LT_BULLET_REAR,
 					 LT_CANNON = 0x10,
 					 LT_BOMB = 0x20, LT_BOMB500 = 0x20, LT_BOMBPAIR500, LT_BOMB1000,LT_SMALLBOMB,LT_NAPALM,LT_BOMBB29,LT_BMB1B29,
 					 LT_ROCKET = 0x30,LT_ROCKET4=0x30,LT_ROCKET6,LT_ROCKET8,
@@ -91,7 +91,7 @@ enum	LnchrType	{LT_BULLET = 0, LT_BULLET_RAF = 0, LT_BULLET_LUF, LT_BULLET_REAR,
 					 LT_MASK = 0xf0
 					};											//RJS 01Oct98
 
-enum	DialType	{DT_RPM = 0, DT_ALT = 1, DT_MPH = 2, DT_FUEL = 3};//RJS 16Sep96
+enum	DialType {DT_RPM = 0, DT_ALT = 1, DT_MPH = 2, DT_FUEL = 3};//RJS 16Sep96
 
 
 //PD 17Apr96 - new a/c bits off code to cope with drawing dammaged
@@ -115,8 +115,7 @@ enum BitStates {BS_ALIVE=0,
 				BS_DAMLV2=170,									//RJS 02Apr98
 				BS_DEAD = 255};
 
-enum DamageTypes
-{
+enum DamageTypes {
 	DMT_BULLET = 0,
 	DMT_FIRE,
 	DMT_SHOCKWAVE,												//RJS 06Dec98

@@ -62,6 +62,6 @@ better place to ask is http://www.simhq.com/ or even :-
 http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum=Battle+of+Britain&number=40&DaysPrune=20&LastLogin=
 */
 
-#include "SOURCE=..\AI\Aaa.cpp"
-#include "SOURCE=..\AI\Msgai.cpp"
-#include "SOURCE=..\AI\Spotted.cpp"
+#include "SOURCE=../AI/Aaa.cpp"
+#include "SOURCE=../AI/Msgai.cpp"
+#include "SOURCE=../AI/Spotted.cpp"

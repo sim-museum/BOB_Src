@@ -37,8 +37,7 @@ typedef	PlaneType	*ClassPtr;
 		SLong	pan;
 	};
 
-	enum	SpotEffects
-	{
+	enum	SpotEffects {
 		SPOT_FRIENDLY_KILLED	=	0,
 		SPOT_PLAYER_IN_DANGER	=	1,
 		SPOT_PLAYER_GETS_HIT	=	2,
@@ -126,15 +125,13 @@ public:
 		PRIORITYFACTOR	= 8
 	};
 
-	enum	HSampRate
-	{
+	enum	HSampRate {
 		MIN_SAMP_VAL	= 11025,								//RJS 30Oct96
 		NOM_SAMP_VAL	= 22050,								//RJS 30Oct96
 		MAX_SAMP_VAL	= 44100									//RJS 30Oct96
 	};
 
-	enum	TuneType
-	{
+	enum	TuneType {
 		T_main			=	0,
 		T_spoteffects,											//RJS 06May99
 		T_seqeffects, 											//RJS 06May99
@@ -142,8 +139,7 @@ public:
 		T_independent_pri										//RJS 06May99
 	};
 
-	enum	CBTCodes
-	{
+	enum	CBTCodes {
 		CODE_JUMP1		=	1,
 		CODE_JUMP2,
 		CODE_JUMP3,
@@ -155,8 +151,7 @@ public:
 		CODE_STOP		=	127
 	};
 
-	enum	CBTCodesLo
-	{
+	enum	CBTCodesLo {
 		CODE_SFX_VOL = 0,
 		CODE_SFX_PAN,
 		CODE_SFX_BAR

@@ -63,8 +63,7 @@ typedef interface IDirectMusicObject IDirectMusicObject;
 typedef interface IDirectMusicLoader IDirectMusicLoader;
 #endif
 
-typedef enum enumDMUS_COMMANDT_TYPES
-{
+typedef enum enumDMUS_COMMANDT_TYPES {
     DMUS_COMMANDT_GROOVE            = 0,
     DMUS_COMMANDT_FILL              = 1,
     DMUS_COMMANDT_INTRO             = 2,
@@ -73,8 +72,7 @@ typedef enum enumDMUS_COMMANDT_TYPES
     DMUS_COMMANDT_ENDANDINTRO       = 5
 } DMUS_COMMANDT_TYPES;
 
-typedef enum enumDMUS_SHAPET_TYPES
-{
+typedef enum enumDMUS_SHAPET_TYPES {
     DMUS_SHAPET_FALLING             = 0,
     DMUS_SHAPET_LEVEL               = 1,
     DMUS_SHAPET_LOOPABLE            = 2,
@@ -86,8 +84,7 @@ typedef enum enumDMUS_SHAPET_TYPES
     DMUS_SHAPET_SONG                = 8
 }   DMUS_SHAPET_TYPES;
 
-typedef enum enumDMUS_COMPOSEF_FLAGS
-{       
+typedef enum enumDMUS_COMPOSEF_FLAGS {       
     DMUS_COMPOSEF_NONE              = 0,
     DMUS_COMPOSEF_ALIGN             = 0x1,
     DMUS_COMPOSEF_OVERLAP           = 0x2,
@@ -128,8 +125,7 @@ typedef struct _DMUS_PMSG
 } DMUS_PMSG;
 
 /* DMUS_PMSGF_FLAGS fill the DMUS_PMSG's dwFlags member */
-typedef enum enumDMUS_PMSGF_FLAGS
-{
+typedef enum enumDMUS_PMSGF_FLAGS {
     DMUS_PMSGF_REFTIME          = 1,      /* if rtTime is valid */
     DMUS_PMSGF_MUSICTIME        = 2,      /* if mtTime is valid */
     DMUS_PMSGF_TOOL_IMMEDIATE   = 4,      /* if PMSG should be processed immediately */ 
@@ -141,8 +137,7 @@ typedef enum enumDMUS_PMSGF_FLAGS
 } DMUS_PMSGF_FLAGS;
 
 /* DMUS_PMSGT_TYPES fill the DMUS_PMSG's dwType member */
-typedef enum enumDMUS_PMSGT_TYPES
-{
+typedef enum enumDMUS_PMSGT_TYPES {
     DMUS_PMSGT_MIDI             = 0,      /* MIDI short message */
     DMUS_PMSGT_NOTE             = 1,      /* Interactive Music Note */
     DMUS_PMSGT_SYSEX            = 2,      /* MIDI long message (system exclusive message) */
@@ -159,8 +154,7 @@ typedef enum enumDMUS_PMSGT_TYPES
 } DMUS_PMSGT_TYPES;
 
 /* DMUS_SEGF_FLAGS correspond to IDirectMusicPerformance::PlaySegment, and other API */
-typedef enum enumDMUS_SEGF_FLAGS
-{
+typedef enum enumDMUS_SEGF_FLAGS {
     DMUS_SEGF_REFTIME           = 64,     /* time parameter is in reference time  */
     DMUS_SEGF_SECONDARY         = 128,    /* secondary segment */
     DMUS_SEGF_QUEUE             = 256,    /* queue at the end of the primary segment queue (primary only) */
@@ -176,8 +170,7 @@ typedef enum enumDMUS_SEGF_FLAGS
 /* DMUS_TIME_RESOLVE_FLAGS correspond to IDirectMusicPerformance::GetResolvedTime, and can */
 /* also be used interchangeably with the corresponding DMUS_SEGF_FLAGS, since their values */
 /* are intentionally the same */
-typedef enum enumDMUS_TIME_RESOLVE_FLAGS
-{
+typedef enum enumDMUS_TIME_RESOLVE_FLAGS {
     DMUS_TIME_RESOLVE_AFTERPREPARETIME  = 1<<10,  /* resolve to a time after the prepare time */
     DMUS_TIME_RESOLVE_GRID              = 1<<11,  /* resolve to a time on a grid boundary */
     DMUS_TIME_RESOLVE_BEAT              = 1<<12,  /* resolve to a time on a beat boundary */
@@ -186,8 +179,7 @@ typedef enum enumDMUS_TIME_RESOLVE_FLAGS
 
 /* The following flags are sent in the IDirectMusicTrack::Play() method */
 /* inside the dwFlags parameter */
-typedef enum enumDMUS_TRACKF_FLAGS
-{
+typedef enum enumDMUS_TRACKF_FLAGS {
     DMUS_TRACKF_SEEK            = 1,      /* set on a seek */
     DMUS_TRACKF_LOOP            = 2,      /* set on a loop (repeat) */
     DMUS_TRACKF_START           = 4,      /* set on first call to Play */
@@ -242,8 +234,7 @@ typedef struct _DMUS_NOTE_PMSG
     char    cTranspose;        /* Transposition to add to midi note value after converted from wMusicValue. */
 } DMUS_NOTE_PMSG;
 
-typedef enum enumDMUS_NOTEF_FLAGS
-{
+typedef enum enumDMUS_NOTEF_FLAGS {
     DMUS_NOTEF_NOTEON = 1,     /* Set if this is a MIDI Note On. Otherwise, it is MIDI Note Off */
 } DMUS_NOTEF_FLAGS;
 
@@ -251,8 +242,7 @@ typedef enum enumDMUS_NOTEF_FLAGS
    into the appropriate bMidiValue.
 */
 
-typedef enum enumDMUS_PLAYMODE_FLAGS
-{
+typedef enum enumDMUS_PLAYMODE_FLAGS {
     DMUS_PLAYMODE_KEY_ROOT          = 1,  /* Transpose on top of the key root. */
     DMUS_PLAYMODE_CHORD_ROOT        = 2,  /* Transpose on top of the chord root. */
     DMUS_PLAYMODE_SCALE_INTERVALS   = 4,  /* Use scale intervals from scale pattern. */
@@ -411,8 +401,7 @@ typedef struct _DMUS_CURVE_PMSG
 
 } DMUS_CURVE_PMSG;
 
-typedef enum enumDMUS_CURVE_FLAGS
-{
+typedef enum enumDMUS_CURVE_FLAGS {
     DMUS_CURVE_RESET = 1,           /* Set if the curve needs to be reset. */
 } DMUS_CURVE_FLAGS;
 

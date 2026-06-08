@@ -16,7 +16,7 @@ class	OneWord
 public:
 	enum	{MAX_CA=16,MAX_CU=15};
 	char text[MAX_CA];
-	enum	Flags	{	
+	enum	Flags {	
 						W_HYPHENOPT=0x000000,
 							W_SPACE=0x000001,W_TAB=0x000002,
 							W_HARDLINE=0x000004,

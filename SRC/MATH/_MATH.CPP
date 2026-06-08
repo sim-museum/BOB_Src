@@ -63,5 +63,5 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 */
 
 #include "_MATH.h"
-#include "..\MATH\Math.cpp"
-#include "..\MATH\Matrix.cpp"
+#include "../MATH/Math.cpp"
+#include "../MATH/Matrix.cpp"

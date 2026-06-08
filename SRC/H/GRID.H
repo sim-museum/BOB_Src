@@ -42,7 +42,7 @@ public:
 	static	void	OpenGridFiles();
 	static	void	CloseGridFiles();
 	static	void	SetCloudGrid( int layer, UByte cover );
-	enum	GridFiles	{GF_CLOUDLAYER0,GF_CLOUDLAYER1,GF_CLOUDLAYER2,GF_RADAR,GF_MINALT,GF_MAXALT,GF_AVEALT,GF_COLOUR,GF_CORNERALT,GF_TABLESIZE};
+	enum	GridFiles {GF_CLOUDLAYER0,GF_CLOUDLAYER1,GF_CLOUDLAYER2,GF_RADAR,GF_MINALT,GF_MAXALT,GF_AVEALT,GF_COLOUR,GF_CORNERALT,GF_TABLESIZE};
 	static Grid_Byte_File* gridfiles/*[GF_TABLESIZE]*/;
 	static fileblock* CloudGrids[3];
 #endif

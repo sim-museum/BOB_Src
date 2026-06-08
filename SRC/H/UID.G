@@ -1,4 +1,4 @@
-enum UIDEquates	{
+enum UIDEquates {
 //DeadCode RDH 13Jun96 	UID_Null = 0,
 //DeadCode RDH 13Jun96 	UID_CvNtAlbert,
 //DeadCode RDH 19Jun96 	UID_CvNtAniche=1,

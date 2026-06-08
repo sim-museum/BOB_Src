@@ -18,7 +18,7 @@
 //DeadCode JIM 18Jun96 // go up in 2's to avoid add bx,bx
 //DeadCode JIM 18Jun96 //
 //DeadCode JIM 18Jun96 
-//DeadCode JIM 18Jun96 enum	BFINST	{duffroutineno = 0,
+//DeadCode JIM 18Jun96 enum	BFINST {duffroutineno = 0,
 //DeadCode JIM 18Jun96 				 rtbeginno,
 //DeadCode JIM 18Jun96 				 rtendno,
 //DeadCode JIM 18Jun96 				 startitemno,

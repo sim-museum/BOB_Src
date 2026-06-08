@@ -1,0 +1,1 @@
+Areatype.h

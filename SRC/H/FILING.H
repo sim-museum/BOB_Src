@@ -56,4 +56,3 @@ protected:
 // Microsoft Developer Studio will insert additional declarations immediately before the previous line.
 
 #endif // !defined(AFX_FILING_H__11348502_787F_11D2_9FD5_D0EC00C10000__INCLUDED_)
-

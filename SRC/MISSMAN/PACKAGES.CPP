@@ -93,7 +93,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "planetyp.h" 
 #include "nodebob.h"
 
-#include "..\mfc\resource.h"
+#include "../mfc/resource.h"
 #include	"globrefs.h"
 #include "myerror.h"
 
@@ -5843,7 +5843,7 @@ int	Profile::RecostRaidList()
 	bool	nearescortused=false;
 	AttackMethodField		farescorts={0};
 	typedef UByte	Targets;
-//DEADCODE JIM 21/06/00 	enum	Targets	{};
+//DEADCODE JIM 21/06/00 	enum	Targets {};
 
 	MAKEFIELD(Targets,0,15);
 	TargetsField	targetsusedbits={0};	

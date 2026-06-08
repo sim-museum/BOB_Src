@@ -31,8 +31,8 @@ struct	RadioOnz;												//RJS 20Jan00
 struct	RadioSampleRec;
 typedef	SIMPLEWAVHEADER	*SWAV_P;
 class	ViewPoint;											//RJS 11May99
-enum	SquadNum;
-enum	PlaneTypeSelect;
+enum	SquadNum : int;
+enum	PlaneTypeSelect : int;
 struct	SampListType
 {
 	UByteP	address;
@@ -129,8 +129,7 @@ struct	PhraseBuffer									//RJS 11Feb99
 	}
 };
 
-enum	MsgPriority
-{
+enum	MsgPriority {
 	GAP = 0,
 	PRI_LOW,
 	PRI_MED,
@@ -138,14 +137,12 @@ enum	MsgPriority
 	PRI_MAX
 };
 
-enum	VoiceState
-{
+enum	VoiceState {
 	VOXSTATE_NORMAL = 0,
 	VOXSTATE_EXCITED
 };
 
-enum	MsgVisibility
-{
+enum	MsgVisibility {
 	VIS_1 = 0,	 //allow rpt, but not in old buffer
 	VIS_2,		// allow rpt, buffer regardless
 	VIS_3,		// block rpt, discard if buffered
@@ -155,8 +152,7 @@ enum	MsgVisibility
 };
 
 //These voices must be in sync with the directories declared in master.fil
-enum	VoiceType
-{
+enum	VoiceType {
 	VOICE_PLAYER = 0,			//1st real voice				//RJS 17May00
 	VOICE_XPLAYER,
 	VOICE_LWPLAYER,												//RJS 29Feb00
@@ -180,8 +176,7 @@ enum	VoiceType
 	VOICE_SUPERMAX													//RJS 11Oct00
 };
 
-enum		MsgType
-{
+enum		MsgType : int {
 	MSG_DELAY = 0x100,			//RJS 22Mar99
 	MSG_REPEAT = 0x200,
 	MSG_LP = 0x400,

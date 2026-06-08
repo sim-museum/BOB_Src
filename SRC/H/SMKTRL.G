@@ -31,8 +31,7 @@ typedef struct	smktrltype
 }
 SmokeType, *SmokeTypeP;
 
-enum SmokeTrailDefs
-{
+enum SmokeTrailDefs {
 	TRAIL_CONTRAIL = 0,
 	TRAIL_ROCKET = 1,
 	TRAIL_VAPOUR = 2,

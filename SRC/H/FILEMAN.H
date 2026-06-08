@@ -205,8 +205,8 @@ inline  void*	getdata(fileblockptr	fb)	{return(fb->getdata());};
 
 
 //typedef	uword	dirindex;
-const	MAXDIRENTRIES		=	256;
-const	MAXCDFILEENTRIES 	=	2;  							//PD 18Nov96
+const	int MAXDIRENTRIES		=	256;
+const	int MAXCDFILEENTRIES 	=	2;  							//PD 18Nov96
 
 
 /////////////////////////////////////////////////////////
@@ -224,7 +224,7 @@ class	fileman
 
 	fileblocklink	*allfreedfiles,
 					*allactivefiles;
-	enum	DirNameInd	{FIRSTdirnameind=0,MAXDIRIND=254,ALIASDIRIND=255};
+	enum	DirNameInd {FIRSTdirnameind=0,MAXDIRIND=254,ALIASDIRIND=255};
 
 	#ifdef	_WINBASE_
 void	fileman::CDseekreadfilepos(HANDLE winhandle,int index,void* buffer,int sizecopy);

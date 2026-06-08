@@ -77,16 +77,26 @@ extern	Error	_Error;
 
 //DEADCODE DAW 26/04/99 #ifndef	assert
 
+#if defined(BOB_LINUX)
+	// Variadic no-op: tolerates both bob's 2-arg assert(expr,str) and any system
+	// 1-arg assert(expr) that ends up visible. Matches NDEBUG/Release semantics.
+	#ifdef assert
+	#undef assert
+	#endif
+	#define assert(...)  ((void)0)
+	#define nassert(...) ((void)0)
+#else
 	#ifdef NDEBUG
 //	 	#define assert(__ignore) ((void)0)
 		#define assert(expr,str) 	  {}
-		#define nassert(__ignore,str) {}	
+		#define nassert(__ignore,str) {}
 	#else
 		#define	GOTASSERT ROWAN
 //	 	#define assert(expr) ((expr)?(void)0:(void)_Error.EmitSysErr(#expr))
 		#define assert(expr,str) {if (expr) {} else {(void)_Error.EmitSysErr(#expr str);}}
  		#define nassert(expr,str) ((expr)?(void)_Error.EmitSysErr(#expr str):(void)0)
 	#endif
+#endif
 //DEADCODE DAW 26/04/99 #endif
 //#else
 //#ifdef __MSVC__

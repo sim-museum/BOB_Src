@@ -101,8 +101,7 @@ typedef class AeroDevice *PAERODEVICE;
 #define	ANIM_BOMBDOORS_OPEN		255										//CSB 31Aug00
 #define	ANIM_BOMBDOORS_AUTO		-32768							//RJS 11May00
 
-enum AIRCRAFT_TYPE
-{
+enum AIRCRAFT_TYPE {
 	AT_VOID,
 
 //BOB Aircraft		//CSB 22/09/99	
@@ -121,8 +120,7 @@ enum AIRCRAFT_TYPE
 };
 
 
-enum ITERATION_MASK
-{
+enum ITERATION_MASK {
 	ALL,
 	Y_ONLY,
 	XZ_ONLY,
@@ -130,16 +128,14 @@ enum ITERATION_MASK
 };
 
 
-enum ENGINE_SELECTED
-{
+enum ENGINE_SELECTED {
 	ES_PORT,
 	ES_STBD,
 	ES_BOTH
 };
 
 
-enum FUELCOCK_TYPE
-{
+enum FUELCOCK_TYPE {
 	FC_VOID,
 	FC_2LEVERS,
 	FC_4POSITION

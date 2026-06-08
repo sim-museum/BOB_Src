@@ -138,8 +138,8 @@ struct _sag_values
 
 typedef struct _miprim_values MIPRIMARYVALUES;
 typedef struct _miprim_values* LPMIPRIMARYVALUES;
-enum	AutoMoveCodeTypeSelect;
-enum	UniqueID;
+enum	AutoMoveCodeTypeSelect : int;
+enum	UniqueID : int;
 struct _miprim_values
 {
 // ItemBase
@@ -478,8 +478,7 @@ struct _markinfo
 	UByteP memaddress;
 };
 
-enum	ReplayFlags
-{
+enum	ReplayFlags {
 	RF_NONE=0,
 	RF_SKIPFRAMES,
 	RF_BLOCKFORWARD,

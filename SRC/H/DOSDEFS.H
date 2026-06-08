@@ -98,6 +98,29 @@
 #define	WIN95
 #endif
 #endif
+// Linux native port (GCC): reuse the MSVC (non-asm) code paths -- they are the
+// closest match to GCC for Win32 typedefs/layout -- and rely on BOB_LINUX
+// (defined globally by CMake) to select GCC inline-asm at each _asm site.
+#ifdef	__GNUC__
+#ifndef	__MSVC__
+#define	__MSVC__
+#endif
+#ifndef	WIN95
+#define	WIN95
+#endif
+#ifndef	BOB_LINUX
+#define	BOB_LINUX
+#endif
+#ifndef	__forceinline
+#define	__forceinline	inline
+#endif
+#ifndef	__assume
+#define	__assume(x)	((void)0)	// MSVC optimiser hint; no-op on GCC
+#endif
+#ifndef	_assume
+#define	_assume(x)	((void)0)
+#endif
+#endif
 #ifdef	__WATCOMC__
 #pragma warning	389	9				// value may be truncated
 #pragma warning	14	8				// defined but not referenced
@@ -180,9 +203,9 @@
 #define	TRUE	BOOL_TRUE
 #define	TRUEST	BOOL_TRUE
 #define	FALSE	BOOL_FALSE
-typedef	enum	Bool	{BOOL_TRUE=1,BOOL_FALSE=0,BOOL_Align=255} Bool;
+typedef	enum	Bool {BOOL_TRUE=1,BOOL_FALSE=0,BOOL_Align=255} Bool;
 
-//DeadCode DAW 30Jun96 enum	Bool	{TRUE=1,FALSE=0,BOOL_Align=255};
+//DeadCode DAW 30Jun96 enum	Bool {TRUE=1,FALSE=0,BOOL_Align=255};
 
 typedef	signed	char	SByte,*SByteP;
 typedef	unsigned char	UByte,*UByteP;
@@ -215,7 +238,7 @@ IFShare,*IFShareP;
 //	long ECX;
 //	long EAX;
 //	short flags;
-//	enum	flagbits	{	CF=1,PF=4,AF=16,ZF=64,SF=128,
+//	enum	flagbits {	CF=1,PF=4,AF=16,ZF=64,SF=128,
 //							TF=256,IF=512,DF=1024,OF=2048
 //						};
 //	short ES,DS,FS,GS,IP,CS,SP,SS;
@@ -244,6 +267,10 @@ IFShare,*IFShareP;
 //	#include <stdlib.h>
 //	extern FILE*	debugfile;
 
+#if defined(BOB_LINUX)
+	#define	INT3	((void)0)	// x86 int3 breakpoint: no-op on Linux
+	#define	NOP	((void)0)
+#else
 #ifndef 	NDEBUG
 	#ifndef	_IHATEINT3_
 		#define	INT3 _asm {int 3}
@@ -257,6 +284,7 @@ IFShare,*IFShareP;
 	#define	NOP _asm {nop}
 #else
 	#define	NOP	{}
+#endif
 #endif
 
 //	#define	INT3 {fprintf(debugfile,"%s INT3()\n",__FILE__);fflush(debugfile);}
@@ -272,8 +300,16 @@ IFShare,*IFShareP;
 	#define	NOP		{}
 #endif
 
+#if defined(BOB_LINUX)
+// `: int` so the generated definition matches the `enum X : int;` forward decls
+// the Linux port adds (GCC requires a fixed underlying type on opaque enums, and
+// an unscoped enum can't mix fixed/unfixed declarations). MINMAX ranges are small.
 #define	MINMAX(typename,minval,maxval)				\
-	enum	typename	{typename##MIN=minval,typename##MAX=maxval}
+	enum	typename : int	{typename##MIN=minval,typename##MAX=maxval}
+#else
+#define	MINMAX(typename,minval,maxval)				\
+	enum	typename {typename##MIN=minval,typename##MAX=maxval}
+#endif
 
 //Constructor/destructor standouts
 #define	CON	/*CON*/
@@ -331,7 +367,9 @@ struct _SEQUENCE;
                 modify [eax ebx ecx edx]
 #endif
 
-#ifdef	__MSVC__
+#if defined(BOB_LINUX)
+#include <cstdio>	// use the system FILE (struct _IO_FILE)
+#elif defined(__MSVC__)
 struct	_iobuf;
 typedef	_iobuf	FILE;
 #else

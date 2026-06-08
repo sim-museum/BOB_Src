@@ -17,7 +17,7 @@
 #define MaxMapDirs 			16									//DAW 27Oct98
 
 #ifndef	__BCPLUSPLUS__
-enum	ImageMapNumber;
+enum	ImageMapNumber : int;
 #else
 typedef	int	ImageMapNumber;
 #endif

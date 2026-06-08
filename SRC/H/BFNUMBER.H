@@ -106,8 +106,8 @@ struct	EventVar:EventVal
 	EventVal& 	operator =(const EventVal& e)  {return EventVal::operator=(e);}
 };
 
-enum	UsesType	{EUCT_int=0,EUCT_caller=1,EUCT_UID,EUCT_coords,EUCT_percent,EUCT_angle,EUCT_silly};
-enum	InsertType	{INS_no=0,INS_yes=1,
+enum	UsesType {EUCT_int=0,EUCT_caller=1,EUCT_UID,EUCT_coords,EUCT_percent,EUCT_angle,EUCT_silly};
+enum	InsertType {INS_no=0,INS_yes=1,
 					INS_base=0x00010000,INS_off= 0x00020000,INS_rot=0x00040000,
 					INS_item=0x00100000,INS_icpt=0x00200000};
 inline InsertType operator+(InsertType a,InsertType b)	{return InsertType((int)a|(int)b);}
@@ -120,7 +120,7 @@ struct	Expr
 //static int highestaddr,lowestaddr,numelts,indent;
 static FILE* F;
 //void	printit(int indent,char name,int value);
-enum	Type{EXPR_BASE,EXPR_GLOB,EXPR_UID,EXPR_RND,EXPR_SEL,EXPR_LIST,EXPR_FORM,EXPR_WORLD,EXPR_XYZ,EXPR_ROT,EXPR_ICPT}
+enum	Type {EXPR_BASE,EXPR_GLOB,EXPR_UID,EXPR_RND,EXPR_SEL,EXPR_LIST,EXPR_FORM,EXPR_WORLD,EXPR_XYZ,EXPR_ROT,EXPR_ICPT}
 		type;
 virtual	char*		FnName()=0;
 virtual	int			Arguments()=0;

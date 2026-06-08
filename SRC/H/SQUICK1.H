@@ -69,7 +69,7 @@ struct	QuickFields
 #ifdef	STANDALONE
 typedef int	FixString;
 #else
-enum	FixString	{};
+enum	FixString {};
 CString LoadResString(FixString);
 #endif
 struct	QuickDef

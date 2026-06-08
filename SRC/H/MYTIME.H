@@ -11,8 +11,7 @@
 
 #include	"myangles.h"
 #define	DEFAULT_TIME 0
-enum	Times
-{
+enum	Times {
 
 		SECS100 = 100,							//RDH 20May96
 		THIRTYSECS100 = 3000,

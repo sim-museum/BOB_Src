@@ -30,11 +30,11 @@
 #define	DEFAULT_ANALOGUE 0
 #ifndef AXIS_USES
 #define	AXIS_USES
-//DeadCode CSB 06/04/99	enum	DeadZones	{DZ_SMALL = 1024, DZ_MEDIUM = 2048, DZ_LARGE = 3096};
-enum	DeadZones	{DZ_SMALL = 512, DZ_MEDIUM = 1536, DZ_LARGE = 3072};	//CSB 06/04/99	
-enum	AnalogMode	{ AM_ARCADE, AM_REALISTIC,
+//DeadCode CSB 06/04/99	enum	DeadZones {DZ_SMALL = 1024, DZ_MEDIUM = 2048, DZ_LARGE = 3096};
+enum	DeadZones {DZ_SMALL = 512, DZ_MEDIUM = 1536, DZ_LARGE = 3072};	//CSB 06/04/99	
+enum	AnalogMode { AM_ARCADE, AM_REALISTIC,
 						 AM_LOW, AM_MEDIUM, AM_HIGH, AM_ABSOULTE};
-enum	AxisUses		{	AU_UNUSED=-1,AU_UNASSIGNED=-1,
+enum	AxisUses {	AU_UNUSED=-1,AU_UNASSIGNED=-1,
 							AU_AILERON=0,AU_ELEVATOR,AU_RUDDER,AU_THROTTLE,
 							AU_UI_X=4,AU_UI_Y,AU_COCKPIT=AU_UI_X,
 							AU_COLLECTIVE=6,AU_COOLIEHAT=7,
@@ -49,7 +49,7 @@ enum	AxisUses		{	AU_UNUSED=-1,AU_UNASSIGNED=-1,
 							MAXFORCEAXES=10	//list of FF actuator GUIDs
 						};
 #endif
-//enum	FeedBackUses	{
+//enum	FeedBackUses {
 //							//spares: 20-29
 //							AU_FB_CTRLFORCE=0,
 //							AU_FB_CTRLSTIFF=1,
@@ -218,12 +218,12 @@ class	BOStream;
 class	BIStream;
 class	CRCombo;
 class	ViewPoint;
-	enum	AllowAliasing	{
+	enum	AllowAliasing {
 							AA_NONE=0,		AA_GUNNER_JOYVIEW,		AA_THROTTLE2_PROP1,		AA_UI_PAN,	
 								AA_TT_REVERSE,	//this is a cludge: 1 bit flag to say axis is reversed...
 								AA_PAIR_MAX,AA_AA_SETUP
 							};
-//DeadCode JIM 9Oct00 	enum	AllowReset		{
+//DeadCode JIM 9Oct00 	enum	AllowReset {
 //DeadCode JIM 9Oct00 							AR_NORESET
 //DeadCode JIM 9Oct00 							AR_DEADZONE80000000
 class	Analogue
@@ -310,8 +310,7 @@ public:
 
 	UWord	AxisDeviceFlags;
 
-	enum	DeviceFlags
-	{
+	enum	DeviceFlags {
 		COCKPIT_ON_SH_MOUSE=0,
 		COCKPIT_ON_SH_JOYSTICK,
 		PAN_ON_SH_MOUSE,

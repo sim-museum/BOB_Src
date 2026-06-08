@@ -20,7 +20,7 @@ class AircraftUnit : public RowanDialog
 {
 // Construction
 public:
-	enum	TypesToList	{TTL_JU87,TTL_110,TTL_FIGHTER,TTL_BOMBER,TTL_SPITFIRE,TTL_HURRICANE,TTL_RECONN1,TTL_RECONN2,TTL_RECONN3};
+	enum	TypesToList {TTL_JU87,TTL_110,TTL_FIGHTER,TTL_BOMBER,TTL_SPITFIRE,TTL_HURRICANE,TTL_RECONN1,TTL_RECONN2,TTL_RECONN3};
 	static RDialog* Make(int oldunit, TypesToList typestolist, int tab, int am, int unitdisplaylevel);
 
 	AircraftUnit(int oldunit, TypesToList typestolist, int tab, int am, int unitdisplaylevel, CWnd* pParent = NULL);   // standard constructor
