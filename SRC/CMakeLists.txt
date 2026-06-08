@@ -3,3 +3,4 @@
 add_subdirectory(MATH)
 add_subdirectory(LIB3D)
 add_subdirectory(AIRCRAFT)
+add_subdirectory(GENERAL)
