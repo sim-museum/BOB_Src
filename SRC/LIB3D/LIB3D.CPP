@@ -87,6 +87,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 //DEADCODE MS 02/02/00 typedef	bool	GUID;
 #include "dosdefs.h"
+#if defined(BOB_LINUX)
+#include <windows.h>	// Linux port: pull the full Win32 compat (winbase/wingdi/extras)
+#endif
 #include <objbase.h>
 #include <stdio.h>
 #include <fstream.h> // for filestream stuff..
@@ -1552,7 +1555,7 @@ private:
 //	void	VertexSetCols( SVertex* sVertex, const D3DVERTEX* pv, const D3DCOLOR matCol );
 	void	SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF );	//JON 5/19/00
 
-	void	ClipSetCols(const SVertex* &vi,const SVertex* &vo,SVertex* &vc,const double &frac);
+	void	ClipSetCols(SVertex* &vi,SVertex* &vo,SVertex* &vc,const double &frac);
 	typedef void (*ClipFunction)(SVertex*,SVertex*,SVertex*,const ULong);
 	SVertex*	DoClip( const SVertex* a, const SVertex* b, SVertex* out,ClipCode code, ClipFunction fn );
 	void	ClipToFront(SVertex*,SVertex*,SVertex*,const ULong);
@@ -2432,8 +2435,8 @@ inline HRESULT Lib3D::PerformSlowCopy(LPDIRECTDRAWSURFACE7 pDst,LPDIRECTDRAWSURF
 	ULong bmask=ddsdDst.ddpfPixelFormat.dwBBitMask&MagicRotate(bMShift,ddsdSrc.ddpfPixelFormat.dwBBitMask);
 
 	DWORD swidth=rect==NULL?ddsdSrc.dwWidth:rect->right-rect->left;
-	for (DWORD scale(1);swidth!=ddsdDst.dwWidth;scale<<=1,swidth>>=1);
- 
+	DWORD scale(1); for (;swidth!=ddsdDst.dwWidth;scale<<=1,swidth>>=1);
+
 	DWORD lPitch=ddsdSrc.lPitch*scale; // this does the y scaling
 
 	DoLocks( pDst, pSrc, &ddsdSrc, &ddsdDst );
@@ -2717,7 +2720,7 @@ Lib3D::Lib3D()
 	gpD3DVBL7=NULL;													//RJS 17Apr00
 	lpD3DVB7=NULL;
 	pDDS7LandRT=NULL;													//JON 15Jun00
-	for (int i =MAX_VERTICES-1;i>=0;polyVerts[i]=i,i--);
+	int i; for (i =MAX_VERTICES-1;i>=0;polyVerts[i]=i,i--);
 	for (i=NUM_PALETTES-1;i>=0;normPalLookUp[i]=NULL,i--);
 	for (i=NUM_PALETTES-1;i>=0;maskPalLookUp[i]=NULL,i--);
 	for (i=NUM_PALETTES-1;i>=0;trnsPalLookUp[i]=NULL,i--);
@@ -3461,7 +3464,7 @@ HRESULT	Lib3D::GetModes(const HDRIVER& hDriver,UIModes& uiModes)
 
 	SLong i=SLong(hDriver);
 
-	for (DDDriver *pDriver=pDrivers;i>0 && pDriver!=NULL;i--,pDriver=pDriver->pNext)
+	DDDriver *pDriver; for (pDriver=pDrivers;i>0 && pDriver!=NULL;i--,pDriver=pDriver->pNext)
 	{/*search for the driver required*/}
 
 	if (pDriver==NULL)
@@ -3536,12 +3539,12 @@ HRESULT	Lib3D::_SetDriverAndMode(const HDRIVER& hDriver,const HMODE& hMode,const
 	
 	SLong i=SLong(hDriver);
 	
-	for (DDDriver *pDriver=pDrivers;i>0 && pDriver!=NULL;i--,pDriver=pDriver->pNext);
+	DDDriver *pDriver; for (pDriver=pDrivers;i>0 && pDriver!=NULL;i--,pDriver=pDriver->pNext);
 	if (pDriver==NULL)
 		return lastError=DDERR_INVALIDPARAMS;
-	
+
 	i=SLong(hMode);
-	for (DDMode *pMode=pDriver->pModes;i>0 && pMode!=NULL;i--,pMode=pMode->pNext);
+	DDMode *pMode; for (pMode=pDriver->pModes;i>0 && pMode!=NULL;i--,pMode=pMode->pNext);
 	if (pMode==NULL)
 		return lastError=DDERR_INVALIDPARAMS;
 
@@ -6510,7 +6513,7 @@ HRESULT Lib3D::UploadAsDitherTexture( MAPDESC *pmap )
 
 	if (pmap->hTextureMap==0 || pmap->hTextureMap==NULL)
 	{
-		for (SLong j =MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
+		SLong j; for (j =MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
 		if (!j)
 		{
 			CloseDown();
@@ -7310,7 +7313,7 @@ HRESULT Lib3D::SetMaterial(const HMATERIAL& hMaterial)
 		{
 			if (hLastMaterial.p[i]!=NULL && hLastMaterial.p[i]->hTextureMap==0 || textureTable[hLastMaterial.p[i]->hTextureMap]==NULL)
 			{
-				for (int j=MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--)
+				int j; for (j=MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--)
 				{/* search for next free texture slot */}
 				if (!j)
 				{
@@ -7445,7 +7448,7 @@ HRESULT Lib3D::CreateTexture(MAPDESC* pMapDesc,const TCFLAGS& tcFlag)
 
 	if (hTextureMap==0 || textureTable[hTextureMap]==NULL)
 	{
-		for (SLong i =MAX_TEXTURES-1;i>256 && textureTable[i]!=NULL;i--);
+		SLong i; for (i =MAX_TEXTURES-1;i>256 && textureTable[i]!=NULL;i--);
 		if (i==256)
 		{
 			CloseDown();
@@ -8250,7 +8253,7 @@ HRESULT Lib3D::SetMaterial(UWord ht,MAPDESC *pmap)
 		hMaterial.tsH[1]=1.f/hMaterial.p[1]->h;
 		if (hMaterial.p[1]->hTextureMap==0 || textureTable[hMaterial.p[1]->hTextureMap]==NULL)
 		{
-			for (SLong j =MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
+			SLong j; for (j =MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
 			if (!j)
 			{
 				CloseDown();
@@ -10427,7 +10430,7 @@ inline void Lib3D::SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF )
 			}
 #endif
 			sVertex->color=lightingTable[F2UB_Clip((v+gLightBase)*gLightScale)];
-			SetColLighting( sVertex->color, curCol, globAlpha );
+			SetColLighting( (D3DCOLOR&)sVertex->color, curCol, globAlpha );	// R3DCOLOUR::all (ULong) reinterpreted as D3DCOLOR (uint), same bits on 32-bit
 
 			sVertex->specular=specularTable[F2UB_Clip(k*255.f)];
 		}
@@ -10442,7 +10445,7 @@ inline void Lib3D::SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF )
 
 			sVertex->specular=0x00000000;
 
-			SetColLighting( sVertex->color, curCol, globAlpha );
+			SetColLighting( (D3DCOLOR&)sVertex->color, curCol, globAlpha );	// R3DCOLOUR::all (ULong) reinterpreted as D3DCOLOR (uint), same bits on 32-bit
 		}
 		break;
 		
@@ -10472,7 +10475,7 @@ inline void Lib3D::SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF )
 
 //			sVertex->color=0xAAFFFFFF;  // the AA is the alpha - about to be set
 //			SetColAlpha( sVertex->color, alpha );
-//			SetColLighting( sVertex->color, curCol, globAlpha );
+//			SetColLighting( (D3DCOLOR&)sVertex->color, curCol, globAlpha );	// R3DCOLOUR::all (ULong) reinterpreted as D3DCOLOR (uint), same bits on 32-bit
 			sVertex->color=curCol;
 			SetColAlpha( sVertex->color, alpha );
 
@@ -10489,7 +10492,7 @@ inline void Lib3D::SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF )
 		break;
 		case LF_AMBIENT+LF_MAPCOLBIT:
 			sVertex->color=gLightingDesc.ambientRGB;
-			SetColLighting( sVertex->color, curCol, globAlpha );
+			SetColLighting( (D3DCOLOR&)sVertex->color, curCol, globAlpha );	// R3DCOLOUR::all (ULong) reinterpreted as D3DCOLOR (uint), same bits on 32-bit
 
 			sVertex->specular=0x00000000;
 		break;
@@ -10549,7 +10552,7 @@ inline void Lib3D::SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF )
 //Date			Web 29 Mar 2000
 //				frav runs from in to out 0->1
 //------------------------------------------------------------------------------
-inline void Lib3D::ClipSetCols( const SVertex* &vi, const SVertex* &vo, SVertex* &vc, const double &frac )
+inline void Lib3D::ClipSetCols( SVertex* &vi, SVertex* &vo, SVertex* &vc, const double &frac )
 {
 //DEADCODE JON 4/18/00 	if ( lightflag == LF_VERTEX )
 //DEADCODE JON 4/18/00 		return;
@@ -11071,7 +11074,7 @@ void Lib3D::GenericPolyClip(SPolygon *poly /*,ULong SizeOfVertex*/)
 
 	pV=poly->pVertexList;
 
-	for (int i=poly->vertexcount;i!=0;i--)
+	int i; for (i=poly->vertexcount;i!=0;i--)
 	{
 		*pCur=pV;
 		pCur++;
@@ -11223,7 +11226,7 @@ void Lib3D::PolyClipFrontBack(SPolygon *poly)
 
 	pV=poly->pVertexList;
 
-	for (int i=poly->vertexcount;i!=0;i--)
+	int i; for (i=poly->vertexcount;i!=0;i--)
 	{
 		*pCur=pV;
 		pCur++;
@@ -12692,6 +12695,9 @@ HRESULT Lib3D::DrawCylinder(const HMATERIAL& hMaterial,	//texture
 //DeadCode RJS 10Aug00 		SWord	sin_ang,cos_ang;
 		Float	angle;
 
+#if defined(BOB_LINUX)
+		angle = (Float)__builtin_atan2((double)opposite, (double)adjacent);
+#else
 		_asm
 		{
 			fld		opposite
@@ -12699,6 +12705,7 @@ HRESULT Lib3D::DrawCylinder(const HMATERIAL& hMaterial,	//texture
 			fpatan
 			fstp	angle
 		}
+#endif
 
 //DeadCode RJS 10Aug00 		angle *= 10430.37835047;
 //DeadCode RJS 10Aug00 		SWord	angleofcyl = SWord(angle)-16384;
@@ -12888,6 +12895,9 @@ HRESULT Lib3D::CylinderOffsets(	const DoPointStruc& vertex0,	//p0
 //DeadCode RJS 10Aug00 		SWord	sin_ang,cos_ang;
 		Float	angle;
 
+#if defined(BOB_LINUX)
+		angle = (Float)__builtin_atan2((double)opposite, (double)adjacent);
+#else
 		_asm
 		{
 			fld		opposite
@@ -12895,6 +12905,7 @@ HRESULT Lib3D::CylinderOffsets(	const DoPointStruc& vertex0,	//p0
 			fpatan
 			fstp	angle
 		}
+#endif
 
 //DeadCode RJS 10Aug00 		angle *= 10430.37835047;
 //DeadCode RJS 10Aug00 		SWord	angleofcyl = SWord(angle)-16384;
@@ -14313,9 +14324,9 @@ inline void Lib3D::ChangeRenderStateFog( float curFogStart, float curFogEnd )
 {
 
 	DWORD newStateBlocks[MAX_TEXTURE_OPTS];
-	for ( int i = 0; i < MAX_TEXTURE_OPTS; i++ )
+	int i, j; for ( i = 0; i < MAX_TEXTURE_OPTS; i++ )
 	{
-		for ( int j = 0; j < i && stateBlocks[i] != stateBlocks[j]; j++ )
+		for ( j = 0; j < i && stateBlocks[i] != stateBlocks[j]; j++ )
 		{ /*search for duplicate*/ }
 		if ( i != j )
 		{ //  a duplicate state block has been\found...
@@ -15194,7 +15205,7 @@ void Lib3D::EnableFogging(bool fEnable)
 #endif
 }
 
-inline void getNextToken( char* token, fstream input )
+inline void getNextToken( char* token, fstream& input )
 {
 	input.get( token[0] );
 	while ( token[0] == ' ' || token[0] == '\t'|| token[0] == ','  )
@@ -15348,7 +15359,7 @@ HRESULT Lib3D::HandleNaffDriver()
 			if ( newToken[0] == '\n' )
 				break; // check for end of line.
 
-			for ( int i = 0; i < MAX_TOKEN; i++ )
+			int i; for ( i = 0; i < MAX_TOKEN; i++ )
 			{
 				if ( !strcmp( tokenList[i].tokenStr, newToken ) )
 				{
@@ -15454,7 +15465,7 @@ HRESULT Lib3D::HandleNaffDriver()
 							input.close();
 							return DDERR_GENERIC;
 						}
-						for ( int format = 0; format < sizeof( numberList ); format++ )
+						int format; for ( format = 0; format < sizeof( numberList ); format++ )
 						{ 
 							if ( !strcmp( numberList[format].tokenStr, newToken ) )
 							{
@@ -15571,7 +15582,7 @@ HRESULT Lib3D::HandleNaffDriver()
 		tickCountBuff = new LARGE_INTEGER[frameTimeBuffSize];
 		for ( int i = 0; i<frameTimeBuffSize; i++ )
 		{
-			tickCountBuff[i].QuadPart = 0i64;
+			tickCountBuff[i].QuadPart = 0LL;
 			frameTimeBuff[i] = 0;
 		}
 	}
@@ -16315,7 +16326,7 @@ void GetErrorDesc( HRESULT err, char* &desc )
 	} else 
 	{
 		HRESULT cur = ErrorCodes[0].hrErrorCode;
-		for ( int i=0; cur != err && cur != S_OK; cur = ErrorCodes[++i].hrErrorCode )
+		int i; for ( i=0; cur != err && cur != S_OK; cur = ErrorCodes[++i].hrErrorCode )
 		{ /*search*/ }
 		
 		if ( cur == err )
@@ -16337,7 +16348,7 @@ HRESULT Lib3D::ChangeDisplaySettings(HWND hWnd,SWord width,SWord height,bool fSe
 		DEVMODE dmMode;
 		ZeroMemory(&dmMode,sizeof(DEVMODE));
 		dmMode.dmSize=sizeof(DEVMODE);
-		for (int i=0,f=0;(f=EnumDisplaySettings(NULL,i,&dmMode))!=0;i++)
+		int i=0,f=0; for (;(f=EnumDisplaySettings(NULL,i,&dmMode))!=0;i++)
 			if (dmMode.dmPelsWidth==width &&
 				dmMode.dmPelsHeight==height)
 				break;
@@ -18004,7 +18015,7 @@ void Lib3D::GenericPolyClip2D(SPolygon *poly)
 
 	pV=poly->pVertexList;
 
-	for (int i=poly->vertexcount;i!=0;i--)
+	int i; for (i=poly->vertexcount;i!=0;i--)
 	{
 		*pCur=pV;
 		pCur++;

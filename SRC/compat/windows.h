@@ -33,5 +33,8 @@ static inline LONG GetMessageTime(void) { return (LONG)GetTickCount(); }
 #define _WIN32_WINNT 0x0500
 #endif
 
+// Linux port: supplementary Win32/DirectDraw/Direct3D symbols (see header).
+#include "bob_dx_extra.h"
+
 #endif /* FF_LINUX */
 #endif /* FF_COMPAT_WINDOWS_H */

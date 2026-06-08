@@ -194,16 +194,21 @@ public:
 		};
 	};
 
-	inline operator ULong() 
+#if !defined(BOB_LINUX)
+	// GCC: ambiguous with `operator ULong&()` for non-const R3DCOLOUR->ULong
+	// conversions. Keep only the reference version on Linux (the code relies on
+	// it for lvalue/&= contexts; it still decays to ULong for reads).
+	inline operator ULong()
 	{
 		return all;
 	}
-	inline operator ULong&() 
+#endif
+	inline operator ULong&()
 	{
 		return all;
 	}
 
-	inline operator const ULong() const  
+	inline operator const ULong() const
 	{
 		return all;
 	}
