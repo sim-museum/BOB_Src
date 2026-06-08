@@ -74,7 +74,7 @@ typedef	struct	Shape_Desc										//RJS 02Dec97
 ShapeDesc,
 *ShapeDescPtr;													//RJS 02Dec97
 
-//DeadCode RDH 28Nov95 class	fileblock;
+class	fileblock;	// Linux port: forward-declare (used below as fileblock**)
 //DeadCode RDH 28Nov95 typedef	fileblock	*fileblockptr;								//JIM 31Oct95
 //DeadCode PD 15Mar96 #ifndef	FILEMAN_Included
 //DeadCode PD 15Mar96 typedef class	fileblock *fileblockptr;

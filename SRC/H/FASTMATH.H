@@ -100,7 +100,7 @@ private:
 		//
 		// not very efficient but only done once
 		//
-		for (SLong x=0;x<=256;x++)
+		SLong x; for (x=0;x<=256;x++)
 		{
 			R3DVALUE square=R3DVALUE(x);
 			square*=square;
