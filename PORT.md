@@ -245,6 +245,30 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   (surgical only), MSVC opaque enums, `interface`/`__int64`/`0i64`/`i64toa`
   -isms, and the bob_dx_extra compat header for DirectX symbols.
 
+- **2026-06-08 (10)**: **Phase 2 underway — AIRCRAFT is the 3rd module to build**
+  (`libbob_aircraft.a`). Cross-cutting fixes this batch unblocked it entirely and
+  lifted AI/MODEL/3D: MSVC calling-convention keywords (`__cdecl` etc.) in the
+  DOSDEFS GNU block; member-function-TYPE typedefs `typedef R(Class::Name)(args)`
+  -> `typedef R(Name)(args)` (VIEWSEL.H/COLLIDED.H); `PlaneTypeSelect` def given
+  `: int` (FLYINIT.H, comment-suffixed); `=NULL` pure-specifier -> `=0`; compat
+  shims `winerror.h`/`ole2.h`; `Vfw.h` case-alias.
+  - **De-duplicated real per-dir status** (earlier counts were inflated by the
+    case-alias symlinks; survey now skips `-L`): AIRCRAFT 8/8 ✓, MISSMAN 8/17,
+    3D 7/30, MODEL 6/21, FILES 4/7, GENERAL 2/4, AI 1/7, MOVECODE 1/11,
+    HARDWARE/BFIELDS low. MFC/ (454 files, the game core) not yet surveyed.
+  - **Identified next roots** (Phase 2 grind):
+    * **~13 files: `_asm` blocks** in game .cpp (per-file conversion; 28 game
+      .cpp files contain inline asm total).
+    * **bit-field-overlay template conflict** — `replay.h`/`persons2.h` use
+      `LASTFIELD`/`MidField`/`Overview` macros (BITCOUNT.H) to build bit-packed
+      unions; GCC reports `Overview ... conflicts with a previous declaration`.
+      Deep template issue MSVC tolerated; affects ~13 files. Handle carefully.
+    * **`Wrapper.h`** missing — actively included by the legacy VGA HARDWARE
+      files (HARD320/HARDVBE*, the pre-DirectDraw software renderers). Likely
+      stub it, or these may be excludable deadcode for the DirectDraw build.
+    * **`Vfw.h`** (Video for Windows) — alias added; `vfw.h` compat may need
+      more for the movie/intro path. Token-pasting `##` macro issues (Landscap).
+
 ### NEXT ACTIONS (resume here)
 1. Convert inline asm in the shared math/input headers (same recipe as
    vector.h/mathasm.h): `H/FASTMATH.H`, `H/POLYGON.H`, `H/MYVECTOR.H`,
