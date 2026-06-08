@@ -269,6 +269,29 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     * **`Vfw.h`** (Video for Windows) — alias added; `vfw.h` compat may need
       more for the movie/intro path. Token-pasting `##` macro issues (Landscap).
 
+- **2026-06-08 (11)**: **FILES is the 5th module to build** (libbob_files.a:
+  DOSFILE/LOADLIST/DISKIO/LOADLIB/WINFILE/FILEMAN). Five module libs now build:
+  math, lib3d, aircraft, general, files.
+  - FILEMAN: `FileMan : public fileman` on Linux (codebase calls
+    `FILEMAN.publicMethod()` externally, only valid with an accessible base;
+    MSVC was lax); `eip()`/`esp()` -> `__builtin_return_address`/
+    `__builtin_frame_address`; `_set_new_handler` guarded; implicit-int consts.
+  - More cross-cutting roots cleared: `_WINBASE_` marker (compat winbase headers;
+    bob gates Win32 structs on it), `stub3d.h` atomic xchg (18 files),
+    `ole2ver.h` shim, FASTMATH for-scope, SHAPES `fileblock` fwd-decl, `__cdecl`,
+    member-func-type typedefs, etc.
+  - **KNOWN HARD BLOCKER (deferred): the bit-field overlay** (BITCOUNT.H
+    FIRSTFIELD/BITFIELD/LASTFIELD via replay.h/persons2.h, ~13 files). Each
+    FIRSTFIELD needs an `Overview` typedef (= storage size) visible to its
+    BITFIELD/LASTFIELD. Original puts it in the anonymous union (GCC: "Overview
+    conflicts"); hoisting to the struct (current BOB_LINUX) fixes single-
+    FIRSTFIELD structs but multi-FIRSTFIELD ones (e.g. _asprim_values) hit
+    "member typedef redeclaration". `-fms-extensions` doesn't help. The clean fix
+    is to rework the macros to thread the storage type through each field macro
+    (or generate a unique-per-union typedef) WITHOUT editing every BITFIELD call
+    site in the headers - needs a focused, careful pass. This gates a chunk of
+    AI/MODEL/MISSMAN.
+
 ### NEXT ACTIONS (resume here)
 1. Convert inline asm in the shared math/input headers (same recipe as
    vector.h/mathasm.h): `H/FASTMATH.H`, `H/POLYGON.H`, `H/MYVECTOR.H`,
