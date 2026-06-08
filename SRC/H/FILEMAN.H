@@ -402,7 +402,14 @@ int	assumefakedir;
 	static	void	translatedirlist(void*	&dataarea,ULong&	datalengthin);
 };
 
-class	FileMan:protected fileman	
+#if defined(BOB_LINUX)
+// Public inheritance on Linux: the codebase calls FILEMAN.publicMethod() (and a
+// fileman method touches FILEMAN's base members) externally everywhere, which
+// only works if fileman is an accessible base. MSVC was lax about this.
+class	FileMan:public fileman
+#else
+class	FileMan:protected fileman
+#endif
 {
 	friend	class	dirlist;
 public:

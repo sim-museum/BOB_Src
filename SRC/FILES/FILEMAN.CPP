@@ -640,7 +640,7 @@ fileblockptr	fileman::loaddirlist(FileNum	filenum)
 //	differently (yuck!)
 //
 //////////////////////////////////////////////////////////////////////
-const	PATHSTEPCHARS	=	128;
+const	int	PATHSTEPCHARS	=	128;
 
 void	fileman::makedirectoryname(dirindex	reqdir,int	pathend)
 {
@@ -1124,7 +1124,9 @@ static	Bool	gotnewfix=FALSE;
 	extern	SLong eip();
 	#pragma aux eip="call next" "next: pop eax" value [eax]
 #else
-#ifdef __MSVC__
+#if defined(BOB_LINUX)
+inline SLong eip()	{ return (SLong)(intptr_t)__builtin_return_address(0); }
+#elif defined(__MSVC__)
 inline SLong eip()
 {
 	SLong	retval;
@@ -1143,7 +1145,9 @@ inline SLong eip()
 	extern	SLong* esp();
 	#pragma aux esp="mov eax,esp" value [eax]
 #else
-#ifdef __MSVC__
+#if defined(BOB_LINUX)
+inline SLong* esp()	{ return (SLong*)__builtin_frame_address(0); }
+#elif defined(__MSVC__)
 inline SLong* esp()
 {
 	SLong*	retval;
@@ -1930,15 +1934,15 @@ void fileman::InitFileSystem()
 #endif
 	MEMORYSTATUS	memstats={sizeof(MEMORYSTATUS)};
 	GlobalMemoryStatus(&memstats);
-	const blocksize=4096;
+	const int blocksize=4096;
 	typedef	char k4[blocksize];
-	const MEMBLOCKSsize=(memstats.dwTotalPhys>20000000)?(memstats.dwTotalPhys/2):5000000;
+	const ULong MEMBLOCKSsize=(memstats.dwTotalPhys>20000000)?(memstats.dwTotalPhys/2):5000000;
 	if (MEMBLOCKSsize>memstats.dwAvailPhys+memstats.dwAvailPageFile)
 		_Error.ReallyEmitSysErr("Not Enough Virtual memory.\nWanted %iK, Got %iK phys and %iK virtual",
 								MEMBLOCKSsize/1024,memstats.dwAvailPhys/1024,memstats.dwAvailPageFile/1024);
 	int totalscore=0;
 #ifdef NOMEMTEST
-	const MEMBLOCKS= MEMBLOCKSsize/blocksize-1;
+	const int MEMBLOCKS= MEMBLOCKSsize/blocksize-1;
 	k4* lump=new k4[MEMBLOCKS];
 	Mono_Text.Print((UByte*)"Before mem test pass 0");
 	int	i;
