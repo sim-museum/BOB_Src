@@ -11,6 +11,11 @@
 
 #ifdef FF_LINUX
 
+/* MSVC/COM keyword used by the DirectX interface headers (dmusicc.h, etc.) */
+#ifndef interface
+#define interface struct
+#endif
+
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>

@@ -120,6 +120,9 @@
 #ifndef	_assume
 #define	_assume(x)	((void)0)
 #endif
+// MSVC fixed-width types (identical re-typedef vs compat_types.h is fine in C++)
+typedef long long           __int64;
+typedef unsigned long long  __uint64;
 #endif
 #ifdef	__WATCOMC__
 #pragma warning	389	9				// value may be truncated

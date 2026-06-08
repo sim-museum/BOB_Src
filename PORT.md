@@ -199,6 +199,34 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     and only climb the tree as dependencies come online. The per-file C++ fixes
     (forward decls, downcasts, INSTANCEAI) are then localized per module.
 
+- **2026-06-08 (8)**: **LIB3D module — 5 of 6 files compile.**
+  - Compiling: `L3DGUID.CPP`, `GETDXVER.CPP`, `3D/MONOTXT.CPP`, and `ALLOC.C` /
+    `RADIX.C` (these are C — they use `new`/`old` as identifiers — so CMake
+    builds them with `LANGUAGE C`). `FLAGSW.CPP` is excluded (it is `#include`d
+    by LIB3D.CPP as inline `Lib3D::` method bodies). `SRC/LIB3D/CMakeLists.txt`
+    written (not yet added to SRC/CMakeLists.txt — waiting on LIB3D.CPP).
+  - Compat/header additions (help the whole tree): `interface`->`struct`
+    (compat_types.h, for the DirectX interface headers); `__int64`/`__uint64`
+    in the DOSDEFS.H GNU block; `<fstream.h>`/`<iostream.h>` shims; guarded out
+    the unused `<dmusici.h>` (DirectMusic) include in GETDXVER (its probe is
+    commented out anyway).
+  - **LIB3D.CPP (the 18k-line software rasteriser): 196 -> 135 errors.** All
+    inline asm converted (the hard part): cpu_id (stubbed -> generic non-MMX
+    path), SetToTopBit, FloatToInt, SineCosine x2, fpSqrt, MagicRotate,
+    MaskAndRot (color-channel rotates -> portable C), and the rdtsc TIMER macros
+    (no-ops). Remaining 135, by category:
+    * ~56 **MSVC for-loop-scope leaks** — a function declares `for(int i=...)`
+      then reuses `i` in later `for(i=...)` loops; GCC scopes `i` to the first
+      loop. Fix = hoist `int i;` (and sometimes `int j;`) to function scope in
+      ~13 functions. NOTE: a regex hoist is UNSAFE here (for-loops used as
+      unbraced if/while bodies, and double-declaration) — verified twice that it
+      regresses; do these **surgically**, per function.
+    * ~10 const-correctness (`const SVertex*&` bound to `SVertex*`).
+    * DirectDraw compat gaps: `DDERR_NODRIVERSUPPORT`, `ChangeDisplaySettings`,
+      `IDirectDrawGammaControl` (incomplete), gamma-control members.
+    * 3 fstream-by-value (deleted copy ctor), 3 `RNDCOLOUR`->`DNDCOLOR` ambiguous
+      conversion, `va_start`/`va_end` (need `<cstdarg>`).
+
 ### NEXT ACTIONS (resume here)
 1. Convert inline asm in the shared math/input headers (same recipe as
    vector.h/mathasm.h): `H/FASTMATH.H`, `H/POLYGON.H`, `H/MYVECTOR.H`,

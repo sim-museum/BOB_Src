@@ -74,7 +74,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include <windowsx.h>
 #include <ddraw.h>
 #include <dinput.h>
-#include <dmusici.h>
+#if !defined(BOB_LINUX)
+#include <dmusici.h>	// DirectMusic version probe is commented out below; skip on Linux
+#endif
 
 
 

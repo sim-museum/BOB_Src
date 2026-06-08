@@ -351,6 +351,11 @@ enum ClipCode {
 	static double average##name;\
 	static int count##name=0;
 
+#if defined(BOB_LINUX)
+// rdtsc-based profiling timers: no-ops on Linux (not needed for the port).
+#define TIMER_ON(name)
+#define TIMER_OFF(name,frames)
+#else
 #define TIMER_ON(name)\
 	_asm push eax _asm push edx _asm push ebx;\
 	_asm lea ebx,start##name;\
@@ -368,6 +373,7 @@ enum ClipCode {
 	count##name++;\
 	average##name=double(fini##name)/double(count##name);\
 	if ((frames)==count##name) _asm int 3;
+#endif
 
 //DEFINE_TIMER(textureBlt);
 
@@ -835,11 +841,15 @@ private:
 #ifndef _NOT_IN_SAMPLE
 	inline ULong SetToTopBit( ULong i )
 	{
+#if defined(BOB_LINUX)
+		return (ULong)((SLong)i >> 31);	// replicate the top (sign) bit to all bits
+#else
 		__asm
 		{
 			mov eax, i
 			sar eax, 31
 		}
+#endif
 	}
 #endif
 #pragma warning(default:4035) // turn the message back on then.
@@ -999,10 +1009,14 @@ private:
 	//
 	void FloatToInt(SLong *int_pointer,D3DVALUE f) const
 	{
+#if defined(BOB_LINUX)
+		*int_pointer = (SLong)__builtin_lrint((double)f);
+#else
 	 	__asm	fld		f;
 		__asm	mov		edx,int_pointer;
 		__asm	frndint;
 		__asm	fistp	dword ptr [edx];
+#endif
 	}
 	inline SLong FPTiny(D3DVALUE v) const
 	{
@@ -1855,6 +1869,10 @@ D3DZBUFFERTYPE	Lib3D::prefZType;								//RJS 17May00
 inline void SineCosine(const UWord rowanAngle,D3DVALUE* sineAngle,D3DVALUE* cosineAngle)
 {
 	D3DVALUE radianAngle=D3DVALUE(SWord(rowanAngle))*ROWANANG_TO_RADANG;
+#if defined(BOB_LINUX)
+	*sineAngle   = (D3DVALUE)__builtin_sin((double)radianAngle);
+	*cosineAngle = (D3DVALUE)__builtin_cos((double)radianAngle);
+#else
 	__asm	push	edx;
 	__asm	push	ebx;
 	__asm	mov		edx,sineAngle;
@@ -1865,10 +1883,15 @@ inline void SineCosine(const UWord rowanAngle,D3DVALUE* sineAngle,D3DVALUE* cosi
 	__asm	fstp	[dword ptr edx];
 	__asm	pop		ebx;
 	__asm	pop		edx;
+#endif
 }
 
 inline void SineCosine_Radian(const D3DVALUE radianAngle,D3DVALUE* sineAngle,D3DVALUE* cosineAngle)
 {
+#if defined(BOB_LINUX)
+	*sineAngle   = (D3DVALUE)__builtin_sin((double)radianAngle);
+	*cosineAngle = (D3DVALUE)__builtin_cos((double)radianAngle);
+#else
 	__asm	push	edx;
 	__asm	push	ebx;
 	__asm	mov		edx,sineAngle;
@@ -1879,6 +1902,7 @@ inline void SineCosine_Radian(const D3DVALUE radianAngle,D3DVALUE* sineAngle,D3D
 	__asm	fstp	[dword ptr edx];
 	__asm	pop		ebx;
 	__asm	pop		edx;
+#endif
 }
 
 //������������������������������������������������������������������������������
@@ -1922,10 +1946,14 @@ inline SWord GET_BIT_POS32(DWORD bitField)
 //------------------------------------------------------------------------------
 inline D3DVALUE fpSqrt(D3DVALUE num)
 {
+#if defined(BOB_LINUX)
+	return (D3DVALUE)__builtin_sqrt((double)num);
+#else
    	__asm	fld 	num;
 	__asm	fsqrt;
 	__asm	fstp	num;
 	return num;
+#endif
 }
 
 //#pragma message (__HERE__ "inline me" )
@@ -2305,6 +2333,10 @@ inline UWord calcMWordRot( SWord shift )
 
 inline ULong __fastcall  MagicRotate(UByte shift, ULong val )
 {
+#if defined(BOB_LINUX)
+	unsigned n = shift & 31;	// rotate-left val by shift
+	return n ? ((val << n) | (val >> (32 - n))) : val;
+#else
 	ULong rv;
 	__asm
 	{
@@ -2316,18 +2348,26 @@ inline ULong __fastcall  MagicRotate(UByte shift, ULong val )
 		mov rv, edx
 	}
 	return rv;
+#endif
 }
 
 #pragma warning(disable:4035)  // don't tell me there is no return value
 ULong __fastcall	MaskAndRot(ULong value,UByte sh1,UByte sh2,UByte sh3,ULong mask1,ULong mask2,ULong mask3)
 {
+#if defined(BOB_LINUX)
+	unsigned n1=sh1&31, n2=sh2&31, n3=sh3&31;
+	ULong r1 = n1 ? ((value<<n1)|(value>>(32-n1))) : value;
+	ULong r2 = n2 ? ((value<<n2)|(value>>(32-n2))) : value;
+	ULong r3 = n3 ? ((value<<n3)|(value>>(32-n3))) : value;
+	return (r1&mask1) | (r2&mask2) | (r3&mask3);
+#else
 	__asm
 	{
 												mov	edx,value
 		mov	eax,edx
 		mov	cl,sh1
 							mov	ebx,eax
-		rol	eax,cl	
+		rol	eax,cl
 							mov	cl,sh2
 		and	eax,mask1
 							rol	ebx,cl
@@ -2338,6 +2378,7 @@ ULong __fastcall	MaskAndRot(ULong value,UByte sh1,UByte sh2,UByte sh3,ULong mask
 												and	edx,mask3
 		or	eax,edx
 	}
+#endif
 }
 #pragma warning(default:4035) // turn the message back on then.
 
@@ -2676,7 +2717,7 @@ Lib3D::Lib3D()
 	gpD3DVBL7=NULL;													//RJS 17Apr00
 	lpD3DVB7=NULL;
 	pDDS7LandRT=NULL;													//JON 15Jun00
-	for (int i=MAX_VERTICES-1;i>=0;polyVerts[i]=i,i--);
+	for (int i =MAX_VERTICES-1;i>=0;polyVerts[i]=i,i--);
 	for (i=NUM_PALETTES-1;i>=0;normPalLookUp[i]=NULL,i--);
 	for (i=NUM_PALETTES-1;i>=0;maskPalLookUp[i]=NULL,i--);
 	for (i=NUM_PALETTES-1;i>=0;trnsPalLookUp[i]=NULL,i--);
@@ -6469,7 +6510,7 @@ HRESULT Lib3D::UploadAsDitherTexture( MAPDESC *pmap )
 
 	if (pmap->hTextureMap==0 || pmap->hTextureMap==NULL)
 	{
-		for (SLong j=MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
+		for (SLong j =MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
 		if (!j)
 		{
 			CloseDown();
@@ -6696,7 +6737,7 @@ inline HRESULT Lib3D::CopyMapToSurface( MAPDESC *pMapDesc,LPDIRECTDRAWSURFACE7 &
 		{
 			UByte *pNxt=pDst+ddsd.lPitch;
 			UByte *pSr2=pSrc+stepY;
-			for (int j=scaledW;j>0;*pDst++=*pSrc,pSrc+=stepX,j--);
+			for (int j =scaledW;j>0;*pDst++=*pSrc,pSrc+=stepX,j--);
 			pDst=pNxt;
 			pSrc=pSr2;
 		}
@@ -6710,7 +6751,7 @@ inline HRESULT Lib3D::CopyMapToSurface( MAPDESC *pMapDesc,LPDIRECTDRAWSURFACE7 &
 		{
 			UWord *pNxt=(UWord*)(ULong(pDst)+ddsd.lPitch);
 			UByte *pSr2=pSrc+stepY;
-			for (int j=scaledW;j>0;*pDst++=pPal[*pSrc],pSrc+=stepX,j--);
+			for (int j =scaledW;j>0;*pDst++=pPal[*pSrc],pSrc+=stepX,j--);
 			pDst=pNxt;
 			pSrc=pSr2;
 		}
@@ -6825,9 +6866,9 @@ inline HRESULT Lib3D::_CreateTextureMap(MAPDESC *pMapDesc,LPDIRECTDRAWSURFACE7 &
 		(selectedDevice.dpcTriCaps.dwTextureCaps&D3DPTEXTURECAPS_SQUAREONLY)!=0)
 	{
 		if (scaledW>scaledH)
-			for (ULong localW=scaledW;localW!=scaledH;localW>>=1,scaleX++);
+			for (ULong localW =scaledW;localW!=scaledH;localW>>=1,scaleX++);
 		else
-			for (ULong localH=scaledH;localH!=scaledW;localH>>=1,scaleY++);
+			for (ULong localH =scaledH;localH!=scaledW;localH>>=1,scaleY++);
 	}
 	if (scaleX!=0) scaledW>>=scaleX;
 	if (scaleY!=0) scaledH>>=scaleY;
@@ -6976,7 +7017,7 @@ inline HRESULT Lib3D::_CreateTextureMap(MAPDESC *pMapDesc,LPDIRECTDRAWSURFACE7 &
 		{
 			UByte *pNxt=pDst+ddsd.lPitch;
 			UByte *pSr2=pSrc+stepY;
-			for (int j=scaledW;j>0;*pDst++=*pSrc,pSrc+=stepX,j--);
+			for (int j =scaledW;j>0;*pDst++=*pSrc,pSrc+=stepX,j--);
 			pDst=pNxt;
 			pSrc=pSr2;
 		}
@@ -6990,7 +7031,7 @@ inline HRESULT Lib3D::_CreateTextureMap(MAPDESC *pMapDesc,LPDIRECTDRAWSURFACE7 &
 		{
 			UWord *pNxt=(UWord*)(ULong(pDst)+ddsd.lPitch);
 			UByte *pSr2=pSrc+stepY;
-			for (int j=scaledW;j>0;*pDst++=pPal[*pSrc],pSrc+=stepX,j--);
+			for (int j =scaledW;j>0;*pDst++=pPal[*pSrc],pSrc+=stepX,j--);
 			pDst=pNxt;
 			pSrc=pSr2;
 		}
@@ -7404,7 +7445,7 @@ HRESULT Lib3D::CreateTexture(MAPDESC* pMapDesc,const TCFLAGS& tcFlag)
 
 	if (hTextureMap==0 || textureTable[hTextureMap]==NULL)
 	{
-		for (SLong i=MAX_TEXTURES-1;i>256 && textureTable[i]!=NULL;i--);
+		for (SLong i =MAX_TEXTURES-1;i>256 && textureTable[i]!=NULL;i--);
 		if (i==256)
 		{
 			CloseDown();
@@ -8209,7 +8250,7 @@ HRESULT Lib3D::SetMaterial(UWord ht,MAPDESC *pmap)
 		hMaterial.tsH[1]=1.f/hMaterial.p[1]->h;
 		if (hMaterial.p[1]->hTextureMap==0 || textureTable[hMaterial.p[1]->hTextureMap]==NULL)
 		{
-			for (SLong j=MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
+			for (SLong j =MAX_TEXTURES-1;j>0 && textureTable[j]!=NULL;j--);
 			if (!j)
 			{
 				CloseDown();
@@ -15891,6 +15932,9 @@ HRESULT Lib3D::TestPoly(const HMATERIAL& hMat)
 #pragma warning (disable : 4035)
 UWord cpu_id()
 {
+#if defined(BOB_LINUX)
+	return 0;	// CPU feature probe -> report none, selecting the generic (non-MMX-asm) path
+#else
 	_asm
 	{
         push    ebx
@@ -16004,6 +16048,7 @@ finish:
         pop     ecx                     ;
         pop     ebx                     ;
 	}
+#endif
 }
 #pragma warning (default : 4035)
 //������������������������������������������������������������������������������
