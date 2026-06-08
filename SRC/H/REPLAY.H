@@ -195,7 +195,7 @@ struct _asprim_values
 		BITFIELD(Bool,UseIntFuel,6,6)
 		LASTFIELD(Bool,FuelDumped,7,7)
 
-	FIRSTFIELD (UByte, Bool, StoresDumped,0)
+	NEXTFIELD (UByte, Bool, StoresDumped,0)	// 2nd union in this struct: reuse the hoisted Overview (Linux)
 		BITFIELD(Bool,Ejected,1,1)
 		BITFIELD(InFormation,information,2,5)
 		BITFIELD(Bool,playermoving,6,6)

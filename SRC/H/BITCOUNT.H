@@ -133,6 +133,19 @@ BITFIELD_AGGREGATOR	{								 \
 	FirstField	<Overview::fieldtype,Type,maxbitnum>	name;
 #endif
 
+// NEXTFIELD: a 2nd-or-later FIRSTFIELD-style union in the SAME struct. On Linux,
+// reuse the struct-scope `Overview` typedef the first FIRSTFIELD already hoisted
+// (avoids the member-typedef redeclaration). The struct's FIRSTFIELDs must share
+// the same storage `size` (verified: only _asprim_values is multi, all UByte).
+#if defined(BOB_LINUX)
+#define	NEXTFIELD(size,Type,name,maxbitnum)		\
+BITFIELD_AGGREGATOR	{								 \
+	Overview	overview_##name;			   \
+	FirstField	<Overview::fieldtype,Type,maxbitnum>	name;
+#else
+#define	NEXTFIELD	FIRSTFIELD
+#endif
+
 #define	SPAREFIELD(minbitnum,maxbitnum)										\
 	LastField	<Overview::fieldtype,Type,minbitnum,maxbitnum> spare;\
 }
