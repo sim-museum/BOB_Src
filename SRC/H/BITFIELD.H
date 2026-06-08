@@ -33,8 +33,12 @@
 #define	BITFIELD_Included
 #ifndef	assert
 //DeadCode DAW 01Oct96 	 #define assert(__ignore) ((void)0)
-	#define assert(txt,str)	
+#if defined(BOB_LINUX)
+	#define assert(...)	// variadic: tolerate 1- and 2-arg assert (e.g. castassert)
+#else
+	#define assert(txt,str)
 #pragma warnmsg("Assert is non functional!!!")
+#endif
 #endif
 	#include	"hardpasm.h"
 #define	DEFAULT_BITFIELD 0
