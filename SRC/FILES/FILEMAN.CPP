@@ -202,7 +202,7 @@ CON	fileman::fileman()
 //	direntries[MAXDIRENTRIES];
 //	makerootdirlist();
 //DeadCode JIM 24Oct96 	makerootdirlist();
-#ifdef	__MSVC__
+#if defined(__MSVC__) && !defined(BOB_LINUX)
 	MemFailPFU=_set_new_handler(MyMemFailPFU);
 #endif
 
@@ -225,7 +225,7 @@ CON	fileman::fileman()
 //------------------------------------------------------------------------------
 DES	fileman::~fileman()
 {
-#ifdef	__MSVC__
+#if defined(__MSVC__) && !defined(BOB_LINUX)
 	MemFailPFU=_set_new_handler(MemFailPFU);
 #endif
 	delete []dirrootblock;
@@ -293,7 +293,7 @@ void	fileman::makerootdirlist()
 static char	worker[1250];
 		dirfakeblock=worker;
 //	First, find some hardware locations
-const	HERE=0,EXE=2,CD=70,PARAM=135;
+const	int	HERE=0,EXE=2,CD=70,PARAM=135;
 		worker[0]='.';worker[1]=0;
 		Getexedirectory(&worker[EXE]);		//Directory containing executable
 		GetCDdirectory(&worker[CD]);		//hardware CD drive location
