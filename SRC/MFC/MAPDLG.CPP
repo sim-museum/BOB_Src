@@ -227,7 +227,7 @@ void CMapDlg::OnClickItem(int m_buttonid)
 	else 
 	if (m_buttonid>=SagBAND && m_buttonid<SagBANDEND)
 	{
-		//££need to get pack and set as hilight
+		//ï¿½ï¿½need to get pack and set as hilight
 		int packnum,sqline;
 		if (Todays_Packages.GetACSquadEntry((UniqueID)m_buttonid,packnum,sqline))
 		{
@@ -297,7 +297,7 @@ void CMapDlg::OnFailClickItem(int m_buttonid)
 	else
 	if (m_buttonid>=SagBAND && m_buttonid<SagBANDEND)
 	{
-		//££need to get pack and set as hilight
+		//ï¿½ï¿½need to get pack and set as hilight
 		int packnum,sqline;
 		if (Todays_Packages.GetACSquadEntry((UniqueID)m_buttonid,packnum,sqline))
 		{
@@ -1356,7 +1356,7 @@ void CMapDlg::InvalidateLine(CPoint point1,CPoint point2)
 //	CRect rect(point1.x-1,point1.y-1,point2.x+1,point2.y+1);
 //	rect.NormalizeRect();
 //	InvalidateRect(rect);
-	const RECTSIZE=50;
+	const int RECTSIZE=50;
 	CRect clientrect;
 	CRect rect;
 	CRect intersectrect;

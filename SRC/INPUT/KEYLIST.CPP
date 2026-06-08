@@ -85,7 +85,7 @@ enum	FileNum : int;
 //DEADCODE JIM 10/02/00 #include	"fileman.h"
 
 //#include	"hardpasm.h"										//ARM 04Jun96
-const	TOTALKEYBITFLAGS=768;
+const	int TOTALKEYBITFLAGS=768;
 
 #define	SPECIAL_KEYMAPS	1
 #include	"keymaps.h"

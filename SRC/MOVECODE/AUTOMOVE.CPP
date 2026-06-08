@@ -822,10 +822,10 @@ void	MoveAirStruc::AutoResurrect (AirStrucPtr ac)
 //------------------------------------------------------------------------------
 void MoveAirStruc::AutoFollowWpWing (AirStrucPtr MyLeader)
 {
-	const CanSideSlip = 1;
-	const InFront     = 2;
-	const Beside      = 3;
-	const Behind      = 4;
+	const int CanSideSlip = 1;
+	const int InFront     = 2;
+	const int Beside      = 3;
+	const int Behind      = 4;
 	char  RelPos = 0;
 
 	AirStrucPtr lf;

@@ -121,7 +121,7 @@ SLong	const BIGTHRUSTSTEP =10;
 SLong	const SMALLTHRUSTSTEP =1;
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetKeyCommon
 //Author		R. Hyde 
 //Date			Tue 31 Oct 1995
@@ -368,7 +368,7 @@ if(ControlledAC->fly.pModel->EngineList->List.pNextItem)
 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetComplexEngineKeys
 //Author		Craig Beeston													
 //Date			Thu 02 Dec 1999
@@ -559,7 +559,7 @@ void ManualPilot::GetComplexEngineKeys(AirStrucPtr const ControlledAC)
 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ApplyDeadZone															 
 //Author		Craig Beeston														     _
 //Date			Wed 16 Dec 1998													   |    /
@@ -590,13 +590,13 @@ void ManualPilot::ApplyDeadZone(AirStrucPtr const ControlledAC, SWord SrcVal, in
 	val = sign * (val - DeadZone) / (32768.0 - 2.0 * DeadZone) * 32767.0 * smooth;
 	MODLIMIT(val, 32767);
 	
-	const fDamping = 1;
+	const int fDamping = 1;
 	val = (DstVal * (fDamping - 1) + val) / fDamping;
 	DstVal = SWord(val);
 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ApplyDeadZone2
 //Author		Craig Beeston												    _
 //Date			Tue 6 Apr 1999											  |	   |
@@ -619,13 +619,13 @@ void ManualPilot::ApplyDeadZone2(AirStrucPtr const ControlledAC, SWord SrcVal, i
 	MODMAXMIN(val, 0, 1);
 	val = val * val * 32767.0 * sign;
 
-	const fDamping = 1;
+	const int fDamping = 1;
 	val = (DstVal * (fDamping - 1) + val) / fDamping;
 	DstVal = SWord(val);
 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		ApplyDeadZone3
 //Author		Craig Beeston
 //Date			Wed 19 May 1999
@@ -684,7 +684,7 @@ void ManualPilot::ApplyDeadZone3(AirStrucPtr const ControlledAC, SWord SrcVal, i
 	DstVal = temp * temp * (FP)DstVal * (FP)SrcSign;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetRPMABKeys
 //Author		R. Hyde 
 //Date			Tue 31 Oct 1995
@@ -760,7 +760,7 @@ void	ManualPilot::GetRPMABKeys(AirStrucPtr const ControlledAC)
  	}
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SensitivityMsg
 //Author		R. Hyde 
 //Date			Tue 3 Dec 1996
@@ -798,7 +798,7 @@ void	ManualPilot::SensitivityMsg(AirStrucPtr const ControlledAC)
 //DeadCode  10Aug00 			}
 //DeadCode  10Aug00 		}
 }
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GetStickKeys
 //Author		R. Hyde 
 //Date			Mon 30 Oct 1995
@@ -1024,9 +1024,9 @@ void	ManualPilot::GetStickKeys (AirStrucPtr const ControlledAC)
 //DeadCode MS 3Oct00 		const dAil  = 1;		const sAil1 = 1;		const sAil2	= 1;
 //DeadCode MS 3Oct00 		const dRud  = 4;		const sRud1	= 4;		const sRud2	= 1;
 	
-		const dEle  = 4000;		const sEle1	= 4;		const sEle2	= 1;
-		const dAil  = 1;		const sAil1 = 1;		const sAil2	= 1;
-		const dRud  = 1;		const sRud1	= 1;		const sRud2	= 1;
+		const int dEle  = 4000;		const sEle1	= 4;		const sEle2	= 1;
+		const int dAil  = 1;		const sAil1 = 1;		const sAil2	= 1;
+		const int dRud  = 1;		const sRud1	= 1;		const sRud2	= 1;
 	
 
 		if ((ail!=-0x8000) && (cntstick_r == 0)&& (cntstick_l == 0))
@@ -1137,7 +1137,7 @@ void	ManualPilot::GetStickKeys (AirStrucPtr const ControlledAC)
 }
 
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SecondaryControls
 //Author		Andrew McRae
 //Date			Tue 12 Aug 1997

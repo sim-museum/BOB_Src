@@ -497,7 +497,7 @@ void AirStruc::PreExpandSags(int baseSAGshape)
 				for(AirStrucPtr ld = array[closesti]->fly.expandedsag; ld; ld = ld->fly.nextflight)
 					for(AirStrucPtr ac = ld; ac; ac = ac->Follower())
 					{
-						const COMBATRADIUS = 50000;
+						const int COMBATRADIUS = 50000;
 
 						mobileitem::currworld->RemoveFromWorld(ac);		//RJS 27Oct00
 
