@@ -11,6 +11,10 @@
 
 #ifdef FF_LINUX
 
+#ifndef _WINBASE_
+#define _WINBASE_	// Win32 SDK marker; bob headers gate Win32-only structs on this
+#endif
+
 #include "compat_types.h"
 #include <errno.h>
 #include <fcntl.h>

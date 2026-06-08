@@ -62,7 +62,7 @@ better place to ask is http://www.simhq.com/ or even :-
 http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum=Battle+of+Britain&number=40&DaysPrune=20&LastLogin=
 */
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		
 //Author		Paul.   
 //Date			Mon 4 Nov 1996
@@ -77,6 +77,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 
 #include	"dosdefs.h"
+#if defined(BOB_LINUX)
+#include	<windows.h>	// Linux: ensure _WINBASE_/HANDLE before fileman.h (Windows did this via PCH)
+#endif
 #include 	<stdio.h>
 #include    <string.h>
 #include    <direct.h>
@@ -126,7 +129,7 @@ const	int	DOSFILE_SECTSIZE = 2048;							//PD 18Nov96
 char 	readblockbufferbase[65536];
 char* 	readblockbuffer=(char*)(((int)readblockbufferbase+2047)&-2048);
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		CDSeek
 //Author		Paul.   
 //Date			Tue 29 Oct 1996
@@ -140,7 +143,7 @@ char* 	readblockbuffer=(char*)(((int)readblockbufferbase+2047)&-2048);
 //------------------------------------------------------------------------------
 UWord fileman::CDSeek(ULong seekpos)
 {
-	for (int fileindex=0;cdfile->number!=cdfiles[fileindex].number;fileindex++)
+	int fileindex; for (fileindex=0;cdfile->number!=cdfiles[fileindex].number;fileindex++)
 	{
 		if (fileindex>=MAXCDFILEENTRIES)
 			_Error.EmitSysErr("Invalid CD filenumber");
@@ -158,7 +161,7 @@ UWord fileman::CDSeek(ULong seekpos)
 	return(0);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SetupAreaFiles
 //Author		Paul.   
 //Date			Mon 18 Nov 1996
@@ -203,7 +206,7 @@ void fileman::SetupAreaFiles(FileNum* areafiles)
 	cdfile->actualindex = -1;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		CloseAreaFiles
 //Author		Paul.   
 //Date			Mon 18 Nov 1996
@@ -237,7 +240,7 @@ void fileman::CloseAreaFiles()
 	cdfile->actualindex = -1;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		resetCDfile
 //Author		Paul.   
 //Date			Mon 18 Nov 1996
@@ -256,7 +259,7 @@ void fileman::resetCDfile(FileNum myfile)
 		//requested file is not the current one
 		//make the requested file the current file
 
-		for (int fileindex=0;;fileindex++)
+		int fileindex; for (fileindex=0;;fileindex++)
 		{
 			if (fileindex==MAXCDFILEENTRIES)
 				_Error.EmitSysErr("Requested CD file is not in the current area");
@@ -274,7 +277,7 @@ void fileman::resetCDfile(FileNum myfile)
 	cdfile->seekingtoposition=0;									//DAW 19Dec96
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		loadCDfile
 //Author		Paul.   
 //Date			Mon 18 Nov 1996
@@ -293,7 +296,11 @@ void fileman::resetCDfile(FileNum myfile)
 void* fileman::loadCDfile(FileNum myfile,SLong length,SLong offset,Bool skipread)
 {
 	if (length>ULong(readblockbufferbase+65536)-ULong(readblockbuffer))
+#if defined(BOB_LINUX)
+		((void)0);	// int3 breakpoint -> no-op
+#else
 		_asm {int 3}
+#endif
 
 	pingcount=0;
 	void*	retval = NULL;
@@ -398,7 +405,7 @@ void* fileman::loadCDfile(FileNum myfile,SLong length,SLong offset,Bool skipread
 	return (retval);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		pingCD
 //Author		R. Hyde 
 //Date			Tue 17 Dec 1996
@@ -448,7 +455,7 @@ void fileman::pingCD()
 			}
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		CDseekreadfilepos
 //Author		Paul.   
 //Date			Thu 24 Sep 1998
@@ -466,7 +473,7 @@ void	fileman::CDseekreadfilepos(HANDLE winhandle,int index,void* buffer,int size
 //DeadCode PD 08Oct98 	memcpy(buffer,readblockbuffer,sizecopy);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		setcdsavedata
 //Author		Paul.   
 //Date			Fri 25 Sep 1998
