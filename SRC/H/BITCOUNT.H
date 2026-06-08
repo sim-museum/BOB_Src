@@ -116,11 +116,22 @@ template	<class size>	struct	WrapField
 	size	value;
 };
 
+#if defined(BOB_LINUX)
+// GCC: a typedef inside an anonymous union injects into the enclosing scope, so
+// two FIRSTFIELD unions in one struct collide on `Overview`. Hoist the typedef
+// to the enclosing struct, where identical re-typedefs (same size) are legal.
+#define	FIRSTFIELD(size,Type,name,maxbitnum)		\
+	typedef	WrapField	<size>	Overview;	  \
+BITFIELD_AGGREGATOR	{								 \
+	Overview	overview_##name;			   \
+	FirstField	<Overview::fieldtype,Type,maxbitnum>	name;
+#else
 #define	FIRSTFIELD(size,Type,name,maxbitnum)		\
 BITFIELD_AGGREGATOR	{								 \
 	typedef	WrapField	<size>	Overview;	  \
 	Overview	overview_##name;			   \
 	FirstField	<Overview::fieldtype,Type,maxbitnum>	name;
+#endif
 
 #define	SPAREFIELD(minbitnum,maxbitnum)										\
 	LastField	<Overview::fieldtype,Type,minbitnum,maxbitnum> spare;\
