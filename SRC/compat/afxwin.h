@@ -31,7 +31,7 @@ struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
 class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 class CDataExchange; class CPrintInfo; class CCreateContext_;
-struct AFX_CMDHANDLERINFO; class CPropExchange;
+struct AFX_CMDHANDLERINFO; class CPropExchange; class CFile;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -241,6 +241,9 @@ struct CRect : public RECT {
     void InflateRect(int dx, int dy) { left -= dx; right += dx; top -= dy; bottom += dy; }
     CRect& operator+=(POINT p) { OffsetRect(p.x, p.y); return *this; }
     CRect& operator-=(POINT p) { OffsetRect(-p.x, -p.y); return *this; }
+    CRect& operator+=(SIZE s) { InflateRect(s.cx, s.cy); return *this; }
+    CRect& operator-=(SIZE s) { InflateRect(-s.cx, -s.cy); return *this; }
+    CRect& operator=(const RECT& r) { left=r.left; top=r.top; right=r.right; bottom=r.bottom; return *this; }
     BOOL IntersectRect(LPCRECT, LPCRECT) { return FALSE; }
     BOOL UnionRect(LPCRECT, LPCRECT) { return FALSE; }
     void NormalizeRect() {}
@@ -339,6 +342,11 @@ public:
 class CBitmap : public CGdiObject {
 public:
     BOOL CreateCompatibleBitmap(CDC*, int, int) { return TRUE; }
+    BOOL CreateBitmap(int, int, UINT, UINT, const void*) { return TRUE; }
+    BOOL LoadBitmapA(LPCSTR) { return TRUE; }
+    BOOL LoadBitmapA(UINT) { return TRUE; }
+    static CBitmap* FromHandle(HBITMAP) { return NULL; }
+    int GetBitmap(void*) { return 0; }
     operator HBITMAP() const { return (HBITMAP)m_hObject; }
 };
 
@@ -439,6 +447,7 @@ public:
     void ScreenToClient(LPRECT) const {}
     BOOL CreateControl(LPCSTR, LPCSTR, DWORD, const RECT&, CWnd*, UINT) { return FALSE; }
     BOOL CreateControl(REFCLSID, LPCSTR, DWORD, const RECT&, CWnd*, UINT) { return FALSE; }
+    BOOL CreateControl(REFCLSID, LPCSTR, DWORD, const RECT&, CWnd*, UINT, CFile*, BOOL, BSTR) { return FALSE; }
     /* hosted-ActiveX-control accessors (ClassWizard wrappers call these) */
     void SetProperty(DISPID, VARTYPE, ...) {}
     void GetProperty(DISPID, VARTYPE, void*) const {}
@@ -733,9 +742,52 @@ class CDocument : public CCmdTarget {
 public:
     virtual BOOL OnNewDocument() { return TRUE; }
     virtual void Serialize(CArchive&) {}
+    void SetTitle(LPCSTR) {}
+    LPCSTR GetTitle() const { return ""; }
+    void SetPathName(LPCSTR, BOOL = TRUE) {}
+    LPCSTR GetPathName() const { return ""; }
+    void EnableCompoundFile(BOOL = TRUE) {}
+    void SetModifiedFlag(BOOL = TRUE) {}
+    BOOL IsModified() { return FALSE; }
+    void UpdateAllViews(CView*, LPARAM = 0, CObject* = NULL) {}
+    CView* GetNextView(POSITION&) const { return NULL; }
+    POSITION GetFirstViewPosition() const { return (POSITION)0; }
 };
 
 class COleDocument : public CDocument {};
+
+void CDocument_dummy();
+/* extend CDocument with the methods bob calls (added here to keep the class above
+   minimal); these are just declared inline on a derived-friendly basis */
+
+class CDocTemplate : public CCmdTarget {
+public:
+    CDocTemplate(UINT, void* = NULL, void* = NULL, void* = NULL) {}
+};
+class CSingleDocTemplate : public CDocTemplate {
+public:
+    CSingleDocTemplate(UINT id, void* a = NULL, void* b = NULL, void* c = NULL) : CDocTemplate(id,a,b,c) {}
+};
+class CMultiDocTemplate : public CDocTemplate {
+public:
+    CMultiDocTemplate(UINT id, void* a = NULL, void* b = NULL, void* c = NULL) : CDocTemplate(id,a,b,c) {}
+};
+
+/* MFC OLE / app-init globals */
+static inline BOOL AfxOleInit() { return TRUE; }
+static inline void AfxEnableControlContainer(void* = NULL) {}
+static inline BOOL AfxOleGetUserCtrl() { return FALSE; }
+static inline void AfxPostQuitMessage(int = 0) {}
+static inline void AfxOleSetUserCtrl(BOOL) {}
+static inline CWinApp* AfxGetAppHelper() { return NULL; }
+
+/* DDX/DDV (dialog data exchange) — no-ops */
+static inline void DDX_Control(CDataExchange*, int, CWnd&) {}
+static inline void DDX_Text(CDataExchange*, int, int&) {}
+static inline void DDX_Check(CDataExchange*, int, int&) {}
+static inline void DDX_Radio(CDataExchange*, int, int&) {}
+static inline void DDX_LBIndex(CDataExchange*, int, int&) {}
+static inline void DDX_CBIndex(CDataExchange*, int, int&) {}
 
 class CWinThread : public CCmdTarget {
 public:

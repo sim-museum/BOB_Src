@@ -327,6 +327,13 @@ static inline HRGN CreateRectRgn(int, int, int, int) { return NULL; }
 static inline HRGN CreatePolygonRgn(const POINT*, int, int) { return NULL; }
 static inline HRGN CreateRectRgnIndirect(LPCRECT) { return NULL; }
 static inline int  CombineRgn(HRGN, HRGN, HRGN, int) { return 0; }
+static inline HBITMAP CreateDIBitmap(HDC, const void*, DWORD, const void*, const void*, UINT) { return NULL; }
+static inline HBITMAP CreateDIBSection(HDC, const void*, UINT, void**, HANDLE, DWORD) { return NULL; }
+#ifndef CBM_INIT
+#define CBM_INIT 0x04
+#define DIB_RGB_COLORS 0
+#define DIB_PAL_COLORS 1
+#endif
 static inline int GetDIBits(HDC, HBITMAP, UINT, UINT, void*, void*, UINT) { return 0; }
 static inline int SetDIBits(HDC, HBITMAP, UINT, UINT, const void*, const void*, UINT) { return 0; }
 static inline BOOL StretchBlt(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop) {
