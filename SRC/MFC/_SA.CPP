@@ -63,8 +63,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 */
 
 
+#include "bob_mfc_pre.h"
 #include "stdafx.h"
 #include "_mfc.h"
+#include "bob_mfc_post.h"
 
 #include "./Damage.cpp"
 #include "./filing.cpp"

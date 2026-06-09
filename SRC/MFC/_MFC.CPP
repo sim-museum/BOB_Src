@@ -62,59 +62,14 @@ better place to ask is http://www.simhq.com/ or even :-
 http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum=Battle+of+Britain&number=40&DaysPrune=20&LastLogin=
 */
 
-/* Linux port: select the file-enum groups this unity needs BEFORE the first
-   files.g inclusion (via stdafx.h). Defining F_BATTLE excludes F_BATTLE.G and
-   pulls in F_COMMON.G (FIL_MAP_TABLE) + F_GRAFIX.G (map tiles) + F_SOUNDS.G,
-   matching RDIALOG.H's intent for the MFC dialog/map UI. */
-#if defined(BOB_LINUX) && !defined(F_BATTLE)
-#define F_BATTLE
-#include "dosdefs.h"
-#include "files.g"		/* lock FileNum with F_COMMON.G(FIL_MAP_TABLE)+F_GRAFIX.G+F_SOUNDS.G first */
-/* bob's CString MUST be complete before stdafx.h: stdafx->afxwin.h defines
-   __AFX_H__, which flips bob headers (savegame.h etc.) into their "MFC present"
-   branch that declares `CString` members — but CString is bob's own (cstring.h),
-   not provided by our MFC layer. */
-#include "cstring.h"
-#endif
+#include "bob_mfc_pre.h"
 
 #include "stdafx.h"
 #include "_mfc.h"
 
-#if defined(BOB_LINUX)
-/* bob's UI base classes — included early so every fragment below sees the full
-   definitions (the headers that use them, e.g. MapDlg.h/FullPane.h, don't
-   self-include them; on Windows the PCH/build order covered this). */
-#include "uniqueid.h"
-#include "resource.h"		/* dialog IDD/IDC/IDS symbols; control headers' enum{IDD=...} need them */
-/* leaf ActiveX-control wrappers FIRST (composites below derive from these) */
-#include "rbutton.h"
-#include "rstatic.h"
-#include "rcombo.h"
-#include "rspinbut.h"
-#include "rlistbox.h"
-#include "rtabs.h"
-#include "rspltbar.h"
-#include "rscrlbar.h"
-/* composites / dialogs / bars that use the leaf controls */
-#include "rcombox.h"
-#include "rdialog.h"
-#include "rmdldlg.h"
-#include "listbx.h"
-#include "hintbox.h"
-#include "maintbar.h"
-#include "titlebar.h"
-#include "sysbox.h"
-#include "rradio.h"
-#include "rtestsh1.h"
-#include "squick1.h"
-#include "thumnail.h"
-#include "filing.h"
-#include "movement.h"
-#include "savegame.h"		/* MapFilters enum incl. MAPFILTERSMAX (used by mapfltrs.h) */
-#include "mapfltrs.h"
-#include "intelmsg.h"		/* IntellMessages (MainFrm m_reportbar factory) */
-#include "radcomms.h"		/* RadioComms (MainFrm m_commsbar factory) */
-#endif
+#include "bob_mfc_post.h"
+
+
 
 #include "./MIGView.cpp"
 

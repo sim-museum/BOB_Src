@@ -62,8 +62,10 @@ better place to ask is http://www.simhq.com/ or even :-
 http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum=Battle+of+Britain&number=40&DaysPrune=20&LastLogin=
 */
 
+#include "bob_mfc_pre.h"
 #include "stdafx.h"
 #include "_mfc.h"
+#include "bob_mfc_post.h"
 #ifndef BOB_DEMO_VER
 #include "LWDiaryL.cpp"
 #include "LWMssFr.cpp"
