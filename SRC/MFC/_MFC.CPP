@@ -106,7 +106,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "rtestsh1.h"
 #include "squick1.h"
 #include "movement.h"
+#include "savegame.h"		/* MapFilters enum incl. MAPFILTERSMAX (used by mapfltrs.h) */
 #include "mapfltrs.h"
+#include "intelmsg.h"		/* IntellMessages (MainFrm m_reportbar factory) */
+#include "radcomms.h"		/* RadioComms (MainFrm m_commsbar factory) */
 #endif
 
 #include "./MIGView.cpp"
