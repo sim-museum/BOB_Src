@@ -83,6 +83,22 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include	"worldinc.h"
 #include	"bitfield.h"
 //DEADCODE JIM 09/02/00 #include	"text.h"
+#if defined(BOB_LINUX)
+/* Reproduce the implicit MSVC PCH ordering: these macros gate large blocks that
+   SAVEGAME needs, and each macro is its header's own include guard, so the macro
+   must be set by *including* the header first:
+     CSTRING_Included  -> SaveData::lastsavegame/... (savegame.h) + full CString
+     BFNUMBER_Included -> info_itemS body (infoitem.h, via persons2.h)
+     RANGES_Included   -> package.h's gated Profile methods
+     PACKAGE_INCLUDED  -> typedef Campaign + class MissMan (missman2.h) */
+#include	"cstring.h"
+#include	"bfnumber.h"
+#include	"ranges.h"
+#include	"package.h"
+#include	"mymath.h"		/* Math_Lib */
+#include	"node.h"		/* struct Attacks */
+#include	"compat_winuser.h"	/* ::MessageBox / MB_OK (date-mismatch load prompt) */
+#endif
 
 #include	"missman2.h"
 
@@ -261,7 +277,7 @@ BIStream& operator	>>	(BIStream& bis,SaveData& savedata)
 		bis.read((char*)&savedata,sizeof(SaveDataLoad));
 		char buffer[180];
 		char b=-1;
-		for (int i=0;b;buffer[i++]=b)
+		int i; for (i=0;b;buffer[i++]=b)
 			bis>>b;
 		savedata.lastsavegame=buffer;
 		for (b=-1,i=0;b;buffer[i++]=b)
@@ -954,7 +970,7 @@ void	DeadStream::GetWorldDead(WorldStuff* world)
 	SGT=b.NextSGT();
 	while(SGT)
 	{
-		for (int i=0;i<WorldStuff::PITEMTABLESIZE;i++)
+		int i; for (i=0;i<WorldStuff::PITEMTABLESIZE;i++)
 			if (!MainWorldBand(UniqueID(i)))
 				if (world->pItem[i])
 				{
@@ -1129,7 +1145,7 @@ void	DeadStream::ReviveWorld(const int repairpointsinperiod,int repairbridgepoin
 				else
 					SGT=(UniqueID)targuid;
 
-				for (int entry=0;entry<usedentries;entry++)
+				int entry; for (entry=0;entry<usedentries;entry++)
 					breakif (damagelist[entry].uniqueid==SGT);
 				if (entry==usedentries)
 				{
@@ -1159,7 +1175,7 @@ void	DeadStream::ReviveWorld(const int repairpointsinperiod,int repairbridgepoin
 			}
 			while ((SGT=src.NextSGT())!=UID_NULL)
 			{
-				for (int entry=0;entry<usedentries;entry++)
+				int entry; for (entry=0;entry<usedentries;entry++)
 					breakif (damagelist[entry].uniqueid==SGT);
 				if (entry==usedentries)
 				{
@@ -1191,7 +1207,7 @@ void	DeadStream::ReviveWorld(const int repairpointsinperiod,int repairbridgepoin
 					}
 				}
 			}
-			for (int entry=0;entry<usedentries;entry++)
+			int entry; for (entry=0;entry<usedentries;entry++)
 			{													//DAW 27Jun99
 				if (Persons2::getbandfromUID(damagelist[entry].uniqueid)==BritBridgeBAND)
 					damagelist[entry].pointsleft=repairbridgepointsinperiod;
@@ -1227,7 +1243,7 @@ void	DeadStream::ReviveWorld(const int repairpointsinperiod,int repairbridgepoin
 					else
 						SGT=(UniqueID)targuid;
 
-					for (int entry=0;entry<usedentries;entry++)
+					int entry; for (entry=0;entry<usedentries;entry++)
 						breakif (damagelist[entry].uniqueid==SGT);
 					if (damagelist[entry].eltsleft==0)
 					{	//skip and discard
@@ -1294,7 +1310,7 @@ void	DeadStream::ReviveWorld(const int repairpointsinperiod,int repairbridgepoin
 
 			while ((SGT=src.NextSGT())!=UID_NULL)
 			{
-				for (int entry=0;entry<usedentries;entry++)
+				int entry; for (entry=0;entry<usedentries;entry++)
 					breakif (damagelist[entry].uniqueid==SGT);
 				if (damagelist[entry].eltsleft)
 				{
@@ -1798,7 +1814,7 @@ void	NodeData::CheckDamage(DeadStream& ds)
 				else
 					SGT=(UniqueID)targuid;
 
-				for (int entry=0;entry<usedentries;entry++)
+				int entry; for (entry=0;entry<usedentries;entry++)
 					breakif (damagelist[entry].uniqueid==SGT);
 				if (entry==usedentries)
 				{
@@ -1822,7 +1838,7 @@ void	NodeData::CheckDamage(DeadStream& ds)
 			}
 //DeadCode JIM 13Sep00 			while ((SGT=src.NextSGT())!=UID_NULL)
 //DeadCode JIM 13Sep00 			{
-//DeadCode JIM 13Sep00 				for (int entry=0;entry<usedentries;entry++)
+//DeadCode JIM 13Sep00 				int entry; for (entry=0;entry<usedentries;entry++)
 //DeadCode JIM 13Sep00 					breakif (damagelist[entry].uniqueid==SGT);
 //DeadCode JIM 13Sep00 				if (entry==usedentries)
 //DeadCode JIM 13Sep00 				{
@@ -1846,7 +1862,7 @@ void	NodeData::CheckDamage(DeadStream& ds)
 //DeadCode JIM 13Sep00 					}
 //DeadCode JIM 13Sep00 				}
 //DeadCode JIM 13Sep00 			}
-//DeadCode JIM 13Sep00 			for (int entry=0;entry<usedentries;entry++)
+//DeadCode JIM 13Sep00 			int entry; for (entry=0;entry<usedentries;entry++)
 //DeadCode JIM 13Sep00 			{													//DAW 27Jun99
 //DeadCode JIM 13Sep00 				if (Persons2::getbandfromUID(damagelist[entry].uniqueid)==BritBridgeBAND)
 //DeadCode JIM 13Sep00 					damagelist[entry].pointsleft=repairbridgepointsinperiod;
@@ -1859,7 +1875,7 @@ void	NodeData::CheckDamage(DeadStream& ds)
 
 		Node_Data.intel.stoppedspeaking = false;						//RJS 8Nov00
 
-		for (int entry=0;entry<usedentries;entry++)
+		int entry; for (entry=0;entry<usedentries;entry++)
 			CheckDamage(ds,(damagelist[entry].uniqueid));
 
 		Node_Data.intel.stoppedspeaking = oldspeak;							//RJS 8Nov00
@@ -2078,7 +2094,7 @@ int	DeadStream::DecodeDamage(UniqueID SGT,DamageDef* damagetable)
 
 			int targband=Persons2::getbandfromUID(targuid);
 			ItemPtr p=NULL;
-			for (int skip=targuid-targband,u=targband,max=Persons2::getbandMAXfromUID(targuid);skip>=0;u++)
+			int u=targband; for (int skip=targuid-targband,max=Persons2::getbandMAXfromUID(targuid);skip>=0;u++)
 			{
 				if (u==max)
 				{

@@ -731,15 +731,25 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     needs `;` and broke `else INT3 else`. Empty-block is a statement needing no
     `;`. Full build re-verified clean (no `if()INT3;else` breakage in built TUs).
 
-- **PHASE-2 REMAINING (deferred TUs, triaged 2026-06-09):** SAVEGAME (63 — macro-
-  gated dual-class SaveData [NoLoad vs full, `lastsavegame` etc. behind a gate] +
-  incomplete MissMan/info_itemS + Math_Lib/Campaign/Attacks headers + for-scope),
-  UIMSG (105), 3D OVERLAY (330 — needs CDC/CFont/GetGlyphOutline buildout), MFC
-  BOBFRAG (135, H2H). Then external stubs (DX/DirectPlay creation, _findfirst/
-  FindFirstFileA/fopen_nocase) + 6 MASM->nasm + `bob` add_executable + entry point
-  → iterate link. **Recipe is settled** (un-defer = reproduce-PCH prelude +
-  fix macro-gated include ordering + for-scope/auto hoists); remaining work is
-  mechanical application of it TU-by-TU plus the link/asm/runtime infrastructure.
+- **2026-06-09 (27)**: **MISSMAN `SAVEGAME.CPP` builds (63->0)** into
+  libbob_missman.a (9 standalone TUs now). Pure application of the settled recipe:
+  a BOB_LINUX prelude before missman2.h/savegame.h with cstring.h
+  (CSTRING_Included → SaveData::lastsavegame/lastreplayname/lastpackname + full
+  CString), bfnumber.h (BFNUMBER_Included → info_itemS body via persons2.h),
+  ranges.h then package.h (PACKAGE_INCLUDED → `typedef CampaignZero Campaign` +
+  `class MissMan`, both gated in missman2.h), mymath.h (Math_Lib), node.h
+  (Attacks), compat_winuser.h (::MessageBox/MB_OK). Then for-scope hoists:
+  `entry` (7 identical find-loops, replace_all), `i` (×3), `u`. No shared-header
+  edits → no regression. (The 8 earlier "void[int] subscript" errors were just
+  cascades of the undeclared `entry`.)
+
+- **PHASE-2 REMAINING (deferred TUs):** UIMSG (105), 3D OVERLAY (330 — needs
+  CDC/CFont/GetGlyphOutline buildout), MFC BOBFRAG (135, H2H). Then external stubs
+  (DX/DirectPlay creation, _findfirst/FindFirstFileA/fopen_nocase) + 6 MASM->nasm
+  + `bob` add_executable + entry point → iterate link. **Recipe is settled**
+  (un-defer = reproduce-PCH prelude + fix macro-gated include ordering +
+  for-scope/auto hoists); remaining work is mechanical application TU-by-TU plus
+  the link/asm/runtime infrastructure.
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
