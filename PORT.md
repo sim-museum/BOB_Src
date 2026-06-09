@@ -344,9 +344,13 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   more for-scope.
 
 ### NEXT ACTIONS (resume here)
-1. Re-survey AI/MODEL/MOVECODE/COMMS/HARDWARE/BFIELDS (the string/bstream/prof
-   fixes likely lifted several) and drive the next-closest module to a lib, same
-   as INPUT/3D. Current near-complete: AI 1/4, MODEL 1/5, COMMS 0/2.
+1. **AI is now wired (9th lib, 2/4: AAA+GRID).** Continue: drive the next-closest
+   module to a lib (MODEL 1/5, MOVECODE 0/4, COMMS 0/2, HARDWARE 1/7, BFIELDS
+   2/11). The dominant remaining blocker is **headers not self-contained** when a
+   .cpp is compiled standalone (it relied on unity-build include order) — e.g.
+   missman2.h (MMC/MissManCampSky), rchatter.h (UniqueID/ItemPtr/AirStrucPtr),
+   incomplete Model/anim/ACMAirStruc types. Fix per-header (add the missing
+   include or forward-decls) — these recur across MSGAI/USERMSG/MODEL/COMMS.
 2. Tackle the **MFC CDC/CFont/GDI** buildout — it gates OVERLAY and a big slice
    of the MFC game core; highest single-root leverage left.
 3. Make rchatter.h self-contained (fwd-decl UniqueID/ItemPtr/AirStrucPtr or
