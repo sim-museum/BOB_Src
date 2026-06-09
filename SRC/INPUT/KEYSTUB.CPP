@@ -152,7 +152,7 @@ int	i;
 
 //	RegUIConv((FileNum) 0);
 //	InsertUIKeyThru=InsertUIKey;
-	KeyFake3dThru=KeyFake3d;
+	KeyFake3dThru=&keytests::KeyFake3d;	// GCC needs &Class:: for member-fn-ptr (MSVC implicit)
 }	
 
 //������������������������������������������������������������������������������

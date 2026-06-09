@@ -85,7 +85,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
    definitions (the headers that use them, e.g. MapDlg.h/FullPane.h, don't
    self-include them; on Windows the PCH/build order covered this). */
 #include "uniqueid.h"
-#include "resource.h"		/* IDD*/IDC*/IDS* — the control headers' `enum{IDD=IDD?_*}` need these */
+#include "resource.h"		/* dialog IDD/IDC/IDS symbols; control headers' enum{IDD=...} need them */
 /* leaf ActiveX-control wrappers FIRST (composites below derive from these) */
 #include "rbutton.h"
 #include "rstatic.h"
@@ -94,6 +94,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "rlistbox.h"
 #include "rtabs.h"
 #include "rspltbar.h"
+#include "rscrlbar.h"
 /* composites / dialogs / bars that use the leaf controls */
 #include "rcombox.h"
 #include "rdialog.h"

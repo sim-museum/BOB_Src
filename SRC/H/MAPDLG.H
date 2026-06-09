@@ -33,7 +33,7 @@ extern	DebugLineStats	debugboxmem;
 
 /////////////////////////////////////////////////////////////////////////////
 // CMapDlg dialog
-enum	IconsUI : int;
+enum	IconsUI : unsigned int;
 class CMapDlg : public CDialog
 {
 // Construction

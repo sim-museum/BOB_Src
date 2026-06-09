@@ -14,7 +14,7 @@
 enum	{BIGGEST_ICON_RADIUS=33};
 
 
-enum	IconsUI : int {
+enum	IconsUI : unsigned int {
 	ICON_NO_ICON=0,
 	ICON_MAXICONPAGES=1,
 	ICON_PAGE_MASK  =0x00ff0000,

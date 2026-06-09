@@ -300,7 +300,7 @@ EventVal	inform,						//saved
 };
 struct	Profile;
 #ifndef	__BCPLUSPLUS__
-enum	IconsUI : int;
+enum	IconsUI : unsigned int;
 #endif
 struct	info_airgrp
 					:info_grndgrp
