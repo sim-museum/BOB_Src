@@ -634,10 +634,36 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
       LoadResource/LockResource/GlobalSize).
     * per-fragment: `static currmode=` implicit-int -> `static int`; for-scope
       `i`/`m`/`wave` hoists.
-  - No regressions: all 7 unities verified 0 at each step. **NEXT: Phase 2 — link
-    the `bob` ELF (assemble GRAPHICS/3D/HARDWARE asm to nasm; resolve undefined
-    symbols: DirectPlay/DirectShow stubs, GentleBankData/BAD_RV) + reconstruct the
-    corrupt bfrefs.g to unblock BFIELDS.**
+  - No regressions: all 7 unities verified 0 at each step.
+
+- **2026-06-09 (23)**: **Phase 2 link surface scoped.** All 15 module libs build
+  (53 unity .o covering ~302 game TUs). A trial whole-archive link of every
+  `libbob_*.a` (`ld --whole-archive ... --allow-multiple-definition`) yields
+  **574 distinct undefined symbols** (12k refs). Breakdown:
+  - **Deferred project TUs are the dominant gap.** The undefined globals/methods
+    are defined in TUs explicitly skipped in module CMakeLists:
+    * AI: **MSGAI.CPP** (defines `ArtInt Art_Int;` @114 + many AirStruc::/ArtInt::
+      methods), **USERMSG.CPP** — deferred: need missman2.h, incomplete Model/anim
+      types, rchatter.h ordering.
+    * MISSMAN: **PACKAGES.CPP / SAVEGAME.CPP / UIMSG.CPP**.
+    * 3D: **OVERLAY.CPP** (needs CDC/CFont + GDI GetGlyphOutline).
+    * SRC/MFC **STUB3D.CPP / BOBFRAG.CPP** are not in any `_*.CPP` unity yet
+      (they hold the `Aircraft_Formations`/`Anim_Control`/`fastMath` tentative defs
+      — currently only `extern`-referenced everywhere → `U`).
+    Un-deferring these (same self-containment grind as MFC) resolves the bulk.
+  - **External stubs still needed (~bounded):** DirectX creation entrypoints
+    (DirectDrawCreateEx, DirectInputCreateA, DirectSoundCreate, DirectDraw/Sound
+    EnumerateA, CLSID_DirectMusicSegment), DirectPlay SP GUIDs (DPSPGUID_*),
+    CRT/file-system (`_findfirst`/`_findnext`/`_findclose`, FindFirstFileA/
+    FindNextFileA, **fopen_nocase** — case-insensitive open matters on Linux),
+    known stragglers BAD_RV / BOB_GUID / GentleBankData.
+  - **ASM still to convert** (MASM->nasm; MATRASM already done): HARDWARE
+    PRO/PROLOG/HARDPASM, 3D LSTRASM, GRAPHICS GRAFPASM, FILES CDROM. (MEDITOR
+    TPAINTWL is editor-only, out of the 302.)
+  - **NEXT**: un-defer MSGAI/USERMSG first (largest symbol contributor) → then
+    PACKAGES/SAVEGAME/UIMSG, OVERLAY, STUB3D/BOBFRAG → add external stubs → convert
+    asm → add the `bob` add_executable + AfxWinMain-style entry → iterate the link.
+    bfrefs.g reconstruction (BFIELDS) is independent and can land anytime.
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
