@@ -97,6 +97,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "rcombox.h"
 #include "rtabs.h"
 #include "rspltbar.h"
+#include "rcombo.h"
+#include "rspinbut.h"
+#include "rtestsh1.h"
+#include "squick1.h"
 #endif
 
 #include "./MIGView.cpp"
