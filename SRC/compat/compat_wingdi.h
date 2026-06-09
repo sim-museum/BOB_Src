@@ -229,6 +229,16 @@ typedef TEXTMETRICA TEXTMETRIC, *PTEXTMETRIC, *LPTEXTMETRIC;
 #define TA_CENTER   6
 #define TA_TOP      0
 #define TA_BOTTOM   8
+#define TA_NOUPDATECP 0
+#define TA_UPDATECP   1
+#define TA_BASELINE   24
+/* StretchBlt modes */
+#define BLACKONWHITE  1
+#define WHITEONBLACK  2
+#define COLORONCOLOR  3
+#define HALFTONE      4
+static inline int EnumFontFamiliesExA(HDC, void*, void*, LPARAM, DWORD) { return 0; }
+#define EnumFontFamiliesEx EnumFontFamiliesExA
 
 /* Stock objects */
 #define WHITE_BRUSH   0

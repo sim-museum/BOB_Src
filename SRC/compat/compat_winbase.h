@@ -1054,6 +1054,8 @@ static inline void GlobalMemoryStatus(LPMEMORYSTATUS lpBuffer) {
 #define HKEY_CURRENT_USER  ((HKEY)(uintptr_t)0x80000001)
 #define HKEY_LOCAL_MACHINE ((HKEY)(uintptr_t)0x80000002)
 #define HKEY_USERS         ((HKEY)(uintptr_t)0x80000003)
+#define HKEY_CURRENT_CONFIG ((HKEY)(uintptr_t)0x80000005)
+#define HKEY_CLASSES_ROOT  ((HKEY)(uintptr_t)0x80000000)
 
 #define KEY_QUERY_VALUE   0x0001
 #define KEY_SET_VALUE     0x0002

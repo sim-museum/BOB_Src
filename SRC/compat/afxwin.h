@@ -297,6 +297,8 @@ public:
     CBrush() {}
     CBrush(COLORREF) {}
     BOOL CreateSolidBrush(COLORREF) { return TRUE; }
+    BOOL CreateStockObject(int) { return TRUE; }
+    static CBrush* FromHandle(HBRUSH) { return NULL; }
     operator HBRUSH() const { return (HBRUSH)m_hObject; }
 };
 
@@ -362,6 +364,9 @@ public:
     UINT SetTextAlign(UINT) { return 0; }
     int  SetMapMode(int) { return 0; }
     int  SetROP2(int) { return 0; }
+    int  SetStretchBltMode(int) { return 0; }
+    int  GetStretchBltMode() const { return 0; }
+    static CDC* FromHandle(HDC) { return NULL; }
     POINT SetViewportOrg(int, int) { POINT p = {0,0}; return p; }
 };
 
@@ -408,6 +413,8 @@ public:
     LONG  GetWindowLong(int) const { return 0; }
     LONG  SetWindowLong(int, LONG) { return 0; }
     DWORD GetStyle() const { return 0; }
+    DWORD GetExStyle() const { return 0; }
+    CScrollBar* GetScrollBarCtrl(int) const { return NULL; }
     void  ModifyStyle(DWORD, DWORD, UINT = 0) {}
     CDC* GetDC() { return NULL; }
     int  ReleaseDC(CDC*) { return 1; }
@@ -603,6 +610,12 @@ class CView : public CWnd {
 public:
     virtual void OnDraw(CDC*) {}
     CDocument* GetDocument() const { return NULL; }
+    CScrollBar* GetScrollBarCtrl(int) const { return NULL; }
+    virtual BOOL OnPreparePrinting(CPrintInfo*) { return TRUE; }
+    virtual void OnBeginPrinting(CDC*, CPrintInfo*) {}
+    virtual void OnEndPrinting(CDC*, CPrintInfo*) {}
+    virtual void OnPrint(CDC*, CPrintInfo*) {}
+    BOOL DoPreparePrinting(CPrintInfo*) { return TRUE; }
 };
 
 /* COleControl — MFC ActiveX control base (bob's CR* control impls derive from it) */
@@ -721,6 +734,17 @@ public:
     BOOL    OnIdle(LONG) { return FALSE; }
     void    WinHelp(DWORD, UINT = 0) {}
     void    HtmlHelp(DWORD, UINT = 0) {}
+    void    SetRegistryKey(LPCSTR) {}
+    void    SetRegistryKey(UINT) {}
+    BOOL    PumpMessage() { return TRUE; }
+    BOOL    IsIdleMessage(void*) { return TRUE; }
+    void    Enable3dControls() {}
+    void    Enable3dControlsStatic() {}
+    void    AddDocTemplate(void*) {}
+    HCURSOR DoWaitCursor(int) { return NULL; }
+    void    RestoreWaitCursor() {}
+    void    BeginWaitCursor() {}
+    void    EndWaitCursor() {}
     UINT    GetProfileIntA(LPCSTR, LPCSTR, int n) { return n; }
     BOOL    WriteProfileIntA(LPCSTR, LPCSTR, int) { return TRUE; }
     CString GetProfileStringA(LPCSTR, LPCSTR, LPCSTR = NULL);
