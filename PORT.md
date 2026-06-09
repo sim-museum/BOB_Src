@@ -387,8 +387,20 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
 - **COMMS** (_COMM.CPP, ~41 errs): DirectPlay-heavy (IDirectPlayLobby3 incomplete,
   ULong&/DWORD bind, FILE_ATTRIBUTE_*, BOB_GUID). Multiplayer — deferred to stubs
   per the phased plan.
-- **MFC CDC/CFont + GDI GetGlyphOutline/GLYPHMETRICS/MAT2** — not in compat;
-  ~31 files use CDC/CFont (incl. 3D/OVERLAY, much of MFC/). Dedicated MFC-GDI pass.
+- **MFC game core (177 .cpp in SRC/MFC) — THE major remaining work.** Scoped this
+  session: `compat/afxwin.h` (and afx.h/afxext/afxcmn/...) are **empty stubs** —
+  no CWnd/CDC/CFont/CDialog/CWinApp/CView/message-maps. **FreeFalcon's afxwin.h is
+  ALSO empty (FF didn't use MFC), so there is no MFC layer to borrow** — this is a
+  from-scratch MFC compat buildout. Groundwork done: stubbed the remaining afx
+  umbrella headers (afxole/afxodlgs/afxauto/afxpriv/afxmt/afxdisp/afxtempl) and
+  added case-alias symlinks for the 17 `.cpp` fragments `_MFC.CPP` #includes
+  (MIGView.cpp->MIGVIEW.CPP, etc.). `_MFC.CPP` now reaches `resource.h` + the
+  `#error include 'stdafx.h'` PCH guard — past those lies the real flood of
+  undefined MFC classes. Plan: implement a minimal MFC (CObject/CCmdTarget/CWnd/
+  CDialog/CDC/CFont/CWinApp/CView/CDocument/CFrameWnd + DECLARE/BEGIN_MESSAGE_MAP
+  no-op macros; CString already exists) sufficient to compile, then back it with
+  SDL/GL at runtime. Also covers 3D/OVERLAY (CDC/CFont + GetGlyphOutline/
+  GLYPHMETRICS/MAT2).
 - **MISSMAN** PACKAGES/SAVEGAME/UIMSG, **AI** MSGAI/USERMSG: rchatter.h not
   self-contained, incomplete MissMan/CString, SECSPERMIN/Directives::RAF. (Most
   of these likely resolve when built via the module unity rather than standalone.)
@@ -400,9 +412,11 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
    link-completeness (AIRCRAFT/MISSMAN/3D/AI/INPUT — MATH/LIB3D/GENERAL/FILES are
    small/likely complete). This both fixes missing fragment code AND tends to
    reduce errors (shared context).
-2. **MFC game core (454 files)** via `_MFC.CPP` + the standalone MFC TUs — the
-   big remaining chunk. First do the **MFC CDC/CFont/GDI** compat buildout (gates
-   ~31 files incl. OVERLAY).
+2. **MFC game core (177 .cpp)** — the big remaining chunk. Build a from-scratch
+   minimal MFC compat layer in `compat/afxwin.h` (CObject/CCmdTarget/CWnd/CDialog/
+   CDC/CFont/CWinApp/CView/CDocument/CFrameWnd + no-op message-map macros), since
+   neither bob's nor ff's afxwin.h has it. Then `_MFC.CPP` + the standalone MFC
+   TUs. (afx stubs + `_MFC.CPP` cpp case-symlinks already in place.)
 3. Reconstruct/​regenerate **bfrefs.g** to unblock BFIELDS.
 4. Then **Phase 2 (link)**: assemble remaining `.asm` (GRAPHICS/GRAFPASM,
    3D/LSTRASM, HARDWARE/*) to nasm; resolve undefined symbols (GentleBankData,
