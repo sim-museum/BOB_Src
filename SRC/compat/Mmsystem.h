@@ -119,5 +119,61 @@ static inline MMRESULT joyGetPosEx(UINT uJoyID, LPJOYINFOEX pji) { (void)uJoyID;
 static inline MMRESULT joyGetPos(UINT uJoyID, LPJOYINFO pji)     { (void)uJoyID; (void)pji; return JOYERR_UNPLUGGED; }
 static inline UINT     joyGetNumDevs(void) { return 0; }
 
+/* MIDI output API (mmsystem.h) — stubbed; MIDI music playback not implemented. */
+DECLARE_HANDLE(HMIDIOUT);
+typedef HMIDIOUT *LPHMIDIOUT;
+
+#ifndef MIDI_MAPPER
+#define MIDI_MAPPER     ((UINT)-1)
+#define MOD_MIDIPORT    1
+#define MOD_SYNTH       2
+#define MOD_SQSYNTH     3
+#define MOD_FMSYNTH     4
+#define MOD_MAPPER      5
+#define MOD_WAVETABLE   6
+#define MOD_SWSYNTH     7
+#define MHDR_DONE       0x00000001
+#define MHDR_PREPARED   0x00000002
+#define CALLBACK_NULL   0x00000000
+#define CALLBACK_FUNCTION 0x00030000
+#endif
+
+typedef struct midihdr_tag {
+    LPSTR              lpData;
+    DWORD              dwBufferLength;
+    DWORD              dwBytesRecorded;
+    DWORD_PTR          dwUser;
+    DWORD              dwFlags;
+    struct midihdr_tag *lpNext;
+    DWORD_PTR          reserved;
+    DWORD              dwOffset;
+    DWORD_PTR          dwReserved[8];
+} MIDIHDR, *LPMIDIHDR;
+
+typedef struct tagMIDIOUTCAPSA {
+    WORD  wMid;
+    WORD  wPid;
+    UINT  vDriverVersion;
+    CHAR  szPname[32];
+    WORD  wTechnology;
+    WORD  wVoices;
+    WORD  wNotes;
+    WORD  wChannelMask;
+    DWORD dwSupport;
+} MIDIOUTCAPSA, *LPMIDIOUTCAPSA;
+typedef MIDIOUTCAPSA MIDIOUTCAPS, *LPMIDIOUTCAPS;
+
+static inline MMRESULT midiOutOpen(LPHMIDIOUT ph, UINT uDeviceID, DWORD_PTR dwCallback, DWORD_PTR dwInstance, DWORD fdwOpen)
+{ (void)uDeviceID;(void)dwCallback;(void)dwInstance;(void)fdwOpen; if(ph)*ph=0; return MMSYSERR_ERROR; }
+static inline MMRESULT midiOutClose(HMIDIOUT h)                              { (void)h; return MMSYSERR_NOERROR; }
+static inline MMRESULT midiOutShortMsg(HMIDIOUT h, DWORD dwMsg)             { (void)h;(void)dwMsg; return MMSYSERR_NOERROR; }
+static inline MMRESULT midiOutLongMsg(HMIDIOUT h, LPMIDIHDR p, UINT cb)     { (void)h;(void)p;(void)cb; return MMSYSERR_NOERROR; }
+static inline MMRESULT midiOutPrepareHeader(HMIDIOUT h, LPMIDIHDR p, UINT cb)   { (void)h;(void)p;(void)cb; return MMSYSERR_NOERROR; }
+static inline MMRESULT midiOutUnprepareHeader(HMIDIOUT h, LPMIDIHDR p, UINT cb) { (void)h;(void)p;(void)cb; return MMSYSERR_NOERROR; }
+static inline MMRESULT midiOutReset(HMIDIOUT h)                              { (void)h; return MMSYSERR_NOERROR; }
+static inline UINT     midiOutGetNumDevs(void)                              { return 0; }
+static inline MMRESULT midiOutGetDevCapsA(UINT_PTR id, LPMIDIOUTCAPSA p, UINT cb) { (void)id;(void)p;(void)cb; return MMSYSERR_ERROR; }
+#define midiOutGetDevCaps midiOutGetDevCapsA
+
 #endif /* FF_LINUX */
 #endif

@@ -581,6 +581,15 @@ typedef BOOL (CALLBACK *LPDSENUMCALLBACKA)(GUID *pGuid, const char *pszDescripti
 HRESULT DirectSoundCreate(GUID *pcGuidDevice, LPDIRECTSOUND *ppDS, IUnknown *pUnkOuter);
 HRESULT DirectSoundEnumerateA(LPDSENUMCALLBACKA pDSEnumCallback, void *pContext);
 
+/* ANSI-default aliases (source uses the un-suffixed names) */
+typedef LPDSENUMCALLBACKA LPDSENUMCALLBACK;
+#define DirectSoundEnumerate DirectSoundEnumerateA
+
+/* C-style interface accessor macros used by the source */
+#define IDirectSound_SetCooperativeLevel(p,a,b) ((p)->SetCooperativeLevel(a,b))
+#define IDirectSound_CreateSoundBuffer(p,a,b,c) ((p)->CreateSoundBuffer(a,b,c))
+#define IDirectSound_Release(p)                 ((p)->Release())
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

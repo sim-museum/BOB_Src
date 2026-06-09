@@ -6278,8 +6278,8 @@ UWord	RadioChatter::GetPlaceUID(Coords3D& pos)
 
 	if (	pos.X < 0 || 				//JON 3Nov00
 			pos.Z < 0 || 
-			pos.X > LandScape._blockWidth*(639-64)	||
-			pos.Z > LandScape._blockWidth*(639-64)	) // off the nearest grid
+			pos.X > LandScape::_blockWidth*(639-64)	||
+			pos.Z > LandScape::_blockWidth*(639-64)	) // off the nearest grid
 	{
 		return UID_EnglishChannel;
 	} else

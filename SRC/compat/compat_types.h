@@ -65,6 +65,16 @@
 #ifndef FIELD_OFFSET
 #define FIELD_OFFSET(type, field) ((LONG)(intptr_t)&(((type *)0)->field))
 #endif
+/* RPC far-pointer annotations (rpcndr.h) — no-ops */
+#ifndef __RPC_FAR
+#define __RPC_FAR
+#endif
+#ifndef FAR
+#define FAR
+#endif
+#ifndef NEAR
+#define NEAR
+#endif
 #ifndef FAR
 #define FAR
 #endif

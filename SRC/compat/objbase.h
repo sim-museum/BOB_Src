@@ -185,8 +185,15 @@ static inline HRESULT CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWO
 static inline LPVOID CoTaskMemAlloc(SIZE_T cb) { return malloc(cb); }
 static inline void CoTaskMemFree(LPVOID pv) { free(pv); }
 
-#define CLSCTX_INPROC_SERVER 0x1
-#define CLSCTX_ALL           0x17
+#define CLSCTX_INPROC_SERVER  0x1
+#define CLSCTX_INPROC_HANDLER 0x2
+#define CLSCTX_LOCAL_SERVER   0x4
+#define CLSCTX_INPROC         (CLSCTX_INPROC_SERVER|CLSCTX_INPROC_HANDLER)
+#define CLSCTX_ALL            0x17
+
+/* IStream / LPSTREAM (objidl.h) — opaque; DirectMusic loader uses it by pointer */
+struct IStream;
+typedef struct IStream *LPSTREAM;
 
 #endif /* FF_LINUX */
 #endif /* FF_COMPAT_OBJBASE_H */
