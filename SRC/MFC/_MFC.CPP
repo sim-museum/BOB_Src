@@ -104,6 +104,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "sysbox.h"
 #include "rtestsh1.h"
 #include "squick1.h"
+#include "movement.h"
+#include "mapfltrs.h"
 #endif
 
 #include "./MIGView.cpp"

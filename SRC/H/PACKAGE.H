@@ -21,6 +21,7 @@
 
 #include	"bitcount.h"
 #include	"uniqueid.h"		// enum UniqueID — used by the ONLYFIELD(UWord,UniqueID,..) members
+#include	"movement.h"		// enum value wpacnoactionno (waypoint action) used below
 enum FileNum : int;
 enum	Ranges : int;
 enum	SquadNum : int;
