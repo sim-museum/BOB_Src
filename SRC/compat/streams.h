@@ -12,6 +12,19 @@
 #include "objbase.h"
 
 typedef long OAHWND;
+#ifndef OATRUE
+#define OATRUE  (-1)
+#define OAFALSE 0
+#endif
+/* DirectShow EC_* event codes (IMediaEventEx) */
+#ifndef EC_COMPLETE
+#define EC_COMPLETE        0x01
+#define EC_USERABORT       0x02
+#define EC_ERRORABORT      0x03
+#define EC_TIME            0x04
+#define EC_REPAINT         0x05
+#define EC_PALETTE_CHANGED 0x09
+#endif
 typedef long OAEVENT;
 typedef double REFTIME;
 

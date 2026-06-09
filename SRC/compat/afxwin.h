@@ -31,7 +31,8 @@ struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
 class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 class CDataExchange; class CPrintInfo; class CCreateContext_;
-struct AFX_CMDHANDLERINFO; class CPropExchange; class CFile;
+struct AFX_CMDHANDLERINFO; class CPropExchange; class CFile; class CWinApp;
+struct tagHELPINFO; struct COleControlSite;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -55,6 +56,8 @@ struct AFX_CMDHANDLERINFO; class CPropExchange; class CFile;
 #define BEGIN_EVENTSINK_MAP(theClass, baseClass)
 #define END_EVENTSINK_MAP()
 #define ON_EVENT(theClass, id, dispid, fn, vts)
+#define CN_EVENT  0
+#define AFX_EVENT  int   /* RDialog event-sink param type */
 #define ON_EVENT_REFLECT(theClass, dispid, fn, vts)
 #define ON_PROPNOTIFY(theClass, id, dispid, fn)
 #define DISP_FUNCTION(theClass, name, fn, vtret, vtargs)
@@ -390,8 +393,10 @@ public:
     int  GetTextFace(int, LPSTR) const { return 0; }
     BOOL GetTextMetricsA(void*) const { return TRUE; }
     BOOL Rectangle(int, int, int, int) { return TRUE; }
-    BOOL MoveTo(int, int) { return TRUE; }
+    POINT MoveTo(int, int) { POINT p={0,0}; return p; }
+    POINT MoveTo(POINT) { POINT p={0,0}; return p; }
     BOOL LineTo(int, int) { return TRUE; }
+    BOOL LineTo(POINT) { return TRUE; }
     BOOL BitBlt(int, int, int, int, CDC*, int, int, DWORD) { return TRUE; }
     BOOL CreateCompatibleDC(CDC*) { return TRUE; }
     int FillRect(LPCRECT, CBrush*) { return 0; }
@@ -416,6 +421,11 @@ public:
 
 inline BOOL CFont::CreatePointFont(int, LPCSTR, CDC*) { return TRUE; }
 
+class CPaintDC : public CDC { public: CPaintDC(CWnd*) {} };
+class CClientDC : public CDC { public: CClientDC(CWnd*) {} };
+class CWindowDC : public CDC { public: CWindowDC(CWnd*) {} };
+class CMetaFileDC : public CDC { public: CMetaFileDC() {} };
+
 /* ============================================================
  * Window / app hierarchy (stubbed — no real windows on Linux)
  * ============================================================ */
@@ -432,6 +442,7 @@ public:
     void SetDlgItemTextA(int, LPCSTR) {}
     BOOL SetWindowTextA(LPCSTR) { return TRUE; }
     int GetWindowTextA(LPSTR, int) { return 0; }
+    template<class S> int GetWindowTextA(S& s) { (void)s; return 0; }
     BOOL ShowWindow(int) { return TRUE; }
     BOOL UpdateWindow() { return TRUE; }
     BOOL DestroyWindow() { return TRUE; }
@@ -767,6 +778,8 @@ public:
 class CSingleDocTemplate : public CDocTemplate {
 public:
     CSingleDocTemplate(UINT id, void* a = NULL, void* b = NULL, void* c = NULL) : CDocTemplate(id,a,b,c) {}
+    void SetContainerInfo(UINT) {}
+    void SetServerInfo(UINT, UINT = 0, UINT = 0, void* = NULL, void* = NULL) {}
 };
 class CMultiDocTemplate : public CDocTemplate {
 public:

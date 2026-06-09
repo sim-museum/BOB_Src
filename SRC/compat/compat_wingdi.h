@@ -334,6 +334,13 @@ static inline HBITMAP CreateDIBSection(HDC, const void*, UINT, void**, HANDLE, D
 #define DIB_RGB_COLORS 0
 #define DIB_PAL_COLORS 1
 #endif
+/* polygon fill modes */
+#ifndef ALTERNATE
+#define ALTERNATE 1
+#define WINDING   2
+#endif
+static inline int SetStretchBltMode(HDC, int) { return 0; }
+static inline int SetPolyFillMode(HDC, int) { return 0; }
 static inline int GetDIBits(HDC, HBITMAP, UINT, UINT, void*, void*, UINT) { return 0; }
 static inline int SetDIBits(HDC, HBITMAP, UINT, UINT, const void*, const void*, UINT) { return 0; }
 static inline BOOL StretchBlt(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop) {
