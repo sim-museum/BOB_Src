@@ -456,6 +456,34 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     VT_* VARIANT constants (add to a compat oleauto/wtypes), then the per-file
     ordering of bob's own RDialog/CRButton/CSystemBox UI classes.
 
+- **2026-06-09 (17)**: **MFC module grind — `_MFC.CPP` 2655 -> 723 errors** on the
+  built MFC foundation. Compile the MFC module with **`-ISRC/MFC`**.
+  - **afxwin.h fleshed out**: common control wrappers (CStatic/CButton/CEdit/
+    CListBox/CComboBox/CScrollBar/CToolBar), container templates CArray/CList
+    (std-backed; CList POSITION iteration stubbed empty — UI lists not driven
+    yet), diagnostic macros (ASSERT/VERIFY/TRACE*), OLE event/dispatch map macros
+    (BEGIN_EVENTSINK_MAP/ON_EVENT/DISP_*/VTS_*), CRect operators, and many
+    CDC/CWnd/CWinApp/COleDispatchDriver methods. POSITION/CCreateContext types.
+  - **compat_types.h**: OLE base types (OLE_COLOR/VARENUM VT_*/BSTR/VARTYPE/
+    LPDISPATCH/DATE/...). **compat_wingdi.h**: PS_*/TRANSPARENT/MM_TEXT/R2_*/
+    GetDeviceCaps indices/DT_* flags.
+  - **The file-enum map cascade fix** (~1289 errors): `_MFC.CPP` now defines
+    F_BATTLE and force-includes dosdefs.h + files.g at the top, locking FileNum
+    with F_COMMON.G(FIL_MAP_TABLE)+F_GRAFIX.G+F_SOUNDS.G before any fragment's
+    own files.g (a fragment defined F_COMMON first, excluding the map enums).
+  - **PACKAGE.H now #includes uniqueid.h** (self-contained, like nodebob.h) —
+    cleared the UniqueID cluster. `_MFC.CPP` early-includes uniqueid/cstring/
+    rdialog/rbutton so the dialog/map fragments see bob's own UI base classes
+    (their headers don't self-include them).
+  - **Remaining ~723 roots** (the long tail): bob's OLE wrapper SetProperty/
+    GetProperty; bob UI classes/members still ordering-incomplete (RMdlDlg,
+    CRListBox, CMainToolbar/MainToolBar, CMainFrame::m_titlebar,
+    CSystemBox::InDialAncestor); CString still incomplete in some chains
+    (forward-declared before cstring.h); a global-vs-member `GetParent` ambiguity;
+    plus per-file `expected ;` cascades. Then the other ~150 standalone MFC TUs
+    beyond `_MFC.CPP`. 13 module libs still build (afxwin/streams not included
+    by them).
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):
