@@ -507,6 +507,33 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     **13 module libs keep building — afxwin/streams aren't included by them, so
     all MFC work is regression-safe.**
 
+- **2026-06-09 (18)**: **MFC game-core unity `_MFC.CPP` COMPILES CLEAN (2655 -> 0)
+  — MFC is the 14th module lib.** The from-scratch MFC compat layer
+  (compat/afxwin.h ~700 lines + streams.h) is now complete enough to compile the
+  game's main MFC TU (MIGView/MainFrm/MapDlg/MIG/MIGDoc/RDialog/Keystub/fullpsys).
+  Fourteen module libs build: math, lib3d, aircraft, general, files, input,
+  missman, 3d, ai, movecode, model, hardware, comms, **mfc**.
+  - The long-tail recipe that got the last ~300: add the next MFC class/method/
+    macro/const to afxwin.h (or a Win32/GDI/OLE const to compat_{winuser,wingdi,
+    types}.h); early-include the bob UI header in `_MFC.CPP` (leaf control
+    wrappers before composites; +case-alias symlink); make bob data headers
+    self-contained (package.h->uniqueid/movement, nodebob.h->uniqueid,
+    missman2.h->savegame, _mfc.h->enumbits.m/flyinit.h); fix per-file MSVC-isms
+    (member-fn-ptr `&Class::`, for-scope hoists, temp->non-const-ref via by-value
+    params, `IconsUI : unsigned int`, static-member-via-type `::`). Key gotchas:
+    A-macros (`TextOut`->`TextOutA`) clobber member methods (don't define both);
+    VTS_* must be string literals not NULL; CFile must be fwd-declared before CWnd
+    (else `CFile*` -> `int*` under -fpermissive); generated wrapper headers
+    (rscrlbar.h) lack include guards (add for unity).
+  - **Compile the MFC module with `-ISRC/MFC`** (resource.h). afxwin/streams are
+    NOT included by the other 13 modules, so the whole MFC effort was
+    regression-free.
+  - **NEXT**: survey + build the other standalone MFC `.cpp` TUs (beyond the
+    _MFC.CPP unity); they now have the full MFC layer available. Then Phase 2
+    (link the `bob` ELF): assemble GRAPHICS/GRAFPASM + 3D/LSTRASM + HARDWARE asm,
+    resolve undefined symbols (GentleBankData, BAD_RV, DirectPlay/DirectShow
+    stubs), reconstruct bfrefs.g for BFIELDS.
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):
