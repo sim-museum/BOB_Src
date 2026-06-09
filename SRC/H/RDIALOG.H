@@ -465,13 +465,16 @@ public:
 	void AttachTabToTabControl(const struct IdEntry *const list);
 	void AttachRelevantSplitterBars();
 //	void InitArtwork(FileNum art);
-	static	RDialog*	MakeTopDialog(CRect& e,DialList& tree)	
+	/* by-value params: callers pass temporaries (CRect(..)/DialBox(..)); MSVC bound
+	   them to non-const refs, GCC won't. By value gives MakeParentDialog an lvalue
+	   and discards its in-place edits to the rect, matching the original behaviour. */
+	static	RDialog*	MakeTopDialog(CRect e,DialList tree)
 		{return MakeParentDialog(e,NULL,&tree);}
-	static	RDialog*	MakeTopDialog(CRect& e,DialBox& tree)	
+	static	RDialog*	MakeTopDialog(CRect e,DialBox tree)
 		{return MakeParentDialog(e,NULL,&tree);}
-	RDialog*	MakeDialog(CRect& e,DialList& tree) 
+	RDialog*	MakeDialog(CRect e,DialList tree)
 		{return MakeParentDialog(e,this,&tree);}
-	RDialog*	MakeDialog(CRect& e,DialBox& tree) 
+	RDialog*	MakeDialog(CRect e,DialBox tree)
 		{return MakeParentDialog(e,this,&tree);}
 	// Generated message map functions
 public:

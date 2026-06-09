@@ -258,6 +258,9 @@ struct CRect : public RECT {
 
 /* CPoint/CSize arithmetic (MFC global operators) */
 inline CSize  operator-(POINT a, POINT b) { return CSize(a.x - b.x, a.y - b.y); }
+inline CSize  operator+(SIZE a, POINT b)  { return CSize(a.cx + b.x, a.cy + b.y); }
+inline CSize  operator+(SIZE a, SIZE b)   { return CSize(a.cx + b.cx, a.cy + b.cy); }
+inline CSize  operator-(SIZE a, SIZE b)   { return CSize(a.cx - b.cx, a.cy - b.cy); }
 inline CPoint operator+(POINT a, SIZE s)  { return CPoint(a.x + s.cx, a.y + s.cy); }
 inline CPoint operator-(POINT a, SIZE s)  { return CPoint(a.x - s.cx, a.y - s.cy); }
 inline CPoint operator+(POINT a, POINT b) { return CPoint(a.x + b.x, a.y + b.y); }
@@ -810,7 +813,9 @@ static inline void DDX_CBIndex(CDataExchange*, int, int&) {}
 class CWinThread : public CCmdTarget {
 public:
     CWnd* m_pMainWnd;
-    CWinThread() : m_pMainWnd(NULL) {}
+    CWnd* m_pActiveWnd;
+    MSG   m_msgCur;
+    CWinThread() : m_pMainWnd(NULL), m_pActiveWnd(NULL) {}
     virtual BOOL InitInstance() { return TRUE; }
     virtual int  ExitInstance() { return 0; }
     virtual int  Run() { return 0; }
