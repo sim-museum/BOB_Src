@@ -330,6 +330,38 @@ typedef const GUID *LPCGUID;
 #endif
 
 /* ============================================================
+ * OLE automation base types (wtypes.h / oaidl.h)
+ * ============================================================ */
+typedef DWORD       OLE_COLOR;
+typedef short       VARIANT_BOOL;
+typedef VARIANT_BOOL _VARIANT_BOOL;
+typedef double      DATE;
+typedef WCHAR      *BSTR;
+typedef OLE_COLOR  *LPOLE_COLOR;
+typedef long        SCODE;
+typedef long        DISPID;
+typedef long        OLE_HANDLE;
+typedef long        OLE_XPOS_PIXELS;
+typedef long        OLE_YPOS_PIXELS;
+#ifndef VARIANT_TRUE
+#define VARIANT_TRUE  ((VARIANT_BOOL)-1)
+#define VARIANT_FALSE ((VARIANT_BOOL)0)
+#endif
+
+#ifndef _VARENUM_DEFINED
+#define _VARENUM_DEFINED
+enum VARENUM {
+    VT_EMPTY = 0, VT_NULL = 1, VT_I2 = 2, VT_I4 = 3, VT_R4 = 4, VT_R8 = 5,
+    VT_CY = 6, VT_DATE = 7, VT_BSTR = 8, VT_DISPATCH = 9, VT_ERROR = 10,
+    VT_BOOL = 11, VT_VARIANT = 12, VT_UNKNOWN = 13, VT_DECIMAL = 14,
+    VT_I1 = 16, VT_UI1 = 17, VT_UI2 = 18, VT_UI4 = 19, VT_I8 = 20, VT_UI8 = 21,
+    VT_INT = 22, VT_UINT = 23, VT_VOID = 24, VT_HRESULT = 25, VT_PTR = 26,
+    VT_SAFEARRAY = 27, VT_CARRAY = 28, VT_USERDEFINED = 29, VT_LPSTR = 30,
+    VT_LPWSTR = 31, VT_BYREF = 0x4000
+};
+#endif
+
+/* ============================================================
  * Common macros
  * ============================================================ */
 #ifndef MAKEWORD

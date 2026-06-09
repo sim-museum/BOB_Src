@@ -62,6 +62,16 @@ better place to ask is http://www.simhq.com/ or even :-
 http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum=Battle+of+Britain&number=40&DaysPrune=20&LastLogin=
 */
 
+/* Linux port: select the file-enum groups this unity needs BEFORE the first
+   files.g inclusion (via stdafx.h). Defining F_BATTLE excludes F_BATTLE.G and
+   pulls in F_COMMON.G (FIL_MAP_TABLE) + F_GRAFIX.G (map tiles) + F_SOUNDS.G,
+   matching RDIALOG.H's intent for the MFC dialog/map UI. */
+#if defined(BOB_LINUX) && !defined(F_BATTLE)
+#define F_BATTLE
+#include "dosdefs.h"
+#include "files.g"		/* lock FileNum with F_COMMON.G(FIL_MAP_TABLE)+F_GRAFIX.G+F_SOUNDS.G first */
+#endif
+
 #include "stdafx.h"
 #include "_mfc.h"
 
