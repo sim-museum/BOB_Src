@@ -222,7 +222,7 @@ BOOL TwoDPref::OnInitDialog()
 			if (ChangeDisplaySettings(&devmode,CDS_TEST)==DISP_CHANGE_SUCCESSFUL)
 				if (devmode.dmBitsPerPel>=15  && devmode.dmPelsWidth>=512 && devmode.dmPelsHeight>=384)
 				{
-					for (int m=1;m<maxpossmodes;m++)
+					int m; for (m=1;m<maxpossmodes;m++)
 						breakif(possiblemapreses[m].horres==devmode.dmPelsWidth);
 					if (m==maxpossmodes && maxpossmodes<PossReses::MAX_RES_MODES)
 					{
@@ -389,7 +389,7 @@ static	int abe[]=
 		};
 void	SaveDataLoad::ChangeMode(ResUI modepoint)
 {
-    static currmode=UIR_MAX;
+    static int currmode=UIR_MAX;
 	if (ui_horizontalres[UIR_FIRST]==0)
 	{
 //DeadCode JIM 18Oct00 		if (modepoint==UIR_FIRST)

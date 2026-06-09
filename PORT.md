@@ -604,6 +604,41 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   - per-fragment for-scope `i`/`actype` hoists (LWRevCl, LWTaskFr, LWTaskSm,
     lwdirect). **NEXT: _TOOL (82) then _FULL (275); then Phase 2 (link ELF).**
 
+- **2026-06-09 (22)**: **ALL 7 MFC UNITIES COMPILE CLEAN — the MFC module is
+  DONE.** `libbob_mfc.a` archives _MFC + _AFX + _RAF + _LW + _SA + _TOOL + _FULL.
+  - **_TOOL (82->0)**: it's the top-level toolbar/navigator, so it instantiates
+    ~every campaign dialog -> added ~37 dialog headers to bob_mfc_post.h. The rest
+    were genuine MFC-layer gaps added to **afxwin.h**: CWnd virtual handlers the
+    fragments forward to via `Base::` (OnInitMenu/OnInitMenuPopup/OnSetFont/
+    OnCancelMode/OnFinalRelease/PreSubclassWindow/OnChildNotify/OnCharToItem/
+    OnAmbientProperty), CWnd `IsZoomed`/`WinHelp`/`m_pCtrlSite`/`m_nIDHelp`/static
+    `WindowFromPoint`; CObject `IsKindOf`; CDC `SelectObject(CPen&)`; CList `SetAt`;
+    `ON_WM_CANCELMODE`/`ON_WM_CHARTOITEM` map macros. (CRToolBar : CDialog : CWnd,
+    so the CWnd additions resolve the `CRToolBar::OnInitMenu` base calls too.)
+  - **_FULL (275->0)**, the biggest:
+    * **~95 member-function-pointer table entries** written bare (MSVC extension):
+      `{IDS_x,&screen, SomeMemberFn}` where the field is `SelProc`/`Proc` (=
+      `Bool (RFullPanelDial::*)(...)`). GCC needs `&RFullPanelDial::`. Fixed with a
+      guarded perl across 8 fragments (fplayout/fpconfig/fullpane/commsac/credits/
+      Radio/Sdetail/TwoDPref): prefix a name only when it's a value reference —
+      `(?<![:\w])NAME(?!\s*\()` — which skips the `RFullPanelDial::NAME(){...}`
+      definitions living in those same files.
+    * **~50 more cross-unity dialog headers** (CSQuickLine=SQUICKUN.H, CREdtBt,
+      the C*-named game-option dialogs APILOT/SCAMP/SDETAIL/SFLIGHT/SGAME/SSOUND/
+      SVIEWER, service/session, EndDayR*, GameSelt, SController, SMission, TwoDPref,
+      SideSel/PhsDscr/EndDy*) -> bob_mfc_post.h.
+    * **Win32 gaps -> compat/bob_dx_extra.h**: display-settings consts
+      (DM_BITSPERPEL/DM_DISPLAY*, ENUM_CURRENT_SETTINGS, DISP_CHANGE_*, CDS_TEST);
+      Shell AppBar API (APPBARDATA, ABM_*/ABE_*/ABS_*, SHAppBarMessage); version-
+      resource (VS_VERSION_INFO/VS_FIXEDFILEINFO/RT_VERSION + FindResource/
+      LoadResource/LockResource/GlobalSize).
+    * per-fragment: `static currmode=` implicit-int -> `static int`; for-scope
+      `i`/`m`/`wave` hoists.
+  - No regressions: all 7 unities verified 0 at each step. **NEXT: Phase 2 — link
+    the `bob` ELF (assemble GRAPHICS/3D/HARDWARE asm to nasm; resolve undefined
+    symbols: DirectPlay/DirectShow stubs, GentleBankData/BAD_RV) + reconstruct the
+    corrupt bfrefs.g to unblock BFIELDS.**
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):

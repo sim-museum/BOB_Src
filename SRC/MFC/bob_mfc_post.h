@@ -65,4 +65,80 @@
 #include "AfDetl.h"		/* AirfieldDetails */
 #include "Load.h"		/* LSD_State enum (LSD_LOAD/LSD_SAVE/...) */
 #include "MapFltLw.h"		/* MapFiltersRaidsLW */
+/* _TOOL is the top-level toolbar/navigator: it instantiates ~all campaign
+   dialogs, so it needs every dialog class declared. */
+#include "AcUnitRF.h"
+#include "acalloc.h"
+#include "AfDossr.h"
+#include "BasesLft.h"
+#include "AUTHOR.H"
+#include "clock.h"
+#include "CntrlTop.h"
+#include "SUPPLY.H"
+#include "WEATHER.H"
+#include "DirRsult.h"
+#include "DirNoRes.h"
+#include "Dossierb.h"
+#include "GWadlist.h"
+#include "Hostiles.h"
+#include "IntOff.h"
+#include "LuftFlot.h"
+#include "LWDirect.h"
+#include "LWMssFr.h"
+#include "LWRevTp.h"
+#include "LWRouteT.h"
+#include "LWTaskTp.h"
+#include "MFTop.h"
+#include "PltLogBk.h"
+#include "RAFCombt.h"
+#include "RAFDiary.h"
+#include "RAFDrRes.h"
+#include "RAFDir.h"
+#include "RAFMssFr.h"
+#include "RAFRevTp.h"
+#include "RAFRoutT.h"
+#include "RAFSqLst.h"
+#include "RAFTaskT.h"
+#include "SelTrg.h"
+#include "TOOff.h"
+#include "TlBrCntl.h"
+#include "ToteSect.h"
+#include "ZoomLevl.h"
+/* _FULL (full-screen panel navigator) dialog classes */
+#include "SQUICKUN.H"		/* CSQuickLine */
+#include "redtbt.h"		/* CREdtBt */
+#include "VwQList.h"		/* CViewQList */
+#include "MTChild.h"		/* EmptyChildWindow */
+#include "QuickPar.h"		/* QuickParameters */
+#include "sQuickP.h"		/* QuickMissionPanel */
+#include "CommChat.h"		/* CommsChat */
+#include "Locker.h"		/* CLockerRoom */
+#include "CurrEmbl.h"		/* CCurrEmblem */
+#include "CampName.h"		/* CampaignEnterName */
+#include "BoBFrag.h"		/* BoBFrag */
+#include "APILOT.H"		/* CAutoPilot */
+#include "CommsAc.h"		/* CCommsDeathMatchAc */
+#include "CommsPnt.h"		/* CCommsPaint */
+#include "CntrlFly.h"		/* ControlFly */
+#include "SQView.h"		/* CQuickView */
+#include "Radio.h"		/* CRadio */
+#include "Ready.h"		/* CReadyRoom */
+#include "SCAMP.H"		/* CSCampaign */
+#include "SDETAIL.H"		/* CSDetail */
+#include "SFLIGHT.H"		/* CSFlight */
+#include "SGAME.H"		/* CSGame */
+#include "service.h"		/* CSelectService */
+#include "session.h"		/* CSelectSession */
+#include "SSOUND.H"		/* CSSound */
+#include "SVIEWER.H"		/* CSViewer */
+#include "Visitors.h"		/* CVisitorsBook */
+#include "EndDayRL.h"		/* EndOfDayReviewList */
+#include "GameSelt.h"		/* GameSelect */
+#include "SControl.h"		/* SController */
+#include "SMission.h"		/* SMissionConfigure */
+#include "TwoDPref.h"		/* TwoDPref */
+#include "SideSel.h"		/* SideSelect */
+#include "PhsDscr.h"		/* PhaseDescription */
+#include "EndDyBmp.h"		/* EndofDayReviewBmp */
+#include "EndDayRv.h"		/* EndOfDayReviewText */
 #endif

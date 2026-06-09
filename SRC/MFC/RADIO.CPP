@@ -185,7 +185,7 @@ BOOL CRadio::OnInitDialog()
 		st->ShowWindow(true);
 		if	(_DPlay.GameType == DPlay::DEATHMATCH)
 		{
-			for (char i = 0; i < PT_BRIT_NONFLY;i++)
+			char i; for (i = 0; i < PT_BRIT_NONFLY;i++)
 				combo->AddString(RESLIST(MK_SPIT_A,i));
 			for (i = PT_GER_FLYABLE; i < PT_GER_NONFLY;i++)
 				combo->AddString(RESLIST(MK_SPIT_A,i));

@@ -298,7 +298,7 @@ Bool RFullPanelDial::QuickViewInit()
 
 	int	ilch[8][2]={{0}};
 	int initindch=0;
-	for (wave=0;wave<8;wave++)
+	for (int wave=0;wave<8;wave++)
 		for (int grp=0;grp<3;grp++)
 //DeadCode AMM 10Aug00 			if (CSQuick1::*quickdef.line[1][wave][grp].flights)
 			if (CSQuick1::quickdef.line[0][wave][grp].flights)	//AMM 10Aug00
@@ -371,13 +371,13 @@ Bool RFullPanelDial::StartFlying()
 		flybox=MakeTopDialog(PLACEMENT,DialBox(OverLay.loader_art,new Rtestsh1(NULL,fIsRunning),EDGES_NOSCROLLBARS)));
 
 #undef PLACEMENT 
-	localnote=(OnFlyingClosed);
+	localnote=(&RFullPanelDial::OnFlyingClosed);
 	return TRUE;
 }
 
 bool RFullPanelDial::OnFlyingClosed(RDialog*,int rv)
 {
-//DeadCode CSB 11Sep00 	Mono_Text.Print(UByteP("OnFlyingClosed{"));
+//DeadCode CSB 11Sep00 	Mono_Text.Print(UByteP("&RFullPanelDial::OnFlyingClosed{"));
 
 	FullScreen* s=NULL;
 
@@ -493,7 +493,7 @@ bool RFullPanelDial::OnFlyingClosed(RDialog*,int rv)
 #endif
 	}
 //DeadCode AMM 21Nov100 	_Replay.QMPlayback=false;
-//DeadCode CSB 11Sep00 	Mono_Text.Print(UByteP("}OnFlyingClosed"));
+//DeadCode CSB 11Sep00 	Mono_Text.Print(UByteP("}&RFullPanelDial::OnFlyingClosed"));
 	return true;
 }
 
@@ -1186,7 +1186,7 @@ Bool RFullPanelDial::ReplayView(FullScreen*&fs)
 //	gamestate=QUICK;
 //	flybox=MakeTopDialog(CRect(50,50,690,530),DialBox(FIL_TITLE_640,new Rtestsh1()));
 //	LogChild(0,flybox);
-//	localnote=(OnFlyingClosed);
+//	localnote=(&RFullPanelDial::OnFlyingClosed);
 	
 	return TRUE;
 }
@@ -1892,7 +1892,7 @@ Bool	RFullPanelDial::TitleInit()
 
 Bool	RFullPanelDial::SetUpHotShot(FullScreen*&fs)
 {
-	for (int i=0;CSQuick1::quickmissions[i].titlename!=IDS_CONFIGIGNORED;i++)
+	int i; for (i=0;CSQuick1::quickmissions[i].titlename!=IDS_CONFIGIGNORED;i++)
 	{}
 	CSQuick1::currquickmiss=i;
 	CSQuick1::quickdef=CSQuick1::quickmissions[i]; //FB strike
@@ -2320,7 +2320,7 @@ Bool RFullPanelDial::CanGuestJoin(FullScreen*&fs)
 
 #endif	//#ifndef	BOB_DEMO_VER
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		SendCSQuickStrucToPlayers
 //Author		Andy McMaster
 //Date			Sun 8 Nov 1998
@@ -2343,7 +2343,7 @@ void	DPlay::SendCSQuickStrucToPlayers(Bool init)
 #endif	//#ifndef	BOB_DEMO_VER
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		UpdateCSQuick
 //Author		Andy McMaster
 //Date			Sun 8 Nov 1998
@@ -2367,7 +2367,7 @@ void	DPlay::UpdateCSQuick(UByte* pack,ULong num)
 #endif	//#ifndef	BOB_DEMO_VER
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		PackagePrepareForFrag
 //Author		Andy McMaster
 //Date			9 Nov 1998
@@ -2642,7 +2642,7 @@ bool	Replay::IsCampState(ULong state)
 	return false;
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		SaveTempSaveGame
 //Author		Andy McMaster
 //Date			Fri 22 Jan 1999
@@ -2680,7 +2680,7 @@ Bool	RFullPanelDial::DebriefReplayCheck(FullScreen*&fs)
 	return TRUE;
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		TruncateTempFiles
 //Author		Andy McMaster
 //Date			Thu 13 May 1999
@@ -2713,7 +2713,7 @@ void	Replay::DeleteTempFiles()
 	DeleteFile(buffer);
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		ClearPackages
 //Author		Andy McMaster
 //Date			Fri 14 May 1999
@@ -2746,7 +2746,7 @@ void	DPlay::ClearPackages()	 //THESE ALL NEED TO USE THE NEW	FragScreenBody STRU
 
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		SelectRRVariants
 //Author		Dave Whiteside
 //Date			Sun 27 Jun 1999

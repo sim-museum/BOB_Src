@@ -161,6 +161,8 @@ struct tagHELPINFO; struct COleControlSite;
 #define ON_WM_KEYDOWN()
 #define ON_WM_KEYUP()
 #define ON_WM_CHAR()
+#define ON_WM_CHARTOITEM()
+#define ON_WM_CANCELMODE()
 #define ON_WM_LBUTTONDOWN()
 #define ON_WM_LBUTTONUP()
 #define ON_WM_RBUTTONDOWN()
@@ -306,6 +308,7 @@ public:
     CObject() {}
     virtual ~CObject() {}
     virtual void Serialize(class CArchive&) {}
+    BOOL IsKindOf(const void*) const { return TRUE; }   /* RUNTIME_CLASS() is (void*)0 here */
 };
 
 class CCmdTarget : public CObject {
@@ -377,6 +380,7 @@ public:
     HGDIOBJ SelectStockObject(int) { return NULL; }
     CFont* SelectObject(CFont*) { return NULL; }
     CPen*  SelectObject(CPen*)  { return NULL; }
+    CPen*  SelectObject(CPen&)  { return NULL; }
     CBrush* SelectObject(CBrush*) { return NULL; }
     COLORREF SetTextColor(COLORREF c) { return c; }
     COLORREF SetBkColor(COLORREF c) { return c; }
@@ -441,11 +445,28 @@ class CMetaFileDC : public CDC { public: CMetaFileDC() {} };
 /* ============================================================
  * Window / app hierarchy (stubbed — no real windows on Linux)
  * ============================================================ */
+class CListBox;
 class CWnd : public CCmdTarget {
 public:
     enum { adjustBorder = 0, adjustOutside = 1 };
     HWND m_hWnd;
     CWnd() : m_hWnd(NULL) {}
+    /* COleControl host-site ptr + dialog help-id, used by CRToolBar/CDialog code */
+    void* m_pCtrlSite = NULL;
+    UINT  m_nIDHelp = 0;
+    BOOL IsZoomed() const { return FALSE; }
+    void WinHelp(DWORD, UINT = 0) {}
+    /* CWnd virtual handlers the toolbar/dialog fragments forward to via Base:: */
+    void OnInitMenu(CMenu*) {}
+    void OnInitMenuPopup(CMenu*, UINT, BOOL) {}
+    void OnSetFont(CFont*) {}
+    void OnCancelMode() {}
+    void OnFinalRelease() {}
+    void PreSubclassWindow() {}
+    BOOL OnChildNotify(UINT, WPARAM, LPARAM, LRESULT*) { return FALSE; }
+    int  OnCharToItem(UINT, CListBox*, UINT) { return -1; }
+    BOOL OnAmbientProperty(void*, DISPID, void*) { return FALSE; }
+    static CWnd* WindowFromPoint(CPoint) { return NULL; }
     void CalcWindowRect(LPRECT, UINT = adjustBorder) {}
     HWND GetSafeHwnd() const { return m_hWnd; }
     operator HWND() const { return m_hWnd; }
@@ -919,6 +940,7 @@ public:
     TYPE& GetNext(POSITION&)  { static TYPE d = TYPE(); return d; }
     TYPE& GetPrev(POSITION&)  { static TYPE d = TYPE(); return d; }
     TYPE& GetAt(POSITION)     { static TYPE d = TYPE(); return d; }
+    void  SetAt(POSITION, ARG_TYPE) {}
     POSITION Find(ARG_TYPE) const { return (POSITION)0; }
     POSITION FindIndex(int) const { return (POSITION)0; }
     void RemoveAt(POSITION) {}

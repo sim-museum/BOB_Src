@@ -27,8 +27,25 @@
 #define DM_PELSWIDTH   0x00080000L
 #define DM_PELSHEIGHT  0x00100000L
 #endif
+#ifndef DM_BITSPERPEL
+#define DM_BITSPERPEL       0x00040000L
+#define DM_DISPLAYFLAGS     0x00200000L
+#define DM_DISPLAYFREQUENCY 0x00400000L
+#endif
 #ifndef CDS_FULLSCREEN
 #define CDS_FULLSCREEN 0x00000004
+#endif
+#ifndef CDS_TEST
+#define CDS_TEST       0x00000002
+#endif
+#ifndef ENUM_CURRENT_SETTINGS
+#define ENUM_CURRENT_SETTINGS  ((DWORD)-1)
+#define ENUM_REGISTRY_SETTINGS ((DWORD)-2)
+#endif
+#ifndef DISP_CHANGE_SUCCESSFUL
+#define DISP_CHANGE_SUCCESSFUL 0
+#define DISP_CHANGE_RESTART    1
+#define DISP_CHANGE_FAILED    (-1)
 #endif
 #ifndef BOB_HAVE_DEVMODE
 #define BOB_HAVE_DEVMODE
@@ -46,6 +63,54 @@ typedef struct _devicemodeA {
 #endif
 static inline LONG ChangeDisplaySettings(LPDEVMODE, DWORD) { return 0; /*DISP_CHANGE_SUCCESSFUL*/ }
 static inline BOOL EnumDisplaySettings(const char*, DWORD, LPDEVMODE) { return FALSE; }
+
+// ---- Shell AppBar API (TwoDPref auto-hide taskbar probing) ------------------
+#ifndef ABM_GETSTATE
+#define ABM_NEW            0x00000000
+#define ABM_REMOVE         0x00000001
+#define ABM_QUERYPOS       0x00000002
+#define ABM_SETPOS         0x00000003
+#define ABM_GETSTATE       0x00000004
+#define ABM_GETTASKBARPOS  0x00000005
+#define ABM_ACTIVATE       0x00000006
+#define ABM_GETAUTOHIDEBAR 0x00000007
+#define ABM_SETAUTOHIDEBAR 0x00000008
+#define ABE_LEFT           0
+#define ABE_TOP            1
+#define ABE_RIGHT          2
+#define ABE_BOTTOM         3
+#define ABS_AUTOHIDE       0x0000001
+#define ABS_ALWAYSONTOP    0x0000002
+typedef struct _AppBarData {
+    DWORD  cbSize;
+    HWND   hWnd;
+    UINT   uCallbackMessage;
+    UINT   uEdge;
+    RECT   rc;
+    LPARAM lParam;
+} APPBARDATA, *PAPPBARDATA;
+static inline UINT SHAppBarMessage(DWORD, PAPPBARDATA) { return 0; }
+#endif
+
+// ---- VerQueryValue-style version info pulled from a resource ----------------
+#ifndef VS_VERSION_INFO
+#define VS_VERSION_INFO 1
+#define RT_VERSION      ((const char*)16)
+typedef struct tagVS_FIXEDFILEINFO {
+    DWORD dwSignature, dwStrucVersion;
+    DWORD dwFileVersionMS, dwFileVersionLS;
+    DWORD dwProductVersionMS, dwProductVersionLS;
+    DWORD dwFileFlagsMask, dwFileFlags, dwFileOS, dwFileType, dwFileSubtype;
+    DWORD dwFileDateMS, dwFileDateLS;
+} VS_FIXEDFILEINFO;
+#endif
+#ifndef BOB_HAVE_RESOURCE_FNS
+#define BOB_HAVE_RESOURCE_FNS
+static inline HRSRC   FindResource(HMODULE, const char*, const char*) { return (HRSRC)0; }
+static inline HGLOBAL LoadResource(HMODULE, HRSRC) { return (HGLOBAL)0; }
+static inline DWORD   GlobalSize(HGLOBAL) { return 0; }
+static inline void*   LockResource(HGLOBAL) { return (void*)0; }
+#endif
 
 // ---- misc Win32 funcs missing from the compat layer -------------------------
 // (Sleep / QueryPerformanceCounter / timeGetTime / GetWindowRect are already in
