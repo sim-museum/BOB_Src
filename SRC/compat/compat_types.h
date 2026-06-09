@@ -351,6 +351,41 @@ typedef long        OLE_YPOS_PIXELS;
 #define VARIANT_FALSE ((VARIANT_BOOL)0)
 #endif
 
+#ifndef _VARIANT_DEFINED
+#define _VARIANT_DEFINED
+typedef struct tagVARIANT {
+    VARTYPE vt; WORD wReserved1, wReserved2, wReserved3;
+    union {
+        LONG     lVal;
+        BYTE     bVal;
+        short    iVal;
+        float    fltVal;
+        double   dblVal;
+        VARIANT_BOOL boolVal;
+        SCODE    scode;
+        BSTR     bstrVal;
+        void    *byref;
+        struct IDispatch *pdispVal;
+        struct IUnknown  *punkVal;
+    };
+} VARIANT, *LPVARIANT, VARIANTARG, *LPVARIANTARG;
+
+typedef struct tagDISPPARAMS {
+    VARIANTARG *rgvarg;
+    DISPID     *rgdispidNamedArgs;
+    UINT        cArgs;
+    UINT        cNamedArgs;
+} DISPPARAMS;
+
+typedef struct tagEXCEPINFO {
+    WORD  wCode, wReserved;
+    BSTR  bstrSource, bstrDescription, bstrHelpFile;
+    DWORD dwHelpContext;
+    void *pvReserved, *pfnDeferredFillIn;
+    SCODE scode;
+} EXCEPINFO, *LPEXCEPINFO;
+#endif
+
 #ifndef _VARENUM_DEFINED
 #define _VARENUM_DEFINED
 enum VARENUM {

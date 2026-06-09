@@ -31,6 +31,7 @@ struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
 class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 class CDataExchange; class CPrintInfo; class CCreateContext_;
+struct AFX_CMDHANDLERINFO;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -486,6 +487,14 @@ public:
     afx_msg int  OnMouseActivate(CWnd*, UINT, UINT) { return 1; }
     virtual BOOL PreCreateWindow(struct tagCREATESTRUCTA&) { return TRUE; }
     virtual BOOL PreTranslateMessage(void*) { return FALSE; }
+    virtual void PostNcDestroy() {}
+    virtual BOOL OnCmdMsg(UINT, int, void*, AFX_CMDHANDLERINFO*) { return FALSE; }
+    afx_msg void OnNcMouseMove(UINT, CPoint) {}
+    afx_msg void OnNcLButtonDown(UINT, CPoint) {}
+    afx_msg LRESULT OnNcHitTest(CPoint) { return 0; }
+    afx_msg void OnNcPaint() {}
+    afx_msg BOOL OnNcCreate(void*) { return TRUE; }
+    void MapDialogRect(LPRECT) const {}
     BOOL IsFrameWnd() const { return FALSE; }
     CWnd* GetTopLevelParent() const { return NULL; }
     CWnd* GetTopLevelFrame() const { return NULL; }
