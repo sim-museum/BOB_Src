@@ -167,14 +167,32 @@ ULong
 	pre##0=pre2[0],		\
 	pre##1=pre2[1]
 
+/* NB: `pre2 N]` (not pre2##N]) — pre2 ends in `[`, and `[`##digit is an invalid
+   paste under GCC (MSVC silently allowed it); the tokens already form pre2[N]. */
 #define	pair04(pre,mid,pre2)	\
+	pair(pre##0##mid,pre2 0]),	\
+	pair(pre##1##mid,pre2 1]),	\
+	pair(pre##2##mid,pre2 2]),	\
+	pair(pre##3##mid,pre2 3]),	\
+	pair(pre##4##mid,pre2 4])
+
+#define	pair59(pre,mid,pre2)	\
+	pair(pre##5##mid,pre2 5]),	\
+	pair(pre##6##mid,pre2 6]),	\
+	pair(pre##7##mid,pre2 7]),	\
+	pair(pre##8##mid,pre2 8]),	\
+	pair(pre##9##mid,pre2 9])
+
+/* Paste variants: pre2 ends in a digit (e.g. GR_Pack_Targ[1), so pre2##N pastes
+   to a 2-digit index (1##0 -> 10). Used for the [1]/[2] tens-rows below. */
+#define	pair04P(pre,mid,pre2)	\
 	pair(pre##0##mid,pre2##0]),	\
 	pair(pre##1##mid,pre2##1]),	\
 	pair(pre##2##mid,pre2##2]),	\
 	pair(pre##3##mid,pre2##3]),	\
 	pair(pre##4##mid,pre2##4])
 
-#define	pair59(pre,mid,pre2)	\
+#define	pair59P(pre,mid,pre2)	\
 	pair(pre##5##mid,pre2##5]),	\
 	pair(pre##6##mid,pre2##6]),	\
 	pair(pre##7##mid,pre2##7]),	\
@@ -203,11 +221,23 @@ static	ULongRef
 //DEADCODE RJS 15/02/00 			refto8(GR_Pack_Sq,GR_Pack_Home,_Home),
 			pair04(GR_Pack_Targ_F,_E,GR_Pack_Targ[),
 			pair59(GR_Pack_Targ_F,_E,GR_Pack_Targ[),
-			pair04(GR_Pack_Targ_F1,_E,GR_Pack_Targ[1),
-			pair59(GR_Pack_Targ_F1,_E,GR_Pack_Targ[1),
-			pair04(GR_Pack_Targ_F2,_E,GR_Pack_Targ[2)
+			pair04P(GR_Pack_Targ_F1,_E,GR_Pack_Targ[1),
+			pair59P(GR_Pack_Targ_F1,_E,GR_Pack_Targ[1),
+			pair04P(GR_Pack_Targ_F2,_E,GR_Pack_Targ[2)
 //DEADCODE RJS 15/02/00 			reftoW(GR_Pack_TakeTime_W,G,GR_Pack_TakeTime)
 			;
+
+// Undef the local table-builder macros so `pair` etc. don't leak into later
+// TUs / libstdc++ <tuple> (std::pair) when this fragment is part of a unity build.
+#undef pair
+#undef pair04
+#undef pair59
+#undef pair04P
+#undef pair59P
+#undef reftoW
+#undef reftoG
+#undef refto8
+#undef refto5
 
 #define pass 1
 #include	"globrefs.h"
