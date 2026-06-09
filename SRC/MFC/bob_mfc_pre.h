@@ -13,4 +13,11 @@
 #include "dosdefs.h"
 #include "files.g"
 #include "cstring.h"
+/* Define BFNUMBER_Included's bit-field types BEFORE the _mfc.h chain first
+   reaches infoitem.h (via persons2.h): info_airgrp/info_waypoint are gated on
+   #ifdef BFNUMBER_Included and use EventVal bit-field members. Without this the
+   structs are forward-decl only and dereferencing them (RAF directives) fails.
+   bfnumber.h pulls only bfenum.h, not the deferred (corrupt) bfrefs.g. */
+#include "uniqueid.h"		/* UniqueID, used in bfnumber.h signatures */
+#include "bfnumber.h"
 #endif

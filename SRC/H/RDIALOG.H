@@ -98,14 +98,14 @@ struct DialBox:DialMake
 	DialMake(&e,artnum)
 	{dial=newdial;diallist[0]=NULL;diallist[1]=(DialBox*)0x12345678;}
 protected:
-	DialBox(DialBox& d):DialMake(d.edges,d.art){dial=d.dial;}
+	DialBox(const DialBox& d):DialMake(d.edges,d.art){dial=d.dial;}
 	DialBox()	{dial=NULL; edges=NULL; art=FIL_NULL;}
 };
 
 struct DialList:DialBox
 {
    
-	DialList(DialBox& d,const DialBox& d0,
+	DialList(const DialBox& d,const DialBox& d0,
 			const DialBox& d1=*(DialBox*)NULL,
 			const DialBox& d2=*(DialBox*)NULL,
 			const DialBox& d3=*(DialBox*)NULL,
@@ -128,7 +128,8 @@ struct DialList:DialBox
 		childtype=CLUMP;
 	}
 protected:
-	DialList(const DialBox& d0,
+	enum ChildrenTag { CHILDREN };
+	DialList(ChildrenTag,const DialBox& d0,
 			const DialBox& d1,
 			const DialBox& d2,
 			const DialBox& d3,
@@ -195,8 +196,8 @@ struct	IdList
 
 struct HTabBox:DialList
 {
-	IdList* titles;
-	HTabBox(FileNum artnum,IdList&idlist,Edges& e,
+	const IdList* titles;
+	HTabBox(FileNum artnum,const IdList&idlist,const Edges& e,
 			const DialBox& d0,
 			const DialBox& d1=*(DialBox*)NULL,
 			const DialBox& d2=*(DialBox*)NULL,
@@ -205,14 +206,14 @@ struct HTabBox:DialList
 			const DialBox& d5=*(DialBox*)NULL,
 			const DialBox& d6=*(DialBox*)NULL,
 			const DialBox& d7=*(DialBox*)NULL):
-	DialList(d0,d1,d2,d3,d4,d5,d6,d7)
+	DialList(CHILDREN,d0,d1,d2,d3,d4,d5,d6,d7)
 	{
 		titles=&idlist;
 		art=artnum;
 		edges=&e;
 		childtype=TABT;
 	}
-	HTabBox(FileNum artnum,Edges &e,
+	HTabBox(FileNum artnum,const Edges &e,
 			const DialBox& d0,
 			const DialBox& d1=*(DialBox*)NULL,
 			const DialBox& d2=*(DialBox*)NULL,
@@ -221,7 +222,7 @@ struct HTabBox:DialList
 			const DialBox& d5=*(DialBox*)NULL,
 			const DialBox& d6=*(DialBox*)NULL,
 			const DialBox& d7=*(DialBox*)NULL):
-	DialList(d0,d1,d2,d3,d4,d5,d6,d7)
+	DialList(CHILDREN,d0,d1,d2,d3,d4,d5,d6,d7)
 	{
 		edges=&e;
 		titles=NULL;
@@ -232,7 +233,7 @@ struct HTabBox:DialList
 
 struct VTabBox:HTabBox
 {
-	VTabBox(FileNum artnum,IdList&idlist,Edges &e,
+	VTabBox(FileNum artnum,const IdList&idlist,const Edges &e,
 			const DialBox& d0,
 			const DialBox& d1=*(DialBox*)NULL,
 			const DialBox& d2=*(DialBox*)NULL,
@@ -243,7 +244,7 @@ struct VTabBox:HTabBox
 			const DialBox& d7=*(DialBox*)NULL):
 	HTabBox(artnum,idlist,e,d0,d1,d2,d3,d4,d5,d6,d7)
 	{childtype=TABR;}
-	VTabBox(FileNum artnum,Edges &e,
+	VTabBox(FileNum artnum,const Edges &e,
 			const DialBox& d0,
 			const DialBox& d1=*(DialBox*)NULL,
 			const DialBox& d2=*(DialBox*)NULL,

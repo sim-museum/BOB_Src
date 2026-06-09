@@ -34,7 +34,7 @@ public:
 	void RefreshData(int effect);
 	bool	quickmission;
 
-	enum {PT_LWTOTAL = PT_HE59 - PT_GER_FLYABLE, MAXTYPES = PT_LWTOTAL+1};
+	enum {PT_LWTOTAL = (int)PT_HE59 - (int)PT_GER_FLYABLE, MAXTYPES = PT_LWTOTAL+1};
 	struct	EnemyAc
 	{
 		int seen;

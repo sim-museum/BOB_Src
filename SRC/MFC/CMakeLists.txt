@@ -6,5 +6,6 @@
 add_library(bob_mfc STATIC
     _MFC.CPP
     _AFX.CPP
+    _RAF.CPP
 )
 target_include_directories(bob_mfc PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H ${BOB_SRC}/MFC)

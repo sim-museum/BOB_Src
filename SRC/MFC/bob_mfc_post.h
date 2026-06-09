@@ -44,4 +44,13 @@
 #include "fullpane.h"
 #include "MainFrm.h"
 #include "MIGView.h"
+/* info_airgrp/info_waypoint full defs (forward-declared in package.h; the
+   RAF directives fragments dereference them) */
+#include "infoitem.h"
+/* cross-unity dialog classes referenced from sibling fragments before their
+   own .cpp is included in this unity (RAF refs LW dialogs; RAFDiary refs
+   RAFDiaryDetails defined later in the same unity) */
+#include "LWRouteM.h"
+#include "LWRevAc.h"
+#include "RAFDryD.h"
 #endif

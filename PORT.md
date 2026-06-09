@@ -557,6 +557,33 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     it doesn't regress _MFC/_AFX), or fix per-fragment. Then wire each clean unity
     into SRC/MFC/CMakeLists.txt. Then Phase 2 (link the ELF).
 
+- **2026-06-09 (20)**: **`_RAF.CPP` COMPILES CLEAN (28 -> 0); shared fixes cascade
+  to every campaign unity.** `libbob_mfc.a` now archives `_MFC + _AFX + _RAF`.
+  Five roots — mostly in shared headers, so the others fell for free:
+  **_SA 2072->46, _LW 152->37, _FULL 340->276, _TOOL 99->96** (no _MFC/_AFX regress).
+  1. **info_airgrp/info_waypoint were forward-decl-only everywhere.** Their full
+     defs (`infoitem.h` lines 100-346) are gated on `#ifdef BFNUMBER_Included` and
+     use `EventVal` bit-field members. `infoitem.h` is first reached during
+     `_mfc.h` (via persons2.h) *before* post.h, so `INFOITEM_INCLUDED` was set with
+     the body skipped. Fix in **bob_mfc_pre.h**: include `uniqueid.h` then
+     `bfnumber.h` (defines BFNUMBER_Included + EventVal; pulls only bfenum.h, NOT
+     the deferred-corrupt bfrefs.g) ahead of the _mfc.h chain — the bit-field
+     module enters the build narrowly, through the front door.
+  2. **Dialog-layout temp->non-const-ref** (rdialog.h): the `DialBox(DialBox&)`
+     copy ctor, `DialList(DialBox& d,...)`, `HTabBox(...,IdList&,Edges&,...)` and
+     VTabBox variants took non-const refs but are always passed temporaries. Made
+     them `const` (+ `HTabBox::titles` -> `const IdList*`). The protected internal
+     `DialList(d0..d7)` then tied with the public ctor at 8 args -> disambiguated
+     with a `ChildrenTag` enum (`DialList(CHILDREN,...)`). The 10 cascading
+     "expected primary-expression before '('" were just fallout of `new
+     LWRouteMain`/`LWReviewAircraft`/`RAFDiaryDetails` (undefined classes).
+  3. **Cross-unity dialog classes** used before their own fragment's .cpp: added
+     `infoitem.h` + `LWRouteM.h`/`LWRevAc.h`/`RAFDryD.h` to bob_mfc_post.h.
+  4. **`PT_LWTOTAL = PT_HE59 - PT_GER_FLYABLE`** (RAFDryD.h:37) invoked the MATHABLE
+     runtime `operator-` in an enum initializer -> cast both operands to `(int)`.
+  5. **`ON_EVENT_RANGE` undefined** (only ON_EVENT existed) -> no-op macro
+     (afxwin.h); for-scope `i` hoist (RAFRevCl.cpp:163).
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):

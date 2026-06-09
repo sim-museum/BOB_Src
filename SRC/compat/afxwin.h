@@ -62,6 +62,7 @@ struct tagHELPINFO; struct COleControlSite;
 #define BEGIN_EVENT_MAP(theClass, baseClass)
 #define END_EVENT_MAP()
 #define ON_EVENT(theClass, id, dispid, fn, vts)
+#define ON_EVENT_RANGE(theClass, idFirst, idLast, dispid, fn, vts)
 #ifndef CN_EVENT
 #define CN_EVENT  0x0800   /* control-notification: OLE control event */
 #endif
