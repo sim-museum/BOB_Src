@@ -135,7 +135,7 @@ Grid_Bit::Grid_Bit()
 	// basic constructor - set all values to 0 and all headers to run consecutivley up..
 	for ( int i = 0; i< 10*10; i++ )
 		*t++ = i;
-	for ( i = 0; i < (10*10*8/4); i++ ) // wipe 
+	for ( int i =0; i < (10*10*8/4); i++ ) // wipe 
 		*t++ = 0;
 }
 
@@ -194,7 +194,7 @@ bool Grid_Bit::save( char *filename )
 
 	long newHd[10*10];
 	int nextFree = 0;
-	for ( i = 0; i<10*10; i++ )
+	for ( int i =0; i<10*10; i++ )
 		if ( temp[i] < hdSt[i] )
 		{
 			newHd[i] = newHd[ temp[i] ]; // the blocks are the same
@@ -206,7 +206,7 @@ bool Grid_Bit::save( char *filename )
 	fwrite( newHd, 4, 10*10, fp );
 
 	// now 4 the data.
-	for ( i = 0; i<10*10; i++ )
+	for ( int i =0; i<10*10; i++ )
 		if ( temp[i] >= hdSt[i] )
 			fwrite( data[ hdSt[i] ], 1, 64*8, fp );			// write out this block (first time seen)
 
@@ -225,7 +225,7 @@ Grid_Byte::Grid_Byte()
 	// basic constructor - set all values to 0 and all headers to run consecutivley up..
 	for ( int i = 0; i< 80*80; i++ )
 		*t++ = i;
-	for ( i = 0; i < (80*80*8*8/4); i++ )
+	for ( int i =0; i < (80*80*8*8/4); i++ )
 		*t++ = 0;
 }
 
@@ -317,7 +317,7 @@ bool Grid_Byte::save( char *filename )
 
 	long newHd[80*80];
 	int nextFree = 0;
-	for ( i = 0; i<80*80; i++ )
+	for ( int i =0; i<80*80; i++ )
 		if ( temp[i] < hdSt[i] )
 		{
 			newHd[i] = newHd[ temp[i] ]; // the blocks are the same
@@ -329,7 +329,7 @@ bool Grid_Byte::save( char *filename )
 	fwrite( newHd, 4, 80*80, fp );
 
 	// now 4 the data.
-	for ( i = 0; i<80*80; i++ )
+	for ( int i =0; i<80*80; i++ )
 		if ( temp[i] >= hdSt[i] )
 			fwrite( data[ hdSt[i] ], 1, 8*8, fp );			// write out this block (first time seen)
 
@@ -348,7 +348,7 @@ Grid_Word::Grid_Word()
 	// basic constructor - set all values to 0 and all headers to run consecutivley up..
 	for ( int i = 0; i< 80*80; i++ )
 		*t++ = i;
-	for ( i = 0; i < (80*80*8*8/2); i++ )
+	for ( int i =0; i < (80*80*8*8/2); i++ )
 		*t++ = 0;
 }
 
@@ -398,7 +398,7 @@ bool Grid_Word::save( char *filename )
 
 	long newHd[80*80];
 	int nextFree = 0;
-	for ( i = 0; i<80*80; i++ )
+	for ( int i =0; i<80*80; i++ )
 		if ( temp[i] < hdSt[i] )
 		{
 			newHd[i] = newHd[ temp[i] ]; // the blocks are the same
@@ -410,7 +410,7 @@ bool Grid_Word::save( char *filename )
 	fwrite( newHd, 4, 80*80, fp );
 
 	// now 4 the data.
-	for ( i = 0; i<80*80; i++ )
+	for ( int i =0; i<80*80; i++ )
 		if ( temp[i] >= hdSt[i] )
 			fwrite( data[ hdSt[i] ], 2, 8*8, fp );			// write out this block (first time seen)
 
@@ -428,7 +428,7 @@ Grid_Long::Grid_Long()
 	// basic constructor - set all values to 0 and all headers to run consecutivley up..
 	for ( int i = 0; i< 80*80; i++ )
 		*t++ = i;
-	for ( i = 0; i < (80*80*8*8); i++ )
+	for ( int i =0; i < (80*80*8*8); i++ )
 		*t++ = 0;
 }
 
@@ -498,7 +498,7 @@ bool Grid_Long::save( char *filename )
 
 	long newHd[80*80];
 	int nextFree = 0;
-	for ( i = 0; i<80*80; i++ )
+	for ( int i =0; i<80*80; i++ )
 		if ( temp[i] < hdSt[i] )
 		{
 			newHd[i] = newHd[ temp[i] ]; // the blocks are the same
@@ -510,7 +510,7 @@ bool Grid_Long::save( char *filename )
 	fwrite( newHd, 4, 80*80, fp );
 
 	// now 4 the data.
-	for ( i = 0; i<80*80; i++ )
+	for ( int i =0; i<80*80; i++ )
 		if ( temp[i] >= hdSt[i] )
 			fwrite( data[ hdSt[i] ], 4, 8*8, fp );			// write out this block (first time seen)
 
