@@ -307,6 +307,35 @@ extern "C" {
 #define SW_SHOWDEFAULT      10
 #define SW_FORCEMINIMIZE    11
 
+/* WM_SIZE wParam codes */
+#ifndef SIZE_RESTORED
+#define SIZE_RESTORED       0
+#define SIZE_MINIMIZED      1
+#define SIZE_MAXIMIZED      2
+#define SIZE_MAXSHOW        3
+#define SIZE_MAXHIDE        4
+#endif
+/* TrackPopupMenu flags */
+#ifndef TPM_LEFTALIGN
+#define TPM_LEFTALIGN       0x0000
+#define TPM_CENTERALIGN     0x0004
+#define TPM_RIGHTALIGN      0x0008
+#define TPM_LEFTBUTTON      0x0000
+#define TPM_RIGHTBUTTON     0x0002
+#define TPM_TOPALIGN        0x0000
+#define TPM_RETURNCMD       0x0100
+#endif
+/* GetQueueStatus / MsgWaitForMultipleObjects flags */
+#ifndef QS_ALLINPUT
+#define QS_KEY              0x0001
+#define QS_MOUSE            0x0006
+#define QS_PAINT            0x0020
+#define QS_TIMER            0x0010
+#define QS_ALLINPUT         0x04FF
+#endif
+static inline BOOL PtInRegion(HRGN, int, int) { return FALSE; }
+static inline DWORD GetQueueStatus(UINT) { return 0; }
+
 /* ============================================================
  * Message Box Types
  * ============================================================ */

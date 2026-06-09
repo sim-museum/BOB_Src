@@ -174,6 +174,8 @@ struct CRect : public RECT {
     int Width()  const { return right - left; }
     int Height() const { return bottom - top; }
     CPoint TopLeft() const { return CPoint(left, top); }
+    CPoint& TopLeft() { return *(CPoint*)this; }
+    CPoint BottomRight() const { return CPoint(right, bottom); }
     CSize  Size()    const { return CSize(right - left, bottom - top); }
     void SetRect(int l, int t, int r, int b) { left = l; top = t; right = r; bottom = b; }
     void SetRectEmpty() { left = top = right = bottom = 0; }
@@ -292,6 +294,17 @@ public:
     template<class S> int  DrawText(const S& s, LPRECT r, UINT f) { LPCSTR p=(LPCSTR)s; return DrawText(p,(int)strlen(p),r,f); }
     COLORREF SetPixel(int, int, COLORREF c) { return c; }
     COLORREF GetPixel(int, int) const { return 0; }
+    BOOL Polygon(LPPOINT, int) { return TRUE; }
+    BOOL Polyline(LPPOINT, int) { return TRUE; }
+    BOOL Ellipse(int, int, int, int) { return TRUE; }
+    BOOL Ellipse(LPCRECT) { return TRUE; }
+    BOOL RoundRect(int, int, int, int, int, int) { return TRUE; }
+    int  GetClipBox(LPRECT) const { return 0; }
+    BOOL PtVisible(int, int) const { return TRUE; }
+    BOOL RectVisible(LPCRECT) const { return TRUE; }
+    UINT GetTextAlign() const { return 0; }
+    int  GetTextFace(int, LPSTR) const { return 0; }
+    BOOL GetTextMetricsA(void*) const { return TRUE; }
     BOOL Rectangle(int, int, int, int) { return TRUE; }
     BOOL MoveTo(int, int) { return TRUE; }
     BOOL LineTo(int, int) { return TRUE; }
@@ -367,6 +380,11 @@ public:
     BOOL PostMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return PostMessageA(m, w, l); }
     void ScrollWindow(int, int, LPCRECT = NULL, LPCRECT = NULL) {}
     class CMenu* GetMenu() const { return NULL; }
+    CDC* BeginPaint(LPPAINTSTRUCT) { return NULL; }
+    void EndPaint(LPPAINTSTRUCT) {}
+    void GetWindowPlacement(void*) const {}
+    void SetWindowPlacement(const void*) {}
+    int  RunModalLoop(DWORD = 0) { return 0; }
     void Invalidate(BOOL = TRUE) {}
     void InvalidateRect(LPCRECT, BOOL = TRUE) {}
     void ClientToScreenRect(LPRECT) const {}
@@ -572,6 +590,12 @@ public:
     void    EnableShellOpen() {}
     void    LoadStdProfileSettings(UINT = 0) {}
     BOOL    OnIdle(LONG) { return FALSE; }
+    void    WinHelp(DWORD, UINT = 0) {}
+    void    HtmlHelp(DWORD, UINT = 0) {}
+    UINT    GetProfileIntA(LPCSTR, LPCSTR, int n) { return n; }
+    BOOL    WriteProfileIntA(LPCSTR, LPCSTR, int) { return TRUE; }
+    CString GetProfileStringA(LPCSTR, LPCSTR, LPCSTR = NULL);
+    BOOL    WriteProfileStringA(LPCSTR, LPCSTR, LPCSTR) { return TRUE; }
 };
 
 /* ============================================================

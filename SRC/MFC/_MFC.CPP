@@ -93,6 +93,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "titlebar.h"
 #include "sysbox.h"
 #include "hintbox.h"
+#include "listbx.h"
+#include "rcombox.h"
+#include "rtabs.h"
+#include "rspltbar.h"
 #endif
 
 #include "./MIGView.cpp"
