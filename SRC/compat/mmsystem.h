@@ -175,5 +175,19 @@ static inline UINT     midiOutGetNumDevs(void)                              { re
 static inline MMRESULT midiOutGetDevCapsA(UINT_PTR id, LPMIDIOUTCAPSA p, UINT cb) { (void)id;(void)p;(void)cb; return MMSYSERR_ERROR; }
 #define midiOutGetDevCaps midiOutGetDevCapsA
 
+/* ---- multimedia timer (timeSetEvent callback) -------------------------------
+   Single-thread bring-up: timeSetEvent is a no-op returning a fake non-zero id;
+   the periodic 3D-frame callback is driven by the main loop instead. */
+#ifndef TIME_ONESHOT
+#define TIME_ONESHOT 0x0000
+#define TIME_PERIODIC 0x0001
+#define TIME_CALLBACK_FUNCTION 0x0000
+#define TIME_KILL_SYNCHRONOUS  0x0100
+#endif
+typedef void (CALLBACK *LPTIMECALLBACK)(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser, DWORD_PTR dw1, DWORD_PTR dw2);
+static inline MMRESULT timeSetEvent(UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT) { return (MMRESULT)1; }
+static inline MMRESULT timeKillEvent(UINT) { return MMSYSERR_NOERROR; }
+/* timeBeginPeriod/timeEndPeriod already provided by compat_winbase.h */
+
 #endif /* FF_LINUX */
 #endif

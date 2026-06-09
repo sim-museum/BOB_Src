@@ -41,6 +41,15 @@
 #endif
 #ifndef WINAPI
 #define WINAPI
+#ifndef WINBASEAPI
+#define WINBASEAPI
+#endif
+#ifndef WINUSERAPI
+#define WINUSERAPI
+#endif
+#ifndef WINGDIAPI
+#define WINGDIAPI
+#endif
 #endif
 #ifndef WINAPIV
 #define WINAPIV
@@ -591,6 +600,13 @@ FILE *fopen_nocase(const char *filepath, const char *mode);
 #endif
 #ifndef _T
 #define _T(s) s
+#endif
+
+/* MSVC integer-literal suffixes i64/ui64 -> user-defined literals. The non-'_'
+   suffix is reserved (warning only under -w); lets `0i64`, `0x..i64` compile. */
+#ifdef __cplusplus
+constexpr long long          operator"" i64 (unsigned long long n) { return (long long)n; }
+constexpr unsigned long long operator"" ui64(unsigned long long n) { return n; }
 #endif
 
 #endif /* FF_LINUX */

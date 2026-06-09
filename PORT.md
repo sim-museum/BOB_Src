@@ -686,6 +686,34 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     no regression from the shared ai.h edits. NEXT deferred TUs: MISSMAN
     PACKAGES/SAVEGAME/UIMSG, 3D OVERLAY, MFC STUB3D/BOBFRAG.
 
+- **2026-06-09 (25)**: **MFC `STUB3D.CPP` builds (31->0) into libbob_mfc.a** —
+  the 3D-subsystem stub/glue (defines `fastMath`, Master_3d, the View3d draw
+  loop). The "MFC-context standalone TU" recipe (also applies to BOBFRAG and any
+  other `stdafx`-including non-fragment TU): wrap its own includes with
+  `#if BOB_LINUX #include "bob_mfc_pre.h"` *before* stdafx (F_BATTLE enum group →
+  FIL_3D_KEYBOARD_TABLE) and `#include "bob_mfc_post.h"` *after* its includes
+  (the whole RFullPanelDial/rdialog/rlistbox/resource.h dialog ecosystem — adding
+  just `fullpane.h` cascades into undeclared DialBox/CRListBox/IDD_FULLPANE).
+  Compat gaps filled (reusable across the remaining TUs):
+  - **afxmt.h**: real CSyncObject/CEvent/CMutex/CCriticalSection/CSemaphore/
+    CSingleLock/CMultiLock (no-op single-thread stubs) + it now `#define`s
+    `__AFXMT_H__` — bob headers gate threading members on that (stub3d.h's
+    StaticTimeProc/TimeProc were `#ifdef __AFXMT_H__`, hence "no declaration
+    matches"/"has no member" until defined).
+  - **mmsystem.h**: multimedia-timer API (LPTIMECALLBACK, TIME_*, timeSetEvent/
+    timeKillEvent — no-op; timeBeginPeriod/EndPeriod already in compat_winbase.h).
+  - **compat_wingdi.h**: SetSystemPaletteUse + SYSPAL_*.
+  - **afxwin.h**: AfxBeginThread stub + `AFX_CDECL` (empty).
+  - **dinput.h**: IDirectInputDevice_{GetDeviceData,GetDeviceState,Acquire,Unacquire}
+    C-macro → C++ method wrappers.
+  - **compat_types.h**: MSVC `i64`/`ui64` integer-literal suffixes as UDLs;
+    `WINBASEAPI`/`WINUSERAPI`/`WINGDIAPI` empty (raw Win32 redeclarations in code).
+  STUB3D is caller-heavy glue, so the whole-archive undefined count rose 554->585
+  (it references the 3D/Miles/DDraw subsystems it drives) — expected; it's one of
+  the 302 TUs that must be in the final binary. Full build clean. **BOBFRAG.CPP
+  prelude added but still 135 errors (H2H multiplayer: H2HPlayerInfo, MMC,
+  CRCombo/CRStatic, squad types) — left WIP, not yet wired into CMake.**
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):

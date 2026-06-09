@@ -295,6 +295,14 @@ static inline int EnumFontFamiliesExA(HDC, void*, void*, LPARAM, DWORD) { return
 typedef struct tagLOGBRUSH { UINT lbStyle; COLORREF lbColor; LONG lbHatch; }
         LOGBRUSH, *PLOGBRUSH, *LPLOGBRUSH;
 #endif
+/* SetSystemPaletteUse (full-screen palette ownership) */
+#ifndef SYSPAL_STATIC
+#define SYSPAL_ERROR    0
+#define SYSPAL_STATIC   1
+#define SYSPAL_NOSTATIC 2
+#define SYSPAL_NOSTATIC256 3
+static inline UINT SetSystemPaletteUse(HDC, UINT) { return SYSPAL_STATIC; }
+#endif
 /* Background / mapping / ROP2 modes */
 #ifndef TRANSPARENT
 #define TRANSPARENT     1

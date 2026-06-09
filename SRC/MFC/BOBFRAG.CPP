@@ -65,12 +65,18 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 // RowanDialog: // BoBFrag.cpp : implementation file
 //
 
+#if defined(BOB_LINUX)
+#include "bob_mfc_pre.h"	/* F_BATTLE file-enum group before stdafx */
+#endif
 #include "stdafx.h"
 #include "bob.h"
 #include "BoBFrag.h"
 #include "package.h"
 #include "squick1.h"
 #include "winmove.h"
+#if defined(BOB_LINUX)
+#include "bob_mfc_post.h"	/* RFullPanelDial + dialog ecosystem */
+#endif
 
 #ifdef _DEBUG
 //#define new DEBUG_NEW

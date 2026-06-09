@@ -85,6 +85,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //							0x1m0=specific mode
 
 
+#if defined(BOB_LINUX)
+#include	"bob_mfc_pre.h"		/* F_BATTLE file-enum group (FIL_3D_KEYBOARD_TABLE) before stdafx */
+#endif
 #include	"stdafx.h"
 #include	<afxmt.h>
 #include	<dinput.h>
@@ -134,6 +137,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "grid.h"
 #include "monotxt.h"
 #include "fastmath.h"
+#if defined(BOB_LINUX)
+#include "bob_mfc_post.h"	/* RFullPanelDial + dialog ecosystem (resource.h/rdialog/rlistbox/fullpane) */
+#endif
 enum	{BUFFERED_KEYS=100};
 
 
@@ -527,7 +533,7 @@ Inst3d::Inst3d()
 	for(int i=0; i < Art_Int.ACARRAYSIZE * 2; i++)	//CSB 06/07/99	
  		Art_Int.VisibleCheck();
 
-	for(i = 0; i < 10 * AaaMainList::SUBLISTSIZE; i++)								//CSB 14Aug00
+	for(int i = 0; i < 10 * AaaMainList::SUBLISTSIZE; i++)								//CSB 14Aug00
 		(*Three_Dee.livelist).sleeplist.Event();									//CSB 14Aug00
 
 	//Restore miles flags...
@@ -2128,7 +2134,7 @@ void	Inst3d::DoMoveCycle()
 ///		((char*)0xb0000+160)[view->frametime]++;
 	}
 
-	for (view = viewedwin; view; view = view->nextview)					//CSB 08/03/00
+	for (auto view = viewedwin; view; view = view->nextview)					//CSB 08/03/00
 		if((view) && (view->View_Point))								//CSB 08/03/00
 		{																//CSB 08/03/00
 			view->View_Point->move_time_ms += Timer_Code.FRAMETIME * 10;	//cs -> ms	//CSB 02/03/00	//CSB 08/03/00

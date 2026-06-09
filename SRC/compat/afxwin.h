@@ -1066,6 +1066,16 @@ extern HINSTANCE AfxGetInstanceHandle();
 extern CWnd* AfxGetMainWnd();
 inline void AfxMessageBox(LPCSTR) {}
 
+/* MFC worker-thread spawn. Single-thread bring-up: stubbed (no thread started);
+   the periodic 3D draw loop is driven from the main loop instead. AFX_CDECL is
+   the cdecl calling-convention tag (empty on Linux/gcc). */
+#ifndef AFX_CDECL
+#define AFX_CDECL
+#endif
+typedef UINT (AFX_CDECL *AFX_THREADPROC)(LPVOID);
+inline CWinThread* AfxBeginThread(AFX_THREADPROC, LPVOID, int = 0, UINT = 0, DWORD = 0, void* = NULL) { return NULL; }
+inline CWinThread* AfxBeginThread(const void*, int = 0, UINT = 0, DWORD = 0, void* = NULL) { return NULL; }
+
 /* ANSI/Unicode-neutral aliases bob calls without the A suffix */
 #ifndef GetDlgItemText
 #define GetDlgItemText GetDlgItemTextA

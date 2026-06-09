@@ -468,6 +468,11 @@ typedef struct IDirectInputDeviceA  IDirectInputDevice8;
 #define IDirectInputDevice2A  IDirectInputDeviceA
 #define IDirectInputDevice7A  IDirectInputDeviceA
 #define IDirectInputDevice8A  IDirectInputDeviceA
+/* C-style IDirectInputDevice_* macro wrappers -> C++ method calls */
+#define IDirectInputDevice_GetDeviceData(p,a,b,c,d) (p)->GetDeviceData(a,b,c,d)
+#define IDirectInputDevice_GetDeviceState(p,a,b)    (p)->GetDeviceState(a,b)
+#define IDirectInputDevice_Acquire(p)               (p)->Acquire()
+#define IDirectInputDevice_Unacquire(p)             (p)->Unacquire()
 
 /* ============================================================
  * Structures
