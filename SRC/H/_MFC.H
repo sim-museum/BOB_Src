@@ -1,5 +1,7 @@
 #ifndef __MFC_INCLUDED
 #define	__MFC_INCLUDED
+#include	"enumbits.m"		// MATHABLE() macro used below (e.g. MATHABLE(SquadSelect))
+#include	"flyinit.h"		// enum SquadSelect (subject of MATHABLE(SquadSelect))
 #pragma optimize( "g", off )
 #define	THIS_FILE_DEFINED
 #ifdef _DEBUG

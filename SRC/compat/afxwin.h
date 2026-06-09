@@ -58,6 +58,9 @@ struct tagHELPINFO; struct COleControlSite;
 #define DECLARE_EVENTSINK_MAP()
 #define BEGIN_EVENTSINK_MAP(theClass, baseClass)
 #define END_EVENTSINK_MAP()
+#define DECLARE_EVENT_MAP()
+#define BEGIN_EVENT_MAP(theClass, baseClass)
+#define END_EVENT_MAP()
 #define ON_EVENT(theClass, id, dispid, fn, vts)
 #ifndef CN_EVENT
 #define CN_EVENT  0x0800   /* control-notification: OLE control event */
@@ -459,6 +462,8 @@ public:
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
     BOOL MoveWindow(LPCRECT, BOOL = TRUE) { return TRUE; }
     CWnd* GetTopWindow() const { return NULL; }
+    static CWnd* GetDesktopWindow() { return NULL; }
+    static CWnd* FromHandle(HWND) { return NULL; }
     CWnd* GetLastActivePopup() const { return NULL; }
     void GetClientRect(LPRECT r) const { if (r) { r->left = r->top = 0; r->right = r->bottom = 0; } }
     void GetWindowRect(LPRECT r) const { if (r) { r->left = r->top = r->right = r->bottom = 0; } }

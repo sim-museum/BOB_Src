@@ -1940,7 +1940,8 @@ void CMIGView::InvalidateRoute(int	pack,bool iconsaswell,bool squadsaswell)
 		PlotMainRoute(NULL,pack,false,UID_NULL);
 		for (int group=0,maxgroup=Todays_Packages[pack].squadlist;group<maxgroup;group++)
 			PlotTakeOffRoute(NULL, pack,  group, false,UID_NULL);
-		for (int t=-2;t<0;t++)
+		int t;
+		for (t=-2;t<0;t++)
 			PlotTargetRoute(NULL, pack,  t, false,UID_NULL);
 		for (;Todays_Packages[pack].packagetarget[t];t++)
 			PlotTargetRoute(NULL, pack,  t, false,UID_NULL);
