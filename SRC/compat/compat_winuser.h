@@ -626,6 +626,11 @@ static inline HWND GetFocus(void) { return NULL; }
 static inline HWND SetFocus(HWND hWnd) { (void)hWnd; return NULL; }
 static inline HWND GetActiveWindow(void) { return NULL; }
 static inline HWND SetActiveWindow(HWND hWnd) { (void)hWnd; return NULL; }
+static inline HWND GetDesktopWindow(void) { return NULL; }
+/* shellapi.h ShellExecute — no-op stub (returns a >32 "success" sentinel) */
+static inline HINSTANCE ShellExecuteA(HWND h, LPCSTR op, LPCSTR file, LPCSTR params, LPCSTR dir, int show)
+{ (void)h;(void)op;(void)file;(void)params;(void)dir;(void)show; return (HINSTANCE)(intptr_t)33; }
+#define ShellExecute ShellExecuteA
 static inline BOOL IsWindow(HWND hWnd) { return hWnd != NULL; }
 static inline BOOL IsWindowVisible(HWND hWnd) { (void)hWnd; return TRUE; }
 static inline BOOL EnableWindow(HWND hWnd, BOOL bEnable) { (void)hWnd; (void)bEnable; return TRUE; }
