@@ -20,6 +20,14 @@
 #include "windows.h"
 #include "objbase.h"
 
+/* MFC collection cursor */
+#ifndef __AFX_POSITION_DEFINED
+#define __AFX_POSITION_DEFINED
+struct __POSITION {};
+typedef __POSITION* POSITION;
+#endif
+struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
+
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
  * these on Windows; on Linux input/events are driven by SDL, so we drop them.
@@ -38,6 +46,22 @@
 #define DECLARE_DISPATCH_MAP()
 #define BEGIN_DISPATCH_MAP(theClass, baseClass)
 #define END_DISPATCH_MAP()
+#define DECLARE_EVENTSINK_MAP()
+#define BEGIN_EVENTSINK_MAP(theClass, baseClass)
+#define END_EVENTSINK_MAP()
+#define ON_EVENT(theClass, id, dispid, fn, vts)
+#define ON_EVENT_REFLECT(theClass, dispid, fn, vts)
+#define ON_PROPNOTIFY(theClass, id, dispid, fn)
+#define DISP_FUNCTION(theClass, name, fn, vtret, vtargs)
+#define DISP_PROPERTY(theClass, name, memb, vt)
+#define VTS_NONE   NULL
+#define VTS_I2     NULL
+#define VTS_I4     NULL
+#define VTS_R4     NULL
+#define VTS_R8     NULL
+#define VTS_BOOL   NULL
+#define VTS_BSTR   NULL
+#define VTS_VARIANT NULL
 #define DECLARE_INTERFACE_MAP()
 #define BEGIN_INTERFACE_MAP(theClass, baseClass)
 #define END_INTERFACE_MAP()
@@ -412,7 +436,6 @@ template <class TYPE, class ARG_TYPE = const TYPE&>
 class CList : public CObject {
     std::list<TYPE> l;
 public:
-    typedef typename std::list<TYPE>::iterator POSITION_t;
     int  GetCount() const { return (int)l.size(); }
     BOOL IsEmpty() const { return l.empty(); }
     void RemoveAll() { l.clear(); }
@@ -420,6 +443,15 @@ public:
     void AddHead(ARG_TYPE x) { l.push_front(x); }
     TYPE& GetHead() { return l.front(); }
     TYPE& GetTail() { return l.back(); }
+    /* POSITION iteration — stubbed empty (UI lists aren't driven at runtime yet).
+       GetHeadPosition()==NULL makes the usual for(pos; pos; GetNext) loops no-op. */
+    POSITION GetHeadPosition() const { return (POSITION)0; }
+    POSITION GetTailPosition() const { return (POSITION)0; }
+    TYPE& GetNext(POSITION&)  { static TYPE d = TYPE(); return d; }
+    TYPE& GetPrev(POSITION&)  { static TYPE d = TYPE(); return d; }
+    TYPE& GetAt(POSITION)     { static TYPE d = TYPE(); return d; }
+    POSITION Find(ARG_TYPE) const { return (POSITION)0; }
+    void RemoveAt(POSITION) {}
 };
 
 class CCommandLineInfo {

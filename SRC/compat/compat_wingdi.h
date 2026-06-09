@@ -251,6 +251,52 @@ typedef TEXTMETRICA TEXTMETRIC, *PTEXTMETRIC, *LPTEXTMETRIC;
 #define BLACKNESS   0x00000042
 #define WHITENESS   0x00FF0062
 
+/* Pen styles */
+#ifndef PS_SOLID
+#define PS_SOLID        0
+#define PS_DASH         1
+#define PS_DOT          2
+#define PS_DASHDOT      3
+#define PS_DASHDOTDOT   4
+#define PS_NULL         5
+#define PS_INSIDEFRAME  6
+#endif
+/* Background / mapping / ROP2 modes */
+#ifndef TRANSPARENT
+#define TRANSPARENT     1
+#define OPAQUE          2
+#endif
+#ifndef MM_TEXT
+#define MM_TEXT         1
+#endif
+#ifndef R2_COPYPEN
+#define R2_BLACK        1
+#define R2_NOT          6
+#define R2_COPYPEN      13
+#define R2_XORPEN       7
+#endif
+/* GetDeviceCaps indices */
+#ifndef HORZRES
+#define HORZRES         8
+#define VERTRES         10
+#define BITSPIXEL       12
+#define LOGPIXELSX      88
+#define LOGPIXELSY      90
+#endif
+/* DrawText flags */
+#ifndef DT_LEFT
+#define DT_LEFT         0x0000
+#define DT_CENTER       0x0001
+#define DT_RIGHT        0x0002
+#define DT_TOP          0x0000
+#define DT_VCENTER      0x0004
+#define DT_BOTTOM       0x0008
+#define DT_WORDBREAK    0x0010
+#define DT_SINGLELINE   0x0020
+#define DT_NOCLIP       0x0100
+#define DT_CALCRECT     0x0400
+#endif
+
 /* ============================================================
  * GDI function stubs
  * ============================================================ */
