@@ -312,6 +312,9 @@ static inline COLORREF GetPixel(HDC hdc, int x, int y) { (void)hdc; (void)x; (vo
 static inline BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop) {
     (void)hdc; (void)x; (void)y; (void)cx; (void)cy; (void)hdcSrc; (void)x1; (void)y1; (void)rop; return TRUE;
 }
+static inline int SetDIBitsToDevice(HDC, int, int, DWORD, DWORD, int, int, UINT, UINT, const void*, const void*, UINT) { return 0; }
+static inline int GetDIBits(HDC, HBITMAP, UINT, UINT, void*, void*, UINT) { return 0; }
+static inline int SetDIBits(HDC, HBITMAP, UINT, UINT, const void*, const void*, UINT) { return 0; }
 static inline BOOL StretchBlt(HDC hdcDest, int xDest, int yDest, int wDest, int hDest, HDC hdcSrc, int xSrc, int ySrc, int wSrc, int hSrc, DWORD rop) {
     (void)hdcDest; (void)xDest; (void)yDest; (void)wDest; (void)hDest; (void)hdcSrc; (void)xSrc; (void)ySrc; (void)wSrc; (void)hSrc; (void)rop; return TRUE;
 }

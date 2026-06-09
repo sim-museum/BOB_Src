@@ -252,6 +252,10 @@ public:
     BOOL TextOut(int x, int y, LPCSTR s, int n) { return TextOutA(x, y, s, n); }
     BOOL ExtTextOutA(int, int, UINT, LPCRECT, LPCSTR, UINT, LPINT) { return TRUE; }
     BOOL ExtTextOut(int x, int y, UINT o, LPCRECT r, LPCSTR s, UINT n, LPINT d) { return ExtTextOutA(x,y,o,r,s,n,d); }
+    /* CString-accepting overloads (template triggers CString::operator LPCTSTR) */
+    template<class S> BOOL TextOut(int x, int y, const S& s) { LPCSTR p=(LPCSTR)s; return TextOutA(x,y,p,(int)strlen(p)); }
+    template<class S> BOOL ExtTextOut(int x, int y, UINT o, LPCRECT r, const S& s, UINT n, LPINT d) { return ExtTextOutA(x,y,o,r,(LPCSTR)s,n,d); }
+    template<class S> int  DrawText(const S& s, LPRECT r, UINT f) { LPCSTR p=(LPCSTR)s; return DrawText(p,(int)strlen(p),r,f); }
     COLORREF SetPixel(int, int, COLORREF c) { return c; }
     COLORREF GetPixel(int, int) const { return 0; }
     BOOL Rectangle(int, int, int, int) { return TRUE; }
@@ -324,7 +328,11 @@ public:
     CWnd* SetFocus() { return NULL; }
     int MessageBoxA(LPCSTR, LPCSTR = NULL, UINT = 0) { return 0; }
     LRESULT SendMessageA(UINT, WPARAM = 0, LPARAM = 0) { return 0; }
+    LRESULT SendMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageA(m, w, l); }
     BOOL PostMessageA(UINT, WPARAM = 0, LPARAM = 0) { return TRUE; }
+    BOOL PostMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return PostMessageA(m, w, l); }
+    void ScrollWindow(int, int, LPCRECT = NULL, LPCRECT = NULL) {}
+    class CMenu* GetMenu() const { return NULL; }
     void Invalidate(BOOL = TRUE) {}
     void InvalidateRect(LPCRECT, BOOL = TRUE) {}
     void ClientToScreenRect(LPRECT) const {}
@@ -334,7 +342,9 @@ public:
     void BringWindowToTop() {}
     BOOL IsWindowVisible() const { return FALSE; }
     void SetCapture() {}
-    void GetParentFrame() const {}
+    CWnd* GetParent() const { return NULL; }
+    CWnd* GetParentFrame() const { return NULL; }
+    CWnd* GetParentOwner() const { return NULL; }
     BOOL UpdateData(BOOL = TRUE) { return TRUE; }
     virtual BOOL OnInitDialog() { return TRUE; }
     virtual void DoDataExchange(class CDataExchange*) {}
@@ -394,6 +404,33 @@ public:
 class CToolBar : public CWnd {
 public:
     BOOL Create(CWnd*, DWORD = 0, UINT = 0) { return TRUE; }
+};
+class CMenu : public CObject {
+public:
+    HMENU m_hMenu;
+    CMenu() : m_hMenu(NULL) {}
+    HMENU GetSafeHmenu() const { return m_hMenu; }
+    CMenu* GetSubMenu(int) const { return NULL; }
+    UINT GetMenuItemCount() const { return 0; }
+    BOOL AppendMenuA(UINT, UINT_PTR = 0, LPCSTR = NULL) { return TRUE; }
+    BOOL AppendMenu(UINT f, UINT_PTR id = 0, LPCSTR s = NULL) { return AppendMenuA(f, id, s); }
+    BOOL InsertMenu(UINT, UINT, UINT_PTR = 0, LPCSTR = NULL) { return TRUE; }
+    BOOL ModifyMenu(UINT, UINT, UINT_PTR = 0, LPCSTR = NULL) { return TRUE; }
+    BOOL DeleteMenu(UINT, UINT) { return TRUE; }
+    BOOL RemoveMenu(UINT, UINT) { return TRUE; }
+    BOOL CreatePopupMenu() { return TRUE; }
+    BOOL CreateMenu() { return TRUE; }
+    BOOL LoadMenu(UINT) { return TRUE; }
+    BOOL LoadMenu(LPCSTR) { return TRUE; }
+    BOOL DestroyMenu() { return TRUE; }
+    void Attach(HMENU h) { m_hMenu = h; }
+    HMENU Detach() { HMENU h = m_hMenu; m_hMenu = NULL; return h; }
+    BOOL EnableMenuItem(UINT, UINT) { return TRUE; }
+    BOOL CheckMenuItem(UINT, UINT) { return TRUE; }
+    UINT GetMenuState(UINT, UINT) const { return 0; }
+    int  GetMenuStringA(UINT, LPSTR, int, UINT) const { return 0; }
+    BOOL SetMenuItemBitmaps(UINT, UINT, CBitmap*, CBitmap*) { return TRUE; }
+    BOOL TrackPopupMenu(UINT, int, int, CWnd*, LPCRECT = NULL) { return TRUE; }
 };
 
 class CDialog : public CWnd {

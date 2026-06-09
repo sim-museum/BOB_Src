@@ -90,6 +90,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "rlistbox.h"
 #include "rmdldlg.h"
 #include "maintbar.h"
+#include "titlebar.h"
+#include "sysbox.h"
+#include "hintbox.h"
 #endif
 
 #include "./MIGView.cpp"
