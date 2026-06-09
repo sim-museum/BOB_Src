@@ -292,17 +292,68 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     site in the headers - needs a focused, careful pass. This gates a chunk of
     AI/MODEL/MISSMAN.
 
+- **2026-06-08 (12)**: **Bit-field overlay blocker SOLVED** (commit ba832b3).
+  The only multi-FIRSTFIELD struct is replay.h's `_asprim_values` (two UByte
+  unions). Added a **NEXTFIELD** macro: a 2nd+ FIRSTFIELD-style union that, on
+  Linux, reuses the struct-scope `Overview` typedef the first FIRSTFIELD hoisted
+  (avoids the member-typedef redeclaration); on MSVC it's just FIRSTFIELD.
+  WORLDINC.H's 7 FIRSTFIELDs are each in their own single-FIRSTFIELD struct, so
+  the hoist alone covers them. Clears bitcount.h for the replay/persons2 cluster.
+
+- **2026-06-09 (13)**: **Two more modules build — INPUT (6th) and 3D (8th, 4/5)
+  — plus a partial MISSMAN (7th, 7/10). Eight module libs total.** Also a major
+  **survey-methodology fix**: many BoB .cpp are *fragments* (zero `#include`,
+  pulled into a unity aggregator like MFC/_MFC.cpp); the survey now excludes both
+  unity aggregators AND zero-include fragments, so per-module counts reflect real
+  standalone TUs.
+  - **INPUT** (ANALOGUE + KEYLIST; KEYSTUB is a _MFC fragment). Compat additions
+    that recur tree-wide: `IN`/`OUT`/`OPTIONAL` SAL macros + `FIELD_OFFSET`
+    (compat_types.h); `DECLARE_INTERFACE`/`_` COM macros (objbase.h); joystick
+    API JOYINFO(EX)/JOY_*/joyGetPos* (mmsystem.h ×2); DInput A-aliases
+    (IDirectInputDevice2A/7A/8A as #defines so `struct X;` fwd-decls still work),
+    DIDOI_* flags, DIEB_NOTRIGGER (dinput.h).
+  - **Cross-cutting roots (high leverage, no regressions):**
+    * **string ambiguity** — the iostream.h/fstream.h shims did `using namespace
+      std`, dragging in std::string which collided with BoB's own
+      `typedef char* string` (dosdefs.h) → every `string&` param ambiguous.
+      Replaced with selective `using std::<stream-name>` (VC6's <iostream.h>
+      exposed stream names globally but NOT std::string). Faithful + fixes it
+      tree-wide.
+    * **old-iostream BSTREAM.H** — BOB_LINUX branches: openmode `+`->`|`
+      (operator+ on ios::openmode decays to int, no matching open()); emulate the
+      MSVC `ios::noreplace` extension (fail-if-exists) via an existence check.
+    * **PROF.H** — all 4 inline-_asm 64-bit timer routines -> portable C
+      (ht:lt add/sub, /1000 quotient+remainder, rdtsc via __builtin_ia32_rdtsc).
+    * legacy un-prefixed keywords `pascal`/`_pascal`/`cdecl` -> no-ops (DOSDEFS).
+    * `DAM(...)` variadic trampoline (MSVC fills omitted macro args empty).
+  - **MISSMAN** 7/10 (DEBRIEF/INTRMISS/NODEBOB/NODEKILL/ONEMISS/PEACMISS/
+    SO51MISS). NODEBOB also needed 2 for-scope hoists + `SUBCALL` macro
+    `assert(this)`->`assert(this);` (the -DNDEBUG assert is `((void)0)`, an
+    expression, not the {}-statement form MSVC used). NODEBOB.H now
+    `#include "package.h"` (struct Profile::PackageStatus/BetterRule).
+  - **3D** 4/5: LANDSCAP done (InterpLight `->##p1` paste, fpSqrt/fpTan/fpSinCos
+    asm, for-scope ×6, abs(unsigned) cast, `Shape.newco`->`Shape::newco` static).
+
+### Deferred / known per-file work
+- **MFC CDC/CFont + GDI GetGlyphOutline/GLYPHMETRICS/MAT2** — not in compat at
+  all; ~31 files use CDC/CFont (incl. 3D/OVERLAY, much of MFC/). A dedicated
+  MFC-GDI buildout; do as a focused pass.
+- **MISSMAN** PACKAGES/SAVEGAME/UIMSG: rchatter.h is not self-contained
+  (UniqueID/ItemPtr/AirStrucPtr used before decl — needs fwd-decls or prelude
+  include), incomplete MissMan/CString, SECSPERMIN/Directives::RAF ordering,
+  more for-scope.
+
 ### NEXT ACTIONS (resume here)
-1. Convert inline asm in the shared math/input headers (same recipe as
-   vector.h/mathasm.h): `H/FASTMATH.H`, `H/POLYGON.H`, `H/MYVECTOR.H`,
-   `H/HARDPASM.H`, `H/KEYTEST.H`. These unblock the most files.
-2. Settle the `assert(expr,str)` macro under BOB_LINUX (define consistently in
-   MYERROR.H; make sure system headers don't fight it).
-3. Re-run the survey; then go module-by-module (GENERAL, AI, AIRCRAFT, MISSMAN,
-   MOVECODE, COMMS, INPUT, 3D, MODEL, HARDWARE, BFIELDS, then MFC/ — 454 files),
-   adding each to `SRC/CMakeLists.txt` as it compiles. Assemble the remaining
-   `.asm` (GRAPHICS/GRAFPASM, 3D/LSTRASM, HARDWARE/*) to nasm as their callers
-   come online. Then Phase 2 (link).
+1. Re-survey AI/MODEL/MOVECODE/COMMS/HARDWARE/BFIELDS (the string/bstream/prof
+   fixes likely lifted several) and drive the next-closest module to a lib, same
+   as INPUT/3D. Current near-complete: AI 1/4, MODEL 1/5, COMMS 0/2.
+2. Tackle the **MFC CDC/CFont/GDI** buildout — it gates OVERLAY and a big slice
+   of the MFC game core; highest single-root leverage left.
+3. Make rchatter.h self-contained (fwd-decl UniqueID/ItemPtr/AirStrucPtr or
+   include the prelude) to recover UIMSG and others.
+4. Keep wiring modules into `SRC/CMakeLists.txt`. Assemble remaining `.asm`
+   (GRAPHICS/GRAFPASM, 3D/LSTRASM, HARDWARE/*) to nasm as callers come online.
+   Then Phase 2 (link).
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
