@@ -56,8 +56,9 @@ struct tagHELPINFO; struct COleControlSite;
 #define BEGIN_EVENTSINK_MAP(theClass, baseClass)
 #define END_EVENTSINK_MAP()
 #define ON_EVENT(theClass, id, dispid, fn, vts)
-#define CN_EVENT  0
-#define AFX_EVENT  int   /* RDialog event-sink param type */
+#ifndef CN_EVENT
+#define CN_EVENT  0x0800   /* control-notification: OLE control event */
+#endif
 #define ON_EVENT_REFLECT(theClass, dispid, fn, vts)
 #define ON_PROPNOTIFY(theClass, id, dispid, fn)
 #define DISP_FUNCTION(theClass, name, fn, vtret, vtargs)
@@ -537,6 +538,10 @@ public:
     afx_msg void OnActivate(UINT, CWnd*, BOOL) {}
     afx_msg void OnMove(int, int) {}
     afx_msg void OnShowWindow(BOOL, UINT) {}
+    afx_msg void OnEnable(BOOL) {}
+    afx_msg void OnWindowPosChanging(void*) {}
+    afx_msg void OnWindowPosChanged(void*) {}
+    afx_msg void OnCaptureChanged(CWnd*) {}
     afx_msg LRESULT OnNotify(WPARAM, LPARAM, LRESULT*) { return 0; }
     afx_msg BOOL OnCommand(WPARAM, LPARAM) { return TRUE; }
     afx_msg void OnGetMinMaxInfo(MINMAXINFO*) {}
@@ -912,6 +917,15 @@ public:
     BOOL IsLoading() const { return TRUE; }
     BOOL ExchangeProp(LPCSTR, VARTYPE, void*, const void* = NULL) { return TRUE; }
     BOOL ExchangeVersion(DWORD&, DWORD, BOOL = TRUE) { return TRUE; }
+};
+
+/* MFC OLE-control event descriptor (used in CCmdTarget::OnCmdMsg event sinks) */
+class AFX_EVENT {
+public:
+    enum EventType { event = 0, command = 1, propRequestEdit = 2 };
+    AFX_EVENT(int = event, DISPID = 0, void* = NULL, void* = NULL, void* = NULL) {}
+    int      m_eventKind;
+    DISPID   m_dispid;
 };
 
 class CDataExchange {
