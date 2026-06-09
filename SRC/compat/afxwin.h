@@ -31,7 +31,7 @@ struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
 class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 class CDataExchange; class CPrintInfo; class CCreateContext_;
-struct AFX_CMDHANDLERINFO;
+struct AFX_CMDHANDLERINFO; class CPropExchange;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -59,14 +59,33 @@ struct AFX_CMDHANDLERINFO;
 #define ON_PROPNOTIFY(theClass, id, dispid, fn)
 #define DISP_FUNCTION(theClass, name, fn, vtret, vtargs)
 #define DISP_PROPERTY(theClass, name, memb, vt)
-#define VTS_NONE   NULL
-#define VTS_I2     NULL
-#define VTS_I4     NULL
-#define VTS_R4     NULL
-#define VTS_R8     NULL
-#define VTS_BOOL   NULL
-#define VTS_BSTR   NULL
-#define VTS_VARIANT NULL
+/* VTS_* are string literals (MFC packs them into a BYTE[] param-type list via
+   literal concatenation), NOT NULL — using NULL breaks `BYTE p[] = VTS_x VTS_y`. */
+#define VTS_NONE      ""
+#define VTS_I2        "\x02"
+#define VTS_I4        "\x03"
+#define VTS_R4        "\x04"
+#define VTS_R8        "\x05"
+#define VTS_CY        "\x06"
+#define VTS_DATE      "\x07"
+#define VTS_BSTR      "\x08"
+#define VTS_DISPATCH  "\x09"
+#define VTS_SCODE     "\x0A"
+#define VTS_BOOL      "\x0B"
+#define VTS_VARIANT   "\x0C"
+#define VTS_UNKNOWN   "\x0D"
+#define VTS_UI1       "\x11"
+#define VTS_COLOR     "\x03"
+#define VTS_XPOS_PIXELS "\x03"
+#define VTS_YPOS_PIXELS "\x03"
+#define VTS_PI2       "\x42"
+#define VTS_PI4       "\x43"
+#define VTS_PR4       "\x44"
+#define VTS_PR8       "\x45"
+#define VTS_PBOOL     "\x4B"
+#define VTS_PVARIANT  "\x4C"
+#define VTS_PUI1      "\x51"
+#define VTS_WBSTR     "\x08"
 /* OLE control event firing (COleControl) — no-ops */
 #define EVENT_PARAM(...)
 #define FireEvent(...)        ((void)0)
@@ -340,7 +359,8 @@ public:
     COLORREF SetBkColor(COLORREF c) { return c; }
     int SetBkMode(int) { return 0; }
     BOOL TextOutA(int, int, LPCSTR, int) { return TRUE; }
-    BOOL TextOut(int x, int y, LPCSTR s, int n) { return TextOutA(x, y, s, n); }
+    /* note: callers' `TextOut` is macro-mapped to TextOutA by wingdi; do not add a
+       non-A TextOut member here (it would collide with TextOutA). */
     BOOL ExtTextOutA(int, int, UINT, LPCRECT, LPCSTR, UINT, LPINT) { return TRUE; }
     BOOL ExtTextOut(int x, int y, UINT o, LPCRECT r, LPCSTR s, UINT n, LPINT d) { return ExtTextOutA(x,y,o,r,s,n,d); }
     /* CString-accepting overloads (template triggers CString::operator LPCTSTR) */
@@ -440,7 +460,7 @@ public:
     LRESULT SendMessageA(UINT, WPARAM = 0, LPARAM = 0) { return 0; }
     LRESULT SendMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageA(m, w, l); }
     BOOL PostMessageA(UINT, WPARAM = 0, LPARAM = 0) { return TRUE; }
-    BOOL PostMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return PostMessageA(m, w, l); }
+    /* `PostMessage`/`GetWindowText`/... callers are macro-mapped to the A names */
     void ScrollWindow(int, int, LPCRECT = NULL, LPCRECT = NULL) {}
     class CMenu* GetMenu() const { return NULL; }
     BOOL SetMenu(class CMenu*) { return TRUE; }
