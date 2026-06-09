@@ -38,4 +38,10 @@
 #include "mapfltrs.h"
 #include "intelmsg.h"
 #include "radcomms.h"
+/* frame / view / panel headers (MainToolBar()/TitleBarPtr()/CMIGView/
+   RFullPanelDial used across the campaign-UI unities) */
+#include "redit.h"
+#include "fullpane.h"
+#include "MainFrm.h"
+#include "MIGView.h"
 #endif
