@@ -475,14 +475,24 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     cleared the UniqueID cluster. `_MFC.CPP` early-includes uniqueid/cstring/
     rdialog/rbutton so the dialog/map fragments see bob's own UI base classes
     (their headers don't self-include them).
-  - **Remaining ~723 roots** (the long tail): bob's OLE wrapper SetProperty/
-    GetProperty; bob UI classes/members still ordering-incomplete (RMdlDlg,
-    CRListBox, CMainToolbar/MainToolBar, CMainFrame::m_titlebar,
-    CSystemBox::InDialAncestor); CString still incomplete in some chains
-    (forward-declared before cstring.h); a global-vs-member `GetParent` ambiguity;
-    plus per-file `expected ;` cascades. Then the other ~150 standalone MFC TUs
-    beyond `_MFC.CPP`. 13 module libs still build (afxwin/streams not included
-    by them).
+  - **_MFC.CPP driven 723 -> 301** (cumulative 2655 -> 301). Cleared this pass:
+    globdefs.h ON_MESSAGE map-builders no-op'd; cstring.h included BEFORE stdafx
+    (so CString is complete when __AFX_H__ flips bob's "MFC present" branches);
+    afxwin.h grew controls (CButton/CEdit/CListBox/CComboBox/CScrollBar/CMenu/
+    CToolBar), CArray/CList(+POSITION), CFile/CArchive/CPrintInfo, CRect/CPoint/
+    CSize arithmetic, OLE-ctl factory/proppage/connection macros, CDC CString-
+    template text methods, AFX_CMDHANDLERINFO/HELP_*/AfxLoadString; the file-enum
+    map-cascade fix; PACKAGE.H self-contains uniqueid.h; _MFC early-includes the
+    bob UI base headers (rdialog/rbutton/rlistbox/rmdldlg/maintbar/titlebar/
+    sysbox/hintbox) + case-alias symlinks for them.
+  - **Remaining ~301 roots** (flat long tail, 2-4 each): more bob UI classes
+    incomplete (CListBx/CRTabs/CSQuickN/RtestshN — keep early-including their
+    headers); a few global-vs-member Win32 fn ambiguities (BeginPaint/EndPaint);
+    scattered missing methods/consts. Then the other ~150 standalone MFC TUs
+    beyond `_MFC.CPP`. Recipe is established: run _MFC, add the next method/class/
+    macro to afxwin.h or early-include the bob UI header, repeat. **13 module libs
+    keep building — afxwin/streams aren't included by them, so MFC work is
+    regression-safe.**
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
