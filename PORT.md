@@ -485,7 +485,7 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     map-cascade fix; PACKAGE.H self-contains uniqueid.h; _MFC early-includes the
     bob UI base headers (rdialog/rbutton/rlistbox/rmdldlg/maintbar/titlebar/
     sysbox/hintbox) + case-alias symlinks for them.
-  - **_MFC.CPP driven 301 -> ~193** (cumulative 2655 -> ~193, >92%). Added: full
+  - **_MFC.CPP driven 301 -> 172** (cumulative 2655 -> 172, ~94%). Added: full
     CWnd message-handler virtuals (OnLButtonDown/OnMouseMove/OnPaint/...), all the
     MFC ON_WM_*/ON_*N map-entry macros as no-ops, CMenu/CFile/CArchive/CPrintInfo/
     CPropExchange, CDC GDI methods (Polygon/Ellipse/ExtTextOut CString overloads),
@@ -493,17 +493,19 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     CBRS_*/DISPATCH_*/HID_* consts, AfxLoadString/HELP_*; cstring.h moved before
     stdafx (CString complete when __AFX_H__ flips bob's branches); globdefs.h
     ON_MESSAGE no-op'd; many bob UI headers early-included.
-  - **STRUCTURAL BOUNDARY reached (~193 left).** The remaining tail is dominated
-    by bob's ActiveX-control wrapper classes (CRCombo/CRStatic/CRSpinBut/CRTabs/
-    CRComboExtra/Rtestsh1/CSQuick1/...) which are FORWARD-DECLARED in headers but
-    DEFINED in their own .cpp control projects (SRC/rcombo, SRC/rstatic, ...), so
-    they're incomplete where the unity uses them as value members. Options:
-    (a) move those class defs into headers, (b) compile each control project and
-    include its def, or (c) accept them as separate TUs. Plus the other ~150
-    standalone MFC .cpp beyond `_MFC.CPP`. Recipe for the non-control tail is
-    mechanical: run _MFC, add the next method/macro/const to afxwin.h or
-    early-include the bob header. **13 module libs keep building — afxwin/streams
-    aren't included by them, so all MFC work is regression-safe.**
+    COleControl base class (bob's CR*Ctrl ActiveX impls derive from it).
+  - **Control classes resolved**: they ARE fully defined in headers (RSTATIC.H/
+    RCOMBO.H/...); the earlier "only in .cpp" read was wrong — it was include
+    ORDER (composite CRComboExtra:public CRCombo seen before CRCombo). _MFC.CPP
+    now early-includes leaf control wrappers before composites.
+  - **Remaining ~172 = a flat 1-2-per-root tail** spread across MainFrm/RDialog/
+    MIGView/MIG/MapDlg: per-file bob symbols (wpacnoactionno/MAPFILTERSMAX/
+    m_msgCur/pDocTemplate/...), a couple of HWND-deref sites, one inline `_asm`,
+    scattered missing CWnd/Win32 methods/consts. Then the other ~150 standalone
+    MFC .cpp beyond `_MFC.CPP`. Recipe is mechanical: run _MFC, add the next
+    method/macro/const to afxwin.h or early-include the bob header, repeat.
+    **13 module libs keep building — afxwin/streams aren't included by them, so
+    all MFC work is regression-safe.**
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
