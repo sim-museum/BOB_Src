@@ -447,6 +447,14 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     ordering), OLE types (OLE_COLOR, VT_*). Compile the MFC module with
     **`-ISRC/MFC`** (resource.h). 13 module libs still build (afxwin/streams are
     not included by them).
+  - **The ~900 `MAP_<N>` errors all cascade from `FIL_MAP_TABLE`** (frmap2.h),
+    which is **defined nowhere in the tree** ("did you mean FIL_MAP_xARMY" — the
+    sibling map file-enums exist but not this one) — another genuinely-missing
+    symbol like GentleBankData/BOB_GUID, likely from an uncommitted/generated
+    files.g. Resolve before the MAP table will compile. The MFC grind also has
+    tractable cross-cutting roots to clear first: OLE_COLOR (typedef = DWORD) and
+    VT_* VARIANT constants (add to a compat oleauto/wtypes), then the per-file
+    ordering of bob's own RDialog/CRButton/CSystemBox UI classes.
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
