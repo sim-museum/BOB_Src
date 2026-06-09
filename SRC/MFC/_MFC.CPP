@@ -70,6 +70,11 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #define F_BATTLE
 #include "dosdefs.h"
 #include "files.g"		/* lock FileNum with F_COMMON.G(FIL_MAP_TABLE)+F_GRAFIX.G+F_SOUNDS.G first */
+/* bob's CString MUST be complete before stdafx.h: stdafx->afxwin.h defines
+   __AFX_H__, which flips bob headers (savegame.h etc.) into their "MFC present"
+   branch that declares `CString` members — but CString is bob's own (cstring.h),
+   not provided by our MFC layer. */
+#include "cstring.h"
 #endif
 
 #include "stdafx.h"
@@ -80,9 +85,11 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
    definitions (the headers that use them, e.g. MapDlg.h/FullPane.h, don't
    self-include them; on Windows the PCH/build order covered this). */
 #include "uniqueid.h"
-#include "cstring.h"
 #include "rdialog.h"
 #include "rbutton.h"
+#include "rlistbox.h"
+#include "rmdldlg.h"
+#include "maintbar.h"
 #endif
 
 #include "./MIGView.cpp"

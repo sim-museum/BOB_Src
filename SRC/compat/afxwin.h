@@ -27,6 +27,8 @@ struct __POSITION {};
 typedef __POSITION* POSITION;
 #endif
 struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
+/* forward decls (classes reference each other before their definitions) */
+class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -62,6 +64,9 @@ struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 #define VTS_BOOL   NULL
 #define VTS_BSTR   NULL
 #define VTS_VARIANT NULL
+/* OLE control event firing (COleControl) — no-ops */
+#define EVENT_PARAM(...)
+#define FireEvent(...)        ((void)0)
 #define DECLARE_INTERFACE_MAP()
 #define BEGIN_INTERFACE_MAP(theClass, baseClass)
 #define END_INTERFACE_MAP()
@@ -150,9 +155,30 @@ struct CRect : public RECT {
     void InflateRect(int dx, int dy) { left -= dx; right += dx; top -= dy; bottom += dy; }
     CRect& operator+=(POINT p) { OffsetRect(p.x, p.y); return *this; }
     CRect& operator-=(POINT p) { OffsetRect(-p.x, -p.y); return *this; }
+    BOOL IntersectRect(LPCRECT, LPCRECT) { return FALSE; }
+    BOOL UnionRect(LPCRECT, LPCRECT) { return FALSE; }
+    void NormalizeRect() {}
+    CPoint CenterPoint() const { return CPoint((left+right)/2, (top+bottom)/2); }
     operator LPRECT() { return this; }
     operator LPCRECT() const { return this; }
 };
+
+/* CPoint/CSize arithmetic (MFC global operators) */
+inline CSize  operator-(POINT a, POINT b) { return CSize(a.x - b.x, a.y - b.y); }
+inline CPoint operator+(POINT a, SIZE s)  { return CPoint(a.x + s.cx, a.y + s.cy); }
+inline CPoint operator-(POINT a, SIZE s)  { return CPoint(a.x - s.cx, a.y - s.cy); }
+inline CPoint operator+(POINT a, POINT b) { return CPoint(a.x + b.x, a.y + b.y); }
+
+/* OLE stock-property dispids */
+#ifndef DISPID_FORECOLOR
+#define DISPID_FORECOLOR  (-501)
+#define DISPID_BACKCOLOR  (-501)
+#define DISPID_ENABLED    (-514)
+#define DISPID_FONT       (-512)
+#define DISPID_CAPTION    (-518)
+#define DISPID_TEXT       (-517)
+#define DISPID_VALUE      0
+#endif
 
 /* ============================================================
  * Object / command-target roots
@@ -224,6 +250,10 @@ public:
     int SetBkMode(int) { return 0; }
     BOOL TextOutA(int, int, LPCSTR, int) { return TRUE; }
     BOOL TextOut(int x, int y, LPCSTR s, int n) { return TextOutA(x, y, s, n); }
+    BOOL ExtTextOutA(int, int, UINT, LPCRECT, LPCSTR, UINT, LPINT) { return TRUE; }
+    BOOL ExtTextOut(int x, int y, UINT o, LPCRECT r, LPCSTR s, UINT n, LPINT d) { return ExtTextOutA(x,y,o,r,s,n,d); }
+    COLORREF SetPixel(int, int, COLORREF c) { return c; }
+    COLORREF GetPixel(int, int) const { return 0; }
     BOOL Rectangle(int, int, int, int) { return TRUE; }
     BOOL MoveTo(int, int) { return TRUE; }
     BOOL LineTo(int, int) { return TRUE; }
@@ -266,6 +296,9 @@ public:
     BOOL UpdateWindow() { return TRUE; }
     BOOL DestroyWindow() { return TRUE; }
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
+    BOOL MoveWindow(LPCRECT, BOOL = TRUE) { return TRUE; }
+    CWnd* GetTopWindow() const { return NULL; }
+    CWnd* GetLastActivePopup() const { return NULL; }
     void GetClientRect(LPRECT r) const { if (r) { r->left = r->top = 0; r->right = r->bottom = 0; } }
     void GetWindowRect(LPRECT r) const { if (r) { r->left = r->top = r->right = r->bottom = 0; } }
     void ClientToScreen(LPPOINT) const {}
@@ -273,6 +306,18 @@ public:
     void ScreenToClient(LPPOINT) const {}
     void ScreenToClient(LPRECT) const {}
     BOOL CreateControl(LPCSTR, LPCSTR, DWORD, const RECT&, CWnd*, UINT) { return FALSE; }
+    BOOL CreateControl(REFCLSID, LPCSTR, DWORD, const RECT&, CWnd*, UINT) { return FALSE; }
+    /* hosted-ActiveX-control accessors (ClassWizard wrappers call these) */
+    void SetProperty(DISPID, VARTYPE, ...) {}
+    void GetProperty(DISPID, VARTYPE, void*) const {}
+    void InvokeHelper(DISPID, WORD, VARTYPE, void*, const BYTE*, ...) {}
+    CWnd* GetNextWindow(UINT = 0) const { return NULL; }
+    CWnd* GetWindow(UINT) const { return NULL; }
+    int   GetDlgCtrlID() const { return 0; }
+    LONG  GetWindowLong(int) const { return 0; }
+    LONG  SetWindowLong(int, LONG) { return 0; }
+    DWORD GetStyle() const { return 0; }
+    void  ModifyStyle(DWORD, DWORD, UINT = 0) {}
     CDC* GetDC() { return NULL; }
     int  ReleaseDC(CDC*) { return 1; }
     BOOL EnableWindow(BOOL = TRUE) { return TRUE; }
@@ -366,11 +411,50 @@ public:
 class CView : public CWnd {
 public:
     virtual void OnDraw(CDC*) {}
+    CDocument* GetDocument() const { return NULL; }
 };
 
 class CFrameWnd : public CWnd {
 public:
     BOOL Create(LPCSTR, LPCSTR, DWORD = 0, const RECT& = CRect(), CWnd* = NULL, LPCSTR = NULL) { return TRUE; }
+    CView* GetActiveView() const { return NULL; }
+    CDocument* GetActiveDocument() const { return NULL; }
+    void RecalcLayout(BOOL = TRUE) {}
+    BOOL SetActiveView(CView*, BOOL = TRUE) { return TRUE; }
+};
+
+/* CFile / CArchive / CPrintInfo (afx.h) */
+class CFile : public CObject {
+public:
+    enum { modeRead = 0, modeWrite = 1, modeReadWrite = 2, modeCreate = 0x1000,
+           shareDenyNone = 0x40, shareDenyWrite = 0x20, typeBinary = 0x4000, begin = 0, current = 1, end = 2 };
+    HANDLE m_hFile;
+    CFile() : m_hFile(NULL) {}
+    virtual BOOL Open(LPCSTR, UINT, void* = NULL) { return FALSE; }
+    virtual UINT Read(void*, UINT) { return 0; }
+    virtual void Write(const void*, UINT) {}
+    virtual void Close() {}
+    virtual DWORD GetLength() const { return 0; }
+    virtual LONG Seek(LONG, UINT) { return 0; }
+};
+
+class CArchive {
+public:
+    enum Mode { load = 0, store = 1 };
+    BOOL IsStoring() const { return FALSE; }
+    BOOL IsLoading() const { return TRUE; }
+};
+
+class CPrintInfo {
+public:
+    BOOL m_bContinuePrinting;
+    UINT m_nCurPage;
+    CRect m_rectDraw;
+    CPrintInfo() : m_bContinuePrinting(TRUE), m_nCurPage(1) {}
+    void SetMaxPage(UINT) {}
+    void SetMinPage(UINT) {}
+    UINT GetFromPage() const { return 1; }
+    UINT GetToPage() const { return 1; }
 };
 
 class CDocument : public CCmdTarget {
@@ -451,7 +535,10 @@ public:
     TYPE& GetPrev(POSITION&)  { static TYPE d = TYPE(); return d; }
     TYPE& GetAt(POSITION)     { static TYPE d = TYPE(); return d; }
     POSITION Find(ARG_TYPE) const { return (POSITION)0; }
+    POSITION FindIndex(int) const { return (POSITION)0; }
     void RemoveAt(POSITION) {}
+    void InsertBefore(POSITION, ARG_TYPE) {}
+    void InsertAfter(POSITION, ARG_TYPE) {}
 };
 
 class CCommandLineInfo {

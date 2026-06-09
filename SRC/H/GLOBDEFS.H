@@ -16,12 +16,20 @@
 #define Globdefs_DEFINED_4_2_2000
 
 #undef	ON_MESSAGE
+#if defined(BOB_LINUX)
+/* Message maps are stubbed (no-op) in the Linux port, so the map-entry builders
+   expand to nothing. The MSG2_* member-function generators below are kept (they
+   wrap the real handlers and are otherwise harmless). */
+#define ON_MESSAGE(message, memberFxn)
+#define ON_MESSAGE_CLASS(msg,type,routine)
+#else
 #define ON_MESSAGE(message, memberFxn) \
 	{ message, 0, 0, 0, AfxSig_lwl, \
 		(AFX_PMSG)(AFX_PMSGW)(LRESULT (AFX_MSG_CALL CWnd::*)(WPARAM, LPARAM))&MSG2_##memberFxn },
 #define ON_MESSAGE_CLASS(msg,type,routine)\
 	{ msg, 0, 0, 0, AfxSig_lwl, \
 		(AFX_PMSG)(AFX_PMSGW)(LRESULT (AFX_MSG_CALL CWnd::*)(WPARAM, LPARAM))(LRESULT (AFX_MSG_CALL type::*)(WPARAM, LPARAM))&MSG2_##routine },
+#endif
 #define MSG2_0(memberFxn)	LRESULT MSG2_##memberFxn(int,int) {return (int)memberFxn();}
 #define MSG2_1(memberFxn)	LRESULT MSG2_##memberFxn(int a,int) {return (int)memberFxn(a);}
 #define MSG2_2(memberFxn)	LRESULT MSG2_##memberFxn(int a,int b) {return (int)memberFxn(a,b);}
