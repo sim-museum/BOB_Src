@@ -492,6 +492,22 @@ typedef struct tagPAINTSTRUCT {
     BYTE rgbReserved[32];
 } PAINTSTRUCT, *PPAINTSTRUCT, *LPPAINTSTRUCT;
 
+typedef struct tagNMHDR {
+    HWND     hwndFrom;
+    UINT_PTR idFrom;
+    UINT     code;
+} NMHDR, *LPNMHDR;
+
+typedef struct tagMINMAXINFO {
+    POINT ptReserved;
+    POINT ptMaxSize;
+    POINT ptMaxPosition;
+    POINT ptMinTrackSize;
+    POINT ptMaxTrackSize;
+} MINMAXINFO, *PMINMAXINFO, *LPMINMAXINFO;
+
+static inline DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD) { return 0; }
+
 typedef struct tagCREATESTRUCTA {
     LPVOID    lpCreateParams;
     HINSTANCE hInstance;

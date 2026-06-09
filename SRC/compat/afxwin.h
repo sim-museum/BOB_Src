@@ -29,6 +29,7 @@ typedef __POSITION* POSITION;
 struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 /* forward decls (classes reference each other before their definitions) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
+class CScrollBar; class CBitmap; class CMenu;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -318,6 +319,8 @@ public:
     BOOL StretchBlt(int, int, int, int, CDC*, int, int, int, int, DWORD) { return TRUE; }
     int  GetDeviceCaps(int) const { return 0; }
     CSize GetTextExtent(LPCSTR, int) const { return CSize(0, 0); }
+    template<class S> CSize GetTextExtent(const S& s) const { (void)s; return CSize(0, 0); }
+    CSize GetOutputTextExtent(LPCSTR, int) const { return CSize(0, 0); }
     int  DrawText(LPCSTR, int, LPRECT, UINT) { return 0; }
     UINT SetTextAlign(UINT) { return 0; }
     int  SetMapMode(int) { return 0; }
@@ -401,6 +404,34 @@ public:
     virtual BOOL OnInitDialog() { return TRUE; }
     virtual void DoDataExchange(class CDataExchange*) {}
     virtual LRESULT WindowProc(UINT, WPARAM, LPARAM) { return 0; }
+    /* standard message handlers (derived classes call base::OnXxx) */
+    afx_msg int  OnCreate(void*) { return 0; }
+    afx_msg void OnDestroy() {}
+    afx_msg void OnPaint() {}
+    afx_msg void OnSize(UINT, int, int) {}
+    afx_msg void OnTimer(UINT_PTR) {}
+    afx_msg void OnClose() {}
+    afx_msg BOOL OnEraseBkgnd(CDC*) { return TRUE; }
+    afx_msg void OnLButtonDown(UINT, CPoint) {}
+    afx_msg void OnLButtonUp(UINT, CPoint) {}
+    afx_msg void OnLButtonDblClk(UINT, CPoint) {}
+    afx_msg void OnRButtonDown(UINT, CPoint) {}
+    afx_msg void OnRButtonUp(UINT, CPoint) {}
+    afx_msg void OnMouseMove(UINT, CPoint) {}
+    afx_msg BOOL OnMouseWheel(UINT, short, CPoint) { return FALSE; }
+    afx_msg BOOL OnSetCursor(CWnd*, UINT, UINT) { return TRUE; }
+    afx_msg void OnKeyDown(UINT, UINT, UINT) {}
+    afx_msg void OnKeyUp(UINT, UINT, UINT) {}
+    afx_msg void OnChar(UINT, UINT, UINT) {}
+    afx_msg void OnHScroll(UINT, UINT, CScrollBar*) {}
+    afx_msg void OnVScroll(UINT, UINT, CScrollBar*) {}
+    afx_msg void OnSetFocus(CWnd*) {}
+    afx_msg void OnKillFocus(CWnd*) {}
+    afx_msg void OnActivate(UINT, CWnd*, BOOL) {}
+    afx_msg void OnMove(int, int) {}
+    afx_msg void OnShowWindow(BOOL, UINT) {}
+    afx_msg LRESULT OnNotify(WPARAM, LPARAM, LRESULT*) { return 0; }
+    afx_msg BOOL OnCommand(WPARAM, LPARAM) { return TRUE; }
 };
 
 /* Common control wrappers (all CWnd-derived stubs) */
@@ -651,6 +682,13 @@ public:
     void ParseParam(LPCSTR, BOOL, BOOL) {}
 };
 
+class CPropExchange {
+public:
+    BOOL IsLoading() const { return TRUE; }
+    BOOL ExchangeProp(LPCSTR, VARTYPE, void*, const void* = NULL) { return TRUE; }
+    BOOL ExchangeVersion(DWORD&, DWORD, BOOL = TRUE) { return TRUE; }
+};
+
 class CDataExchange {
 public:
     BOOL m_bSaveAndValidate;
@@ -675,6 +713,30 @@ public:
 };
 
 struct AFX_CMDHANDLERINFO { CCmdTarget* pTarget; void* pmf; };
+
+/* misc MFC/Win32 control-bar + help + dispatch bits */
+#ifndef CBRS_GRIPPER
+#define CBRS_TOP            0x0001
+#define CBRS_BOTTOM         0x0002
+#define CBRS_LEFT           0x0004
+#define CBRS_RIGHT          0x0008
+#define CBRS_ALIGN_ANY      0x000F
+#define CBRS_GRIPPER        0x00400000
+#define CBRS_TOOLTIPS       0x00010000
+#define CBRS_FLYBY          0x00020000
+#define CBRS_SIZE_DYNAMIC   0x00040000
+#endif
+#ifndef DISPATCH_METHOD
+#define DISPATCH_METHOD     0x1
+#define DISPATCH_PROPERTYGET 0x2
+#define DISPATCH_PROPERTYPUT 0x4
+#endif
+#ifndef HID_BASE_RESOURCE
+#define HID_BASE_RESOURCE   0x00020000
+#define HID_BASE_COMMAND    0x00010000
+#endif
+typedef HANDLE HTASK;
+typedef struct tagHELPINFO { UINT cbSize; int iContextType; int iCtrlId; HANDLE hItemHandle; DWORD_PTR dwContextId; POINT MousePos; } HELPINFO, *LPHELPINFO;
 struct AFX_MSGMAP { const AFX_MSGMAP* (*pfnGetBaseMap)(); const void* lpEntries; };
 
 #ifndef HELP_CONTEXT
