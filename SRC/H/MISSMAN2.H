@@ -8,6 +8,7 @@
 #ifndef	MISSMAN2_Included
 #define	MISSMAN2_Included
 
+#include	"savegame.h"		// enum PLAYERNAMELEN (CommsPlayerName[] size) used below
 #define	DEFAULT_MISSMAN2 0
 
 //this means that I dont want any common files							//RDH 18/05/00

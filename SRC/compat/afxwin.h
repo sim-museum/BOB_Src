@@ -447,6 +447,7 @@ public:
     BOOL Attach(HWND h) { m_hWnd = h; return TRUE; }
     HWND Detach() { HWND h = m_hWnd; m_hWnd = NULL; return h; }
     CWnd* GetDlgItem(int) const { return NULL; }
+    void  GetDlgItem(int, HWND* ph) const { if (ph) *ph = NULL; }
     int GetDlgItemTextA(int, LPSTR, int) { return 0; }
     void SetDlgItemTextA(int, LPCSTR) {}
     BOOL SetWindowTextA(LPCSTR) { return TRUE; }
