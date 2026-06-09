@@ -77,9 +77,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #if defined(BOB_LINUX)
 /* Reproduce the implicit MSVC PCH: this TU only listed 4 includes and relied on
    the PCH for the base types/enums + the macro-gated declaration blocks. */
-#define F_COMMON
-#define F_GRAFIX
-#define F_BATTLE
+#define F_BATTLE			/* ONLY F_BATTLE — the F_* names are include guards in
+					   files.g, so this pulls F_COMMON.G/F_GRAFIX.G/F_SOUNDS.G
+					   and skips only F_BATTLE.G (defining F_COMMON/F_GRAFIX
+					   would suppress those groups) */
 #include "files.g"			/* FIL_NULL + file-enum groups */
 #include "uniqueid.h"
 #include "cstring.h"		/* CSTRING_Included + full CString */

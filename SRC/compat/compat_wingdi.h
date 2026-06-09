@@ -303,6 +303,29 @@ typedef struct tagLOGBRUSH { UINT lbStyle; COLORREF lbColor; LONG lbHatch; }
 #define SYSPAL_NOSTATIC256 3
 static inline UINT SetSystemPaletteUse(HDC, UINT) { return SYSPAL_STATIC; }
 #endif
+/* GetGlyphOutline glyph-rasterising API (OVERLAY renders overlay text via font
+   glyphs). Stubbed for bring-up: returns 0 (no glyph bitmap) -> blank text now;
+   a real path can rasterise via FreeType/SDL_ttf later. */
+#ifndef GGO_GRAY8_BITMAP
+#define GGO_METRICS       0
+#define GGO_BITMAP        1
+#define GGO_NATIVE        2
+#define GGO_GRAY2_BITMAP  4
+#define GGO_GRAY4_BITMAP  5
+#define GGO_GRAY8_BITMAP  6
+#ifndef GDI_ERROR
+#define GDI_ERROR ((DWORD)0xFFFFFFFF)
+#endif
+typedef struct _FIXED { WORD fract; short value; } FIXED;
+typedef struct _MAT2 { FIXED eM11, eM12, eM21, eM22; } MAT2, *LPMAT2;
+typedef struct _GLYPHMETRICS {
+    UINT  gmBlackBoxX, gmBlackBoxY;
+    POINT gmptGlyphOrigin;
+    short gmCellIncX, gmCellIncY;
+} GLYPHMETRICS, *LPGLYPHMETRICS;
+static inline DWORD GetGlyphOutlineA(HDC, UINT, UINT, LPGLYPHMETRICS, DWORD, LPVOID, const MAT2*) { return 0; }
+#define GetGlyphOutline GetGlyphOutlineA
+#endif
 /* Background / mapping / ROP2 modes */
 #ifndef TRANSPARENT
 #define TRANSPARENT     1

@@ -104,6 +104,19 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //#define	_NOTFORDEMO_
 
 enum	ImageMapNumber : int;
+#if defined(BOB_LINUX)
+/* Make bob's own CString complete BEFORE <afxwin.h> defines __AFX_H__ (which
+   flips bob headers into their "MFC present -> CString is forward-decl" branch).
+   Mirrors bob_mfc_pre.h but inline (this TU lives in SRC/3D, off the MFC path).
+   Define ONLY F_BATTLE: in files.g the F_* names are include *guards*, so
+   defining F_BATTLE leaves F_COMMON/F_GRAFIX/F_SOUNDS undefined -> their .G
+   groups ARE included (only F_BATTLE.G is skipped). Defining F_COMMON/F_GRAFIX
+   too would *suppress* those groups (dropping FIL_STILLS_START_DIR etc.). */
+#define F_BATTLE
+#include "dosdefs.h"
+#include "files.g"
+#include "cstring.h"
+#endif
 #include <afxctl.h>
 #include	<afxwin.h>
 #include "dosdefs.h"
@@ -592,7 +605,7 @@ void	COverlay::FindLanguage()
 					}
 				}
 
-				for (i=0; i < LI_MAX; i++)
+				for (int i=0; i < LI_MAX; i++)
 				{
 					if (stricmp(lang_name[i],langname)==0)
 					{
@@ -1439,7 +1452,7 @@ SWord COverlay::CalcTargIndex(CString& in)
 //DeadCode JON 10Oct00 	if (StrPixelLen(const_cast<char*>(LPCTSTR(in)))<physicalWidth)
 	if (StrPixelWidth(const_cast<char*>(LPCTSTR(in)))<physicalWidth)
 		return 0;
-	for (SLong i=0;i<in.GetLength();i++)
+	SLong i; for (i=0;i<in.GetLength();i++)
 	{
 		CString temp=in.Right(in.GetLength()-i);
 //DeadCode JON 10Oct00 		if (StrPixelLen(const_cast<char*>(LPCTSTR(temp)))<physicalWidth)
@@ -3111,7 +3124,7 @@ void COverlay::SetGridDimensions(MapScr *pscr)
 	//find the longest string & count number of lines @ the same time
 	MapScr::OptionList *popt=pscr->optionList;
 	SLong maxChars=0;
-	for (SLong oc=0;popt->key!=SEL_EOL;oc++,popt++)
+	SLong oc; for (oc=0;popt->key!=SEL_EOL;oc++,popt++)
 	{
 		if (popt->resIDOffset!=0xFF &&
 			(popt->resID<IDS_MAPICON00LO || popt->resID>IDS_MAPICON15HI))
@@ -5353,17 +5366,17 @@ MapScr COverlay::firstMapScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::FirstMapInit,
-	MapScr::UpdateMessageDisplay,
+	&MapScr::FirstMapInit,
+	&MapScr::UpdateMessageDisplay,
 	{
-		{IDS_MAP_ACCEL,0,SEL_1,MapScr::SelectFromFirstMap},
-		{IDS_MAP_WAYPOINTS,0,SEL_2,MapScr::SelectFromFirstMap},
-		{IDS_MAP_RADIO,0,SEL_3,MapScr::SelectFromFirstMap},
-		{IDS_MAP_ZOOM,0,SEL_4,MapScr::SelectFromFirstMap},
+		{IDS_MAP_ACCEL,0,SEL_1,&MapScr::SelectFromFirstMap},
+		{IDS_MAP_WAYPOINTS,0,SEL_2,&MapScr::SelectFromFirstMap},
+		{IDS_MAP_RADIO,0,SEL_3,&MapScr::SelectFromFirstMap},
+		{IDS_MAP_ZOOM,0,SEL_4,&MapScr::SelectFromFirstMap},
 //DeadCode JON 17Oct00 		MSBlankLine,
 		MSBlankLine,
-		MSEscapeLine(MapScr::SelectFromFirstMap),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromFirstMap},
+		MSEscapeLine(&MapScr::SelectFromFirstMap),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromFirstMap},
 		MSListEnd
 	}
 };
@@ -5384,17 +5397,17 @@ MapScr COverlay::firstMapScrBomber=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::FirstMapInit,
-	MapScr::UpdateMessageDisplay,
+	&MapScr::FirstMapInit,
+	&MapScr::UpdateMessageDisplay,
 	{
-		{IDS_MAP_ACCEL,0,SEL_1,MapScr::SelectFromFirstMap},
-		{IDS_MAP_WAYPOINTS,0,SEL_2,MapScr::SelectFromFirstMap},
-//		{IDS_MAP_RADIO,0,SEL_3,MapScr::SelectFromFirstMap},
+		{IDS_MAP_ACCEL,0,SEL_1,&MapScr::SelectFromFirstMap},
+		{IDS_MAP_WAYPOINTS,0,SEL_2,&MapScr::SelectFromFirstMap},
+//		{IDS_MAP_RADIO,0,SEL_3,&MapScr::SelectFromFirstMap},
 		MSBlankLine,
-		{IDS_MAP_ZOOM,0,SEL_4,MapScr::SelectFromFirstMap},
+		{IDS_MAP_ZOOM,0,SEL_4,&MapScr::SelectFromFirstMap},
 		MSBlankLine,
-		MSEscapeLine(MapScr::SelectFromFirstMap),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromFirstMap},
+		MSEscapeLine(&MapScr::SelectFromFirstMap),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromFirstMap},
 		MSListEnd
 	}
 };
@@ -5414,19 +5427,19 @@ MapScr COverlay::firstMapScrBomber=
 //DeadCode JON 17Oct00 	MapColumnWidth,MapRowHeight,
 //DeadCode JON 17Oct00 	MapGridNumCols,MapGridNumRows,
 //DeadCode JON 17Oct00 	0x0000,
-//DeadCode JON 17Oct00 	MapScr::FirstMapInit,
-//DeadCode JON 17Oct00 	MapScr::UpdateMessageDisplay,
+//DeadCode JON 17Oct00 	&MapScr::FirstMapInit,
+//DeadCode JON 17Oct00 	&MapScr::UpdateMessageDisplay,
 //DeadCode JON 17Oct00 	{
-//DeadCode JON 17Oct00 		{IDS_MAP_ACCEL,0,SEL_1,MapScr::SelectFromFirstMap},
-//DeadCode JON 17Oct00 		{IDS_MAP_WAYPOINTS,0,SEL_2,MapScr::SelectFromFirstMap},
-//DeadCode JON 17Oct00 		{IDS_MAP_RADIO,0,SEL_3,MapScr::SelectFromFirstMap},
+//DeadCode JON 17Oct00 		{IDS_MAP_ACCEL,0,SEL_1,&MapScr::SelectFromFirstMap},
+//DeadCode JON 17Oct00 		{IDS_MAP_WAYPOINTS,0,SEL_2,&MapScr::SelectFromFirstMap},
+//DeadCode JON 17Oct00 		{IDS_MAP_RADIO,0,SEL_3,&MapScr::SelectFromFirstMap},
 //DeadCode JON 17Oct00 		MSBlankLine,
-//DeadCode JON 17Oct00 		{IDS_MAP_COMMSMSG,0,SEL_5,MapScr::SelectFromFirstMap},
-//DeadCode JON 17Oct00 		{IDS_MAP_COMMSRECIPIENT,0,SEL_6,MapScr::SelectFromFirstMap},
+//DeadCode JON 17Oct00 		{IDS_MAP_COMMSMSG,0,SEL_5,&MapScr::SelectFromFirstMap},
+//DeadCode JON 17Oct00 		{IDS_MAP_COMMSRECIPIENT,0,SEL_6,&MapScr::SelectFromFirstMap},
 //DeadCode JON 17Oct00 		MSBlankLine,
 //DeadCode JON 17Oct00 		MSBlankLine,
-//DeadCode JON 17Oct00 		MSEscapeLine(MapScr::SelectFromFirstMap),
-//DeadCode JON 17Oct00 		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromFirstMap},
+//DeadCode JON 17Oct00 		MSEscapeLine(&MapScr::SelectFromFirstMap),
+//DeadCode JON 17Oct00 		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromFirstMap},
 //DeadCode JON 17Oct00 		MSListEnd
 //DeadCode JON 17Oct00 	}
 //DeadCode JON 17Oct00 };
@@ -5510,9 +5523,9 @@ void COverlay::ActionMessage(MESSAGE_STRUC* msg)
 //DEADCODE CSB 23/02/00 	/*
 
 	MapScr::OptionList termOpt=MSListEnd;
-	MapScr::OptionList escOpt=MSEscapeLine(MapScr::SelectFrom3DOrders);
+	MapScr::OptionList escOpt=MSEscapeLine(&MapScr::SelectFrom3DOrders);
 	MapScr::OptionList blankOpt=MSBlankLine;
-	MapScr::OptionList miscOpt={IDS_INDIRECT00,0,SEL_1,MapScr::SelectFrom3DOrders};
+	MapScr::OptionList miscOpt={IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFrom3DOrders};
 
 	Kludge();
 	if (!Manual_Pilot.ControlledAC2->Status.deadtime &&
@@ -5707,19 +5720,19 @@ MapScr COverlay::commsChatDialog=
 	MapColumnWidth,MapRowHeight,
 	2,5,
 	0x0000,
-	MapScr::CommsTextInit,
-	MapScr::CommsTextUpdateDisplay,
+	&MapScr::CommsTextInit,
+	&MapScr::CommsTextUpdateDisplay,
 	{
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		MSEscapeLine(MapScr::SelectCommsChat),
-		{IDS_COMMSDIALOK,		0,	SEL_ENTER,	MapScr::SelectCommsChat},
-		{IDS_COMMSDIALCANCEL,	0,	SEL_0,		MapScr::SelectCommsChat},
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		MSEscapeLine(&MapScr::SelectCommsChat),
+		{IDS_COMMSDIALOK,		0,	SEL_ENTER,	&MapScr::SelectCommsChat},
+		{IDS_COMMSDIALCANCEL,	0,	SEL_0,		&MapScr::SelectCommsChat},
 		MSListEnd
 	}
 };
@@ -5738,17 +5751,17 @@ MapScr COverlay::userMsgScrLead=										//CSB 23/02/00
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::Orders3DInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::Orders3DInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_UM_GROUPINFO,	0,	SEL_1,	MapScr::SelectFromUserMsg},
-		{IDS_UM_PRECOMBAT,	0,	SEL_2,	MapScr::SelectFromUserMsg},
-		{IDS_UM_COMBAT,		0,	SEL_3,	MapScr::SelectFromUserMsg},
-		{IDS_UM_POSTCOMBAT,	0,	SEL_4,	MapScr::SelectFromUserMsg},
-		{IDS_UM_TOWER,		0,	SEL_5,	MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_MAP_EXIT,		0,	SEL_0,	MapScr::SelectFromUserMsg},
+		{IDS_UM_GROUPINFO,	0,	SEL_1,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_PRECOMBAT,	0,	SEL_2,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_COMBAT,		0,	SEL_3,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_POSTCOMBAT,	0,	SEL_4,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_TOWER,		0,	SEL_5,	&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_MAP_EXIT,		0,	SEL_0,	&MapScr::SelectFromUserMsg},
 		MSListEnd
 	}
 };
@@ -5767,17 +5780,17 @@ MapScr COverlay::userMsgScrLeadBomb=									//CSB 23/02/00
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::Orders3DInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::Orders3DInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_UM_GROUPINFO,	0,	SEL_1,	MapScr::SelectFromUserMsg},
-		{IDS_UM_PRECOMBAT,	0,	SEL_2,	MapScr::SelectFromUserMsg},
-		{IDS_UM_COMBAT,		0,	SEL_3,	MapScr::SelectFromUserMsg},
-		{IDS_UM_POSTCOMBAT,	0,	SEL_4,	MapScr::SelectFromUserMsg},
-		{IDS_UM_TOWER,		0,	SEL_5,	MapScr::SelectFromUserMsg},
-		{IDS_UM_FAC,		0,	SEL_6,	MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_MAP_EXIT,		0,	SEL_0,	MapScr::SelectFromUserMsg},
+		{IDS_UM_GROUPINFO,	0,	SEL_1,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_PRECOMBAT,	0,	SEL_2,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_COMBAT,		0,	SEL_3,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_POSTCOMBAT,	0,	SEL_4,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_TOWER,		0,	SEL_5,	&MapScr::SelectFromUserMsg},
+		{IDS_UM_FAC,		0,	SEL_6,	&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_MAP_EXIT,		0,	SEL_0,	&MapScr::SelectFromUserMsg},
 		MSListEnd
 	}
 };
@@ -5796,17 +5809,17 @@ MapScr COverlay::userMsgScrFoll=										//CSB 23/02/00
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::Orders3DInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::Orders3DInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_UM_GROUPINFO,	0,	SEL_1,	MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_UM_COMBAT,		0,	SEL_3,	MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_UM_TOWER,		0,	SEL_5,	MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_MAP_EXIT,		0,	SEL_0,	MapScr::SelectFromUserMsg},
+		{IDS_UM_GROUPINFO,	0,	SEL_1,	&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_UM_COMBAT,		0,	SEL_3,	&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_UM_TOWER,		0,	SEL_5,	&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_MAP_EXIT,		0,	SEL_0,	&MapScr::SelectFromUserMsg},
 		MSListEnd
 	}
 };
@@ -5825,17 +5838,17 @@ MapScr COverlay::userMsgScrTower=										//CSB 23/02/00
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::Orders3DInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::Orders3DInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_UM_TOWER,		0,	SEL_5,	MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_MAP_EXIT,		0,	SEL_0,	MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_UM_TOWER,		0,	SEL_5,	&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_MAP_EXIT,		0,	SEL_0,	&MapScr::SelectFromUserMsg},
 		MSListEnd
 	}
 };
@@ -5854,19 +5867,19 @@ MapScr COverlay::userMsgScrCOMMS=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::Orders3DInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::Orders3DInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_UM_GROUPINFO,0,SEL_1,MapScr::SelectFromUserMsg},
-		{IDS_UM_PRECOMBAT,0,SEL_2,MapScr::SelectFromUserMsg},
-		{IDS_UM_COMBAT,0,SEL_3,MapScr::SelectFromUserMsg},
-		{IDS_UM_POSTCOMBAT,0,SEL_4,MapScr::SelectFromUserMsg},
-		{IDS_UM_TOWER,0,SEL_5,MapScr::SelectFromUserMsg},
-		{IDS_UM_FAC,0,SEL_6,MapScr::SelectFromUserMsg},
-		{IDS_UM_COMMSPLAYER,0,SEL_7,MapScr::SelectFromUserMsg},
-		{IDS_UM_COMMSMSG,0,SEL_8,MapScr::SelectFromUserMsg},
-		MSEscapeLine(MapScr::SelectFromUserMsg),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromUserMsg},
+		{IDS_UM_GROUPINFO,0,SEL_1,&MapScr::SelectFromUserMsg},
+		{IDS_UM_PRECOMBAT,0,SEL_2,&MapScr::SelectFromUserMsg},
+		{IDS_UM_COMBAT,0,SEL_3,&MapScr::SelectFromUserMsg},
+		{IDS_UM_POSTCOMBAT,0,SEL_4,&MapScr::SelectFromUserMsg},
+		{IDS_UM_TOWER,0,SEL_5,&MapScr::SelectFromUserMsg},
+		{IDS_UM_FAC,0,SEL_6,&MapScr::SelectFromUserMsg},
+		{IDS_UM_COMMSPLAYER,0,SEL_7,&MapScr::SelectFromUserMsg},
+		{IDS_UM_COMMSMSG,0,SEL_8,&MapScr::SelectFromUserMsg},
+		MSEscapeLine(&MapScr::SelectFromUserMsg),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromUserMsg},
 		MSListEnd
 	}
 };
@@ -5879,10 +5892,10 @@ Key MapScr::UserOptionsInit()
 //TempCode JON 22Sep00 	#pragma warnmsg ("RadioChat: UserOptionsInit commented out")
 //DEADCODE CSB 23/02/00 	/*
 	MapScr::OptionList termOpt=MSListEnd;
-	MapScr::OptionList escOpt=MSEscapeLine(MapScr::SelectFromUserOptions);
+	MapScr::OptionList escOpt=MSEscapeLine(&MapScr::SelectFromUserOptions);
 	MapScr::OptionList blankOpt=MSBlankLine;
-	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromUserOptions};
-	MapScr::OptionList miscOpt={IDS_INDIRECT00,0,SEL_1,MapScr::SelectFromUserOptions};
+	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromUserOptions};
+	MapScr::OptionList miscOpt={IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFromUserOptions};
 
 	DecisionAI* dec=localDec;
 	DecisionAI::OptionRef* opt=dec->GetMsgOptions();
@@ -5916,10 +5929,10 @@ Key MapScr::UserOptsMapInit()
 //DeadCode JON 22Sep00 	#pragma warnmsg ("RadioChat: UserOptsMapInit commented out")
 //DEADCODE CSB 23/02/00 /*
 	MapScr::OptionList termOpt=MSListEnd;
-	MapScr::OptionList escOpt=MSEscapeLine(MapScr::SelectFromUserOptsMap);
+	MapScr::OptionList escOpt=MSEscapeLine(&MapScr::SelectFromUserOptsMap);
 //DeadCode JON 20Oct00 	MapScr::OptionList blankOpt=MSBlankLine;
-	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromUserOptsMap};
-	MapScr::OptionList miscOpt={IDS_INDIRECT00,0,SEL_1,MapScr::SelectFromUserOptsMap};
+	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromUserOptsMap};
+	MapScr::OptionList miscOpt={IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFromUserOptsMap};
 
 	DecisionAI* dec=localDec;
 	DecisionAI::OptionRef* opt=dec->GetMsgOptions();
@@ -5976,20 +5989,20 @@ MapScr COverlay::userOptsMapScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows+2,
 	0x0000,
-	MapScr::UserOptsMapInit,
-	MapScr::UpdateMessageDisplay,
+	&MapScr::UserOptsMapInit,
+	&MapScr::UpdateMessageDisplay,
 	{
-		{IDS_INDIRECT00,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT01,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT02,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT03,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT04,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT05,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT06,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT07,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		{IDS_INDIRECT08,0,SEL_1,MapScr::SelectFromUserOptsMap},
-		MSEscapeLine(MapScr::SelectFromUserOptsMap),
-		{IDS_DEFAULT,0,SEL_0,MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT01,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT02,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT03,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT04,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT05,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT06,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT07,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		{IDS_INDIRECT08,0,SEL_1,&MapScr::SelectFromUserOptsMap},
+		MSEscapeLine(&MapScr::SelectFromUserOptsMap),
+		{IDS_DEFAULT,0,SEL_0,&MapScr::SelectFromUserOptsMap},
 		MSListEnd
 	}
 };
@@ -6057,20 +6070,20 @@ MapScr COverlay::userOptionsScr=
 	MapColumnWidth,MapRowHeight,
 	1,15,
 	0x0000,
-	MapScr::UserOptionsInit,
+	&MapScr::UserOptionsInit,
 	NULL,
 	{
-		{IDS_INDIRECT00,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT01,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT02,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT03,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT04,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT05,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT06,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT07,0,SEL_1,MapScr::SelectFromUserOptions},
-		{IDS_INDIRECT08,0,SEL_1,MapScr::SelectFromUserOptions},
-		MSEscapeLine(MapScr::SelectFromUserOptions),
-		{IDS_DEFAULT,0,SEL_0,MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT01,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT02,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT03,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT04,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT05,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT06,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT07,0,SEL_1,&MapScr::SelectFromUserOptions},
+		{IDS_INDIRECT08,0,SEL_1,&MapScr::SelectFromUserOptions},
+		MSEscapeLine(&MapScr::SelectFromUserOptions),
+		{IDS_DEFAULT,0,SEL_0,&MapScr::SelectFromUserOptions},
 		MSListEnd
 	}
 };
@@ -6192,20 +6205,20 @@ MapScr COverlay::orders3dScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::Orders3DInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::Orders3DInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_INDIRECT00,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT01,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT02,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT03,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT04,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT05,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT06,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT07,0,SEL_1,MapScr::SelectFrom3DOrders},
-		{IDS_INDIRECT08,0,SEL_1,MapScr::SelectFrom3DOrders},
-		MSEscapeLine(MapScr::SelectFrom3DOrders),
-		{IDS_DEFAULT,0,SEL_0,MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT01,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT02,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT03,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT04,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT05,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT06,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT07,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		{IDS_INDIRECT08,0,SEL_1,&MapScr::SelectFrom3DOrders},
+		MSEscapeLine(&MapScr::SelectFrom3DOrders),
+		{IDS_DEFAULT,0,SEL_0,&MapScr::SelectFrom3DOrders},
 		MSListEnd
 	}
 };
@@ -6225,13 +6238,13 @@ MapScr COverlay::continueQuitScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::ContinueQuitInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::ContinueQuitInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_CONTINUE,0,SEL_1,MapScr::SelectFromContinueQuit},
-		{IDS_L_CPS_QUIT,0,SEL_2,MapScr::SelectFromContinueQuit},
-		MSEscapeLine(MapScr::SelectFromContinueQuit),
-	//	{IDS_DEFAULT,0,SEL_0,MapScr::SelectFrom3DOrders},
+		{IDS_CONTINUE,0,SEL_1,&MapScr::SelectFromContinueQuit},
+		{IDS_L_CPS_QUIT,0,SEL_2,&MapScr::SelectFromContinueQuit},
+		MSEscapeLine(&MapScr::SelectFromContinueQuit),
+	//	{IDS_DEFAULT,0,SEL_0,&MapScr::SelectFrom3DOrders},
 		MSListEnd
 	}
 };
@@ -6299,14 +6312,14 @@ Key MapScr::AccelMapInit()
 {
 	//build list of display options based on whether movecode is autofollowwp or not
 	MapScr::OptionList termOpt=MSListEnd;
-	MapScr::OptionList escOpt=MSEscapeLine(MapScr::SelectFromAccelMap);
+	MapScr::OptionList escOpt=MSEscapeLine(&MapScr::SelectFromAccelMap);
 	MapScr::OptionList blankOpt=MSBlankLine;
-	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromAccelMap};
-	MapScr::OptionList fwdOpt={IDS_MAP_FORWARD,0,SEL_1,MapScr::SelectFromAccelMap};
-	MapScr::OptionList wayptOpt={IDS_MAP_NEXTWAYPOINT,0,SEL_2,MapScr::SelectFromAccelMap};
-	MapScr::OptionList msubjOpt={IDS_MAP_MESSAGESUBJECT,0,SEL_3,MapScr::SelectFromAccelMap};
-	MapScr::OptionList missipOpt={IDS_MAP_MISSIONIP,0,SEL_4,MapScr::SelectFromAccelMap};
-	MapScr::OptionList homeOpt={IDS_MAP_HOME,0,SEL_5,MapScr::SelectFromAccelMap};
+	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromAccelMap};
+	MapScr::OptionList fwdOpt={IDS_MAP_FORWARD,0,SEL_1,&MapScr::SelectFromAccelMap};
+	MapScr::OptionList wayptOpt={IDS_MAP_NEXTWAYPOINT,0,SEL_2,&MapScr::SelectFromAccelMap};
+	MapScr::OptionList msubjOpt={IDS_MAP_MESSAGESUBJECT,0,SEL_3,&MapScr::SelectFromAccelMap};
+	MapScr::OptionList missipOpt={IDS_MAP_MISSIONIP,0,SEL_4,&MapScr::SelectFromAccelMap};
+	MapScr::OptionList homeOpt={IDS_MAP_HOME,0,SEL_5,&MapScr::SelectFromAccelMap};
 
 	bool allowall=true;
 	bool allowip=true;
@@ -6468,19 +6481,19 @@ MapScr COverlay::accelMapScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::AccelMapInit,
-	MapScr::UpdateMessageDisplay,
+	&MapScr::AccelMapInit,
+	&MapScr::UpdateMessageDisplay,
 	{
-		{IDS_MAP_FORWARD,0,SEL_1,MapScr::SelectFromAccelMap},
-		{IDS_MAP_NEXTWAYPOINT,0,SEL_2,MapScr::SelectFromAccelMap},
-		{IDS_MAP_MESSAGESUBJECT,0,SEL_3,MapScr::SelectFromAccelMap},
-		{IDS_MAP_MISSIONIP,0,SEL_4,MapScr::SelectFromAccelMap},
-		{IDS_MAP_HOME,0,SEL_5,MapScr::SelectFromAccelMap},
+		{IDS_MAP_FORWARD,0,SEL_1,&MapScr::SelectFromAccelMap},
+		{IDS_MAP_NEXTWAYPOINT,0,SEL_2,&MapScr::SelectFromAccelMap},
+		{IDS_MAP_MESSAGESUBJECT,0,SEL_3,&MapScr::SelectFromAccelMap},
+		{IDS_MAP_MISSIONIP,0,SEL_4,&MapScr::SelectFromAccelMap},
+		{IDS_MAP_HOME,0,SEL_5,&MapScr::SelectFromAccelMap},
 		MSBlankLine,
 		MSBlankLine,
 		MSBlankLine,
-		MSEscapeLine(MapScr::SelectFromAccelMap),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromAccelMap},
+		MSEscapeLine(&MapScr::SelectFromAccelMap),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromAccelMap},
 		MSListEnd
 	}
 };
@@ -6502,12 +6515,12 @@ Key MapScr::WaypointMapInit()
 //DeadCode JON 8Nov00 	if (_DPlay.Implemented) allowall=false;
 
 //DeadCode JON 8Nov00 	MapScr::OptionList termOpt=MSListEnd;
-//DeadCode JON 8Nov00 	MapScr::OptionList escOpt=MSEscapeLine(MapScr::SelectFromWaypointMap);
+//DeadCode JON 8Nov00 	MapScr::OptionList escOpt=MSEscapeLine(&MapScr::SelectFromWaypointMap);
 //DeadCode JON 8Nov00 	MapScr::OptionList blankOpt=MSBlankLine;
-//DeadCode JON 8Nov00 	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromWaypointMap};
-//DeadCode JON 8Nov00 	MapScr::OptionList snwOpt={IDS_MAP_SETNEXTWP,0,SEL_1,MapScr::SelectFromWaypointMap};
-//DeadCode JON 8Nov00 	MapScr::OptionList anwOpt={IDS_MAP_ACCELTONEXTWP,0,SEL_2,MapScr::SelectFromWaypointMap};
-//DeadCode JON 8Nov00 //dead	MapScr::OptionList ahwOpt={IDS_MAP_ACCELTOHILIGHTEDWP,0,SEL_3,MapScr::SelectFromWaypointMap};
+//DeadCode JON 8Nov00 	MapScr::OptionList quitOpt={IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromWaypointMap};
+//DeadCode JON 8Nov00 	MapScr::OptionList snwOpt={IDS_MAP_SETNEXTWP,0,SEL_1,&MapScr::SelectFromWaypointMap};
+//DeadCode JON 8Nov00 	MapScr::OptionList anwOpt={IDS_MAP_ACCELTONEXTWP,0,SEL_2,&MapScr::SelectFromWaypointMap};
+//DeadCode JON 8Nov00 //dead	MapScr::OptionList ahwOpt={IDS_MAP_ACCELTOHILIGHTEDWP,0,SEL_3,&MapScr::SelectFromWaypointMap};
 //DeadCode JON 8Nov00 	OptionList* ol=this->optionList;
 //DeadCode JON 8Nov00 	*ol++=snwOpt;
 //DeadCode JON 8Nov00 	*ol++=(allowall)?anwOpt:blankOpt;
@@ -6642,17 +6655,17 @@ MapScr COverlay::waypointMapScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::WaypointMapInit,
-	MapScr::UpdateWaypointDisplay,
+	&MapScr::WaypointMapInit,
+	&MapScr::UpdateWaypointDisplay,
 	{
-		{IDS_MAP_SETNEXTWP,0,SEL_1,MapScr::SelectFromWaypointMap},
-		{IDS_MAP_ACCELTONEXTWP,0,SEL_2,MapScr::SelectFromWaypointMap},
-		{IDS_NEXT,0,SEL_3,MapScr::SelectFromWaypointMap},
-		{IDS_PREV,0,SEL_4,MapScr::SelectFromWaypointMap},
-		{IDS_MAP_ZOOM,0,SEL_5,MapScr::SelectFromWaypointMap},
+		{IDS_MAP_SETNEXTWP,0,SEL_1,&MapScr::SelectFromWaypointMap},
+		{IDS_MAP_ACCELTONEXTWP,0,SEL_2,&MapScr::SelectFromWaypointMap},
+		{IDS_NEXT,0,SEL_3,&MapScr::SelectFromWaypointMap},
+		{IDS_PREV,0,SEL_4,&MapScr::SelectFromWaypointMap},
+		{IDS_MAP_ZOOM,0,SEL_5,&MapScr::SelectFromWaypointMap},
 //DeadCode JON 9Nov00 		MSBlankLine,
-		MSEscapeLine(MapScr::SelectFromWaypointMap),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromWaypointMap},
+		MSEscapeLine(&MapScr::SelectFromWaypointMap),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromWaypointMap},
 		MSListEnd
 	}
 };
@@ -6797,20 +6810,20 @@ MapScr COverlay::radioMapScr=
 	MapColumnWidth,MapRowHeight,
 	1,11,			//MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::RadioMapInit,
-	MapScr::UpdateMessageDisplay,
+	&MapScr::RadioMapInit,
+	&MapScr::UpdateMessageDisplay,
 	{
-		{IDS_UM_GROUPINFO,0,SEL_1,MapScr::SelectFromRadioMap},
-		{IDS_UM_PRECOMBAT,0,SEL_2,MapScr::SelectFromRadioMap},
-		{IDS_UM_COMBAT,0,SEL_3,MapScr::SelectFromRadioMap},
-		{IDS_UM_POSTCOMBAT,0,SEL_4,MapScr::SelectFromRadioMap},
-		{IDS_UM_TOWER,0,SEL_5,MapScr::SelectFromRadioMap},
-		{IDS_UM_FAC,0,SEL_6,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_COMMSPLAYER,0,SEL_7,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_COMMSMSG,0,SEL_8,MapScr::SelectFromRadioMap},
+		{IDS_UM_GROUPINFO,0,SEL_1,&MapScr::SelectFromRadioMap},
+		{IDS_UM_PRECOMBAT,0,SEL_2,&MapScr::SelectFromRadioMap},
+		{IDS_UM_COMBAT,0,SEL_3,&MapScr::SelectFromRadioMap},
+		{IDS_UM_POSTCOMBAT,0,SEL_4,&MapScr::SelectFromRadioMap},
+		{IDS_UM_TOWER,0,SEL_5,&MapScr::SelectFromRadioMap},
+		{IDS_UM_FAC,0,SEL_6,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_COMMSPLAYER,0,SEL_7,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_COMMSMSG,0,SEL_8,&MapScr::SelectFromRadioMap},
 		MSBlankLine,
-		MSEscapeLine(MapScr::SelectFromRadioMap),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromRadioMap},
+		MSEscapeLine(&MapScr::SelectFromRadioMap),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromRadioMap},
 		MSListEnd
 	}
 };
@@ -6829,20 +6842,20 @@ MapScr COverlay::radioMapScr=
 //DeadCode JON 17Oct00 	MapColumnWidth,MapRowHeight,
 //DeadCode JON 17Oct00 	1,11,			//MapGridNumCols,MapGridNumRows,
 //DeadCode JON 17Oct00 	0x0000,
-//DeadCode JON 17Oct00 	MapScr::RadioMapInit,
-//DeadCode JON 17Oct00 	MapScr::UpdateMessageDisplay,
+//DeadCode JON 17Oct00 	&MapScr::RadioMapInit,
+//DeadCode JON 17Oct00 	&MapScr::UpdateMessageDisplay,
 //DeadCode JON 17Oct00 	{
-//DeadCode JON 17Oct00 		{IDS_UM_GROUPINFO,0,SEL_1,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_PRECOMBAT,0,SEL_2,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_COMBAT,0,SEL_3,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_POSTCOMBAT,0,SEL_4,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_TOWER,0,SEL_5,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_FAC,0,SEL_6,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_COMMSPLAYER,0,SEL_7,MapScr::SelectFromRadioMap},
-//DeadCode JON 17Oct00 		{IDS_UM_COMMSMSG,0,SEL_8,MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_GROUPINFO,0,SEL_1,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_PRECOMBAT,0,SEL_2,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_COMBAT,0,SEL_3,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_POSTCOMBAT,0,SEL_4,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_TOWER,0,SEL_5,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_FAC,0,SEL_6,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_COMMSPLAYER,0,SEL_7,&MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		{IDS_UM_COMMSMSG,0,SEL_8,&MapScr::SelectFromRadioMap},
 //DeadCode JON 17Oct00 		MSBlankLine,
-//DeadCode JON 17Oct00 		MSEscapeLine(MapScr::SelectFromRadioMap),
-//DeadCode JON 17Oct00 		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromRadioMap},
+//DeadCode JON 17Oct00 		MSEscapeLine(&MapScr::SelectFromRadioMap),
+//DeadCode JON 17Oct00 		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromRadioMap},
 //DeadCode JON 17Oct00 		MSListEnd
 //DeadCode JON 17Oct00 	}
 //DeadCode JON 17Oct00 };
@@ -6907,7 +6920,7 @@ Key MapScr::CommsMsgMapInit()
 //DeadCode JON 17Oct00 	MapGridNumCols,MapGridNumRows,
 //DeadCode JON 17Oct00 	0x0000,
 //DeadCode JON 17Oct00 	MapScr::CommsMsgMapInit,
-//DeadCode JON 17Oct00 	MapScr::UpdateMessageDisplay,
+//DeadCode JON 17Oct00 	&MapScr::UpdateMessageDisplay,
 //DeadCode JON 17Oct00 	{
 //DeadCode JON 17Oct00 		{IDS_INDIRECT00,0,SEL_1,MapScr::SelectFromCommsMsgMap},
 //DeadCode JON 17Oct00 		{IDS_INDIRECT01,0,SEL_2,MapScr::SelectFromCommsMsgMap},
@@ -6981,19 +6994,19 @@ MapScr COverlay::commsMsgOrdersScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::CommsMsgOrdersInit,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::CommsMsgOrdersInit,
+	&MapScr::TimeLimitedDisplay,
 	{
-		{IDS_INDIRECT00,0,SEL_1,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT01,0,SEL_2,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT02,0,SEL_3,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT03,0,SEL_4,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT04,0,SEL_5,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT05,0,SEL_6,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT06,0,SEL_7,MapScr::SelectFromCommsMsgOrders},
-		{IDS_INDIRECT07,0,SEL_8,MapScr::SelectFromCommsMsgOrders},
-		MSEscapeLine(MapScr::SelectFromCommsMsgOrders),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT00,0,SEL_1,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT01,0,SEL_2,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT02,0,SEL_3,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT03,0,SEL_4,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT04,0,SEL_5,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT05,0,SEL_6,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT06,0,SEL_7,&MapScr::SelectFromCommsMsgOrders},
+		{IDS_INDIRECT07,0,SEL_8,&MapScr::SelectFromCommsMsgOrders},
+		MSEscapeLine(&MapScr::SelectFromCommsMsgOrders),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromCommsMsgOrders},
 		MSListEnd
 	}
 };
@@ -7053,7 +7066,7 @@ Key MapScr::CommsRecipientMapInit()
 //DeadCode JON 17Oct00 	MapGridNumCols,MapGridNumRows,
 //DeadCode JON 17Oct00 	0x0000,
 //DeadCode JON 17Oct00 	MapScr::CommsRecipientMapInit,
-//DeadCode JON 17Oct00 	MapScr::UpdateMessageDisplay,
+//DeadCode JON 17Oct00 	&MapScr::UpdateMessageDisplay,
 //DeadCode JON 17Oct00 	{ 
 //DeadCode JON 17Oct00 		{IDS_EVERYBODY,0,SEL_1,MapScr::SelectFromCommsRecipientMap},
 //DeadCode JON 17Oct00 		{IDS_MYSIDEONLY,0,SEL_2,MapScr::SelectFromCommsRecipientMap},
@@ -7123,20 +7136,20 @@ MapScr COverlay::commsRecipientOrdersScr=
 	MapColumnWidth,MapRowHeight,
 	MapGridNumCols,MapGridNumRows,
 	0x0000,
-	MapScr::CommsRecipientOrdersInit,
-//DeadCode AMM 14May99 	MapScr::UpdateMessageDisplay,
-	MapScr::TimeLimitedDisplay,
+	&MapScr::CommsRecipientOrdersInit,
+//DeadCode AMM 14May99 	&MapScr::UpdateMessageDisplay,
+	&MapScr::TimeLimitedDisplay,
 	{ 
-		{IDS_EVERYBODY,0,SEL_1,MapScr::SelectFromCommsRecipientOrders},
-		{IDS_MYSIDEONLY,0,SEL_2,MapScr::SelectFromCommsRecipientOrders},
+		{IDS_EVERYBODY,0,SEL_1,&MapScr::SelectFromCommsRecipientOrders},
+		{IDS_MYSIDEONLY,0,SEL_2,&MapScr::SelectFromCommsRecipientOrders},
 		MSBlankLine,
 		MSBlankLine,
 		MSBlankLine,
 		MSBlankLine,
 		MSBlankLine,
 		MSBlankLine,
-		MSEscapeLine(MapScr::SelectFromCommsRecipientOrders),
-		{IDS_MAP_EXIT,0,SEL_0,MapScr::SelectFromCommsRecipientOrders},
+		MSEscapeLine(&MapScr::SelectFromCommsRecipientOrders),
+		{IDS_MAP_EXIT,0,SEL_0,&MapScr::SelectFromCommsRecipientOrders},
 		MSListEnd
 	}
 };
@@ -7376,22 +7389,22 @@ MapScr COverlay::replayPlayingScr=
 	32,32,
 	12,2,
 	0x00C8,
-	MapScr::ReplayScreenInit,
-	MapScr::ShowPositionIndicators,
+	&MapScr::ReplayScreenInit,
+	&MapScr::ShowPositionIndicators,
 	{
-		{IDS_MAPICON01LO,1,SEL_1,MapScr::SelectFromReplayScreen},		//skip back
-		{IDS_MAPICON02LO,1,SEL_2,MapScr::SelectFromReplayScreen},		//back a block
-		{IDS_MAPICON12LO,1,SEL_3,MapScr::SelectFromReplayScreen},		//back a frame
-		{IDS_MAPICON04LO,1,SEL_4,MapScr::SelectFromReplayScreen},		//play
-//DeadCode AMM 24Feb99 		{IDS_MAPICON03LO,1,SEL_4,MapScr::SelectFromReplayScreen},		//pause
-		{IDS_MAPICON11LO,1,SEL_5,MapScr::SelectFromReplayScreen},		//forward a frame
-		{IDS_MAPICON05LO,1,SEL_6,MapScr::SelectFromReplayScreen},		//forward a block
-		{IDS_MAPICON10LO,1,SEL_7,MapScr::SelectFromReplayScreen},		//skip forward
-		{IDS_MAPICON07LO,1,SEL_8,MapScr::SelectFromReplayScreen},		//save
-		{IDS_MAPICON06LO,1,SEL_9,MapScr::SelectFromReplayScreen},		//clear markers
-		{IDS_MAPICON00LO,1,SEL_0,MapScr::SelectFromReplayScreen},		//eject
-		{IDS_MAPICON08LO,1,SEL_MINUS,MapScr::SelectFromReplayScreen},	//mark start
-		{IDS_MAPICON09LO,1,SEL_PLUS,MapScr::SelectFromReplayScreen},	//mark end
+		{IDS_MAPICON01LO,1,SEL_1,&MapScr::SelectFromReplayScreen},		//skip back
+		{IDS_MAPICON02LO,1,SEL_2,&MapScr::SelectFromReplayScreen},		//back a block
+		{IDS_MAPICON12LO,1,SEL_3,&MapScr::SelectFromReplayScreen},		//back a frame
+		{IDS_MAPICON04LO,1,SEL_4,&MapScr::SelectFromReplayScreen},		//play
+//DeadCode AMM 24Feb99 		{IDS_MAPICON03LO,1,SEL_4,&MapScr::SelectFromReplayScreen},		//pause
+		{IDS_MAPICON11LO,1,SEL_5,&MapScr::SelectFromReplayScreen},		//forward a frame
+		{IDS_MAPICON05LO,1,SEL_6,&MapScr::SelectFromReplayScreen},		//forward a block
+		{IDS_MAPICON10LO,1,SEL_7,&MapScr::SelectFromReplayScreen},		//skip forward
+		{IDS_MAPICON07LO,1,SEL_8,&MapScr::SelectFromReplayScreen},		//save
+		{IDS_MAPICON06LO,1,SEL_9,&MapScr::SelectFromReplayScreen},		//clear markers
+		{IDS_MAPICON00LO,1,SEL_0,&MapScr::SelectFromReplayScreen},		//eject
+		{IDS_MAPICON08LO,1,SEL_MINUS,&MapScr::SelectFromReplayScreen},	//mark start
+		{IDS_MAPICON09LO,1,SEL_PLUS,&MapScr::SelectFromReplayScreen},	//mark end
 		{IDS_MAPICON13LO,0,SEL_BLANK,NULL},								//progress bar start
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
@@ -7404,9 +7417,9 @@ MapScr COverlay::replayPlayingScr=
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
 		{IDS_MAPICON15LO,0,SEL_BLANK,NULL},								//progress bar end
-		MSAltXLine(MapScr::SelectFromReplayScreen),
-		MSPauseLine(MapScr::SelectFromReplayScreen),
-		MSEscapeLine(MapScr::SelectFromReplayScreen),					//escape (eject)
+		MSAltXLine(&MapScr::SelectFromReplayScreen),
+		MSPauseLine(&MapScr::SelectFromReplayScreen),
+		MSEscapeLine(&MapScr::SelectFromReplayScreen),					//escape (eject)
 		MSListEnd
 	}
 };
@@ -7424,22 +7437,22 @@ MapScr COverlay::replayScr=
 	32,32,
 	12,2,
 	0x0014,
-	MapScr::ReplayScreenInit,
-	MapScr::ShowPositionIndicators,
+	&MapScr::ReplayScreenInit,
+	&MapScr::ShowPositionIndicators,
 	{
-		{IDS_MAPICON01LO,1,SEL_1,MapScr::SelectFromReplayScreen},		//skip back
-		{IDS_MAPICON02LO,1,SEL_2,MapScr::SelectFromReplayScreen},		//back a block
-		{IDS_MAPICON12LO,1,SEL_3,MapScr::SelectFromReplayScreen},		//back a frame
-//DeadCode AMM 24Feb99 		{IDS_MAPICON04LO,1,SEL_4,MapScr::SelectFromReplayScreen},		//play
-		{IDS_MAPICON03LO,1,SEL_4,MapScr::SelectFromReplayScreen},		//pause
-		{IDS_MAPICON11LO,1,SEL_5,MapScr::SelectFromReplayScreen},		//forward a frame
-		{IDS_MAPICON05LO,1,SEL_6,MapScr::SelectFromReplayScreen},		//forward a block
-		{IDS_MAPICON10LO,1,SEL_7,MapScr::SelectFromReplayScreen},		//skip forward
-		{IDS_MAPICON07LO,1,SEL_8,MapScr::SelectFromReplayScreen},		//save
-		{IDS_MAPICON06LO,1,SEL_9,MapScr::SelectFromReplayScreen},		//clear markers
-		{IDS_MAPICON00LO,1,SEL_0,MapScr::SelectFromReplayScreen},		//eject
-		{IDS_MAPICON08LO,1,SEL_MINUS,MapScr::SelectFromReplayScreen},	//mark start
-		{IDS_MAPICON09LO,1,SEL_PLUS,MapScr::SelectFromReplayScreen},	//mark end
+		{IDS_MAPICON01LO,1,SEL_1,&MapScr::SelectFromReplayScreen},		//skip back
+		{IDS_MAPICON02LO,1,SEL_2,&MapScr::SelectFromReplayScreen},		//back a block
+		{IDS_MAPICON12LO,1,SEL_3,&MapScr::SelectFromReplayScreen},		//back a frame
+//DeadCode AMM 24Feb99 		{IDS_MAPICON04LO,1,SEL_4,&MapScr::SelectFromReplayScreen},		//play
+		{IDS_MAPICON03LO,1,SEL_4,&MapScr::SelectFromReplayScreen},		//pause
+		{IDS_MAPICON11LO,1,SEL_5,&MapScr::SelectFromReplayScreen},		//forward a frame
+		{IDS_MAPICON05LO,1,SEL_6,&MapScr::SelectFromReplayScreen},		//forward a block
+		{IDS_MAPICON10LO,1,SEL_7,&MapScr::SelectFromReplayScreen},		//skip forward
+		{IDS_MAPICON07LO,1,SEL_8,&MapScr::SelectFromReplayScreen},		//save
+		{IDS_MAPICON06LO,1,SEL_9,&MapScr::SelectFromReplayScreen},		//clear markers
+		{IDS_MAPICON00LO,1,SEL_0,&MapScr::SelectFromReplayScreen},		//eject
+		{IDS_MAPICON08LO,1,SEL_MINUS,&MapScr::SelectFromReplayScreen},	//mark start
+		{IDS_MAPICON09LO,1,SEL_PLUS,&MapScr::SelectFromReplayScreen},	//mark end
 		{IDS_MAPICON13LO,0,SEL_BLANK,NULL},								//progress bar start
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
@@ -7452,9 +7465,9 @@ MapScr COverlay::replayScr=
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
 		{IDS_MAPICON14LO,0,SEL_BLANK,NULL},								//progress bar middle
 		{IDS_MAPICON15LO,0,SEL_BLANK,NULL},								//progress bar end
-		MSAltXLine(MapScr::SelectFromReplayScreen),
-		MSPauseLine(MapScr::SelectFromReplayScreen),
-		MSEscapeLine(MapScr::SelectFromReplayScreen),					//escape (eject)
+		MSAltXLine(&MapScr::SelectFromReplayScreen),
+		MSPauseLine(&MapScr::SelectFromReplayScreen),
+		MSEscapeLine(&MapScr::SelectFromReplayScreen),					//escape (eject)
 		MSListEnd
 	}
 };
@@ -7521,13 +7534,13 @@ MapScr COverlay::commsDialog=
 	32,32,
 	10,1,
 	0x0000,
-	MapScr::CommsDialogInit,
+	&MapScr::CommsDialogInit,
 	NULL,
 	{
 		{IDS_COMMSDIALMSG,0,SEL_NONE,NULL},
 		MSBlankLine,
-		{IDS_COMMSDIALOK,0,SEL_ENTER,MapScr::SelectFromCommsDialog},
-		{IDS_COMMSDIALCANCEL,0,SEL_ESC,MapScr::SelectFromCommsDialog},
+		{IDS_COMMSDIALOK,0,SEL_ENTER,&MapScr::SelectFromCommsDialog},
+		{IDS_COMMSDIALCANCEL,0,SEL_ESC,&MapScr::SelectFromCommsDialog},
 		MSListEnd
 	}
 };
@@ -7641,16 +7654,16 @@ MapScr COverlay::mapViewScr=
 	32,32,
 	6,1,
 	0x0000,
-	MapScr::MapViewScreenInit,
-	MapScr::DisplayTargName,
+	&MapScr::MapViewScreenInit,
+	&MapScr::DisplayTargName,
 	{
-		{IDS_MAPICON00LO,1,SEL_1,MapScr::SelectFromMapViewScreen},		//rotate left
-		{IDS_MAPICON01LO,1,SEL_2,MapScr::SelectFromMapViewScreen},		//rotate right
-		{IDS_MAPICON02LO,1,SEL_3,MapScr::SelectFromMapViewScreen},		//zoom out
-		{IDS_MAPICON03LO,1,SEL_4,MapScr::SelectFromMapViewScreen},		//zoom in
-		{IDS_MAPICON04LO,1,SEL_5,MapScr::SelectFromMapViewScreen},		//reset
-		{IDS_MAPICON05LO,1,SEL_0,MapScr::SelectFromMapViewScreen},		//exit
-		MSEscapeLine(MapScr::SelectFromMapViewScreen),					//exit
+		{IDS_MAPICON00LO,1,SEL_1,&MapScr::SelectFromMapViewScreen},		//rotate left
+		{IDS_MAPICON01LO,1,SEL_2,&MapScr::SelectFromMapViewScreen},		//rotate right
+		{IDS_MAPICON02LO,1,SEL_3,&MapScr::SelectFromMapViewScreen},		//zoom out
+		{IDS_MAPICON03LO,1,SEL_4,&MapScr::SelectFromMapViewScreen},		//zoom in
+		{IDS_MAPICON04LO,1,SEL_5,&MapScr::SelectFromMapViewScreen},		//reset
+		{IDS_MAPICON05LO,1,SEL_0,&MapScr::SelectFromMapViewScreen},		//exit
+		MSEscapeLine(&MapScr::SelectFromMapViewScreen),					//exit
 		MSListEnd
 	}
 };
@@ -8533,7 +8546,7 @@ void COverlay::DoArtHoriz()
 //DEADCODE JON 5/22/00 		dp[i].bodyx.f=m[0]*tx+m[1]*tz+ori_x;
 //DEADCODE JON 5/22/00 		dp[i].bodyy.f=m[2]*tx+m[3]*tz+ori_y;
 //DEADCODE JON 5/22/00 	}
-	for (i=0;i<4;i++)
+	for (int i=0;i<4;i++)
 	{
 		Float tx=dp[i].getPosX()-ori_x;
 		Float tz=dp[i].getPosY()-ori_y;

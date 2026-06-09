@@ -767,11 +767,36 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   winmove.h before comms.h for NUMRADIOMESSAGES.) Reduced 135->67 (control
   wrappers/m_IDC_ members) ->21 (game types) ->1 (ordering) ->0.
 
-- **PHASE-2 REMAINING:** **3D OVERLAY** is the last deferred TU (330 — needs the
-  CDC/CFont/GetGlyphOutline text-rendering buildout). Then external stubs
-  (DX/DirectPlay creation, _findfirst/FindFirstFileA/fopen_nocase) + 6 MASM->nasm
-  + `bob` add_executable + entry point → iterate the link to zero → runtime
-  bring-up. **Recipe settled**; remaining is OVERLAY + the link/asm/runtime infra.
+- **2026-06-09 (30)**: **3D `OVERLAY.CPP` builds (330->0) — the LAST deferred TU.
+  Every game TU now compiles into a module lib.** OVERLAY is the map/overlay UI
+  (MFC-context: afxwin/afxctl). Four roots:
+  1. **incomplete CString (~80)**: `<afxwin.h>` defines `__AFX_H__`, flipping bob
+     headers to their "MFC present -> CString is forward-decl" branch. Fix: an
+     inline pre.h-style block (only this TU sits in SRC/3D, off the MFC path) that
+     `#include`s cstring.h BEFORE afxwin.h so bob's own CString is complete first.
+  2. **MapScr screen-state table (~220)**: a table of `SelRtnPtr` member-fn
+     pointers (`{IDS_x,0,SEL_n,MapScr::SelectFromX}`) written bare — same MSVC
+     extension as _FULL's SelProc. Guarded perl prefixed `&MapScr::` to the 36
+     erroring member fns (NOT followed by `(`, so defs/calls are skipped). Caught
+     and reverted one over-match: `MapScr::OptionList` is a nested *type*, not a fn
+     (`MapScr::OptionList *popt` / `MapScr::OptionList escOpt,termOpt,...` — the
+     bad `&` had cascaded into all the `*Opt` "undeclared" errors).
+  3. **GDI glyph API (4)**: GetGlyphOutline/GLYPHMETRICS/MAT2/FIXED/GGO_* stubbed
+     in compat_wingdi.h (returns 0 -> blank overlay text for now; NDEBUG drops the
+     asserts). A real path can rasterise via FreeType/SDL_ttf at runtime.
+  4. **missing FIL_ enum constants**: discovered the **files.g F_* selector rule** —
+     the F_* names are include GUARDS, so defining F_COMMON/F_GRAFIX *suppresses*
+     F_COMMON.G/F_GRAFIX.G. Define **only F_BATTLE** -> pulls COMMON+GRAFIX+SOUNDS,
+     skips just F_BATTLE.G. (Applied the same correction to UIMSG's prelude.)
+  Plus four for-scope hoists. OVERLAY -> libbob_3d.a. Trial link: **473->465**.
+
+- **PHASE 1 COMPLETE — every game TU compiles.** 14 module libs (61 objects).
+  **PHASE 2 REMAINING (link the ELF):** 465 undefined symbols left — external
+  stubs (DirectX/DirectPlay creation entries, CRT `_findfirst`/`FindFirstFileA`/
+  `fopen_nocase`, BAD_RV/BOB_GUID/GentleBankData) + 6 MASM->nasm conversions
+  (HARDWARE PRO/PROLOG/HARDPASM, 3D LSTRASM, GRAPHICS GRAFPASM, FILES CDROM) +
+  the `bob` add_executable with an AfxWinMain-style entry → iterate link to zero →
+  runtime bring-up (SDL2/GL/OpenAL). bfrefs.g reconstruction (BFIELDS) independent.
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
