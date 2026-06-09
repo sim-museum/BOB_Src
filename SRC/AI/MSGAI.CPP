@@ -88,6 +88,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 	#define F_GRAFIX
 	#define F_BATTLE
 #include	"files.g"
+#if defined(BOB_LINUX)
+class	ViewPoint;	/* worldinc.h uses ViewPoint* before 3dcom.h declares it */
+#endif
 #include	"worldinc.h"
 #include	"ai.h"
 #include	"myerror.h"
@@ -110,6 +113,18 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include	"fileman.h"
 #include	"shapes.h"
 #include	"impact.h"													//RJS 12Sep00
+#if defined(BOB_LINUX)
+/* headers the original build pulled via PCH/build-order; needed for self-contained
+   compile of this TU on Linux (full Model/anim defs, 3D shape/viewpoint, transient
+   objects, campaign-sky missman, global-refs) */
+#include	"3dcom.h"			/* SHAPE, ViewPoint, AircraftAnimData/MinAnimData/WeapAnimData */
+#include	"animdata.h"		/* anim data classes + DYING */
+#include	"model.h"			/* full class Model (pModel->GroundHeight) */
+#include	"acmmodel.h"		/* AbsAngle */
+#include	"transite.h"		/* Trans_Obj */
+#include	"missman2.h"		/* MissManCampSky */
+#include	"globrefs.h"		/* GR_OkToQuit3DNow */
+#endif
 
 ArtInt	Art_Int;
 AirStrucPtr	ArtInt::ACArray[ACARRAYSIZE]={0};
@@ -400,7 +415,7 @@ void	ArtInt::CleanUp()
 	ACArrayInd = 0;
 	MemberListInd = 0;
 	CollideListInd = 0;
-	for(i = 0; i < MEMBERLISTSIZE; i++)
+	for(int i = 0; i < MEMBERLISTSIZE; i++)
 		MemberList[i] = 0;
 }
 
@@ -2015,13 +2030,13 @@ void ArtInt::MakeMemberList(AirStrucPtr ac)
 			}
 
 	bool slotsavailable = false;
-	for(i = 0; (i < MEMBERLISTSIZE) && (!slotsavailable); i++)
+	for(int i = 0; (i < MEMBERLISTSIZE) && (!slotsavailable); i++)
 		if(Dist2List[i] != 0)
 			slotsavailable = true;
 
 	if(slotsavailable)
 	{
-		for(i = 0; i < ACARRAYSIZE; i++)
+		for(int i = 0; i < ACARRAYSIZE; i++)
 		{
 			AirStrucPtr trg = ACArray[i];
 			if((trg) && (trg->nationality != ac->nationality))
@@ -2192,7 +2207,7 @@ bool ArtInt::AttackSpareInLeadersGroup(AirStruc* eye)
 	if((unf->ai.unfriendly) && (unf->ai.unfriendly->Status.size == AIRSTRUCSIZE))
 	{
 		AirStrucPtr trgunf = AirStrucPtr(unf->ai.unfriendly);
-		if(trgunf->FindFormpos0 == eye->FindFormpos0)
+		if(trgunf->FindFormpos0() == eye->FindFormpos0())
 		{
 			if(unf->Distance3DSquared(&trgunf->World) < FP(DANGERRANGE) * FP(DANGERRANGE))
 				if(		FP(trgunf->vel_x) * FP(unf->World.X - trgunf->World.X)
@@ -3195,7 +3210,7 @@ void	AirStruc::BreakForm()
 		}
 
 //SORT OUT ACARRAY
-	for(i = 0; i < ArtInt::ACARRAYSIZE; i++)
+	for(int i = 0; i < ArtInt::ACARRAYSIZE; i++)
 		if(ArtInt::ACArray[i])
 		{
 			AirStrucPtr leadac = ArtInt::ACArray[i];
@@ -3318,7 +3333,7 @@ void AirStruc::SAGBreakForm()
 		}
 
 	ai.unfriendly = NULL;
-	for(i = 0; i < 4; i++)
+	for(int i = 0; i < 4; i++)
 		ai.spottedunfriendly[i] = NULL;
 	ai.attacker = NULL;
 	fly.leadflight = NULL;

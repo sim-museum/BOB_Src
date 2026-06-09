@@ -66,6 +66,7 @@ class	ArtInt
 	friend 	class	MoveAirStruc;											//CSB 10/03/00
 	friend	struct	SleepList;											//CSB 20/03/00
 	int		spotcount;
+protected:	/* ACArray/ACARRAYSIZE etc. accessed by INSTANCEAI handlers (derive : public ArtInt) */
 //DEADCODE CSB 02/02/00 	enum	{ACARRAYSIZE = 256,	MEMBERLISTSIZE = 4};				  //CSB 01/02/00
 	enum	{ACARRAYSIZE = 128,	MEMBERLISTSIZE = 4,	COLLIDECHECKLISTSIZE = 16,	COLLIDEAGAINSTLISTSIZE = 32};				  //CSB 01/02/00
 	static	AirStruc*	ACArray[ACARRAYSIZE];
@@ -315,7 +316,7 @@ DecisionAI::OptionRef	trgtype##_##name::opts[]	=
 //	{PHRASE_,	&DecisionAI,	SCRIPT_},
 //};
 
-#define	INSTANCEAI(name,trgtype,options)							 \
+#define	INSTANCEAI(name,trgtype,...)							 \
 trgtype##_##name	trgtype##_inst_##name;							  \
 DecisionAI*	name=	&trgtype##_inst_##name;								\
 bool	trgtype##_##name##_AI::name(AirStrucPtr callee,trgtype trg,AirStrucPtr caller,DecisionAI* currdecision,MESSAGE_STRUC* prioritymessage)

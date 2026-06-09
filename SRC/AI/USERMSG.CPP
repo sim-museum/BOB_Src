@@ -93,6 +93,29 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //		return false;
 //	}
 
+#if defined(BOB_LINUX)
+/* The original force-included a PCH (dosdefs base types + world/ai) before line 1;
+   reproduce that here so the DecisionAI statics below and the body compile. */
+#include "dosdefs.h"
+	#define F_COMMON
+	#define F_GRAFIX
+	#define F_BATTLE
+#include "files.g"
+class	ViewPoint;		/* worldinc.h uses ViewPoint* before 3dcom.h declares it */
+#include "worldinc.h"
+#include "ai.h"
+#include "3dcom.h"
+#include "animdata.h"
+#include "model.h"
+#include "acmmodel.h"
+#include "planetyp.h"		/* full struct PlaneType */
+#include "persons2.h"		/* Persons2 */
+#include "aaa.h"			/* AaaMainList */
+#include "transite.h"		/* Trans_Obj */
+#include "overlay.h"		/* OverLay */
+#include "globrefs.h"		/* GR_TruckMoveCode */
+#endif
+
 class DecisionAI *  DecisionAI::optiontable[DecisionAI::OPTIONTABLEMAX]={NULL};
 int  DecisionAI::optiontablemax=0;
 
@@ -966,7 +989,7 @@ INSTANCEAI(CallBreak, ItemPtr)
 	if(breaker)
 		return(false);
 
-	for(nf = caller->FindFormpos0(); (nf) && (!breaker); nf = nf->fly.nextflight)
+	for(auto nf = caller->FindFormpos0(); (nf) && (!breaker); nf = nf->fly.nextflight)
 		for(AirStrucPtr f = nf; (f) && (!breaker); f = f->Follower())
 			if(		(f != caller)
 				&&	(caller->Distance3DSquared(&f->World) < FP(REDUCEDVISIBILITY) * FP(REDUCEDVISIBILITY))
@@ -1724,7 +1747,7 @@ WayPointPtr WayPoint::FindWP(WPNames name)
 		if(newwp->wpname == name)
 			return(newwp);
 
-	for(newwp = this; newwp; newwp = newwp->prev)
+	for(auto newwp = this; newwp; newwp = newwp->prev)
 		if(newwp->wpname == name)
 			return(newwp);
 

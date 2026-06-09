@@ -665,6 +665,27 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     asm → add the `bob` add_executable + AfxWinMain-style entry → iterate the link.
     bfrefs.g reconstruction (BFIELDS) is independent and can land anytime.
 
+- **2026-06-09 (24)**: **AI module's deferred TUs un-deferred — MSGAI.CPP (27->0)
+  and USERMSG.CPP (1548->0) now build into libbob_ai.a.** These hold `ArtInt
+  Art_Int;` and many AirStruc::/ArtInt:: methods. Recipe (the generic
+  "deferred-TU" playbook for the rest of Phase 2):
+  - **Reproduce the implicit MSVC PCH**: both TUs assumed a force-included PCH.
+    Added a `#if defined(BOB_LINUX)` prelude with dosdefs.h (base types
+    Bool/SLong/ShapeNum/NULL — USERMSG had *no* dosdefs at all → 1548 errors), the
+    F_COMMON/F_GRAFIX/F_BATTLE file-enum group + files.g, then world/ai/model/anim/
+    3dcom/planetyp/persons2/aaa/transite/overlay/globrefs.
+  - **`class ViewPoint;` fwd-decl before worldinc.h** (worldinc uses `ViewPoint*`
+    before 3dcom.h declares it) — recurring ordering fix.
+  - **INSTANCEAI made variadic** (ai.h:318 `(name,trgtype,...)`): the 3rd `options`
+    arg is unused in the body; BoB calls it 2-arg, MSVC allowed the short call.
+  - **ArtInt data block -> `protected:`** (ai.h): the INSTANCEAI handler classes
+    derive `: public ArtInt` and read `ACArray`/`ACARRAYSIZE`, which were private.
+  - **member-fn call / for-scope**: `FindFormpos0` needed `()` on both sides of a
+    compare; `auto`-typed inline decls for leaked loop vars (nf, newwp); i-hoists.
+  - Trial whole-archive link: **574 -> 554** undefined symbols; full build clean,
+    no regression from the shared ai.h edits. NEXT deferred TUs: MISSMAN
+    PACKAGES/SAVEGAME/UIMSG, 3D OVERLAY, MFC STUB3D/BOBFRAG.
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):
