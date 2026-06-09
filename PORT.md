@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ⚠️ CRITICAL SCOPE FINDING (2026-06-09): the source release is INCOMPLETE
+> A whole-archive trial link of all 14 module libs surfaced **465 undefined
+> symbols**. Tracing them precisely:
+> - **276 are ABSENT from the entire source tree** — declared in headers and
+>   *called*, but **never defined anywhere** (not in SRC, not in the editor dirs).
+>   They are the core simulation/AI/physics engine: `AirStruc` formation+flight
+>   methods, `ArtInt` combat AI (BreakCall/SetEngage/FindEscort/…), `Collide`
+>   ground-collision (GroundAltitude/LowestSafeAlt/HaveWeLanded), `AnimControl`,
+>   `Atmosphere`, `Impact`, `MoveAirStruc`, `BoxCol`, `CampaignZero`, ~34 classes.
+>   worldinc.h even tags some `// Existing in chat.cpp` — and **there is no
+>   chat.cpp** in the release.
+> - **83 are DEFINED but in unbuilt TUs** (wireable): BFIELDS(33, the never-built
+>   bit-field/persons module), MISSMAN(12), MFC(11), 3D(8), MOVECODE(5), COMMS(2).
+> - **~52 external**: DirectX/DirectPlay creation entries (36), Miles/AIL sound
+>   (9), CRT `_findfirst`/`FindFirstFileA`/`fopen_nocase`/`_itoa` (7).
+>
+> **Consequence:** every *provided* TU can be made to compile (that work is the
+> bulk of this log and is essentially done), but a **complete, faithful, runnable
+> `bob` executable cannot be linked from this source alone** — ~276 core engine
+> functions have no implementation here. This matches the known partial nature of
+> the public BoB source drop. Options from here: (a) wire in the 83 + external
+> stubs + asm and **stub the 276 absent functions** to reach a *links-but-
+> non-functional* shell (no real AI/collision/physics); (b) treat "all provided
+> source compiles cleanly to 32-bit objects" as the achievable end state. The
+> remainder of this file logs the (completed) compile effort.
+
 Goal: build the game to run **natively on Ubuntu 26.04** (no Wine), from the
 original Windows source in `SRC/`. Game data: a working Wine install at
 `/home/m/sgl/TUE/BattleOfBritain` — specifically
