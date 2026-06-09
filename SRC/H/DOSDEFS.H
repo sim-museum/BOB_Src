@@ -298,7 +298,7 @@ IFShare,*IFShareP;
 //	extern FILE*	debugfile;
 
 #if defined(BOB_LINUX)
-	#define	INT3	((void)0)	// x86 int3 breakpoint: no-op on Linux
+	#define	INT3	{}	// x86 int3 breakpoint: no-op block on Linux (bob writes bare `INT3` with no `;`, relying on the MSVC _asm{} block form)
 	#define	NOP	((void)0)
 #else
 #ifndef 	NDEBUG

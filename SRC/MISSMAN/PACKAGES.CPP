@@ -84,6 +84,12 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "myerror.h"
 #include	"Worldinc.h"
 #include	"node.h"
+#if defined(BOB_LINUX)
+#include	"ranges.h"		/* sets RANGES_Included *before* package.h, which gates Profile::AddAttackWP/InsertWpBetween/AddNumerousEscorts on it */
+#include	"package.h"		/* sets PACKAGE_INCLUDED + SavedGlobrefs *before* bfnumber.h, which gates the EventVal::MakeIcptGRExpr/MakeAngWorldPos methods on it */
+#include	"mytime.h"		/* SECSPERMIN/SECSPERHR/HR01 */
+#include	"missman2.h"		/* MMC */
+#endif
 #include	"bfnumber.h"
 #include	"persons2.h"
 #include	"mymath.h"
@@ -1349,7 +1355,8 @@ void	Profile::ShareSecondaries(int secondaries)
 	if (attackmethod<AM_LWPACKS)
 		return;															//JIM 19Oct00
 	int	bombers=0;
-	for (int sq=0,max=squadlist;sq<max;sq++)
+	int sq=0;
+	for (int max=squadlist;sq<max;sq++)
 		if ((squadlist[sq].method&AM_GROUPMASK)==AM_LWPACKS)
 			bombers++;
 	sq=0;
@@ -3552,7 +3559,7 @@ void	PackageList::SetTaskData()
 
 	 Todays_Packages.taskdata.attackmethod = pk.attackmethod;
 
-	for (int j = 0; j < STRIKEOPTIONS;j++)
+	int j; for (j = 0; j < STRIKEOPTIONS;j++)
 	   Todays_Packages.taskdata.strikeactypes[j] = NOTDEFINED;
 	for (j = 0; j < ESCORTOPTIONS;j++)
 	   Todays_Packages.taskdata.escortactypes[j] = NOTDEFINED;
@@ -4424,7 +4431,7 @@ int Profile::CalcWPAbsTimes(int absrvtime, int slowestsq)
 					bodywps++;
 					wp=Persons2::ConvertPtrUID(ref=wp->nextwp);
 					lasttime=wp->etas;
-					towp->etas=+wp->etas;	//+ve is from fighter RV
+					towp->etas=wp->etas;	//+ve is from fighter RV (was =+, MSVC unary-plus on EventVal)
 				}
 				bool quitloop=false;
 				for (wp=Persons2::ConvertPtrUID(ref=wp->nextwp);!quitloop;wp=Persons2::ConvertPtrUID(ref=wp->nextwp))
@@ -5759,7 +5766,8 @@ AttackMethodField	Profile::ReorderPackage(AttackMethodField am)
 	order.nextgoodsquad=0;
 	for (int trg=0;trg<MAX_TARGETS;trg++)
 	{
-		for (int find=order.nextgoodsquad;find<order.maxsquad;find++)
+		int find;
+		for (find=order.nextgoodsquad;find<order.maxsquad;find++)
 			if (squadlist[order.back[find]].method<AM_DETACHED && squadlist[order.back[find]].targetindex==trg)
 				order.WrapUp(find);
 		for (find=order.nextgoodsquad;find<order.maxsquad;find++)
@@ -5785,7 +5793,8 @@ AttackMethodField	Profile::ReorderPackage(AttackMethodField am)
 				}
 
 	}
-	for (int find=order.nextgoodsquad;find<order.maxsquad;find++)
+	int find;
+	for (find=order.nextgoodsquad;find<order.maxsquad;find++)
 		if ((squadlist[order.back[find]].method&AM_GROUPMASK)==AM_ATTACHED && !(squadlist[order.back[find]].submethod&SM_DOSTRAFFEGROUND))
 		{
 			squadlist[order.back[find]].targetindex=-1;
@@ -5871,7 +5880,7 @@ int	Profile::RecostRaidList()
 	RaidNumEntry* rne2=new RaidNumEntry[totalraids+1];
 
 	rne2[0].squadliststart=0;
-	for (i=0;i<=totalraids;i++)
+	for (int i=0;i<=totalraids;i++)
 	{
 		rne2[i].squadliststart=RNEC_LISTVALISLASTREC;
 		rne2[i].raidnum=totalraids;
@@ -6019,7 +6028,7 @@ int	Profile::RemakeRaidList(bool splitbombers,bool splitfighters)
 			INT3;
 
 		for (int r=0;r<=currentry;r++)
-			if (raidnumentries[r].squadliststart<sm)
+			if (raidnumentries[r].squadliststart<squadlist.Max())	/* was leaked for-scope `sm` = squadlist.Max() */
 			{
 				raidnumentries[r].firstsquaddiaryentry=squadlist[raidnumentries[r].squadliststart].diaryentry;
 			}
