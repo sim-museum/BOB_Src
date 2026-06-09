@@ -67,6 +67,26 @@ class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive
 /* OLE control event firing (COleControl) — no-ops */
 #define EVENT_PARAM(...)
 #define FireEvent(...)        ((void)0)
+/* OLE ActiveX-control factory / property-page / typelib macros — no-ops */
+#define BEGIN_OLEFACTORY(class_name)
+#define END_OLEFACTORY(class_name)
+#define DECLARE_OLECREATE_EX(class_name)
+#define IMPLEMENT_OLECREATE_EX(class_name, ext, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8)
+#define DECLARE_OLECTLTYPE(class_name)
+#define IMPLEMENT_OLECTLTYPE(class_name, idsUserType, idBmp)
+#define DECLARE_OLETYPELIB(class_name)
+#define IMPLEMENT_OLETYPELIB(class_name, tlid, wVerMajor, wVerMinor)
+#define DECLARE_PROPPAGEIDS(class_name)
+#define BEGIN_PROPPAGEIDS(class_name, count)
+#define END_PROPPAGEIDS(class_name)
+#define PROPPAGEID(clsid)
+#define DECLARE_OLEMISC_STATUS(status)
+#define BEGIN_CONNECTION_MAP(theClass, theBase)
+#define END_CONNECTION_MAP()
+#define CONNECTION_IID(iid)
+#define CONNECTION_PART(theClass, iid, localClass)
+#define BEGIN_PROPERTY_MAP(theClass)
+#define END_PROPERTY_MAP()
 #define DECLARE_INTERFACE_MAP()
 #define BEGIN_INTERFACE_MAP(theClass, baseClass)
 #define END_INTERFACE_MAP()
@@ -136,7 +156,15 @@ struct CPoint : public POINT {
     CPoint() { x = y = 0; }
     CPoint(int initX, int initY) { x = initX; y = initY; }
     CPoint(POINT p) { x = p.x; y = p.y; }
+    CPoint(SIZE s) { x = s.cx; y = s.cy; }
+    CPoint(DWORD dw) { x = (short)LOWORD(dw); y = (short)HIWORD(dw); }
     void Offset(int dx, int dy) { x += dx; y += dy; }
+    CPoint& operator=(SIZE s) { x = s.cx; y = s.cy; return *this; }
+    CPoint operator+(SIZE s) const { return CPoint(x + s.cx, y + s.cy); }
+    CPoint operator-(SIZE s) const { return CPoint(x - s.cx, y - s.cy); }
+    CSize  operator-(POINT p) const { return CSize(x - p.x, y - p.y); }
+    BOOL operator==(POINT p) const { return x == p.x && y == p.y; }
+    BOOL operator!=(POINT p) const { return x != p.x || y != p.y; }
 };
 
 struct CRect : public RECT {
@@ -210,6 +238,7 @@ public:
 
 class CFont : public CGdiObject {
 public:
+    CFont() {}
     BOOL CreateFontIndirect(const LOGFONT*) { return TRUE; }
     BOOL CreateFont(int, int, int, int, int, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, LPCSTR) { return TRUE; }
     BOOL CreatePointFont(int, LPCSTR, CDC* = NULL);
@@ -218,12 +247,16 @@ public:
 
 class CPen : public CGdiObject {
 public:
+    CPen() {}
+    CPen(int, int, COLORREF) {}
     BOOL CreatePen(int, int, COLORREF) { return TRUE; }
     operator HPEN() const { return (HPEN)m_hObject; }
 };
 
 class CBrush : public CGdiObject {
 public:
+    CBrush() {}
+    CBrush(COLORREF) {}
     BOOL CreateSolidBrush(COLORREF) { return TRUE; }
     operator HBRUSH() const { return (HBRUSH)m_hObject; }
 };
@@ -255,6 +288,7 @@ public:
     /* CString-accepting overloads (template triggers CString::operator LPCTSTR) */
     template<class S> BOOL TextOut(int x, int y, const S& s) { LPCSTR p=(LPCSTR)s; return TextOutA(x,y,p,(int)strlen(p)); }
     template<class S> BOOL ExtTextOut(int x, int y, UINT o, LPCRECT r, const S& s, UINT n, LPINT d) { return ExtTextOutA(x,y,o,r,(LPCSTR)s,n,d); }
+    template<class S> BOOL ExtTextOut(int x, int y, UINT o, LPCRECT r, const S& s, LPINT d) { LPCSTR p=(LPCSTR)s; return ExtTextOutA(x,y,o,r,p,(UINT)strlen(p),d); }
     template<class S> int  DrawText(const S& s, LPRECT r, UINT f) { LPCSTR p=(LPCSTR)s; return DrawText(p,(int)strlen(p),r,f); }
     COLORREF SetPixel(int, int, COLORREF c) { return c; }
     COLORREF GetPixel(int, int) const { return 0; }
@@ -442,7 +476,10 @@ public:
     BOOL Create(UINT, CWnd* = NULL) { return TRUE; }
     virtual void OnOK() {}
     virtual void OnCancel() {}
+    virtual LRESULT OnCommandHelp(WPARAM, LPARAM) { return 0; }
     void EndDialog(int) {}
+    void GotoDlgCtrl(CWnd*) {}
+    void NextDlgCtrl() const {}
 };
 
 class CView : public CWnd {
@@ -514,6 +551,9 @@ public:
 class CWinApp : public CWinThread {
 public:
     LPCSTR m_pszAppName;
+    LPCSTR m_pszHelpFilePath;
+    LPCSTR m_pszProfileName;
+    LPCSTR m_pszExeName;
     HINSTANCE m_hInstance;
     LPSTR  m_lpCmdLine;
     int    m_nCmdShow;
@@ -609,6 +649,26 @@ public:
     void SetProperty(DISPID, VARTYPE, ...) {}
     void GetProperty(DISPID, VARTYPE, void*) const {}
 };
+
+struct AFX_CMDHANDLERINFO { CCmdTarget* pTarget; void* pmf; };
+struct AFX_MSGMAP { const AFX_MSGMAP* (*pfnGetBaseMap)(); const void* lpEntries; };
+
+#ifndef HELP_CONTEXT
+#define HELP_CONTEXT      0x0001
+#define HELP_QUIT         0x0002
+#define HELP_INDEX        0x0003
+#define HELP_CONTENTS     0x0003
+#define HELP_HELPONHELP   0x0004
+#define HELP_SETINDEX     0x0005
+#define HELP_KEY          0x0101
+#define HELP_COMMAND      0x0102
+#define HELP_FINDER       0x000B
+#endif
+
+static inline int AfxLoadString(UINT, LPSTR buf, UINT = 256) { if (buf) buf[0] = 0; return 0; }
+static inline HINSTANCE AfxGetResourceHandle() { return NULL; }
+static inline void AfxSetResourceHandle(HINSTANCE) {}
+static inline HINSTANCE AfxGetInstanceHandle();
 
 /* The global application object (defined by IMPLEMENT'd CWinApp subclass in bob) */
 extern CWinApp* AfxGetApp();
