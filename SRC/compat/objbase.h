@@ -121,7 +121,10 @@ static inline bool operator!=(REFGUID a, REFGUID b) { return !InlineIsEqualGUID(
 #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
     const GUID name = { l, w1, w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }
 #else
-#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+/* Variadic: the declaration form only needs `name`. Bob also writes the 1-arg
+   form DEFINE_GUID(BOB_GUID); (values commented out) relying on MSVC filling
+   omitted macro args as empty — GCC is strict, so accept any arg count here. */
+#define DEFINE_GUID(name, ...) \
     extern const GUID name
 #endif
 

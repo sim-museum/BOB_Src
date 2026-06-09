@@ -105,7 +105,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 // for fuel in setflightparam purposes need multiple of 256
 #define	FRAMESINBLOCK 512
 #define REPLAYFRAMESPERSEC 100/Timer_Code.FRAMETIME
-extern BAD_RV;
+extern int BAD_RV;	// implicit-int extern (MSVC); BAD_RV defined elsewhere
 
 #define VELSHIFT	6
 

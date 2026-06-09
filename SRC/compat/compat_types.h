@@ -121,9 +121,9 @@ typedef char                CHAR, *PCHAR;
 typedef unsigned short      WORD, *PWORD, *LPWORD;
 typedef short               SHORT, *PSHORT;
 typedef unsigned short      USHORT, *PUSHORT;
-typedef uint32_t            DWORD, *PDWORD, *LPDWORD;
+typedef unsigned long       DWORD, *PDWORD, *LPDWORD;	/* Win32 ABI: DWORD is unsigned long (matches bob ULong) */
 typedef long int            LONG, *PLONG, *LPLONG;	/* Win32: LONG is long (matches cstring.h) */
-typedef uint32_t            ULONG, *PULONG;
+typedef unsigned long       ULONG, *PULONG;
 typedef int                 INT, *PINT, *LPINT;
 typedef unsigned int        UINT, *PUINT;
 typedef float               FLOAT, *PFLOAT;
