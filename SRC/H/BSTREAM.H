@@ -28,7 +28,11 @@
 class	BIStream:public	ifstream
 {
 public:
+#if defined(BOB_LINUX)
+CON	BIStream(char* fname): ifstream()	{open(fname,ios::in|ios::binary);}
+#else
 CON	BIStream(char* fname): ifstream()	{open(fname,ios::in+ios::binary);}
+#endif
     BIStream &operator >> (           char * __b )	{return (read(__b,strlen(__b)));}
     BIStream &operator >> (           char & __b )	{return (read(&__b));}
     BIStream &operator >> (           bool & __b )	{return (read((char*)&__b));}
@@ -59,7 +63,18 @@ class	BOStream:public ofstream
 {
 public:
 
-#ifndef __WATCOMC__
+#if defined(BOB_LINUX)
+CON	BOStream(char* fname,Bool blockoverwrite=FALSE):ofstream()
+	{
+		// emulate MSVC ios::noreplace: when blockoverwrite, fail if file exists
+		if (blockoverwrite)
+		{
+			std::ifstream chk(fname);
+			if (chk.good()) { chk.close(); setstate(ios::failbit); return; }
+		}
+		open(fname,ios::out|ios::binary|ios::trunc);
+	}
+#elif !defined(__WATCOMC__)
 CON	BOStream(char* fname,Bool blockoverwrite=FALSE):ofstream()
 	{	open(fname,ios::out+ios::binary+
 			(blockoverwrite?ios::noreplace:ios::trunc));	}

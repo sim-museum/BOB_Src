@@ -105,7 +105,15 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 	UByte			Target::*	Target::playerstatus=NULL;
 
 //note: relying on D_ to handle missing date
+#if defined(BOB_LINUX)
+/* MSVC silently fills omitted macro arguments as empty; GCC is strict. Use a
+   variadic trampoline so both the 1-arg DAM(NONE) sentinel and the 3-arg
+   DAM(level,date,day) form expand exactly as MSVC did. */
+#define DAM(...)	DAM_(__VA_ARGS__,,,)
+#define DAM_(level,date,day,...)	day+DL_##level+D_##date-D_
+#else
 #define DAM(level,date,day)	day+DL_##level+D_##date-D_
+#endif
 #define	DATE(date,day)	day+D_##date
 //note: set AAA and BALL levels.
 #define AB(a,b)	Defenses(AAA_##a+BALL_##b)
@@ -6353,7 +6361,8 @@ CON		NodeData::NodeData()
 
 void	NodeData::ClearTargetTable()
 {
-	for (int i=0;i<SUBTABLESIZE;i++)
+	int i;
+	for (i=0;i<SUBTABLESIZE;i++)
 		delete[] TargetPointers[i];
 	for (i=0;i<SUBTABLESIZE;i++)
 		TargetPointers[i]=NULL;
@@ -6582,7 +6591,7 @@ Squadron&	NodeData::operator [](SquadNum sq)
 //DEADCODE DAW 18/02/00 }
 
 
-#define	SUBCALL(routine)	assert(this)	\
+#define	SUBCALL(routine)	assert(this);	\
 	if (squadron>=SQ_LW_START)				 \
 		return GruppenPtr(this)->routine;		\
 	else									   \
@@ -7218,7 +7227,8 @@ void	NodeData::UpgradeAircraftTypes()
 		if (datefromstart&1)
 			fromtype=PT_HURR_A,totype=PT_HURR_B; 
 		int	lowestac=100,lowestacind=-1;
-		for (int i=0;squadron[i].squadron;i++)
+		int i;
+		for (i=0;squadron[i].squadron;i++)
 		{
 			if (squadron[i].actype==fromtype)
 				if (squadron[i].acavail<lowestac)

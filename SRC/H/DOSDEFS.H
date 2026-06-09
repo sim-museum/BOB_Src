@@ -139,6 +139,17 @@ typedef unsigned long long  __uint64;
 #ifndef _stdcall
 #define _stdcall
 #endif
+/* Legacy un-prefixed MS/16-bit calling-convention keywords (no-ops on GCC).
+   PASCAL's legacy branch (cstring.h) expands to bare `pascal`. */
+#ifndef pascal
+#define pascal
+#endif
+#ifndef _pascal
+#define _pascal
+#endif
+#ifndef cdecl
+#define cdecl
+#endif
 #endif
 #ifdef	__WATCOMC__
 #pragma warning	389	9				// value may be truncated

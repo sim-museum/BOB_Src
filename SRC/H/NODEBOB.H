@@ -10,6 +10,8 @@
 #ifndef nodebob_DEFINED_17_11_1999
 #define nodebob_DEFINED_17_11_1999
 #include "bitcount.h"
+#include "package.h"		// struct Profile (PackageStatus/BetterRule) used below
+
 #ifdef	DEFAULT_NODEBOB
 
 //
