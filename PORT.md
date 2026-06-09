@@ -1,30 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
-> ## ⚠️ CRITICAL SCOPE FINDING (2026-06-09): the source release is INCOMPLETE
-> A whole-archive trial link of all 14 module libs surfaced **465 undefined
-> symbols**. Tracing them precisely:
-> - **276 are ABSENT from the entire source tree** — declared in headers and
->   *called*, but **never defined anywhere** (not in SRC, not in the editor dirs).
->   They are the core simulation/AI/physics engine: `AirStruc` formation+flight
->   methods, `ArtInt` combat AI (BreakCall/SetEngage/FindEscort/…), `Collide`
->   ground-collision (GroundAltitude/LowestSafeAlt/HaveWeLanded), `AnimControl`,
->   `Atmosphere`, `Impact`, `MoveAirStruc`, `BoxCol`, `CampaignZero`, ~34 classes.
->   worldinc.h even tags some `// Existing in chat.cpp` — and **there is no
->   chat.cpp** in the release.
-> - **83 are DEFINED but in unbuilt TUs** (wireable): BFIELDS(33, the never-built
->   bit-field/persons module), MISSMAN(12), MFC(11), 3D(8), MOVECODE(5), COMMS(2).
+> ## SCOPE (2026-06-09, corrected): source is COMPLETE; remaining work is wiring unbuilt TUs
+> A whole-archive trial link of all 14 module libs surfaces **465 undefined
+> symbols**. Correctly traced (see the RETRACTION note below):
+> - **~335 of the 359 C++ symbols are DEFINED in the source — in TUs not yet wired
+>   into a module lib.** By dir: **3D ~195** (the `_3D.CPP` unity — COLLIDED/UI3D/
+>   IMPACT/… — isn't built; 3D lib only has LANDSCAP/LSTREAM/TILEMAKE/WEAPPAK/
+>   OVERLAY), MISSMAN ~62, **BFIELDS ~47** (the never-built bit-field/persons
+>   module), MFC ~15, AI ~12 (the `_AI.CPP` unity), MOVECODE ~5. These are
+>   mechanical to add (the porting recipe applies) — they hold the real impls of
+>   `Collide::GroundAltitude/HaveWeLanded/LowestSafeAlt` (COLLIDED.CPP:688-849),
+>   `AirStruc`/`ArtInt`/`AnimControl`/etc.
 > - **~52 external**: DirectX/DirectPlay creation entries (36), Miles/AIL sound
 >   (9), CRT `_findfirst`/`FindFirstFileA`/`fopen_nocase`/`_itoa` (7).
+> - **~24 residual**, mostly **bob's own `CString` inline methods** (false
+>   negatives — defined inline in cstring.h, ODR-resolved at use) plus a handful
+>   to check case-by-case (CampaignZero::NextMission, item::Formation_xyz,
+>   RMdlDlg::OnCommandHelp — likely inline/template).
 >
-> **Consequence:** every *provided* TU can be made to compile (that work is the
-> bulk of this log and is essentially done), but a **complete, faithful, runnable
-> `bob` executable cannot be linked from this source alone** — ~276 core engine
-> functions have no implementation here. This matches the known partial nature of
-> the public BoB source drop. Options from here: (a) wire in the 83 + external
-> stubs + asm and **stub the 276 absent functions** to reach a *links-but-
-> non-functional* shell (no real AI/collision/physics); (b) treat "all provided
-> source compiles cleanly to 32-bit objects" as the achievable end state. The
-> remainder of this file logs the (completed) compile effort.
+> **A real link IS reachable from this source.** Path: add the unbuilt unity TUs
+> (`_3D`, `_AI`, `_AIRC`, …) + the BFIELDS module + external stubs + the 6
+> MASM→nasm + a `bob` add_executable/entry → iterate link → runtime bring-up.
+>
+> > ### RETRACTION of an earlier (wrong) "incomplete source" alarm
+> > I briefly concluded ~276 core functions were "absent from the source." That was
+> > a **grep artifact**: many .cpp carry **ISP-8859 high-bytes in their licence
+> > headers** (e.g. COLLIDED.CPP is "ISO-8859 text"), so plain `grep` treats them
+> > as **binary and reports no matches**. My defined-symbol index was built without
+> > `grep -a`, so every ISO-8859 file's definitions were silently dropped → false
+> > "absent". With `grep -a` the definitions are all there (COLLIDED.CPP defines
+> > `Collide::GroundAltitude` at line 838, etc.). **Lesson: always `grep -a` /
+> > `rg --text` on this tree.** The source is complete; the gap is unbuilt TUs.
 
 Goal: build the game to run **natively on Ubuntu 26.04** (no Wine), from the
 original Windows source in `SRC/`. Game data: a working Wine install at
