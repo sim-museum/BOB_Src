@@ -427,7 +427,7 @@ SWord AirStruc::CalcWobbleDY()
 		return(0);
 
 	SWord time =  1024 * uniqueID.count;						//AMM 01Feb100
-	time       += 16 * TimerCode.FRAMETIME * fly.pModel->FrameCount ;
+	time       += 16 * TimerCode::FRAMETIME * fly.pModel->FrameCount ;
 	time       =  Math_Lib.K8sin128(time);
 	return(time);
 }
@@ -451,7 +451,7 @@ SWord AirStruc::CalcWobbleVY()
 		return(0);
 
 	SWord time =  1024 * uniqueID.count;						//AMM 01Feb100
-	time       += 16 * TimerCode.FRAMETIME * fly.pModel->FrameCount;
+	time       += 16 * TimerCode::FRAMETIME * fly.pModel->FrameCount;
 	time	   = Math_Lib.K8cos(time)>>1;
 	return(time);
 }
@@ -5015,7 +5015,7 @@ void MoveAirStruc::AutoTakeOff ()
 		case PHASE4:
 		{
 			CalcVelAlt();
-			Float deltapitch = FP(SWord(ANGLES_0Deg + classtype->deckangle)) * TimerCode.FRAMETIME * (0.5 / 200);
+			Float deltapitch = FP(SWord(ANGLES_0Deg + classtype->deckangle)) * TimerCode::FRAMETIME * (0.5 / 200);
 			pitch += Angles(SWord(deltapitch));
 			Float factor = FP(SWord(pitch));
 			factor /= FP(SWord(ANGLES_0Deg + classtype->deckangle));
@@ -5057,7 +5057,7 @@ void MoveAirStruc::AutoTakeOff ()
 			CalcXYZVel();
 			NewPosition();
 
-			SWord delta = TimerCode.FRAMETIME / 2;
+			SWord delta = TimerCode::FRAMETIME / 2;
 
 			PMODEL pModel = fly.pModel;
 
@@ -11248,12 +11248,16 @@ void	AirStruc::SetMaccaVels()
 	maxpoo += zz*zz;
 
 	double mag = (double) maxpoo;
+#if defined(BOB_LINUX)
+	mag = __builtin_sqrt(mag);
+#else
 	_asm
 	{
 		fld mag;
 		fsqrt;
 		fstp mag;
 	}
+#endif
 
 	maxpoo = 1.0 / mag;
 

@@ -176,7 +176,7 @@ void	SAGAirstruc::MoveAllSAGs(WorldStuff& world)
 	}
 
 	if ((timeofday & 511) == 0)
-		for (i=SagBAND;i!=SagBANDEND;i++)
+		for (int i=SagBAND;i!=SagBANDEND;i++)
 		{
 			SAGAirstruc* as=Persons2::ConvertPtrUID(UniqueID(i));
 			if (as)
@@ -468,7 +468,7 @@ void AirStruc::PreExpandSags(int baseSAGshape)
 	{
 		for(int ac = PT_BRIT_FLYABLE; ac <= PT_GER_NONFLY; ac++)
 			if(Persons3::sagexpcounts[ac].numavailable - Persons3::sagexpcounts[ac].numactive < 16)
-				for(i = 0; i < ArtInt::ACARRAYSIZE; i++)
+				for(int i = 0; i < ArtInt::ACARRAYSIZE; i++)
 					if(array[i])
 					{
 						PlaneTypeSelect actype = MergeTypes(array[i]->classtype->planetext);
@@ -482,7 +482,7 @@ void AirStruc::PreExpandSags(int baseSAGshape)
 					}
 
 		int closesti = -1;
-		for(i = 0; i < ArtInt::ACARRAYSIZE; i++)
+		for(int i = 0; i < ArtInt::ACARRAYSIZE; i++)
 			if(array[i])
 			{
 				if((closesti == -1) || (dist2[i] < dist2[closesti]))
@@ -4896,7 +4896,8 @@ void	AirStruc::ContractSag(bool forcedcontract)
 //DEADCODE JIM 14/02/00 			totalac--;
 			//COPY anim data to gi
 			gi.AnimDataMAD().IsInvisible = 0;
-			SHAPE.ACtoSAG(w, gi.GetAnimData());
+			animptr _gad = gi.GetAnimData();	// ACtoSAG takes animptr& (fills via ptr); bind a temp
+			SHAPE.ACtoSAG(w, _gad);
 
 			//make aircraft generically reusable and remove
 			secp->numactive--;
@@ -5411,7 +5412,8 @@ AirStrucPtr AirStruc::ActivateACFromSag(GroupItterator& gi)
 		//NEED TO TRANSFER THE ANIM DATA FROM gi parameter
 // .... should use real weappack num here, instead of 0!
 		SHAPE.ResetAnimData_NewShape(currac,currac->shape,0,false);		//RJS 29Aug00
-		SHAPE.SAGtoAC(gi.GetAnimData(), currac->Anim);
+		animptr _gad2 = gi.GetAnimData();	// SAGtoAC takes animptr& (fills via ptr); bind a temp
+		SHAPE.SAGtoAC(_gad2, currac->Anim);
 
 //DeadCode RJS 29Aug00 		MinAnimData* animdata = (MinAnimData*)currac->Anim;				//CSB 9Aug00
 //DeadCode RJS 29Aug00 		animdata->IsInvisible = 0;										//CSB 9Aug00

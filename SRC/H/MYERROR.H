@@ -80,11 +80,14 @@ extern	Error	_Error;
 #if defined(BOB_LINUX)
 	// Variadic no-op: tolerates both bob's 2-arg assert(expr,str) and any system
 	// 1-arg assert(expr) that ends up visible. Matches NDEBUG/Release semantics.
+	// Expands to NOTHING (not ((void)0)) so it works in every statement position
+	// bob uses, including the no-trailing-semicolon idiom `assert(x) if(...)` and
+	// the unbraced `if(c) assert(x); else ...` — both of which ((void)0) breaks.
 	#ifdef assert
 	#undef assert
 	#endif
-	#define assert(...)  ((void)0)
-	#define nassert(...) ((void)0)
+	#define assert(...)
+	#define nassert(...)
 #else
 	#ifdef NDEBUG
 //	 	#define assert(__ignore) ((void)0)

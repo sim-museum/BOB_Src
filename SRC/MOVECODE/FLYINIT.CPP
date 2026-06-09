@@ -82,6 +82,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "model.h"												//ARM 29Jan97
 
 #include "planetyp.h"
+#include	"raddef.h"		// defines USE_PHRASE_* so radio.g emits the aircraft phrases
 #include	"radio.g"											//RJS 10Feb99
 
 #undef	PLANETYP_Included

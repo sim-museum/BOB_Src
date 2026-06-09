@@ -73,6 +73,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #define F_COMMON
 #define F_BATTLE
 #include	"dosdefs.h"
+#include	"raddef.h"		// USE_PHRASE_* before any radio.g inclusion (phrase enums)
 #include	"worldinc.h"
 #include	"planetyp.h"
 #include	"flymodel.h"
@@ -89,6 +90,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include	"replay.h"
 #include	"overlay.h"
 #include	"intcock.h"											//RJS 14Dec99
+#include	"rchatter.h"		// _Radio, MSG_HIPRIORITY, full MESSAGE_STRUC
 #include	"comms.h"
 
 extern DPlay _DPlay;
@@ -1024,9 +1026,9 @@ void	ManualPilot::GetStickKeys (AirStrucPtr const ControlledAC)
 //DeadCode MS 3Oct00 		const dAil  = 1;		const sAil1 = 1;		const sAil2	= 1;
 //DeadCode MS 3Oct00 		const dRud  = 4;		const sRud1	= 4;		const sRud2	= 1;
 	
-		const int dEle  = 4000;		const sEle1	= 4;		const sEle2	= 1;
-		const int dAil  = 1;		const sAil1 = 1;		const sAil2	= 1;
-		const int dRud  = 1;		const sRud1	= 1;		const sRud2	= 1;
+		const int dEle  = 4000;		const int sEle1	= 4;		const int sEle2	= 1;
+		const int dAil  = 1;		const int sAil1 = 1;		const int sAil2	= 1;
+		const int dRud  = 1;		const int sRud1	= 1;		const int sRud2	= 1;
 	
 
 		if ((ail!=-0x8000) && (cntstick_r == 0)&& (cntstick_l == 0))
