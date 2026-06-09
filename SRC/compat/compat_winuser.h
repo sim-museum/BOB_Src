@@ -77,6 +77,27 @@ extern "C" {
 #define WM_ENTERSIZEMOVE    0x0231
 #define WM_EXITSIZEMOVE     0x0232
 #define WM_USER             0x0400
+/* additional window messages used by bob's MFC UI */
+#ifndef WM_SETFONT
+#define WM_SETFONT          0x0030
+#define WM_GETFONT          0x0031
+#define WM_CANCELMODE       0x001F
+#define WM_WINDOWPOSCHANGING 0x0046
+#define WM_WINDOWPOSCHANGED 0x0047
+#define WM_DISPLAYCHANGE    0x007E
+#define WM_NCCREATE         0x0081
+#define WM_NCDESTROY        0x0082
+#define WM_NCCALCSIZE       0x0083
+#define WM_NCHITTEST        0x0084
+#define WM_NCPAINT          0x0085
+#define WM_GETDLGCODE       0x0087
+#define WM_PARENTNOTIFY     0x0210
+#define WM_CTLCOLORSTATIC   0x0138
+#define WM_CTLCOLOREDIT     0x0133
+#define WM_CTLCOLORBTN      0x0135
+#define WM_CTLCOLORLISTBOX  0x0134
+#define WM_IDLEUPDATECMDUI  0x0363
+#endif
 
 /* Listbox Notification Codes */
 #define LBN_ERRSPACE        (-2)

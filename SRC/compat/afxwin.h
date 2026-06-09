@@ -313,6 +313,7 @@ public:
     BOOL Attach(HDC h) { m_hDC = h; return TRUE; }
     HDC Detach() { HDC h = m_hDC; m_hDC = NULL; return h; }
     CGdiObject* SelectObject(CGdiObject*) { return NULL; }
+    HGDIOBJ SelectStockObject(int) { return NULL; }
     CFont* SelectObject(CFont*) { return NULL; }
     CPen*  SelectObject(CPen*)  { return NULL; }
     CBrush* SelectObject(CBrush*) { return NULL; }
@@ -421,6 +422,10 @@ public:
     BOOL SetMenu(class CMenu*) { return TRUE; }
     void SendMessageToDescendants(UINT, WPARAM = 0, LPARAM = 0, BOOL = TRUE, BOOL = TRUE) {}
     void DrawMenuBar() {}
+    void DragAcceptFiles(BOOL = TRUE) {}
+    void RedrawWindow(LPCRECT = NULL, HRGN = NULL, UINT = 0) {}
+    LRESULT DefWindowProc(UINT, WPARAM, LPARAM) { return 0; }
+    BOOL ModifyStyleEx(DWORD, DWORD, UINT = 0) { return TRUE; }
     CDC* BeginPaint(LPPAINTSTRUCT) { return NULL; }
     void EndPaint(LPPAINTSTRUCT) {}
     void GetWindowPlacement(void*) const {}
@@ -611,6 +616,7 @@ public:
     CDocument* GetActiveDocument() const { return NULL; }
     void RecalcLayout(BOOL = TRUE) {}
     BOOL SetActiveView(CView*, BOOL = TRUE) { return TRUE; }
+    void ExitHelpMode() {}
 };
 
 /* CFile / CArchive / CPrintInfo (afx.h) */
