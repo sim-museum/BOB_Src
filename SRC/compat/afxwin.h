@@ -235,6 +235,21 @@ inline CSize  operator-(POINT a, POINT b) { return CSize(a.x - b.x, a.y - b.y); 
 inline CPoint operator+(POINT a, SIZE s)  { return CPoint(a.x + s.cx, a.y + s.cy); }
 inline CPoint operator-(POINT a, SIZE s)  { return CPoint(a.x - s.cx, a.y - s.cy); }
 inline CPoint operator+(POINT a, POINT b) { return CPoint(a.x + b.x, a.y + b.y); }
+inline CRect  operator+(const RECT& r, POINT p) { return CRect(r.left+p.x, r.top+p.y, r.right+p.x, r.bottom+p.y); }
+inline CRect  operator-(const RECT& r, POINT p) { return CRect(r.left-p.x, r.top-p.y, r.right-p.x, r.bottom-p.y); }
+inline CRect  operator+(const RECT& r, SIZE s)  { return CRect(r.left+s.cx, r.top+s.cy, r.right+s.cx, r.bottom+s.cy); }
+
+/* MFC standard dockbar / prompt resource IDs */
+#ifndef AFX_IDW_DOCKBAR_TOP
+#define AFX_IDW_DOCKBAR_TOP     0xE81B
+#define AFX_IDW_DOCKBAR_BOTTOM  0xE81C
+#define AFX_IDW_DOCKBAR_LEFT    0xE81D
+#define AFX_IDW_DOCKBAR_RIGHT   0xE81E
+#define AFX_IDW_TOOLBAR         0xE81B
+#define AFX_IDW_STATUS_BAR      0xE801
+#define AFX_IDP_FAILED_TO_LAUNCH_HELP 0xF010
+#define AFX_IDP_COMMAND_FAILURE 0xF011
+#endif
 
 /* OLE stock-property dispids */
 #ifndef DISPID_FORECOLOR
@@ -487,11 +502,13 @@ public:
     afx_msg void OnGetMinMaxInfo(MINMAXINFO*) {}
     afx_msg void OnDevModeChange(LPSTR) {}
     afx_msg void OnActivateApp(BOOL, DWORD) {}
-    afx_msg LRESULT OnHelp(WPARAM, LPARAM) { return 0; }
-    afx_msg LRESULT OnHelpFinder(WPARAM, LPARAM) { return 0; }
+    afx_msg void OnHelp() {}
+    afx_msg void OnHelpFinder() {}
+    afx_msg void OnHelpIndex() {}
+    afx_msg void OnHelpUsing() {}
+    afx_msg void OnContextHelp() {}
     afx_msg LRESULT OnHelpInfo(struct tagHELPINFO*) { return 0; }
-    afx_msg LRESULT OnContextHelp(WPARAM, LPARAM) { return 0; }
-    afx_msg LRESULT OnCommandHelp(WPARAM, LPARAM) { return 0; }
+    afx_msg LRESULT OnCommandHelp(WPARAM = 0, LPARAM = 0) { return 0; }
     afx_msg int  OnMouseActivate(CWnd*, UINT, UINT) { return 1; }
     virtual BOOL PreCreateWindow(struct tagCREATESTRUCTA&) { return TRUE; }
     virtual BOOL PreTranslateMessage(void*) { return FALSE; }

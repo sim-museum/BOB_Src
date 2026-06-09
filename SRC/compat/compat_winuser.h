@@ -663,8 +663,12 @@ static inline LRESULT SendMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
 #define PeekMessage PeekMessageA
 #define DispatchMessage DispatchMessageA
 #define PostMessage PostMessageA
-/* NOTE: SendMessage macro disabled - conflicts with class methods in vu2 */
-/* #define SendMessage SendMessageA */
+/* NOTE: SendMessage macro disabled - conflicts with class methods (CWnd::SendMessage).
+   Provide a real GLOBAL function instead, so ::SendMessage(hwnd,...) resolves while
+   member CWnd::SendMessage(msg,...) is unaffected. */
+static inline LRESULT SendMessage(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
+    return SendMessageA(hWnd, Msg, wParam, lParam);
+}
 
 #define PM_NOREMOVE     0x0000
 #define PM_REMOVE       0x0001
