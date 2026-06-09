@@ -534,6 +534,29 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     resolve undefined symbols (GentleBankData, BAD_RV, DirectPlay/DirectShow
     stubs), reconstruct bfrefs.g for BFIELDS.
 
+- **2026-06-09 (19)**: **MFC unity landscape mapped + shared prelude; `_AFX.CPP`
+  also clean (2 of 7 MFC unities archived).** The MFC module has **7 unity TUs**
+  (BOB.DSP): `_MFC`(core dialogs/views/map) ✓, `_AFX`(controls/font) ✓, and the
+  campaign UI: `_TOOL`(9 frags), `_FULL`(42), `_SA`(49), `_LW`(20), `_RAF`(20).
+  The ~133 "standalone MFC .cpp" are actually these unities' fragments.
+  - **Shared preludes `SRC/MFC/bob_mfc_pre.h` + `bob_mfc_post.h`** (extracted from
+    _MFC.CPP, applied to all 7 unities): pre = F_BATTLE + files.g + cstring before
+    stdafx; post = bob UI/data/frame headers after _mfc.h (control wrappers ->
+    composites -> redit/fullpane/MainFrm/MIGView). **Must live in SRC/MFC** so
+    quote-include resolution (resource.h etc.) matches the inline form. Effect:
+    _AFX 164->0, _RAF 841->27, _TOOL 529->99, _LW 1175->152, _FULL 2376->340.
+  - **libbob_mfc.a now archives `_MFC.CPP` + `_AFX.CPP`.** Added CY/CURRENCY (OLE),
+    COleDispatchDriver(LPDISPATCH) ctor; include guards on generated wrappers
+    RSCRLBAR.H/REDIT.H (unity double-include); ~70 case-alias .cpp symlinks for the
+    unity fragments.
+  - **NEXT (campaign-UI unities, ~27-340 each)**: the remaining errors are
+    cross-unity dialog references (_RAF instantiates LWRouteMain/RAFDiaryDetails;
+    `::Place`) + per-fragment bits (info_airgrp/info_waypoint incomplete,
+    `PT_LWTOTAL` non-constexpr enum-arith, IdList& temp-binds, resource.h IDC_*
+    redef). Recipe: add the cross-referenced dialog header to bob_mfc_post.h (test
+    it doesn't regress _MFC/_AFX), or fix per-fragment. Then wire each clean unity
+    into SRC/MFC/CMakeLists.txt. Then Phase 2 (link the ELF).
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):
