@@ -104,8 +104,11 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "maintbar.h"
 #include "titlebar.h"
 #include "sysbox.h"
+#include "rradio.h"
 #include "rtestsh1.h"
 #include "squick1.h"
+#include "thumnail.h"
+#include "filing.h"
 #include "movement.h"
 #include "savegame.h"		/* MapFilters enum incl. MAPFILTERSMAX (used by mapfltrs.h) */
 #include "mapfltrs.h"

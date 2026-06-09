@@ -438,8 +438,10 @@ class CMetaFileDC : public CDC { public: CMetaFileDC() {} };
  * ============================================================ */
 class CWnd : public CCmdTarget {
 public:
+    enum { adjustBorder = 0, adjustOutside = 1 };
     HWND m_hWnd;
     CWnd() : m_hWnd(NULL) {}
+    void CalcWindowRect(LPRECT, UINT = adjustBorder) {}
     HWND GetSafeHwnd() const { return m_hWnd; }
     operator HWND() const { return m_hWnd; }
     BOOL Attach(HWND h) { m_hWnd = h; return TRUE; }
@@ -660,6 +662,9 @@ public:
     BOOL TrackPopupMenu(UINT, int, int, CWnd*, LPCRECT = NULL) { return TRUE; }
 };
 
+/* SetWindowPos z-order sentinels (MFC globals: &wndTop etc.) */
+static const CWnd wndTop, wndBottom, wndTopMost, wndNoTopMost;
+
 class CDialog : public CWnd {
 public:
     CDialog() {}
@@ -677,8 +682,10 @@ public:
 
 class CView : public CWnd {
 public:
+    CDocument* m_pDocument;
+    CView() : m_pDocument(NULL) {}
     virtual void OnDraw(CDC*) {}
-    CDocument* GetDocument() const { return NULL; }
+    CDocument* GetDocument() const { return m_pDocument; }
     CScrollBar* GetScrollBarCtrl(int) const { return NULL; }
     virtual BOOL OnPreparePrinting(CPrintInfo*) { return TRUE; }
     virtual void OnBeginPrinting(CDC*, CPrintInfo*) {}
