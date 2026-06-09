@@ -10,6 +10,7 @@
 #ifndef nodebob_DEFINED_17_11_1999
 #define nodebob_DEFINED_17_11_1999
 #include "bitcount.h"
+#include "uniqueid.h"		// enum UniqueID — used by nodebob.h and package.h below
 #include "package.h"		// struct Profile (PackageStatus/BetterRule) used below
 
 #ifdef	DEFAULT_NODEBOB
