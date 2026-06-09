@@ -485,14 +485,25 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     map-cascade fix; PACKAGE.H self-contains uniqueid.h; _MFC early-includes the
     bob UI base headers (rdialog/rbutton/rlistbox/rmdldlg/maintbar/titlebar/
     sysbox/hintbox) + case-alias symlinks for them.
-  - **Remaining ~301 roots** (flat long tail, 2-4 each): more bob UI classes
-    incomplete (CListBx/CRTabs/CSQuickN/RtestshN — keep early-including their
-    headers); a few global-vs-member Win32 fn ambiguities (BeginPaint/EndPaint);
-    scattered missing methods/consts. Then the other ~150 standalone MFC TUs
-    beyond `_MFC.CPP`. Recipe is established: run _MFC, add the next method/class/
-    macro to afxwin.h or early-include the bob UI header, repeat. **13 module libs
-    keep building — afxwin/streams aren't included by them, so MFC work is
-    regression-safe.**
+  - **_MFC.CPP driven 301 -> ~193** (cumulative 2655 -> ~193, >92%). Added: full
+    CWnd message-handler virtuals (OnLButtonDown/OnMouseMove/OnPaint/...), all the
+    MFC ON_WM_*/ON_*N map-entry macros as no-ops, CMenu/CFile/CArchive/CPrintInfo/
+    CPropExchange, CDC GDI methods (Polygon/Ellipse/ExtTextOut CString overloads),
+    CRect/CPoint arithmetic, NMHDR/MINMAXINFO/HELPINFO/HTASK, SIZE_*/TPM_*/QS_*/
+    CBRS_*/DISPATCH_*/HID_* consts, AfxLoadString/HELP_*; cstring.h moved before
+    stdafx (CString complete when __AFX_H__ flips bob's branches); globdefs.h
+    ON_MESSAGE no-op'd; many bob UI headers early-included.
+  - **STRUCTURAL BOUNDARY reached (~193 left).** The remaining tail is dominated
+    by bob's ActiveX-control wrapper classes (CRCombo/CRStatic/CRSpinBut/CRTabs/
+    CRComboExtra/Rtestsh1/CSQuick1/...) which are FORWARD-DECLARED in headers but
+    DEFINED in their own .cpp control projects (SRC/rcombo, SRC/rstatic, ...), so
+    they're incomplete where the unity uses them as value members. Options:
+    (a) move those class defs into headers, (b) compile each control project and
+    include its def, or (c) accept them as separate TUs. Plus the other ~150
+    standalone MFC .cpp beyond `_MFC.CPP`. Recipe for the non-control tail is
+    mechanical: run _MFC, add the next method/macro/const to afxwin.h or
+    early-include the bob header. **13 module libs keep building — afxwin/streams
+    aren't included by them, so all MFC work is regression-safe.**
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
