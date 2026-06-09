@@ -41,10 +41,13 @@ struct tagHELPINFO; struct COleControlSite;
 #define DECLARE_MESSAGE_MAP()
 #define BEGIN_MESSAGE_MAP(theClass, baseClass)
 #define END_MESSAGE_MAP()
-#define DECLARE_DYNAMIC(class_name)
+#define DECLARE_DYNAMIC(class_name)   public: virtual class CRuntimeClass* GetRuntimeClass() const { return 0; }
 #define IMPLEMENT_DYNAMIC(class_name, base_class)
-#define DECLARE_DYNCREATE(class_name)
+/* DECLARE_DYNCREATE declares the CreateObject factory bob hand-defines/registers */
+#define DECLARE_DYNCREATE(class_name) public: static CObject* CreateObject(); virtual class CRuntimeClass* GetRuntimeClass() const { return 0; }
 #define IMPLEMENT_DYNCREATE(class_name, base_class)
+#define IMPLEMENT_RUNTIMECLASS(class_name, base_class, wSchema, pfnNew)
+#define DECLARE_RUNTIMECLASS(class_name)
 #define DECLARE_SERIAL(class_name)
 #define IMPLEMENT_SERIAL(class_name, base_class, quan)
 #define DECLARE_OLECREATE(class_name)

@@ -1038,7 +1038,8 @@ void	CMIGView::DrawIcon(CDC* pDC,int px,int py,IconsUI f)
 		IconDescUI icon(f);
 		CPoint wh=icon.WH();
 		int dx=wh.x/2,dy=wh.y/2;
-		icon.MaskIcon(pDC  ,CPoint(px-m_scrollpoint.x-dx,py-m_scrollpoint.y-dy+1));
+		CPoint _mip(px-m_scrollpoint.x-dx,py-m_scrollpoint.y-dy+1);	// MaskIcon takes CPoint& (no temp bind on GCC)
+		icon.MaskIcon(pDC  ,_mip);
 	}	   
 	else
 	{
@@ -3121,11 +3122,11 @@ FileNum  CMIGView::DrawIconTest(ItemBasePtr p, UniqueID i, bool hilight,bool ref
 }
 
 
-//• DCB_ACCUMULATE Bounding rectangle accumulation is occurring.
-//• DCB_RESET Bounding rectangle is empty.
-//• DCB_SET Bounding rectangle is not empty.
-//• DCB_ENABLE Bounding accumulation is on.
-//• DCB_DISABLE
+//ï¿½ DCB_ACCUMULATE Bounding rectangle accumulation is occurring.
+//ï¿½ DCB_RESET Bounding rectangle is empty.
+//ï¿½ DCB_SET Bounding rectangle is not empty.
+//ï¿½ DCB_ENABLE Bounding accumulation is on.
+//ï¿½ DCB_DISABLE
 void CMIGView::DrawIcons( CDC* pDC,CRect& bounds)
 {	
 	ItemBasePtr p;
