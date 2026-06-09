@@ -368,6 +368,16 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
     `mobileitem.ACList`/`LandScape._blockWidth` -> `::`; **for-scope hoists**;
     **FPU asm** -> `__builtin_sqrt/atan2/sin/cos`.
 
+- **2026-06-09 (15)**: **COMMS is the 13th module** (via `_COMM.CPP` unity).
+  DirectPlay stubbed (minimal IDirectPlayLobby3 in compat/dplobby.h — the empty
+  compat stub had been shadowing the real SDK header). **compat DWORD/ULONG are
+  now `unsigned long`** (Win32 ABI, matches bob's ULong) — fixes ULong&/DWORD
+  bind mismatches, no regression. DEFINE_GUID declaration-form made variadic
+  (1-arg `DEFINE_GUID(BOB_GUID)` MSVC empty-fill). BAD_RV implicit-int extern;
+  implicit-int statics; n for-scope hoists. **Thirteen module libs build.**
+  Remaining non-MFC: BFIELDS (bfrefs.g corruption), GRAPHICS (asm-only),
+  MYCMDS (empty). Then the MFC game core.
+
 ### Deferred / known work
 - **BFIELDS**: blocked by a **corruption in generated header SRC/H/bfrefs.g**
   (~line 209: a GR_Pack_TakeTime table's declaration + first entries are missing,
