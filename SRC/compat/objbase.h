@@ -37,6 +37,12 @@
 #ifndef THIS
 #define THIS void
 #endif
+/* COM interface declaration macros (objbase.h / rpcndr.h, C++ form).
+   The user #defines INTERFACE to the iface name before invoking. */
+#ifndef DECLARE_INTERFACE
+#define DECLARE_INTERFACE(iface)             struct iface
+#define DECLARE_INTERFACE_(iface, baseiface) struct iface : public baseiface
+#endif
 
 /* ============================================================
  * HRESULT helpers

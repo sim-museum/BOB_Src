@@ -51,6 +51,20 @@
 #ifndef PASCAL
 #define PASCAL
 #endif
+/* Win32 SAL-style parameter direction annotations (windef.h: empty macros) */
+#ifndef IN
+#define IN
+#endif
+#ifndef OUT
+#define OUT
+#endif
+#ifndef OPTIONAL
+#define OPTIONAL
+#endif
+/* winnt.h field offset macro */
+#ifndef FIELD_OFFSET
+#define FIELD_OFFSET(type, field) ((LONG)(intptr_t)&(((type *)0)->field))
+#endif
 #ifndef FAR
 #define FAR
 #endif

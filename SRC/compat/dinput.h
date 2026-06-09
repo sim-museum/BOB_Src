@@ -341,6 +341,22 @@
 #define DIDFT_VENDORDEFINED            0x04000000
 #define DIDFT_ALIAS                    0x08000000
 #define DIDFT_OPTIONAL                 0x80000000
+
+/* Device object instance flags (DIDEVICEOBJECTINSTANCE.dwFlags) */
+#define DIDOI_FFACTUATOR               0x00000001
+#define DIDOI_FFEFFECTTRIGGER          0x00000002
+#define DIDOI_POLLED                   0x00008000
+#define DIDOI_ASPECTPOSITION           0x00000100
+#define DIDOI_ASPECTVELOCITY           0x00000200
+#define DIDOI_ASPECTACCEL              0x00000300
+#define DIDOI_ASPECTFORCE              0x00000400
+#define DIDOI_ASPECTMASK               0x00000F00
+#define DIDOI_GUIDISUSAGE              0x00010000
+
+/* Effect button / trigger sentinel */
+#ifndef DIEB_NOTRIGGER
+#define DIEB_NOTRIGGER                 0xFFFFFFFF
+#endif
 #define DIDFT_GETTYPE(n)               LOBYTE(n)
 #define DIDFT_MAKEINSTANCE(n)          ((WORD)(n) << 8)
 #define DIDFT_GETINSTANCE(n)           LOWORD((n) >> 8)
@@ -445,6 +461,13 @@ typedef struct IDirectInputA        IDirectInput8;
 typedef struct IDirectInputDeviceA  IDirectInputDevice2;
 typedef struct IDirectInputDeviceA  IDirectInputDevice7;
 typedef struct IDirectInputDeviceA  IDirectInputDevice8;
+/* ANSI (A-suffixed) aliases used directly by the source. These are #defines (not
+   typedefs) because some game headers forward-declare them as `struct X;`. */
+#define IDirectInput7A        IDirectInputA
+#define IDirectInput8A        IDirectInputA
+#define IDirectInputDevice2A  IDirectInputDeviceA
+#define IDirectInputDevice7A  IDirectInputDeviceA
+#define IDirectInputDevice8A  IDirectInputDeviceA
 
 /* ============================================================
  * Structures

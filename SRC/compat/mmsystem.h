@@ -75,5 +75,49 @@ static inline BOOL PlaySoundA(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound) {
 static inline BOOL sndPlaySoundA(LPCSTR pszSound, UINT fuSound) { (void)pszSound; (void)fuSound; return TRUE; }
 #define sndPlaySound sndPlaySoundA
 
+/* Joystick API (mmsystem.h) */
+#ifndef JOY_RETURNX
+#define JOY_RETURNX        0x00000001
+#define JOY_RETURNY        0x00000002
+#define JOY_RETURNZ        0x00000004
+#define JOY_RETURNR        0x00000008
+#define JOY_RETURNU        0x00000010
+#define JOY_RETURNV        0x00000020
+#define JOY_RETURNPOV      0x00000040
+#define JOY_RETURNBUTTONS  0x00000080
+#define JOY_RETURNALL      (JOY_RETURNX|JOY_RETURNY|JOY_RETURNZ|JOY_RETURNR|JOY_RETURNU|JOY_RETURNV|JOY_RETURNPOV|JOY_RETURNBUTTONS)
+#define JOYERR_NOERROR     0
+#define JOYERR_PARMS       165
+#define JOYERR_NOCANDO     166
+#define JOYERR_UNPLUGGED   167
+#endif
+
+typedef struct joyinfo_tag {
+    UINT wXpos;
+    UINT wYpos;
+    UINT wZpos;
+    UINT wButtons;
+} JOYINFO, *PJOYINFO, *LPJOYINFO;
+
+typedef struct joyinfoex_tag {
+    DWORD dwSize;
+    DWORD dwFlags;
+    DWORD dwXpos;
+    DWORD dwYpos;
+    DWORD dwZpos;
+    DWORD dwRpos;
+    DWORD dwUpos;
+    DWORD dwVpos;
+    DWORD dwButtons;
+    DWORD dwButtonNumber;
+    DWORD dwPOV;
+    DWORD dwReserved1;
+    DWORD dwReserved2;
+} JOYINFOEX, *PJOYINFOEX, *LPJOYINFOEX;
+
+static inline MMRESULT joyGetPosEx(UINT uJoyID, LPJOYINFOEX pji) { (void)uJoyID; (void)pji; return JOYERR_UNPLUGGED; }
+static inline MMRESULT joyGetPos(UINT uJoyID, LPJOYINFO pji)     { (void)uJoyID; (void)pji; return JOYERR_UNPLUGGED; }
+static inline UINT     joyGetNumDevs(void) { return 0; }
+
 #endif /* FF_LINUX */
 #endif
