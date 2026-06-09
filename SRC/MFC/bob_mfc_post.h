@@ -53,4 +53,16 @@
 #include "LWRouteM.h"
 #include "LWRevAc.h"
 #include "RAFDryD.h"
+#include "AcUnit.h"		/* AircraftUnit (+TypesToList enum) */
+#include "WPDialog.h"		/* WayPointDialog */
+#include "RAFRevAs.h"		/* RAFReviewAsset */
+#include "RAFRevAc.h"		/* RAFReviewAircraft */
+#include "LWTaskSm.h"		/* LWTaskSummary */
+#include "LWDiaryD.h"		/* LWDiaryDetails */
+#include "LWDiary.h"		/* LWDiary */
+#include "SquadDtl.h"		/* SquadronDetails */
+#include "GrpGesch.h"		/* GroupGeschwader */
+#include "AfDetl.h"		/* AirfieldDetails */
+#include "Load.h"		/* LSD_State enum (LSD_LOAD/LSD_SAVE/...) */
+#include "MapFltLw.h"		/* MapFiltersRaidsLW */
 #endif

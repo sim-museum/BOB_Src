@@ -584,6 +584,26 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   5. **`ON_EVENT_RANGE` undefined** (only ON_EVENT existed) -> no-op macro
      (afxwin.h); for-scope `i` hoist (RAFRevCl.cpp:163).
 
+- **2026-06-09 (21)**: **`_LW.CPP` (37->0) and `_SA.CPP` (46->0) COMPILE CLEAN —
+  5 of 7 MFC unities archived** (`libbob_mfc.a` = _MFC+_AFX+_RAF+_LW+_SA). Only
+  `_TOOL` (82) and `_FULL` (275) remain. Same playbook: undefined cross-unity
+  dialog classes + a few per-fragment MSVC-isms. Roots:
+  - **More cross-unity dialog headers -> bob_mfc_post.h**: AcUnit.h (AircraftUnit
+    +TypesToList), WPDialog.h, RAFRevAs/RAFRevAc.h, LWTaskSm/LWDiaryD/LWDiary.h
+    (for _LW); SquadDtl/GrpGesch/AfDetl.h, Load.h (LSD_State enum), MapFltLw.h
+    (for _SA). Again the bulk of each unity's errors were "expected
+    primary-expression" cascades behind one undefined `new <Dialog>`.
+  - **GDI gaps (compat)**: added ExtCreatePen geometric styles (PS_GEOMETRIC/
+    PS_ENDCAP_*/PS_JOIN_*), hatch styles (HS_*), the `LOGBRUSH` struct
+    (compat_wingdi.h), and a 4-arg `CPen(int,int,const void*,int)` ctor (afxwin.h)
+    for `CPen penf(PS_GEOMETRIC+..,THK,&logbrush,0)` in clock.cpp.
+  - **DialBox copy ctor was `protected`** but afdossr.cpp materialises a DialBox
+    temp from a `cond ? DialBox(..) : *ND` ternary in non-derived code (MSVC
+    allowed the protected access). Moved the copy ctor into the public section
+    (kept the default ctor protected). Widens access only; no regression.
+  - per-fragment for-scope `i`/`actype` hoists (LWRevCl, LWTaskFr, LWTaskSm,
+    lwdirect). **NEXT: _TOOL (82) then _FULL (275); then Phase 2 (link ELF).**
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):

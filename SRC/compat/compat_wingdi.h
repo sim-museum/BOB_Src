@@ -271,6 +271,30 @@ static inline int EnumFontFamiliesExA(HDC, void*, void*, LPARAM, DWORD) { return
 #define PS_NULL         5
 #define PS_INSIDEFRAME  6
 #endif
+/* ExtCreatePen geometric-pen type/endcap/join styles + hatch styles + LOGBRUSH */
+#ifndef PS_GEOMETRIC
+#define PS_COSMETIC      0x00000000
+#define PS_GEOMETRIC     0x00010000
+#define PS_ENDCAP_ROUND  0x00000000
+#define PS_ENDCAP_SQUARE 0x00000100
+#define PS_ENDCAP_FLAT   0x00000200
+#define PS_JOIN_ROUND    0x00000000
+#define PS_JOIN_BEVEL    0x00001000
+#define PS_JOIN_MITER    0x00002000
+#endif
+#ifndef HS_HORIZONTAL
+#define HS_HORIZONTAL    0
+#define HS_VERTICAL      1
+#define HS_FDIAGONAL     2
+#define HS_BDIAGONAL     3
+#define HS_CROSS         4
+#define HS_DIAGCROSS     5
+#endif
+#ifndef _LOGBRUSH_DEFINED
+#define _LOGBRUSH_DEFINED
+typedef struct tagLOGBRUSH { UINT lbStyle; COLORREF lbColor; LONG lbHatch; }
+        LOGBRUSH, *PLOGBRUSH, *LPLOGBRUSH;
+#endif
 /* Background / mapping / ROP2 modes */
 #ifndef TRANSPARENT
 #define TRANSPARENT     1

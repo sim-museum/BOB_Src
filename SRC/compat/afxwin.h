@@ -339,6 +339,7 @@ class CPen : public CGdiObject {
 public:
     CPen() {}
     CPen(int, int, COLORREF) {}
+    CPen(int, int, const void*, int = 0) {}   /* ExtCreatePen geometric form (LOGBRUSH*) */
     BOOL CreatePen(int, int, COLORREF) { return TRUE; }
     operator HPEN() const { return (HPEN)m_hObject; }
 };

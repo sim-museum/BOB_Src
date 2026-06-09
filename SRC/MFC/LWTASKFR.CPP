@@ -348,9 +348,9 @@ void LWTaskFighter::Refresh()
 //DEADCODE RDH 02/04/00 			straf = true;
 //DEADCODE RDH 02/04/00 	b->SetPressed(straf);
 //DEADCODE RDH 02/04/00 
-	b->SetPressed(pk.StraffRequired(attackmethod));		
+	b->SetPressed(pk.StraffRequired(attackmethod));
 
-	i=0;
+	int i=0;
 
 //DEADCODE  15/02/00 	maxunits = 0;
 //DEADCODE  15/02/00 	while (i < pk.squadlist)
