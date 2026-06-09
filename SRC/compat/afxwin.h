@@ -475,6 +475,22 @@ public:
     afx_msg void OnShowWindow(BOOL, UINT) {}
     afx_msg LRESULT OnNotify(WPARAM, LPARAM, LRESULT*) { return 0; }
     afx_msg BOOL OnCommand(WPARAM, LPARAM) { return TRUE; }
+    afx_msg void OnGetMinMaxInfo(MINMAXINFO*) {}
+    afx_msg void OnDevModeChange(LPSTR) {}
+    afx_msg void OnActivateApp(BOOL, DWORD) {}
+    afx_msg LRESULT OnHelp(WPARAM, LPARAM) { return 0; }
+    afx_msg LRESULT OnHelpFinder(WPARAM, LPARAM) { return 0; }
+    afx_msg LRESULT OnHelpInfo(struct tagHELPINFO*) { return 0; }
+    afx_msg LRESULT OnContextHelp(WPARAM, LPARAM) { return 0; }
+    afx_msg LRESULT OnCommandHelp(WPARAM, LPARAM) { return 0; }
+    afx_msg int  OnMouseActivate(CWnd*, UINT, UINT) { return 1; }
+    virtual BOOL PreCreateWindow(struct tagCREATESTRUCTA&) { return TRUE; }
+    virtual BOOL PreTranslateMessage(void*) { return FALSE; }
+    BOOL IsFrameWnd() const { return FALSE; }
+    CWnd* GetTopLevelParent() const { return NULL; }
+    CWnd* GetTopLevelFrame() const { return NULL; }
+    CWnd* GetTopLevelOwner() const { return NULL; }
+    int   GetSystemMetrics(int) const { return 0; }
 };
 
 /* Common control wrappers (all CWnd-derived stubs) */
@@ -794,6 +810,12 @@ struct AFX_CMDHANDLERINFO { CCmdTarget* pTarget; void* pmf; };
 #define CBRS_LEFT           0x0004
 #define CBRS_RIGHT          0x0008
 #define CBRS_ALIGN_ANY      0x000F
+#define CBRS_ALIGN_TOP      0x0001
+#define CBRS_ALIGN_BOTTOM   0x0002
+#define CBRS_ALIGN_LEFT     0x0004
+#define CBRS_ALIGN_RIGHT    0x0008
+#define CBRS_BORDER_TOP     0x0100
+#define CBRS_BORDER_ANY     0x0F00
 #define CBRS_GRIPPER        0x00400000
 #define CBRS_TOOLTIPS       0x00010000
 #define CBRS_FLYBY          0x00020000
@@ -823,6 +845,18 @@ struct AFX_MSGMAP { const AFX_MSGMAP* (*pfnGetBaseMap)(); const void* lpEntries;
 #define HELP_COMMAND      0x0102
 #define HELP_FINDER       0x000B
 #endif
+
+#ifndef ID_SEPARATOR
+#define ID_SEPARATOR        0
+#define ID_INDICATOR_CAPS   0xE721
+#define ID_INDICATOR_NUM    0xE722
+#define ID_INDICATOR_SCRL   0xE723
+#define ID_INDICATOR_EXT    0xE720
+#define AFX_IDS_IDLEMESSAGE 0xE001
+#endif
+
+/* MFC RAII wait cursor — no-op */
+class CWaitCursor { public: CWaitCursor() {} ~CWaitCursor() {} void Restore() {} };
 
 static inline int AfxLoadString(UINT, LPSTR buf, UINT = 256) { if (buf) buf[0] = 0; return 0; }
 static inline HINSTANCE AfxGetResourceHandle() { return NULL; }
