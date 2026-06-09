@@ -74,6 +74,33 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //////////////////////////////////////////////////////////////////////
 
 #include "dosdefs.h"
+#if defined(BOB_LINUX)
+/* Reproduce the implicit MSVC PCH: this TU only listed 4 includes and relied on
+   the PCH for the base types/enums + the macro-gated declaration blocks. */
+#define F_COMMON
+#define F_GRAFIX
+#define F_BATTLE
+#include "files.g"			/* FIL_NULL + file-enum groups */
+#include "uniqueid.h"
+#include "cstring.h"		/* CSTRING_Included + full CString */
+#include "bfnumber.h"		/* BFNUMBER_Included */
+#include "ranges.h"			/* RANGES_Included */
+#include "package.h"		/* PACKAGE_INCLUDED -> Campaign/MissMan in missman2.h */
+class ViewPoint;			/* worldinc.h uses ViewPoint* before 3dcom.h declares it */
+#include "worldinc.h"		/* ItemPtr/AirStrucPtr/ItemBasePtr/AIRSTRUCSIZE */
+#include "airstruc.h"		/* mobileitem/MobileItemPtr */
+#include "persons2.h"		/* Persons2 */
+#include "planetyp.h"		/* PT_* */
+#include "FlyInit.h"		/* NAT_RAF/NAT_LUF/PT_BADMAX */
+#include "mymath.h"			/* Math_Lib */
+#include "mytime.h"			/* SECSPERDAY */
+#include "missman2.h"		/* MMC */
+#include "miles.h"			/* _Miles */
+#include "../mfc/resource.h"	/* IDS_GROUP_10 etc. */
+/* LoadResString(int) is an inline in rdialog.h (MFC ecosystem); reproduce it
+   locally — it only needs CString::LoadString, avoiding the dialog headers. */
+inline CString LoadResString(int resnum) { CString s; s.LoadString(resnum); return s; }
+#endif
 #include "rchatter.h"
 #include "nodebob.h"
 #include	"mapsfx.h"									//RJS 08May00
@@ -204,7 +231,7 @@ bool	IntelBuffer::AddMessage(
 		if (target)		trg=Persons2::ConvertPtrUID(target);
 
 		_Radio.ExpandMessage(bodybuffer,bodyscript,rndval,ti,callee,trg,callee);
-		for (int i=0;i<bodybuffer.phrase_count;i++)
+		int i; for (i=0;i<bodybuffer.phrase_count;i++)
 			slot->bodyscript[i]= bodybuffer.phrase_buffer[i];
 		slot->bodyscript[i]=0;
 		slot->pva=pva;

@@ -1,6 +1,5 @@
-# MISSMAN module - mission/campaign management.
-# 9 standalone TUs compile; UIMSG still deferred.
-# PACKAGES/SAVEGAME un-deferred via the same recipe: the BOB_LINUX prelude
+# MISSMAN module - mission/campaign management. ALL 10 standalone TUs build.
+# PACKAGES/SAVEGAME/UIMSG un-deferred via the same recipe: the BOB_LINUX prelude
 # reproduces the MSVC PCH include-ordering so macro-gated declaration blocks are
 # enabled (PACKAGE_INCLUDED gates Campaign/MissMan in missman2.h + EventVal
 # methods in bfnumber.h; RANGES_Included gates Profile methods; CSTRING_Included
@@ -16,5 +15,6 @@ add_library(bob_missman STATIC
     SO51MISS.CPP
     PACKAGES.CPP
     SAVEGAME.CPP
+    UIMSG.CPP
 )
 target_include_directories(bob_missman PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)

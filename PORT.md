@@ -743,8 +743,20 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   edits → no regression. (The 8 earlier "void[int] subscript" errors were just
   cascades of the undeclared `entry`.)
 
-- **PHASE-2 REMAINING (deferred TUs):** UIMSG (105), 3D OVERLAY (330 — needs
-  CDC/CFont/GetGlyphOutline buildout), MFC BOBFRAG (135, H2H). Then external stubs
+- **2026-06-09 (28)**: **MISSMAN `UIMSG.CPP` builds (105->0) — MISSMAN module
+  COMPLETE (all 10 standalone TUs).** UIMSG had only 4 includes and leaned hardest
+  on the PCH (ItemPtr/AirStrucPtr/ItemBasePtr/mobileitem all undeclared). Same
+  recipe: a BOB_LINUX prelude after dosdefs.h with F_* + files.g (FIL_NULL),
+  uniqueid/cstring/bfnumber/ranges/package (the four gate macros), a ViewPoint
+  fwd-decl + worldinc/airstruc (world item types), persons2 (Persons2),
+  planetyp/FlyInit (PT_*, NAT_RAF/NAT_LUF/PT_BADMAX), mymath (Math_Lib), mytime
+  (SECSPERDAY), missman2 (MMC), miles (_Miles), ../mfc/resource.h (IDS_GROUP_10).
+  `LoadResString(int)` reproduced inline locally (only needs CString::LoadString)
+  to avoid pulling the rdialog.h dialog ecosystem. One for-scope `i` hoist.
+  Trial whole-archive link: **585 -> 473** undefined symbols. Full build clean.
+
+- **PHASE-2 REMAINING (deferred TUs):** 3D OVERLAY (330 — needs CDC/CFont/
+  GetGlyphOutline buildout), MFC BOBFRAG (135, H2H). Then external stubs
   (DX/DirectPlay creation, _findfirst/FindFirstFileA/fopen_nocase) + 6 MASM->nasm
   + `bob` add_executable + entry point → iterate link. **Recipe is settled**
   (un-defer = reproduce-PCH prelude + fix macro-gated include ordering +
