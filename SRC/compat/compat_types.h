@@ -339,6 +339,7 @@ typedef struct IDispatch *LPDISPATCH;
 typedef short       VARIANT_BOOL;
 typedef VARIANT_BOOL _VARIANT_BOOL;
 typedef double      DATE;
+typedef union tagCY { struct { unsigned long Lo; long Hi; } s; LONGLONG int64; } CY, CURRENCY;
 typedef WCHAR      *BSTR;
 typedef OLE_COLOR  *LPOLE_COLOR;
 typedef long        SCODE;

@@ -962,6 +962,8 @@ public:
     LPDISPATCH m_lpDispatch;
     BOOL m_bAutoRelease;
     COleDispatchDriver() : m_lpDispatch(NULL), m_bAutoRelease(TRUE) {}
+    COleDispatchDriver(LPDISPATCH p, BOOL autoRel = TRUE) : m_lpDispatch(p), m_bAutoRelease(autoRel) {}
+    COleDispatchDriver(const COleDispatchDriver& s) : m_lpDispatch(s.m_lpDispatch), m_bAutoRelease(FALSE) {}
     void AttachDispatch(LPDISPATCH p, BOOL = TRUE) { m_lpDispatch = p; }
     LPDISPATCH DetachDispatch() { LPDISPATCH p = m_lpDispatch; m_lpDispatch = NULL; return p; }
     void ReleaseDispatch() {}
