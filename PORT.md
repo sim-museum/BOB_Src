@@ -334,30 +334,69 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   - **3D** 4/5: LANDSCAP done (InterpLight `->##p1` paste, fpSqrt/fpTan/fpSinCos
     asm, for-scope ×6, abs(unsigned) cast, `Shape.newco`->`Shape::newco` static).
 
-### Deferred / known per-file work
-- **MFC CDC/CFont + GDI GetGlyphOutline/GLYPHMETRICS/MAT2** — not in compat at
-  all; ~31 files use CDC/CFont (incl. 3D/OVERLAY, much of MFC/). A dedicated
-  MFC-GDI buildout; do as a focused pass.
-- **MISSMAN** PACKAGES/SAVEGAME/UIMSG: rchatter.h is not self-contained
-  (UniqueID/ItemPtr/AirStrucPtr used before decl — needs fwd-decls or prelude
-  include), incomplete MissMan/CString, SECSPERMIN/Directives::RAF ordering,
-  more for-scope.
+- **2026-06-09 (14)**: **Four more modules build — AI (9th), MOVECODE (10th),
+  MODEL (11th), HARDWARE (12th). Twelve module libs total.** Two big methodology
+  shifts this batch:
+  - **Filter to BOB.DSP game files (303 TUs).** Many .cpp in the tree are
+    editor/tool/deadcode NOT in the game exe (CEDITOR, MEGLOBAL, HARD320*,
+    PERSONS5, vcl/devstudio-path files). The survey now skips anything whose
+    basename isn't in BOB.DSP — stops wasting effort on non-game files.
+  - **Compile the `_XXX.CPP` unity per module, not individual TUs.** For modules
+    whose DSP build uses a unity aggregator (`_MODE`/`_MOVE`/`_HARD`/`_COMM`/
+    `_BFIE`...), THAT unity is the faithful, link-complete build unit: it pulls
+    the fragment files (which have no own #includes), gives every fragment the
+    include context the others established, and avoids duplicate symbols.
+    Dramatic effect — MODEL's 16 fragments compiled as a unity reduced to **2
+    errors** total; HARDWARE 52->0, MOVECODE clean, once the standalone roots
+    were cleared. (NOTE: the earlier modules MATH..AI/MISSMAN/3D were wired from
+    standalone TUs and are therefore link-INCOMPLETE — they miss fragment-only
+    files; revisit by switching them to their unities for the Phase-2 link.)
+  - **Cross-cutting roots (no regression to the 12 libs):**
+    * **NODEBOB.H now #includes uniqueid.h** — cleared the `UniqueID has not been
+      declared` cascade from package.h/nodebob.h/bfnumber.h **tree-wide (111->1)**.
+    * **assert/nassert under BOB_LINUX expand to NOTHING** (was `((void)0)`) —
+      handles bob's no-semicolon `assert(x) if(...)` and unbraced
+      `if(c) assert(x); else` idioms that `((void)0)` breaks.
+    * **compat LONG = `long`** (Win32 ABI; was int32_t) — fixes the
+      int32_t-vs-long conflicting-typedef vs cstring.h.
+    * MIDI output API stubbed (mmsystem.h); DirectSound ANSI aliases +
+      IDirectSound_* C-macros (dsound.h); CLSCTX_INPROC/IStream/LPSTREAM
+      (objbase.h); __RPC_FAR/FAR/NEAR (compat_types.h); raddef.h-before-radio.g
+      pattern for USE_PHRASE_* aircraft enums.
+  - Recurring per-file idioms now well-understood: **static-member-via-type** the
+    MSVC `.`-on-a-typename laxity — `Shape.newco`/`TimerCode.FRAMETIME`/
+    `mobileitem.ACList`/`LandScape._blockWidth` -> `::`; **for-scope hoists**;
+    **FPU asm** -> `__builtin_sqrt/atan2/sin/cos`.
+
+### Deferred / known work
+- **BFIELDS**: blocked by a **corruption in generated header SRC/H/bfrefs.g**
+  (~line 209: a GR_Pack_TakeTime table's declaration + first entries are missing,
+  leaving a dangling `eTime_W2G1},`). Present in the original imported source.
+  GLOBREFS pair/pair04 macro fixes are already committed; module needs bfrefs.g
+  regenerated/reconstructed before it can build.
+- **COMMS** (_COMM.CPP, ~41 errs): DirectPlay-heavy (IDirectPlayLobby3 incomplete,
+  ULong&/DWORD bind, FILE_ATTRIBUTE_*, BOB_GUID). Multiplayer — deferred to stubs
+  per the phased plan.
+- **MFC CDC/CFont + GDI GetGlyphOutline/GLYPHMETRICS/MAT2** — not in compat;
+  ~31 files use CDC/CFont (incl. 3D/OVERLAY, much of MFC/). Dedicated MFC-GDI pass.
+- **MISSMAN** PACKAGES/SAVEGAME/UIMSG, **AI** MSGAI/USERMSG: rchatter.h not
+  self-contained, incomplete MissMan/CString, SECSPERMIN/Directives::RAF. (Most
+  of these likely resolve when built via the module unity rather than standalone.)
+- **ACMSIMPL GentleBankData**: used in 3 sites, defined nowhere in the tree —
+  extern-declared for now; **Phase-2 link TODO**.
 
 ### NEXT ACTIONS (resume here)
-1. **AI is now wired (9th lib, 2/4: AAA+GRID).** Continue: drive the next-closest
-   module to a lib (MODEL 1/5, MOVECODE 0/4, COMMS 0/2, HARDWARE 1/7, BFIELDS
-   2/11). The dominant remaining blocker is **headers not self-contained** when a
-   .cpp is compiled standalone (it relied on unity-build include order) — e.g.
-   missman2.h (MMC/MissManCampSky), rchatter.h (UniqueID/ItemPtr/AirStrucPtr),
-   incomplete Model/anim/ACMAirStruc types. Fix per-header (add the missing
-   include or forward-decls) — these recur across MSGAI/USERMSG/MODEL/COMMS.
-2. Tackle the **MFC CDC/CFont/GDI** buildout — it gates OVERLAY and a big slice
-   of the MFC game core; highest single-root leverage left.
-3. Make rchatter.h self-contained (fwd-decl UniqueID/ItemPtr/AirStrucPtr or
-   include the prelude) to recover UIMSG and others.
-4. Keep wiring modules into `SRC/CMakeLists.txt`. Assemble remaining `.asm`
-   (GRAPHICS/GRAFPASM, 3D/LSTRASM, HARDWARE/*) to nasm as callers come online.
-   Then Phase 2 (link).
+1. **Switch the standalone-wired modules to their `_XXX.CPP` unities** for
+   link-completeness (AIRCRAFT/MISSMAN/3D/AI/INPUT — MATH/LIB3D/GENERAL/FILES are
+   small/likely complete). This both fixes missing fragment code AND tends to
+   reduce errors (shared context).
+2. **MFC game core (454 files)** via `_MFC.CPP` + the standalone MFC TUs — the
+   big remaining chunk. First do the **MFC CDC/CFont/GDI** compat buildout (gates
+   ~31 files incl. OVERLAY).
+3. Reconstruct/​regenerate **bfrefs.g** to unblock BFIELDS.
+4. Then **Phase 2 (link)**: assemble remaining `.asm` (GRAPHICS/GRAFPASM,
+   3D/LSTRASM, HARDWARE/*) to nasm; resolve undefined symbols (GentleBankData,
+   DirectPlay/DirectShow stubs); produce the `bob` ELF.
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
