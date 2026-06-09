@@ -71,12 +71,14 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 
 #include "collided.h"										//PD 06Sep96
-#include "Dosdefs.h"		
+#include "Dosdefs.h"
+#include "raddef.h"		// USE_PHRASE_*/SCRIPT_* before any radio.g inclusion
 #include "Worldinc.h"
 
 
 #include "modvec.h"
 #include "model.h"
+#include "airstruc.h"		// full class ACMAirStruc (worldinc.h only forward-declares it)
 #include "acmmodel.h"
 
 
@@ -98,6 +100,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "viewsel.h"										//RDH 25Jul96
 #include "3dcom.h"											//RJS 22Aug96
 #include "speed.h"											//RDH 01Oct96
+#include "rchatter.h"		// _Radio, MSG_*, full MESSAGE_STRUC
 #include "persons2.h"
 
 #include "model.h"
@@ -127,7 +130,12 @@ RequiredBankDataElement 	CombatReqBankData[] =
 //DeadCode CSB 28/03/99					{ANGLES_30Deg, MAXCOMBATROLL},
 //DeadCode CSB 28/03/99					{ANGLES_180BareDeg, MAXCOMBATROLL}
 			};
-extern enum ACM_COMMAND : int;
+enum ACM_COMMAND : int;	// (was `extern enum ...`; GCC rejects storage class on enum decl)
+
+// TODO(linux-port, Phase 2 link): GentleBankData is referenced by 3 methods below
+// but defined nowhere in the source tree (likely an uncommitted/generated table).
+// Declared extern so this TU compiles; the definition must be supplied at link time.
+extern RequiredBankDataElement GentleBankData[];
 
 Float	ACMAirStruc::CalcSimpleAccel ()
 {
@@ -139,7 +147,7 @@ Float	ACMAirStruc::CalcSimpleAccel ()
 
 	MODEL& MOD = *fly.pModel;
 	ACMMODEL& ACM = *fly.pAcmModel;
-//	extern enum ACM_COMMAND : int;
+//	enum ACM_COMMAND : int;	// (was `extern enum ...`; GCC rejects storage class on enum decl)
 	Float Thrust, Drag, Lift;
 	Float mass;		//kg		
 	Float accel;
@@ -1341,6 +1349,7 @@ void ACMAirStruc::SimpleForceTopCover()
 							numusfighting++;
 
 				int numthemfighting = 0;
+				AirStrucPtr ld;	// hoisted: reused across the for-loops below (MSVC for-scope)
 				if(coveree->ai.attacker)
 				for(ld = coveree->ai.attacker->GetLeadAc(); ld; ld = ld->fly.nextflight)
 					for(AirStrucPtr ac = ld; ac; ac = ac->Follower())

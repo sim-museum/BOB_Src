@@ -2189,7 +2189,8 @@ void Model::SetFuelTank(AirStrucPtr const ControlledAC, bool player)
 			{
 				SLong totfuel = 0;
 				SLong biggesttank = 0;
-				for(SWord tank = 0; tank < 4; tank++)
+				SWord tank;	// hoisted: reused at the for-loop below (MSVC for-scope)
+				for(tank = 0; tank < 4; tank++)
 					if((FuelCockTanks[cock][tank]) && (ControlledAC->fly.fuel_content[tank]))
 						if(ControlledAC->classtype->fueltankcap[tank] > biggesttank)
 							biggesttank = ControlledAC->classtype->fueltankcap[tank];
