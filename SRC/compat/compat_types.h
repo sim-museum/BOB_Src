@@ -333,6 +333,9 @@ typedef const GUID *LPCGUID;
  * OLE automation base types (wtypes.h / oaidl.h)
  * ============================================================ */
 typedef DWORD       OLE_COLOR;
+typedef unsigned short VARTYPE;
+struct IDispatch;
+typedef struct IDispatch *LPDISPATCH;
 typedef short       VARIANT_BOOL;
 typedef VARIANT_BOOL _VARIANT_BOOL;
 typedef double      DATE;

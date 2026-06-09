@@ -20,6 +20,7 @@
 
 
 #include	"bitcount.h"
+#include	"uniqueid.h"		// enum UniqueID — used by the ONLYFIELD(UWord,UniqueID,..) members
 enum FileNum : int;
 enum	Ranges : int;
 enum	SquadNum : int;

@@ -44,6 +44,21 @@
 #define afx_msg
 #define RUNTIME_CLASS(class_name) (NULL)
 
+/* MFC diagnostic macros — no-ops (NDEBUG-style) */
+#ifndef ASSERT
+#define ASSERT(f)         ((void)0)
+#endif
+#define ASSERT_VALID(p)   ((void)0)
+#define ASSERT_KINDOF(class_name, p) ((void)0)
+#define VERIFY(f)         ((void)(f))
+#define TRACE             (void)
+#define TRACE0(s)         ((void)0)
+#define TRACE1(s,a)       ((void)0)
+#define TRACE2(s,a,b)     ((void)0)
+#define TRACE3(s,a,b,c)   ((void)0)
+#define TRACEN(s)         ((void)0)
+#define DEBUG_ONLY(f)     ((void)0)
+
 /* ON_* message-map entries (only valid inside BEGIN/END_MESSAGE_MAP, which are
    empty, but define them so stray expansions vanish too). */
 #define ON_COMMAND(id, memberFxn)
@@ -107,6 +122,10 @@ struct CRect : public RECT {
     void SetRectEmpty() { left = top = right = bottom = 0; }
     bool IsRectEmpty() const { return left == right || top == bottom; }
     bool PtInRect(POINT p) const { return p.x >= left && p.x < right && p.y >= top && p.y < bottom; }
+    void OffsetRect(int dx, int dy) { left += dx; right += dx; top += dy; bottom += dy; }
+    void InflateRect(int dx, int dy) { left -= dx; right += dx; top -= dy; bottom += dy; }
+    CRect& operator+=(POINT p) { OffsetRect(p.x, p.y); return *this; }
+    CRect& operator-=(POINT p) { OffsetRect(-p.x, -p.y); return *this; }
     operator LPRECT() { return this; }
     operator LPCRECT() const { return this; }
 };
@@ -187,6 +206,18 @@ public:
     BOOL BitBlt(int, int, int, int, CDC*, int, int, DWORD) { return TRUE; }
     BOOL CreateCompatibleDC(CDC*) { return TRUE; }
     int FillRect(LPCRECT, CBrush*) { return 0; }
+    void FillSolidRect(LPCRECT, COLORREF) {}
+    void FillSolidRect(int, int, int, int, COLORREF) {}
+    void Draw3dRect(LPCRECT, COLORREF, COLORREF) {}
+    void Draw3dRect(int, int, int, int, COLORREF, COLORREF) {}
+    BOOL StretchBlt(int, int, int, int, CDC*, int, int, int, int, DWORD) { return TRUE; }
+    int  GetDeviceCaps(int) const { return 0; }
+    CSize GetTextExtent(LPCSTR, int) const { return CSize(0, 0); }
+    int  DrawText(LPCSTR, int, LPRECT, UINT) { return 0; }
+    UINT SetTextAlign(UINT) { return 0; }
+    int  SetMapMode(int) { return 0; }
+    int  SetROP2(int) { return 0; }
+    POINT SetViewportOrg(int, int) { POINT p = {0,0}; return p; }
 };
 
 inline BOOL CFont::CreatePointFont(int, LPCSTR, CDC*) { return TRUE; }
@@ -213,6 +244,11 @@ public:
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
     void GetClientRect(LPRECT r) const { if (r) { r->left = r->top = 0; r->right = r->bottom = 0; } }
     void GetWindowRect(LPRECT r) const { if (r) { r->left = r->top = r->right = r->bottom = 0; } }
+    void ClientToScreen(LPPOINT) const {}
+    void ClientToScreen(LPRECT) const {}
+    void ScreenToClient(LPPOINT) const {}
+    void ScreenToClient(LPRECT) const {}
+    BOOL CreateControl(LPCSTR, LPCSTR, DWORD, const RECT&, CWnd*, UINT) { return FALSE; }
     CDC* GetDC() { return NULL; }
     int  ReleaseDC(CDC*) { return 1; }
     BOOL EnableWindow(BOOL = TRUE) { return TRUE; }
@@ -221,10 +257,74 @@ public:
     LRESULT SendMessageA(UINT, WPARAM = 0, LPARAM = 0) { return 0; }
     BOOL PostMessageA(UINT, WPARAM = 0, LPARAM = 0) { return TRUE; }
     void Invalidate(BOOL = TRUE) {}
+    void InvalidateRect(LPCRECT, BOOL = TRUE) {}
+    void ClientToScreenRect(LPRECT) const {}
+    BOOL SetTimer(UINT, UINT, void* = NULL) { return TRUE; }
+    BOOL KillTimer(UINT) { return TRUE; }
+    void SetWindowPos(const CWnd*, int, int, int, int, UINT) {}
+    void BringWindowToTop() {}
+    BOOL IsWindowVisible() const { return FALSE; }
+    void SetCapture() {}
+    void GetParentFrame() const {}
     BOOL UpdateData(BOOL = TRUE) { return TRUE; }
     virtual BOOL OnInitDialog() { return TRUE; }
     virtual void DoDataExchange(class CDataExchange*) {}
     virtual LRESULT WindowProc(UINT, WPARAM, LPARAM) { return 0; }
+};
+
+/* Common control wrappers (all CWnd-derived stubs) */
+class CStatic : public CWnd {
+public:
+    BOOL Create(LPCSTR, DWORD, const RECT&, CWnd*, UINT = 0) { return TRUE; }
+    void SetBitmap(HBITMAP) {}
+};
+class CButton : public CWnd {
+public:
+    BOOL Create(LPCSTR, DWORD, const RECT&, CWnd*, UINT) { return TRUE; }
+    UINT GetState() const { return 0; }
+    void SetState(BOOL) {}
+    int  GetCheck() const { return 0; }
+    void SetCheck(int) {}
+};
+class CEdit : public CWnd {
+public:
+    BOOL Create(DWORD, const RECT&, CWnd*, UINT) { return TRUE; }
+    void SetSel(int, int, BOOL = FALSE) {}
+    void GetSel(int&, int&) const {}
+    int  LineLength(int = -1) const { return 0; }
+};
+class CListBox : public CWnd {
+public:
+    BOOL Create(DWORD, const RECT&, CWnd*, UINT) { return TRUE; }
+    int  AddStringA(LPCSTR) { return 0; }
+    int  GetCurSel() const { return -1; }
+    int  SetCurSel(int) { return -1; }
+    int  GetCount() const { return 0; }
+    void ResetContent() {}
+    DWORD GetItemData(int) const { return 0; }
+    int  SetItemData(int, DWORD) { return 0; }
+};
+class CComboBox : public CWnd {
+public:
+    BOOL Create(DWORD, const RECT&, CWnd*, UINT) { return TRUE; }
+    int  AddStringA(LPCSTR) { return 0; }
+    int  GetCurSel() const { return -1; }
+    int  SetCurSel(int) { return -1; }
+    int  GetCount() const { return 0; }
+    void ResetContent() {}
+    DWORD GetItemData(int) const { return 0; }
+};
+class CScrollBar : public CWnd {
+public:
+    BOOL Create(DWORD, const RECT&, CWnd*, UINT) { return TRUE; }
+    int  GetScrollPos() const { return 0; }
+    int  SetScrollPos(int, BOOL = TRUE) { return 0; }
+    void SetScrollRange(int, int, BOOL = TRUE) {}
+    void GetScrollRange(LPINT, LPINT) const {}
+};
+class CToolBar : public CWnd {
+public:
+    BOOL Create(CWnd*, DWORD = 0, UINT = 0) { return TRUE; }
 };
 
 class CDialog : public CWnd {
@@ -275,6 +375,51 @@ public:
     CWinApp(LPCSTR n = NULL) : m_pszAppName(n), m_hInstance(NULL), m_lpCmdLine(NULL), m_nCmdShow(0) {}
     virtual BOOL InitInstance() { return TRUE; }
     BOOL InitApplication() { return TRUE; }
+    HCURSOR LoadStandardCursor(LPCSTR) const { return NULL; }
+    HCURSOR LoadCursor(LPCSTR) const { return NULL; }
+    HCURSOR LoadCursor(UINT) const { return NULL; }
+    HICON   LoadIcon(LPCSTR) const { return NULL; }
+    HICON   LoadIcon(UINT) const { return NULL; }
+    HICON   LoadStandardIcon(LPCSTR) const { return NULL; }
+    int     DoMessageBox(LPCSTR, UINT, UINT) { return 0; }
+    void    ParseCommandLine(CCommandLineInfo&) {}
+    BOOL    ProcessShellCommand(CCommandLineInfo&) { return TRUE; }
+    void    EnableShellOpen() {}
+    void    LoadStdProfileSettings(UINT = 0) {}
+    BOOL    OnIdle(LONG) { return FALSE; }
+};
+
+/* ============================================================
+ * Container templates (afxtempl) — minimal, std-backed
+ * ============================================================ */
+template <class TYPE, class ARG_TYPE = const TYPE&>
+class CArray : public CObject {
+    std::vector<TYPE> v;
+public:
+    int  GetSize() const { return (int)v.size(); }
+    int  GetCount() const { return (int)v.size(); }
+    void SetSize(int n, int = -1) { v.resize(n); }
+    void RemoveAll() { v.clear(); }
+    int  Add(ARG_TYPE x) { v.push_back(x); return (int)v.size() - 1; }
+    TYPE& operator[](int i) { return v[i]; }
+    const TYPE& operator[](int i) const { return v[i]; }
+    TYPE& GetAt(int i) { return v[i]; }
+    void SetAt(int i, ARG_TYPE x) { v[i] = x; }
+    void RemoveAt(int i, int n = 1) { v.erase(v.begin()+i, v.begin()+i+n); }
+};
+
+template <class TYPE, class ARG_TYPE = const TYPE&>
+class CList : public CObject {
+    std::list<TYPE> l;
+public:
+    typedef typename std::list<TYPE>::iterator POSITION_t;
+    int  GetCount() const { return (int)l.size(); }
+    BOOL IsEmpty() const { return l.empty(); }
+    void RemoveAll() { l.clear(); }
+    void AddTail(ARG_TYPE x) { l.push_back(x); }
+    void AddHead(ARG_TYPE x) { l.push_front(x); }
+    TYPE& GetHead() { return l.front(); }
+    TYPE& GetTail() { return l.back(); }
 };
 
 class CCommandLineInfo {
@@ -297,9 +442,16 @@ public:
 class COleDispatchDriver {
 public:
     LPDISPATCH m_lpDispatch;
-    COleDispatchDriver() : m_lpDispatch(NULL) {}
+    BOOL m_bAutoRelease;
+    COleDispatchDriver() : m_lpDispatch(NULL), m_bAutoRelease(TRUE) {}
+    void AttachDispatch(LPDISPATCH p, BOOL = TRUE) { m_lpDispatch = p; }
+    LPDISPATCH DetachDispatch() { LPDISPATCH p = m_lpDispatch; m_lpDispatch = NULL; return p; }
     void ReleaseDispatch() {}
     BOOL CreateDispatch(REFCLSID, void* = NULL) { return FALSE; }
+    BOOL CreateDispatch(LPCSTR, void* = NULL) { return FALSE; }
+    void InvokeHelper(DISPID, WORD, VARTYPE, void*, const BYTE*, ...) {}
+    void SetProperty(DISPID, VARTYPE, ...) {}
+    void GetProperty(DISPID, VARTYPE, void*) const {}
 };
 
 /* The global application object (defined by IMPLEMENT'd CWinApp subclass in bob) */

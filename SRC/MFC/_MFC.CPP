@@ -75,6 +75,15 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "stdafx.h"
 #include "_mfc.h"
 
+#if defined(BOB_LINUX)
+/* bob's UI base classes — included early so every fragment below sees the full
+   definitions (the headers that use them, e.g. MapDlg.h/FullPane.h, don't
+   self-include them; on Windows the PCH/build order covered this). */
+#include "uniqueid.h"
+#include "rdialog.h"
+#include "rbutton.h"
+#endif
+
 #include "./MIGView.cpp"
 
 //DEADCODE DAW 24/11/99 #include ".\CntrItem.cpp"
