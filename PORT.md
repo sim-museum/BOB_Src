@@ -395,12 +395,19 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   umbrella headers (afxole/afxodlgs/afxauto/afxpriv/afxmt/afxdisp/afxtempl) and
   added case-alias symlinks for the 17 `.cpp` fragments `_MFC.CPP` #includes
   (MIGView.cpp->MIGVIEW.CPP, etc.). `_MFC.CPP` now reaches `resource.h` + the
-  `#error include 'stdafx.h'` PCH guard — past those lies the real flood of
-  undefined MFC classes. Plan: implement a minimal MFC (CObject/CCmdTarget/CWnd/
-  CDialog/CDC/CFont/CWinApp/CView/CDocument/CFrameWnd + DECLARE/BEGIN_MESSAGE_MAP
-  no-op macros; CString already exists) sufficient to compile, then back it with
-  SDL/GL at runtime. Also covers 3D/OVERLAY (CDC/CFont + GetGlyphOutline/
-  GLYPHMETRICS/MAT2).
+  `#error include 'stdafx.h'` PCH guard (MIG.h gates on `#ifndef __AFXWIN_H__`) —
+  past those lies the real flood of undefined MFC classes. Add `-ISRC/MFC` to the
+  MFC target include path (resource.h lives there).
+  - **Exact MFC surface to implement** (from a `: public CXxx` survey): base
+    classes **CWnd (15 derived), CDialog (6), CWinApp, CView, CFrameWnd,
+    COleDocument, COleDispatchDriver, CCommandLineInfo** + roots **CObject,
+    CCmdTarget, CWinThread**; GDI **CDC, CFont, CGdiObject, CPen, CBrush,
+    CBitmap**; value types **CRect, CPoint, CSize** (RECT/POINT already in
+    compat_types.h); **CDataExchange**; no-op message-map macros
+    (DECLARE_MESSAGE_MAP, BEGIN/END_MESSAGE_MAP, ON_*, DECLARE_DYNCREATE,
+    IMPLEMENT_*). afxwin.h must `#define __AFXWIN_H__`. **CString is bob's own
+    (SRC/H/cstring.h), NOT MFC.** Also need a **streams.h** (DirectShow) stub.
+    Back the layer with SDL/GL at runtime later; covers 3D/OVERLAY too.
 - **MISSMAN** PACKAGES/SAVEGAME/UIMSG, **AI** MSGAI/USERMSG: rchatter.h not
   self-contained, incomplete MissMan/CString, SECSPERMIN/Directives::RAF. (Most
   of these likely resolve when built via the module unity rather than standalone.)
@@ -421,6 +428,25 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
 4. Then **Phase 2 (link)**: assemble remaining `.asm` (GRAPHICS/GRAFPASM,
    3D/LSTRASM, HARDWARE/*) to nasm; resolve undefined symbols (GentleBankData,
    DirectPlay/DirectShow stubs); produce the `bob` ELF.
+
+- **2026-06-09 (16)**: **MFC compat FOUNDATION built** (`compat/afxwin.h`,
+  `compat/streams.h`). afxwin.h is now a real minimal MFC: `__AFXWIN_H__` define;
+  no-op message-map/runtime-class macros (DECLARE/BEGIN/END_MESSAGE_MAP, ON_*,
+  DECLARE_DYNCREATE, IMPLEMENT_*, afx_msg, RUNTIME_CLASS); value types CRect/
+  CPoint/CSize (on RECT/POINT/SIZE); the class hierarchy CObject -> CCmdTarget ->
+  {CWnd -> CDialog/CView/CFrameWnd, CDocument -> COleDocument, CWinThread ->
+  CWinApp}; GDI CGdiObject -> CDC/CFont/CPen/CBrush/CBitmap; plus CCommandLineInfo,
+  CDataExchange, COleDispatchDriver, AfxGetApp/AfxGetMainWnd. streams.h is a
+  minimal DirectShow stub (IGraphBuilder/IMediaControl/IVideoWindow/IMediaEventEx/
+  IBasicAudio + CLSIDs) so FULLPSYS.CPP (intro movies) compiles; video deferred.
+  - **Result: `_MFC.CPP` no longer has ANY missing-MFC-base-class errors** — the
+    foundation resolves. It now shows ~2655 BoB-specific errors (down from "no MFC
+    at all"), so MFC is now normal per-root grinding like every other module:
+    top roots = map-tile macros `MAP_<N>` (~900, a macro not expanding),
+    FIL_MAP* enums, BoB's own UI classes incomplete (RDialog/CRButton/CSystemBox —
+    ordering), OLE types (OLE_COLOR, VT_*). Compile the MFC module with
+    **`-ISRC/MFC`** (resource.h). 13 module libs still build (afxwin/streams are
+    not included by them).
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
