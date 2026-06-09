@@ -70,13 +70,24 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #endif
 #include "stdafx.h"
 #include "bob.h"
+#if defined(BOB_LINUX)
+/* game-base types first: worldinc defines the `item` base + ITEMSIZE that
+   post.h's infoitem.h (info_itemS ctor: Status.size=ITEMSIZE) needs. */
+class ViewPoint;		/* worldinc.h uses ViewPoint* before 3dcom.h declares it */
+#include "worldinc.h"		/* item base, AIRSTRUCSIZE/ITEMSIZE/MOBILESIZE/SGT */
+#include "ranges.h"			/* RANGES_Included */
+#include "package.h"		/* PACKAGE_INCLUDED -> MMC/Campaign in missman2.h */
+#include "missman2.h"		/* MMC */
+#include "nodebob.h"		/* Node_Data/BritSquadron/Gruppen/SQ_LW_START */
+#include "winmove.h"		/* NUMRADIOMESSAGES (used by comms.h) */
+#include "comms.h"			/* H2HPlayerInfo (full def) */
+#include "bob_mfc_post.h"	/* control wrappers (CRCombo/CRStatic/CRListBox) +
+				   dialog ecosystem — must precede BoBFrag.h which uses them */
+#endif
 #include "BoBFrag.h"
 #include "package.h"
 #include "squick1.h"
 #include "winmove.h"
-#if defined(BOB_LINUX)
-#include "bob_mfc_post.h"	/* RFullPanelDial + dialog ecosystem */
-#endif
 
 #ifdef _DEBUG
 //#define new DEBUG_NEW

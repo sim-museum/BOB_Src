@@ -12,5 +12,6 @@ add_library(bob_mfc STATIC
     _TOOL.CPP
     _FULL.CPP
     STUB3D.CPP
+    BOBFRAG.CPP
 )
 target_include_directories(bob_mfc PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H ${BOB_SRC}/MFC)

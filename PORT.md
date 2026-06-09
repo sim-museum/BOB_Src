@@ -755,13 +755,23 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   to avoid pulling the rdialog.h dialog ecosystem. One for-scope `i` hoist.
   Trial whole-archive link: **585 -> 473** undefined symbols. Full build clean.
 
-- **PHASE-2 REMAINING (deferred TUs):** 3D OVERLAY (330 — needs CDC/CFont/
-  GetGlyphOutline buildout), MFC BOBFRAG (135, H2H). Then external stubs
+- **2026-06-09 (29)**: **MFC `BOBFRAG.CPP` builds (135->0)** into libbob_mfc.a
+  (the H2H-multiplayer frag-screen; defines `Aircraft_Formations`). Key lesson on
+  **include ORDER for an MFC-context TU that also uses game-base types**: the
+  game-base headers (esp. worldinc.h, which defines the `item` base + ITEMSIZE)
+  must precede `bob_mfc_post.h`, because post.h pulls infoitem.h whose
+  `info_itemS()` ctor does `Status.size=ITEMSIZE` — needs `item`/ITEMSIZE first.
+  Final order: pre.h → stdafx → bob.h → [worldinc, ranges, package, missman2,
+  nodebob, winmove, comms] → post.h → BoBFrag.h. (post.h must still precede
+  BoBFrag.h so the CRCombo/CRStatic/CRListBox control wrappers are declared; and
+  winmove.h before comms.h for NUMRADIOMESSAGES.) Reduced 135->67 (control
+  wrappers/m_IDC_ members) ->21 (game types) ->1 (ordering) ->0.
+
+- **PHASE-2 REMAINING:** **3D OVERLAY** is the last deferred TU (330 — needs the
+  CDC/CFont/GetGlyphOutline text-rendering buildout). Then external stubs
   (DX/DirectPlay creation, _findfirst/FindFirstFileA/fopen_nocase) + 6 MASM->nasm
-  + `bob` add_executable + entry point → iterate link. **Recipe is settled**
-  (un-defer = reproduce-PCH prelude + fix macro-gated include ordering +
-  for-scope/auto hoists); remaining work is mechanical application TU-by-TU plus
-  the link/asm/runtime infrastructure.
+  + `bob` add_executable + entry point → iterate the link to zero → runtime
+  bring-up. **Recipe settled**; remaining is OVERLAY + the link/asm/runtime infra.
 
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
