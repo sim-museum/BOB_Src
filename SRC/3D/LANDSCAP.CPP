@@ -2614,7 +2614,8 @@ void LandScape::ScrollTileGrid(SLong dx,SLong dz)
 		TileElement* ptmp=tileCacheGrid;
 		TileElement* ptmp2=tileCacheGrid;
 
-		for ( int i = wholeAreaSize;i;i--,ptmp2++ )
+		int i;
+		for ( i = wholeAreaSize;i;i--,ptmp2++ )
 		{
 			if ( ptmp2->textHandle!=HTEXTNULL )
 				g_lpLib3d->FreeLandscapeTexture( ptmp2->textHandle.textureHandle );
@@ -2632,8 +2633,9 @@ void LandScape::ScrollTileGrid(SLong dx,SLong dz)
 	{
 		//scroll data down (north) 'cos we're moving south
 		TileElement* ptmp=tileCacheGrid+GRID_SIZE-1,*ptmp2=ptmp-wholeAreaSize;
-		for (SLong r=wholeAreaSize-1;r>=0;r--)	
-			if (ptmp[-r].textHandle!=HTEXTNULL) 
+		SLong r;
+		for (r=wholeAreaSize-1;r>=0;r--)
+			if (ptmp[-r].textHandle!=HTEXTNULL)
 				g_lpLib3d->FreeLandscapeTexture( ptmp[-r].textHandle.textureHandle );
 		for (r=GRID_SIZE-wholeAreaSize;r--;)
 			*ptmp--=*ptmp2--;
@@ -2864,7 +2866,8 @@ bool LandScape::ManageHighLandTextures(SLong px,SLong pz)
 	for ( int j = 0; j < 8; tileResList[j++].reset() ) 
 	{/* re initialising the lists*/}
 
-	for ( int currentRes = 7; tileResList[currentRes].totalTiles==0; currentRes-- )
+	int currentRes;
+	for ( currentRes = 7; tileResList[currentRes].totalTiles==0; currentRes-- )
 	{ /*search for the highest resolution possible*/ }
 	
 	int highestPossRes = currentRes;
@@ -4213,7 +4216,8 @@ bool LandScape::FillDataGrid(SLong ox,SLong oz)
 	
 	SLong wholeAreaSize=_wholeAreaSizeMIN;
 
-	for (int row=0;row<wholeAreaSize;row++)
+	int row;
+	for (row=0;row<wholeAreaSize;row++)
 	{
 		ix=ox;
 	 	for (int col=0;col<wholeAreaSize;col++)
@@ -4600,10 +4604,14 @@ inline void LandScape::RenderSheep(const UByte* pDS,ULong sheepCount,const COORD
 
 	Float dd=dx*dx+dz*dz;
 
+#if defined(BOB_LINUX)
+	dd = (Float)__builtin_sqrt((double)dd);
+#else
 	_asm {fld dd;
 	fsqrt;
 	fstp dd;
 	}
+#endif
 
 	if (SLong(dd)>24*FT_250) return;
 
@@ -6389,7 +6397,8 @@ LandScape::LandScape()
 			{
 				SideLookUp[t].lowerAT=i;
 				SideLookUp[t].higherAT=j;
-				for ( int k = 0; k< t; k++ )
+				int k;
+				for ( k = 0; k< t; k++ )
 					if ( SideLookUp[k] == SideLookUp[t] )
 						break;
 				if ( k == t ) // got all the way through, keep
@@ -7327,6 +7336,11 @@ static int hStep;
 inline void fpTan(ANGLES ang,Float& tanAng)
 {
 	int iang=ang;
+#if defined(BOB_LINUX)
+	// angle in BoB units: (iang & 0xFFFF) * pi / 32768; tan = sin/cos
+	double a = (double)(iang & 0x0000FFFF) * 3.14159265358979323846 / 32768.0;
+	tanAng = (Float)(__builtin_sin(a) / __builtin_cos(a));
+#else
 	_asm
 	{
 	mov eax,iang;
@@ -7344,6 +7358,7 @@ inline void fpTan(ANGLES ang,Float& tanAng)
 	fstp qword ptr ds:[edx];
 	add esp,4;
 	}
+#endif
 }
 
 //DEADCODE JON 5/24/00 //������������������������������������������������������������������������������
@@ -7401,7 +7416,7 @@ void LandScape::InfiniteStrip( const ANGLES pitch, const ANGLES roll)
 	double fvy=double(viewer_y)/double(CEILING_ALT);
 //DeadCode JON 20Oct00 	double fvy2=fvy*fvy;
 
-	DoPointStruc* ptr=Shape.newco;
+	DoPointStruc* ptr=Shape::newco;	// static member; MSVC allowed `.` on a type
 
 	double fvr=double(view_dist*0.999999);
 //DeadCode JON 5Oct00 	{
@@ -9560,6 +9575,11 @@ void LandScape::PrintDebugs()
 inline void fpSinCos(ANGLES ang,Float& sinAng,Float& cosAng)
 {
 	int iang=ang;
+#if defined(BOB_LINUX)
+	double a = (double)(iang & 0x0000FFFF) * 3.14159265358979323846 / 32768.0;
+	cosAng = (Float)__builtin_cos(a);
+	sinAng = (Float)__builtin_sin(a);
+#else
 	_asm
 	{
 	mov eax,iang;
@@ -9578,6 +9598,7 @@ inline void fpSinCos(ANGLES ang,Float& sinAng,Float& cosAng)
 	fstp qword ptr ds:[edx];
 	add esp,4;
 	}
+#endif
 }
 
 //������������������������������������������������������������������������������
@@ -9957,8 +9978,8 @@ void LandScape::InterpSLightRGB(	SLayerRGB& lowRgb,
 }
 
 #define InterpLight(p1)\
-InterpSLightRGB(pLowLight->##p1,pHighLight->##p1,\
-currentLighting.##p1,scaleFactor);
+InterpSLightRGB(pLowLight->p1,pHighLight->p1,\
+currentLighting.p1,scaleFactor);
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -9989,8 +10010,8 @@ void LandScape::PossibleTeleport()
 #endif
 
 	if (
-			( abs( lastMeshDataX - x ) > 1 ) ||
-			( abs( lastMeshDataZ - z ) > 1 )
+			( abs( (SLong)(lastMeshDataX - x) ) > 1 ) ||
+			( abs( (SLong)(lastMeshDataZ - z) ) > 1 )
 		)
 	{
 		Three_Dee.pMigLand->BigInit(View_Point);
@@ -10556,7 +10577,8 @@ void LandScape::DoubleRez(UWord *oriPts,UWord scale,UWord*& newPts)
 {
 	if (!newPts) newPts=new UWord[TILE_WH*TILE_WH];
 	Zoom00(oriPts,newPts,scale);
-	for (int i=2;i<TILE_WH-1;i+=2)
+	int i;
+	for (i=2;i<TILE_WH-1;i+=2)
 		Zoom01(oriPts+(i>>1),newPts+i,scale);
 	for (i=2;i<TILE_WH-1;i+=2)
 	{
