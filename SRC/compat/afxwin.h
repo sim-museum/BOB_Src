@@ -418,6 +418,9 @@ public:
     BOOL PostMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return PostMessageA(m, w, l); }
     void ScrollWindow(int, int, LPCRECT = NULL, LPCRECT = NULL) {}
     class CMenu* GetMenu() const { return NULL; }
+    BOOL SetMenu(class CMenu*) { return TRUE; }
+    void SendMessageToDescendants(UINT, WPARAM = 0, LPARAM = 0, BOOL = TRUE, BOOL = TRUE) {}
+    void DrawMenuBar() {}
     CDC* BeginPaint(LPPAINTSTRUCT) { return NULL; }
     void EndPaint(LPPAINTSTRUCT) {}
     void GetWindowPlacement(void*) const {}
@@ -570,6 +573,35 @@ class CView : public CWnd {
 public:
     virtual void OnDraw(CDC*) {}
     CDocument* GetDocument() const { return NULL; }
+};
+
+/* COleControl — MFC ActiveX control base (bob's CR* control impls derive from it) */
+class COleControl : public CWnd {
+public:
+    BOOL m_bAutoSize;
+    virtual void OnDraw(CDC*, const CRect&, const CRect&) {}
+    virtual void DoPropExchange(CPropExchange*) {}
+    virtual void OnResetState() {}
+    virtual void OnDrawMetafile(CDC*, const CRect&) {}
+    void InvalidateControl(LPCRECT = NULL) {}
+    void SetModifiedFlag(BOOL = TRUE) {}
+    void BoundPropertyChanged(DISPID) {}
+    BOOL GetControlSize(int*, int*) { return TRUE; }
+    BOOL SetControlSize(int, int) { return TRUE; }
+    void SetInitialSize(int, int) {}
+    COleControl* GetControlUnknown() { return this; }
+    void FireEventV(DISPID, const char*, va_list) {}
+    void ThrowError(SCODE, LPCSTR = NULL) {}
+    void SetNotPermitted() {}
+    void SetNotSupported() {}
+    BOOL DoSuperclassPaint(CDC*, const CRect&) { return TRUE; }
+    BSTR  GetText() { return NULL; }
+    void  SetText(LPCSTR) {}
+    OLE_COLOR GetForeColor() { return 0; }
+    OLE_COLOR GetBackColor() { return 0; }
+    CFont* SelectStockFont(CDC*) { return NULL; }
+    BOOL IsModified() const { return FALSE; }
+    void Refresh() {}
 };
 
 class CFrameWnd : public CWnd {
