@@ -714,6 +714,33 @@ g++ -m32 -fno-pie -fpermissive -fno-strict-aliasing -fcommon -fpack-struct=1 -w 
   prelude added but still 135 errors (H2H multiplayer: H2HPlayerInfo, MMC,
   CRCombo/CRStatic, squad types) — left WIP, not yet wired into CMake.**
 
+- **2026-06-09 (26)**: **MISSMAN `PACKAGES.CPP` builds (62->0) into
+  libbob_missman.a** (8 standalone TUs now). Two macro-gated declaration blocks
+  needed include-order fixes (the recurring "PCH provided the macro first"
+  pattern) — both macros are *include guards*, so the fix is to include the
+  header earlier, not `#define` the macro:
+  - **ranges.h before package.h**: `RANGES_Included` gates Profile::AddAttackWP /
+    InsertWpBetween / AddNumerousEscorts (else "no declaration matches").
+  - **package.h before bfnumber.h**: `PACKAGE_INCLUDED` gates
+    EventVal::MakeIcptGRExpr / MakeAngWorldPos.
+  Plus mytime.h (SECSPERMIN/HR01), missman2.h (MMC), for-scope hoists
+  (sq/find/j/i), `=+`->`=` (MSVC unary-plus on EventVal ambiguous in GCC), and a
+  leaked for-scope `sm` replaced by its value `squadlist.Max()`.
+  - **INT3 (DOSDEFS.H, BOB_LINUX): `((void)0)` -> `{}`.** BoB writes bare `INT3`
+    with no trailing `;` (relied on MSVC `_asm{}` block form); an expression-form
+    needs `;` and broke `else INT3 else`. Empty-block is a statement needing no
+    `;`. Full build re-verified clean (no `if()INT3;else` breakage in built TUs).
+
+- **PHASE-2 REMAINING (deferred TUs, triaged 2026-06-09):** SAVEGAME (63 — macro-
+  gated dual-class SaveData [NoLoad vs full, `lastsavegame` etc. behind a gate] +
+  incomplete MissMan/info_itemS + Math_Lib/Campaign/Attacks headers + for-scope),
+  UIMSG (105), 3D OVERLAY (330 — needs CDC/CFont/GetGlyphOutline buildout), MFC
+  BOBFRAG (135, H2H). Then external stubs (DX/DirectPlay creation, _findfirst/
+  FindFirstFileA/fopen_nocase) + 6 MASM->nasm + `bob` add_executable + entry point
+  → iterate link. **Recipe is settled** (un-defer = reproduce-PCH prelude +
+  fix macro-gated include ordering + for-scope/auto hoists); remaining work is
+  mechanical application of it TU-by-TU plus the link/asm/runtime infrastructure.
+
 ### Inline-asm conversion recipe (validated)
 At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
 *before* the `__MSVC__`/`__WATCOMC__` one (BOB_LINUX is checked first):
