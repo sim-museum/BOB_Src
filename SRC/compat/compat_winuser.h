@@ -98,6 +98,12 @@ extern "C" {
 #define WM_CTLCOLORLISTBOX  0x0134
 #define WM_IDLEUPDATECMDUI  0x0363
 #endif
+/* WM_ACTIVATE wParam codes */
+#ifndef WA_INACTIVE
+#define WA_INACTIVE         0
+#define WA_ACTIVE           1
+#define WA_CLICKACTIVE      2
+#endif
 
 /* Listbox Notification Codes */
 #define LBN_ERRSPACE        (-2)

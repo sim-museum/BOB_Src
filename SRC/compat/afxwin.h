@@ -313,6 +313,7 @@ public:
     HDC m_hDC;
     CDC() : m_hDC(NULL) {}
     HDC GetSafeHdc() const { return m_hDC; }
+    operator HDC() const { return m_hDC; }
     BOOL Attach(HDC h) { m_hDC = h; return TRUE; }
     HDC Detach() { HDC h = m_hDC; m_hDC = NULL; return h; }
     CGdiObject* SelectObject(CGdiObject*) { return NULL; }
