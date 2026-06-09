@@ -29,7 +29,8 @@ typedef __POSITION* POSITION;
 struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 /* forward decls (classes reference each other before their definitions) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
-class CScrollBar; class CBitmap; class CMenu;
+class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
+class CDataExchange; class CPrintInfo; class CCreateContext_;
 
 /* ============================================================
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
@@ -191,6 +192,10 @@ struct CPoint : public POINT {
     CPoint(DWORD dw) { x = (short)LOWORD(dw); y = (short)HIWORD(dw); }
     void Offset(int dx, int dy) { x += dx; y += dy; }
     CPoint& operator=(SIZE s) { x = s.cx; y = s.cy; return *this; }
+    CPoint& operator+=(POINT p) { x += p.x; y += p.y; return *this; }
+    CPoint& operator-=(POINT p) { x -= p.x; y -= p.y; return *this; }
+    CPoint& operator+=(SIZE s) { x += s.cx; y += s.cy; return *this; }
+    CPoint& operator-=(SIZE s) { x -= s.cx; y -= s.cy; return *this; }
     CPoint operator+(SIZE s) const { return CPoint(x + s.cx, y + s.cy); }
     CPoint operator-(SIZE s) const { return CPoint(x - s.cx, y - s.cy); }
     CSize  operator-(POINT p) const { return CSize(x - p.x, y - p.y); }

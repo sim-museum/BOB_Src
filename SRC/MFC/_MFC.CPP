@@ -85,20 +85,23 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
    definitions (the headers that use them, e.g. MapDlg.h/FullPane.h, don't
    self-include them; on Windows the PCH/build order covered this). */
 #include "uniqueid.h"
-#include "rdialog.h"
+/* leaf ActiveX-control wrappers FIRST (composites below derive from these) */
 #include "rbutton.h"
+#include "rstatic.h"
+#include "rcombo.h"
+#include "rspinbut.h"
 #include "rlistbox.h"
+#include "rtabs.h"
+#include "rspltbar.h"
+/* composites / dialogs / bars that use the leaf controls */
+#include "rcombox.h"
+#include "rdialog.h"
 #include "rmdldlg.h"
+#include "listbx.h"
+#include "hintbox.h"
 #include "maintbar.h"
 #include "titlebar.h"
 #include "sysbox.h"
-#include "hintbox.h"
-#include "listbx.h"
-#include "rcombox.h"
-#include "rtabs.h"
-#include "rspltbar.h"
-#include "rcombo.h"
-#include "rspinbut.h"
 #include "rtestsh1.h"
 #include "squick1.h"
 #endif
