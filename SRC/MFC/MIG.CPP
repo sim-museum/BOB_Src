@@ -206,6 +206,14 @@ void RCommandLineInfo::ParseParam( LPCTSTR lpszParam, BOOL bFlag, BOOL bLast )
 
 CMIGApp theApp;
 
+#if BOB_LINUX
+// Linux port: expose the real app object to the compat AfxGetApp() and give
+// the ELF entry (bob_main.cpp) a C-callable hook to drive the MFC boot path.
+CWinApp* g_pBobApp = &theApp;
+extern "C" int bob_init_instance(void) { return theApp.InitInstance() ? 1 : 0; }
+extern "C" int bob_run(void)           { return theApp.Run(); }
+#endif
+
 /////////////////////////////////////////////////////////////////////////////
 // CMIGApp initialization
 

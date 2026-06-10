@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## RUNTIME MAP (2026-06-09): `CMIGApp::InitInstance()` now driven; boundary located
+> The MFC boot path is wired and exercising real game code. `bob_main.cpp` calls
+> the C-linkage hook `bob_init_instance()` (MIG.CPP, `#if BOB_LINUX`) →
+> `theApp.InitInstance()`; `AfxGetApp()` returns the real `&theApp` (via
+> `g_pBobApp`). Opt-in with **`BOB_RUN_INIT=1 ./bob`** (default run stays clean/exit 0).
+>
+> **InitInstance runs its ENTIRE framework-setup phase without crashing** — the
+> registry block (`RegOpenKeyEx`/`RegQueryValueEx` stubs), `AfxOleInit`,
+> `AfxEnableControlContainer`, `Enable3dControlsStatic`, `SetRegistryKey`,
+> `LoadStdProfileSettings`, `new CSingleDocTemplate(...)` + `AddDocTemplate`,
+> `RCommandLineInfo` + `ParseCommandLine`, `ProcessShellCommand` — then **stops at
+> the first use of the main window** (MIG.CPP ~467: `m_pMainWnd->ModifyStyle/
+> SetWindowText`). Confirmed by disasm: `mov 0x4(%esi),%eax` loads `m_pMainWnd`=NULL,
+> `push 0x4(%eax)` derefs null. Cause: the MFC **doc/view framework is stubbed**, so
+> `ProcessShellCommand` never runs `OnFileNew → OpenDocumentFile` to create the
+> `CMainFrame`/`CMIGDoc`/`CMIGView`; `m_pMainWnd` stays NULL.
+>
+> **NEXT subsystem chain (each a real impl):** create the main window (`CMainFrame`,
+> a `CFrameWnd` — needs a window backend, SDL2/X11) → `Master_3d.Init(hInst, hWnd)`
+> (3D device; DirectDraw is stubbed→E_FAIL, must degrade or use GL) → GDI DC/font
+> block (`GetDC` must return a real/stub `CDC`; `IconDescUI::LoadInstances(*pdc)`
+> **derefs pdc**, so a NULL DC crashes) → `File_Man` numbered-file loads (needs the
+> **game data assets**, which are NOT in this source repo) → `InitInstance` returns
+> TRUE → `CMIGApp::Run()` message loop. `CMainFrame::InitialiseSafe()` itself is
+> cheap (sets `havesafe`; real `Initialise()` waits for first `OnPaint`).
+
 > ## MILESTONE (2026-06-09): `bob` COMPILES, LINKS, and RUNS (exit 0)
 > The 4.5M 32-bit i386 ELF now executes through **all global constructors** and
 > exits cleanly. Two runtime-bring-up crashes were fixed past the link:

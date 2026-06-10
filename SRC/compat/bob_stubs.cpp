@@ -200,9 +200,12 @@ BOOL   FindNextFileA(HANDLE, LPWIN32_FIND_DATAA) { return FALSE; }
 extern const DIDATAFORMAT c_dfDIKeyboard;
 const DIDATAFORMAT c_dfDIKeyboard = {0};
 
-/* ===== MFC app accessors (no app object yet) ============================= */
+/* ===== MFC app accessors ================================================= */
+/* g_pBobApp is set to &theApp in MIG.CPP; AfxGetApp() returns the real app so
+   framework code that reaches back through AfxGetApp() sees the live object. */
 class CWinApp; class CWnd;
-CWinApp*   AfxGetApp()            { return 0; }
+extern CWinApp* g_pBobApp;
+CWinApp*   AfxGetApp()            { return g_pBobApp; }
 CWnd*      AfxGetMainWnd()        { return 0; }
 HINSTANCE  AfxGetInstanceHandle() { return 0; }
 
