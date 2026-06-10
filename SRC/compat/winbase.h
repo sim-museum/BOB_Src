@@ -16,6 +16,9 @@
 #endif
 
 #include "compat_types.h"
+/* PACK BOUNDARY (see iostream.h / Phase 0): native ABI for libc structs (struct
+   stat/dirent shrink under -fpack-struct=1 -> stack smash). */
+#pragma pack(push,8)
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -28,6 +31,7 @@
 #include <dlfcn.h>
 #include <ctype.h>
 #include <stdarg.h>
+#pragma pack(pop)
 
 /* Case-insensitive open helpers (linux_stubs.cpp) */
 #ifdef __cplusplus

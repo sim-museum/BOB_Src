@@ -329,6 +329,9 @@ typedef const GUID *LPCGUID;
  * include guards make later inclusions no-ops.
  */
 #ifdef __cplusplus
+/* PACK BOUNDARY (Phase 0): all std C++ types keep native ABI despite -fpack-struct=1.
+   See iostream.h / compat_types.h. */
+#pragma pack(push,8)
 #include <cmath>
 #include <climits>
 #include <limits>
@@ -352,13 +355,10 @@ typedef const GUID *LPCGUID;
 #include <stdexcept>
 #include <typeinfo>
 #include <iterator>
-/* std C++ streams must keep native (unpacked) ABI despite -fpack-struct=1 (see iostream.h). */
-#pragma pack(push,8)
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#pragma pack(pop)
 #include <bitset>
 #include <numeric>
 #include <valarray>
@@ -368,6 +368,7 @@ typedef const GUID *LPCGUID;
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#pragma pack(pop)
 #endif
 
 #ifndef max

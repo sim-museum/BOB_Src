@@ -438,6 +438,11 @@ enum VARENUM {
  * include guards make later inclusions no-ops.
  */
 #ifdef __cplusplus
+/* PACK BOUNDARY (Phase 0): ALL std C++ types keep their native ABI despite
+   -fpack-struct=1 -- libstdc++ is compiled with native layout and operates on
+   these objects (streams/string/locale/containers), so a packed layout corrupts
+   memory. #pragma pack(8) overrides -fpack-struct for the whole std block. */
+#pragma pack(push,8)
 #include <cmath>
 #include <climits>
 #include <limits>
@@ -461,14 +466,10 @@ enum VARENUM {
 #include <stdexcept>
 #include <typeinfo>
 #include <iterator>
-/* std C++ streams must keep native (unpacked) ABI despite -fpack-struct=1, else
-   libstdc++ scribbles memory operating on packed stream objects. See iostream.h. */
-#pragma pack(push,8)
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#pragma pack(pop)
 #include <bitset>
 #include <numeric>
 #include <valarray>
@@ -478,6 +479,7 @@ enum VARENUM {
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#pragma pack(pop)
 #endif
 
 #ifndef max

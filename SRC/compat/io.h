@@ -3,11 +3,14 @@
 #define FF_COMPAT_IO_H
 #ifdef FF_LINUX
 
+/* native ABI for libc structs despite -fpack-struct=1 (struct stat; see iostream.h) */
+#pragma pack(push,8)
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
+#pragma pack(pop)
 
 /* O_BINARY / O_TEXT don't exist on Linux */
 #ifndef O_BINARY

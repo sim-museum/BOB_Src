@@ -2,8 +2,11 @@
 #ifndef FF_COMPAT_DIRECT_H
 #define FF_COMPAT_DIRECT_H
 #ifdef FF_LINUX
+/* native ABI for libc structs despite -fpack-struct=1 (struct stat; see iostream.h) */
+#pragma pack(push,8)
 #include <unistd.h>
 #include <sys/stat.h>
+#pragma pack(pop)
 #define _getcwd getcwd
 #define _chdir  chdir
 #define _rmdir  rmdir

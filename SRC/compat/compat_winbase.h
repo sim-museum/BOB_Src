@@ -16,6 +16,11 @@
 #endif
 
 #include "compat_types.h"
+/* PACK BOUNDARY (see iostream.h / Phase 0): the game builds -fpack-struct=1, which
+   mislays libc structs that this header uses by value with libc -- struct stat
+   (GetFileAttributes etc. stat() -> stack smash) and struct dirent both shrink
+   under packing. #pragma pack(8) restores the native ABI for the system headers. */
+#pragma pack(push,8)
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -28,6 +33,7 @@
 #include <dlfcn.h>
 #include <ctype.h>
 #include <stdarg.h>
+#pragma pack(pop)
 
 /* Case-insensitive open helpers (linux_stubs.cpp) */
 #ifdef __cplusplus
