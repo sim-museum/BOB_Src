@@ -3,7 +3,10 @@
 // global `typedef char* string` (dosdefs.h) is not made ambiguous by std::string.
 #ifndef BOB_COMPAT_FSTREAM_H
 #define BOB_COMPAT_FSTREAM_H
+/* native ABI for std::ifstream/ofstream/fstream despite -fpack-struct=1 (see iostream.h). */
+#pragma pack(push,8)
 #include <fstream>
+#pragma pack(pop)
 #include "iostream.h"
 using std::filebuf;
 using std::ifstream;

@@ -461,10 +461,14 @@ enum VARENUM {
 #include <stdexcept>
 #include <typeinfo>
 #include <iterator>
+/* std C++ streams must keep native (unpacked) ABI despite -fpack-struct=1, else
+   libstdc++ scribbles memory operating on packed stream objects. See iostream.h. */
+#pragma pack(push,8)
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#pragma pack(pop)
 #include <bitset>
 #include <numeric>
 #include <valarray>

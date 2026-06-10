@@ -371,6 +371,13 @@ static	BIStream& operator	>>	(BIStream& bis,Campaign& campaign)
 	bis>>date;
 	int dummy;
 	bis>>dummy;
+#if BOB_LINUX
+	// Linux port: the version string embeds the build __DATE__, which never matches
+	// the original game's saves. Load anyway -- the binary save format is what
+	// matters (and it is /Zp1-packed, so our -fpack-struct read matches it).
+	if (strcmp(date,date2))
+		fprintf(stderr,"[savegame] version string differs (%s != %s) -- loading anyway\n",date,date2);
+#else
 	if (strcmp(date,date2))
 #ifndef NDEBUG
 		if (::MessageBox(NULL,"Savegame dates differ: Press OK to load it anyway.\nIf you press OK and the savegame is not compatible then BAD THINGS will happen!\n"
@@ -380,6 +387,7 @@ static	BIStream& operator	>>	(BIStream& bis,Campaign& campaign)
 			"Do you feel lucky, punk? Well, do you?",date,	MB_OKCANCEL)==IDCANCEL)
 #endif
 			_Error.ReallyEmitSysErr("Savegame version dates differ %s != %s",date,date2);
+#endif
 	bis>>campaign.garbage;
 	bis.read((char*)&campaign+sizeof(CampaignPtrs),sizeof(Campaign)-sizeof(CampaignPtrs));
  	bis>>Dead_Stream;

@@ -5,8 +5,16 @@
 // ambiguous with BoB's). Instead bring in only the stream-related names.
 #ifndef BOB_COMPAT_IOSTREAM_H
 #define BOB_COMPAT_IOSTREAM_H
+/* CRITICAL: the game builds with -fpack-struct=1 (MSVC /Zp1). That packing must
+   NOT reach the std C++ stream/locale types -- they live in libstdc++ with the
+   NATIVE layout, so a std::ifstream/ostream constructed by packed game code has a
+   mismatched subobject layout and libstdc++ scribbles memory when it operates on
+   it (e.g. BIStream save loads corrupted the stack). #pragma pack(8) overrides
+   -fpack-struct here and restores the native ABI. */
+#pragma pack(push,8)
 #include <iostream>
 #include <iomanip>
+#pragma pack(pop)
 using std::ios;
 using std::ios_base;
 using std::istream;

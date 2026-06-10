@@ -352,10 +352,13 @@ typedef const GUID *LPCGUID;
 #include <stdexcept>
 #include <typeinfo>
 #include <iterator>
+/* std C++ streams must keep native (unpacked) ABI despite -fpack-struct=1 (see iostream.h). */
+#pragma pack(push,8)
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#pragma pack(pop)
 #include <bitset>
 #include <numeric>
 #include <valarray>

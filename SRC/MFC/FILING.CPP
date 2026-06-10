@@ -135,7 +135,16 @@ bool	CFiling::LoadGame(CString	fname)
 {
 	//This is the only setup that gets done when a game is loaded..
 	char buffer[fileman::pathnamesize];
+#if BOB_LINUX
+	// Linux port: fileman's fakefile/namenumberedfile path construction for the
+	// savegame dir comes out corrupted (stateful global bug, see PORT.md). We run
+	// with cwd = the game dir, so a relative "savegame/<fname>" resolves correctly
+	// via BIStream's bob_resolve_path (case-insensitive). Bypass the buggy fakefile.
+	snprintf(buffer, sizeof(buffer), "savegame/%s", (const char*)(LPCSTR)fname);
+	BIStream bis(buffer);
+#else
 	BIStream bis(File_Man.namenumberedfile(File_Man.fakefile(FIL_SAVEGAMEDIR,fname),buffer));
+#endif
 	if (!bis.is_open())
 		return false;
 

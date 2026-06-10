@@ -77,6 +77,7 @@ static void* timer_thread(void* p)
 extern "C" unsigned int bob_time_set_event(unsigned delayMs, unsigned /*res*/,
 		bob_timecb cb, unsigned long user, unsigned fdwTimer)
 {
+	if (getenv("BOB_NO_TIMER")) return 1;   /* diagnostic: no real timer thread */
 	pthread_mutex_lock(&g_timerLock);
 	int slot = -1;
 	for (int i = 0; i < BOB_MAX_TIMERS; i++) if (!g_timers[i].inUse) { slot = i; break; }
