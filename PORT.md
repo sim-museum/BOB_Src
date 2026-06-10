@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## MILESTONE (2026-06-09): `bob` COMPILES, LINKS, and RUNS (exit 0)
+> The 4.5M 32-bit i386 ELF now executes through **all global constructors** and
+> exits cleanly. Two runtime-bring-up crashes were fixed past the link:
+> - **Static-init SIGSEGV** in `Lib3D::Lib3D()` → `std::basic_ios::init` →
+>   `std::locale::operator=`. Cause: `Lib3D` has a value member `fstream diagFile`
+>   (old `<fstream.h>` → std `<fstream>`); the `Lib3D` object is built by a global
+>   ctor (`STUB3D`'s `Inst3d::commonkeymaps` TU init → `Lib3DCreate` → `new Lib3D`)
+>   **before the C++ runtime locale is set up**, so the std::fstream member ctor
+>   deref'd a null global locale. `init_priority(101)` on a forced `ios_base::Init`
+>   did NOT help (the member ctor runs in the static-init storm regardless). Fix:
+>   make `diagFile` a **lazily-allocated `fstream*`** (`new`'d in `OpenDiags()`,
+>   which only runs when device diagnostics are enabled — off by default), so no
+>   std stream is constructed at static-init time. All sites `#if BOB_LINUX`-guarded
+>   so the Windows build is byte-identical (LIB3D.CPP:528-575, ctor ~2700).
+>   (Note: NOT a `-fpack-struct` ABI clash as first suspected — recompiling LIB3D
+>   without packing did not move the crash; it was purely the locale-before-init.)
+> - **Exit-time SIGSEGV** in a global dtor `Mast3d::~Mast3d()` →
+>   `Sound::ShutDownSound()`, derefing DirectSound state that `InitInstance()`
+>   never brought up (sound creation is stubbed to E_FAIL). Fix: `bob_main.cpp`
+>   `_exit(0)` (after `fflush(NULL)`) to skip C++ static teardown of
+>   never-initialised subsystems until the real runtime loop exists.
+> NEXT (runtime bring-up proper): drive `AfxWinMain`→`theApp.InitInstance()` and
+> wire SDL2 window / OpenGL present / OpenAL behind the stubbed DX entries.
+
+
 > ## SCOPE (2026-06-09, corrected): source is COMPLETE; remaining work is wiring unbuilt TUs
 > A whole-archive trial link of all 14 module libs surfaces **465 undefined
 > symbols**. Correctly traced (see the RETRACTION note below):

@@ -529,9 +529,19 @@ private:
 	{
 		if ( !doDeviceDiags )
 		{
+#if BOB_LINUX
+			// Linux port: diagFile is lazily allocated (see member decl) so no
+			// std::fstream is constructed at static-init time -- the Lib3D obj
+			// is built by a global ctor, before the C++ runtime locale exists.
+			if ( !diagFile ) diagFile = new fstream;
+			diagFile->open( "3D_Diags.txt", ios::out );
+			if ( diagFile->is_open() )
+				doDeviceDiags = true;
+#else
 			diagFile.open( "3D_Diags.txt", ios::out );
 			if ( diagFile.is_open() )
 				doDeviceDiags = true;
+#endif
 		}
 	}
 
@@ -539,7 +549,11 @@ private:
 	{
 		if ( doDeviceDiags )
 		{
+#if BOB_LINUX
+			diagFile->close();
+#else
 			diagFile.close();
+#endif
 			doDeviceDiags = false;
 		}
 	}
@@ -555,12 +569,20 @@ private:
 			va_start(arglist, t);
 			_vsnprintf(outBuff, 256, t,arglist);
 			va_end(arglist);
+#if BOB_LINUX
+			(*diagFile) << outBuff << flush;
+#else
 			diagFile << outBuff << flush;
+#endif
 		}
 	}
-	
+
 	bool doDeviceDiags;
+#if BOB_LINUX
+	fstream* diagFile;		// Linux port: lazily allocated -- see OpenDiags()
+#else
 	fstream diagFile;
+#endif
 	ULong* frameTimeBuff;
 	LARGE_INTEGER* tickCountBuff;										//JON 19/03/01
 	int curFrameTimeI;
@@ -2709,6 +2731,9 @@ Lib3D::Lib3D()
 	curFrameTimeI = 0;
 	frameTimeBuffSize = 0;
 	diagString=NULL;
+#if BOB_LINUX
+	diagFile=NULL;			// Linux port: lazily allocated in OpenDiags()
+#endif
 	pDrivers=NULL;
 	pDD7=NULL;
 	pDDSP7=NULL;
