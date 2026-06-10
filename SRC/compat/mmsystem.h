@@ -185,8 +185,21 @@ static inline MMRESULT midiOutGetDevCapsA(UINT_PTR id, LPMIDIOUTCAPSA p, UINT cb
 #define TIME_KILL_SYNCHRONOUS  0x0100
 #endif
 typedef void (CALLBACK *LPTIMECALLBACK)(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser, DWORD_PTR dw1, DWORD_PTR dw2);
-static inline MMRESULT timeSetEvent(UINT, UINT, LPTIMECALLBACK, DWORD_PTR, UINT) { return (MMRESULT)1; }
-static inline MMRESULT timeKillEvent(UINT) { return MMSYSERR_NOERROR; }
+/* Linux port: real periodic/one-shot timer over pthreads (bob_threads.cpp) --
+   drives Mast3d::StaticTimeProc -> the game "move cycle". */
+#ifdef __cplusplus
+extern "C" unsigned int bob_time_set_event(unsigned ms, unsigned res,
+    void (*cb)(unsigned,unsigned,unsigned long,unsigned long,unsigned long), unsigned long user, unsigned fdw);
+extern "C" unsigned int bob_time_kill_event(unsigned id);
+#else
+extern unsigned int bob_time_set_event(unsigned, unsigned, void(*)(unsigned,unsigned,unsigned long,unsigned long,unsigned long), unsigned long, unsigned);
+extern unsigned int bob_time_kill_event(unsigned);
+#endif
+static inline MMRESULT timeSetEvent(UINT delay, UINT res, LPTIMECALLBACK cb, DWORD_PTR user, UINT fdw) {
+    return (MMRESULT)bob_time_set_event(delay, res,
+        (void(*)(unsigned,unsigned,unsigned long,unsigned long,unsigned long))cb, (unsigned long)user, fdw);
+}
+static inline MMRESULT timeKillEvent(UINT id) { return (MMRESULT)bob_time_kill_event(id); }
 /* timeBeginPeriod/timeEndPeriod already provided by compat_winbase.h */
 
 #endif /* FF_LINUX */

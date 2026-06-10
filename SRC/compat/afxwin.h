@@ -1083,7 +1083,14 @@ inline void AfxMessageBox(LPCSTR) {}
 #define AFX_CDECL
 #endif
 typedef UINT (AFX_CDECL *AFX_THREADPROC)(LPVOID);
-inline CWinThread* AfxBeginThread(AFX_THREADPROC, LPVOID, int = 0, UINT = 0, DWORD = 0, void* = NULL) { return NULL; }
+/* Linux port: run the thread proc on a real (detached) pthread -- the per-view
+   draw loop (View3d::drawloop) is spawned via this. See bob_threads.cpp. */
+extern "C" void bob_begin_thread(unsigned int (*fn)(void*), void* arg);
+inline CWinThread* AfxBeginThread(AFX_THREADPROC threadFn, LPVOID arg, int = 0, UINT = 0, DWORD = 0, void* = NULL) {
+    bob_begin_thread((unsigned int(*)(void*))threadFn, arg);
+    static CWinThread s_dummyThread;   /* callers only use the pointer as non-NULL */
+    return &s_dummyThread;
+}
 inline CWinThread* AfxBeginThread(const void*, int = 0, UINT = 0, DWORD = 0, void* = NULL) { return NULL; }
 
 /* ANSI/Unicode-neutral aliases bob calls without the A suffix */

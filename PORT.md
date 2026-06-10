@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 2c DONE (2026-06-09): threads + timers + events live
+> The render-loop's two stubbed primitives are now real (the compat layer already
+> had pthread-backed events/CreateThread/WaitForSingleObject):
+> - **`AfxBeginThread`** (afxwin.h) → `bob_begin_thread` (bob_threads.cpp): runs the
+>   MFC `AFX_THREADPROC` on a detached pthread. The per-view draw loop
+>   (`View3d::drawloop`) can now actually run.
+> - **`timeSetEvent`/`timeKillEvent`** (mmsystem.h) → `bob_time_set_event` /
+>   `_kill_event`: a real periodic/one-shot timer thread invoking the
+>   `LPTIMECALLBACK`. Drives `Mast3d::StaticTimeProc → TimeProc` (the "move cycle").
+>   Safe to start at static-init: `TimeProc` loops over `currinst` (NULL until a
+>   3D instance exists), so it just ticks until the game is ready.
+> - Win32 events (`doneframe`, `htable`) were already pthread-cond-backed.
+>
+> Verified: `BOB_RUN_INIT=1 ./bob` runs with **two live threads** — the main thread
+> idling in the message loop and the **timer thread firing `TimeProc`** — at ~0% CPU,
+> no crash (default ./bob still exits 0). (gotcha fixed: dosdefs.h `#define proc void`
+> clashed with a parameter name.)
+>
+> **What's left to open the window with content (Phase 2c-step4 + Phase 3):** nothing
+> yet creates a `View3d` with a loaded scene — the front-end is a dialog/menu state
+> machine (DialBox/LaunchDial/Rtestsh1 + the overlay `MapScr` screens, e.g.
+> `SetToUIScreen(&firstMapScr)`), entered by navigating menus. A direct View3d smoke
+> path would `SetDriverAndMode` (open the SDL/GL window) + spawn the draw thread, but
+> `drawloop → Three_Dee.render(…, inst->world)` derefs a not-yet-loaded world, and the
+> Lib3D GL render methods are still Phase-1 no-ops. So the visible window needs the
+> front-end flow to select a screen AND Phase 3 (DX7→GL rendering) together.
+
 > ## SCOPE (2026-06-09): Phase 2c — what actually drives the UI (corrected)
 > Investigation overturned the earlier assumption that the menu needs a Win32/GDI
 > message backend. **The main game UI (main menu, map screen, briefings) renders
