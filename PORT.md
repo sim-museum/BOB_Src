@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## STATE OF THE PORT (2026-06-10)
+> **Works:** builds + links (32-bit ELF); runs all global ctors; loads the real
+> game data + PE resources (boblang.dll); completes `CMIGApp::InitInstance()`; runs a
+> multithreaded MFC message+timer loop at idle; **verified SDL2+OpenGL present
+> pipeline**; correct std-stream binary file I/O (this session's major fix).
+> Default `./bob` exits 0; `BOB_RUN_INIT=1` reaches the clean idle loop.
+>
+> **Gap to a visible/playable game = the game's deeply-interconnected content/UI
+> subsystems**, either of which is a multi-session effort:
+> - **Route (a) in-game map view:** needs the CAMPAIGN DATA MODEL stood up
+>   (campaign -> packages -> squads/squadsizes -> nodes -> persons -> battlefields).
+>   These are interdependent and normally initialised by the front-end over many
+>   ordered steps. Cold-start cherry-picking (the `BOB_BOOT_FRONTEND` probe) hits
+>   successive uninitialised-state crashes; current wall: `Campaign::CampaignInit`
+>   -> `Todays_Packages.WipeAll` -> a garbage `SquadList*` in `pack[0].squadlist`
+>   (needs gdb data-structure inspection of the exact init order, not more
+>   cherry-picking). The DDraw7/D3D7->GL render path it would feed is already built;
+>   only the no-op Lib3D draw methods (BeginPoly/textures) remain (Phase 3).
+> - **Route (b) front-end main menu:** self-contained (no campaign world) but needs
+>   a Win32 window+input+message backend on SDL AND the RDialog/GDI 2D rendering
+>   backend (SetDIBitsToDevice/BitBlt/ExtTextOut). This is the actual first screen.
+>
+> Honest assessment: the foundation is complete and solid; what remains is large,
+> game-specific subsystem work (data model OR dialog+GDI), best tackled as a
+> dedicated, gdb-driven effort rather than incremental probing.
+
 > ## MAJOR FIX (2026-06-10): std-stream packing ABI — BIStream/saves work
 > Root cause (same class as the original Lib3D fstream crash, but now it bit a
 > *used* stream): std C++ stream/locale types were compiled with -fpack-struct=1
