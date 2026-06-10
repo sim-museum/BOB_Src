@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 0 DONE (2026-06-10): correctness hardened; campaign init unblocked
+> Two systematic fixes, both high-leverage:
+> 1. **Pack boundary made airtight.** `#pragma pack(push,8)` around every libc/std
+>    system-header include site (compat_winbase/winbase/io/direct: struct stat/dirent;
+>    compat_types/wtypes: the whole std C++ block). Verified which structs actually
+>    break under -fpack-struct=1 (stat, dirent) vs are pack-stable (pthread, tm). Fixed
+>    a latent stat stack-smash in compat_winbase's GetFileAttributes.
+> 2. **Eliminated the implicit-int / `-O3` miscompile bug class** — the build's `-w`
+>    hid it. An implicit-int function (no return type, MSVC-legal) with no return
+>    statement is UB that `-O3` exploits. This was THE campaign-init crash: disassembly
+>    showed `SquadListRef::Free` had its `if(pointer)` null guard DROPPED, so it
+>    null-deref'd empty packs. Re-scanned all 72 TUs with `-Wreturn-type`; fixed all 4
+>    offenders (Free + EventLog::operator=, LastWeekReview::operator=, SetDZCombo).
+>    Re-scan now reports NONE — a whole class of latent "mysterious crash" bugs gone.
+>
+> Result: the **entire new-campaign world setup now completes** (BuildTargetTable,
+> LoadCleanNodeTree, Campaign::CampaignInit, StartUpMapWorld → "[boot] world ready").
+> Next blocker is downstream and is cold-start state, not a defect: `new Inst3d →
+> LoadSetPiece → FindNextBf` null-derefs in the CONVOYBF case (game state the front-end
+> sets up) → resolve via Phase 3 (drive the real flow) rather than more cold-start.
+> NEW PRINCIPLE for the roadmap: keep `-Wreturn-type` (and watch implicit-int) in CI —
+> never let `-w` hide UB again. Default `./bob` (exit 0)/`BOB_RUN_INIT=1` unaffected.
+
 > ## ROADMAP TO FULL FUNCTIONALITY (2026-06-10)
 > Synthesised from the whole port. Ordered to de-risk early and avoid the
 > cold-start trap (see Principles). "First playable flight" is the mid-point goal;
