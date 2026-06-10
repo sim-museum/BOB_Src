@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## MAJOR FIX (2026-06-10): std-stream packing ABI — BIStream/saves work
+> Root cause (same class as the original Lib3D fstream crash, but now it bit a
+> *used* stream): std C++ stream/locale types were compiled with -fpack-struct=1
+> (global /Zp1), so a `std::ifstream` (e.g. `BIStream`) built by game code had a
+> packed subobject layout mismatching libstdc++ → libstdc++ scribbled memory
+> operating on it (a `BIStream` save load silently clobbered the caller's stack →
+> the earlier `EE E9` path corruption was a *symptom*, not a fileman bug). Fix:
+> `#pragma pack(push,8)` around the std stream-header includes (iostream.h/fstream.h
+> shims + the direct `<sstream>/<fstream>/<iostream>` in compat_types.h/wtypes.h) so
+> they keep the native ABI despite -fpack-struct (proven to override it, as for
+> struct stat). **All std-stream file I/O now works.** Verified: `BIStream` opens +
+> deserialises; the path corruption is gone.
+>
+> Route (a) progress on top of that:
+> - `CFiling::LoadGame` opens `savegame/<fname>` relative to cwd (the game dir) via
+>   the resolver (bypasses the corrupted fileman fakefile path; FILING.CPP).
+> - Savegame version check (embeds build `__DATE__`, fatal under NDEBUG) → BOB_LINUX
+>   loads anyway (SAVEGAME.CPP).
+> - **Finding:** the bundled `SAVEGAME/*.dat` are NOT loadable savegames —
+>   `Package.dat` is a mission *package*; `blank_nt.dat` is the node-tree template
+>   (`NodeData::LoadCleanNodeTree`, which self-regenerates on version mismatch). No
+>   ready-made "Rowan Savegame:" file exists. So the world for `new Inst3d` must come
+>   from the **new-campaign init** (`Miss_Man.camp` from a campaign template +
+>   `Persons4::StartUpMapWorld` + battlefields/persons), normally driven by the
+>   front-end "New Campaign" dialog flow — a substantial campaign-data subsystem and
+>   the next focused step for route (a). Default `./bob` (exit 0)/`BOB_RUN_INIT=1` OK.
+
 > ## ROUTE (a) progress (2026-06-10): std-stream paths fixed; blocked on fileman fake-file
 > Chose the campaign/in-game-map route (renders through the GL pipeline). Found the
 > load entry: `CFiling::LoadGame(fname)` → `BIStream bis(...); bis>>Miss_Man` (the
