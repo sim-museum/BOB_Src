@@ -555,6 +555,31 @@ BOOL CMIGApp::InitInstance()
 
 //	SetSysColors(2,sysnames,sysvals);
 
+#if BOB_LINUX
+	// Phase 2c step A (opt-in probe, BOB_BOOT_FRONTEND): create a 3D view the
+	// Rtestsh1 way so MakeInteractive -> SetDriverAndMode opens the SDL/GL window
+	// + spawns the draw thread.
+	//
+	// FINDING (2026-06-10): this path is blocked on the CAMPAIGN/WORLD subsystem.
+	// `new Inst3d` runs full in-game 3D setup including Persons2::LoadSetPiece,
+	// which iterates the campaign battlefields (FindNextBf) and crashes with no
+	// campaign loaded; ShutDownMapWorld alone is not enough. Loading a campaign
+	// goes through RFullPanelDial::LoadCampaign + Persons4::StartUpMapWorld +
+	// save/load -- a large front-end subsystem. The true pre-campaign main menu is
+	// itself dialog-based. So the first visible frame needs that subsystem, not
+	// just a view + the render methods. Kept as a documented probe; default and
+	// BOB_RUN_INIT runs are unaffected.
+	if (getenv("BOB_BOOT_FRONTEND")) {
+		fprintf(stderr, "[boot] front-end probe: ShutDownMapWorld + Inst3d + View3d"
+		                " (needs a loaded campaign; see MIG.CPP note)...\n");
+		Persons4::ShutDownMapWorld();
+		Inst3d* inst = new Inst3d;
+		View3d* view = new View3d(inst, m_pMainWnd->m_hWnd, m_pMainWnd);
+		view->MakeInteractive(WinMode::WIN);
+		fprintf(stderr, "[boot] View3d interactive; draw thread running\n");
+	}
+#endif
+
 	return TRUE;
 }
 

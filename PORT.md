@@ -1,5 +1,37 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 2c-A (2026-06-10): front-end trigger wired; first frame blocked on CAMPAIGN
+> The front-end view trigger is wired as an opt-in probe (`BOB_BOOT_FRONTEND`,
+> MIG.CPP end-of-InitInstance): the Rtestsh1 pattern `ShutDownMapWorld → new Inst3d
+> → new View3d → MakeInteractive(WinMode::WIN)` (→ `SetDriverAndMode` opens the
+> SDL/GL window + spawns the draw thread).
+>
+> **FINDING — the scoped "valid map world" key risk is real and large.** `new Inst3d`
+> runs full in-game 3D setup including `Persons2::LoadSetPiece`, which iterates the
+> campaign battlefields (`FindNextBf`) and **crashes with no campaign loaded**;
+> `ShutDownMapWorld` alone isn't enough. Loading a campaign goes through
+> `RFullPanelDial::LoadCampaign`/`LoadCampaignData` + `Persons4::StartUpMapWorld` +
+> the save/load system (FULLPANE.CPP) — a substantial front-end subsystem. And the
+> true *pre-campaign* main menu is itself dialog-based (DialBox/LaunchDial/FullPanel),
+> not the in-game map view. So the first visible frame is **not** "a view + minimal
+> render": it needs the campaign/front-end subsystem to produce a valid world first.
+>
+> Default `./bob` (exit 0) and `BOB_RUN_INIT=1` (clean idle loop) are unaffected; only
+> the explicit `BOB_BOOT_FRONTEND` probe hits the campaign dependency (kept as a
+> documented marker of the exact blocker).
+>
+> **Revised path to first frame (two viable routes, both larger than first scoped):**
+> - **(a) Campaign route:** bring up enough of the mission-manager/campaign load
+>   (`Miss_Man.camp` + battlefields + `StartUpMapWorld`) — possibly via a saved game —
+>   so `new Inst3d` + the in-game map view render. Then minimal Phase 3 (textured
+>   quads) draws it.
+> - **(b) Front-end route:** drive the pre-campaign main-menu dialog system
+>   (FullPanel/DialBox), which renders via the RDialog/GDI path (a different backend:
+>   `SetDIBitsToDevice`/`BitBlt`/`ExtTextOut`) — needs the GDI-on-SDL surface work
+>   deferred earlier. This is the actual first screen a user sees.
+> Either is a multi-session subsystem; the choice determines whether the first visible
+> output is the in-game map (a) or the main menu (b).
+
 > ## SCOPE (2026-06-09): the FIRST VISIBLE FRAME (front-end + minimal Phase 3)
 > Three pieces must come together. Good news: the menu path is far lighter than the
 > 3D flight path.
