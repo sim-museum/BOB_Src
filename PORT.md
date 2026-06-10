@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 1 DONE (2026-06-09): SDL2/OpenGL backend — 3D + input init pass
+> `compat/bob_video.cpp` (new) implements the DirectDraw7/Direct3D7 COM interfaces
+> (from compat/ddraw.h + d3d.h) as concrete GL-backed objects: each is a
+> `{ Vtbl*, ...state... }` whose lpVtbl points at our function tables, so the game's
+> `p->Method()` calls dispatch to us with **no LIB3D.CPP edits**. `DirectDrawCreateEx`/
+> `DirectDrawEnumerateExA` hand out the objects; `GetDXVersion` returns 0x0700
+> (`#if BOB_LINUX` in GETDXVER.CPP). It creates a real **SDL2 window + GL context**
+> (`ensure_window`, lazy on SetCooperativeLevel/SetDisplayMode) and pumps SDL events
+> (ESC/close → exit). Rendering methods (Clear/DrawPrimitiveVB/SetRenderState/…) are
+> safe no-ops for now; present = `SDL_GL_SwapWindow`. Also added a **non-fatal
+> DirectInput stub** (reports no input) so `Mast3d::Init` proceeds. Build links
+> `-lSDL2 -lGL` (32-bit libs present; no sdl2.pc → linked by name).
+>
+> Result: `BOB_RUN_INIT=1 BOB_DRIVE_C=… ./bob` now passes the **entire 3D-driver
+> init** — `Lib3D::Initialise` enumerates our driver/modes/device, `Mast3d::MainInit`
+> completes, `DirectInputCreate` succeeds — and stops cleanly at the **next**
+> subsystem: the Windows resource DLL `boblang.dll` (MIG.CPP:499 `LoadLibrary`, fatal
+> "Can't find language file"). The window itself is created later, in
+> `Lib3D::SetDriverAndMode` (STUB3D.CPP:1031), which InitInstance reaches only AFTER
+> the language resources + font setup. Faking the DLL handle gets past the load check
+> but feeds empty resource data into a font-setup `for(;;)` spin (MIG.CPP:613) -- so
+> the clean fatal is kept until **PHASE 1.5: a minimal PE resource loader** for
+> boblang.dll (LoadString/FindResource/LoadResource over the .rsrc section) lands.
+> That, plus the GDI/font path, is what stands between init and the on-screen window.
+
 > ## SCOPE (2026-06-09): DDraw7/Direct3D7 → OpenGL backend
 > The render engine (`Lib3D`, in `SRC/LIB3D/LIB3D.CPP`) is a **DirectX 7
 > fixed-function renderer**. Key insight for a FAITHFUL port: the game calls the

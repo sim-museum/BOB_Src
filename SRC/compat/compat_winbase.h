@@ -881,7 +881,12 @@ typedef void (*PROC)(void);
 
 static inline HMODULE LoadLibraryA(LPCSTR lpLibFileName) {
     (void)lpLibFileName;
-    return NULL; /* No Windows DLLs on Linux */
+    /* Linux port: no Windows DLLs. The game's language resources (boblang.dll)
+       need a real PE resource loader (next subsystem) -- faking a non-NULL
+       handle here lets init past the load check but feeds empty resource data
+       into a font-setup error spin (MIG.CPP for(;;)). So keep the clean fatal
+       until PE resources are implemented. */
+    return NULL;
 }
 #define LoadLibrary LoadLibraryA
 static inline BOOL FreeLibrary(HMODULE hLibModule) { (void)hLibModule; return TRUE; }

@@ -178,9 +178,8 @@ extern "C" char *_itoa(int value, char *str, int radix) {
 }
 
 /* ===== DirectX creation entry points (stub: all fail) =================== */
-HRESULT DirectDrawCreateEx(GUID *, LPVOID *lplpDD, REFIID, IUnknown *) { if (lplpDD) *lplpDD = NULL; return E_FAIL; }
-HRESULT DirectDrawEnumerateExA(LPDDENUMCALLBACKEXA, LPVOID, DWORD) { return 0; }
-HRESULT DirectInputCreateA(HINSTANCE, DWORD, LPDIRECTINPUT *ppDI, IUnknown *) { if (ppDI) *ppDI = NULL; return E_FAIL; }
+/* DirectDrawCreateEx + DirectDrawEnumerateExA + DirectInputCreateA now live in
+ * bob_video.cpp (the SDL2/OpenGL DirectDraw7/D3D7 backend + DirectInput stub). */
 HRESULT DirectSoundCreate(GUID *, LPDIRECTSOUND *ppDS, IUnknown *) { if (ppDS) *ppDS = NULL; return E_FAIL; }
 HRESULT DirectSoundEnumerateA(LPDSENUMCALLBACKA, void *) { return 0; }
 

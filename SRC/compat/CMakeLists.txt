@@ -3,8 +3,12 @@
 #  - bob_stubs.cpp    : case-insensitive file I/O + _findfirst family + _itoa,
 #                       DirectX creation entry stubs, and the GUIDs/globals the
 #                       game references by name.
+#  - bob_video.cpp    : DirectDraw7/Direct3D7 -> SDL2 + OpenGL backend.
 add_library(bob_compat STATIC
     cstring_impl.cpp
     bob_stubs.cpp
+    bob_video.cpp
 )
 target_include_directories(bob_compat PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)
+# SDL2 + system OpenGL for the video backend (no sdl2.pc on this box -> link by name).
+target_include_directories(bob_compat PUBLIC /usr/include/SDL2)

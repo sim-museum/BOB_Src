@@ -116,6 +116,14 @@ typedef HRESULT(WINAPI * DIRECTINPUTCREATE)( HINSTANCE, DWORD, LPDIRECTINPUT*,
 //-----------------------------------------------------------------------------
 VOID GetDXVersion( DWORD* pdwDXVersion, DWORD* pdwDXPlatform )
 {
+#if BOB_LINUX
+    /* Linux port: the SDL2/OpenGL backend (compat/bob_video.cpp) presents a
+       DirectX-7-equivalent device. The Win32 LoadLibrary("ddraw.dll") probing
+       below can't run here, so report DX7 directly. */
+    if (pdwDXVersion)  *pdwDXVersion  = 0x0700;
+    if (pdwDXPlatform) *pdwDXPlatform = 1;
+    return;
+#endif
 //DEADCODE RDH 26/04/00     HRESULT              hr;
     HINSTANCE            DDHinst = 0;
     HINSTANCE            DIHinst = 0;
