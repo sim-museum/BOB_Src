@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## MILESTONE (2026-06-09): GAME DATA PIPELINE WORKS — reaches 3D-driver boundary
+> Pointed at a real install (`BOB_DRIVE_C=.../WP/drive_c`, run from the game dir),
+> `BOB_RUN_INIT=1 ./bob` now loads `ROOTS.DIR` + the data archives and runs
+> `Mast3d::MainInit`: **`fileman::InitFileSystem` ✓, `Image_Map.InitImageMaps` ✓,
+> `_Miles.Init` (sound) ✓, `_Radio.Init` ✓** — then stops at `g_lpLib3d->Initialise`
+> → **"Unable to find suitable DirectX 7.0 or later 3D Driver"** (STUB3D.CPP:259),
+> because `DirectDrawCreateEx`/D3D7 are stubbed to E_FAIL. The DirectDraw7/Direct3D7
+> → OpenGL backend is the next (large) subsystem; everything up to 3D device
+> creation works on Linux. Two fixes unlocked this:
+> - **`-fpack-struct=1` was corrupting libc structs in the compat layer.** `struct
+>   stat` packed to 1 → `stat()` overran it (stack smash) and `st_mode` was garbage,
+>   so `fopen_nocase`'s `S_ISDIR` guard returned NULL for every real file (ROOTS.DIR
+>   "not found"). Fix: `#pragma pack(push,8)` around the system-header includes in
+>   `bob_stubs.cpp` — native ABI for `stat`/`dirent`, while game-facing structs
+>   (`_finddata_t`, GUID…) stay packed=1. **General hazard: any compat code that
+>   field-accesses a libc-filled struct must wrap its system includes this way.**
+> - **Windows drive-absolute paths.** The game's stored paths are `\Program Files\
+>   Rowan Software\Battle Of Britain\…` (drive-relative) / `C:\…`. `resolve_nocase`
+>   now maps a leading `/` or `X:` onto `$BOB_DRIVE_C` (the Wine `drive_c` dir), so
+>   they resolve case-insensitively under the real install.
+>
+> **How to run with assets:** `cd "<install>/WP/drive_c/Program Files/Rowan Software/
+> Battle Of Britain"; BOB_RUN_INIT=1 BOB_DRIVE_C="<install>/WP/drive_c" .../build/bob`
+
 > ## MILESTONE (2026-06-09): full init runs; reaches game-DATA boundary cleanly
 > With a headless main window (`new CMainFrame` for `m_pMainWnd`) and a stub `CDC`
 > from `CWnd::GetDC()`, **`CMIGApp::InitInstance()` now runs its ENTIRE init

@@ -11,6 +11,14 @@
 
 #define FF_NO_FOPEN_REDIRECT	/* this file implements fopen_nocase itself */
 
+/* CRITICAL: the whole game builds with -fpack-struct=1 (MSVC /Zp1). That packing
+   must NOT reach libc system structs -- struct stat/dirent are filled by glibc
+   with the NATIVE layout, so reading their fields through a packed declaration
+   misaligns every member (st_mode garbage -> S_ISDIR wrong; and stat() overruns
+   the smaller packed struct -> stack smash). #pragma pack(push,8) around the
+   system headers overrides -fpack-struct=1 for just these structs and restores
+   the native ABI; game-facing structs (io.h _finddata_t, GUID, ...) stay packed. */
+#pragma pack(push,8)
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -20,6 +28,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fnmatch.h>
+#pragma pack(pop)
 
 #include "compat_types.h"
 #include "compat_winbase.h"
@@ -29,12 +38,31 @@
 #include "dinput.h"
 
 /* ===== case-insensitive path resolution + fopen/open ===================== */
+/* Wine-style drive_c mapping: the game's stored paths are Windows drive-absolute
+   (e.g. "\Program Files\Rowan Software\Battle Of Britain\landscap\DIR.DIR" or
+   "C:\..."), which become "/Program Files/..." after backslash conversion and
+   don't exist from the Linux filesystem root. Set BOB_DRIVE_C to the Wine drive_c
+   directory (containing "Program Files") and such paths resolve under it. */
 static int resolve_nocase(const char *filepath, char *resolved, size_t resolvedSize) {
 	char work[2048];
 	size_t i = 0;
 	for (; filepath[i] && i < sizeof(work) - 1; i++)
 		work[i] = (filepath[i] == '\\') ? '/' : filepath[i];
 	work[i] = '\0';
+
+	/* Map a Windows drive-absolute path onto $BOB_DRIVE_C. */
+	const char *drive_c = getenv("BOB_DRIVE_C");
+	const char *rem = NULL;
+	if (((work[0]>='A'&&work[0]<='Z')||(work[0]>='a'&&work[0]<='z')) && work[1]==':')
+		rem = work + 2;					/* "C:/..." -> "/..." */
+	else if (work[0] == '/')
+		rem = work;						/* drive-relative "/..." */
+	if (drive_c && drive_c[0] && rem && rem[0]=='/') {
+		char mapped[2048];
+		snprintf(mapped, sizeof(mapped), "%s%s", drive_c, rem);
+		strncpy(work, mapped, sizeof(work)-1); work[sizeof(work)-1]='\0';
+	}
+
 	if (access(work, F_OK) == 0) {
 		strncpy(resolved, work, resolvedSize - 1); resolved[resolvedSize - 1] = '\0'; return 0;
 	}
@@ -73,12 +101,15 @@ static int resolve_nocase(const char *filepath, char *resolved, size_t resolvedS
 
 extern "C" FILE *fopen_nocase(const char *filepath, const char *mode) {
 	if (!filepath || !mode) return NULL;
+	static const int trace = getenv("BOB_TRACE_FOPEN") ? 1 : 0;
 	char resolved[2048];
 	if (resolve_nocase(filepath, resolved, sizeof(resolved)) == 0) {
+		if (trace) fprintf(stderr, "[fopen] OK   [%s] (%s) -> %s\n", filepath, mode, resolved);
 		struct stat st;
 		if (stat(resolved, &st) == 0 && S_ISDIR(st.st_mode)) return NULL;
 		return fopen(resolved, mode);
 	}
+	if (trace) fprintf(stderr, "[fopen] MISS [%s] (%s)\n", filepath, mode);
 	if (strchr(mode, 'w') || strchr(mode, 'a')) return fopen(resolved, mode);
 	return NULL;
 }
