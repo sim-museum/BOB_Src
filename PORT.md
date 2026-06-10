@@ -1,5 +1,56 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCOPE (2026-06-09): the FIRST VISIBLE FRAME (front-end + minimal Phase 3)
+> Three pieces must come together. Good news: the menu path is far lighter than the
+> 3D flight path.
+>
+> **(1) Front-end trigger** — after InitInstance nothing creates a view. A
+> `BootFrontend` hook (env-gated at first) does the Rtestsh1 pattern (RTESTSH1.CPP:319-330):
+> `new Inst3d` → `new View3d(inst, hWnd, frame)` → `MakeInteractive(WinMode::WIN)`
+> (→ `SetDriverAndMode` opens the SDL/GL window + spawns the draw thread) →
+> `OverLay.SetToUIScreen(&firstMapScr)` selects the menu.
+>
+> **(2) The render path is `rendermap`, NOT `render3d`** — `ThreeDee::render`
+> (3DCODE.CPP:3527) branches on `vp->drawSpecialFlags`: the map/menu screen takes
+> `rendermap(vp,world)` (+ overlay), which **avoids `render3d`'s `init_scene →
+> world->sunpos` unconditional deref** (3DCODE.CPP:1144/1452 — the crash point for the
+> 3D path). The remaining world dependency is the overlay's `current_world->pMapItemHead`
+> (do_ui_objects), so a **valid but minimal "map world"** is still needed — load the
+> campaign/map world (cf. `Persons4::ShutDownMapWorld`) or synthesise an empty one.
+> THE KEY RISK/UNKNOWN: getting a world object valid enough for rendermap+overlay
+> without the full campaign load.
+>
+> **(3) Minimal Phase 3 = 2D textured-quad rasterisation only** (a small subset of the
+> full DX7→GL). The UI is *pure textured quads* — background, per-character font
+> glyphs, option icons — via these Lib3D methods (measured in OVERLAY.CPP
+> ProcessUIScreen ~3163):
+> - `BeginScene`/`Clear`/`EndScene` → `glClear` + framebuffer (already present-wired).
+> - `BeginPoly`/`EndPoly` → accumulate a textured quad → GL (immediate-mode quad with
+>   the bound texture + vertex colour). THE core primitive.
+> - Texture pipeline: `CreateTexture`/`UploadTexture` from `Image_Map` MAPDESC pixel
+>   data (fonts/icons/backgrounds; palettised/16-bit) → GL textures; `SetTexture` → bind.
+> - 2D setup: `LoadIdentity` on the matrix stacks + `GiveHint(HINT_2DRENDER)` → GL ortho,
+>   depth/lighting off; `SetFontColour` → vertex colour; `SetGlobal`/`SetObjectLighting`
+>   → GL state.
+> - `ScreenSwap` → present (done + verified, Phase 2b).
+> NONE of the heavy 3D pipeline (lighting, z-buffer, vertex buffers/`DrawPrimitiveVB`,
+> render-state matrix, the texture *combiner*) is needed for the menu.
+>
+> **Incremental path:**
+> - **Step A — cleared frame:** front-end trigger + a valid-enough map world → the draw
+>   loop runs `BeginScene`/`Clear`/`EndScene`/`ScreenSwap` (other methods stay no-op) →
+>   a **cleared coloured window driven by the game** (first frame on screen, proves
+>   loop→render→present end-to-end).
+> - **Step B — the menu:** implement `BeginPoly`/`EndPoly` + texture create/upload/bind
+>   + 2D ortho + `SetFontColour` → `ProcessUIScreen` draws the background + menu text/icons
+>   → **the main menu is visible.**
+>
+> Effort: moderate+ but bounded — Step A is mostly the front-end trigger + the world
+> prerequisite (the main uncertainty); Step B is the textured-quad subset (BeginPoly/
+> EndPoly + the Image_Map→GL texture path). Together this is the first visible frame,
+> and far smaller than full 3D-world rendering (Phase 3 proper: landscape, aircraft,
+> lighting, vertex buffers, the multi-texture combiner).
+
 > ## PHASE 2c DONE (2026-06-09): threads + timers + events live
 > The render-loop's two stubbed primitives are now real (the compat layer already
 > had pthread-backed events/CreateThread/WaitForSingleObject):
