@@ -256,10 +256,10 @@ char**	check3d[256]={NULL};
 //------------------------------------------------------------------------------
 void	ClearChecks()
 {
-	for (int i=0;i<256;i++)
+	int i; for (i=0;i<256;i++)
 		if (check3d[i])
 		{
-			for (int j=0;j<256;j++)
+			int j; for (j=0;j<256;j++)
 				delete [](check3d[i][j]);
 			delete [] check3d[i];
 			check3d[i]=NULL;
@@ -489,7 +489,7 @@ int genTri2(UByte pntCnt,PntDef* pntArray,UByte* orgPolyDesc,UByte*& tL)
 	{
 	UByte* src=orgPolyDesc;
 	UByte* trg=localpoly;
-	for (int i=pntCnt;--i>=0;)
+	int i; for (i=pntCnt;--i>=0;)
 		*trg++=*src++;
 	src=orgPolyDesc;
 	for (i=pntCnt;--i>=0;)

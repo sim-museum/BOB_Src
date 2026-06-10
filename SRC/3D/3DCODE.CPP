@@ -149,7 +149,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 	
 	extern	class	matrix 	_matrix;
 	extern 	class	Wrapper _Wrapper;
-	extern  Replay _Replay;
+	extern  class Replay _Replay;
 
 #include "replay.h"
 

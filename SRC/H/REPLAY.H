@@ -45,9 +45,9 @@ enum {REPLAYSUPERHEADENDID=(('D'<<24)+('N'<<16)+('E'<<8)+'S')};
 // bullets and missiles get 10 secs, bombs 1 min
 // this value is in frames
 
-#define MISSILEDELAY	(100/TimerCode.FRAMETIME)*10
-#define	BULLETDELAY		(100/TimerCode.FRAMETIME)*10
-#define BOMBDELAY		(100/TimerCode.FRAMETIME)*60
+#define MISSILEDELAY	(100/TimerCode::FRAMETIME)*10
+#define	BULLETDELAY		(100/TimerCode::FRAMETIME)*10
+#define BOMBDELAY		(100/TimerCode::FRAMETIME)*60
 
 
 #define	POSBSIZE		5

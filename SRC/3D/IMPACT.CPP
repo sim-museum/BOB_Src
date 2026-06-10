@@ -108,7 +108,7 @@ SLong Impact::GetDamageLoc(ShapeNum theShape, animptr&	animdata)
 
 		int totaldamage=0;
 	
-		for (int k=firstDamageByte;k<lastDamageByte;k++)						//CSB 3Nov00
+		int k; for (k=firstDamageByte;k<lastDamageByte;k++)						//CSB 3Nov00
 			totaldamage+=adptr[k];
 
 		int damageto=Math_Lib.rnd(totaldamage);

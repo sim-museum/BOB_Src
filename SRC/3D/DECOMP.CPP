@@ -96,7 +96,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 #endif
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		FINDEDGEPOINTS
 //Author		Paul.   
 //Date			Wed 26 Aug 1998
@@ -112,7 +112,7 @@ UWord FINDEDGEPOINTS(ip)
 	pointdec[2]=*pplPoint2;
 	pointdec[3]=*pplPoint3;
 
-	for (int i=4;i<256;pointdec[i++]=*pplReset);
+	int i; for (i=4;i<256;pointdec[i++]=*pplReset);
 
 	Max_Points=4;
 
@@ -330,7 +330,7 @@ UWord FINDEDGEPOINTS(ip)
 	return UWord(0);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		FINDPNTSLNSPLYS
 //Author		Paul.   
 //Date			Wed 26 Aug 1998
@@ -338,6 +338,7 @@ UWord FINDEDGEPOINTS(ip)
 void FINDPNTSLNSPLYS(ip)
 {
 	UByte* inptr=ip;
+	UByte	point=0;	/* MSVC for-scope leak: a function-wide current-point tracker */
 
 	int	coordslastpoint=0;
 	UByte endcode=STARPLUSPLUS(inptr);
@@ -402,10 +403,11 @@ void FINDPNTSLNSPLYS(ip)
 					if (last!=NULLCON)
 						pointdec[curr].lastfrom=last;
 					pointdec[curr].lastto=endcode;
-					for (int i=0;i<4;i++)
+					int i, j;
+					for (i=0;i<4;i++)
 						if (pointdec[curr].unpairedfrom[i]==endcode)
 						{
-							for (int j=i+1;j<4;j++)
+							for (j=i+1;j<4;j++)
 								breakif (pointdec[curr].unpairedfrom[j]==NULLCON);
 							pointdec[curr].unpairedfrom[i]=pointdec[curr].unpairedfrom[j-1];
 							pointdec[curr].unpairedfrom[j-1]=NULLCON;
@@ -413,7 +415,7 @@ void FINDPNTSLNSPLYS(ip)
 						}
 					if (i==4)
 					{
-						for (int i=0;i<4;i++)
+						for (i=0;i<4;i++)
 							breakif (pointdec[endcode].unpairedfrom[i]==NULLCON);
 						//assert i!=4;
 						pointdec[endcode].unpairedfrom[i]=(UByte)curr;
@@ -427,10 +429,11 @@ void FINDPNTSLNSPLYS(ip)
 				pointdec[curr].lastfrom=last;
 				pointdec[curr].lastto=point;
 				pointdec[point].lastfrom=curr;
-				for (int i=0;i<4;i++)
+				int i, j;
+				for (i=0;i<4;i++)
 					if (pointdec[curr].unpairedfrom[i]==point)
 					{
-						for (int j=i+1;j<4;j++)
+						for (j=i+1;j<4;j++)
 							breakif (pointdec[curr].unpairedfrom[j]==NULLCON);
 						pointdec[curr].unpairedfrom[i]=pointdec[curr].unpairedfrom[j-1];
 						pointdec[curr].unpairedfrom[j-1]=NULLCON;
@@ -438,7 +441,7 @@ void FINDPNTSLNSPLYS(ip)
 					}
 				if (i==4)
 				{
-					for (int i=0;i<4;i++)
+					for (i=0;i<4;i++)
 						breakif (pointdec[point].unpairedfrom[i]==NULLCON);
 					//assert i!=4;
 					pointdec[point].unpairedfrom[i]=(UByte)curr;
@@ -575,7 +578,7 @@ void FINDPNTSLNSPLYS(ip)
 	ip=inptr;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GETALT
 //Author		Paul.   
 //Date			Wed 26 Aug 1998
@@ -594,7 +597,7 @@ ULong GETALT(inptr)
 #endif
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		GETALTW
 //Author		Paul.   
 //Date			Wed 26 Aug 1998
