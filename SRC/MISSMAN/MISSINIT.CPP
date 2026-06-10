@@ -1154,7 +1154,7 @@ Campaign&	Campaign::operator=(CampaignBase*	b)
 	char	*s=(char*)b,
 			*t=(char*)this;
 
-	for (int i=b->garbage;i--;)
+	int i; for (i=b->garbage;i--;)
 		*t++=*s++;
 	s=(char*)&CampaignConvoy_Def + b->garbage;
 	for (i=CampaignConvoy_Def.garbage-b->garbage;i--;)
@@ -2138,7 +2138,7 @@ void	Campaign::NextDay()
 //DeadCode JIM 18Oct00 //	}															//RDH 02Apr97
 //DeadCode JIM 18Oct00 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		DecayingLossRate
 //Author		Jim
 //Date			Mon 5 Jun 2000

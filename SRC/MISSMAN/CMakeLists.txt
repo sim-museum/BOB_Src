@@ -16,5 +16,7 @@ add_library(bob_missman STATIC
     PACKAGES.CPP
     SAVEGAME.CPP
     UIMSG.CPP
+    FORMATN.CPP
+    MISSINIT.CPP
 )
 target_include_directories(bob_missman PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)

@@ -230,7 +230,15 @@ struct FormationType
 	int		numentries;
 //	TextRef			name;
 #pragma warning( disable : 4200)
+#if defined(BOB_LINUX)
+	/* was a flexible array `wingpos[]` (MSVC zero-sized + #pragma 4200); GCC forbids
+	   initialising a flexible array member in a nested/aggregate context (the static
+	   formation tables in FORMATN.CPP do exactly that). Give it the larger fixed
+	   bound so the longest formation fits; shorter ones zero-pad. */
+	FormationPos	wingpos[16];	/* longest static formation (Truck_LineFormation) is 15 */
+#else
 	FormationPos	wingpos[];//MAXAC_FORMATIONS_NUM];
+#endif
 #pragma warning( default : 4200)
 //DeadCode RDH 24Sep96 	FormationPos	wingpos [MAXAC_FORMATIONS_NUM];
 	int	GetPerFl(int totalac)	
