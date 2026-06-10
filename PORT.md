@@ -1,5 +1,21 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 1a DONE (2026-06-10): 2D textured-quad renderer (D3D7 device -> GL)
+> The DDraw7/D3D7 device methods in bob_video.cpp (were no-ops) now render the 2D
+> path: an FVF parser drives GL client arrays from any vertex layout;
+> `DrawPrimitive`/`DrawPrimitiveVB`/`DrawIndexedPrimitiveVB` handle XYZRHW
+> (pre-transformed → screen-space ortho, y-down) TRIANGLEFAN/LINE/POINT with
+> D3DCOLOR(ARGB) via a GL_BGRA colour array; DDraw texture surfaces upload to GL
+> textures (RGB565/ARGB1555/ARGB4444/32-bit, re-uploaded on Unlock); SetTexture,
+> SetRenderState (alpha blend + src/dest), Clear, SetViewport are live. **Verified**
+> end-to-end (`BOB_RENDER_SMOKETEST`): a checker texture on a `DrawPrimitiveVB(FAN)`
+> screen quad over a dark clear → centre pixel reads the filtered checker
+> (132,123,0), not the clear (32,48,64); glErr=0. This is the path the game's Lib3D
+> overlay/menu (`ProcessUIScreen` → `BeginPoly`/`EndPoly`) renders through.
+> NEXT: Phase 1b (3D/lit path: SetTransform, lighting, texture-stage combiner) and
+> Phase 2/3 (input + drive the front-end flow to feed real content to this renderer;
+> that also supplies the `FindNextBf` cold-start state).
+
 > ## PHASE 0 DONE (2026-06-10): correctness hardened; campaign init unblocked
 > Two systematic fixes, both high-leverage:
 > 1. **Pack boundary made airtight.** `#pragma pack(push,8)` around every libc/std
