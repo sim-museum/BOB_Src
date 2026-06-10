@@ -533,7 +533,16 @@ typedef struct tagMINMAXINFO {
     POINT ptMaxTrackSize;
 } MINMAXINFO, *PMINMAXINFO, *LPMINMAXINFO;
 
-static inline DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD, DWORD) { return 0; }
+/* Linux port: returning 0 (=WAIT_OBJECT_0, the first 3D event) made CMIGApp::Run
+   busy-spin on Inst3d::OnKeyInput. bob_msg_wait (bob_video.cpp) pumps SDL events
+   and yields the CPU, returning WAIT_TIMEOUT so the pump runs its idle path
+   (OnIdle drives the per-frame game work). Real window messages from SDL: next. */
+#ifdef __cplusplus
+extern "C" unsigned long bob_msg_wait(unsigned long ms);
+#else
+extern unsigned long bob_msg_wait(unsigned long ms);
+#endif
+static inline DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD ms, DWORD) { return bob_msg_wait(ms); }
 
 typedef struct tagCREATESTRUCTA {
     LPVOID    lpCreateParams;

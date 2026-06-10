@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 2a (2026-06-09): message loop runs clean; view created
+> `CMIGApp::Run()` (the MFC message pump) now runs cleanly instead of busy-spinning
+> or crashing:
+> - `MsgWaitForMultipleObjects` (compat_winuser.h) returned 0 (=WAIT_OBJECT_0, the
+>   first 3D event) -> Run looped forever on `Inst3d::OnKeyInput`. It now calls
+>   `bob_msg_wait` (bob_video.cpp): pump SDL events + `SDL_Delay(3)` + return
+>   WAIT_TIMEOUT, so Run takes its idle path at ~0% CPU.
+> - That idle path (`CMIGApp::OnIdle`) dereferences `RDialog::m_pView` (the CMIGView),
+>   which nothing had created -> segfault. InitInstance's `#if BOB_LINUX` bridge now
+>   also creates the view: `CMIGView::CreateObject()` (DYNCREATE factory; the ctor is
+>   protected and sets `RDialog::m_pView=this`) and sets `m_currentpage=1`.
+>
+> Result: `BOB_RUN_INIT=1 ./bob` boots fully and sits in its real message loop,
+> idle, at 0% CPU, no crash (default ./bob still exits 0). **Still not visible:** the
+> on-screen window + UI need the next layer — `CMIGView::OnInitialUpdate` (creates the
+> map dialog + scrollbars), the 2D GDI/DDraw rendering path for the menu/map UI, and
+> the game's UI state machine to advance (and, for 3D scenes, `View3d`→SetDriverAndMode
+> opening the SDL/GL window). NEXT (Phase 2b): drive OnInitialUpdate + a real SDL
+> window for the MFC main view + begin the 2D blit/GDI rendering so the menu draws.
+
 > ## PHASE 1.5 DONE (2026-06-09): PE resource loader — InitInstance COMPLETES
 > `compat/bob_resources.cpp` (new) is a minimal Win32 PE resource loader. The
 > game's UI strings/dialogs live in a resource-only DLL (`boblang.dll`, ~650KB,

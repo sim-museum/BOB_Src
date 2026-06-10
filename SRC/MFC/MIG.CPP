@@ -466,12 +466,18 @@ BOOL CMIGApp::InitInstance()
 		return FALSE;
 #if BOB_LINUX
 	// Linux port: the compat ProcessShellCommand() doesn't yet run the MFC
-	// doc/view flow (OnFileNew -> OpenDocumentFile), so no CMainFrame gets
-	// created and m_pMainWnd stays NULL. Create the frame here so the rest of
-	// InitInstance (window show + 3D + GDI bring-up) has a live main window.
-	// The doc/view plumbing is the next subsystem; this is the headless bridge.
+	// doc/view flow (OnFileNew -> OpenDocumentFile), so no CMainFrame/CMIGView
+	// get created. Create them here so the rest of InitInstance and the Run()
+	// message loop have a live main window + view. The CMIGView ctor sets
+	// RDialog::m_pView (which CMIGApp::OnIdle dereferences each idle tick).
 	if (m_pMainWnd == NULL)
 		m_pMainWnd = new CMainFrame;
+	if (RDialog::m_pView == NULL) {
+		CMIGView::CreateObject();        // DYNCREATE factory (ctor is protected);
+		                                 // the ctor sets RDialog::m_pView = this
+		if (RDialog::m_pView)
+			RDialog::m_pView->m_currentpage = 1; // OnInitialUpdate would set this
+	}
 #endif
 //	Rtestsh1::tmpinst=new Inst3d;
 //	if (!Rtestsh1::tmpview)

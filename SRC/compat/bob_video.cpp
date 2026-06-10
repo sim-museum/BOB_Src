@@ -88,6 +88,18 @@ static void pump_events(void)
 	}
 }
 
+/* Message-loop wait, called from MsgWaitForMultipleObjects (compat_winuser.h).
+   Pumps SDL events and yields the CPU briefly so CMIGApp::Run() doesn't busy-spin.
+   Returns WAIT_TIMEOUT (0x102) -- a real window-message queue wired to SDL events
+   is the next step. */
+extern "C" unsigned long bob_msg_wait(unsigned long dwMilliseconds)
+{
+	pump_events();
+	/* yield: ~3ms when the caller intended to wait, 0 when it polled (timeout 0) */
+	if (dwMilliseconds != 0) SDL_Delay(3);
+	return 0x00000102; /* WAIT_TIMEOUT */
+}
+
 /* ============================ object structs ============================== */
 struct GLSurface7 {
 	IDirectDrawSurface7Vtbl* lpVtbl;
