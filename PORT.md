@@ -1,5 +1,48 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCOPE (2026-06-09): Phase 2c — what actually drives the UI (corrected)
+> Investigation overturned the earlier assumption that the menu needs a Win32/GDI
+> message backend. **The main game UI (main menu, map screen, briefings) renders
+> through the Lib3D 3D/overlay pipeline, NOT GDI:** a periodic timer drives the game
+> "move cycle", a per-view draw thread renders the current overlay screen, and the
+> frame is presented via `ScreenSwap` — which is already GL-backed (Phase 2b). The
+> GDI `RDialog`/`CR*` control system (RDIALOG.CPP, RBUTTONC.CPP — `SetDIBitsToDevice`
+> /`ExtTextOut`/`BitBlt`) is a **separate, deferrable** subsystem used only for the
+> config/options dialogs.
+>
+> **The render loop (STUB3D.CPP / 3dcode.cpp / OVERLAY.CPP):**
+> `Mast3d` ctor: `timeSetEvent(StaticTimeProc, TIME_PERIODIC)` (211) → `DoMoveCycle`
+> (game logic, sets the `doneframe` event). Each `View3d` (created via MakeInteractive
+> → `SetDriverAndMode`, STUB3D:1031 → opens the SDL/GL window) spawns
+> `AfxBeginThread(drawloop,…)` (910). `View3d::drawloop` (1524) waits on `doneframe`,
+> calls `Three_Dee.render` → `OverLay.ProcessUIScreen` (renders the current screen
+> `pCurScr` via Lib3D Begin/Draw/End) → `g_lpLib3d->ScreenSwap()` (1601) → GL present.
+>
+> **The real blockers (all stubbed):**
+> 1. **Threads** — `AfxBeginThread` returns NULL (afxwin.h:1086) → the draw thread
+>    never runs. Need a real `AfxBeginThread` → pthread running the `AFX_THREADPROC`,
+>    plus a minimal `CWinThread`.
+> 2. **Multimedia timer** — `timeSetEvent` is a no-op (mmsystem.h:188) → `DoMoveCycle`
+>    never fires. Need a periodic timer thread invoking the `LPTIMECALLBACK`.
+> 3. **Win32 events / sync** — `doneframe` and `Master_3d.htable` (the move-cycle ↔
+>    draw-thread ↔ message-loop handshake) use CreateEvent/SetEvent/WaitForSingleObject
+>    /MsgWaitForMultipleObjects. Need real pthread-cond/semaphore-backed events so the
+>    threads synchronise instead of busy-returning.
+> 4. **Trigger the first view/screen** — after InitInstance nothing creates a `View3d`
+>    or sets the initial overlay screen (`OverLay.SetToUIScreen(...)`). Find/hook the
+>    normal front-end entry so the main menu screen is selected and a View3d opens.
+> 5. **(Overlaps Phase 3) fill the Lib3D GL render methods** — `BeginScene/Clear/
+>    SetRenderState/SetTextureStageState/DrawPrimitiveVB/textures` are Phase-1 no-ops,
+>    so `ProcessUIScreen` currently draws nothing → a blank present. Real DX7→GL
+>    fixed-function translation (Phase 3) turns the blank window into the actual menu.
+>
+> **Path to a visible menu:** Phase 2c (threads + timers + events + trigger view/screen)
+> → the SDL/GL window opens and the overlay render loop spins, presenting frames
+> (blank until Phase 3). Phase 3 (fill GL rendering) → the menu/map pixels appear.
+> Concurrency note: this introduces real multithreading (draw thread ∥ move cycle);
+> the Win32 event handshake must be faithfully mapped to avoid races. The GDI RDialog
+> backend remains a later, independent phase (config dialogs only).
+
 > ## PHASE 2b (2026-06-09): present pipeline proven (window shows surface pixels)
 > Implemented and **verified** the path both 2D (DDraw blits/locks) and 3D pixels
 > reach the screen through: `present_surface()` in bob_video.cpp uploads a surface's
