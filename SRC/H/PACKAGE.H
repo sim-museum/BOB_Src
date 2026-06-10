@@ -272,7 +272,9 @@ struct	Profile
 		int			Max();
 		operator	int()	{return Max();}
 //DEADCODE DAW 26/01/00 		operator	++();
- 		Free();
+ 		void	Free();		/* BOB_LINUX: was implicit-int (no return type); the
+ 		                       missing return is UB that -O3 miscompiled into
+ 		                       dropping the if(pointer) null guard -> null deref. */
 		Squad*		Find(int	squadnum);
 		bool		AllInStatus(PackageStatus);
 		bool		AnyInStatus(PackageStatus);

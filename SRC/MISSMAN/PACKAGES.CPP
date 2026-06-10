@@ -218,7 +218,7 @@ int	Profile::SquadListRef::Max()
 		return 0;
 }
 
-Profile::SquadListRef::Free()
+void	Profile::SquadListRef::Free()
 {
 	if (pointer)
 		SquadList::squadsizes[pointer->squadronsizeentry].remove(pointer);
