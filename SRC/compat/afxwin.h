@@ -510,7 +510,14 @@ public:
     DWORD GetExStyle() const { return 0; }
     CScrollBar* GetScrollBarCtrl(int) const { return NULL; }
     void  ModifyStyle(DWORD, DWORD, UINT = 0) {}
+#if BOB_LINUX
+    /* Linux port: return a shared no-op CDC (not NULL) so callers that deref the
+       returned DC -- e.g. IconDescUI::LoadInstances(*pdc) in InitInstance -- have
+       a valid object. A real GDI backend replaces this. */
+    CDC* GetDC() { static CDC s_stubDC; return &s_stubDC; }
+#else
     CDC* GetDC() { return NULL; }
+#endif
     int  ReleaseDC(CDC*) { return 1; }
     BOOL EnableWindow(BOOL = TRUE) { return TRUE; }
     CWnd* SetFocus() { return NULL; }

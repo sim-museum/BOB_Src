@@ -464,6 +464,15 @@ BOOL CMIGApp::InitInstance()
 	// Dispatch commands specified on the command line
 	if (!ProcessShellCommand(cmdInfo))
 		return FALSE;
+#if BOB_LINUX
+	// Linux port: the compat ProcessShellCommand() doesn't yet run the MFC
+	// doc/view flow (OnFileNew -> OpenDocumentFile), so no CMainFrame gets
+	// created and m_pMainWnd stays NULL. Create the frame here so the rest of
+	// InitInstance (window show + 3D + GDI bring-up) has a live main window.
+	// The doc/view plumbing is the next subsystem; this is the headless bridge.
+	if (m_pMainWnd == NULL)
+		m_pMainWnd = new CMainFrame;
+#endif
 //	Rtestsh1::tmpinst=new Inst3d;
 //	if (!Rtestsh1::tmpview)
 //	{

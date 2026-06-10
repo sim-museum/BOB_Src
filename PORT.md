@@ -1,5 +1,20 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## MILESTONE (2026-06-09): full init runs; reaches game-DATA boundary cleanly
+> With a headless main window (`new CMainFrame` for `m_pMainWnd`) and a stub `CDC`
+> from `CWnd::GetDC()`, **`CMIGApp::InitInstance()` now runs its ENTIRE init
+> sequence as real game code** and reaches the game's own data-load stage:
+> `InitInstance → Master_3d.Init → Mast3d::MainInit → fileman::InitFileSystem →
+> makerootdirlist` → **`Error::SayAndQuit("Can't find ROOTS.DIR")`**. This is the
+> game's *intended* error path for absent data — `ROOTS.DIR` and the BoB data
+> archives are **not in this source-only repo**. `SayAndQuit` now prints the fatal
+> message and `_exit(1)`s on Linux (MessageBox is a stub; and it must not run C++
+> static teardown, which would hit the never-initialised `Sound::ShutDownSound`).
+> So `BOB_RUN_INIT=1 ./bob` exits **cleanly with "Can't find ROOTS.DIR" (exit 1)**,
+> no segfault. **The port is functionally sound up to the asset boundary**; supply
+> the game data files next to a `bob` working dir to proceed into the game proper.
+> (Default `./bob` with no env still exits 0.)
+
 > ## RUNTIME MAP (2026-06-09): `CMIGApp::InitInstance()` now driven; boundary located
 > The MFC boot path is wired and exercising real game code. `bob_main.cpp` calls
 > the C-linkage hook `bob_init_instance()` (MIG.CPP, `#if BOB_LINUX`) →
