@@ -99,6 +99,18 @@ static int resolve_nocase(const char *filepath, char *resolved, size_t resolvedS
 	strncpy(resolved, out, resolvedSize-1); resolved[resolvedSize-1]='\0'; return 0;
 }
 
+/* Path resolver for std stream users (BIStream/BOStream in bstream.h) that bypass
+   fopen_nocase: maps Windows '\' / drive-absolute / case to a real Linux path.
+   Always fills `out` with the best-effort resolved-or-mapped path. */
+extern "C" int bob_resolve_path(const char *in, char *out, unsigned long outsz) {
+	if (!in || !out || outsz == 0) return 0;
+	out[0] = '\0';
+	int rc = resolve_nocase(in, out, (size_t)outsz);
+	if (getenv("BOB_TRACE_FOPEN"))
+		fprintf(stderr, "[resolve] [%s] -> [%s] rc=%d\n", in, out, rc);
+	return out[0] ? 1 : 0;
+}
+
 extern "C" FILE *fopen_nocase(const char *filepath, const char *mode) {
 	if (!filepath || !mode) return NULL;
 	static const int trace = getenv("BOB_TRACE_FOPEN") ? 1 : 0;

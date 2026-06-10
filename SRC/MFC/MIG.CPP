@@ -570,9 +570,13 @@ BOOL CMIGApp::InitInstance()
 	// just a view + the render methods. Kept as a documented probe; default and
 	// BOB_RUN_INIT runs are unaffected.
 	if (getenv("BOB_BOOT_FRONTEND")) {
-		fprintf(stderr, "[boot] front-end probe: ShutDownMapWorld + Inst3d + View3d"
-		                " (needs a loaded campaign; see MIG.CPP note)...\n");
-		Persons4::ShutDownMapWorld();
+		// Load a saved campaign first: CFiling::LoadGame -> bis>>Miss_Man, which
+		// runs ShutDownMapWorld + reads the campaign/battlefields + StartUpMapWorld,
+		// giving Inst3d's LoadSetPiece a valid world. Then open the 3D view.
+		const char* save = getenv("BOB_SAVE"); if (!save || !*save) save = "Package.dat";
+		fprintf(stderr, "[boot] CFiling::LoadGame(\"%s\")...\n", save);
+		bool ok = CFiling::LoadGame(save);
+		fprintf(stderr, "[boot] LoadGame -> %d\n", (int)ok);
 		Inst3d* inst = new Inst3d;
 		View3d* view = new View3d(inst, m_pMainWnd->m_hWnd, m_pMainWnd);
 		view->MakeInteractive(WinMode::WIN);

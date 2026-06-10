@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ROUTE (a) progress (2026-06-10): std-stream paths fixed; blocked on fileman fake-file
+> Chose the campaign/in-game-map route (renders through the GL pipeline). Found the
+> load entry: `CFiling::LoadGame(fname)` → `BIStream bis(...); bis>>Miss_Man` (the
+> full campaign deserialise incl. ShutDownMapWorld/StartUpMapWorld). The `BOB_BOOT_FRONTEND`
+> probe now calls `CFiling::LoadGame("Package.dat")` before `new Inst3d`.
+>
+> **Fixed (committable, general):** `BIStream`/`BOStream` (BSTREAM.H) derive from
+> std `ifstream`/`ofstream` and opened the **raw path** — Windows `\`/drive-absolute/
+> case never resolved. Added `bob_resolve_path` (bob_stubs.cpp, exposing the nocase
+> resolver) and routed both stream ctors through it. (Needed for ALL std-stream file
+> access, not just saves.)
+>
+> **BLOCKER — fileman fake-file global-state bug.** Save files are opened via
+> `fakefile(FIL_SAVEGAMEDIR, name)` + `namenumberedfile`, which build the path in
+> shared globals (`namedirdir`/`pathname`/`assumefakedir`, FILEMAN.CPP:262/934). The
+> `Package.dat` path comes out corrupted at the FRONT: bytes `EE E9` replace `\P`
+> (→ `[??rogram Files\…\savegame\Package.dat]`), so it isn't drive-absolute and the
+> `BOB_DRIVE_C` map misses → `LoadGame→0` → `new Inst3d` crashes (no world).
+> Diagnostic finding: the SAME fake mechanism renders a CLEAN path for another fake
+> file (`radscrpt.bin`: `pathnameptr=\Program Files\…\savegame\radscrpt.bin`), and the
+> corrupted `Package.dat` call **doesn't even take the fake branch** — so the
+> `fakefile→namenumberedfile` global fake-state is being lost/clobbered between the
+> two calls (fragile globals; plausibly disturbed now the move-cycle timer thread runs
+> concurrently — Phase 2c). NEXT: make the fake-file path construction robust/atomic
+> (or bypass it for saves), then `bis>>Miss_Man` (the large save-deserialise) is the
+> step after. Default `./bob` (exit 0) and `BOB_RUN_INIT=1` unaffected.
+
 > ## PHASE 2c-A (2026-06-10): front-end trigger wired; first frame blocked on CAMPAIGN
 > The front-end view trigger is wired as an opt-in probe (`BOB_BOOT_FRONTEND`,
 > MIG.CPP end-of-InitInstance): the Rtestsh1 pattern `ShutDownMapWorld → new Inst3d

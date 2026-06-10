@@ -24,12 +24,17 @@
 #include	<stdio.h>
 #include	<string.h>
 
+#if defined(BOB_LINUX)
+/* maps Windows '\'/drive-absolute/case paths to a real Linux path (bob_stubs.cpp) */
+extern "C" int bob_resolve_path(const char*, char*, unsigned long);
+#endif
 
 class	BIStream:public	ifstream
 {
 public:
 #if defined(BOB_LINUX)
-CON	BIStream(char* fname): ifstream()	{open(fname,ios::in|ios::binary);}
+/* resolve Windows '\'/drive-absolute/case paths to a real Linux path first */
+CON	BIStream(char* fname): ifstream()	{ char _r[2048]; open(bob_resolve_path(fname,_r,sizeof(_r))?_r:fname,ios::in|ios::binary);}
 #else
 CON	BIStream(char* fname): ifstream()	{open(fname,ios::in+ios::binary);}
 #endif
@@ -66,13 +71,14 @@ public:
 #if defined(BOB_LINUX)
 CON	BOStream(char* fname,Bool blockoverwrite=FALSE):ofstream()
 	{
+		char _r[2048]; const char* path = bob_resolve_path(fname,_r,sizeof(_r))?_r:fname;
 		// emulate MSVC ios::noreplace: when blockoverwrite, fail if file exists
 		if (blockoverwrite)
 		{
-			std::ifstream chk(fname);
+			std::ifstream chk(path);
 			if (chk.good()) { chk.close(); setstate(ios::failbit); return; }
 		}
-		open(fname,ios::out|ios::binary|ios::trunc);
+		open(path,ios::out|ios::binary|ios::trunc);
 	}
 #elif !defined(__WATCOMC__)
 CON	BOStream(char* fname,Bool blockoverwrite=FALSE):ofstream()
