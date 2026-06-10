@@ -237,7 +237,16 @@ typedef TEXTMETRICA TEXTMETRIC, *PTEXTMETRIC, *LPTEXTMETRIC;
 #define WHITEONBLACK  2
 #define COLORONCOLOR  3
 #define HALFTONE      4
-static inline int EnumFontFamiliesExA(HDC, void*, void*, LPARAM, DWORD) { return 0; }
+/* Linux port: invoke the enumeration callback once, reporting that the requested
+   font family exists. CreatePointFont() (MIG.cpp) loops over '\n'-separated font
+   names calling this and only breaks when the callback sets its flag -- a stub
+   that never calls back spins forever. The callback only reads lParam, so passing
+   the logfont back with NULL metrics is sufficient. */
+typedef int (*BOB_FONTENUMPROC)(const void*, const void*, unsigned long, LPARAM);
+static inline int EnumFontFamiliesExA(HDC, void* lpLogfont, void* lpProc, LPARAM lParam, DWORD) {
+    if (lpProc) ((BOB_FONTENUMPROC)lpProc)(lpLogfont, 0, 0, lParam);
+    return 0;
+}
 #define EnumFontFamiliesEx EnumFontFamiliesExA
 
 /* Stock objects */

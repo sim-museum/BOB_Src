@@ -1062,9 +1062,13 @@ struct AFX_MSGMAP { const AFX_MSGMAP* (*pfnGetBaseMap)(); const void* lpEntries;
 /* MFC RAII wait cursor — no-op */
 class CWaitCursor { public: CWaitCursor() {} ~CWaitCursor() {} void Restore() {} };
 
-static inline int AfxLoadString(UINT, LPSTR buf, UINT = 256) { if (buf) buf[0] = 0; return 0; }
-static inline HINSTANCE AfxGetResourceHandle() { return NULL; }
-static inline void AfxSetResourceHandle(HINSTANCE) {}
+/* Resource handle + LoadString backed by the PE resource loader (bob_resources.cpp). */
+extern "C" void* bob_GetResourceHandle(void);
+extern "C" void  bob_SetResourceHandle(void*);
+extern "C" int   bob_load_string(void* h, unsigned id, char* buf, int maxlen);
+static inline int AfxLoadString(UINT id, LPSTR buf, UINT max = 256) { return bob_load_string(bob_GetResourceHandle(), id, buf, (int)max); }
+static inline HINSTANCE AfxGetResourceHandle() { return (HINSTANCE)bob_GetResourceHandle(); }
+static inline void AfxSetResourceHandle(HINSTANCE h) { bob_SetResourceHandle((void*)h); }
 
 /* The global application object (defined by IMPLEMENT'd CWinApp subclass in bob) */
 extern CWinApp* AfxGetApp();

@@ -879,14 +879,16 @@ BOOL FindClose(HANDLE hFindFile);
 typedef void (*FARPROC)(void);
 typedef void (*PROC)(void);
 
+#ifdef __cplusplus
+extern "C" void* bob_LoadLibrary(const char* path);
+#else
+extern void* bob_LoadLibrary(const char* path);
+#endif
 static inline HMODULE LoadLibraryA(LPCSTR lpLibFileName) {
-    (void)lpLibFileName;
-    /* Linux port: no Windows DLLs. The game's language resources (boblang.dll)
-       need a real PE resource loader (next subsystem) -- faking a non-NULL
-       handle here lets init past the load check but feeds empty resource data
-       into a font-setup error spin (MIG.CPP for(;;)). So keep the clean fatal
-       until PE resources are implemented. */
-    return NULL;
+    /* Linux port: no Windows DLLs, but resource-only DLLs (e.g. boblang.dll) are
+       parsed by the PE resource loader in compat/bob_resources.cpp. The returned
+       handle backs LoadString/FindResource via AfxGetResourceHandle. */
+    return (HMODULE)bob_LoadLibrary(lpLibFileName);
 }
 #define LoadLibrary LoadLibraryA
 static inline BOOL FreeLibrary(HMODULE hLibModule) { (void)hLibModule; return TRUE; }

@@ -402,9 +402,14 @@ void AFX_CDECL CString::Format(LPCTSTR lpszFormat, ...)
 	va_end(argList);
 }
 
-/* ---- resource string load (stub: no string table on Linux yet) ----------- */
-BOOL CString::LoadString(UINT /*nID*/)
+/* ---- resource string load: RT_STRING from the loaded boblang.dll --------- */
+extern "C" void* bob_GetResourceHandle(void);
+extern "C" int   bob_load_string(void* h, unsigned id, char* buf, int maxlen);
+BOOL CString::LoadString(UINT nID)
 {
+	char tmp[1024];
+	int n = bob_load_string(bob_GetResourceHandle(), nID, tmp, (int)sizeof(tmp));
+	if (n > 0) { *this = tmp; return TRUE; }
 	Empty();
 	return FALSE;
 }

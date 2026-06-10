@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 1.5 DONE (2026-06-09): PE resource loader — InitInstance COMPLETES
+> `compat/bob_resources.cpp` (new) is a minimal Win32 PE resource loader. The
+> game's UI strings/dialogs live in a resource-only DLL (`boblang.dll`, ~650KB,
+> `.rsrc`); `LoadString` (RT_STRING) has ~199 call sites and an empty result used
+> to spin the font setup. The loader parses the PE (DOS→PE→optional→sections), the
+> `IMAGE_RESOURCE_DIRECTORY` tree (Type/Name/Lang), and resolves RVAs — all
+> offset-based (no packed overlays). Wiring:
+> - `LoadLibraryA` (compat_winbase.h) → `bob_LoadLibrary` (opens via `fopen_nocase`
+>   so the `\Program Files\…`/`BOB_DRIVE_C` path resolves, mallocs+parses the image).
+> - `AfxGet/SetResourceHandle` (afxwin.h) → the loaded module.
+> - `CString::LoadString(nID)` (cstring_impl.cpp) → `bob_load_string`: RT_STRING
+>   bundle = `(id>>4)+1`, index `id&15`, WORD-prefixed UTF-16 → Latin-1.
+> - `bob_res_get` for FindResource/LoadResource (bitmaps/custom; secondary).
+>
+> Plus a GDI fix: `EnumFontFamiliesExA` (compat_wingdi.h) now invokes the callback
+> once (reports the font found). `CreatePointFont` (MIG.cpp) loops over font names
+> calling it and only breaks when the callback sets a flag — the never-calling stub
+> spun forever (the `jmp self` hangs seen in InitInstance).
+>
+> Result: `BOB_RUN_INIT=1 BOB_DRIVE_C=… ./bob` now **completes `CMIGApp::InitInstance()`
+> (returns 1)** and enters `CMIGApp::Run()` — the real message pump. It currently
+> busy-spins there: `MsgWaitForMultipleObjects` is stubbed (returns "keys ready"),
+> so Run loops on `Inst3d::OnKeyInput()`. **The on-screen window still needs the MFC
+> view lifecycle** — `SetDriverAndMode` (→ the SDL2 window) is called from
+> `View3d::MakePassive` (STUB3D.CPP:1031), reached only when the doc/view framework
+> creates a 3D view. NEXT (Phase 2): drive the message loop from SDL events + create
+> the CMIGView/View3d so the view setup fires SetDriverAndMode and the window opens;
+> then fill the GL rendering methods.
+
 > ## PHASE 1 DONE (2026-06-09): SDL2/OpenGL backend — 3D + input init pass
 > `compat/bob_video.cpp` (new) implements the DirectDraw7/Direct3D7 COM interfaces
 > (from compat/ddraw.h + d3d.h) as concrete GL-backed objects: each is a
