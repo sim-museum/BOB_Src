@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 2b (2026-06-09): present pipeline proven (window shows surface pixels)
+> Implemented and **verified** the path both 2D (DDraw blits/locks) and 3D pixels
+> reach the screen through: `present_surface()` in bob_video.cpp uploads a surface's
+> bits as a GL texture (RGB565 / BGRA) and draws a fullscreen quad (compat-profile
+> immediate mode, V-flipped DDraw→GL), then `SDL_GL_SwapWindow`. `IDirectDrawSurface7::Flip`
+> now presents the primary's back buffer through it.
+> - Smoke test: `BOB_VID_SMOKETEST=1 ./bob` opens an 800×600 window, fills a back
+>   surface with a gradient, presents 120 frames, and `glReadPixels` confirms it:
+>   `centre pixel rgb=(123,125,123), glErr=0` on GL 4.6 (NVIDIA). The SDL2 window +
+>   GL present is proven end-to-end, independent of the UI flow.
+>
+> **Remaining for the actual menu (the large part of 2D UI bring-up):** the game's
+> menu/map renders through Lib3D's DDraw surfaces + overlay (`OVERLAY.CPP` MapScr →
+> `g_lpLib3d->ScreenSwap`), driven by the MFC paint/update cycle. That cycle never
+> fires because `CWnd` is a headless stub — **no real window, no WM_PAINT/WM_TIMER
+> dispatch**, so the UI state machine sits idle. The core remaining work is a Win32
+> **window + message backend on SDL** (deliver WM_PAINT/mouse/keyboard/timer to the
+> MFC frame/view/dialogs) so the paint cycle runs and the overlay renders into the
+> surfaces this present pipeline already displays. (The `HARDWARE` `DirectDD` DDraw2
+> path appears legacy; the live path is Lib3D's DDraw7, already GL-backed.)
+
 > ## PHASE 2a (2026-06-09): message loop runs clean; view created
 > `CMIGApp::Run()` (the MFC message pump) now runs cleanly instead of busy-spinning
 > or crashing:

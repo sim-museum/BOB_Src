@@ -22,6 +22,7 @@ static std::ios_base::Init __bob_iostream_init __attribute__((init_priority(101)
    C-linkage hook defined in MIG.CPP. Set BOB_RUN_INIT=0 to skip (link-only run). */
 extern "C" int bob_init_instance(void);
 extern "C" int bob_run(void);
+extern "C" int bob_video_smoketest(void);
 
 int main(int argc, char** argv)
 {
@@ -35,6 +36,12 @@ int main(int argc, char** argv)
 	   currently stops at the first main-window use -- no CMainFrame is created yet
 	   (the doc/view framework + window backend is the next subsystem). Opt in with
 	   BOB_RUN_INIT=1 to drive it; the default run stays clean. */
+	if (getenv("BOB_VID_SMOKETEST")) {
+		fprintf(stderr, "  Video smoke test (SDL2 window + GL present)...\n");
+		bob_video_smoketest();
+		_exit(0);
+	}
+
 	if (getenv("BOB_RUN_INIT") && getenv("BOB_RUN_INIT")[0] == '1') {
 		fprintf(stderr, "  Driving CMIGApp::InitInstance()...\n");
 		int ok = bob_init_instance();

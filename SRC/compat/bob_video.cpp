@@ -162,9 +162,68 @@ static HRESULT SURF_AddAttachedSurface(IDirectDrawSurface7* This, IDirectDrawSur
 static HRESULT SURF_GetPixelFormat(IDirectDrawSurface7* This, LPDDPIXELFORMAT pf) {
 	GLSurface7* s = (GLSurface7*)This; if (pf) *pf = s->desc.ddpfPixelFormat; return DD_OK;
 }
+/* Present a surface's pixels to the GL window: upload as a texture and draw a
+   fullscreen quad (compatibility-profile immediate mode), then swap. This is the
+   path 2D (DDraw blits/locks) and, later, 3D both reach the screen through. */
+static GLuint g_presentTex = 0;
+static void present_surface(GLSurface7* s)
+{
+	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) SDL_GL_SwapWindow(g_win); return; }
+	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
+	glBindTexture(GL_TEXTURE_2D, g_presentTex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	if (s->bpp == 16)
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,s->w,s->h,0,GL_RGB,GL_UNSIGNED_SHORT_5_6_5,s->bits);
+	else
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,GL_BGRA,GL_UNSIGNED_BYTE,s->bits);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+
+	glViewport(0,0,g_scrW,g_scrH);
+	glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,1,0,1,-1,1);
+	glMatrixMode(GL_MODELVIEW);  glLoadIdentity();
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);                 /* V flipped: DDraw top-left -> GL bottom-left */
+		glTexCoord2f(0,1); glVertex2f(0,0);
+		glTexCoord2f(1,1); glVertex2f(1,0);
+		glTexCoord2f(1,0); glVertex2f(1,1);
+		glTexCoord2f(0,0); glVertex2f(0,1);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	SDL_GL_SwapWindow(g_win);
+}
+
 static HRESULT SURF_Blt(IDirectDrawSurface7*, LPRECT, IDirectDrawSurface7*, LPRECT, DWORD, LPDDBLTFX) { pump_events(); return DD_OK; }
 static HRESULT SURF_BltFast(IDirectDrawSurface7*, DWORD, DWORD, IDirectDrawSurface7*, LPRECT, DWORD) { return DD_OK; }
-static HRESULT SURF_Flip(IDirectDrawSurface7*, IDirectDrawSurface7*, DWORD) { if (g_win) SDL_GL_SwapWindow(g_win); pump_events(); return DD_OK; }
+static HRESULT SURF_Flip(IDirectDrawSurface7* This, IDirectDrawSurface7*, DWORD) {
+	GLSurface7* s = (GLSurface7*)This;
+	present_surface(s->back ? s->back : s);   /* present the back buffer */
+	pump_events();
+	return DD_OK;
+}
+
+/* Smoke test (BOB_VID_SMOKETEST=1): open the window, fill a back surface with a
+   gradient and present it, to verify the SDL2/GL window + present pipeline works
+   end-to-end independent of the (not-yet-driven) MFC UI flow. */
+extern "C" int bob_video_smoketest(void)
+{
+	ensure_window(800, 600);
+	if (!g_win) { fprintf(stderr, "[vid] smoketest: no window\n"); return 0; }
+	int w=800,h=600;
+	static unsigned short px[800*600];
+	for (int y=0;y<h;y++) for (int x=0;x<w;x++) {
+		int r=(x*31/w), g=(y*63/h), b=((x+y)*31/(w+h));
+		px[y*w+x] = (unsigned short)((r<<11)|(g<<5)|b);
+	}
+	GLSurface7 s; memset(&s,0,sizeof(s)); s.w=w; s.h=h; s.bpp=16; s.bits=px;
+	for (int f=0; f<120; f++) { present_surface(&s); pump_events(); SDL_Delay(16); }
+	unsigned char mid[3]={0,0,0};
+	glReadPixels(w/2,h/2,1,1,GL_RGB,GL_UNSIGNED_BYTE,mid);
+	fprintf(stderr,"[vid] smoketest presented; centre pixel rgb=(%d,%d,%d) glErr=%d\n",
+		mid[0],mid[1],mid[2],(int)glGetError());
+	return 1;
+}
 static HRESULT SURF_SetPalette(IDirectDrawSurface7*, LPDIRECTDRAWPALETTE) { return DD_OK; }
 static HRESULT SURF_SetClipper(IDirectDrawSurface7*, LPDIRECTDRAWCLIPPER) { return DD_OK; }
 static HRESULT SURF_IsLost(IDirectDrawSurface7*) { return DD_OK; }
