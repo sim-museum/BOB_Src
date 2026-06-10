@@ -556,27 +556,27 @@ BOOL CMIGApp::InitInstance()
 //	SetSysColors(2,sysnames,sysvals);
 
 #if BOB_LINUX
-	// Phase 2c step A (opt-in probe, BOB_BOOT_FRONTEND): create a 3D view the
-	// Rtestsh1 way so MakeInteractive -> SetDriverAndMode opens the SDL/GL window
-	// + spawns the draw thread.
+	// Phase 2c step A (opt-in probe, BOB_BOOT_FRONTEND): stand up a fresh campaign
+	// world (the new-campaign / quick-mission path, cf. RFullPanelDial in FULLPANE.CPP)
+	// so Inst3d's LoadSetPiece has valid battlefields, then create a 3D View3d so
+	// MakeInteractive -> SetDriverAndMode opens the SDL/GL window + spawns the draw
+	// thread. Default and BOB_RUN_INIT runs are unaffected.
 	//
-	// FINDING (2026-06-10): this path is blocked on the CAMPAIGN/WORLD subsystem.
-	// `new Inst3d` runs full in-game 3D setup including Persons2::LoadSetPiece,
-	// which iterates the campaign battlefields (FindNextBf) and crashes with no
-	// campaign loaded; ShutDownMapWorld alone is not enough. Loading a campaign
-	// goes through RFullPanelDial::LoadCampaign + Persons4::StartUpMapWorld +
-	// save/load -- a large front-end subsystem. The true pre-campaign main menu is
-	// itself dialog-based. So the first visible frame needs that subsystem, not
-	// just a view + the render methods. Kept as a documented probe; default and
-	// BOB_RUN_INIT runs are unaffected.
+	// FINDING (2026-06-10): the camp assignment -> Campaign::CampaignInit (MISSINIT.CPP
+	// :1188) reaches Todays_Packages.WipeAll() (:1224) and crashes in
+	// SquadListRef::Free -> SquadList::squadsizes[...].remove(): the squad/package
+	// data model isn't stood up in cold-start order. The campaign init is a deep,
+	// interdependent subsystem (campaign -> packages -> squads/squadsizes -> nodes
+	// -> persons -> battlefields) the front-end orchestrates over many ordered steps;
+	// bringing it up is the substantial remaining work for a running map view.
 	if (getenv("BOB_BOOT_FRONTEND")) {
-		// Load a saved campaign first: CFiling::LoadGame -> bis>>Miss_Man, which
-		// runs ShutDownMapWorld + reads the campaign/battlefields + StartUpMapWorld,
-		// giving Inst3d's LoadSetPiece a valid world. Then open the 3D view.
-		const char* save = getenv("BOB_SAVE"); if (!save || !*save) save = "Package.dat";
-		fprintf(stderr, "[boot] CFiling::LoadGame(\"%s\")...\n", save);
-		bool ok = CFiling::LoadGame(save);
-		fprintf(stderr, "[boot] LoadGame -> %d\n", (int)ok);
+		fprintf(stderr, "[boot] new-campaign setup (scramble)...\n");
+		Node_Data.BuildTargetTable();      // set up node/squad tables FIRST (cold start)
+		Node_Data.LoadCleanNodeTree();
+		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
+		Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+		Persons4::StartUpMapWorld();
+		fprintf(stderr, "[boot] world ready; creating View3d...\n");
 		Inst3d* inst = new Inst3d;
 		View3d* view = new View3d(inst, m_pMainWnd->m_hWnd, m_pMainWnd);
 		view->MakeInteractive(WinMode::WIN);
