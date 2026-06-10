@@ -555,7 +555,7 @@ int genTri2(UByte pntCnt,PntDef* pntArray,UByte* orgPolyDesc,UByte*& tL)
 	else
 		if (pntCnt>3)
 		{
-			_asm {int 3}
+			{}
 			totalFans=0;
 		}
 

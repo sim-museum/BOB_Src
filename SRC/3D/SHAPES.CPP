@@ -487,7 +487,7 @@ Bool shapestuff::LoadShape(ShapeNumber shape_number)
 		fprintf(fpdeb,"GET: %d\n",shape_number+DIR_SHAPES);
 #endif
 		ShapeFixing = (ShapeNum)shape_number;								//RJS 23Apr97
-		shapetable[shape_number] = new fileblock(shapefile,FixupShapeFile);
+		shapetable[shape_number] = new fileblock(shapefile,&shapestuff::FixupShapeFile);
 		ret_val = TRUE;
 	}
 	return(ret_val);
@@ -644,7 +644,7 @@ ULong	shapestuff::GetShapeDamageStrength(ShapeNumber shape_number)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupShape
+//Procedure		&shapestuff::FixupShape
 //Author		Paul.   
 //Date			Mon 18 Sep 1995
 //
@@ -763,7 +763,7 @@ void shapestuff::FixInstrData(UByte *& ptr, ULong& datalen)
 /////////////////////////////////////////////////////////////////////////////////
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupStubb
+//Procedure		&shapestuff::FixupStubb
 //Author		Paul.   
 //Date			Thu 12 Oct 1995
 //
@@ -805,7 +805,7 @@ void shapestuff::FixupPolygon(UByte *&dataptr,ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupSmoothPoly
+//Procedure		&shapestuff::FixupSmoothPoly
 //Author		Martin Alderton
 //Date			Tue 7 Nov 1995
 //
@@ -830,7 +830,7 @@ void shapestuff::FixupSmoothPoly(UByte *&dataptr,ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupCreateIPoly
+//Procedure		&shapestuff::FixupCreateIPoly
 //Author		Paul.   
 //Date			Wed 11 Oct 1995
 //
@@ -850,7 +850,7 @@ void shapestuff::FixupCreateIPoly(UByte *&dataptr,ULong &)		//PD 29Nov95
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupCreateBPoly
+//Procedure		&shapestuff::FixupCreateBPoly
 //Author		Paul.   
 //Date			Mon 15 Jan 1996
 //
@@ -871,7 +871,7 @@ void shapestuff::FixupCreateBPoly(UByte *&dataptr,ULong &)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDrawCloud
+//Procedure		&shapestuff::FixupDrawCloud
 //Author		Paul.   
 //Date			Mon 22 Jan 1996
 //
@@ -898,7 +898,7 @@ void shapestuff::FixupDrawCloud(UByteP& dataptr,ULong& )
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoGroup
+//Procedure		&shapestuff::FixupDoGroup
 //LastModified:	PD 27Aug96
 //Author		Paul.   
 //Date			Wed 11 Oct 1995
@@ -919,7 +919,7 @@ void shapestuff::FixupDoGroup(UByte *&dataptr,ULong &)			//PD 29Nov95
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNPoints
+//Procedure		&shapestuff::FixupDoNPoints
 //Author		Paul.   
 //Date			Thu 12 Oct 1995
 //
@@ -944,7 +944,7 @@ void shapestuff::FixupDoNPoints(UByte *&dataptr,ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNTPoints
+//Procedure		&shapestuff::FixupDoNTPoints
 //Author		Martin Alderton
 //Date			Tue 7 Nov 1995
 //
@@ -969,7 +969,7 @@ void shapestuff::FixupDoNTPoints(UByte *&dataptr,ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupGoto
+//Procedure		&shapestuff::FixupGoto
 //Author		Paul.   
 //Date			Mon 16 Oct 1995
 //
@@ -1014,7 +1014,7 @@ void shapestuff::FixupGoto(UByte *&dataptr, ULong &)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupBitsOff
+//Procedure		&shapestuff::FixupBitsOff
 //Author		Paul.   
 //Date			Wed 17 Apr 1996
 //
@@ -1072,7 +1072,7 @@ void shapestuff::FixupBitsOff(UByte *&dataptr, ULong&)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupBitsOffCock
+//Procedure		&shapestuff::FixupBitsOffCock
 //Author		Robert Slater
 //Date			Fri 23 Jan 1998
 //
@@ -1105,7 +1105,7 @@ void shapestuff::FixupBitsOffCock(UByte *&dataptr, ULong&)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDrawBetween
+//Procedure		&shapestuff::FixupDrawBetween
 //Author		Martin Alderton
 //Date			Tue 28 Nov 1995
 //
@@ -1137,7 +1137,7 @@ void shapestuff::FixupDrawBetween(UByte *&dataptr, ULong &)		//PD 29Nov95
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupIfCross
+//Procedure		&shapestuff::FixupIfCross
 //Author		Paul.   
 //Date			Tue 17 Oct 1995
 //
@@ -1167,7 +1167,7 @@ void shapestuff::FixupIfCross(UByte *&dataptr, ULong &)			//PD 29Nov95
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNSubs
+//Procedure		&shapestuff::FixupDoNSubs
 //Author		Paul.   
 //Date			Wed 18 Oct 1995
 //
@@ -1201,7 +1201,7 @@ void shapestuff::FixupDoNSubs(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupNPoint2X
+//Procedure		&shapestuff::FixupNPoint2X
 //Author		Paul.   
 //Date			Wed 18 Oct 1995
 //
@@ -1226,7 +1226,7 @@ void shapestuff::FixupNPoint2X(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupNVec
+//Procedure		&shapestuff::FixupNVec
 //Author		Paul.   
 //Date			Wed 18 Oct 1995
 //
@@ -1264,7 +1264,7 @@ void shapestuff::FixupNAnimVec(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoRelpoly
+//Procedure		&shapestuff::FixupDoRelpoly
 //Author		Paul.   
 //Date			Wed 18 Oct 1995
 //
@@ -1293,7 +1293,7 @@ void shapestuff::FixupDoRelpoly(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupIfCase
+//Procedure		&shapestuff::FixupIfCase
 //Author		Paul.   
 //Date			Wed 18 Oct 1995
 //
@@ -1324,7 +1324,7 @@ void shapestuff::FixupIfCase(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoCollision
+//Procedure		&shapestuff::FixupDoCollision
 //Author		Robert Slater
 //Date			Tue 18 Feb 1997
 //
@@ -1367,7 +1367,7 @@ void shapestuff::FixupDoCollision(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoCaseRange
+//Procedure		&shapestuff::FixupDoCaseRange
 //Author		Robert Slater
 //Date			Mon 3 Mar 1997
 //
@@ -1417,7 +1417,7 @@ void shapestuff::FixupDoCaseRange(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoIfPiloted
+//Procedure		&shapestuff::FixupDoIfPiloted
 //Author		Robert Slater
 //Date			Fri 7 Mar 1997
 //
@@ -1446,7 +1446,7 @@ void shapestuff::FixupDoIfPiloted(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoDrawIPoly
+//Procedure		&shapestuff::FixupDoDrawIPoly
 //Author		Robert Slater
 //Date			Wed 19 Mar 1997
 //
@@ -1474,7 +1474,7 @@ void shapestuff::FixupDoDrawIPoly(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNIVerts
+//Procedure		&shapestuff::FixupDoNIVerts
 //Author		Robert Slater
 //Date			Thu 20 Mar 1997
 //
@@ -1502,7 +1502,7 @@ void shapestuff::FixupDoNIVerts(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoTriFan
+//Procedure		&shapestuff::FixupDoTriFan
 //Author		Robert Slater
 //Date			Thu 27 Mar 1997
 //
@@ -1530,7 +1530,7 @@ void shapestuff::FixupDoTriFan(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoTriZag
+//Procedure		&shapestuff::FixupDoTriZag
 //Author		Robert Slater
 //Date			Thu 27 Mar 1997
 //
@@ -1558,7 +1558,7 @@ void shapestuff::FixupDoTriZag(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoTriFanFlat
+//Procedure		&shapestuff::FixupDoTriFanFlat
 //Author		Robert Slater
 //Date			Wed 16 Apr 1997
 //
@@ -1587,7 +1587,7 @@ void shapestuff::FixupDoTriFanFlat(UByte *&dataptr, ULong &datalen)
 
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoTriZagFlat
+//Procedure		&shapestuff::FixupDoTriZagFlat
 //Author		Robert Slater
 //Date			Wed 16 Apr 1997
 //
@@ -1615,7 +1615,7 @@ void shapestuff::FixupDoTriZagFlat(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoTimerPhase
+//Procedure		&shapestuff::FixupDoTimerPhase
 //Author		Robert Slater
 //Date			Wed 10 Dec 1997
 //
@@ -1662,7 +1662,7 @@ void shapestuff::FixupDoTimerPhase(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoAbsoluteTimerPhase
+//Procedure		&shapestuff::FixupDoAbsoluteTimerPhase
 //Author		Robert Slater
 //Date			Thu 2 Dec 1999
 //
@@ -1709,7 +1709,7 @@ void shapestuff::FixupDoAbsTimerPhase(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoMORPHNPoints
+//Procedure		&shapestuff::FixupDoMORPHNPoints
 //Author		Robert Slater
 //Date			Mon 8 Dec 1997
 //
@@ -1734,7 +1734,7 @@ void shapestuff::FixupDoMorphNPoints(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNIAnimVerts
+//Procedure		&shapestuff::FixupDoNIAnimVerts
 //Author		Robert Slater
 //Date			Tue 13 Jan 1998
 //
@@ -1762,7 +1762,7 @@ void shapestuff::FixupDoNiAnimVerts(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoIfHard3d
+//Procedure		&shapestuff::FixupDoIfHard3d
 //Author		Robert Slater
 //Date			Thu 5 Feb 1998
 //
@@ -1790,7 +1790,7 @@ void shapestuff::FixupDoIfHard3d(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoMorphNSphrs
+//Procedure		&shapestuff::FixupDoMorphNSphrs
 //Author		Robert Slater
 //Date			Thu 5 Feb 1998
 //
@@ -1815,7 +1815,7 @@ void shapestuff::FixupDoMorphNSphrs(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoMorphNSphrsImapd
+//Procedure		&shapestuff::FixupDoMorphNSphrsImapd
 //Author		Robert Slater
 //Date			Thu 5 Feb 1998
 //
@@ -1842,7 +1842,7 @@ void shapestuff::FixupDoMorphNSphrsImapd(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoGunSight
+//Procedure		&shapestuff::FixupDoGunSight
 //Author		Robert Slater
 //Date			Wed 4 Mar 1998
 //
@@ -1867,7 +1867,7 @@ void shapestuff::FixupDoGunSight(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoIfBright
+//Procedure		&shapestuff::FixupDoIfBright
 //Author		Robert Slater
 //Date			Fri 20 Mar 1998
 //
@@ -1901,7 +1901,7 @@ void shapestuff::FixupDoIfBright(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNDeltaPoints
+//Procedure		&shapestuff::FixupDoNDeltaPoints
 //Author		Robert Slater
 //Date			Tue 2 Jun 1998
 //
@@ -1939,7 +1939,7 @@ void shapestuff::FixupDoNDeltaPoints(UByte *&dataptr,ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNSpheres
+//Procedure		&shapestuff::FixupDoNSpheres
 //Author		Robert Slater
 //Date			Mon 13 Jul 1998
 //
@@ -1964,7 +1964,7 @@ void shapestuff::FixupDoNSpheres(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNSpheresImapd
+//Procedure		&shapestuff::FixupDoNSpheresImapd
 //Author		Robert Slater
 //Date			Mon 13 Jul 1998
 //
@@ -2028,7 +2028,7 @@ void shapestuff::FixupDoIncln(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNTriangles
+//Procedure		&shapestuff::FixupDoNTriangles
 //Author		Robert Slater
 //Date			Fri 25 Sep 1998
 //
@@ -2058,7 +2058,7 @@ void shapestuff::FixupDoNTriangles(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNMaxPoints
+//Procedure		&shapestuff::FixupDoNMaxPoints
 //Author		Robert Slater
 //Date			Mon 28 Sep 1998
 //
@@ -2086,7 +2086,7 @@ void shapestuff::FixupDoNMaxPoints(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoAnimTransform
+//Procedure		&shapestuff::FixupDoAnimTransform
 //Author		Robert Slater
 //Date			Wed 10 Nov 1999
 //
@@ -2114,7 +2114,7 @@ void shapestuff::FixupDoAnimTransform(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoTMORPHNPoints
+//Procedure		&shapestuff::FixupDoTMORPHNPoints
 //Author		Robert Slater
 //Date			Mon 8 Dec 1997
 //
@@ -2139,7 +2139,7 @@ void shapestuff::FixupDoTMorphNPoints(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoAnimTransformHP
+//Procedure		&shapestuff::FixupDoAnimTransformHP
 //Author		Robert Slater
 //Date			Fri 3 Dec 1999
 //
@@ -2167,7 +2167,7 @@ void shapestuff::FixupDoAnimTransformHP(UByte *&dataptr, ULong &datalen)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupBitsOffCockUnSet
+//Procedure		&shapestuff::FixupBitsOffCockUnSet
 //Author		Robert Slater
 //Date			Wed 22 Mar 2000
 //
@@ -2199,7 +2199,7 @@ void shapestuff::FixupBitsOffCockUnSet(UByte *&dataptr, ULong&)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupCollisionGoto
+//Procedure		&shapestuff::FixupCollisionGoto
 //Author		Robert Slater
 //Date			Thu 21 Sep 2000
 //
@@ -2243,7 +2243,7 @@ void shapestuff::FixupCollisionGoto(UByte *&dataptr, ULong &)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		FixupDoNormal
+//Procedure		&shapestuff::FixupDoNormal
 //Author		Robert Slater
 //Date			Thu 28 Sep 2000
 //
@@ -2463,182 +2463,182 @@ void shapestuff::settable()
 
 		fixuptable[dosetglassrangeno].skipsize = sizeof(DOSETGLASSRANGE);
 						
-		fixuptable[dopointno].fixrtn = FixupStubb;
-		fixuptable[dopolygonno].fixrtn = FixupPolygon;
-		fixuptable[dosetlcno].fixrtn = FixupStubb;
-		fixuptable[dosetcolourno].fixrtn = FixupStubb;
-		fixuptable[dolineno].fixrtn = FixupStubb;
-		fixuptable[doretno].fixrtn = FixupStubb;
-		fixuptable[doifcrossno].fixrtn = FixupIfCross;
-		fixuptable[dogosubno].fixrtn = FixupGoto;
-		fixuptable[doifeqno].fixrtn = FixupStubb;
-		fixuptable[doifneno].fixrtn = FixupStubb;
-		fixuptable[donopno].fixrtn = FixupStubb;
-		fixuptable[dogroupno].fixrtn = FixupDoGroup;
-		fixuptable[dogotono].fixrtn = FixupGoto;
-		fixuptable[doendno].fixrtn = FixupStubb;
-		fixuptable[dowindowdialno].fixrtn = FixupStubb;			//RJS 07Apr98
-		fixuptable[doattitudeno].fixrtn = FixupStubb;			//RJS 01Apr98
-		fixuptable[dodotno].fixrtn = FixupStubb;
-		fixuptable[doscalesizeno].fixrtn = FixupStubb;			//RJS 03Mar98
-		fixuptable[dogunsightno].fixrtn = FixupDoGunSight;		//RJS 04Mar98
-		fixuptable[dowheelsprayno].fixrtn = FixupStubb;			//RJS 16Mar98
-		fixuptable[doifbrightno].fixrtn = FixupDoIfBright;		//RJS 20Mar98
-		fixuptable[doquikpolyno].fixrtn = FixupPolygon;
-		fixuptable[dofadeenvelopeno].fixrtn = FixupStubb;		//RJS 27Mar98
-		fixuptable[dowhiteoutno].fixrtn = FixupStubb;			//RJS 31Mar98
-		fixuptable[donpointsno].fixrtn = FixupDoNPoints;
-		fixuptable[don4cmpntsno].fixrtn = FixupStubb;
-		fixuptable[do4cmpntno].fixrtn = FixupStubb;
-		fixuptable[dondupvecno].fixrtn = FixupStubb;			//RJS 29May98
-		fixuptable[dondeltapointsno].fixrtn = FixupDoNDeltaPoints;//RJS 02Jun98
-		fixuptable[dodrawsunno].fixrtn = FixupStubb;			//RJS 22Jun98
-		fixuptable[dosetcolour256no].fixrtn = FixupStubb;
-		fixuptable[doswitchno].fixrtn = FixupStubb;
-		fixuptable[dosetcolourallno].fixrtn = FixupStubb;
-		fixuptable[dopoint2xno].fixrtn = FixupStubb;
-		fixuptable[do4cmpt2xno].fixrtn = FixupStubb;
-		fixuptable[doifcaseno].fixrtn = FixupIfCase;
-		fixuptable[donincpntsno].fixrtn = FixupStubb;
-		fixuptable[dotransparentonno].fixrtn = FixupStubb;
-		fixuptable[dotransparentoffno].fixrtn = FixupStubb;
-		fixuptable[dosphereno].fixrtn = FixupStubb;
-		fixuptable[dosmokedonno].fixrtn = FixupStubb;
-		fixuptable[dosmokedoffno].fixrtn = FixupStubb;
-		fixuptable[donormalno].fixrtn = FixupDoNormal;			//RJS 28Sep00
-		fixuptable[dosmoothpolyno].fixrtn = FixupSmoothPoly;
-		fixuptable[dovectorno].fixrtn = FixupStubb;
-		fixuptable[dotransformlightno].fixrtn = FixupStubb;
-		fixuptable[dolshadeonno].fixrtn = FixupStubb;			//RJS 30Apr98
-		fixuptable[dorelpolyno].fixrtn = FixupDoRelpoly;
-		fixuptable[donspheresno].fixrtn = FixupDoNSpheres;		//RJS 13Jul98
-		fixuptable[donspheresimapdno].fixrtn = FixupDoNSpheresImapd;//RJS 13Jul98
-		fixuptable[doweaponoffno].fixrtn = FixupStubb;
-		fixuptable[dodrawreflectpolyno].fixrtn = FixupDoDrawReflectPoly;
-		fixuptable[doresetanimno].fixrtn = FixupStubb;			//RJS 13Nov98
-		fixuptable[dospinno].fixrtn = FixupStubb;				//RJS 17Nov98
-		fixuptable[dosetcolourhno].fixrtn = FixupStubb;
-		fixuptable[doquiksmoothpolyno].fixrtn = FixupSmoothPoly;
-		fixuptable[doreposno].fixrtn = FixupStubb;
-		fixuptable[dodepthcolourno].fixrtn = FixupStubb;
-		fixuptable[dodepthpolyno].fixrtn = FixupStubb;
-		fixuptable[doimagemapno].fixrtn = FixupStubb;
-		fixuptable[docreateipolyno].fixrtn = FixupCreateIPoly;
-		fixuptable[docreateivertno].fixrtn = FixupStubb;
-		fixuptable[dodrawipolyno].fixrtn = FixupDoDrawIPoly;
-		fixuptable[docopyivertno].fixrtn = FixupStubb;
-		fixuptable[dosmthrelpolyno].fixrtn = FixupDoRelpoly;
-		fixuptable[doquikrelpolyno].fixrtn = FixupDoRelpoly;
-		fixuptable[donsubsno].fixrtn = FixupDoNSubs;
-		fixuptable[dobitsofffxno].fixrtn = FixupStubb;			//RJS 15Jan99
-		fixuptable[doondamagedno].fixrtn = FixupStubb;			//RJS 18Jan99
-		fixuptable[dosetmipmapno].fixrtn = FixupStubb;			//RJS 24May99
-		fixuptable[donvecno].fixrtn = FixupNVec;
-		fixuptable[donextvecno].fixrtn = FixupStubb;
-		fixuptable[donpoint2xno].fixrtn = FixupNPoint2X;
-		fixuptable[docallshapeno].fixrtn = FixupStubb;
-		fixuptable[dosmokepntno].fixrtn = FixupStubb;
-		fixuptable[dobitsoffno].fixrtn = FixupBitsOff;				//PD 17Apr96
-		fixuptable[doplumepntno].fixrtn = FixupStubb;
-		fixuptable[doisphereno].fixrtn = FixupDoISphere;			//RJS 03Nov98
-		fixuptable[docreaterpolyno].fixrtn = FixupStubb;
-		fixuptable[dodrawipolysno].fixrtn = FixupStubb;
-		fixuptable[domappolyno].fixrtn = FixupStubb;
-		fixuptable[dosetmapmapno].fixrtn = FixupStubb;
-		fixuptable[do3dbreakno].fixrtn = FixupStubb;
-		fixuptable[docylinderno].fixrtn = FixupStubb;
-		fixuptable[dontpointsno].fixrtn = FixupDoNTPoints;
-		fixuptable[dosetmapoffno].fixrtn = FixupStubb;
-		fixuptable[dosetmappingplanerno].fixrtn = FixupStubb;
-		fixuptable[dosetmappingtanno].fixrtn = FixupStubb;
-		fixuptable[dosmktrailno].fixrtn = FixupStubb;
-		fixuptable[dooffsetpntno].fixrtn = FixupStubb;
-		fixuptable[doicylinderno].fixrtn = FixupDoICylinder;		//RJS 03Nov98
-		fixuptable[dodrawbetweenno].fixrtn = FixupDrawBetween;		//MGA 28Nov95
-		fixuptable[docreatebumppolyno].fixrtn = FixupCreateBPoly;		//PD 15Jan96
-		fixuptable[docopybvertno].fixrtn = FixupStubb;				//PD 15Jan96
-		fixuptable[dodrawbpolyno].fixrtn = FixupStubb;				//PD 15Jan96
-		fixuptable[dodrawrpolyno].fixrtn = FixupStubb;				//PD 28Mar96
-		fixuptable[dodrawopolyno].fixrtn = FixupStubb;				//PD 16Apr96
-	//DeadCode PD 28Mar96 	fixuptable[dodrawcloudno].fixrtn = FixupDrawCloud;			//PD 22Jan96
-		fixuptable[dorealisphereno].fixrtn = FixupStubb;		//RJS 16Dec97
-		fixuptable[dolauncherno].fixrtn = FixupStubb;				//PD 10Jul96
-		fixuptable[dodialno].fixrtn = FixupStubb;					//PD 10Jul96
-		fixuptable[docompassno].fixrtn = FixupStubb;				//PD 10Jul96
-		fixuptable[doiswitchno].fixrtn = FixupStubb;				//PD 10Jul96
-		fixuptable[doinclnno].fixrtn = FixupDoIncln;				//RJS 06Apr99
+		fixuptable[dopointno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dopolygonno].fixrtn = &shapestuff::FixupPolygon;
+		fixuptable[dosetlcno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosetcolourno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dolineno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doretno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doifcrossno].fixrtn = &shapestuff::FixupIfCross;
+		fixuptable[dogosubno].fixrtn = &shapestuff::FixupGoto;
+		fixuptable[doifeqno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doifneno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[donopno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dogroupno].fixrtn = &shapestuff::FixupDoGroup;
+		fixuptable[dogotono].fixrtn = &shapestuff::FixupGoto;
+		fixuptable[doendno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dowindowdialno].fixrtn = &shapestuff::FixupStubb;			//RJS 07Apr98
+		fixuptable[doattitudeno].fixrtn = &shapestuff::FixupStubb;			//RJS 01Apr98
+		fixuptable[dodotno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doscalesizeno].fixrtn = &shapestuff::FixupStubb;			//RJS 03Mar98
+		fixuptable[dogunsightno].fixrtn = &shapestuff::FixupDoGunSight;		//RJS 04Mar98
+		fixuptable[dowheelsprayno].fixrtn = &shapestuff::FixupStubb;			//RJS 16Mar98
+		fixuptable[doifbrightno].fixrtn = &shapestuff::FixupDoIfBright;		//RJS 20Mar98
+		fixuptable[doquikpolyno].fixrtn = &shapestuff::FixupPolygon;
+		fixuptable[dofadeenvelopeno].fixrtn = &shapestuff::FixupStubb;		//RJS 27Mar98
+		fixuptable[dowhiteoutno].fixrtn = &shapestuff::FixupStubb;			//RJS 31Mar98
+		fixuptable[donpointsno].fixrtn = &shapestuff::FixupDoNPoints;
+		fixuptable[don4cmpntsno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[do4cmpntno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dondupvecno].fixrtn = &shapestuff::FixupStubb;			//RJS 29May98
+		fixuptable[dondeltapointsno].fixrtn = &shapestuff::FixupDoNDeltaPoints;//RJS 02Jun98
+		fixuptable[dodrawsunno].fixrtn = &shapestuff::FixupStubb;			//RJS 22Jun98
+		fixuptable[dosetcolour256no].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doswitchno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosetcolourallno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dopoint2xno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[do4cmpt2xno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doifcaseno].fixrtn = &shapestuff::FixupIfCase;
+		fixuptable[donincpntsno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dotransparentonno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dotransparentoffno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosphereno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosmokedonno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosmokedoffno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[donormalno].fixrtn = &shapestuff::FixupDoNormal;			//RJS 28Sep00
+		fixuptable[dosmoothpolyno].fixrtn = &shapestuff::FixupSmoothPoly;
+		fixuptable[dovectorno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dotransformlightno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dolshadeonno].fixrtn = &shapestuff::FixupStubb;			//RJS 30Apr98
+		fixuptable[dorelpolyno].fixrtn = &shapestuff::FixupDoRelpoly;
+		fixuptable[donspheresno].fixrtn = &shapestuff::FixupDoNSpheres;		//RJS 13Jul98
+		fixuptable[donspheresimapdno].fixrtn = &shapestuff::FixupDoNSpheresImapd;//RJS 13Jul98
+		fixuptable[doweaponoffno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dodrawreflectpolyno].fixrtn = &shapestuff::FixupDoDrawReflectPoly;
+		fixuptable[doresetanimno].fixrtn = &shapestuff::FixupStubb;			//RJS 13Nov98
+		fixuptable[dospinno].fixrtn = &shapestuff::FixupStubb;				//RJS 17Nov98
+		fixuptable[dosetcolourhno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doquiksmoothpolyno].fixrtn = &shapestuff::FixupSmoothPoly;
+		fixuptable[doreposno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dodepthcolourno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dodepthpolyno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doimagemapno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[docreateipolyno].fixrtn = &shapestuff::FixupCreateIPoly;
+		fixuptable[docreateivertno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dodrawipolyno].fixrtn = &shapestuff::FixupDoDrawIPoly;
+		fixuptable[docopyivertno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosmthrelpolyno].fixrtn = &shapestuff::FixupDoRelpoly;
+		fixuptable[doquikrelpolyno].fixrtn = &shapestuff::FixupDoRelpoly;
+		fixuptable[donsubsno].fixrtn = &shapestuff::FixupDoNSubs;
+		fixuptable[dobitsofffxno].fixrtn = &shapestuff::FixupStubb;			//RJS 15Jan99
+		fixuptable[doondamagedno].fixrtn = &shapestuff::FixupStubb;			//RJS 18Jan99
+		fixuptable[dosetmipmapno].fixrtn = &shapestuff::FixupStubb;			//RJS 24May99
+		fixuptable[donvecno].fixrtn = &shapestuff::FixupNVec;
+		fixuptable[donextvecno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[donpoint2xno].fixrtn = &shapestuff::FixupNPoint2X;
+		fixuptable[docallshapeno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosmokepntno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dobitsoffno].fixrtn = &shapestuff::FixupBitsOff;				//PD 17Apr96
+		fixuptable[doplumepntno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doisphereno].fixrtn = &shapestuff::FixupDoISphere;			//RJS 03Nov98
+		fixuptable[docreaterpolyno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dodrawipolysno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[domappolyno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosetmapmapno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[do3dbreakno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[docylinderno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dontpointsno].fixrtn = &shapestuff::FixupDoNTPoints;
+		fixuptable[dosetmapoffno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosetmappingplanerno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosetmappingtanno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dosmktrailno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dooffsetpntno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[doicylinderno].fixrtn = &shapestuff::FixupDoICylinder;		//RJS 03Nov98
+		fixuptable[dodrawbetweenno].fixrtn = &shapestuff::FixupDrawBetween;		//MGA 28Nov95
+		fixuptable[docreatebumppolyno].fixrtn = &shapestuff::FixupCreateBPoly;		//PD 15Jan96
+		fixuptable[docopybvertno].fixrtn = &shapestuff::FixupStubb;				//PD 15Jan96
+		fixuptable[dodrawbpolyno].fixrtn = &shapestuff::FixupStubb;				//PD 15Jan96
+		fixuptable[dodrawrpolyno].fixrtn = &shapestuff::FixupStubb;				//PD 28Mar96
+		fixuptable[dodrawopolyno].fixrtn = &shapestuff::FixupStubb;				//PD 16Apr96
+	//DeadCode PD 28Mar96 	fixuptable[dodrawcloudno].fixrtn = &shapestuff::FixupDrawCloud;			//PD 22Jan96
+		fixuptable[dorealisphereno].fixrtn = &shapestuff::FixupStubb;		//RJS 16Dec97
+		fixuptable[dolauncherno].fixrtn = &shapestuff::FixupStubb;				//PD 10Jul96
+		fixuptable[dodialno].fixrtn = &shapestuff::FixupStubb;					//PD 10Jul96
+		fixuptable[docompassno].fixrtn = &shapestuff::FixupStubb;				//PD 10Jul96
+		fixuptable[doiswitchno].fixrtn = &shapestuff::FixupStubb;				//PD 10Jul96
+		fixuptable[doinclnno].fixrtn = &shapestuff::FixupDoIncln;				//RJS 06Apr99
 
-		fixuptable[docollisionno].fixrtn = FixupDoCollision;		//RJS 18Feb97
-		fixuptable[doanimationno].fixrtn = FixupStubb;				//RJS 18Feb97
-		fixuptable[dodamageno].fixrtn = FixupStubb;					//RJS 18Feb97
-		fixuptable[doeffectno].fixrtn = FixupStubb;					//RJS 18Feb97
-		fixuptable[dodrawstationno].fixrtn = FixupStubb;			//RJS 28Feb97
-		fixuptable[docaserangeno].fixrtn = FixupDoCaseRange;		//RJS 03Mar97
-		fixuptable[doifpilotedno].fixrtn = FixupDoIfPiloted;		//RJS 07Mar97
-		fixuptable[donivertsno].fixrtn = FixupDoNIVerts;			//RJS 20Mar97
+		fixuptable[docollisionno].fixrtn = &shapestuff::FixupDoCollision;		//RJS 18Feb97
+		fixuptable[doanimationno].fixrtn = &shapestuff::FixupStubb;				//RJS 18Feb97
+		fixuptable[dodamageno].fixrtn = &shapestuff::FixupStubb;					//RJS 18Feb97
+		fixuptable[doeffectno].fixrtn = &shapestuff::FixupStubb;					//RJS 18Feb97
+		fixuptable[dodrawstationno].fixrtn = &shapestuff::FixupStubb;			//RJS 28Feb97
+		fixuptable[docaserangeno].fixrtn = &shapestuff::FixupDoCaseRange;		//RJS 03Mar97
+		fixuptable[doifpilotedno].fixrtn = &shapestuff::FixupDoIfPiloted;		//RJS 07Mar97
+		fixuptable[donivertsno].fixrtn = &shapestuff::FixupDoNIVerts;			//RJS 20Mar97
 	
-		fixuptable[dotrifanno].fixrtn = FixupDoTriFan;				//RJS 27Mar97
-		fixuptable[dotrizagno].fixrtn = FixupDoTriZag;				//RJS 27Mar97
+		fixuptable[dotrifanno].fixrtn = &shapestuff::FixupDoTriFan;				//RJS 27Mar97
+		fixuptable[dotrizagno].fixrtn = &shapestuff::FixupDoTriZag;				//RJS 27Mar97
 
-		fixuptable[dotrifanflatno].fixrtn = FixupDoTriFanFlat;		//RJS 16Apr97
-		fixuptable[dotrizagflatno].fixrtn = FixupDoTriZagFlat;		//RJS 16Apr97
+		fixuptable[dotrifanflatno].fixrtn = &shapestuff::FixupDoTriFanFlat;		//RJS 16Apr97
+		fixuptable[dotrizagflatno].fixrtn = &shapestuff::FixupDoTriZagFlat;		//RJS 16Apr97
 
-		fixuptable[dostretchpointno].fixrtn = FixupStubb;			//RJS 09Jun97
-		fixuptable[dostretchmapno].fixrtn = FixupStubb;				//RJS 09Jun97
+		fixuptable[dostretchpointno].fixrtn = &shapestuff::FixupStubb;			//RJS 09Jun97
+		fixuptable[dostretchmapno].fixrtn = &shapestuff::FixupStubb;				//RJS 09Jun97
 
-		fixuptable[doflipvectorno].fixrtn = FixupStubb;				//RJS 06Aug97
-		fixuptable[doflipnvecno].fixrtn = FixupStubb;				//RJS 06Aug97
+		fixuptable[doflipvectorno].fixrtn = &shapestuff::FixupStubb;				//RJS 06Aug97
+		fixuptable[doflipnvecno].fixrtn = &shapestuff::FixupStubb;				//RJS 06Aug97
 
-		fixuptable[domorphpointno].fixrtn = FixupStubb;				//RJS 04Dec97
-		fixuptable[domorphnpointsno].fixrtn = FixupDoMorphNPoints;	//RJS 08Dec97
-		fixuptable[douserealtimeno].fixrtn = FixupStubb;			//RJS 10Dec97
-		fixuptable[dotimerphaseno].fixrtn = FixupDoTimerPhase;		//RJS 10Dec97
-		fixuptable[dobloblineno].fixrtn = FixupStubb;				//RJS 15Dec97
-		fixuptable[dowheeldamageno].fixrtn = FixupStubb;
-		fixuptable[dolightno].fixrtn = FixupStubb;				//RJS 17Dec97
-		fixuptable[lightdatano].fixrtn = FixupStubb;			//RJS 19Dec97
-		fixuptable[dolighttimerno].fixrtn = FixupStubb;			//RJS 06Jan98
-		fixuptable[dodigitdialno].fixrtn = FixupStubb;			//RJS 08Jan98
-		fixuptable[donianimvertsno].fixrtn = FixupDoNiAnimVerts;//RJS 13Jan98
-		fixuptable[dosetluminosityno].fixrtn = FixupStubb;		//RJS 20Jan98
-		fixuptable[dobitsoffcockno].fixrtn = FixupBitsOffCock;	//RJS 23Jan98
-		fixuptable[domorphsphereno].fixrtn = FixupStubb;		//RJS 27Jan98
-		fixuptable[domorphcylinderimapdno].fixrtn = FixupStubb;	//RJS 19Nov98
-		fixuptable[doheathazeno].fixrtn = FixupStubb;		//RJS 30Jan98
+		fixuptable[domorphpointno].fixrtn = &shapestuff::FixupStubb;				//RJS 04Dec97
+		fixuptable[domorphnpointsno].fixrtn = &shapestuff::FixupDoMorphNPoints;	//RJS 08Dec97
+		fixuptable[douserealtimeno].fixrtn = &shapestuff::FixupStubb;			//RJS 10Dec97
+		fixuptable[dotimerphaseno].fixrtn = &shapestuff::FixupDoTimerPhase;		//RJS 10Dec97
+		fixuptable[dobloblineno].fixrtn = &shapestuff::FixupStubb;				//RJS 15Dec97
+		fixuptable[dowheeldamageno].fixrtn = &shapestuff::FixupStubb;
+		fixuptable[dolightno].fixrtn = &shapestuff::FixupStubb;				//RJS 17Dec97
+		fixuptable[lightdatano].fixrtn = &shapestuff::FixupStubb;			//RJS 19Dec97
+		fixuptable[dolighttimerno].fixrtn = &shapestuff::FixupStubb;			//RJS 06Jan98
+		fixuptable[dodigitdialno].fixrtn = &shapestuff::FixupStubb;			//RJS 08Jan98
+		fixuptable[donianimvertsno].fixrtn = &shapestuff::FixupDoNiAnimVerts;//RJS 13Jan98
+		fixuptable[dosetluminosityno].fixrtn = &shapestuff::FixupStubb;		//RJS 20Jan98
+		fixuptable[dobitsoffcockno].fixrtn = &shapestuff::FixupBitsOffCock;	//RJS 23Jan98
+		fixuptable[domorphsphereno].fixrtn = &shapestuff::FixupStubb;		//RJS 27Jan98
+		fixuptable[domorphcylinderimapdno].fixrtn = &shapestuff::FixupStubb;	//RJS 19Nov98
+		fixuptable[doheathazeno].fixrtn = &shapestuff::FixupStubb;		//RJS 30Jan98
 
-		fixuptable[doifhard3dno].fixrtn = FixupDoIfHard3d;		//RJS 04Feb98
-		fixuptable[domorphnsphrsno].fixrtn = FixupDoMorphNSphrs;		//RJS 05Feb98
-		fixuptable[domorphnsphrsimapdno].fixrtn = FixupDoMorphNSphrsImapd;		//RJS 05Feb98
+		fixuptable[doifhard3dno].fixrtn = &shapestuff::FixupDoIfHard3d;		//RJS 04Feb98
+		fixuptable[domorphnsphrsno].fixrtn = &shapestuff::FixupDoMorphNSphrs;		//RJS 05Feb98
+		fixuptable[domorphnsphrsimapdno].fixrtn = &shapestuff::FixupDoMorphNSphrsImapd;		//RJS 05Feb98
 
-		fixuptable[dosetposeno].fixrtn = FixupStubb;			//RJS 10Nov99
-		fixuptable[doenvanimno].fixrtn = FixupStubb;			//RJS 10Nov99
-		fixuptable[dontrianglesno].fixrtn = FixupDoNTriangles;	//RJS 10Nov99
-		fixuptable[donmaxpointsno].fixrtn = FixupDoNMaxPoints;	//RJS 10Nov99
-		fixuptable[doanimmatrixno].fixrtn = FixupStubb;			//RJS 10Nov99
+		fixuptable[dosetposeno].fixrtn = &shapestuff::FixupStubb;			//RJS 10Nov99
+		fixuptable[doenvanimno].fixrtn = &shapestuff::FixupStubb;			//RJS 10Nov99
+		fixuptable[dontrianglesno].fixrtn = &shapestuff::FixupDoNTriangles;	//RJS 10Nov99
+		fixuptable[donmaxpointsno].fixrtn = &shapestuff::FixupDoNMaxPoints;	//RJS 10Nov99
+		fixuptable[doanimmatrixno].fixrtn = &shapestuff::FixupStubb;			//RJS 10Nov99
 
-		fixuptable[dobitsoffblokeno].fixrtn = FixupStubb;		//RJS 10Nov99
-		fixuptable[dosetmaterialtypeno].fixrtn = FixupStubb;	//RJS 10Nov99
-		fixuptable[doanimtransformno].fixrtn = FixupDoAnimTransform;//RJS 10Nov99
-		fixuptable[docreatemirrorno].fixrtn = FixupStubb;		//RJS 18Nov99
-		fixuptable[dointeractivehitboxno].fixrtn = FixupStubb;	//RJS 19Nov99
-		fixuptable[dotmorphnpointsno].fixrtn = FixupDoTMorphNPoints;//RJS 01Dec99
-		fixuptable[doabsolutetimerphaseno].fixrtn = FixupDoAbsTimerPhase;//RJS 02Dec99
-		fixuptable[doanimtransformhpno].fixrtn = FixupDoAnimTransformHP;//RJS 03Dec99
-		fixuptable[doontimerno].fixrtn = FixupStubb;			//RJS 10Dec99
-		fixuptable[dofingerno].fixrtn = FixupStubb;				//RJS 13Dec99
-		fixuptable[donanimvecno].fixrtn = FixupNAnimVec;
-		fixuptable[doambientonno].fixrtn = FixupStubb;			//RJS 23Feb00
-		fixuptable[doambientoffno].fixrtn = FixupStubb;			//RJS 23Feb00
-		fixuptable[domovegunno].fixrtn = FixupStubb;			//RJS 28Feb00
-		fixuptable[dobitsoffcockunsetno].fixrtn = FixupBitsOffCockUnSet;//RJS 22Mar00
-		fixuptable[doneedleno].fixrtn = FixupStubb;				//RJS 12Apr00
-		fixuptable[dosetblendtypeno].fixrtn = FixupStubb;		//RJS 16May00
-		fixuptable[dousefadeenvelopeno].fixrtn = FixupStubb;	//RJS 18May00
-		fixuptable[dorestorealphano].fixrtn = FixupStubb;		//RJS 18May00
-		fixuptable[docollisiongotono].fixrtn = FixupCollisionGoto;//RJS 21Sep00
-		fixuptable[dosetzbiasno].fixrtn = FixupStubb;			//RJS 21Sep00
+		fixuptable[dobitsoffblokeno].fixrtn = &shapestuff::FixupStubb;		//RJS 10Nov99
+		fixuptable[dosetmaterialtypeno].fixrtn = &shapestuff::FixupStubb;	//RJS 10Nov99
+		fixuptable[doanimtransformno].fixrtn = &shapestuff::FixupDoAnimTransform;//RJS 10Nov99
+		fixuptable[docreatemirrorno].fixrtn = &shapestuff::FixupStubb;		//RJS 18Nov99
+		fixuptable[dointeractivehitboxno].fixrtn = &shapestuff::FixupStubb;	//RJS 19Nov99
+		fixuptable[dotmorphnpointsno].fixrtn = &shapestuff::FixupDoTMorphNPoints;//RJS 01Dec99
+		fixuptable[doabsolutetimerphaseno].fixrtn = &shapestuff::FixupDoAbsTimerPhase;//RJS 02Dec99
+		fixuptable[doanimtransformhpno].fixrtn = &shapestuff::FixupDoAnimTransformHP;//RJS 03Dec99
+		fixuptable[doontimerno].fixrtn = &shapestuff::FixupStubb;			//RJS 10Dec99
+		fixuptable[dofingerno].fixrtn = &shapestuff::FixupStubb;				//RJS 13Dec99
+		fixuptable[donanimvecno].fixrtn = &shapestuff::FixupNAnimVec;
+		fixuptable[doambientonno].fixrtn = &shapestuff::FixupStubb;			//RJS 23Feb00
+		fixuptable[doambientoffno].fixrtn = &shapestuff::FixupStubb;			//RJS 23Feb00
+		fixuptable[domovegunno].fixrtn = &shapestuff::FixupStubb;			//RJS 28Feb00
+		fixuptable[dobitsoffcockunsetno].fixrtn = &shapestuff::FixupBitsOffCockUnSet;//RJS 22Mar00
+		fixuptable[doneedleno].fixrtn = &shapestuff::FixupStubb;				//RJS 12Apr00
+		fixuptable[dosetblendtypeno].fixrtn = &shapestuff::FixupStubb;		//RJS 16May00
+		fixuptable[dousefadeenvelopeno].fixrtn = &shapestuff::FixupStubb;	//RJS 18May00
+		fixuptable[dorestorealphano].fixrtn = &shapestuff::FixupStubb;		//RJS 18May00
+		fixuptable[docollisiongotono].fixrtn = &shapestuff::FixupCollisionGoto;//RJS 21Sep00
+		fixuptable[dosetzbiasno].fixrtn = &shapestuff::FixupStubb;			//RJS 21Sep00
 
-		fixuptable[dosetglassrangeno].fixrtn = FixupStubb;
+		fixuptable[dosetglassrangeno].fixrtn = &shapestuff::FixupStubb;
 	}
 	else
 		_Error.EmitSysErr(__FILE__":Could not generate FixUpTable!");//RJS 01Dec97

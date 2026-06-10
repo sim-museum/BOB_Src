@@ -347,28 +347,7 @@ CDataBlock::CDataBlock(CCacheBlock* pCacheBlk,ULong dlen,UByte* pData)
 	pCacheBlock->pData=this;
 	dataLen=dlen;
 	UByte*	pDataDest=&pDataStart;
-	_asm {
-	push	esi
-	push	edi
-	push	ecx
-	mov		esi,pData;
-    mov		edi,pDataDest;
-    mov		ebx,dlen
-    mov		ecx,4
-    sub		ecx,edi
-    and		ecx,3
-    sub		ebx,ecx
-    rep		movsb
-    mov		ecx,ebx
-    shr		ecx,2
-    rep		movsd
-    and		ebx,3
-    mov		ecx,ebx
-    rep		movsb
-	pop		ecx
-	pop		edi
-	pop		esi
-	}
+	memcpy(pDataDest, pData, dlen);
 }
 
 //-----------------------------------------------------------------------------
@@ -418,28 +397,7 @@ CPrimaryDB::CPrimaryDB(CPrimaryCB* pCacheBlk,ULong dlen,UByte* pData)
 	pCacheBlock->pData=this;
 	dataLen=dlen;
 	UByte*	pDataDest=&pDataStart;
-	_asm {
-	push	esi
-	push	edi
-	push	ecx
-	mov		esi,pData;
-    mov		edi,pDataDest;
-    mov		ebx,dlen
-    mov		ecx,4
-    sub		ecx,edi
-    and		ecx,3
-    sub		ebx,ecx
-    rep		movsb
-    mov		ecx,ebx
-    shr		ecx,2
-    rep		movsd
-    and		ebx,3
-    mov		ecx,ebx
-    rep		movsb
-	pop		ecx
-	pop		edi
-	pop		esi
-	}
+	memcpy(pDataDest, pData, dlen);
 }
 
 //-----------------------------------------------------------------------------
@@ -553,12 +511,7 @@ void CDecompressData::CalculateNVecs(	PointDef* pntArray,UByte* polyDesc,
 			a.k=(b.i*c.j)-(b.j*c.i);
 
 			Float mag=(a.i*a.i)+(a.j*a.j)+(a.k*a.k);
-			_asm
-			{
-				fld mag;
-				fsqrt;
-				fstp mag;
-			}
+			mag=sqrt(mag);
 			if (mag!=0.)
 			{
 				a.i/=mag; a.j/=mag; a.k/=mag;
@@ -587,12 +540,7 @@ void CDecompressData::CalculateNVecs(	PointDef* pntArray,UByte* polyDesc,
 			Float mag=	(fanPointNormal.ni*fanPointNormal.ni)+
 						(fanPointNormal.nj*fanPointNormal.nj)+
 						(fanPointNormal.nk*fanPointNormal.nk);
-			_asm
-			{
-				fld mag;
-				fsqrt;
-				fstp mag;
-			}
+			mag=sqrt(mag);
 			fanPointNormal.ni/=mag;
 			fanPointNormal.nj/=mag;
 			fanPointNormal.nk/=mag;
@@ -3754,12 +3702,7 @@ inline void CDecompressData::SetLVector(SLong li,SLong lj,SLong lk)
 	wLk=double(lk);
 	//normalise
 	double mag=wLi*wLi+wLj*wLj+wLk*wLk;
-	_asm
-	{
-		fld mag;
-		fsqrt;
-		fstp mag;
-	}
+	mag=sqrt(mag);
 	wLi/=mag;
 	wLj/=mag;
 	wLk/=mag;
@@ -3781,12 +3724,7 @@ void CDecompressData::AverageNormals(SLong pntCnt,PointDef* pntArray,UByte* renu
 		if (n.count!=1){
 			//re-normalise the averaged vector...
 			Float mag=n.ni*n.ni+n.nj*n.nj+n.nk*n.nk;
-			_asm
-			{
-				fld mag;
-				fsqrt;
-				fstp mag;
-			}
+			mag=sqrt(mag);
 			n.ni/=mag;
 			n.nj/=mag;
 			n.nk/=mag;
@@ -4834,10 +4772,10 @@ void CRectangularCache::AddSeekRequest(SeekStrucP pNewSeek)
 #if !defined(NDEBUG)
 	for (int i=pNewSeek->numBlocks-1;i>=0;i--)
 		if (pNewSeek->blockPtrs[i]==NULL)
-			_asm {int 3}
+			{}
 #endif
 	if (pNewSeek->numBlocks+pNewSeek->firstSkipIndex>64)
-		_asm {int 3}
+		{}
 
 	if (masterseeklist==NULL)
 	{
@@ -4954,7 +4892,7 @@ void CRectangularCache::ProcessSeekRequestsNF()
 //		blockIndices=(blockIndices+1)&0x7;
 //		blockNumbers[blockIndices]=*(ULong*)pSrcData;
 //		if (blockNumbers[blockIndices]==0x344417)
-//			_asm {int 3}
+//			{}
 		pDecomp->Skip(pSrcData,pThisReq->firstSkipIndex);
 
 //		inCopy=true;
@@ -4963,7 +4901,7 @@ void CRectangularCache::ProcessSeekRequestsNF()
 //			blockIndices=(blockIndices+1)&0x7;
 //			blockNumbers[blockIndices]=*(ULong*)pSrcData;
 //			if (blockNumbers[blockIndices]==0x344417)
-//				_asm {int 3}
+//				{}
 			UByte* pdst=(UByte*)pThisReq->blockPtrs[i];
 			pDecomp->CopyData(pSrcData,pdst);
 		}
