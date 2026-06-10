@@ -1,5 +1,83 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ROADMAP TO FULL FUNCTIONALITY (2026-06-10)
+> Synthesised from the whole port. Ordered to de-risk early and avoid the
+> cold-start trap (see Principles). "First playable flight" is the mid-point goal;
+> full functionality (campaign + UI + sound + MP) is a multi-month effort.
+>
+> ### Hard-won principles (apply throughout)
+> 1. **Faithful compat, not game edits.** Implement Win32/DX/MFC as GL/SDL/pthread-
+>    backed shims so SRC/* stays byte-faithful. Every working subsystem so far does this.
+> 2. **`-fpack-struct=1` is for GAME structs only; it must never reach libc/libstdc++
+>    types.** It mis-lays struct stat, std::ifstream, std::locale → memory corruption.
+>    This bug class recurred 3× (Lib3D fstream, struct stat, BIStream). FIX SYSTEMATICALLY
+>    (Phase 0), don't keep patching reactively — the current campaign-init wall smells
+>    like the same class (same-TU SquadListRef pointer read inconsistency).
+> 3. **Drive the game's NATURAL flow; don't cold-start subsystems.** Cherry-picking init
+>    calls fails because subsystems are deeply interdependent and ordered by the real
+>    flow (the campaign-data-model wall is exactly this). Get the front-end driving the
+>    init instead of replicating it.
+> 4. **Iterate by running against the real install** (BOB_DRIVE_C); fix at the first
+>    real failure. Keep default `./bob` clean (exit 0) and gate experiments by env.
+> 5. **ISO-8859 sources: always `grep -a`.** Two-DDraw-version awareness (Lib3D=DDraw7
+>    live; HARDWARE DirectDD=DDraw2 legacy).
+>
+> ### Phase 0 — Foundational correctness (HIGH LEVERAGE, do first)
+> - Systematise the pack boundary: one mechanism (a system-include prologue/epilogue, or
+>   audit every `<...>`/std include) so libc/std structs are ALWAYS native-packed and a
+>   pragma can't leak into game structs. Verify with size/offset asserts at key structs.
+> - Resolve the campaign-init crash at **disassembly level** (compare `sizeof`/offsets of
+>   Profile/SquadListRef/Package across the WipeAll/ClearPack/Free boundary; look for a
+>   packing/ODR inconsistency). Likely resolves once (2) is airtight. Unblocks the world.
+> - Risk: if it's NOT packing, it's a genuine cold-start ordering bug → defer to Phase 3
+>   (drive via front-end instead).
+>
+> ### Phase 1 — DDraw7/Direct3D7 → OpenGL renderer (LARGEST subsystem)
+> The COM objects exist + present pipeline is verified; fill the no-op methods.
+> - **1a 2D path first:** BeginPoly/EndPoly textured quads, CreateTexture/UploadTexture/
+>   SetTexture (Image_Map MAPDESC → GL; DXT1/3 via S3TC, 16-bit, 8-bit palettised),
+>   2D ortho (LoadIdentity/GiveHint), SetFontColour. → menus/overlay/map draw.
+> - **1b full 3D:** SetRenderState (21 states→GL), the 2-stage SetTextureStageState
+>   **combiner** (the fidelity risk — GL_COMBINE or a small GLSL fixed-pipeline emulator),
+>   WORLD/VIEW/PROJECTION transforms, SetMaterial/SetLight (lighting), vertex buffers +
+>   DrawPrimitiveVB/DrawIndexedPrimitiveVB (FVF: XYZRHW pre-transformed + R3DVERTEX lit),
+>   z-buffer/fog. → landscape, aircraft, cockpit render.
+>
+> ### Phase 2 — Input (DirectInput → SDL)
+> Replace the non-fatal DI stub with real keyboard/mouse/joystick from SDL events feeding
+> the IDirectInputDevice objects (GetDeviceState/GetDeviceData). Needed for menus + flight.
+>
+> ### Phase 3 — Drive the real game flow (brings it together)
+> With render+input live, run the natural sequence and fix at each real failure:
+> front-end main menu → New Campaign (drives campaign-data-model init IN ORDER, sidestepping
+> the cold-start wall) → map screen → mission briefing → **3D flight (FIRST PLAYABLE)** →
+> debrief → campaign progression. Determine early whether the front-end menu renders via the
+> Lib3D overlay (needs a View3d/scene) or the RDialog/GDI path (Phase 5) — it picks the
+> first-screen route.
+>
+> ### Phase 4 — Sound (DirectSound / Miles AIL → OpenAL)
+> Currently stubbed to fail. Back IDirectSound/IDirectSoundBuffer + the Miles calls with
+> OpenAL (samples, positional 3D audio, engine/gun/radio); music (MIDI/streamed) via a
+> software synth or pre-rendered.
+>
+> ### Phase 5 — MFC/GDI config-dialog path (RDialog/CR* controls)
+> A real Win32 window+message backend on SDL + GDI 2D (SetDIBitsToDevice/BitBlt/ExtTextOut/
+> fonts) for the options/config/loadout dialogs. Lower priority — flight works without it.
+>
+> ### Phase 6 — Polish & optional
+> Save/load round-trip (write path via BOStream, already resolver-wired); Smacker intro
+> video; DirectPlay→sockets multiplayer (currently stubbed); resolution/fullscreen;
+> performance; the GETDXVER/registry/locale-DLL niceties.
+>
+> ### Milestones
+> - **M1 First frame on screen:** Phase 0 + Phase 1a + a triggered View3d/screen.
+> - **M2 First playable flight:** + Phase 1b + Phase 2 + Phase 3 to the 3D scene.
+> - **M3 Full single-player:** + Phase 3 campaign loop + Phase 4 sound + Phase 5 dialogs.
+> - **M4 Full functionality:** + Phase 6 (MP, video, polish).
+> Effort: M1 weeks; M2 1–2 months; M3/M4 several months of focused work. The foundation
+> (build/link/run/data/resources/threads/present/file-IO) is complete and not on the
+> critical path.
+
 > ## STATE OF THE PORT (2026-06-10)
 > **Works:** builds + links (32-bit ELF); runs all global ctors; loads the real
 > game data + PE resources (boblang.dll); completes `CMIGApp::InitInstance()`; runs a
