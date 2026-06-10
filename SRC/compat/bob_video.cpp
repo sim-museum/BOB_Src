@@ -110,6 +110,8 @@ struct GLSurface7 {
 	GLSurface7* back;               /* attached back buffer (complex primary) */
 	GLSurface7* zbuf;               /* attached z-buffer */
 	int   isPrimary;
+	GLuint glTex;                   /* GL texture (lazily created for texture surfaces) */
+	int    texDirty;                /* bits changed since last upload (set on Unlock) */
 };
 struct GLClipper  { IDirectDrawClipperVtbl* lpVtbl; HWND hwnd; };
 struct GLPalette  { IDirectDrawPaletteVtbl* lpVtbl; PALETTEENTRY ent[256]; };
@@ -146,7 +148,7 @@ static HRESULT SURF_Lock(IDirectDrawSurface7* This, LPRECT, LPDDSURFACEDESC2 d, 
 	if (d) { *d = s->desc; d->dwWidth=s->w; d->dwHeight=s->h; d->lPitch = s->w*((s->bpp+7)/8); d->lpSurface = s->bits; }
 	return DD_OK;
 }
-static HRESULT SURF_Unlock(IDirectDrawSurface7*, LPRECT) { return DD_OK; }
+static HRESULT SURF_Unlock(IDirectDrawSurface7* This, LPRECT) { ((GLSurface7*)This)->texDirty=1; return DD_OK; }
 static HRESULT SURF_GetAttachedSurface(IDirectDrawSurface7* This, LPDDSCAPS2 caps, IDirectDrawSurface7** out) {
 	GLSurface7* s = (GLSurface7*)This;
 	if (!out) return DDERR_INVALIDPARAMS;
@@ -391,27 +393,186 @@ static HRESULT VB_Unlock(IDirect3DVertexBuffer7*) { return DD_OK; }
 static HRESULT VB_ProcessVertices(IDirect3DVertexBuffer7*, DWORD, DWORD, DWORD, IDirect3DVertexBuffer7*, DWORD, IDirect3DDevice7*, DWORD) { return DD_OK; }
 static ULONG   VB_Release(IDirect3DVertexBuffer7* This) { GLVB7* vb=(GLVB7*)This; if(vb->data)free(vb->data); free(vb); return 0; }
 
-/* ============================ device methods (Phase 1: no-ops) =========== */
+/* ====================================================================== *
+ * Phase 1a: D3D7 device -> OpenGL, the 2D textured-quad path.             *
+ * The game's Lib3D fills a vertex buffer with R3DTLVERTEX (FVF XYZRHW |   *
+ * DIFFUSE | 1 texcoord set = pre-transformed screen-space quads) and      *
+ * submits DrawPrimitiveVB(TRIANGLEFAN,...). We bind the SetTexture        *
+ * surface as a GL texture, set up screen-space ortho + client arrays from *
+ * the FVF, and glDrawArrays. (3D/XYZ+lit path = Phase 1b.)                *
+ * ====================================================================== */
+
+/* ---- FVF (flexible vertex format) layout ---- */
+#define BFVF_XYZ      0x002
+#define BFVF_XYZRHW   0x004
+#define BFVF_NORMAL   0x010
+#define BFVF_DIFFUSE  0x040
+#define BFVF_SPECULAR 0x080
+#define BFVF_TEXMASK  0xf00
+#define BFVF_TEXSHIFT 8
+struct FvfLayout { int stride, posOff, posComps, colOff, hasCol, texOff, hasTex; };
+static FvfLayout fvf_layout(DWORD fvf) {
+	FvfLayout L; memset(&L,0,sizeof(L)); int o=0;
+	L.posOff=o;
+	if (fvf & BFVF_XYZRHW) { L.posComps=4; o+=16; }
+	else if (fvf & BFVF_XYZ) { L.posComps=3; o+=12; }
+	if (fvf & BFVF_NORMAL) o+=12;
+	if (fvf & BFVF_DIFFUSE) { L.colOff=o; L.hasCol=1; o+=4; }
+	if (fvf & BFVF_SPECULAR) o+=4;
+	int ntex=(fvf & BFVF_TEXMASK)>>BFVF_TEXSHIFT;
+	if (ntex>0) { L.texOff=o; L.hasTex=1; o+=8; }  /* first 2-float set */
+	o += (ntex>1)?(ntex-1)*8:0;
+	L.stride=o;
+	return L;
+}
+
+/* ---- device GL state ---- */
+static GLSurface7* g_devTex[8] = {0};   /* SetTexture per stage */
+static int g_devAlphaBlend = 0;
+static GLenum gl_blend(DWORD d) {        /* D3DBLEND -> GL */
+	switch(d){ case 1:return GL_ZERO; case 2:return GL_ONE; case 3:return GL_SRC_COLOR;
+		case 4:return GL_SRC_ALPHA; case 5:return GL_ONE_MINUS_SRC_ALPHA;
+		case 6:return GL_DST_ALPHA; case 7:return GL_ONE_MINUS_DST_ALPHA;
+		case 9:return GL_DST_COLOR; case 10:return GL_ONE_MINUS_DST_COLOR; default:return GL_ONE; }
+}
+static GLenum g_srcBlend=GL_SRC_ALPHA, g_dstBlend=GL_ONE_MINUS_SRC_ALPHA;
+
+/* Upload a (16-bit / 32-bit) DDraw texture surface to its GL texture. */
+static void upload_texture(GLSurface7* s) {
+	if (!s || !s->bits || s->w<=0 || s->h<=0) return;
+	if (!s->glTex) glGenTextures(1, &s->glTex);
+	glBindTexture(GL_TEXTURE_2D, s->glTex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	const DDPIXELFORMAT& pf = s->desc.ddpfPixelFormat;
+	if (s->bpp==16) {
+		GLenum type=GL_UNSIGNED_SHORT_5_6_5, fmt=GL_RGB;
+		if (pf.dwRGBAlphaBitMask==0x8000) { type=GL_UNSIGNED_SHORT_1_5_5_5_REV; fmt=GL_BGRA; }
+		else if (pf.dwRGBAlphaBitMask==0xF000) { type=GL_UNSIGNED_SHORT_4_4_4_4_REV; fmt=GL_BGRA; }
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,fmt,type,s->bits);
+	} else {
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,GL_BGRA,GL_UNSIGNED_BYTE,s->bits);
+	}
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+	s->texDirty=0;
+}
+
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_BeginScene(IDirect3DDevice7*) { pump_events(); return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD, D3DCOLOR, D3DVALUE, DWORD) { return D3D_OK; }
-static HRESULT DEV_SetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7) { return D3D_OK; }
+static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
+	if (!g_win) return D3D_OK;
+	GLbitfield m=0;
+	if (flags & 0x1 /*D3DCLEAR_TARGET*/) {
+		glClearColor(((col>>16)&0xff)/255.f,((col>>8)&0xff)/255.f,(col&0xff)/255.f,((col>>24)&0xff)/255.f);
+		m|=GL_COLOR_BUFFER_BIT;
+	}
+	if (flags & 0x2 /*D3DCLEAR_ZBUFFER*/) { glClearDepth(z); m|=GL_DEPTH_BUFFER_BIT; }
+	if (m) glClear(m);
+	return D3D_OK;
+}
+static HRESULT DEV_SetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7 vp) {
+	if (g_win && vp) glViewport(vp->dwX, vp->dwY, vp->dwWidth, vp->dwHeight);
+	return D3D_OK;
+}
 static HRESULT DEV_GetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7 v) {
 	if (v) { v->dwX=0; v->dwY=0; v->dwWidth=g_scrW; v->dwHeight=g_scrH; v->dvMinZ=0; v->dvMaxZ=1; } return D3D_OK;
 }
 static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7, DWORD) { return D3D_OK; }
-static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE, DWORD) { return D3D_OK; }
+static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWORD v) {
+	/* D3DRENDERSTATE_*: SRCBLEND=19, DESTBLEND=20, ALPHABLENDENABLE=27, ZENABLE=7, ZWRITEENABLE=14 */
+	switch ((int)st) {
+		case 27: g_devAlphaBlend=(int)v; if(g_win){ if(v) glEnable(GL_BLEND); else glDisable(GL_BLEND);} break;
+		case 19: g_srcBlend=gl_blend(v); break;
+		case 20: g_dstBlend=gl_blend(v); break;
+		default: break;
+	}
+	return D3D_OK;
+}
 static HRESULT DEV_GetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE, LPDWORD v) { if(v)*v=0; return D3D_OK; }
 static HRESULT DEV_SetTextureStageState(IDirect3DDevice7*, DWORD, D3DTEXTURESTAGESTATETYPE, DWORD) { return D3D_OK; }
 static HRESULT DEV_GetTextureStageState(IDirect3DDevice7*, DWORD, D3DTEXTURESTAGESTATETYPE, LPDWORD v) { if(v)*v=0; return D3D_OK; }
 static HRESULT DEV_SetTransform(IDirect3DDevice7*, D3DTRANSFORMSTATETYPE, LPD3DMATRIX) { return D3D_OK; }
-static HRESULT DEV_SetTexture(IDirect3DDevice7*, DWORD, LPDIRECTDRAWSURFACE7) { return D3D_OK; }
+static HRESULT DEV_SetTexture(IDirect3DDevice7*, DWORD stage, LPDIRECTDRAWSURFACE7 tex) {
+	if (stage<8) g_devTex[stage]=(GLSurface7*)tex;
+	return D3D_OK;
+}
 static HRESULT DEV_SetMaterial(IDirect3DDevice7*, LPD3DMATERIAL7) { return D3D_OK; }
 static HRESULT DEV_SetLight(IDirect3DDevice7*, DWORD, LPD3DLIGHT7) { return D3D_OK; }
 static HRESULT DEV_LightEnable(IDirect3DDevice7*, DWORD, BOOL) { return D3D_OK; }
-static HRESULT DEV_DrawPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE, LPDIRECT3DVERTEXBUFFER7, DWORD, DWORD, DWORD) { return D3D_OK; }
-static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE, LPDIRECT3DVERTEXBUFFER7, DWORD, DWORD, LPWORD, DWORD, DWORD) { return D3D_OK; }
+
+/* Render `count` verts of the FVF buffer `base` (already at start offset) as `prim`. */
+static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
+	if (!g_win || !base || !count) return;
+	FvfLayout L = fvf_layout(fvf);
+	if (!L.stride) return;
+	int is2D = (fvf & BFVF_XYZRHW) != 0;     /* pre-transformed screen-space */
+
+	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
+	if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);   /* DDraw screen coords: y down */
+	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
+	glDisable(GL_DEPTH_TEST);
+	if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
+
+	GLSurface7* t=g_devTex[0];
+	if (t) { if (t->texDirty || !t->glTex) upload_texture(t);
+		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
+		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE); }
+	else glDisable(GL_TEXTURE_2D);
+
+	glEnableClientState(GL_VERTEX_ARRAY);
+	/* XYZRHW stored as 4 floats; pass x,y(,z) — use 2 comps for 2D screen pos */
+	glVertexPointer(is2D?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
+		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
+	if (L.hasTex && t) { glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glTexCoordPointer(2, GL_FLOAT, L.stride, base + L.texOff); }
+
+	GLenum mode = (prim==1)?GL_POINTS : (prim==2)?GL_LINES : (prim==6)?GL_TRIANGLE_FAN :
+	              (prim==5)?GL_TRIANGLE_STRIP : GL_TRIANGLES;
+	glDrawArrays(mode, 0, count);
+
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glMatrixMode(GL_PROJECTION); glPopMatrix();
+	glMatrixMode(GL_MODELVIEW); glPopMatrix();
+}
+
+static HRESULT DEV_DrawPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, LPDIRECT3DVERTEXBUFFER7 vb, DWORD start, DWORD count, DWORD) {
+	GLVB7* v=(GLVB7*)vb; if(!v||!v->data) return D3D_OK;
+	FvfLayout L=fvf_layout(v->d.dwFVF);
+	draw_fvf(prim, (const unsigned char*)v->data + (size_t)start*L.stride, count, v->d.dwFVF);
+	return D3D_OK;
+}
+static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, LPDIRECT3DVERTEXBUFFER7 vb, DWORD start, DWORD numv, LPWORD idx, DWORD idxcount, DWORD) {
+	GLVB7* v=(GLVB7*)vb; if(!v||!v->data||!idx) return D3D_OK;
+	FvfLayout L=fvf_layout(v->d.dwFVF);
+	/* draw via indices: build is overkill for now; draw the indexed verts directly */
+	const unsigned char* base=(const unsigned char*)v->data + (size_t)start*L.stride;
+	int is2D=(v->d.dwFVF & BFVF_XYZRHW)!=0;
+	if(!g_win||!L.stride) return D3D_OK;
+	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
+	if(is2D) glOrtho(0,g_scrW,g_scrH,0,-1,1);
+	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity(); glDisable(GL_DEPTH_TEST);
+	if(g_devAlphaBlend){glEnable(GL_BLEND);glBlendFunc(g_srcBlend,g_dstBlend);}
+	GLSurface7* t=g_devTex[0];
+	if(t){ if(t->texDirty||!t->glTex) upload_texture(t); glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex); glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);} else glDisable(GL_TEXTURE_2D);
+	glEnableClientState(GL_VERTEX_ARRAY); glVertexPointer(is2D?2:3,GL_FLOAT,L.stride,base+L.posOff);
+	if(L.hasCol){glEnableClientState(GL_COLOR_ARRAY); glColorPointer(GL_BGRA,GL_UNSIGNED_BYTE,L.stride,base+L.colOff);}
+	if(L.hasTex&&t){glEnableClientState(GL_TEXTURE_COORD_ARRAY); glTexCoordPointer(2,GL_FLOAT,L.stride,base+L.texOff);}
+	GLenum mode=(prim==1)?GL_POINTS:(prim==2)?GL_LINES:(prim==6)?GL_TRIANGLE_FAN:(prim==5)?GL_TRIANGLE_STRIP:GL_TRIANGLES;
+	glDrawElements(mode, idxcount, GL_UNSIGNED_SHORT, idx);
+	glDisableClientState(GL_VERTEX_ARRAY); glDisableClientState(GL_COLOR_ARRAY); glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
+	return D3D_OK;
+}
+static HRESULT DEV_DrawPrimitive(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, DWORD fvf, LPVOID verts, DWORD count, DWORD) {
+	draw_fvf(prim, (const unsigned char*)verts, count, fvf);
+	return D3D_OK;
+}
 static HRESULT DEV_CreateStateBlock(IDirect3DDevice7*, DWORD, LPDWORD h) { if(h)*h=1; return D3D_OK; }
 static HRESULT DEV_ApplyStateBlock(IDirect3DDevice7*, DWORD) { return D3D_OK; }
 static HRESULT DEV_EnumTextureFormats(IDirect3DDevice7*, void* cbv, LPVOID arg) {
@@ -482,6 +643,7 @@ static void init_vtbls_once(void)
 	g_devVtbl.SetTransform=DEV_SetTransform; g_devVtbl.SetTexture=DEV_SetTexture;
 	g_devVtbl.SetMaterial=DEV_SetMaterial; g_devVtbl.SetLight=DEV_SetLight; g_devVtbl.LightEnable=DEV_LightEnable;
 	g_devVtbl.DrawPrimitiveVB=DEV_DrawPrimitiveVB; g_devVtbl.DrawIndexedPrimitiveVB=DEV_DrawIndexedPrimitiveVB;
+	g_devVtbl.DrawPrimitive=DEV_DrawPrimitive;
 	g_devVtbl.CreateStateBlock=DEV_CreateStateBlock; g_devVtbl.ApplyStateBlock=DEV_ApplyStateBlock;
 	g_devVtbl.EnumTextureFormats=DEV_EnumTextureFormats; g_devVtbl.GetCaps=DEV_GetCaps;
 	g_devVtbl.GetDirect3D=DEV_GetDirect3D;
@@ -581,6 +743,64 @@ extern "C" HRESULT DirectInputCreateA(HINSTANCE, DWORD, LPDIRECTINPUT* ppDI, IUn
 	init_dinput_once();
 	if (ppDI) *ppDI = &g_theDI;
 	return 0;
+}
+
+/* Phase 1a render smoke test (BOB_RENDER_SMOKETEST=1): exercise the full 2D path
+   through the real D3D7 device API -- create a texture surface + fill it, create a
+   vertex buffer + fill a TLVERTEX quad, then SetTexture + DrawPrimitiveVB(FAN) and
+   present. Verifies the device->GL backend independently of the (not-yet-driven)
+   game overlay. The textured quad covers screen centre over a dark clear. */
+#ifndef DDSCAPS_TEXTURE
+#define DDSCAPS_TEXTURE 0x00001000
+#endif
+extern "C" int bob_render_smoketest(void)
+{
+	ensure_window(800,600);
+	if (!g_win) { fprintf(stderr,"[vid] render smoketest: no window\n"); return 0; }
+	init_vtbls_once();
+	IDirectDraw7* dd=NULL; DirectDrawCreateEx(0,(LPVOID*)&dd,IID_IDirectDraw7,0);
+
+	DDSURFACEDESC2 td; memset(&td,0,sizeof(td)); td.dwSize=sizeof(td);
+	td.dwFlags=DDSD_WIDTH|DDSD_HEIGHT|DDSD_CAPS|DDSD_PIXELFORMAT;
+	td.dwWidth=64; td.dwHeight=64; td.ddsCaps.dwCaps=DDSCAPS_TEXTURE;
+	td.ddpfPixelFormat.dwSize=sizeof(DDPIXELFORMAT); td.ddpfPixelFormat.dwFlags=DDPF_RGB;
+	td.ddpfPixelFormat.dwRGBBitCount=16; td.ddpfPixelFormat.dwRBitMask=0xF800;
+	td.ddpfPixelFormat.dwGBitMask=0x07E0; td.ddpfPixelFormat.dwBBitMask=0x001F;
+	IDirectDrawSurface7* tex=NULL; dd->CreateSurface(&td,&tex,0);
+	DDSURFACEDESC2 lk; memset(&lk,0,sizeof(lk)); lk.dwSize=sizeof(lk);
+	tex->Lock(0,&lk,0,0);
+	unsigned short* px=(unsigned short*)lk.lpSurface;
+	for (int y=0;y<64;y++) for (int x=0;x<64;x++)
+		px[y*64+x] = ((x^y)&8) ? 0xF800 /*red*/ : 0x07E0 /*green*/;   /* RGB565 checker */
+	tex->Unlock(0);
+
+	IDirect3D7* d3d=NULL; dd->QueryInterface(IID_IDirect3D7,(void**)&d3d);
+	IDirect3DDevice7* dev=NULL; d3d->CreateDevice(IID_IDirect3DHALDevice,(LPDIRECTDRAWSURFACE7)tex,&dev);
+
+	struct TLV { float x,y,z,rhw; unsigned argb; float u,v; };
+	D3DVERTEXBUFFERDESC vd; memset(&vd,0,sizeof(vd)); vd.dwSize=sizeof(vd);
+	vd.dwFVF=0x004|0x040|0x100; vd.dwNumVertices=4;   /* XYZRHW|DIFFUSE|TEX1 */
+	IDirect3DVertexBuffer7* vb=NULL; d3d->CreateVertexBuffer(&vd,&vb,0);
+	TLV* v=NULL; DWORD vsz=0; vb->Lock(0,(LPVOID*)&v,&vsz);
+	v[0].x=200;v[0].y=150; v[1].x=600;v[1].y=150; v[2].x=600;v[2].y=450; v[3].x=200;v[3].y=450;
+	for(int i=0;i<4;i++){ v[i].z=0; v[i].rhw=1; v[i].argb=0xffffffff; }
+	v[0].u=0;v[0].v=0; v[1].u=1;v[1].v=0; v[2].u=1;v[2].v=1; v[3].u=0;v[3].v=1;
+	vb->Unlock();
+
+	for (int f=0; f<60; f++) {
+		dev->BeginScene();
+		dev->Clear(0,NULL,0x1,0x00203040,1,0);              /* D3DCLEAR_TARGET, dark */
+		dev->SetRenderState((D3DRENDERSTATETYPE)27,0);      /* ALPHABLENDENABLE off */
+		dev->SetTexture(0,tex);
+		dev->DrawPrimitiveVB((D3DPRIMITIVETYPE)6,vb,0,4,0); /* TRIANGLEFAN */
+		dev->EndScene();
+		SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
+	}
+	unsigned char mid[3]={0,0,0};
+	glReadPixels(400,300,1,1,GL_RGB,GL_UNSIGNED_BYTE,mid);
+	fprintf(stderr,"[vid] render smoketest: centre(400,300) rgb=(%d,%d,%d) [expect red/green checker, not 32,48,64] glErr=%d\n",
+		mid[0],mid[1],mid[2],(int)glGetError());
+	return 1;
 }
 
 #endif /* FF_LINUX */
