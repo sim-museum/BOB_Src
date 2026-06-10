@@ -49,3 +49,18 @@ include_directories(${BOB_SRC}/compat ${BOB_SRC}/H ${BOB_SRC}/h)
 find_package(Threads REQUIRED)
 
 add_subdirectory(SRC)
+
+# --- the `bob` executable -------------------------------------------------
+# A game built around global ctors (the MFC theApp object, static dispatch
+# tables, the BFieldGlobalTable, ...) -> link every module --whole-archive so
+# nothing is dropped for lack of a main()-reachable reference.
+# --allow-multiple-definition: -fcommon tentative defs appear in several TUs.
+set(BOB_MODULE_LIBS
+    bob_compat bob_math bob_lib3d bob_aircraft bob_general bob_files
+    bob_input bob_missman bob_3d bob_ai bob_movecode bob_model
+    bob_hardware bob_comms bob_mfc bob_bfields)
+add_executable(bob ${BOB_SRC}/compat/bob_main.cpp)
+target_link_libraries(bob
+    -Wl,--whole-archive ${BOB_MODULE_LIBS} -Wl,--no-whole-archive
+    -Wl,--allow-multiple-definition
+    Threads::Threads m)

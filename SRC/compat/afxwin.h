@@ -1058,7 +1058,6 @@ class CWaitCursor { public: CWaitCursor() {} ~CWaitCursor() {} void Restore() {}
 static inline int AfxLoadString(UINT, LPSTR buf, UINT = 256) { if (buf) buf[0] = 0; return 0; }
 static inline HINSTANCE AfxGetResourceHandle() { return NULL; }
 static inline void AfxSetResourceHandle(HINSTANCE) {}
-static inline HINSTANCE AfxGetInstanceHandle();
 
 /* The global application object (defined by IMPLEMENT'd CWinApp subclass in bob) */
 extern CWinApp* AfxGetApp();

@@ -68,8 +68,22 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 // does not support dialog nesting or resizing
 // does not necessarily have to be modal though
 
+#if defined(BOB_LINUX)
+#include "bob_mfc_pre.h"	/* F_BATTLE + cstring before stdafx/afxwin */
+#endif
 #include "stdafx.h"
 #include "mig.h"
+#if defined(BOB_LINUX)
+/* worldinc (item base + ITEMSIZE/AIRSTRUCSIZE/etc.) must precede post.h, whose
+   infoitem.h info_itemS() ctor does Status.size=ITEMSIZE */
+class ViewPoint;
+#include "worldinc.h"
+#include "ranges.h"
+#include "package.h"
+#include "missman2.h"
+#include "nodebob.h"
+#include "bob_mfc_post.h"	/* control wrappers + dialog ecosystem */
+#endif
 #include "RMdlDlg.h"
 #include "messages.h"
 #include "fileman.h"
@@ -140,6 +154,14 @@ BEGIN_MESSAGE_MAP(RMdlDlg, CDialog)
 	ON_WM_ERASEBKGND()
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
+
+#if defined(BOB_LINUX)
+/* OnCommandHelp is declared by the rdialmsg.h mixin (in the class body) but
+   rdialmsg.cpp only defines the OTHER mixin handlers — each dialog provides its
+   own OnCommandHelp (RDialog does in RDialog.cpp). For this modal dialog, no
+   context-help routing is needed. */
+LRESULT RMdlDlg::OnCommandHelp(WPARAM, LPARAM) { return 0; }
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 // RMdlDlg message handlers
