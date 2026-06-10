@@ -1,5 +1,63 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCOPE (2026-06-09): DDraw7/Direct3D7 → OpenGL backend
+> The render engine (`Lib3D`, in `SRC/LIB3D/LIB3D.CPP`) is a **DirectX 7
+> fixed-function renderer**. Key insight for a FAITHFUL port: the game calls the
+> DDraw/D3D objects as C++ `p->Method()` on the interfaces declared in
+> `compat/ddraw.h` + `compat/d3d.h`. So the entire backend can live in the **compat
+> layer** — make those interfaces concrete GL-backed C++ classes and implement
+> `DirectDrawCreateEx`/`DirectDrawEnumerateEx` to hand them out. **No LIB3D.CPP
+> edits needed.** A real SDL2 window + GL context replaces the headless stub; the
+> backend can own the window (ignore the MFC `hWnd`).
+>
+> **Call surface (measured across SRC/LIB3D + SRC/3D):**
+> - Lifecycle: `Lib3D::Initialise` (DX-version gate + `DirectDrawEnumerateEx`
+>   driver list + `EnumDisplayModes`), `Lib3D::SetDriverAndMode` (LIB3D.CPP:3521 —
+>   `SetCooperativeLevel`/`SetDisplayMode`, `CreateSurface` primary+back+zbuffer via
+>   complex flip chain, `EnumZBufferFormats`, `QueryInterface(IID_IDirect3D7)`,
+>   `EnumDevices` HAL, `CreateDevice`, `SetViewport`, `CreateClipper` windowed),
+>   `BeginScene` (4236: `SetRenderTarget`,`SetViewport`,`BeginScene`,`Clear` z-only),
+>   `EndScene` (4561: render lists,`EndScene`), `ScreenSwap` (4022: fullscreen
+>   `pDDSP7->Flip` / windowed `pDDSP7->Blt` → **maps to `SDL_GL_SwapWindow`**).
+> - Surfaces (DDraw7): `Lock`/`Unlock`(31/30), `GetSurfaceDesc`(25),
+>   `GetAttachedSurface`/`AddAttachedSurface`, `Blt`(12), `SetPalette`, `GetDC`
+>   (GDI text on 2D surfaces), `Flip`. Primary/back/z = the GL default framebuffer.
+> - D3D7 device: `SetTextureStageState`(193), `SetRenderState`(126 — 21 distinct:
+>   ALPHABLEND/SRC+DESTBLEND, Z ENABLE/FUNC/WRITE/BIAS, LIGHTING/AMBIENT/SPECULAR,
+>   FOG×6, DITHER, CLIPPING, TEXTUREPERSPECTIVE), `SetTransform` WORLD/VIEW/PROJECTION,
+>   `Clear`, `SetTexture`, `SetMaterial`/`SetLight`/`LightEnable`(lighting, ≥6 lights),
+>   `Create/Apply StateBlock`(16), `DrawPrimitiveVB`/`DrawIndexedPrimitiveVB`,
+>   `SetViewport`/`GetViewport`, `EnumTextureFormats`.
+> - Geometry: vertex buffers (`CreateVertexBuffer`, `Lock`/`Unlock`), FVF mix of
+>   **pre-transformed** `XYZRHW`/TLVERTEX (UI/2D → identity MV + screen ortho) and
+>   **untransformed lit** R3DVERTEX (normals → transform+light pipeline); prim types
+>   TRIANGLEFAN / LINELIST / POINTLIST.
+> - Textures: DDraw surfaces w/ `DDSCAPS_TEXTURE`, D3D-managed
+>   (`DDSCAPS2_D3DTEXTUREMANAGE`). Formats **DXT1/DXT3** (→ GL S3TC, direct upload),
+>   RGB565/1555/4444 (→ GL formats), **8-bit palettised** (expanded to RGBA in the
+>   existing Lock/memcpy path). Upload = Lock→convert→Unlock (→ `glTexSubImage`).
+>   2 texture stages; stage states COLOROP/ALPHAOP/ARG1/ARG2 (the **combiner** — the
+>   one real-fidelity risk), MIN/MAG/MIPFILTER, ADDRESS, TEXCOORDINDEX.
+>
+> **Strategy:** GL **compatibility profile (fixed-function)** maps DX7 almost 1:1
+> (glLight/glMaterial/matrix stack/glTexEnv combiners) → fastest to pixels; migrate
+> to a small GLSL fixed-pipeline emulator later if needed.
+>
+> **Phased plan (each independently runnable):**
+> 1. SDL2 window + GL context; `DirectDrawEnumerateEx`/`EnumDevices`/mode-enum report
+>    one HAL driver at native res → `Initialise`+`SetDriverAndMode` succeed.
+> 2. GL-backed `IDirectDraw7`/`IDirectDrawSurface7`/`IDirect3D7`/`IDirect3DDevice7`
+>    objects (primary/back/z = framebuffer). `BeginScene`/`Clear`/`EndScene`/`Flip`
+>    → `glClear`+`SDL_GL_SwapWindow` → **clears to colour on screen (first frame).**
+> 3. Vertex buffers + `DrawPrimitiveVB` + FVF → `glDrawArrays` → **untextured geometry.**
+> 4. Texture create/upload (DXT/16-bit/palettised) + `SetTexture` → **textured world.**
+> 5. Render-state + texture-stage-state translation, transforms, lighting/fog →
+>    **full-fidelity 3D.** Then the 2D DDraw `Blt`/`GetDC` path for UI/text.
+>
+> Estimated ~2–4k lines of GL backend in compat, over several sessions. Milestone 2
+> ("first frame on screen") is the near-term proof point. Dependencies: SDL2 +
+> system OpenGL (libGL), GL_EXT_texture_compression_s3tc for DXT.
+
 > ## MILESTONE (2026-06-09): GAME DATA PIPELINE WORKS — reaches 3D-driver boundary
 > Pointed at a real install (`BOB_DRIVE_C=.../WP/drive_c`, run from the game dir),
 > `BOB_RUN_INIT=1 ./bob` now loads `ROOTS.DIR` + the data archives and runs
