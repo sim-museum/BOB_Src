@@ -18,5 +18,6 @@ add_library(bob_missman STATIC
     UIMSG.CPP
     FORMATN.CPP
     MISSINIT.CPP
+    SQDDIARY.CPP
 )
 target_include_directories(bob_missman PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)

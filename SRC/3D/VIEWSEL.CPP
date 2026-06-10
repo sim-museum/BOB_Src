@@ -174,47 +174,47 @@ void ViewPoint::CheckPadlock(ItemBasePtr ip)
 //////////////////////////////////////////////////////////////////////
 //TEMPCODE JIM 07/06/00 ViewPoint::View_Key	ViewPoint::VieweeList[] =
 //TEMPCODE JIM 07/06/00 	{
-//TEMPCODE JIM 07/06/00 		{RESETVIEW,InitFlyingView},								//PD 03Sep96
-//TEMPCODE JIM 07/06/00 		{ENEMYVIEW,InitEnemy},
-//TEMPCODE JIM 07/06/00 		{FRNDVIEW,InitFriendly},
-//TEMPCODE JIM 07/06/00 		{GRNDTVIEW,InitGroundTarget},
-//TEMPCODE JIM 07/06/00 		{WAYPTVIEW,InitWayPoint},
-//TEMPCODE JIM 07/06/00 		{MSGVIEW,InitMessage},									//PD 02Sep96
+//TEMPCODE JIM 07/06/00 		{RESETVIEW,&ViewPoint::InitFlyingView},								//PD 03Sep96
+//TEMPCODE JIM 07/06/00 		{ENEMYVIEW,&ViewPoint::InitEnemy},
+//TEMPCODE JIM 07/06/00 		{FRNDVIEW,&ViewPoint::InitFriendly},
+//TEMPCODE JIM 07/06/00 		{GRNDTVIEW,&ViewPoint::InitGroundTarget},
+//TEMPCODE JIM 07/06/00 		{WAYPTVIEW,&ViewPoint::InitWayPoint},
+//TEMPCODE JIM 07/06/00 		{MSGVIEW,&ViewPoint::InitMessage},									//PD 02Sep96
 //TEMPCODE JIM 07/06/00 
-//TEMPCODE JIM 07/06/00 		{PREVENEMYVIEW,PInitEnemy},								//PD 08Oct97
-//TEMPCODE JIM 07/06/00 		{PREVFRNDVIEW,PInitFriendly},							//PD 08Oct97
-//TEMPCODE JIM 07/06/00 		{PREVGRNDTVIEW,PInitGroundTarget},						//PD 08Oct97
-//TEMPCODE JIM 07/06/00 		{PREVWAYPTVIEW,PInitWayPoint},							//PD 08Oct97
+//TEMPCODE JIM 07/06/00 		{PREVENEMYVIEW,&ViewPoint::PInitEnemy},								//PD 08Oct97
+//TEMPCODE JIM 07/06/00 		{PREVFRNDVIEW,&ViewPoint::PInitFriendly},							//PD 08Oct97
+//TEMPCODE JIM 07/06/00 		{PREVGRNDTVIEW,&ViewPoint::PInitGroundTarget},						//PD 08Oct97
+//TEMPCODE JIM 07/06/00 		{PREVWAYPTVIEW,&ViewPoint::PInitWayPoint},							//PD 08Oct97
 //TEMPCODE JIM 07/06/00 
-//TEMPCODE JIM 07/06/00 		{RESETENEMYVIEW,ResetEnemy},
-//TEMPCODE JIM 07/06/00 		{RESETFRNDVIEW,ResetFriendly},
-//TEMPCODE JIM 07/06/00 		{RESETGRNDTVIEW,ResetGroundTarget},
-//TEMPCODE JIM 07/06/00 		{RESETWAYPTVIEW,RSetWP},
-//TEMPCODE JIM 07/06/00 		{PADLOCKTOG,ToggleEnemy},								//PD 26Sep96
-//TEMPCODE JIM 07/06/00 		{AIUNFRIENDLYVIEW,InitAIUnfriendly},
-//TEMPCODE JIM 07/06/00 		{ESCORTEEVIEW,InitEscortee},
+//TEMPCODE JIM 07/06/00 		{RESETENEMYVIEW,&ViewPoint::ResetEnemy},
+//TEMPCODE JIM 07/06/00 		{RESETFRNDVIEW,&ViewPoint::ResetFriendly},
+//TEMPCODE JIM 07/06/00 		{RESETGRNDTVIEW,&ViewPoint::ResetGroundTarget},
+//TEMPCODE JIM 07/06/00 		{RESETWAYPTVIEW,&ViewPoint::RSetWP},
+//TEMPCODE JIM 07/06/00 		{PADLOCKTOG,&ViewPoint::ToggleEnemy},								//PD 26Sep96
+//TEMPCODE JIM 07/06/00 		{AIUNFRIENDLYVIEW,&ViewPoint::InitAIUnfriendly},
+//TEMPCODE JIM 07/06/00 		{ESCORTEEVIEW,&ViewPoint::InitEscortee},
 //TEMPCODE JIM 07/06/00 		{(KeyVal3D )NULL,(InitRtnP )NULL}
 //TEMPCODE JIM 07/06/00 	};
 //TEMPCODE JIM 07/06/00 
 //TEMPCODE JIM 07/06/00 ViewPoint::View_Key	ViewPoint::ViewTypeList[] =
 //TEMPCODE JIM 07/06/00 	{
-//TEMPCODE JIM 07/06/00 		{INSIDETOG,		List1Toggle},
-//TEMPCODE JIM 07/06/00 		{OUTSIDETOG,	List2Toggle},
-//TEMPCODE JIM 07/06/00 		{SATELLITOG,	List3Toggle},
-//TEMPCODE JIM 07/06/00 		{CHASETOG,		List4Toggle},
-//TEMPCODE JIM 07/06/00 		{CHEATTOG,		List5Toggle},							//PD 17Jun96
+//TEMPCODE JIM 07/06/00 		{INSIDETOG,		&ViewPoint::List1Toggle},
+//TEMPCODE JIM 07/06/00 		{OUTSIDETOG,	&ViewPoint::List2Toggle},
+//TEMPCODE JIM 07/06/00 		{SATELLITOG,	&ViewPoint::List3Toggle},
+//TEMPCODE JIM 07/06/00 		{CHASETOG,		&ViewPoint::List4Toggle},
+//TEMPCODE JIM 07/06/00 		{CHEATTOG,		&ViewPoint::List5Toggle},							//PD 17Jun96
 //TEMPCODE JIM 07/06/00 #ifndef	NDEBUG													//RDH 13Dec96
 //TEMPCODE JIM 07/06/00 		{OUTREVLOCKTOG,	List6Toggle},							//PD 27Jun96
 //TEMPCODE JIM 07/06/00 #endif															//RDH 13Dec96
-//TEMPCODE JIM 07/06/00 		{INOUTTOG,		List7Toggle},							//PD 26Sep96
-//TEMPCODE JIM 07/06/00 		{GOTOMAPKEY,	List8Toggle},							//rjs 09Sep98
-//TEMPCODE JIM 07/06/00 		{ACCELKEY2,		List9Toggle},
+//TEMPCODE JIM 07/06/00 		{INOUTTOG,		&ViewPoint::List7Toggle},							//PD 26Sep96
+//TEMPCODE JIM 07/06/00 		{GOTOMAPKEY,	&ViewPoint::List8Toggle},							//rjs 09Sep98
+//TEMPCODE JIM 07/06/00 		{ACCELKEY2,		&ViewPoint::List9Toggle},
 //TEMPCODE JIM 07/06/00 		{(KeyVal3D )NULL,(InitRtnP )NULL}
 //TEMPCODE JIM 07/06/00 	};
 //TEMPCODE JIM 07/06/00 
 //TEMPCODE JIM 07/06/00 ViewPoint::View_Key	ViewPoint::ViewSpecList[] =
 //TEMPCODE JIM 07/06/00 	{
-//TEMPCODE JIM 07/06/00 		{IMPACTTOG,ImpactToggle},
+//TEMPCODE JIM 07/06/00 		{IMPACTTOG,&ViewPoint::ImpactToggle},
 //TEMPCODE JIM 07/06/00 		{(KeyVal3D )NULL,(InitRtnP )NULL}
 //TEMPCODE JIM 07/06/00 	};
 
@@ -306,86 +306,86 @@ CON	ViewPoint::ViewPoint(CLib3D* lib3d,View3d* v)
 	//use this list when view mode select is 0
 static ViewPoint::View_Key	VieweeList[] =
 	{
-		{RESETVIEW,InitFlyingView},								//PD 03Sep96
-		{ENEMYVIEW,InitEnemy},
-		{FRNDVIEW,InitFriendly},
-		{GRNDTVIEW,InitGroundTarget},
-		{WAYPTVIEW,InitWayPoint},
-		{MSGVIEW,InitMessage},									//PD 02Sep96
+		{RESETVIEW,&ViewPoint::InitFlyingView},								//PD 03Sep96
+		{ENEMYVIEW,&ViewPoint::InitEnemy},
+		{FRNDVIEW,&ViewPoint::InitFriendly},
+		{GRNDTVIEW,&ViewPoint::InitGroundTarget},
+		{WAYPTVIEW,&ViewPoint::InitWayPoint},
+		{MSGVIEW,&ViewPoint::InitMessage},									//PD 02Sep96
 
-		{PREVENEMYVIEW,PInitEnemy},								//PD 08Oct97
-		{PREVFRNDVIEW,PInitFriendly},							//PD 08Oct97
-		{PREVGRNDTVIEW,PInitGroundTarget},						//PD 08Oct97
-		{PREVWAYPTVIEW,PInitWayPoint},							//PD 08Oct97
+		{PREVENEMYVIEW,&ViewPoint::PInitEnemy},								//PD 08Oct97
+		{PREVFRNDVIEW,&ViewPoint::PInitFriendly},							//PD 08Oct97
+		{PREVGRNDTVIEW,&ViewPoint::PInitGroundTarget},						//PD 08Oct97
+		{PREVWAYPTVIEW,&ViewPoint::PInitWayPoint},							//PD 08Oct97
 
-		{RESETENEMYVIEW,ResetEnemy},
-		{RESETFRNDVIEW,ResetFriendly},
-		{RESETGRNDTVIEW,ResetGroundTarget},
-		{RESETWAYPTVIEW,RSetWP},
-		{PADLOCKTOG,ToggleEnemy},								//PD 26Sep96
-		{AIUNFRIENDLYVIEW,InitAIUnfriendly},
-		{ESCORTEEVIEW,InitEscortee},
+		{RESETENEMYVIEW,&ViewPoint::ResetEnemy},
+		{RESETFRNDVIEW,&ViewPoint::ResetFriendly},
+		{RESETGRNDTVIEW,&ViewPoint::ResetGroundTarget},
+		{RESETWAYPTVIEW,&ViewPoint::RSetWP},
+		{PADLOCKTOG,&ViewPoint::ToggleEnemy},								//PD 26Sep96
+		{AIUNFRIENDLYVIEW,&ViewPoint::InitAIUnfriendly},
+		{ESCORTEEVIEW,&ViewPoint::InitEscortee},
 		{(KeyVal3D )NULL,(InitRtnP )NULL}
 	};
 
 static ViewPoint::View_Key	ViewTypeList[] =
 	{
-		{INSIDETOG,		List1Toggle},
-		{OUTSIDETOG,	List2Toggle},
-		{SATELLITOG,	List3Toggle},
-		{CHASETOG,		List4Toggle},
-		{CHEATTOG,		List5Toggle},							//PD 17Jun96
+		{INSIDETOG,		&ViewPoint::List1Toggle},
+		{OUTSIDETOG,	&ViewPoint::List2Toggle},
+		{SATELLITOG,	&ViewPoint::List3Toggle},
+		{CHASETOG,		&ViewPoint::List4Toggle},
+		{CHEATTOG,		&ViewPoint::List5Toggle},							//PD 17Jun96
 #ifndef	NDEBUG													//RDH 13Dec96
 		{OUTREVLOCKTOG,	List6Toggle},							//PD 27Jun96
 #endif															//RDH 13Dec96
-		{INOUTTOG,		List7Toggle},							//PD 26Sep96
-		{GOTOMAPKEY,	List8Toggle},							//rjs 09Sep98
-		{ACCELKEY2,		List9Toggle},
+		{INOUTTOG,		&ViewPoint::List7Toggle},							//PD 26Sep96
+		{GOTOMAPKEY,	&ViewPoint::List8Toggle},							//rjs 09Sep98
+		{ACCELKEY2,		&ViewPoint::List9Toggle},
 		{(KeyVal3D )NULL,(InitRtnP )NULL}
 	};
 
 static ViewPoint::View_Key	ViewSpecList[] =
 	{
-		{IMPACTTOG,ImpactToggle},
+		{IMPACTTOG,&ViewPoint::ImpactToggle},
 		{(KeyVal3D )NULL,(InitRtnP )NULL}
 	};
 
 	static	Zoom_Key	ViewRotList[] =
 	{
-		{ROTRESET,		ResetZoomRotat2,ZR_NULL},
-		{ROTRESET2,		ResetZoomRotat2,ZR_NULL},
-		{ZOOMIN,		HandleZoom,		ZR_ZoomIn},
-		{ZOOMOUT,		HandleZoom,		ZR_ZoomOut},
-		{ROTDOWN,		HandleRotate,	ZR_RotDn},
-		{ROTUP,			HandleRotate,	ZR_RotUp},
-		{ROTRIGHT,		HandleRotate,	ZR_RotRght},
-		{ROTLEFT,		HandleRotate,	ZR_RotLft},
-		{ROTDNLEFT,		HandleRotate,	ZR_RotDn|ZR_RotLft},
-		{ROTDNRIGHT,	HandleRotate,	ZR_RotDn|ZR_RotRght},
-		{ROTUPLEFT,		HandleRotate,	ZR_RotUp|ZR_RotLft},
-		{ROTUPRIGHT,	HandleRotate,	ZR_RotUp|ZR_RotRght},
+		{ROTRESET,		&ViewPoint::ResetZoomRotat2,ZR_NULL},
+		{ROTRESET2,		&ViewPoint::ResetZoomRotat2,ZR_NULL},
+		{ZOOMIN,		&ViewPoint::HandleZoom,		ZR_ZoomIn},
+		{ZOOMOUT,		&ViewPoint::HandleZoom,		ZR_ZoomOut},
+		{ROTDOWN,		&ViewPoint::HandleRotate,	ZR_RotDn},
+		{ROTUP,			&ViewPoint::HandleRotate,	ZR_RotUp},
+		{ROTRIGHT,		&ViewPoint::HandleRotate,	ZR_RotRght},
+		{ROTLEFT,		&ViewPoint::HandleRotate,	ZR_RotLft},
+		{ROTDNLEFT,		&ViewPoint::HandleRotate,	ZR_RotDn|ZR_RotLft},
+		{ROTDNRIGHT,	&ViewPoint::HandleRotate,	ZR_RotDn|ZR_RotRght},
+		{ROTUPLEFT,		&ViewPoint::HandleRotate,	ZR_RotUp|ZR_RotLft},
+		{ROTUPRIGHT,	&ViewPoint::HandleRotate,	ZR_RotUp|ZR_RotRght},
 
-		{BIGZOOMIN,		HandleZoom,		ZR_BIG|ZR_ZoomIn},
-		{BIGZOOMOUT,	HandleZoom,		ZR_BIG|ZR_ZoomOut},
-		{BIGROTDOWN,	HandleRotate,	ZR_BIG|ZR_RotDn},
-		{BIGROTUP,		HandleRotate,	ZR_BIG|ZR_RotUp},
-		{BIGROTRIGHT,	HandleRotate,	ZR_BIG|ZR_RotRght},
-		{BIGROTLEFT,	HandleRotate,	ZR_BIG|ZR_RotLft},
-		{BIGROTDNLEFT,	HandleRotate,	ZR_BIG|ZR_RotDn|ZR_RotLft},
-		{BIGROTDNRIGHT,	HandleRotate,	ZR_BIG|ZR_RotDn|ZR_RotRght},
-		{BIGROTUPLEFT,	HandleRotate,	ZR_BIG|ZR_RotUp|ZR_RotLft},
-		{BIGROTUPRIGHT,	HandleRotate,	ZR_BIG|ZR_RotUp|ZR_RotRght},
+		{BIGZOOMIN,		&ViewPoint::HandleZoom,		ZR_BIG|ZR_ZoomIn},
+		{BIGZOOMOUT,	&ViewPoint::HandleZoom,		ZR_BIG|ZR_ZoomOut},
+		{BIGROTDOWN,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotDn},
+		{BIGROTUP,		&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotUp},
+		{BIGROTRIGHT,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotRght},
+		{BIGROTLEFT,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotLft},
+		{BIGROTDNLEFT,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotDn|ZR_RotLft},
+		{BIGROTDNRIGHT,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotDn|ZR_RotRght},
+		{BIGROTUPLEFT,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotUp|ZR_RotLft},
+		{BIGROTUPRIGHT,	&ViewPoint::HandleRotate,	ZR_BIG|ZR_RotUp|ZR_RotRght},
 
 		//add alt-keyboard number keys to this list
-		{AROTRESET,		ResetZoomRotat2,ZR_NULL},
-		{AROTDOWN,		HandleRotate,	ZR_RotDn},
-		{AROTUP,		HandleRotate,	ZR_RotUp},
-		{AROTRIGHT,		HandleRotate,	ZR_RotRght},
-		{AROTLEFT,		HandleRotate,	ZR_RotLft},
-		{AROTDNLEFT,	HandleRotate,	ZR_RotDn|ZR_RotLft},
-		{AROTDNRIGHT,	HandleRotate,	ZR_RotDn|ZR_RotRght},
-		{AROTUPLEFT,	HandleRotate,	ZR_RotUp|ZR_RotLft},
-		{AROTUPRIGHT,	HandleRotate,	ZR_RotUp|ZR_RotRght},
+		{AROTRESET,		&ViewPoint::ResetZoomRotat2,ZR_NULL},
+		{AROTDOWN,		&ViewPoint::HandleRotate,	ZR_RotDn},
+		{AROTUP,		&ViewPoint::HandleRotate,	ZR_RotUp},
+		{AROTRIGHT,		&ViewPoint::HandleRotate,	ZR_RotRght},
+		{AROTLEFT,		&ViewPoint::HandleRotate,	ZR_RotLft},
+		{AROTDNLEFT,	&ViewPoint::HandleRotate,	ZR_RotDn|ZR_RotLft},
+		{AROTDNRIGHT,	&ViewPoint::HandleRotate,	ZR_RotDn|ZR_RotRght},
+		{AROTUPLEFT,	&ViewPoint::HandleRotate,	ZR_RotUp|ZR_RotLft},
+		{AROTUPRIGHT,	&ViewPoint::HandleRotate,	ZR_RotUp|ZR_RotRght},
 
 		{(KeyVal3D )NULL,(ZmRtRtnP )NULL,ZR_NULL}
 	};
@@ -395,129 +395,129 @@ static ViewPoint::View_Key	ViewSpecList[] =
 	static	Zoom_Key AlternateViewRotList[] =									//PD 14Aug97
 	{
 		//add alt-keyboard number keys to this list
-		{AROTRESET,		ResetZoomRotat2,ZR_NULL},
-		{AROTDOWN,		HandleRotate,	ZR_RotDn},
-		{AROTUP,		HandleRotate,	ZR_RotUp},
-		{AROTRIGHT,		HandleRotate,	ZR_RotRght},
-		{AROTLEFT,		HandleRotate,	ZR_RotLft},
-		{AROTDNLEFT,	HandleRotate,	ZR_RotDn|ZR_RotLft},
-		{AROTDNRIGHT,	HandleRotate,	ZR_RotDn|ZR_RotRght},
-		{AROTUPLEFT,	HandleRotate,	ZR_RotUp|ZR_RotLft},
-		{AROTUPRIGHT,	HandleRotate,	ZR_RotUp|ZR_RotRght},
+		{AROTRESET,		&ViewPoint::ResetZoomRotat2,ZR_NULL},
+		{AROTDOWN,		&ViewPoint::HandleRotate,	ZR_RotDn},
+		{AROTUP,		&ViewPoint::HandleRotate,	ZR_RotUp},
+		{AROTRIGHT,		&ViewPoint::HandleRotate,	ZR_RotRght},
+		{AROTLEFT,		&ViewPoint::HandleRotate,	ZR_RotLft},
+		{AROTDNLEFT,	&ViewPoint::HandleRotate,	ZR_RotDn|ZR_RotLft},
+		{AROTDNRIGHT,	&ViewPoint::HandleRotate,	ZR_RotDn|ZR_RotRght},
+		{AROTUPLEFT,	&ViewPoint::HandleRotate,	ZR_RotUp|ZR_RotLft},
+		{AROTUPRIGHT,	&ViewPoint::HandleRotate,	ZR_RotUp|ZR_RotRght},
 
 		{(KeyVal3D )NULL,	(ZmRtRtnP )NULL,ZR_NULL}
 	};															//PD 14Aug97
 
 	static	Zoom_Key	ViewHeadList[]=
 	{
-		{HEADOUTVIEWL,	HandleHead,		ZR_HeadLeft},			//RJS 27Mar00
-		{HEADOUTVIEWR,	HandleHead,		ZR_HeadRight},			//RJS 27Mar00
-		{FLOORVIEW,		HandleHead,		ZR_HeadDown},					//RJS 4Oct00
+		{HEADOUTVIEWL,	&ViewPoint::HandleHead,		ZR_HeadLeft},			//RJS 27Mar00
+		{HEADOUTVIEWR,	&ViewPoint::HandleHead,		ZR_HeadRight},			//RJS 27Mar00
+		{FLOORVIEW,		&ViewPoint::HandleHead,		ZR_HeadDown},					//RJS 4Oct00
 
 		{(KeyVal3D )NULL,	(ZmRtRtnP )NULL,ZR_NULL}
 	};
 
 	static	Quick_View	QuickViewList[]=
 	{
-		{LOOKNE,	HandleQuickView,	QV_NorthEast},
-		{LOOKE,		HandleQuickView,	QV_East}, 
-		{LOOKSE,	HandleQuickView,	QV_SouthEast},
-		{LOOKS, 	HandleQuickView,	QV_South},
-		{LOOKSW,	HandleQuickView,	QV_SouthWest},
-		{LOOKW, 	HandleQuickView,	QV_West},
-		{LOOKNW,	HandleQuickView,	QV_NorthWest},
-		{LOOKN,		HandleQuickView,	QV_North}, 
-		{LOOKUPNE,	HandleQuickView,	QV_NorthEastUp},
-		{LOOKUPE, 	HandleQuickView,	QV_EastUp}, 
-		{LOOKUPSE,	HandleQuickView,	QV_SouthEastUp},
-		{LOOKUPS, 	HandleQuickView,	QV_SouthUp},
-		{LOOKUPSW,	HandleQuickView,	QV_SouthWestUp},
-		{LOOKUPW, 	HandleQuickView,	QV_WestUp},
-		{LOOKUPNW,	HandleQuickView,	QV_NorthWestUp},
-		{LOOKUPN, 	HandleQuickView,	QV_NorthUp}, 
+		{LOOKNE,	&ViewPoint::HandleQuickView,	QV_NorthEast},
+		{LOOKE,		&ViewPoint::HandleQuickView,	QV_East}, 
+		{LOOKSE,	&ViewPoint::HandleQuickView,	QV_SouthEast},
+		{LOOKS, 	&ViewPoint::HandleQuickView,	QV_South},
+		{LOOKSW,	&ViewPoint::HandleQuickView,	QV_SouthWest},
+		{LOOKW, 	&ViewPoint::HandleQuickView,	QV_West},
+		{LOOKNW,	&ViewPoint::HandleQuickView,	QV_NorthWest},
+		{LOOKN,		&ViewPoint::HandleQuickView,	QV_North}, 
+		{LOOKUPNE,	&ViewPoint::HandleQuickView,	QV_NorthEastUp},
+		{LOOKUPE, 	&ViewPoint::HandleQuickView,	QV_EastUp}, 
+		{LOOKUPSE,	&ViewPoint::HandleQuickView,	QV_SouthEastUp},
+		{LOOKUPS, 	&ViewPoint::HandleQuickView,	QV_SouthUp},
+		{LOOKUPSW,	&ViewPoint::HandleQuickView,	QV_SouthWestUp},
+		{LOOKUPW, 	&ViewPoint::HandleQuickView,	QV_WestUp},
+		{LOOKUPNW,	&ViewPoint::HandleQuickView,	QV_NorthWestUp},
+		{LOOKUPN, 	&ViewPoint::HandleQuickView,	QV_NorthUp}, 
 		{(KeyVal3D )NULL,(QVRtnP )NULL,	QV_NULL}
 	};
 
 	static Quick_View	FixedViewList[]=
 	{
-		{ROTRESET,		HandleFixedView,	QV_Up},
-		{ROTUPRIGHT,	HandleFixedView,	QV_NorthEast},
-		{ROTRIGHT,		HandleFixedView,	QV_East}, 
-		{ROTDNRIGHT,	HandleFixedView,	QV_SouthEast},
-		{ROTDOWN, 		HandleFixedView,	QV_South},
-		{ROTDNLEFT,		HandleFixedView,	QV_SouthWest},
-		{ROTLEFT, 		HandleFixedView,	QV_West},
-		{ROTUPLEFT,		HandleFixedView,	QV_NorthWest},
-		{ROTUP,			HandleFixedView,	QV_North}, 
-		{PANLEFT,		HandleFixedView,	QV_PanLeft},
-		{PANRIGHT,		HandleFixedView,	QV_PanRight},
+		{ROTRESET,		&ViewPoint::HandleFixedView,	QV_Up},
+		{ROTUPRIGHT,	&ViewPoint::HandleFixedView,	QV_NorthEast},
+		{ROTRIGHT,		&ViewPoint::HandleFixedView,	QV_East}, 
+		{ROTDNRIGHT,	&ViewPoint::HandleFixedView,	QV_SouthEast},
+		{ROTDOWN, 		&ViewPoint::HandleFixedView,	QV_South},
+		{ROTDNLEFT,		&ViewPoint::HandleFixedView,	QV_SouthWest},
+		{ROTLEFT, 		&ViewPoint::HandleFixedView,	QV_West},
+		{ROTUPLEFT,		&ViewPoint::HandleFixedView,	QV_NorthWest},
+		{ROTUP,			&ViewPoint::HandleFixedView,	QV_North}, 
+		{PANLEFT,		&ViewPoint::HandleFixedView,	QV_PanLeft},
+		{PANRIGHT,		&ViewPoint::HandleFixedView,	QV_PanRight},
 
-		{ALOOKUP,		HandleFixedView,	QV_Up},
-		{ALOOKNE,		HandleFixedView,	QV_NorthEast},
-		{ALOOKE,		HandleFixedView,	QV_East}, 
-		{ALOOKSE,		HandleFixedView,	QV_SouthEast},
-		{ALOOKS, 		HandleFixedView,	QV_South},
-		{ALOOKSW,		HandleFixedView,	QV_SouthWest},
-		{ALOOKW,	 	HandleFixedView,	QV_West},
-		{ALOOKNW,		HandleFixedView,	QV_NorthWest},
-		{ALOOKN,		HandleFixedView,	QV_North}, 
-		{APANLEFT,		HandleFixedView,	QV_PanLeft},
-		{APANRIGHT,		HandleFixedView,	QV_PanRight},
+		{ALOOKUP,		&ViewPoint::HandleFixedView,	QV_Up},
+		{ALOOKNE,		&ViewPoint::HandleFixedView,	QV_NorthEast},
+		{ALOOKE,		&ViewPoint::HandleFixedView,	QV_East}, 
+		{ALOOKSE,		&ViewPoint::HandleFixedView,	QV_SouthEast},
+		{ALOOKS, 		&ViewPoint::HandleFixedView,	QV_South},
+		{ALOOKSW,		&ViewPoint::HandleFixedView,	QV_SouthWest},
+		{ALOOKW,	 	&ViewPoint::HandleFixedView,	QV_West},
+		{ALOOKNW,		&ViewPoint::HandleFixedView,	QV_NorthWest},
+		{ALOOKN,		&ViewPoint::HandleFixedView,	QV_North}, 
+		{APANLEFT,		&ViewPoint::HandleFixedView,	QV_PanLeft},
+		{APANRIGHT,		&ViewPoint::HandleFixedView,	QV_PanRight},
 		{(KeyVal3D )NULL,(QVRtnP )NULL,	QV_NULL}
 	};
 
 	static Quick_View	AlternateFixedViewList[]=
 	{
-		{ALOOKUP,		HandleFixedView,	QV_Up},
-		{ALOOKNE,		HandleFixedView,	QV_NorthEast},
-		{ALOOKE,		HandleFixedView,	QV_East}, 
-		{ALOOKSE,		HandleFixedView,	QV_SouthEast},
-		{ALOOKS, 		HandleFixedView,	QV_South},
-		{ALOOKSW,		HandleFixedView,	QV_SouthWest},
-		{ALOOKW,	 	HandleFixedView,	QV_West},
-		{ALOOKNW,		HandleFixedView,	QV_NorthWest},
-		{ALOOKN,		HandleFixedView,	QV_North}, 
-		{APANLEFT,		HandleFixedView,	QV_PanLeft},
-		{APANRIGHT,		HandleFixedView,	QV_PanRight},
+		{ALOOKUP,		&ViewPoint::HandleFixedView,	QV_Up},
+		{ALOOKNE,		&ViewPoint::HandleFixedView,	QV_NorthEast},
+		{ALOOKE,		&ViewPoint::HandleFixedView,	QV_East}, 
+		{ALOOKSE,		&ViewPoint::HandleFixedView,	QV_SouthEast},
+		{ALOOKS, 		&ViewPoint::HandleFixedView,	QV_South},
+		{ALOOKSW,		&ViewPoint::HandleFixedView,	QV_SouthWest},
+		{ALOOKW,	 	&ViewPoint::HandleFixedView,	QV_West},
+		{ALOOKNW,		&ViewPoint::HandleFixedView,	QV_NorthWest},
+		{ALOOKN,		&ViewPoint::HandleFixedView,	QV_North}, 
+		{APANLEFT,		&ViewPoint::HandleFixedView,	QV_PanLeft},
+		{APANRIGHT,		&ViewPoint::HandleFixedView,	QV_PanRight},
 		{(KeyVal3D )NULL,(QVRtnP )NULL,	QV_NULL}
 	};
 
 	static	Zoom_Key	ViewRotGunnerList[] =					//RJS 02May00
 	{
-		{ROTRESET,		HandleGunner,	ZR_TopGun},
-		{ROTRESET2,		ResetZoomRotat2,ZR_NULL},
-		{ZOOMIN,		HandleZoom,		ZR_ZoomIn},
-		{ZOOMOUT,		HandleZoom,		ZR_ZoomOut},
-		{ROTDOWN,		HandleGunner,	ZR_BotGun},
-		{ROTUP,			HandleGunner,	ZR_FrontGun},
-		{ROTRIGHT,		HandleGunnerRotate,	ZR_RotRght},				//RJS 26Oct00
-		{ROTLEFT,		HandleGunnerRotate,	ZR_RotLft},					//RJS 26Oct00
-		{ROTDNLEFT,		HandleGunnerRotate,	ZR_RotDn|ZR_RotLft},		//RJS 26Oct00
-		{ROTDNRIGHT,	HandleGunnerRotate,	ZR_RotDn|ZR_RotRght},		//RJS 26Oct00
-		{ROTUPLEFT,		HandleGunnerRotate,	ZR_RotUp|ZR_RotLft},		//RJS 26Oct00
-		{ROTUPRIGHT,	HandleGunnerRotate,	ZR_RotUp|ZR_RotRght},		//RJS 26Oct00
+		{ROTRESET,		&ViewPoint::HandleGunner,	ZR_TopGun},
+		{ROTRESET2,		&ViewPoint::ResetZoomRotat2,ZR_NULL},
+		{ZOOMIN,		&ViewPoint::HandleZoom,		ZR_ZoomIn},
+		{ZOOMOUT,		&ViewPoint::HandleZoom,		ZR_ZoomOut},
+		{ROTDOWN,		&ViewPoint::HandleGunner,	ZR_BotGun},
+		{ROTUP,			&ViewPoint::HandleGunner,	ZR_FrontGun},
+		{ROTRIGHT,		&ViewPoint::HandleGunnerRotate,	ZR_RotRght},				//RJS 26Oct00
+		{ROTLEFT,		&ViewPoint::HandleGunnerRotate,	ZR_RotLft},					//RJS 26Oct00
+		{ROTDNLEFT,		&ViewPoint::HandleGunnerRotate,	ZR_RotDn|ZR_RotLft},		//RJS 26Oct00
+		{ROTDNRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_RotDn|ZR_RotRght},		//RJS 26Oct00
+		{ROTUPLEFT,		&ViewPoint::HandleGunnerRotate,	ZR_RotUp|ZR_RotLft},		//RJS 26Oct00
+		{ROTUPRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_RotUp|ZR_RotRght},		//RJS 26Oct00
 
-		{BIGZOOMIN,		HandleZoom,		ZR_BIG|ZR_ZoomIn},
-		{BIGZOOMOUT,	HandleZoom,		ZR_BIG|ZR_ZoomOut},
-		{BIGROTDOWN,	HandleGunnerRotate,	ZR_BIG|ZR_RotDn},
-		{BIGROTUP,		HandleGunnerRotate,	ZR_BIG|ZR_RotUp},
-		{BIGROTRIGHT,	HandleGunnerRotate,	ZR_BIG|ZR_RotRght},
-		{BIGROTLEFT,	HandleGunnerRotate,	ZR_BIG|ZR_RotLft},
-		{BIGROTDNLEFT,	HandleGunnerRotate,	ZR_BIG|ZR_RotDn|ZR_RotLft},
-		{BIGROTDNRIGHT,	HandleGunnerRotate,	ZR_BIG|ZR_RotDn|ZR_RotRght},
-		{BIGROTUPLEFT,	HandleGunnerRotate,	ZR_BIG|ZR_RotUp|ZR_RotLft},
-		{BIGROTUPRIGHT,	HandleGunnerRotate,	ZR_BIG|ZR_RotUp|ZR_RotRght},
+		{BIGZOOMIN,		&ViewPoint::HandleZoom,		ZR_BIG|ZR_ZoomIn},
+		{BIGZOOMOUT,	&ViewPoint::HandleZoom,		ZR_BIG|ZR_ZoomOut},
+		{BIGROTDOWN,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotDn},
+		{BIGROTUP,		&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotUp},
+		{BIGROTRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotRght},
+		{BIGROTLEFT,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotLft},
+		{BIGROTDNLEFT,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotDn|ZR_RotLft},
+		{BIGROTDNRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotDn|ZR_RotRght},
+		{BIGROTUPLEFT,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotUp|ZR_RotLft},
+		{BIGROTUPRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_BIG|ZR_RotUp|ZR_RotRght},
 
 		//add alt-keyboard number keys to this list
-		{AROTRESET,		ResetZoomRotat2,ZR_NULL},
-		{AROTDOWN,		HandleGunnerRotate,	ZR_RotDn},
-		{AROTUP,		HandleGunnerRotate,	ZR_RotUp},
-		{AROTRIGHT,		HandleGunnerRotate,	ZR_RotRght},
-		{AROTLEFT,		HandleGunnerRotate,	ZR_RotLft},
-		{AROTDNLEFT,	HandleGunnerRotate,	ZR_RotDn|ZR_RotLft},
-		{AROTDNRIGHT,	HandleGunnerRotate,	ZR_RotDn|ZR_RotRght},
-		{AROTUPLEFT,	HandleGunnerRotate,	ZR_RotUp|ZR_RotLft},
-		{AROTUPRIGHT,	HandleGunnerRotate,	ZR_RotUp|ZR_RotRght},
+		{AROTRESET,		&ViewPoint::ResetZoomRotat2,ZR_NULL},
+		{AROTDOWN,		&ViewPoint::HandleGunnerRotate,	ZR_RotDn},
+		{AROTUP,		&ViewPoint::HandleGunnerRotate,	ZR_RotUp},
+		{AROTRIGHT,		&ViewPoint::HandleGunnerRotate,	ZR_RotRght},
+		{AROTLEFT,		&ViewPoint::HandleGunnerRotate,	ZR_RotLft},
+		{AROTDNLEFT,	&ViewPoint::HandleGunnerRotate,	ZR_RotDn|ZR_RotLft},
+		{AROTDNRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_RotDn|ZR_RotRght},
+		{AROTUPLEFT,	&ViewPoint::HandleGunnerRotate,	ZR_RotUp|ZR_RotLft},
+		{AROTUPRIGHT,	&ViewPoint::HandleGunnerRotate,	ZR_RotUp|ZR_RotRght},
 
 		{(KeyVal3D )NULL,(ZmRtRtnP )NULL,ZR_NULL}
 	};
@@ -596,7 +596,7 @@ static ViewPoint::View_Key	ViewSpecList[] =
 
 	globalviewrec = &GlobalViewRec;								//PD 27Feb96
 
-	viewdrawrtn = InvalidDraw;									//PD 23Feb96
+	viewdrawrtn = &ViewPoint::InvalidDraw;									//PD 23Feb96
 	bupviewdrawrtn = NULL;										//PD 28Jan97
 
 	this->hdg =
@@ -792,7 +792,7 @@ void ViewPoint::SetToPiloted(itemptr pilotedac,bool replayreset)//AMM 19Feb99
 			bupviewdrawrtn = NULL;										//PD 28Jan97
 
 			if (!replayreset)									//AMM 19Feb99
-				viewdrawrtn = DrawInsideCheat;
+				viewdrawrtn = &ViewPoint::DrawInsideCheat;
 
 			drawpolypit = FALSE;
 			drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
@@ -921,12 +921,12 @@ void ViewPoint::GetPolyPitAngles(ANGLES& pithdg, ANGLES& pitpitch, ANGLES& pitro
 //------------------------------------------------------------------------------
 void ViewPoint::GetViewRecAngles(ANGLES& vrhdg, ANGLES& vrpitch, ANGLES& vrroll)
 {
-	if (bupviewdrawrtn==NULL && viewdrawrtn!=DrawQuick && viewdrawrtn!=DrawFixed)
+	if (bupviewdrawrtn==NULL && viewdrawrtn!=&ViewPoint::DrawQuick && viewdrawrtn!=&ViewPoint::DrawFixed)
 	{
  		vrhdg = -currentviewrec->hdg;
 		vrpitch = -currentviewrec->pitch;
 	}
-	else if (viewdrawrtn==DrawQuick)
+	else if (viewdrawrtn==&ViewPoint::DrawQuick)
 	{
  		vrhdg = -quickviewrec->hdg;
 		vrpitch = -quickviewrec->pitch;
@@ -1324,19 +1324,19 @@ void ViewPoint::SetViewFromNum(ViewFlags vno)
 	switch (viewnum.viewmode)
 	{
 		case VM_InPadlock:
-			viewsetuprtn = InitInPadlock;
+			viewsetuprtn = &ViewPoint::InitInPadlock;
 			break;
 
 		case VM_Inside:
-			viewsetuprtn = InitInside;
+			viewsetuprtn = &ViewPoint::InitInside;
 			break;
 
 		case VM_OutPadlock:
-			viewsetuprtn = InitOutPadlock;
+			viewsetuprtn = &ViewPoint::InitOutPadlock;
 			break;
 
 		case VM_Track:
-			viewsetuprtn = InitTrack;
+			viewsetuprtn = &ViewPoint::InitTrack;
 			break;
 #ifndef NDEBUG
 		case VM_OutRevPadlock:
@@ -1344,28 +1344,28 @@ void ViewPoint::SetViewFromNum(ViewFlags vno)
 			break;
 #endif
 		case VM_Satellite:
-			viewsetuprtn = InitSatellite;
+			viewsetuprtn = &ViewPoint::InitSatellite;
 			break;
 
 		case VM_NrSatellite:
-			viewsetuprtn = InitNrSatellite;
+			viewsetuprtn = &ViewPoint::InitNrSatellite;
 			break;
 
 		case VM_FlyBy:
-			viewsetuprtn = InitFlyBy;
+			viewsetuprtn = &ViewPoint::InitFlyBy;
 			break;
 
 		case VM_Chase:
-			viewsetuprtn = InitChase;
+			viewsetuprtn = &ViewPoint::InitChase;
 			break;
 
 		case VM_InsideCheat:									//PD 03Sep96
-			viewsetuprtn = InitInsideCheat;						//PD 03Sep96
+			viewsetuprtn = &ViewPoint::InitInsideCheat;						//PD 03Sep96
 			break;												//PD 03Sep96
 
 		case VM_ZoomedMap:										//RJS 08Sep98
 		case VM_Map:											//RJS 08Sep98
-			viewsetuprtn = InitMap;								//RJS 08Sep98
+			viewsetuprtn = &ViewPoint::InitMap;								//RJS 08Sep98
 			break;												//RJS 08Sep98
 
 //DeadCode PD 16Feb99 		case VM_Prefs:											//PD 19Nov98
@@ -1483,7 +1483,7 @@ void ViewPoint::SetToPaintShop()
 //DEADCODE PD 01/12/99 	viewnum.viewcuttype = Instant;								//PD 10Apr96
 //DEADCODE PD 01/12/99 
 //DEADCODE PD 01/12/99 	currentviewrec = paintshopviewrec;
-//DEADCODE PD 01/12/99 	viewdrawrtn = DrawOutside;
+//DEADCODE PD 01/12/99 	viewdrawrtn = &ViewPoint::DrawOutside;
 //DEADCODE PD 01/12/99 	bupviewdrawrtn = NULL;										//PD 28Jan97
 //DEADCODE PD 01/12/99 	drawpolypit = FALSE;
 //DEADCODE PD 01/12/99 	CopyPosition(trackeditem,this);
@@ -1581,7 +1581,7 @@ void ViewPoint::SetToDeathView(DeathViewType	dtype, DeathZoom	slowzoom,Bool	halt
 	#endif
 
 				bupviewdrawrtn = NULL;								//PD 28Jan97
-				viewdrawrtn = DrawOutside;
+				viewdrawrtn = &ViewPoint::DrawOutside;
 				viewnum.viewmode = VM_Track;
 				drawpolypit = FALSE;
 				CopyPosition(trackeditem,this);
@@ -1701,7 +1701,7 @@ void ViewPoint::SetToResurrectView()
 		currentviewrec = paintshopviewrec;
 
 		bupviewdrawrtn = NULL;									//PD 28Jan97
-		viewdrawrtn = DrawOutside;
+		viewdrawrtn = &ViewPoint::DrawOutside;
 		viewnum.viewmode = VM_Track;
 		drawpolypit = FALSE;
 		CopyPosition(trackeditem,this);
@@ -1786,7 +1786,7 @@ void ViewPoint::UIResetView()
 inline ZmRtFlags operator &= (ZmRtFlags z,int i) {return z=ZmRtFlags(z&i);}
 void ViewPoint::ClearUIFlag(ZmRtFlags inp)
 {
-	uiflag &= ~int(inp);
+	uiflag = ZmRtFlags((int)uiflag & ~(int)inp);
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
@@ -1996,7 +1996,7 @@ void ViewPoint::ControlViewSelect()
 		viewmodeselect = 0;												//RJS 20Oct00
 
 	if (bViewModeToggled && viewmodeselect==0 &&
-		(viewdrawrtn==DrawQuick || viewdrawrtn==DrawFixed))		//PD 27Sep97
+		(viewdrawrtn==&ViewPoint::DrawQuick || viewdrawrtn==&ViewPoint::DrawFixed))		//PD 27Sep97
 		InitInside();											//PD 16Sep97
 
 	enemytoofar = FALSE;										//PD 18Nov96
@@ -2447,7 +2447,7 @@ void ViewPoint::InitEscortee()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitFlyingView
+//Procedure		&ViewPoint::InitFlyingView
 //Author		Paul.   
 //Date			Tue 3 Sep 1996
 //
@@ -2508,7 +2508,7 @@ void ViewPoint::InitPiloted()
 	trackeditem2 = NULL;
 	previousvehicle = NULL;
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawInside;
+	viewdrawrtn = &ViewPoint::DrawInside;
 	drawpolypit = TRUE;
 	InitInside();												//PD 19Jun96
 	CopyPositionHPR(trackeditem,this);						//DAW 21Feb96
@@ -2549,7 +2549,7 @@ itemptr ViewPoint::GetNextAC(itemptr itemPtr)
 }	
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitEnemy
+//Procedure		&ViewPoint::InitEnemy
 //LastModified:	PD 27Jun96
 //Author		Paul.   
 //Date			Mon 19 Feb 1996
@@ -2630,7 +2630,7 @@ void ViewPoint::InitEnemy()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		PInitEnemy
+//Procedure		&ViewPoint::PInitEnemy
 //Author		Paul.   
 //Date			Wed 8 Oct 1997
 //
@@ -2699,7 +2699,7 @@ void ViewPoint::PInitEnemy()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitFriendly
+//Procedure		&ViewPoint::InitFriendly
 //LastModified:	PD 27Jun96
 //Author		Paul.   
 //Date			Mon 19 Feb 1996
@@ -2767,7 +2767,7 @@ void ViewPoint::InitFriendly()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		PInitFriendly
+//Procedure		&ViewPoint::PInitFriendly
 //Author		Paul.   
 //Date			Wed 8 Oct 1997
 //
@@ -2831,7 +2831,7 @@ void ViewPoint::PInitFriendly()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitGroundTarget
+//Procedure		&ViewPoint::InitGroundTarget
 //Author		Paul.   
 //Date			Mon 19 Feb 1996
 //
@@ -2879,7 +2879,7 @@ void ViewPoint::InitGroundTarget()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		PInitGroundTarget
+//Procedure		&ViewPoint::PInitGroundTarget
 //Author		Paul.   
 //Date			Wed 8 Oct 1997
 //
@@ -2949,7 +2949,7 @@ void	ViewPoint::FixVieweePos()
 
 }
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitWayPoint
+//Procedure		&ViewPoint::InitWayPoint
 //Author		Paul.   
 //Date			Mon 19 Feb 1996
 //
@@ -3087,7 +3087,7 @@ void ViewPoint::InitWayPoint()   //F4
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		PInitWayPoint
+//Procedure		&ViewPoint::PInitWayPoint
 //Author		Paul.   
 //Date			Wed 8 Oct 1997
 //
@@ -3146,7 +3146,7 @@ void ViewPoint::PInitWayPoint()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitMessage
+//Procedure		&ViewPoint::InitMessage
 //Author		Paul.   
 //Date			Mon 2 Sep 1996
 //
@@ -3181,7 +3181,7 @@ void ViewPoint::InitMessage()
 
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		ToggleEnemy
+//Procedure		&ViewPoint::ToggleEnemy
 //Author		Paul.   
 //Date			Thu 26 Sep 1996
 //
@@ -3210,7 +3210,7 @@ void ViewPoint::ToggleEnemy()
 //-------------------------------------------------------------------------------
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		ResetEnemy
+//Procedure		&ViewPoint::ResetEnemy
 //Author		Paul.   
 //Date			Mon 19 Feb 1996
 //
@@ -3272,7 +3272,7 @@ void ViewPoint::ResetEnemy()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		ResetFriendly
+//Procedure		&ViewPoint::ResetFriendly
 //Author		Paul.   
 //Date			Mon 19 Feb 1996
 //
@@ -3317,7 +3317,7 @@ void ViewPoint::ResetFriendly()
 
 //////////////////////////////////////////////////////////////////////
 //
-// Function:    ResetGroundTarget
+// Function:    &ViewPoint::ResetGroundTarget
 // Date:		10/05/99
 // Author:		JIM
 //
@@ -4233,7 +4233,7 @@ void ViewPoint::ResetMessage()
 //-------------------------------------------------------------------------------
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawInside
+//Procedure		&ViewPoint::DrawInside
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -4264,7 +4264,7 @@ void ViewPoint::DrawInside()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawQuick
+//Procedure		&ViewPoint::DrawQuick
 //Author		Paul.   
 //Date			Tue 28 Jan 1997
 //
@@ -4296,7 +4296,7 @@ void ViewPoint::DrawQuick()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawQuick
+//Procedure		&ViewPoint::DrawQuick
 //Author		Paul.   
 //Date			Tue 28 Jan 1997
 //
@@ -4387,7 +4387,7 @@ void ViewPoint::DrawInsideFwd()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawInsideCheat
+//Procedure		&ViewPoint::DrawInsideCheat
 //Author		Paul.   
 //Date			Mon 17 Jun 1996
 //
@@ -4420,7 +4420,7 @@ ANGLES	currinterceptpitch,currintercepthdg;		//current values when moving from o
 ANGLES	targetinterceptpitch,targetintercepthdg;
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawInPadlock
+//Procedure		&ViewPoint::DrawInPadlock
 //LastModified:	PD 05Jul96
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
@@ -5128,7 +5128,7 @@ void ViewPoint::RelativeIntercept(itemptr srcp,itemptr trgp,
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawTrack
+//Procedure		&ViewPoint::DrawTrack
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -5155,7 +5155,7 @@ void ViewPoint::DrawTrack()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawRovingCamera
+//Procedure		&ViewPoint::DrawRovingCamera
 //Author		Paul.   
 //Date			Fri 3 Dec 1999
 //
@@ -5229,7 +5229,7 @@ void ViewPoint::DrawRovingCamera()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawOutside
+//Procedure		&ViewPoint::DrawOutside
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -5250,7 +5250,7 @@ void ViewPoint::DrawOutside()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawOutPadlock
+//Procedure		&ViewPoint::DrawOutPadlock
 //Author		Paul.   
 //Date			Tue 27 Feb 1996
 //
@@ -5400,7 +5400,7 @@ void ViewPoint::DrawOutRevPadlock()
 #endif
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawChase
+//Procedure		&ViewPoint::DrawChase
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -5452,7 +5452,7 @@ void ViewPoint::DrawChase()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawFlyBy
+//Procedure		&ViewPoint::DrawFlyBy
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -5491,12 +5491,7 @@ void ViewPoint::DrawFlyBy()
 
 		double dist=double(currentviewrec->reset_range)*double(currentviewrec->reset_range)+
 					double(MinFlybyZoom)*double(MinFlybyZoom);
-		_asm
-		{
-			fld dist;
-			fsqrt;
-			fstp dist;
-		}
+		dist=sqrt(dist);
 		currentviewrec->range=SLong(dist);
 		currentviewrec->hdg=Math_Lib.HighArcTan(MinFlybyZoom,currentviewrec->reset_range);
 
@@ -5561,7 +5556,7 @@ void ViewPoint::DrawFlyBy()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InvalidDraw
+//Procedure		&ViewPoint::InvalidDraw
 //Author		Paul.   
 //Date			Fri 23 Feb 1996
 //
@@ -5582,7 +5577,7 @@ void ViewPoint::InvalidDraw()
 //-------------------------------------------------------------------------------
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		ImpactToggle
+//Procedure		&ViewPoint::ImpactToggle
 //LastModified:	PD 17Jun96
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
@@ -5614,7 +5609,7 @@ void ViewPoint::ImpactToggle()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		HandleZoom
+//Procedure		&ViewPoint::HandleZoom
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -5708,7 +5703,7 @@ void ViewPoint::StopRotate()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		HandleFixedView
+//Procedure		&ViewPoint::HandleFixedView
 //Author		Paul.   
 //Date			Tue 22 Jul 1997
 //
@@ -5733,7 +5728,7 @@ void ViewPoint::HandleFixedView(QuickView quickviewflag)
 	static View_Rec	VRNorth(0x0100,ANGLES_0Deg,ANGLES_0Deg,ANGLES_0Deg,0x0100,ANGLES_0Deg,ANGLES_0Deg,ANGLES_0Deg);
 	static View_Rec	VRUp(0x0100,ANGLES_0Deg,ANGLES_90Deg,ANGLES_0Deg,0x0100,ANGLES_0Deg,ANGLES_90Deg,ANGLES_0Deg);
 
-	if (viewdrawrtn!=DrawFixed)	InitPiloted();					//PD 27Sep97
+	if (viewdrawrtn!=&ViewPoint::DrawFixed)	InitPiloted();					//PD 27Sep97
 
 	if (quickviewflag==QV_UpDownTog)
 	{
@@ -5836,12 +5831,12 @@ void ViewPoint::HandleFixedView(QuickView quickviewflag)
 
 	//fixedviewrec = ptr to viewrec for required quick view
 
-	viewdrawrtn=DrawFixed;
+	viewdrawrtn=&ViewPoint::DrawFixed;
 	drawpolypit=TRUE;
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		HandleQuickView
+//Procedure		&ViewPoint::HandleQuickView
 //Author		Paul.   
 //Date			Tue 28 Jan 1997
 //
@@ -5964,7 +5959,7 @@ void ViewPoint::HandleQuickView(QuickView quickviewflag)
 	if (bupviewdrawrtn==NULL)
 	{
 		bupviewdrawrtn=viewdrawrtn;
-		viewdrawrtn=DrawQuick;
+		viewdrawrtn=&ViewPoint::DrawQuick;
 		bupdrawpolypit=drawpolypit;
 		drawpolypit=TRUE;
 	}
@@ -6011,7 +6006,7 @@ void ViewPoint::ClipInsideAngles()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		HandleRotate
+//Procedure		&ViewPoint::HandleRotate
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6587,11 +6582,7 @@ void ViewPoint::AddZoom()
 			frac=double(last.X)*double(last.X)+
 				double(last.Y)*double(last.Y)+
 				double(last.Z)*double(last.Z);
-			_asm{
-				fld frac;
-				fsqrt;
-				fstp frac;
-			}
+			frac=sqrt(frac);
 			globalviewrec->range=currentviewrec->range=SLong(frac)-1000;
 		}
 	}
@@ -6604,7 +6595,7 @@ void ViewPoint::AddZoom()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitInside
+//Procedure		&ViewPoint::InitInside
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6628,7 +6619,7 @@ void ViewPoint::InitInside()
 	trackeditem = currentvehicle;
 	currentviewrec = insideviewrec;
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawInside;
+	viewdrawrtn = &ViewPoint::DrawInside;
 	drawpolypit = TRUE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
 	drawmap = FALSE;//RJS 10Sep98
@@ -6636,7 +6627,7 @@ void ViewPoint::InitInside()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitInsideCheat
+//Procedure		&ViewPoint::InitInsideCheat
 //Author		Paul.   
 //Date			Mon 17 Jun 1996
 //
@@ -6655,7 +6646,7 @@ void ViewPoint::InitInsideCheat()
 	trackeditem = currentvehicle;
 	currentviewrec = insidecheatviewrec;
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawInsideCheat;
+	viewdrawrtn = &ViewPoint::DrawInsideCheat;
 	drawpolypit = FALSE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
 	drawmap = FALSE;//RJS 10Sep98
@@ -6663,7 +6654,7 @@ void ViewPoint::InitInsideCheat()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitInPadlock
+//Procedure		&ViewPoint::InitInPadlock
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6692,13 +6683,13 @@ void ViewPoint::InitInPadlock()
 	{
 		currentviewrec = insideviewrec;
 		bupviewdrawrtn = NULL;									//PD 28Jan97
-		viewdrawrtn = DrawInside;
+		viewdrawrtn = &ViewPoint::DrawInside;
 	}
 	else
 	{
 		currentviewrec = inpadlockviewrec;
 		bupviewdrawrtn = NULL;									//PD 28Jan97
-		viewdrawrtn = DrawInPadlock;
+		viewdrawrtn = &ViewPoint::DrawInPadlock;
 	}
 	drawpolypit = TRUE;											//PD 14Jun96
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
@@ -6707,7 +6698,7 @@ void ViewPoint::InitInPadlock()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitTrack
+//Procedure		&ViewPoint::InitTrack
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6724,7 +6715,7 @@ void ViewPoint::InitTrack()
 	currentviewrec = trackviewrec;
 	UpdateGlobalViewRec();
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawTrack;
+	viewdrawrtn = &ViewPoint::DrawTrack;
 	drawpolypit = FALSE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
 	drawmap = FALSE;//RJS 10Sep98
@@ -6745,14 +6736,14 @@ void ViewPoint::InitRovingCamera()
 	rovingData.World=currentvehicle->World;
 	rovingData.rovingT=0;
 	bupviewdrawrtn=NULL;
-	viewdrawrtn=DrawRovingCamera;
+	viewdrawrtn=&ViewPoint::DrawRovingCamera;
 	drawpolypit=FALSE;
 	drawSpecialFlags-=(drawSpecialFlags&VIEW_SPECIAL_MAP);
 	drawmap=FALSE;
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitOutPadlock
+//Procedure		&ViewPoint::InitOutPadlock
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6778,14 +6769,14 @@ void ViewPoint::InitOutPadlock()
 	if (trackeditem2 && DoWeAbortTrack())								//RJS 22Aug00
 	{
 		viewnum.viewmode = VM_Track;
-		viewsetuprtn = InitTrack;
+		viewsetuprtn = &ViewPoint::InitTrack;
 		currentviewrec = trackviewrec;
-		viewdrawrtn = DrawTrack;
+		viewdrawrtn = &ViewPoint::DrawTrack;
 	}
 	else
 	{
 		currentviewrec = outpadlockviewrec;
-		viewdrawrtn = DrawOutPadlock;
+		viewdrawrtn = &ViewPoint::DrawOutPadlock;
 	}
 
 	UpdateGlobalViewRec();
@@ -6817,7 +6808,7 @@ void ViewPoint::InitOutRevPadlock()
 #endif
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitNrSatellite
+//Procedure		&ViewPoint::InitNrSatellite
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6833,14 +6824,14 @@ void ViewPoint::InitNrSatellite()
 	trackeditem = currentvehicle;
 	currentviewrec = nrsatelliteviewrec;
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawOutside;
+	viewdrawrtn = &ViewPoint::DrawOutside;
 	drawpolypit = FALSE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
 	drawmap = FALSE;//RJS 10Sep98
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitSatellite
+//Procedure		&ViewPoint::InitSatellite
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6856,14 +6847,14 @@ void ViewPoint::InitSatellite()
 	trackeditem = currentvehicle;
 	currentviewrec = satelliteviewrec;
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawOutside;
+	viewdrawrtn = &ViewPoint::DrawOutside;
 	drawpolypit = FALSE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
 	drawmap = FALSE;//RJS 10Sep98
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitChase
+//Procedure		&ViewPoint::InitChase
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6879,7 +6870,7 @@ void ViewPoint::InitChase()
 	trackeditem = currentvehicle;
 	currentviewrec = chaseviewrec;
 	bupviewdrawrtn = NULL;										//PD 28Jan97
-	viewdrawrtn = DrawChase;
+	viewdrawrtn = &ViewPoint::DrawChase;
 	drawpolypit = FALSE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);	//RJS 20Oct98
 	drawmap = FALSE;//RJS 10Sep98
@@ -6906,7 +6897,7 @@ void ViewPoint::InitChase()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitFlyBy
+//Procedure		&ViewPoint::InitFlyBy
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -6935,7 +6926,7 @@ void ViewPoint::InitFlyBy()
 		trackeditem=currentvehicle;
 		currentviewrec=flybyviewrec;
 		bupviewdrawrtn=NULL;
-		viewdrawrtn=DrawFlyBy;
+		viewdrawrtn=&ViewPoint::DrawFlyBy;
 		drawpolypit=FALSE;
 		MobileItemPtr mip=(MobileItemPtr)trackeditem;
 		currentviewrec->reset_range=MaxFlybyZoom;
@@ -6944,12 +6935,7 @@ void ViewPoint::InitFlyBy()
 		currentviewrec->reset_range=-MaxFlybyZoom;
 		double dist=double(currentviewrec->reset_range)*double(currentviewrec->reset_range)+
 					double(MinFlybyZoom)*double(MinFlybyZoom);
-		_asm
-		{
-			fld dist;
-			fsqrt;
-			fstp dist;
-		}
+		dist=sqrt(dist);
 		currentviewrec->range=SLong(dist);
 		currentviewrec->hdg=Math_Lib.HighArcTan(MinFlybyZoom,currentviewrec->reset_range);
 
@@ -6964,7 +6950,7 @@ void ViewPoint::InitFlyBy()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List1Toggle
+//Procedure		&ViewPoint::List1Toggle
 //LastModified:	PD 03Sep96
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
@@ -6989,48 +6975,48 @@ void ViewPoint::List1Toggle()
 	switch (viewnum.viewtarg)
 	{
 		case VT_Player:
-			viewsetuprtn = InitInside;
+			viewsetuprtn = &ViewPoint::InitInside;
 			break;
 		case VT_Enemy:
 			InitInside();
 			CheckPadlock(currentenemyitem);
-//dead			viewsetuprtn = InitEnemy;
+//dead			viewsetuprtn = &ViewPoint::InitEnemy;
 			break;
 		case VT_Friendly:
 			InitInside();
 			CheckPadlock(currentfriendlyitem);
-//dead			viewsetuprtn = InitFriendly;	//DEAD Enemy;
+//dead			viewsetuprtn = &ViewPoint::InitFriendly;	//DEAD Enemy;
 			break;
 		case VT_GroundTarg:
 			InitInside();
 			CheckPadlock(currentgndtargitem);
-//dead			viewsetuprtn = InitGroundTarget;
+//dead			viewsetuprtn = &ViewPoint::InitGroundTarget;
 			break;
 		case VT_WayPoint:
 			InitInside();
 			CheckPadlock(currentwaypoint);
-//dead			viewsetuprtn = InitWayPoint;
+//dead			viewsetuprtn = &ViewPoint::InitWayPoint;
 			break;
 		case VT_Message:
 			InitInside();
 			CheckPadlock(currentmessageitem);
-//dead			viewsetuprtn = InitMessage;
+//dead			viewsetuprtn = &ViewPoint::InitMessage;
 			break;
 		case VT_AIUnfriendly:
 			InitInside();
 			CheckPadlock(currentenemyitem);
-//dead			viewsetuprtn = InitAIUnfriendly;
+//dead			viewsetuprtn = &ViewPoint::InitAIUnfriendly;
 			break;
 		case VT_Escortee:
 			InitInside();
 			CheckPadlock(currentfriendlyitem);
-//dead			viewsetuprtn = InitEscortee;
+//dead			viewsetuprtn = &ViewPoint::InitEscortee;
 			break;
 	}
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List2Toggle
+//Procedure		&ViewPoint::List2Toggle
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -7048,49 +7034,49 @@ void ViewPoint::List2Toggle()
 	switch (viewnum.viewtarg)
 	{
 		case VT_Player:
-			viewsetuprtn = InitTrack;
+			viewsetuprtn = &ViewPoint::InitTrack;
 			break;
 		case VT_Enemy:
 			InitTrack();
 			CheckPadlock(currentenemyitem);
-//dead			viewsetuprtn = InitEnemy;
+//dead			viewsetuprtn = &ViewPoint::InitEnemy;
 			break;
 		case VT_Friendly:
 			InitTrack();
 			CheckPadlock(currentfriendlyitem);
-//dead			viewsetuprtn = InitFriendly;	//DEAD Enemy;
+//dead			viewsetuprtn = &ViewPoint::InitFriendly;	//DEAD Enemy;
 			break;
 		case VT_GroundTarg:
 			InitTrack();
 			CheckPadlock(currentgndtargitem);
-//dead			viewsetuprtn = InitGroundTarget;
+//dead			viewsetuprtn = &ViewPoint::InitGroundTarget;
 			break;
 		case VT_WayPoint:
 			InitTrack();
 			CheckPadlock(currentwaypoint);
-//dead			viewsetuprtn = InitWayPoint;
+//dead			viewsetuprtn = &ViewPoint::InitWayPoint;
 			break;
 		case VT_Message:
 			InitTrack();
 			CheckPadlock(currentmessageitem);
-//dead			viewsetuprtn = InitMessage;
+//dead			viewsetuprtn = &ViewPoint::InitMessage;
 			break;
 		case VT_AIUnfriendly:
 			InitTrack();
 			CheckPadlock(currentenemyitem);
-//dead			viewsetuprtn = InitAIUnfriendly;
+//dead			viewsetuprtn = &ViewPoint::InitAIUnfriendly;
 			break;
 		case VT_Escortee:
 			InitTrack();
 			CheckPadlock(currentfriendlyitem);
-//dead			viewsetuprtn = InitEscortee;
+//dead			viewsetuprtn = &ViewPoint::InitEscortee;
 			break;
 	}
 
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List3Toggle
+//Procedure		&ViewPoint::List3Toggle
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -7117,16 +7103,16 @@ void ViewPoint::List3Toggle()
 	switch(viewnum.viewmode)
 	{
 		case VM_Satellite:
-			viewsetuprtn = InitSatellite;
+			viewsetuprtn = &ViewPoint::InitSatellite;
 			break;
 		case VM_NrSatellite:
-			viewsetuprtn = InitNrSatellite;
+			viewsetuprtn = &ViewPoint::InitNrSatellite;
 			break;
 	}
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List4Toggle
+//Procedure		&ViewPoint::List4Toggle
 //Author		Paul.   
 //Date			Tue 20 Feb 1996
 //
@@ -7153,16 +7139,16 @@ void ViewPoint::List4Toggle()
 	switch(viewnum.viewmode)
 	{
 		case VM_Chase:
-			viewsetuprtn = InitChase;
+			viewsetuprtn = &ViewPoint::InitChase;
 			break;
 		case VM_FlyBy:
-			viewsetuprtn = InitFlyBy;
+			viewsetuprtn = &ViewPoint::InitFlyBy;
 			break;
 	}
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List5Toggle
+//Procedure		&ViewPoint::List5Toggle
 //Author		Paul.   
 //Date			Mon 17 Jun 1996
 //
@@ -7178,12 +7164,12 @@ void ViewPoint::List5Toggle()
 	if (viewnum.viewmode != VM_InsideCheat)
 	{
 		viewnum.viewmode = VM_InsideCheat;
-		viewsetuprtn = InitInsideCheat;
+		viewsetuprtn = &ViewPoint::InitInsideCheat;
 	}
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List7Toggle
+//Procedure		&ViewPoint::List7Toggle
 //Author		Paul.   
 //Date			Thu 26 Sep 1996
 //
@@ -7217,16 +7203,16 @@ void ViewPoint::List7Toggle()
 	switch (newmode)
 	{
 		case VM_Track:
-			viewsetuprtn = InitTrack;
+			viewsetuprtn = &ViewPoint::InitTrack;
 			break;
 		case VM_OutPadlock:
-			viewsetuprtn = InitOutPadlock;
+			viewsetuprtn = &ViewPoint::InitOutPadlock;
 			break;
 		case VM_Inside:
-			viewsetuprtn = InitInside;
+			viewsetuprtn = &ViewPoint::InitInside;
 			break;
 		case VM_InPadlock:
-			viewsetuprtn = InitInPadlock;
+			viewsetuprtn = &ViewPoint::InitInPadlock;
 			break;
 	}
 }
@@ -8334,7 +8320,7 @@ void ViewPoint::ControlDirectorView()
 				trackeditem = currentdirectoritem;
 				currentviewrec = paintshopviewrec;
 				bupviewdrawrtn = NULL;							//PD 28Jan97
-				viewdrawrtn = DrawTrack;
+				viewdrawrtn = &ViewPoint::DrawTrack;
 				drawpolypit = FALSE;
 				viewnum.viewcuttype=Instant;
 				DrawTrack();
@@ -8705,7 +8691,7 @@ void ViewPoint::ReadJoystick(	SWord& swHdg,
 //------------------------------------------------------------------------------
 Bool ViewPoint::UseIdentityMatrix()
 {
-	if (viewdrawrtn==DrawInside &&
+	if (viewdrawrtn==&ViewPoint::DrawInside &&
 		currentviewrec==insideviewrec &&
 		currentviewrec->hdg==ANGLES_0Deg &&
 		currentviewrec->pitch==ANGLES_0Deg &&
@@ -8717,7 +8703,7 @@ Bool ViewPoint::UseIdentityMatrix()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitMap
+//Procedure		&ViewPoint::InitMap
 //Author		Robert Slater
 //Date			Tue 8 Sep 1998
 //
@@ -8733,7 +8719,7 @@ void ViewPoint::InitMap()
 	trackeditem = currentvehicle;
 	currentviewrec = maprec;
 	bupviewdrawrtn = NULL;				
-	viewdrawrtn = DrawMap;										
+	viewdrawrtn = &ViewPoint::DrawMap;										
 	drawpolypit = FALSE;
 	drawmap = TRUE;
 
@@ -8745,7 +8731,7 @@ void ViewPoint::InitMap()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		InitMapAccel
+//Procedure		&ViewPoint::InitMapAccel
 //Author		Paul.   
 //Date			Wed 3 Mar 1999
 //------------------------------------------------------------------------------
@@ -8754,7 +8740,7 @@ void ViewPoint::InitMapAccel()
 	trackeditem = currentvehicle;
 	currentviewrec = maprec;
 	bupviewdrawrtn = NULL;				
-	viewdrawrtn = DrawMap;										
+	viewdrawrtn = &ViewPoint::DrawMap;										
 	drawpolypit = FALSE;
 	drawmap = TRUE;
 
@@ -8766,7 +8752,7 @@ void ViewPoint::InitMapAccel()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		DrawMap
+//Procedure		&ViewPoint::DrawMap
 //Author		Robert Slater
 //Date			Tue 8 Sep 1998
 //
@@ -8845,7 +8831,7 @@ void ViewPoint::DrawPrefs()
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List8Toggle
+//Procedure		&ViewPoint::List8Toggle
 //Author		Robert Slater
 //Date			Tue 20 Oct 1998
 //
@@ -8869,13 +8855,13 @@ void ViewPoint::List8Toggle()
 			premapviewrec=currentviewrec;
 
 			viewnum.viewmode = VM_Map;
-			viewsetuprtn = InitMap;
+			viewsetuprtn = &ViewPoint::InitMap;
 		}
 	}
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		List9Toggle
+//Procedure		&ViewPoint::List9Toggle
 //Author		Paul.   
 //Date			Wed 3 Mar 1999
 //------------------------------------------------------------------------------
@@ -8899,7 +8885,7 @@ void ViewPoint::List9Toggle()
 			premapviewrec=currentviewrec;
 
 			viewnum.viewmode = VM_Map;
-			viewsetuprtn = InitMapAccel;
+			viewsetuprtn = &ViewPoint::InitMapAccel;
 		}
 	}
 }
@@ -8948,7 +8934,7 @@ void	ViewPoint::SetCheatItem(ItemPtr	itm)
 	trackeditem = itm;
 	currentviewrec = outpadlockviewrec;
 	bupviewdrawrtn = NULL;						
-	viewdrawrtn = DrawOutPadlock;
+	viewdrawrtn = &ViewPoint::DrawOutPadlock;
 	drawpolypit = FALSE;
 	drawSpecialFlags -= (drawSpecialFlags & VIEW_SPECIAL_MAP);
 	drawmap = FALSE;
@@ -9246,7 +9232,7 @@ void	ViewPoint::SetDrawFrameTime(ULong&	dft)
 }
 
 //컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
-//Procedure		HandleGunner
+//Procedure		&ViewPoint::HandleGunner
 //Author		Robert Slater
 //Date			Tue 2 May 2000
 //

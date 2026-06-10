@@ -14,6 +14,7 @@ add_library(bob_3d STATIC
     OVERLAY.CPP
     SMKTRLS.CPP
     JIMCOL.CPP
+    VIEWSEL.CPP
 )
 # _3D.CPP is the unity that #includes the 3D fragments (3dcode/3dcom/Btree/
 # Migland(+jimtri)/Collided/Landscap/Imagemap/Shapes/Shpbld/Transite/World/
