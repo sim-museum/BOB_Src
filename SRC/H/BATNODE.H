@@ -2,6 +2,9 @@
 // The battlenode portion of node.h
 //
 //
+#if defined(BOB_LINUX)
+#include	"enumbits.m"	/* BITABLE() enum-operator macro used at the foot of this header */
+#endif
 
 struct	TeamDef;
 struct	SuperBattleNode;

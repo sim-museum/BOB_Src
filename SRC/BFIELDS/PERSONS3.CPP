@@ -138,7 +138,7 @@ CON	Persons3::Persons3(WorldStuff* world,ViewPoint* vp,Inst3d* inst):
 //DEADCODE JIM 09/12/99 	migsq[0]=migsq[1]=NULL;
 	baseSAGshape=ShapeNum(SAG00-1);
 	pilotedaircraft=NULL;
-	for (int i=0;i<PT_VEHICLES;	i++)
+	int i; for (i=0;i<PT_VEHICLES;	i++)
 		instancesSAG[i]=instancesAC[i]=formationleaderflights[i]=0;
 	GR_lastroutefirstwaypoint=NULL;
 }
@@ -527,7 +527,7 @@ void	Persons3::make_airgrp(info_airgrp& I)
 	//Any table containing 0xffff is undefined
 	UWord	damagetable[QMD_TOTAL_ALL_LOCATIONS];
 	{
-		for (int i=0;i<QMD_TOTAL_ALL_LOCATIONS;i++)
+		int i; for (i=0;i<QMD_TOTAL_ALL_LOCATIONS;i++)
 			damagetable[i]=0xffff;
 
 		int	maxind=0;
@@ -680,7 +680,7 @@ void	Persons3::make_airgrp(info_airgrp& I)
 				if (I.wpnum.Evaluate()!=ENABLE_COMPLEX_VAL)
 				{
 					WayPointPtr w=Persons2::ConvertPtrUID(UniqueID(GR_lastroutefirstwaypoint));
-					for (int i=I.wpnum.Evaluate();i;i--)
+					int i; for (i=I.wpnum.Evaluate();i;i--)
 					{
 						w=w->next;
 					}
@@ -1075,7 +1075,7 @@ void	Persons3::make_airgrp(info_airgrp& I)
 							hb=currac->waypoint->target->uniqueID.count;
 					}
 //DeadCode MS 26Sep00 					assert(currac->waypoint->target->SGT==hb || currac->waypoint->target==currac->ai.homebase);
-					for (int i=RunwayEBAND;i<BlokeBAND;i++)
+					int i; for (i=RunwayEBAND;i<BlokeBAND;i++)
 					{
 						ItemPtr p=ConvertPtrUID(UniqueID(i));
 						if (p && p->SGT==hb)
@@ -1720,10 +1720,10 @@ void	Persons3::FixWavesToLastRoute()
 		}
 	}
 	GR_lastroutefirstwaypoint=NULL;
-	{for (int i=0;i<10;i++)
+	{int i; for (i=0;i<10;i++)
 		lastrouteposwaveacs[i][0]=lastrouteposwaveacs[i][1]=UID_NULL;
 	}
-	{for (int i=0;i<4;i++)
+	{int i; for (i=0;i<4;i++)
 		lastroutenegwaveacs[i][0]=lastroutenegwaveacs[i][1]=UID_NULL;
 	}
 }
@@ -1808,7 +1808,7 @@ void	Persons3::FixUpWaypointsToGroup(int grpnum,int wavenum,UniqueID route,Uniqu
 					{
 						UniqueID SGT=airfieldalias->uniqueID.count;
 						ItemPtr q=airfieldalias;
-						for (int i=RunwaySBAND;i<RunwayEBAND;i++)
+						int i; for (i=RunwaySBAND;i<RunwayEBAND;i++)
 						{
 							ItemPtr p=Persons2::ConvertPtrUID(UniqueID(i));
 							if (p && p->SGT==SGT)
@@ -3134,7 +3134,7 @@ Bool	Persons3::anyoutstanding()
 void Persons3::InitGamePiece()
 {
 //DEADCODE DAW 12/05/99 	File_Man.DiscardDirList(FIL_RUNTIMEPACK0);
-	for (int i=0;i<LOADEDBFS;i++)
+	int i; for (i=0;i<LOADEDBFS;i++)
 		loadedBF[i]=FIL_NULL;
 
 	if (_Replay.Playback)
@@ -3516,7 +3516,7 @@ void	Persons3::ColourRulePlayerSquadron(AirStrucPtr	newac,FormationIndex formpos
 		if (SHAPE.SetAnimData(newac,s[COLS_BOMBS])!=sizeof(AircraftAnimData))	//DAW 12May98... 0 is weapon pack
 			_Error.EmitSysErr("Animation not aircraft");
 		AircraftAnimData*	anim=(AircraftAnimData*)newac->Anim;
-		for (int i=0;i<QMD_OTHER-QMD_LEFTWINGOUT;i++)
+		int i; for (i=0;i<QMD_OTHER-QMD_LEFTWINGOUT;i++)
 			if (damagetable[QMD_OTHER-i]!=0xffff)
 				*(&anim->OTHER-i)=damagetable[QMD_OTHER-i];
 		int inwingpos,outwingpos;
@@ -3717,7 +3717,7 @@ void	Persons3::AddPreLoadFXShapes()
 static float weights[]= {	 1.0,1.0,1.0,1.0,1.0,1.0,	0.5,0.6,0.3,	0.1	};	
 void	Persons3::ExpandPilotedFlights()
 {
-	{for (int i=0;i<=PT_GER_NONFLY;i++)
+	{int i; for (i=0;i<=PT_GER_NONFLY;i++)
 		sagexpcounts[i].currenttriggerrange=(sagexpcounts[i].maxtriggerrange+sagexpcounts[i].mintriggerrange)/2;
 	}
 	//Need to work out how many of each type of real aircraft to launch...
@@ -3787,7 +3787,7 @@ void	Persons3::ExpandPilotedFlights()
 				instancesSAG[i]-=replace;
 				availablerealaircraft-=replace;
 				sagexpcounts[i].numavailable+=replace;
-				donesome++;
+				donesome=true;
 			}
 		}
 	breakif(!donesome);
@@ -3802,7 +3802,7 @@ void	Persons3::ExpandPilotedFlights()
 			AirStrucPtr currac=ConvertPtrUID(sagexpcounts[i].basenum);	//CSB 9Aug00
 			currac->currworld->AddToWorld(currac);							//CSB 9Aug00
 			sagexpcounts[i].reservedactive=0;
-			for (int j=sagexpcounts[i].numavailable;--j;)
+			int j; for (j=sagexpcounts[i].numavailable;--j;)
 			{
 				UniqueID newacuid=Make3dAC(PlaneTypeSelect(i));
 				AirStrucPtr currac=ConvertPtrUID(newacuid);				//CSB 9Aug00

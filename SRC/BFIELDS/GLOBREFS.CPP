@@ -124,8 +124,11 @@ ULong
 		GR_Scram_Alt[8]={0},
 		GR_Scram_AC[8]={0},
 		GR_Scram_Skill[8]={0},
-		GR_Scram_Squad[8]={0};
-//DEADCODE RJS 15/02/00 		GR_Pack_TakeTime[8][3]={0};
+		GR_Scram_Squad[8]={0},
+/* un-deadcoded for the Linux port: bfrefs.g still references GR_Pack_TakeTime[w][g]
+   (the feature was cut but the generated table kept the slots), so it needs a
+   definition or the link is unresolved. Zero-filled -> runtime-harmless. */
+		GR_Pack_TakeTime[8][3]={0};
 
 //GR_PACK_LAST;
 
@@ -248,27 +251,27 @@ static	ULongRef
 
 void	Persons2::WipeGlobrefPackVars()	//In tank when we are about to load a package
 {
-	for (int i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
+	int i; for (i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
 		Persons2::SetLoc(i,0);
 
 }
 
 void	Persons2::ClearGlobrefPackVars()	//Before FindNextBf
 {
-	for (int i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
+	int i; for (i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
 		if (Persons2::GetLoc(i)==-i)
 			Persons2::SetLoc(i,0);
 
 }
 void	Persons2::ResetGlobrefPackVars()	//After FindNextBf
 {
-	for (int i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
+	int i; for (i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
 		if (Persons2::GetLoc(i)==0)
 			Persons2::SetLoc(i,-i);
 }
 void	Persons2::ClearGlobrefStaticVars()	//InitSetPiece
 {
-	for (int i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
+	int i; for (i=SGR_WPP_TakeOff;i<=SGR_WPP_Msg9;i++)
 		Persons2::SetLoc(i,0);
 	for (i=E_first_Static;i<E_static_END;i++)
 		names[i]=0;
@@ -276,7 +279,7 @@ void	Persons2::ClearGlobrefStaticVars()	//InitSetPiece
 }
 void	Persons2::ClearGlobrefGlobalVars()	//When safe generally
 {
-	for (int i=0;i<8;i++)
+	int i; for (i=0;i<8;i++)
 	{
 		GR_Scram_Alt[i]=0,
 		GR_Scram_AC[i]=0,
@@ -341,6 +344,13 @@ void	Persons2::ClearGlobrefGlobalVars()	//When safe generally
 //------------------------------------------------------------------------------
 //Make the actual list:
 //
+#if defined(BOB_LINUX)
+/* The array-typed GR_ globals live in globrefs.h's no-`pass` (#else) branch,
+   which this TU never triggers (it includes globrefs.h only with pass 1/2 to
+   regenerate the enum/table). bfrefs.g references GR_Pack_TakeTime[w][g], so
+   declare it here ahead of the table. */
+extern	ULong GR_Pack_TakeTime[8][3];
+#endif
 #include	"bfrefs.g"
 
 

@@ -121,7 +121,7 @@ int debugmaxcount;
 void	PackageList::BuildReorderTable(bool doreorder)
 {
 //	UniqueID	*ReorderLookup;
-	for (int i=0;i<MAX_REORDERLOOKUP;i++)
+	int i; for (i=0;i<MAX_REORDERLOOKUP;i++)
 		ReorderLookup[i]=UniqueID(SagBAND+i);
 	int reorder=SagBAND;
 	int	reorderempty=RealAcBAND-1;
@@ -389,7 +389,7 @@ void	Profile::TargetDesc::operator =(UniqueID u)
 UniqueID Persons2::GetNthSGTMember(UniqueID SGT,UniqueIDBand uidband,int count)
 {
 	info_itemS *p;
-	for (int i=uidband;i<IllegalSepID;i++)
+	int i; for (i=uidband;i<IllegalSepID;i++)
 		if ((p=*ConvertPtrUID(UniqueID(i)))!=NULL)
 			if (p->SGT==SGT)
 				if (!count--)
@@ -401,7 +401,7 @@ int Persons2::GetNOfSGTMember(UniqueID SGT,UniqueIDBand uidband,UniqueID member)
 {
 	info_itemS *p;
 	int count=0;
-	for (int i=uidband;i<member;i++)
+	int i; for (i=uidband;i<member;i++)
 		if ((p=*ConvertPtrUID(UniqueID(i)))!=NULL)
 			if (p->SGT==SGT)
 				count++;
@@ -414,7 +414,7 @@ void	Profile::SetTargetUIDs(bool	fixconvoys)
 	//Initially I can't load these as the items haven't been loaded yet.
 
 //DEADCODE RJS 16/11/99 	if (band!=RedTrainBAND && band!=RedTruckBAND)	   //never load these!
-	{for (int i=0;i<10;i++)										//JIM 30Nov99
+	{int i; for (i=0;i<10;i++)										//JIM 30Nov99
 	{
 		Node_Data.CheckTargetLoaded(packagetarget[i].SGT);	//JIM 30Nov99
 		packagetarget[i].SetTargetFromSGTBandOff();
@@ -441,7 +441,7 @@ void	PackageList::SaveBin(Profile* profile,BOStream&file)
 
 	int	targets[10];
 	int	subtargets[10];
-	for (int i=1;i<10;i++)
+	int i; for (i=1;i<10;i++)
 	{
 		targets[i]=Reorder(profile->packagetarget[i].SGT);
 		subtargets[i]=profile->packagetarget[i].band+profile->packagetarget[i].bandoff;
@@ -885,13 +885,13 @@ void ListExpr::	Save( BOStream& f, char *, int, EnumListNames )
 {
 	f<<C T_list <<C T_linklist <<C (1+maxentries);
 	index.Save(f,NULL);
-	for (int i=0;i<maxentries;i++)
+	int i; for (i=0;i<maxentries;i++)
 		entries[i].Save(f,NULL);
 }
 void ListFormExpr::Save( BOStream& f, char *, int, EnumListNames )
 {
 	f<<C T_list <<C T_linklist <<C (maxentries);
-	for (int i=0;i<maxentries;i++)
+	int i; for (i=0;i<maxentries;i++)
 		entries[i].Save(f,NULL);
 }
 void WorldExpr::	Save( BOStream& f, char *, int, EnumListNames )
@@ -990,13 +990,13 @@ void IcptExpr::	Save( BOStream& f, char *, int, EnumListNames )
 	objA.Save(f,NULL);
 	objB.Save(f,NULL);
 }
-void UIDExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void WorldExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void XyzExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void GlobRefExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)	{}
-void RndExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void SelExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void ListExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void ListFormExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)	{}
-void RotExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
-void IcptExpr::Save(struct _iobuf *,char *,int,enum EnumListNames)		{}
+void UIDExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void WorldExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void XyzExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void GlobRefExpr::Save(FILE *,char *,int,enum EnumListNames)	{}
+void RndExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void SelExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void ListExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void ListFormExpr::Save(FILE *,char *,int,enum EnumListNames)	{}
+void RotExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
+void IcptExpr::Save(FILE *,char *,int,enum EnumListNames)		{}
