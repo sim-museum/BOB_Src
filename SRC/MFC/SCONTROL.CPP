@@ -1602,7 +1602,7 @@ void SController::OnDestroy()
 //DeadCode DAW 22Dec98 	return TRUE;  // return TRUE unless you set the focus to a control
 //DeadCode DAW 22Dec98 	              // EXCEPTION: OCX Property Pages should return FALSE
 //DeadCode DAW 22Dec98 }
-static SetDZCombo(SController::CRCombo* combo,int level,int midlevel)
+static void SetDZCombo(SController::CRCombo* combo,int level,int midlevel)	/* BOB_LINUX: was implicit-int (no return) -> -O3 UB */
 {
 	int index=0;
 	if (level>=midlevel)

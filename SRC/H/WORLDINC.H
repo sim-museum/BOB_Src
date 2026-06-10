@@ -352,7 +352,7 @@ struct	EventLog
 struct	EventLogPtr:EventLog
 {
 	EventLog* operator->()	{return this;}
-	operator= (const int)	{;}
+	void	operator= (const int)	{;}	/* BOB_LINUX: was implicit-int (no return) -> -O3 UB */
 };
 //DEADCODE DAW 08/03/00 typedef	EventLog	*EventLogPtr;
 

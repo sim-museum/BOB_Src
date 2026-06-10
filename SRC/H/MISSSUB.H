@@ -1180,7 +1180,7 @@ struct	LastWeekReview:PeriodReviewBase
 };
 struct	PeriodReview:PeriodReviewBase
 {
-	operator=(LastWeekReview* lwr) 
+	void	operator=(LastWeekReview* lwr)	/* BOB_LINUX: was implicit-int (no return) -> -O3 UB */
 	{ *(PeriodReviewBase*)this=*(PeriodReviewBase*)lwr;	}
 };
 
