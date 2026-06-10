@@ -650,7 +650,7 @@ void	Grid_Base::SetCloudGrid( int layer, UByte cover )
 //////////////////////////////////////////////////////////////////////
 void	Grid_Base::CloseGridFiles()
 {
-	for ( int i=0; i<3; i++ )
+	int i; for ( i=0; i<3; i++ )
 	{
 		if ( CloudGrids[i] !=NULL )
 		{
