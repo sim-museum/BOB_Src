@@ -73,17 +73,94 @@ static void ensure_window(int w, int h)
 	SDL_GL_SwapWindow(g_win);
 }
 
-/* Pump the SDL event queue so the window stays responsive / closeable. */
+/* ====================================================================== *
+ * Phase 2: DirectInput keyboard -> SDL.                                   *
+ * The game opens GUID_SysKeyboard in BUFFERED mode and reads events via   *
+ * GetDeviceData: each event {dwOfs = DIK scancode, dwData = 0x80 down/0   *
+ * up}. The key map is indexed by dwOfs, so the DIK codes must be the      *
+ * PS/2-set-1 values DirectInput uses. We translate SDL_Scancode -> DIK,   *
+ * queue events here, and signal readiness through MsgWaitForMultipleObjects*
+ * (bob_msg_wait returns the keyboard-notification handle's index).        *
+ * ====================================================================== */
+static int sdl_to_dik(int sc) {
+	switch (sc) {
+	case SDL_SCANCODE_ESCAPE: return 0x01;
+	case SDL_SCANCODE_1: return 0x02; case SDL_SCANCODE_2: return 0x03;
+	case SDL_SCANCODE_3: return 0x04; case SDL_SCANCODE_4: return 0x05;
+	case SDL_SCANCODE_5: return 0x06; case SDL_SCANCODE_6: return 0x07;
+	case SDL_SCANCODE_7: return 0x08; case SDL_SCANCODE_8: return 0x09;
+	case SDL_SCANCODE_9: return 0x0A; case SDL_SCANCODE_0: return 0x0B;
+	case SDL_SCANCODE_MINUS: return 0x0C; case SDL_SCANCODE_EQUALS: return 0x0D;
+	case SDL_SCANCODE_BACKSPACE: return 0x0E; case SDL_SCANCODE_TAB: return 0x0F;
+	case SDL_SCANCODE_Q: return 0x10; case SDL_SCANCODE_W: return 0x11;
+	case SDL_SCANCODE_E: return 0x12; case SDL_SCANCODE_R: return 0x13;
+	case SDL_SCANCODE_T: return 0x14; case SDL_SCANCODE_Y: return 0x15;
+	case SDL_SCANCODE_U: return 0x16; case SDL_SCANCODE_I: return 0x17;
+	case SDL_SCANCODE_O: return 0x18; case SDL_SCANCODE_P: return 0x19;
+	case SDL_SCANCODE_LEFTBRACKET: return 0x1A; case SDL_SCANCODE_RIGHTBRACKET: return 0x1B;
+	case SDL_SCANCODE_RETURN: return 0x1C; case SDL_SCANCODE_LCTRL: return 0x1D;
+	case SDL_SCANCODE_A: return 0x1E; case SDL_SCANCODE_S: return 0x1F;
+	case SDL_SCANCODE_D: return 0x20; case SDL_SCANCODE_F: return 0x21;
+	case SDL_SCANCODE_G: return 0x22; case SDL_SCANCODE_H: return 0x23;
+	case SDL_SCANCODE_J: return 0x24; case SDL_SCANCODE_K: return 0x25;
+	case SDL_SCANCODE_L: return 0x26; case SDL_SCANCODE_SEMICOLON: return 0x27;
+	case SDL_SCANCODE_APOSTROPHE: return 0x28; case SDL_SCANCODE_GRAVE: return 0x29;
+	case SDL_SCANCODE_LSHIFT: return 0x2A; case SDL_SCANCODE_BACKSLASH: return 0x2B;
+	case SDL_SCANCODE_Z: return 0x2C; case SDL_SCANCODE_X: return 0x2D;
+	case SDL_SCANCODE_C: return 0x2E; case SDL_SCANCODE_V: return 0x2F;
+	case SDL_SCANCODE_B: return 0x30; case SDL_SCANCODE_N: return 0x31;
+	case SDL_SCANCODE_M: return 0x32; case SDL_SCANCODE_COMMA: return 0x33;
+	case SDL_SCANCODE_PERIOD: return 0x34; case SDL_SCANCODE_SLASH: return 0x35;
+	case SDL_SCANCODE_RSHIFT: return 0x36; case SDL_SCANCODE_KP_MULTIPLY: return 0x37;
+	case SDL_SCANCODE_LALT: return 0x38; case SDL_SCANCODE_SPACE: return 0x39;
+	case SDL_SCANCODE_CAPSLOCK: return 0x3A;
+	case SDL_SCANCODE_F1: return 0x3B; case SDL_SCANCODE_F2: return 0x3C;
+	case SDL_SCANCODE_F3: return 0x3D; case SDL_SCANCODE_F4: return 0x3E;
+	case SDL_SCANCODE_F5: return 0x3F; case SDL_SCANCODE_F6: return 0x40;
+	case SDL_SCANCODE_F7: return 0x41; case SDL_SCANCODE_F8: return 0x42;
+	case SDL_SCANCODE_F9: return 0x43; case SDL_SCANCODE_F10: return 0x44;
+	case SDL_SCANCODE_F11: return 0x57; case SDL_SCANCODE_F12: return 0x58;
+	case SDL_SCANCODE_NUMLOCKCLEAR: return 0x45; case SDL_SCANCODE_SCROLLLOCK: return 0x46;
+	/* extended (0xE0-prefixed -> DIK uses 0x80|base) */
+	case SDL_SCANCODE_RCTRL: return 0x9D; case SDL_SCANCODE_RALT: return 0xB8;
+	case SDL_SCANCODE_KP_ENTER: return 0x9C; case SDL_SCANCODE_KP_DIVIDE: return 0xB5;
+	case SDL_SCANCODE_UP: return 0xC8; case SDL_SCANCODE_LEFT: return 0xCB;
+	case SDL_SCANCODE_RIGHT: return 0xCD; case SDL_SCANCODE_DOWN: return 0xD0;
+	case SDL_SCANCODE_HOME: return 0xC7; case SDL_SCANCODE_END: return 0xCF;
+	case SDL_SCANCODE_PAGEUP: return 0xC9; case SDL_SCANCODE_PAGEDOWN: return 0xD1;
+	case SDL_SCANCODE_INSERT: return 0xD2; case SDL_SCANCODE_DELETE: return 0xD3;
+	default: return 0;
+	}
+}
+struct KbEvent { unsigned ofs; unsigned data; };
+#define BOB_KBQ 256
+static KbEvent g_kbq[BOB_KBQ];
+static int g_kbHead=0, g_kbTail=0;     /* ring buffer */
+static unsigned g_kbSeq=0;
+static void* g_diKbNotify=0;           /* htable[EVENT_KEYS] from SetEventNotification */
+static int g_diKbAcquired=0;
+static void kb_push(unsigned dik, int down) {
+	if (!dik) return;
+	int nt=(g_kbTail+1)%BOB_KBQ;
+	if (nt==g_kbHead) return;          /* full: drop oldest-style */
+	g_kbq[g_kbTail].ofs=dik; g_kbq[g_kbTail].data=down?0x80:0x00;
+	g_kbTail=nt;
+}
+
+/* Pump the SDL event queue: window close + keyboard -> DIK queue. */
 static void pump_events(void)
 {
 	if (!g_win) return;
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
-		if (e.type == SDL_QUIT ||
-		    (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)) {
-			fprintf(stderr, "[vid] window closed -> exit\n");
-			SDL_Quit();
-			_exit(0);
+		if (e.type == SDL_QUIT) { fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0); }
+		else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
+			int dik = sdl_to_dik(e.key.keysym.scancode);
+			if (dik && g_diKbAcquired && !e.key.repeat) kb_push(dik, e.type==SDL_KEYDOWN);
+			/* a hard exit hatch while the UI loop isn't wired: Ctrl+ESC quits */
+			if (e.type==SDL_KEYDOWN && e.key.keysym.sym==SDLK_ESCAPE && (e.key.keysym.mod & KMOD_CTRL)) {
+				SDL_Quit(); _exit(0);
+			}
 		}
 	}
 }
@@ -92,9 +169,15 @@ static void pump_events(void)
    Pumps SDL events and yields the CPU briefly so CMIGApp::Run() doesn't busy-spin.
    Returns WAIT_TIMEOUT (0x102) -- a real window-message queue wired to SDL events
    is the next step. */
-extern "C" unsigned long bob_msg_wait(unsigned long dwMilliseconds)
+extern "C" unsigned long bob_msg_wait(unsigned long nCount, void* const* handles, unsigned long dwMilliseconds)
 {
 	pump_events();
+	/* if keyboard input is queued, wake the loop on the keyboard-notification
+	   handle (htable[EVENT_KEYS]) so CMIGApp::Run dispatches Inst3d::OnKeyInput. */
+	if (g_kbHead != g_kbTail && g_diKbNotify && handles) {
+		for (unsigned long i=0;i<nCount;i++)
+			if (handles[i] == g_diKbNotify) return i;   /* WAIT_OBJECT_0 + i */
+	}
 	/* yield: ~3ms when the caller intended to wait, 0 when it polled (timeout 0) */
 	if (dwMilliseconds != 0) SDL_Delay(3);
 	return 0x00000102; /* WAIT_TIMEOUT */
@@ -698,8 +781,32 @@ static IDirectInputVtbl       g_diVtbl;
 static IDirectInputDeviceVtbl g_didevVtbl;
 static IDirectInputDeviceA    g_diKeyboard, g_diMouse, g_diJoystick, g_diGeneric;
 
-static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA*, DWORD cb, LPVOID buf) { if (buf && cb) memset(buf,0,cb); return 0; }
-static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA*, DWORD, LPDIDEVICEOBJECTDATA, LPDWORD inout, DWORD) { if (inout) *inout = 0; return 0; }
+static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID buf) {
+	if (buf && cb) memset(buf,0,cb);
+	/* keyboard immediate state: 256-byte DIK array, 0x80 = down (some code uses this) */
+	if (This==&g_diKeyboard && buf && cb>=256) {
+		int n; const Uint8* st=SDL_GetKeyboardState(&n);
+		unsigned char* d=(unsigned char*)buf;
+		for (int sc=0;sc<n;sc++) if (st[sc]) { int dik=sdl_to_dik(sc); if(dik&&dik<256) d[dik]=0x80; }
+	}
+	return 0;
+}
+static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEOBJECTDATA buf, LPDWORD inout, DWORD flags) {
+	if (!inout) return 0;
+	if (This!=&g_diKeyboard) { *inout=0; return 0; }
+	DWORD want=*inout, got=0;
+	while (got<want && g_kbHead!=g_kbTail) {
+		if (buf) { memset(&buf[got],0,sizeof(buf[got]));
+			buf[got].dwOfs=g_kbq[g_kbHead].ofs; buf[got].dwData=g_kbq[g_kbHead].data;
+			buf[got].dwSequence=++g_kbSeq; }
+		if (!(flags & 0x1 /*DIGDD_PEEK*/)) g_kbHead=(g_kbHead+1)%BOB_KBQ;
+		got++;
+	}
+	*inout=got;
+	return 0;
+}
+static HRESULT DIDEV_Acquire(IDirectInputDeviceA* This) { if (This==&g_diKeyboard) g_diKbAcquired=1; return 0; }
+static HRESULT DIDEV_SetEventNotify(IDirectInputDeviceA* This, HANDLE h) { if (This==&g_diKeyboard) g_diKbNotify=(void*)h; return 0; }
 static HRESULT DIDEV_ok(IDirectInputDeviceA*) { return 0; }
 static HRESULT DIDEV_SetProperty(IDirectInputDeviceA*, REFGUID, LPCDIPROPHEADER) { return 0; }
 static HRESULT DIDEV_GetProperty(IDirectInputDeviceA*, REFGUID, LPDIPROPHEADER) { return 0; }
@@ -727,7 +834,8 @@ static void init_dinput_once(void) {
 	static int done=0; if (done) return; done=1;
 	g_didevVtbl.AddRef=DIDEV_addref; g_didevVtbl.Release=DIDEV_release;
 	g_didevVtbl.GetDeviceState=DIDEV_GetDeviceState; g_didevVtbl.GetDeviceData=DIDEV_GetDeviceData;
-	g_didevVtbl.Acquire=DIDEV_ok; g_didevVtbl.Unacquire=DIDEV_ok; g_didevVtbl.Poll=DIDEV_ok;
+	g_didevVtbl.Acquire=DIDEV_Acquire; g_didevVtbl.Unacquire=DIDEV_ok; g_didevVtbl.Poll=DIDEV_ok;
+	g_didevVtbl.SetEventNotification=DIDEV_SetEventNotify;
 	g_didevVtbl.SetProperty=DIDEV_SetProperty; g_didevVtbl.GetProperty=DIDEV_GetProperty;
 	g_didevVtbl.SetDataFormat=DIDEV_SetDataFormat; g_didevVtbl.SetCooperativeLevel=DIDEV_SetCoop;
 	g_didevVtbl.EnumObjects=DIDEV_EnumObjects; g_didevVtbl.GetCapabilities=DIDEV_GetCaps;
@@ -800,6 +908,34 @@ extern "C" int bob_render_smoketest(void)
 	glReadPixels(400,300,1,1,GL_RGB,GL_UNSIGNED_BYTE,mid);
 	fprintf(stderr,"[vid] render smoketest: centre(400,300) rgb=(%d,%d,%d) [expect red/green checker, not 32,48,64] glErr=%d\n",
 		mid[0],mid[1],mid[2],(int)glGetError());
+	return 1;
+}
+
+/* Phase 2 input smoke test (BOB_INPUT_SMOKETEST=1): drive the keyboard device the
+   way the game does -- CreateDevice(GUID_SysKeyboard), SetDataFormat,
+   SetEventNotification, Acquire -- then simulate key events into the queue and
+   verify GetDeviceData drains them as DIK buffered events and that
+   MsgWaitForMultipleObjects (bob_msg_wait) wakes on the keyboard handle. */
+extern "C" int bob_input_smoketest(void)
+{
+	init_dinput_once();
+	LPDIRECTINPUT di=NULL; DirectInputCreateA(0,0,&di,0);
+	LPDIRECTINPUTDEVICE kb=NULL; di->CreateDevice(GUID_SysKeyboard,&kb,0);
+	void* fakeEvent=(void*)0xABCDul;
+	kb->SetEventNotification((HANDLE)fakeEvent);
+	kb->Acquire();
+	kb_push(0x1E,1); kb_push(0x1E,0); kb_push(0xC8,1);   /* A down, A up, UP down */
+
+	DIDEVICEOBJECTDATA ev[16]; DWORD n=16;
+	kb->GetDeviceData(sizeof(DIDEVICEOBJECTDATA),ev,&n,0);
+	fprintf(stderr,"[input] GetDeviceData drained %u events (expect 3): ",(unsigned)n);
+	for (DWORD i=0;i<n;i++) fprintf(stderr,"{ofs=%02x data=%02x} ",(unsigned)ev[i].dwOfs,(unsigned)ev[i].dwData);
+	fprintf(stderr,"\n");
+
+	kb_push(0x39,1);                                    /* SPACE down -> input pending */
+	void* handles[3]={(void*)1,fakeEvent,(void*)3};
+	unsigned long r=bob_msg_wait(3,handles,0);
+	fprintf(stderr,"[input] bob_msg_wait -> %lu (expect 1 = keyboard handle index)\n", r);
 	return 1;
 }
 

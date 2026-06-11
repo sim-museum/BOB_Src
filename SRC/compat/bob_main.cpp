@@ -24,6 +24,7 @@ extern "C" int bob_init_instance(void);
 extern "C" int bob_run(void);
 extern "C" int bob_video_smoketest(void);
 extern "C" int bob_render_smoketest(void);
+extern "C" int bob_input_smoketest(void);
 
 int main(int argc, char** argv)
 {
@@ -45,6 +46,11 @@ int main(int argc, char** argv)
 	if (getenv("BOB_RENDER_SMOKETEST")) {
 		fprintf(stderr, "  Render smoke test (D3D7 device -> GL textured quad)...\n");
 		bob_render_smoketest();
+		_exit(0);
+	}
+	if (getenv("BOB_INPUT_SMOKETEST")) {
+		fprintf(stderr, "  Input smoke test (DirectInput keyboard -> SDL)...\n");
+		bob_input_smoketest();
 		_exit(0);
 	}
 

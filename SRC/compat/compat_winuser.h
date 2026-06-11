@@ -538,11 +538,13 @@ typedef struct tagMINMAXINFO {
    and yields the CPU, returning WAIT_TIMEOUT so the pump runs its idle path
    (OnIdle drives the per-frame game work). Real window messages from SDL: next. */
 #ifdef __cplusplus
-extern "C" unsigned long bob_msg_wait(unsigned long ms);
+extern "C" unsigned long bob_msg_wait(unsigned long nCount, void* const* handles, unsigned long ms);
 #else
-extern unsigned long bob_msg_wait(unsigned long ms);
+extern unsigned long bob_msg_wait(unsigned long nCount, void* const* handles, unsigned long ms);
 #endif
-static inline DWORD MsgWaitForMultipleObjects(DWORD, const HANDLE*, BOOL, DWORD ms, DWORD) { return bob_msg_wait(ms); }
+static inline DWORD MsgWaitForMultipleObjects(DWORD n, const HANDLE* h, BOOL, DWORD ms, DWORD) {
+    return bob_msg_wait(n, (void* const*)h, ms);
+}
 
 typedef struct tagCREATESTRUCTA {
     LPVOID    lpCreateParams;
