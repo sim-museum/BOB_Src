@@ -1439,6 +1439,10 @@ void Inst3d::OnKeyInput()
 void	Inst3d::OnKeyDown(int keynum)
 {
 	int	index=commonkeymaps->mappings[keynum][commonkeymaps->currshifts];
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_KEY"))
+		fprintf(stderr,"[key] OnKeyDown dik=0x%02x shift=%d -> index=%d\n",keynum,(int)commonkeymaps->currshifts,index);
+#endif
 	if (index)
 	{
 		if (index<16)
@@ -1839,6 +1843,13 @@ QueryPerformanceFrequency(
 
 void	Inst3d::DoMoveCycle()
 {
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_FLY")) { static int tc=0;
+		if ((tc++ % 20)==0 && Manual_Pilot.ControlledAC2)
+			fprintf(stderr,"[fly] tick=%d paused=%d ac.World=(%ld,%ld,%ld)\n", tc, (int)paused,
+				(long)Manual_Pilot.ControlledAC2->World.X,(long)Manual_Pilot.ControlledAC2->World.Y,
+				(long)Manual_Pilot.ControlledAC2->World.Z); }
+#endif
 #ifdef	_FRAMESHITE_
 	fprintf(Three_Dee.framefp,"-\n");
 #endif

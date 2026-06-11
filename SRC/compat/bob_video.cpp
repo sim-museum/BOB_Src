@@ -180,6 +180,13 @@ static void kb_push(unsigned dik, int down) {
 static void pump_events(void)
 {
 	if (!g_win) return;
+	/* Synthetic input for headless testing: BOB_AUTOFLY sweeps DIK codes (one press
+	   every few pumps) so the key->command dispatch can be verified via BOB_TRACE_KEY
+	   without a physical keyboard. */
+	if (getenv("BOB_AUTOFLY") && g_diKbAcquired) {
+		static int sweep=1, cnt=0;
+		if ((++cnt % 4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; }
+	}
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) { fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0); }

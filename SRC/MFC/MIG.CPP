@@ -619,6 +619,12 @@ BOOL CMIGApp::InitInstance()
 				Persons4::InitViewFromMap((UniqueID)firstUid);
 			}
 		}
+		// Create the event handles BEFORE View3d/Interactive: the keyboard's
+		// SetEventNotification(htable[EVENT_KEYS]) runs inside MakeInteractive, and a
+		// null handle there would break input dispatch (Run() creates them otherwise,
+		// but that's after InitInstance).
+		for (int i=0;i<Master_3d.NUM_EVENTS;i++)
+			if (!Master_3d.htable[i]) Master_3d.htable[i]=CreateEvent(0,0,0,0);
 		Inst3d* inst; bool viewFlag;
 		if (fullMission) {
 			// Full mission path: default Inst3d ctor -> Persons2::LoadSetPiece loads the
@@ -637,6 +643,9 @@ BOOL CMIGApp::InitInstance()
 		View3d* view = new View3d(inst, m_pMainWnd->m_hWnd, m_pMainWnd);
 		// flag2=true -> RefreshLandscape() so the terrain mesh loads.
 		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, viewFlag, true);
+		// Unpause the simulation so the move cycle ticks (RTESTSH1 does this under NDEBUG);
+		// otherwise the world/flight model never advances.
+		if (fullMission) inst->Paused(FALSE);
 		fprintf(stderr, "[boot] View3d interactive; draw thread running\n");
 	}
 #endif
@@ -672,7 +681,8 @@ int CMIGApp::Run()
 	// TODO: Add your specialized code here and/or call the base class
 ///	Master_3d.Init(m_hInstance,m_pMainWnd->m_hWnd);
 	for (int i=0;i<Master_3d.NUM_EVENTS;i++)
-		Master_3d.htable[i]=CreateEvent(0,0,0,0);
+		if (!Master_3d.htable[i])					// BOB_LINUX: may be pre-created in
+			Master_3d.htable[i]=CreateEvent(0,0,0,0);	// InitInstance before Interactive()
 
 	// Culled from CWinApp::Run() and CWinTread::Run()
 	// The following bit is called once in CWinApp::Run()
