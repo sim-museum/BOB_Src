@@ -1320,7 +1320,13 @@ const QuickDef	QuickDef::QuickMissionArray::operator[](int index)const
 	fileblock fb(FIL_QUICKMISSION_DATA,trans);
 #endif
 	QuickDef* qd=(QuickDef*)fb.getdata();
-	return	(qd[index]); 
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_QM")) fprintf(stderr,"[qm] QMArray[%d]: qd=%p filesize=%ld sizeof(QuickDef)=%lu entries=%ld titlename=%d (IGNORED=%d)\n",
+		index,(void*)qd,(long)fb.getsize(),(unsigned long)sizeof(QuickDef),
+		(long)(fb.getsize()/(long)sizeof(QuickDef)), qd?(int)qd[index].titlename:-1, (int)IDS_CONFIGIGNORED);
+	if (!qd) { static QuickDef dummy; memset(&dummy,0,sizeof(dummy)); return dummy; }
+#endif
+	return	(qd[index]);
 }
 ////////////////////////////////////////////////////////////////////////
 //

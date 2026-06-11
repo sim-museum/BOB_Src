@@ -568,11 +568,33 @@ BOOL CMIGApp::InitInstance()
 	// landscape/sky render path. The remaining work is the full 3D lit pipeline
 	// (DrawSphere/RenderLandscape) -- see PORT.md Phase 1b.
 	if (getenv("BOB_BOOT_FRONTEND")) {
+		// Full Quick-Mission flight by default; BOB_OBJECT_VIEW selects the lighter
+		// map-item view instead (no LoadSetPiece).
+		bool fullMission = getenv("BOB_OBJECT_VIEW") == NULL;
 		fprintf(stderr, "[boot] new-campaign setup (scramble)...\n");
 		Node_Data.BuildTargetTable();      // set up node/squad tables FIRST (cold start)
 		Node_Data.LoadCleanNodeTree();
 		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
 		Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+		if (fullMission) {
+			// Quick-Mission setup (cf. RFullPanelDial::SetUpHotShot, FULLPANE.CPP:1893):
+			// LoadSetPiece's player-route/scramble path uses quickdef whenever
+			// Todays_Packages[0] is PS_SPARE (true here), so pick a predefined quick
+			// mission and assign the player's squadron -- this is what gives
+			// ExpandPilotedFlights a piloted aircraft (avoids "No player A/C set up").
+			// QuickDef::trans terminates the loaded array on titlename==0 (the
+			// IDS_CONFIGIGNORED "hot shot" entry isn't in this data version), so just
+			// pick a valid quick mission by index (BOB_QM_INDEX, default 0).
+			const char* qix = getenv("BOB_QM_INDEX");
+			int qi = qix ? atoi(qix) : 0;
+			CSQuick1::currquickmiss=qi;
+			CSQuick1::quickdef=CSQuick1::quickmissions[qi];
+			QuickDef& q = CSQuick1::quickdef;
+			MMC.playersquadron=q.line[q.plside][q.plwave][q.plgrp].actype;
+			MMC.playeracnum=q.plac;
+			fprintf(stderr,"[boot] QM: idx=%d title=%d plside=%d plwave=%d plgrp=%d plac=%d playersquadron=%d\n",
+				qi,(int)q.titlename,(int)q.plside,(int)q.plwave,(int)q.plgrp,(int)q.plac,(int)MMC.playersquadron);
+		}
 		Persons4::StartUpMapWorld();
 		// Probe: how many map items exist, and pick one to view (its uid).
 		{
@@ -597,12 +619,11 @@ BOOL CMIGApp::InitInstance()
 				Persons4::InitViewFromMap((UniqueID)firstUid);
 			}
 		}
-		bool fullMission = getenv("BOB_FULL_INST3D") != NULL;
 		Inst3d* inst; bool viewFlag;
 		if (fullMission) {
 			// Full mission path: default Inst3d ctor -> Persons2::LoadSetPiece loads the
-			// day's battlefields/convoys/terrain (the real 3D world). Working on the
-			// FindNextBf convoy-list crash this path hits.
+			// day's battlefields/convoys/terrain + the player flight (a real 3D flight
+			// scene with the player aircraft and AI).
 			fprintf(stderr, "[boot] world ready; creating View3d (FULL mission / LoadSetPiece)...\n");
 			inst = new Inst3d();
 			viewFlag = false;
