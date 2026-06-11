@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## MILESTONE (2026-06-10): Quick Mission loads — first 3D flight scene
+> The full `Inst3d()` → `Persons2::LoadSetPiece` mission path now completes and renders a
+> real 3D flight scene (sky, horizon, player + AI aircraft; 167 colours vs the 5-colour
+> map backdrop). The boot probe (`BOB_BOOT_FRONTEND=1`, full-mission by default;
+> `BOB_OBJECT_VIEW` for the lighter map-item view) sets up a Quick Mission so a player
+> aircraft exists. Getting here resolved a chain of "no player mission" issues:
+> - **Phase 1b texture/present** (`4f8b9c2`): real `SURF_Blt`/`BltFast` surface copy (the
+>   D3D7 texture pipeline was a no-op → white screen) + 3D-framebuffer present.
+> - **ENDSCRAMBF guard** (`9ce9ccd`): `FindNextBf` derefed a NULL `Manual_Pilot.ControlledAC2`
+>   during the scramble-battlefield walk.
+> - **Quick Mission setup** (`4e90242`): `quickdef = quickmissions[N]` + assign
+>   `MMC.playersquadron`/`playeracnum` so `ExpandPilotedFlights` builds the player aircraft
+>   and clears the game's `"No player A/C set up on entering 3d!"` assertion. `LoadSetPiece`'s
+>   player-route/scramble cases read `quickdef` when `Todays_Packages[0]` is `PS_SPARE`.
+>
+> NEXT: scene polish (lighting/haze looks washed-out; more visible aircraft), wire the
+> already-working keyboard input to actually fly the player aircraft, and the campaign
+> (non-QM) mission-generation path.
+
 > ## PHASE 3 IN PROGRESS (2026-06-10): live rendering runtime — window + draw loop up
 > The full runtime now boots into a live, multi-threaded rendering state. An opt-in probe
 > (`BOB_BOOT_FRONTEND`, in `CMIGApp::InitInstance`) stands up a fresh campaign map world
