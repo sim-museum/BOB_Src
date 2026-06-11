@@ -53,6 +53,17 @@
 > Lib3D fog-parameter tune (skyFog/groundFog/mistDensity), not a compat feature.
 > Kept: D3D fog-state capture in DEV_SetRenderState (correct infra; BOB_TRACE_FOG) and the
 > env-gated BOB_FOG path (validated no-op, left for a future hardware-T&L revival).
+>
+> ## M3 mipmaps (2026-06-11): added (opt-in) — and they expose the real terrain bug
+> Added GL 1.4 auto-mipmaps + anisotropic filtering (opt-in BOB_MIP; default off; the game
+> uses D3DTSS_MIPFILTER). With them the terrain detail jumps 113 -> ~18k distinct colours,
+> but it resolves into **regular vertical stripes**, not fields -- and anisotropic filtering
+> does NOT remove them. That's decisive: the stripes are **real UV data, not minification
+> aliasing**. The ground-tile UVs map the detail texture to vertical bands (u varies ~10x
+> faster than v across a quad; setIMapCoords(apd.x,apd.z) -> tu=apd.x/texW over-tiles one
+> axis). The no-mip blur was hiding this. So the real remaining terrain defect is the
+> **ground-tile UV mapping** (LoRezTile/HiRezTile setIMapCoords + tsW), a focused fix; mips
+> are left off by default because sharp stripes look worse than the blur until that lands.
 
 > ## M0 (2026-06-11): validation harness + controllable land view — and a root-cause correction
 > Built a pixel-truth harness so rendering is judged by captured frames, not impressions

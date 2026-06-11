@@ -701,6 +701,13 @@ static void upload_texture(GLSurface7* s) {
 	if (!s->glTex) glGenTextures(1, &s->glTex);
 	glBindTexture(GL_TEXTURE_2D, s->glTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	/* GL 1.4 auto-mipmap (BEFORE glTexImage2D). Opt-in (BOB_MIP): mipmaps are correct GL
+	   practice and the game uses D3DTSS_MIPFILTER, but with the current ground-tile UVs
+	   they sharpen the terrain into vertical stripes (the UVs sample a ~1-texel strip;
+	   v barely varies). Default off until the terrain-UV mapping is fixed -- the blurred
+	   look is less wrong than stripes. */
+	int wantMip = getenv("BOB_MIP") != 0;
+	if (wantMip) glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 	const DDPIXELFORMAT& pf = s->desc.ddpfPixelFormat;
 	if (s->bpp==16) {
 		GLenum type=GL_UNSIGNED_SHORT_5_6_5, fmt=GL_RGB;
@@ -710,7 +717,19 @@ static void upload_texture(GLSurface7* s) {
 	} else {
 		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,GL_BGRA,GL_UNSIGNED_BYTE,s->bits);
 	}
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	/* Mipmaps (auto-generated above): the game uses D3DTSS_MIPFILTER and terrain detail
+	   textures tile heavily (severe minification) -> trilinear mipmapping removes the
+	   aliasing that otherwise smears them. BOB_NOMIP disables for A/B. */
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, wantMip?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
+	if (wantMip) { /* anisotropic filtering: terrain is viewed at a grazing angle, where u
+	                  compresses far faster than v -- isotropic mips alias into stripes. */
+		#ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
+		#define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
+		#define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+		#endif
+		GLfloat maxA=1.f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,&maxA);
+		if (maxA>1.f) glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAX_ANISOTROPY_EXT,maxA);
+	}
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
