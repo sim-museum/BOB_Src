@@ -242,6 +242,8 @@ struct GLSurface7 {
 	int   isPrimary;
 	GLuint glTex;                   /* GL texture (lazily created for texture surfaces) */
 	int    texDirty;                /* bits changed since last upload (set on Unlock) */
+	int    ckeyOn;                  /* source colour-key set (transparent colour) */
+	DWORD  ckeyLow, ckeyHigh;       /* keyed colour range in the surface's pixel format */
 };
 struct GLClipper  { IDirectDrawClipperVtbl* lpVtbl; HWND hwnd; };
 struct GLPalette  { IDirectDrawPaletteVtbl* lpVtbl; PALETTEENTRY ent[256]; };
@@ -450,6 +452,19 @@ extern "C" int bob_video_smoketest(void)
 	return 1;
 }
 static HRESULT SURF_SetPalette(IDirectDrawSurface7*, LPDIRECTDRAWPALETTE) { return DD_OK; }
+static HRESULT SURF_SetColorKey(IDirectDrawSurface7* This, DWORD flags, LPDDCOLORKEY ck) {
+	GLSurface7* s=(GLSurface7*)This; if(!s) return DD_OK;
+	/* DDCKEY_SRCBLT=0x4: the source colour that should be transparent when this surface
+	   is used. Store it; upload_texture keys matching texels to alpha 0. */
+	if ((flags & 0x4) && ck) { s->ckeyOn=1; s->ckeyLow=ck->dwColorSpaceLowValue; s->ckeyHigh=ck->dwColorSpaceHighValue;
+		s->texDirty=1;
+		if (getenv("BOB_TRACE_CKEY")) { static int n=0; if(n++<12)
+			fprintf(stderr,"[ckey] surf %dx%d bpp%d key=0x%x..0x%x\n",s->w,s->h,s->bpp,(unsigned)s->ckeyLow,(unsigned)s->ckeyHigh); } }
+	return DD_OK;
+}
+static HRESULT SURF_GetColorKey(IDirectDrawSurface7* This, DWORD, LPDDCOLORKEY ck) {
+	GLSurface7* s=(GLSurface7*)This; if(s&&ck){ ck->dwColorSpaceLowValue=s->ckeyLow; ck->dwColorSpaceHighValue=s->ckeyHigh; } return DD_OK;
+}
 static HRESULT SURF_SetClipper(IDirectDrawSurface7*, LPDIRECTDRAWCLIPPER) { return DD_OK; }
 static HRESULT SURF_IsLost(IDirectDrawSurface7*) { return DD_OK; }
 static HRESULT SURF_Restore(IDirectDrawSurface7*) { return DD_OK; }
@@ -675,6 +690,10 @@ static int    g_fogEnable = 0;
 static float  g_fogColor[4] = {0.5f,0.55f,0.6f,1.f};
 static float  g_fogStart = 0.f, g_fogEnd = 1.f;
 static int    g_fogTableMode = 0, g_fogVertMode = 0;   /* D3DFOG_* (0=NONE,1=EXP,2=EXP2,3=LINEAR) */
+/* alpha test (masked-texture transparency: keyed texels have alpha 0 and must be discarded) */
+static int    g_alphaTest = 0;
+static float  g_alphaRef = 0.f;       /* 0..1 */
+static GLenum g_alphaFunc = GL_GREATER;
 static GLenum gl_blend(DWORD d) {        /* D3DBLEND -> GL (D3DBLEND enum is 1-based) */
 	switch(d){
 		case 1:return GL_ZERO;                  /* D3DBLEND_ZERO */
@@ -725,18 +744,30 @@ static void upload_texture(GLSurface7* s) {
 	int wantMip = getenv("BOB_MIP") != 0;
 	if (wantMip) glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 	const DDPIXELFORMAT& pf = s->desc.ddpfPixelFormat;
+	if (getenv("BOB_TRACE_TEXFMT") && s->bpp==16) { static int n=0; if(n++<24)
+		fprintf(stderr,"[texfmt] %dx%d bpp16 A=0x%04x R=0x%04x G=0x%04x B=0x%04x flags=0x%x\n",
+			s->w,s->h,(unsigned)pf.dwRGBAlphaBitMask,(unsigned)pf.dwRBitMask,(unsigned)pf.dwGBitMask,
+			(unsigned)pf.dwBBitMask,(unsigned)pf.dwFlags); }
+	int hasAlpha = 0;
 	if (s->bpp==16) {
 		GLenum type=GL_UNSIGNED_SHORT_5_6_5, fmt=GL_RGB;
-		if (pf.dwRGBAlphaBitMask==0x8000) { type=GL_UNSIGNED_SHORT_1_5_5_5_REV; fmt=GL_BGRA; }
-		else if (pf.dwRGBAlphaBitMask==0xF000) { type=GL_UNSIGNED_SHORT_4_4_4_4_REV; fmt=GL_BGRA; }
+		if (pf.dwRGBAlphaBitMask==0x8000) { type=GL_UNSIGNED_SHORT_1_5_5_5_REV; fmt=GL_BGRA; hasAlpha=1; }
+		else if (pf.dwRGBAlphaBitMask==0xF000) { type=GL_UNSIGNED_SHORT_4_4_4_4_REV; fmt=GL_BGRA; hasAlpha=1; }
 		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,fmt,type,s->bits);
 	} else {
 		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,GL_BGRA,GL_UNSIGNED_BYTE,s->bits);
+		hasAlpha=1;
 	}
 	/* Mipmaps (auto-generated above): the game uses D3DTSS_MIPFILTER and terrain detail
 	   textures tile heavily (severe minification) -> trilinear mipmapping removes the
 	   aliasing that otherwise smears them. BOB_NOMIP disables for A/B. */
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, wantMip?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
+	/* Masked (alpha) textures: GL_NEAREST avoids LINEAR pulling the keyed mask colour into
+	   the alpha edges (the rainbow/magenta fringe). Opaque textures keep LINEAR. */
+	GLenum minF = (hasAlpha && !getenv("BOB_ALPHA_LINEAR")) ? GL_NEAREST
+	            : (wantMip?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, minF);
+	if (hasAlpha && !getenv("BOB_ALPHA_LINEAR")) { glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT); glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT); s->texDirty=0; return; }
 	if (wantMip) { /* anisotropic filtering: terrain is viewed at a grazing angle, where u
 	                  compresses far faster than v -- isotropic mips alias into stripes. */
 		#ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
@@ -792,8 +823,15 @@ static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWOR
 		case 36: g_fogStart=*(float*)&v; break;
 		case 37: g_fogEnd=*(float*)&v; break;
 		case 140: g_fogVertMode=(int)v; break;
+		/* alpha test: ALPHATESTENABLE=15, ALPHAREF=24 (0..255), ALPHAFUNC=25 (D3DCMP) */
+		case 15: g_alphaTest=(int)v; break;
+		case 24: g_alphaRef=(v&0xff)/255.f; break;
+		case 25: { static const GLenum cmp[]={GL_NEVER,GL_NEVER,GL_LESS,GL_EQUAL,GL_LEQUAL,GL_GREATER,GL_NOTEQUAL,GL_GEQUAL,GL_ALWAYS};
+			g_alphaFunc = (v>=1&&v<=8)?cmp[v]:GL_GREATER; } break;
 		default: break;
 	}
+	if (getenv("BOB_TRACE_CKEY") && ((int)st==15||(int)st==24||(int)st==25)) {
+		static int n=0; if(n++<12) fprintf(stderr,"[atest] st=%d v=%u -> enable=%d ref=%.2f\n",(int)st,(unsigned)v,g_alphaTest,g_alphaRef); }
 	if (getenv("BOB_TRACE_FOG") && ((int)st==28||(int)st==34||(int)st==35||(int)st==36||(int)st==37||(int)st==140))
 		fprintf(stderr,"[fog] st=%d v=0x%08x  enable=%d color=(%.2f,%.2f,%.2f) start=%.3f end=%.3f tbl=%d vtx=%d\n",
 			(int)st,(unsigned)v,g_fogEnable,g_fogColor[0],g_fogColor[1],g_fogColor[2],g_fogStart,g_fogEnd,g_fogTableMode,g_fogVertMode);
@@ -931,6 +969,16 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
 		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode); }
 	else glDisable(GL_TEXTURE_2D);
+	/* Masked-texture transparency: Lib3D bakes a 1-bit mask into the texture alpha (masked
+	   texels = alpha 0) and expects the device to alpha-test them out -- but never sets the
+	   D3D alpha-test render state, so without this every masked texel shows its raw colour
+	   (the magenta/cyan key). Discard alpha~0 on the opaque path (blend off); opaque RGB
+	   textures sample alpha 1 and are unaffected. Smooth-alpha (blended) polys keep blend.
+	   BOB_NOATEST opts out. */
+	if (t && !g_devAlphaBlend && !getenv("BOB_NOATEST")) {
+		glEnable(GL_ALPHA_TEST);
+		glAlphaFunc(g_alphaTest?g_alphaFunc:GL_GREATER, g_alphaTest?g_alphaRef:0.5f);
+	} else glDisable(GL_ALPHA_TEST);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
 	/* XYZRHW stored as 4 floats; pass x,y for 2D screen pos. With BOB_FOG we also pass z
@@ -1042,10 +1090,15 @@ static void init_vtbls_once(void)
 	g_surfVtbl.GetPixelFormat=SURF_GetPixelFormat;
 	g_surfVtbl.Blt=SURF_Blt; g_surfVtbl.BltFast=SURF_BltFast; g_surfVtbl.Flip=SURF_Flip;
 	g_surfVtbl.SetPalette=SURF_SetPalette; g_surfVtbl.SetClipper=SURF_SetClipper;
+	g_surfVtbl.SetColorKey=SURF_SetColorKey; g_surfVtbl.GetColorKey=SURF_GetColorKey;
 	g_surfVtbl.IsLost=SURF_IsLost; g_surfVtbl.Restore=SURF_Restore;
 	g_surfVtbl.GetDC=SURF_GetDC; g_surfVtbl.ReleaseDC=SURF_ReleaseDC;
 	g_surfVtbl.PageLock=SURF_PageLock; g_surfVtbl.PageUnlock=SURF_PageUnlock;
 	g_surfVtbl.GetCaps=SURF_GetCaps;
+	/* Backstop the surface vtbl too: any unwired slot becomes a no-op returning DD_OK. */
+	{ typedef HRESULT (*sfn)(void*); sfn* slots=(sfn*)&g_surfVtbl;
+	  unsigned n=sizeof(g_surfVtbl)/sizeof(sfn);
+	  for (unsigned i=0;i<n;i++) if(!slots[i]) slots[i]=(sfn)DEV_generic_stub; }
 
 	g_clipVtbl.AddRef=(ULONG(*)(IDirectDrawClipper*))generic_addref;
 	g_clipVtbl.Release=(ULONG(*)(IDirectDrawClipper*))generic_release;
