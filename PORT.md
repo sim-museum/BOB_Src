@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## RENDERING MILESTONE (2026-06-11): the 3D world renders in daylight, runs stably
+> End-to-end, the native port now renders a recognizable, daylit Battle of Britain scene
+> and runs it stably for minutes at a time (verified live on the user's display). The arc
+> of fixes this session, each pixel- or eye-validated:
+> 1. **Washout fixed** — `gl_blend()` D3DBLEND→GL mapping was misaligned; standard alpha
+>    blend became garbage and washed every blended surface to the clear colour. The 3D
+>    world was invisible behind grey streaks until this. (commit: D3DBLEND fix.)
+> 2. **"Night" fixed** — the front-end boot probe's mission time is pre-dawn (06:30 vs
+>    07:00 dawn), so `SetLighting` baked night/dawn lighting into every lit vertex. Clamp
+>    the boot-probe time to midday -> proper daylight (blue sky, green scenery, lit cockpit).
+> 3. **Camera tools** to actually inspect the world (all env-gated, default off):
+>    BOB_NOCOCKPIT (suppress cockpit), BOB_EXTVIEW+BOB_TRACK_ARG (external chase of the
+>    player), BOB_TOPDOWN (overhead), BOB_LOWALT, BOB_BRIGHT (viewing crutch). These
+>    revealed that aircraft MODELS render correctly and terrain is well-lit when framed.
+>
+> Confirmed rendering correctly: sky, terrain (green fields/airfield), scenery objects,
+> aircraft models (recognizable fighters w/ markings), cockpit (recognizable, daylit).
+>
+> Known remaining polish (NOT blockers): the cockpit canopy-frame texture over-tiles into
+> a "ladder" look and a few panels carry all-black textures (cockpit .shp model UV/texture
+> data -- deep, and no reference to validate a fix against); external aircraft are
+> dark-camo-dark from above; a *sustained* overhead land view is finicky (the scramble
+> flies out over the Channel, and a paused pin stops terrain streaming).
+
 > ## M1 FIX (2026-06-11): the washout bug — D3DBLEND→GL mapping was misaligned
 > The grey-haze "washout" that hid the entire 3D world was a **blend-factor mapping bug**
 > in the compat. `gl_blend()` (D3DBLEND→GL) was misaligned for the alpha factors:
