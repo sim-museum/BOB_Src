@@ -599,7 +599,12 @@ static void fill_devdesc(D3DDEVICEDESC7* dd, const GUID* guid) {
 	dd->dwTextureOpCaps = 0xFFFFFFFF; dd->dwFVFCaps = 0xFFFFFFFF;
 	dd->dwVertexProcessingCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwSize = sizeof(dd->dpcLineCaps);
-	dd->dpcLineCaps.dwTextureCaps = 0xFFFFFFFF;
+	/* Clear the texture-cap RESTRICTION bits: POW2(0x2), SQUAREONLY(0x20),
+	   NONPOW2CONDITIONAL(0x100). 0xFFFFFFFF wrongly claimed them, so Lib3D thought the
+	   device needed square power-of-two textures and squished every non-square texture
+	   (e.g. the wide instrument panel 256x64 -> 64x64) down to a small square -> the
+	   low-res cockpit. GL supports non-square/NPOT textures fine. */
+	dd->dpcLineCaps.dwTextureCaps = 0xFFFFFFFF & ~(0x2u | 0x20u | 0x100u);
 	dd->dpcLineCaps.dwTextureFilterCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwTextureBlendCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwTextureAddressCaps = 0xFFFFFFFF;

@@ -671,6 +671,12 @@ void ThreeDee::Init3D(CLib3D *lib3d,ViewPoint*	vp)
 	cockpitPrefs = 0xFFFFFFFF;
 	if (textureRAM < RAM_DERESTHRESHOLD)
 		cockpitPrefs &= ~COCK3D_INTERACTIVEON;
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_COCK")) { static int n=0; if(n++<2)
+		fprintf(stderr,"[cock] textureRAM=%lu thresh=%lu derez=%d cockpitPrefs=0x%lx\n",
+			(unsigned long)textureRAM,(unsigned long)RAM_DERESTHRESHOLD,(int)(textureRAM<RAM_DERESTHRESHOLD),
+			(unsigned long)cockpitPrefs); }
+#endif
 
 	ULong	tmpdrawtime = Timer_Code.FRAMETIME*10;
 	vp->SetDrawFrameTime(tmpdrawtime);							//RJS 05Apr00
