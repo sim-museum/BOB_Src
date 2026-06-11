@@ -247,9 +247,13 @@ public:
 		return bufferPos;
 	}
 
-	_R3DVERTEX3* StandardProjectCopy( _R3DVERTEX3* bufferPos, const D3DVALUE cx, const D3DVALUE cy, const D3DVALUE sx, const D3DVALUE sy, const D3DVALUE zFactor  ) const 
+	_R3DVERTEX3* StandardProjectCopy( _R3DVERTEX3* bufferPos, const D3DVALUE cx, const D3DVALUE cy, const D3DVALUE sx, const D3DVALUE sy, const D3DVALUE zFactor  ) const
 	{
 		SVertex* curVert = pVertexList;
+#if BOB_LINUX
+		const float imapScale = getenv("BOB_IMAP_SCALE") ? (1.0f/atof(getenv("BOB_IMAP_SCALE"))) : (1.0f/65536.0f);
+		const int doImapFix = getenv("BOB_LANDFIX") != 0;
+#endif
 		for (int i=vertexcount;i>0;i--)
 		{
 			D3DVALUE rhw = 1.f/curVert->hw;
@@ -257,9 +261,20 @@ public:
 			bufferPos->y=			curVert->y*rhw*sy+cy;
 			bufferPos->z=			(curVert->z*rhw)+zFactor;
 			bufferPos->rhw=			rhw;
-			// copy the rest of the vertex info ( 1 val for color, 1 for specular, 2 for each imapcoord pair ); 
-			memcpy( &bufferPos->color, &curVert->color, (2+(2*2))*sizeof( D3DVALUE ) ); 
-			bufferPos++;			
+			// copy the rest of the vertex info ( 1 val for color, 1 for specular, 2 for each imapcoord pair );
+			memcpy( &bufferPos->color, &curVert->color, (2+(2*2))*sizeof( D3DVALUE ) );
+#if BOB_LINUX
+			/* The integer IMap texture coords (ix,iy) are stored in a union with the float
+			   tu,tv; the upstream ix->tu conversion is dead code, so the GL backend reads
+			   tu,tv as ~0. Restore it: vertices that carry IMap coords leave tu,tv as a
+			   denormal (~0) -- convert ix,iy (int16) to a float UV here. */
+			if (doImapFix) { SWord ix,iy; curVert->getIMapCoords(ix,iy);
+				if (bufferPos->tu < 1e-20f && bufferPos->tu > -1e-20f && (ix||iy)) {
+					bufferPos->tu = (D3DVALUE)ix * imapScale;
+					bufferPos->tv = (D3DVALUE)iy * imapScale;
+				} }
+#endif
+			bufferPos++;
 			curVert=curVert->pNext;
 		}
 		return bufferPos;
