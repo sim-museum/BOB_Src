@@ -40,6 +40,19 @@
 >       the screen-space z would be a heuristic.
 > So M3 = implement those two features (and optionally raise object ambient if the cockpit
 > reads too dark on a real display), each A/B-validated over the airfield with the harness.
+>
+> ## M3 fog (2026-06-11): fog is already baked -- nothing to implement
+> Implemented a GL-fog path from the captured D3D fog state and A/B-tested it over the
+> airfield: **zero effect** (identical frame). Why: the game's FOGTABLEMODE=LINEAR with
+> FOGSTART/END = 314572/1048576 are **world-space** values for the dead hardware-T&L path;
+> our software path emits pre-transformed XYZRHW verts whose z is not a usable eye-distance,
+> and Lib3D's software T&L already **bakes fog into the vertex DIFFUSE** (terrain diffuse
+> (138,150,150) is the lit colour blended toward the (84,89,89) FOGCOLOR; distant terrain
+> greys out). So the haze on screen IS the fog -- correct, not missing. GL fog would only
+> double it. Conclusion: no compat-side fog to add; if the haze is too strong that's a
+> Lib3D fog-parameter tune (skyFog/groundFog/mistDensity), not a compat feature.
+> Kept: D3D fog-state capture in DEV_SetRenderState (correct infra; BOB_TRACE_FOG) and the
+> env-gated BOB_FOG path (validated no-op, left for a future hardware-T&L revival).
 
 > ## M0 (2026-06-11): validation harness + controllable land view — and a root-cause correction
 > Built a pixel-truth harness so rendering is judged by captured frames, not impressions

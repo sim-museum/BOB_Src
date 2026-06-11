@@ -654,6 +654,11 @@ static FvfLayout fvf_layout(DWORD fvf) {
 /* ---- device GL state ---- */
 static GLSurface7* g_devTex[8] = {0};   /* SetTexture per stage */
 static int g_devAlphaBlend = 0;
+/* fog state (D3D fog -> GL). Start/End are float bit-patterns from the game. */
+static int    g_fogEnable = 0;
+static float  g_fogColor[4] = {0.5f,0.55f,0.6f,1.f};
+static float  g_fogStart = 0.f, g_fogEnd = 1.f;
+static int    g_fogTableMode = 0, g_fogVertMode = 0;   /* D3DFOG_* (0=NONE,1=EXP,2=EXP2,3=LINEAR) */
 static GLenum gl_blend(DWORD d) {        /* D3DBLEND -> GL (D3DBLEND enum is 1-based) */
 	switch(d){
 		case 1:return GL_ZERO;                  /* D3DBLEND_ZERO */
@@ -748,8 +753,20 @@ static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWOR
 		case 27: g_devAlphaBlend=(int)v; if(g_win){ if(v) glEnable(GL_BLEND); else glDisable(GL_BLEND);} break;
 		case 19: g_srcBlend=gl_blend(v); break;
 		case 20: g_dstBlend=gl_blend(v); break;
+		/* fog: FOGENABLE=28, FOGCOLOR=34, FOGTABLEMODE=35, FOGSTART=36, FOGEND=37,
+		   FOGDENSITY=38, FOGVERTEXMODE=140 */
+		case 28: g_fogEnable=(int)v; break;
+		case 34: g_fogColor[2]=(v&0xff)/255.f; g_fogColor[1]=((v>>8)&0xff)/255.f;
+		         g_fogColor[0]=((v>>16)&0xff)/255.f; g_fogColor[3]=1.f; break;
+		case 35: g_fogTableMode=(int)v; break;
+		case 36: g_fogStart=*(float*)&v; break;
+		case 37: g_fogEnd=*(float*)&v; break;
+		case 140: g_fogVertMode=(int)v; break;
 		default: break;
 	}
+	if (getenv("BOB_TRACE_FOG") && ((int)st==28||(int)st==34||(int)st==35||(int)st==36||(int)st==37||(int)st==140))
+		fprintf(stderr,"[fog] st=%d v=0x%08x  enable=%d color=(%.2f,%.2f,%.2f) start=%.3f end=%.3f tbl=%d vtx=%d\n",
+			(int)st,(unsigned)v,g_fogEnable,g_fogColor[0],g_fogColor[1],g_fogColor[2],g_fogStart,g_fogEnd,g_fogTableMode,g_fogVertMode);
 	return D3D_OK;
 }
 static HRESULT DEV_GetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE, LPDWORD v) { if(v)*v=0; return D3D_OK; }
@@ -875,6 +892,17 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	if (getenv("BOB_NOBLEND")) glDisable(GL_BLEND);
 	else if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
 
+	/* BOB_FOG experiment: GL linear fog over screen-space z, using the game's FOGCOLOR.
+	   The game's world-space FOGSTART/END target the dead hardware path, so we use a
+	   tunable z-range (BOB_FOG_START/END, default 0..1). A/B test: if this double-fogs an
+	   already-baked scene it confirms Lib3D bakes fog into vertex colour. */
+	static int fogExp = -1; if (fogExp<0) fogExp = getenv("BOB_FOG") ? 1 : 0;
+	if (fogExp && g_fogEnable && is2D) {
+		glEnable(GL_FOG); glFogi(GL_FOG_MODE,GL_LINEAR); glFogfv(GL_FOG_COLOR,g_fogColor);
+		glFogf(GL_FOG_START, getenv("BOB_FOG_START")?atof(getenv("BOB_FOG_START")):0.0f);
+		glFogf(GL_FOG_END,   getenv("BOB_FOG_END")?atof(getenv("BOB_FOG_END")):1.0f);
+	} else glDisable(GL_FOG);
+
 	GLSurface7* t=g_devTex[0];
 	/* BOB_TEX_REPLACE: show texture only (ignore the software-lit/fogged vertex colour)
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
@@ -888,7 +916,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	glEnableClientState(GL_VERTEX_ARRAY);
 	/* XYZRHW stored as 4 floats; pass x,y(,z). With depth3d we pass z too (3 comps)
 	   so the screen-space z drives the depth test. */
-	glVertexPointer((is2D&&!depth3d)?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	glVertexPointer((is2D&&!depth3d&&!fogExp)?2:3, GL_FLOAT, L.stride, base + L.posOff);
 	if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
 	if (L.hasTex && t) { glEnableClientState(GL_TEXTURE_COORD_ARRAY);
