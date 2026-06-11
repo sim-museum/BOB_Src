@@ -251,6 +251,13 @@ CWinApp*   AfxGetApp()            { return g_pBobApp; }
 CWnd*      AfxGetMainWnd()        { return 0; }
 HINSTANCE  AfxGetInstanceHandle() { return 0; }
 
+/* ===== HTML Help (no help engine on Linux) =============================== */
+/* MAINFRM.CPP's OnHelp() calls HtmlHelp() (-> HtmlHelpA, declared in H/HTMLHELP.H
+   with no impl). It was dead-stripped before -fno-delete-null-pointer-checks kept
+   the call alive. Return 0 (failure) -> the caller shows "failed to launch help". */
+extern "C" HWND WINAPI HtmlHelpA(HWND, LPCSTR, UINT, DWORD) { return 0; }
+extern "C" HWND WINAPI HtmlHelpW(HWND, LPCWSTR, UINT, DWORD) { return 0; }
+
 /* ===== misc globals ===================================================== */
 int BAD_RV = (int)0x80000000;
 char *compiledate = (char *)__DATE__;

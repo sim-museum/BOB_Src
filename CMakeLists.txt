@@ -37,6 +37,12 @@ add_compile_definitions(
 add_compile_options(
     $<$<COMPILE_LANGUAGE:C,CXX>:-fpermissive>
     $<$<COMPILE_LANGUAGE:C,CXX>:-fno-strict-aliasing>
+    # The codebase uses the MSVC-era idiom of passing *(T*)NULL as a "no arg"
+    # sentinel and testing `if (&param)` inside the callee (e.g. View3d::MakePassive's
+    # `const CRect& pos = *(CRect*)NULL` + `if (&pos) coords=pos;`). GCC's optimiser
+    # assumes a reference/this can never be null and deletes such guards under -O3,
+    # turning the sentinel into a NULL read. Keep the guards honest.
+    $<$<COMPILE_LANGUAGE:C,CXX>:-fno-delete-null-pointer-checks>
     $<$<COMPILE_LANGUAGE:C,CXX>:-fcommon>
     $<$<COMPILE_LANGUAGE:C,CXX>:-fpack-struct=1>  # matches MSVC /Zp1 (file formats depend on it)
     $<$<COMPILE_LANGUAGE:C,CXX>:-w>
