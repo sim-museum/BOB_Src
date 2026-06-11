@@ -899,6 +899,28 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
 //**********************************************************************
 
 //	2.	Set view type
+#if BOB_LINUX
+	// M0 validation harness: spectator camera. Teleport the tracked item (the
+	// piloted aircraft) to a fixed world pose each frame, just before SelectView
+	// derives the camera from it. Lets us park the view over known terrain.
+	// BOB_CAM_X/Y/Z = world units; BOB_CAM_HDG/PITCH/ROLL = ANGLES (0x10000=360deg).
+	// Orientation-only override (BOB_CAM_PITCH/HDG/ROLL without BOB_CAM_X) is
+	// sector-safe and runs with the sim LIVE, so landscape streaming/texcoords keep
+	// generating. Position teleport (BOB_CAM_X) requires the sim paused (see MIG.CPP).
+	if (View_Point && View_Point->trackeditem &&
+	    (getenv("BOB_CAM_X") || getenv("BOB_CAM_PITCH") || getenv("BOB_CAM_HDG") || getenv("BOB_CAM_ROLL")))
+	{
+		rotitem* t = (rotitem*)View_Point->trackeditem;
+		if (getenv("BOB_CAM_X")) {
+			t->World.X = atol(getenv("BOB_CAM_X"));
+			t->World.Y = atol(getenv("BOB_CAM_Y"));
+			t->World.Z = atol(getenv("BOB_CAM_Z"));
+		}
+		if (getenv("BOB_CAM_HDG"))   t->hdg   = (ANGLES)atol(getenv("BOB_CAM_HDG"));
+		if (getenv("BOB_CAM_PITCH")) t->pitch = (ANGLES)atol(getenv("BOB_CAM_PITCH"));
+		if (getenv("BOB_CAM_ROLL"))  t->roll  = (ANGLES)atol(getenv("BOB_CAM_ROLL"));
+	}
+#endif
 	View_Point->SelectView();									//PD 19Feb96
 
 

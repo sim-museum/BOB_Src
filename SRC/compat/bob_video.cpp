@@ -319,6 +319,7 @@ static void present_dbg(const char* path)
 			close(fd); fprintf(stderr,"[present] dumped frame %d to /tmp/bobframe.ppm (%dx%d) glErr=%d\n",frames,w,h,(int)glGetError()); }
 		else fprintf(stderr,"[present] dump open failed errno path\n");
 		free(buf);
+		if (getenv("BOB_EXIT_AFTER_DUMP")) { fflush(stderr); _exit(0); }
 	}
 }
 static void present_surface(GLSurface7* s)
@@ -669,6 +670,20 @@ static void upload_texture(GLSurface7* s) {
 		unsigned px0=0,pxc=0; if(s->bpp==16){ unsigned short* p=(unsigned short*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
 		else { unsigned* p=(unsigned*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
 		fprintf(stderr,"[texpix] %dx%d bpp%d px[0]=0x%x centre=0x%x\n",s->w,s->h,s->bpp,px0,pxc); } }
+	if (getenv("BOB_DUMP_TEX") && s->w>=64 && s->h>=64) {
+		static int td=0; int cap=atoi(getenv("BOB_DUMP_TEX")); if(cap<=0)cap=6;
+		if (td<cap) {
+			char path[64]; snprintf(path,sizeof(path),"/tmp/bobtex_%d.ppm",td);
+			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+			if(fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",s->w,s->h); if(write(fd,hdr,n)<0){}
+				for(int i=0;i<s->w*s->h;i++){ unsigned char rgb[3];
+					if(s->bpp==16){ unsigned short p=((unsigned short*)s->bits)[i];
+						rgb[0]=((p>>11)&0x1f)<<3; rgb[1]=((p>>5)&0x3f)<<2; rgb[2]=(p&0x1f)<<3; }
+					else { unsigned p=((unsigned*)s->bits)[i]; rgb[0]=(p>>16)&0xff; rgb[1]=(p>>8)&0xff; rgb[2]=p&0xff; }
+					if(write(fd,rgb,3)<0){} }
+				close(fd); fprintf(stderr,"[texdump] wrote %s %dx%d bpp%d\n",path,s->w,s->h,s->bpp); td++; }
+		}
+	}
 	if (!s->glTex) glGenTextures(1, &s->glTex);
 	glBindTexture(GL_TEXTURE_2D, s->glTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -751,17 +766,35 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 			if (g_devTex[0]) textured++; else untex++;
 		}
 		if (!is2D) n3d++; else n2d++;
-		/* dump DIFFUSE colour + texcoords of the first few large textured quads (terrain) */
-		static int dq=0;
-		if (is2D && g_devTex[0] && count>=4 && dq<12) {
-			float maxx=-1e9f,minx=1e9f; for(DWORD i=0;i<count;i++){const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff); if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0];}
-			if (maxx-minx > 40 && L.hasTex) {  /* a big quad = terrain, not a HUD glyph */
-				fprintf(stderr,"[fvfd] cnt=%lu tex=%dx%d as-int16 ix,iy per vert:",(unsigned long)count,g_devTex[0]->w,g_devTex[0]->h);
-				for (DWORD i=0;i<count && i<4;i++){ const short* s=(const short*)(base+(size_t)i*L.stride+L.texOff);
-					fprintf(stderr," (%d,%d)",s[0],s[1]); }
-				fprintf(stderr,"\n");
-				dq++;
+		/* dump texcoords (both int16-IMap and float-UV views) + screen span of the
+		   first N textured 2D primitives, so we can tell landscape tiles (varying
+		   coords) from the sky backdrop (uniform 0,0). BOB_TRACE_FVF only. */
+		static int dq=0; int dqcap = getenv("BOB_FVF_DQ") ? atoi(getenv("BOB_FVF_DQ")) : 30;
+		if (is2D && g_devTex[0] && count>=3 && L.hasTex && dq<dqcap) {
+			float maxx=-1e9f,minx=1e9f,maxy=-1e9f,miny=1e9f;
+			for(DWORD i=0;i<count;i++){const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff);
+				if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0]; if(p[1]<miny)miny=p[1]; if(p[1]>maxy)maxy=p[1];}
+			fprintf(stderr,"[fvfd] cnt=%lu tex=%dx%d scr[%.0f..%.0f,%.0f..%.0f] i16:",(unsigned long)count,
+				g_devTex[0]->w,g_devTex[0]->h,minx,maxx,miny,maxy);
+			for (DWORD i=0;i<count && i<4;i++){ const short* s=(const short*)(base+(size_t)i*L.stride+L.texOff);
+				fprintf(stderr," (%d,%d)",s[0],s[1]); }
+			fprintf(stderr," flt:");
+			for (DWORD i=0;i<count && i<4;i++){ const float* f=(const float*)(base+(size_t)i*L.stride+L.texOff);
+				fprintf(stderr," (%.3f,%.3f)",f[0],f[1]); }
+			fprintf(stderr,"\n");
+			/* one-shot: dump the EXACT texture bound for this terrain tile */
+			static int dumped=0; GLSurface7* tt=g_devTex[0];
+			if (!dumped && tt && tt->bits) { dumped=1;
+				int fd=::open("/tmp/bobtile_tex.ppm",O_WRONLY|O_CREAT|O_TRUNC,0644);
+				if(fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",tt->w,tt->h); if(write(fd,hdr,n)<0){}
+					for(int i=0;i<tt->w*tt->h;i++){ unsigned char rgb[3];
+						if(tt->bpp==16){ unsigned short p=((unsigned short*)tt->bits)[i];
+							rgb[0]=((p>>11)&0x1f)<<3; rgb[1]=((p>>5)&0x3f)<<2; rgb[2]=(p&0x1f)<<3; }
+						else { unsigned p=((unsigned*)tt->bits)[i]; rgb[0]=(p>>16)&0xff; rgb[1]=(p>>8)&0xff; rgb[2]=p&0xff; }
+						if(write(fd,rgb,3)<0){} }
+					close(fd); fprintf(stderr,"[tiletex] dumped tile texture %dx%d bpp%d to /tmp/bobtile_tex.ppm\n",tt->w,tt->h,tt->bpp); }
 			}
+			dq++;
 		}
 		static int rep=0; if ((n2d+n3d)%1000==0 && rep++<8) {
 			fprintf(stderr,"[fvf] 2D=%d 3D=%d  ALL-quad bounds x[%.0f..%.0f] y[%.0f..%.0f] (scr %dx%d) textured=%d untex=%d\n",

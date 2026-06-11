@@ -1,5 +1,39 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## M0 (2026-06-11): validation harness + controllable land view — and a root-cause correction
+> Built a pixel-truth harness so rendering is judged by captured frames, not impressions
+> (the earlier repeated over-claims came from eyeballing hazy frames). Deliverables:
+> - **Spectator camera** (`SRC/3D/3DCODE.CPP`, before `SelectView`): `BOB_CAM_X/Y/Z` teleports
+>   the tracked item (sim auto-paused in `MIG.CPP` so it can't corrupt the sector grid);
+>   `BOB_CAM_PITCH/HDG/ROLL` (ANGLES, 0x10000=360°) override orientation. Orientation-only
+>   runs LIVE (sector-safe). +pitch = nose-down.
+> - **Land-finder probe** (`MIG.CPP`): map-item extent + reference points. Calibrated: the
+>   player airfield at **(24903258, ~1288, 28500882) is land**; altitude scale ~7.5 units/ft.
+> - **`tools/bob_validate.sh`**: parks the camera, captures one frame → PNG, prints objective
+>   stats (size, distinct colours, per-band averages). Fast via `BOB_EXIT_AFTER_DUMP`.
+> - **Texture dumps**: `BOB_DUMP_TEX` (any bound texture), tile-texture one-shot in the FVF
+>   path, widened `BOB_TRACE_FVF` (int16 + float texcoord views + screen span).
+>
+> **Findings that overturn the prior theory (all pixel-verified over land):**
+> 1. The 3D world DOES render (the older "submits zero geometry" note was from before the
+>    mission fully loaded). Terrain quads ARE textured; depth test is disabled; everything
+>    goes through the software-T&L 2D (XYZRHW) path.
+> 2. **Terrain texcoords are correct floats**, varied per tile. The integer-IMap→UV theory
+>    and `BOB_LANDFIX` were chasing a NON-BUG — landfix changes the frame by ≤2/255 per
+>    channel (dither noise). It should be removed, not shipped.
+> 3. The detailed terrain textures EXIST in the data (e.g. a 64×64 grass/earth texture,
+>    183 distinct colours).
+> 4. **Texture-BINDING gap**: the cloud/horizon layer (`DrawCloudLayer`, no-material
+>    `BeginFan`) renders with the **font glyph atlas** bound (stale state — its cyan
+>    colourkey reads as flat grey). No-material `BeginFan` inherits whatever `SetMaterial`
+>    set last; our compat isn't binding the intended image-map there.
+>
+> **NOT yet established / immediate M1 target:** whether the GROUND terrain binds correctly.
+> The ground path uses explicit `SetMaterial(GetImageFromArea(12), dither/sea, …)`
+> (LANDSCAP.CPP ~5029–5355) — instrument those draws to see which texture actually binds in
+> the compat. The real problem is texture binding (which texture reaches which draw), NOT
+> texcoords. Harness is ready to A/B any fix over known land.
+
 > ## MILESTONE (2026-06-10): Quick Mission loads + simulates (3D world NOT yet rendering)
 > The full `Inst3d()` → `Persons2::LoadSetPiece` mission path now completes, the simulation
 > ticks, and the player aircraft flies in the DATA MODEL (verified: full throttle

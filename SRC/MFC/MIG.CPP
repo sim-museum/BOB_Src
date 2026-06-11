@@ -600,14 +600,21 @@ BOOL CMIGApp::InitInstance()
 		{
 			int nItems=0; int firstUid=-1;
 			int sizeHist[16]={0}; int uidBySize[16]; for(int k=0;k<16;k++) uidBySize[k]=-1;
+			long minX=0x7fffffffL,maxX=-0x7fffffffL,minZ=0x7fffffffL,maxZ=-0x7fffffffL;
+			long hiY=-0x7fffffffL,hiX=0,hiZ=0; int hiUid=-1;
 			for (int i=0;i<WorldStuff::PITEMTABLESIZE;i++)
 				if (WorldStuff::pItem[i]!=NULL) {
 					if (firstUid<0) firstUid=WorldStuff::pItem[i]->uniqueID.count;
 					int sz=(int)WorldStuff::pItem[i]->Status.size;
 					if (sz>=0 && sz<16) { sizeHist[sz]++; if(uidBySize[sz]<0) uidBySize[sz]=WorldStuff::pItem[i]->uniqueID.count; }
+					long x=(long)WorldStuff::pItem[i]->World.X, y=(long)WorldStuff::pItem[i]->World.Y, z=(long)WorldStuff::pItem[i]->World.Z;
+					if (x<minX)minX=x; if (x>maxX)maxX=x; if (z<minZ)minZ=z; if (z>maxZ)maxZ=z;
+					if (y>hiY){hiY=y;hiX=x;hiZ=z;hiUid=WorldStuff::pItem[i]->uniqueID.count;}
 					nItems++;
 				}
 			fprintf(stderr, "[boot] map items: %d firstUid=%d\n", nItems, firstUid);
+			fprintf(stderr, "[boot] item extent: X[%ld..%ld] Z[%ld..%ld] centre=(%ld,%ld)\n", minX,maxX,minZ,maxZ,(minX+maxX)/2,(minZ+maxZ)/2);
+			fprintf(stderr, "[boot] highest item: uid=%d World=(%ld,%ld,%ld)\n", hiUid,hiX,hiY,hiZ);
 			for (int k=0;k<16;k++) if(sizeHist[k]) fprintf(stderr,"[boot]   size[%d]: %d items\n",k,sizeHist[k]);
 			/* prefer an aircraft (AirStrucSize=12), else a ship (11), else first item */
 			if (uidBySize[12]>=0) firstUid=uidBySize[12];
@@ -645,7 +652,10 @@ BOOL CMIGApp::InitInstance()
 		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, viewFlag, true);
 		// Unpause the simulation so the move cycle ticks (RTESTSH1 does this under NDEBUG);
 		// otherwise the world/flight model never advances.
-		if (fullMission) inst->Paused(FALSE);
+		// M0 validation: with the spectator camera active we KEEP the sim paused, so the
+		// per-frame camera teleport of the tracked item can't trip the sector grid's
+		// "item not found in sector" removal path (which only runs while !Paused).
+		if (fullMission && !getenv("BOB_CAM_X")) inst->Paused(FALSE);
 		fprintf(stderr, "[boot] View3d interactive; draw thread running\n");
 	}
 #endif
