@@ -322,12 +322,28 @@ static void present_dbg(const char* path)
 		if (getenv("BOB_EXIT_AFTER_DUMP")) { fflush(stderr); _exit(0); }
 	}
 }
+/* BOB_BRIGHT=N: post-render brightness = 2^N, by N fullscreen multiply-by-2 passes
+   (blend dst*1 + dst*1). Diagnostic for the systematically-dark lit geometry. */
+static void brighten_pass()
+{
+	const char* b = getenv("BOB_BRIGHT"); if (!b) return;
+	int passes = atoi(b); if (passes<=0) return;
+	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(0,1,0,1,-1,1);
+	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
+	glDisable(GL_DEPTH_TEST); glDisable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND); glBlendFunc(GL_DST_COLOR, GL_ONE);   /* result = dst + dst = 2*dst */
+	glColor3f(1,1,1);
+	for (int i=0;i<passes;i++) { glBegin(GL_QUADS);
+		glVertex2f(0,0); glVertex2f(1,0); glVertex2f(1,1); glVertex2f(0,1); glEnd(); }
+	glDisable(GL_BLEND);
+	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
+}
 static void present_surface(GLSurface7* s)
 {
 	gl_bind_thread();
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
-	if (g_devRendered) { g_devRendered = 0; if (g_win) { present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
+	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);

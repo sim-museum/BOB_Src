@@ -675,7 +675,7 @@ void ViewPoint::SetToMapItem(itemptr trg)
 		StopDeadView=FALSE;
 		setDeath=DEATH_NULL;
 		viewcodeframetime=RealDrawFrameTime();	//10;	//dummy value just to make the code work
-		trg=(itemptr)WorldStuff::pMapItemHead;
+		if (!getenv("BOB_TRACK_ARG")) trg=(itemptr)WorldStuff::pMapItemHead;
 #if BOB_LINUX
 		/* No map item selected (e.g. the front-end boot probe stands up an empty map
 		   world without InitViewFromMap): the original dereferences pMapItemHead

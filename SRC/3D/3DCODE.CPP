@@ -900,6 +900,18 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
 
 //	2.	Set view type
 #if BOB_LINUX
+	// BOB_EXTVIEW: force the external chase view (VM_Track) on the live piloted view each
+	// frame, tracking the player aircraft from outside/above (45deg down) so the world is
+	// visible. No teleport -> sim stays live -> terrain keeps streaming around the player.
+	if (getenv("BOB_EXTVIEW") && View_Point) {
+		// One-shot: set up the external 45-degree-down track view on the PLAYER aircraft
+		// (SetToMapItem with BOB_TRACK_ARG uses the passed item instead of pMapItemHead).
+		static bool extSetup=false;
+		if (!extSetup && Manual_Pilot.ControlledAC2) {
+			extSetup=true; View_Point->SetToMapItem((itemptr)Manual_Pilot.ControlledAC2);
+		}
+		View_Point->viewnum.viewmode = VM_Track;   // keep external if SelectView reverts it
+	}
 	// M0 validation harness: spectator camera. Teleport the tracked item (the
 	// piloted aircraft) to a fixed world pose each frame, just before SelectView
 	// derives the camera from it. Lets us park the view over known terrain.
@@ -931,6 +943,11 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
 
 //TEMPCODE	RenderMirror(View_Point->World,0,0,1,ANGLES_45Deg);
 	Bool	drawpolypit = View_Point->PolyPitEnabled();					//RJS 10Mar00
+#if BOB_LINUX
+	/* BOB_NOCOCKPIT: suppress the cockpit mesh so the world (terrain/sky/other aircraft)
+	   is visible unobstructed -- a "see the graphics" external-ish view. */
+	if (getenv("BOB_NOCOCKPIT")) drawpolypit = FALSE;
+#endif
 //DeadCode RJS 20Oct00 	bool	inCockpit = View_Point->InCockpit();
 
 //Dead	Bool	drawpolypit = View_Point->PolyPitEnabled();					
