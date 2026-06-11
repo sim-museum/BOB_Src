@@ -180,12 +180,16 @@ static void kb_push(unsigned dik, int down) {
 static void pump_events(void)
 {
 	if (!g_win) return;
-	/* Synthetic input for headless testing: BOB_AUTOFLY sweeps DIK codes (one press
-	   every few pumps) so the key->command dispatch can be verified via BOB_TRACE_KEY
-	   without a physical keyboard. */
+	/* Synthetic input for headless testing (no physical keyboard).
+	   BOB_AUTOFLY=sweep : press every DIK in turn (verify key->command dispatch).
+	   BOB_AUTOFLY=throttle (or 1): tap '0' (DIK 0x0B = RPM_00 = 100% throttle) a few
+	   times so the parked aircraft should spool up and accelerate down the runway. */
 	if (getenv("BOB_AUTOFLY") && g_diKbAcquired) {
-		static int sweep=1, cnt=0;
-		if ((++cnt % 4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; }
+		const char* mode=getenv("BOB_AUTOFLY");
+		static int cnt=0; cnt++;
+		if (mode && mode[0]=='s') { static int sweep=1;
+			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
+		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
 	}
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
