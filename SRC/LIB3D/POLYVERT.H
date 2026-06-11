@@ -260,23 +260,18 @@ public:
 			// copy the rest of the vertex info ( 1 val for color, 1 for specular, 2 for each imapcoord pair );
 			memcpy( &bufferPos->color, &curVert->color, (2+(2*2))*sizeof( D3DVALUE ) );
 #if BOB_LINUX
-			/* The integer IMap texture coords (ix,iy) share a union with the float tu,tv.
-			   The upstream ix->tu conversion (TransformVertexAsRequired) doesn't reach the
-			   vertices that get flushed, so they arrive with tu,tv as a denormal (~0) and
-			   sample one texel -> flat grey terrain. Restore the conversion here using this
-			   polygon's per-material texture scale (tsW[0] = 1/texWidth), so each tile maps
-			   correctly into its texture. Verts whose tu was already converted to a real
-			   float UV (|tu| not a denormal) are left untouched. */
-			/* Landscape vertices reach the device with integer IMap texture coords (ix,iy,
-			   0..texWidth, in a union with the float tu,tv) but the conversion to float UVs
-			   is skipped for the terrain (its verts bypass the software transform path that
-			   does `tu = ix/texWidth`). So they arrive with tu,tv as a denormal (~0) and
-			   sample one texel -> flat grey terrain. Convert here: ix,iy are already the
-			   per-tile atlas coords, so tu = ix/texWidth maps each tile correctly. Guard on
-			   a sane 0..256 IMap range so object verts -- which legitimately have a float
-			   tu of 0.0 (also a "denormal") but a garbage int16 reinterpretation -- are left
-			   untouched. (256 = the landscape texture/atlas width.) */
-			{
+			/* Landscape verts reach the device with integer IMap texture coords (ix,iy, in a
+			   union with float tu,tv) but the ix->tu conversion is skipped for terrain (its
+			   verts bypass the software-transform path that does `tu = ix/texWidth`), so they
+			   arrive with tu,tv as a denormal (~0) and sample one texel. This converts the
+			   in-range IMap coords (tu = ix/256, 256 = atlas width) for the verts that need
+			   it, leaving object verts (real float UVs) alone.
+			   UNVERIFIED: gated behind BOB_LANDFIX. It removes the prior banding artifact, but
+			   I could NOT confirm it produces detailed terrain -- every view reachable from the
+			   QM mission is over open sea/haze, where a uniform result is correct regardless,
+			   and a GL_REPLACE (texture-only) probe there was uniform too. Needs a view over
+			   varied land to validate, plus the hardcoded 256 and the sky/horizon band. */
+			if (getenv("BOB_LANDFIX")) {
 				SWord ix,iy; curVert->getIMapCoords(ix,iy);
 				if (bufferPos->tu < 1e-20f && bufferPos->tu > -1e-20f &&
 				    ix>=0 && ix<=256 && iy>=0 && iy<=256 && (ix||iy)) {
