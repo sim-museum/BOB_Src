@@ -223,6 +223,10 @@ void	NodeData::LoadConvoys()
 {
 	const int	daynum=(MMC.currdate-JUL10th1940)/SECSPERDAY;
 	int	bfnum=0;
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_CONVOY")) { int n=0; for(TargetConvoy* c=convoylist;c&&c->uid;c++)n++;
+		fprintf(stderr,"[convoy] LoadConvoys: convoylist=%p terminated at %d (daynum=%d)\n",(void*)convoylist,n,daynum); }
+#endif
 	for (TargetConvoy* convoy=convoylist;convoy->uid;convoy++)
 	{
 		int dateslot=0;

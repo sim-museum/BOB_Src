@@ -597,18 +597,25 @@ BOOL CMIGApp::InitInstance()
 				Persons4::InitViewFromMap((UniqueID)firstUid);
 			}
 		}
-		fprintf(stderr, "[boot] world ready; creating View3d (object-view path)...\n");
-		// Front-end object-view path (cf. RTESTSH1.CPP:323-324): Inst3d(true) skips
-		// LoadSetPiece (the campaign battlefield/convoy load that crashes in cold-start),
-		// giving an empty WorldStuff we can drive the window + draw loop against first.
-		Inst3d* inst = new Inst3d(true);
+		bool fullMission = getenv("BOB_FULL_INST3D") != NULL;
+		Inst3d* inst; bool viewFlag;
+		if (fullMission) {
+			// Full mission path: default Inst3d ctor -> Persons2::LoadSetPiece loads the
+			// day's battlefields/convoys/terrain (the real 3D world). Working on the
+			// FindNextBf convoy-list crash this path hits.
+			fprintf(stderr, "[boot] world ready; creating View3d (FULL mission / LoadSetPiece)...\n");
+			inst = new Inst3d();
+			viewFlag = false;
+		} else {
+			// Object-view path (cf. RTESTSH1.CPP:323-324): Inst3d(true) skips LoadSetPiece,
+			// giving an empty WorldStuff we can drive the window + draw loop against.
+			fprintf(stderr, "[boot] world ready; creating View3d (object-view path)...\n");
+			inst = new Inst3d(true);
+			viewFlag = true;
+		}
 		View3d* view = new View3d(inst, m_pMainWnd->m_hWnd, m_pMainWnd);
-		// flag=true -> the object/map-item view branch (SetToMapItem), matching the
-		// front-end's Inst3d(true) path (RTESTSH1.CPP:331). flag=false would take
-		// SetToPiloted, which needs a controlled aircraft we don't have in cold-start.
-		// flag2=true -> RefreshLandscape() so the terrain mesh loads (otherwise the
-		// object view is just sky + flat backdrop with no landscape geometry).
-		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, true, true);
+		// flag2=true -> RefreshLandscape() so the terrain mesh loads.
+		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, viewFlag, true);
 		fprintf(stderr, "[boot] View3d interactive; draw thread running\n");
 	}
 #endif

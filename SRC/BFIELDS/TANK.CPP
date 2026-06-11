@@ -562,10 +562,16 @@ FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 		break;
 		case  ENDSCRAMBF:
 		{
-			Diary::RaidGroup*	rptr = Squad_Diary.GetRaidGroup(Manual_Pilot.ControlledAC2->ai.diaryptr);
-			Diary::Intercept*	iptr = Squad_Diary.GetFirstIntercept(rptr);
-			if (iptr)
-				Squad_Diary.UpdateIntercept(iptr,Manual_Pilot.ControlledAC2,iptr->takeofftime);
+			// This updates the player's intercept diary entry; it's meaningful only when
+			// a player aircraft is being controlled. Guard the NULL deref so LoadSetPiece
+			// can run with no player mission selected (e.g. spectating the campaign world).
+			if (Manual_Pilot.ControlledAC2)
+			{
+				Diary::RaidGroup*	rptr = Squad_Diary.GetRaidGroup(Manual_Pilot.ControlledAC2->ai.diaryptr);
+				Diary::Intercept*	iptr = Squad_Diary.GetFirstIntercept(rptr);
+				if (iptr)
+					Squad_Diary.UpdateIntercept(iptr,Manual_Pilot.ControlledAC2,iptr->takeofftime);
+			}
 		}
 		break;
 		}
@@ -596,6 +602,12 @@ FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 		int convnum=(nextbftype-CONVOYBF);
 		TargetConvoy* convoy=Node_Data.convoylist+convnum;
 		FileNum rv=FIL_NULL;
+#if BOB_LINUX
+		if (getenv("BOB_TRACE_CONVOY"))
+			fprintf(stderr,"[convoy] convnum=%d convoylist=%p convoy=%p uid=%d (UID_NULL=%d) pkgstatus[0]=%d\n",
+				convnum,(void*)Node_Data.convoylist,(void*)convoy,(int)convoy->uid,(int)UID_NULL,
+				(int)Todays_Packages[0].packagestatus);
+#endif
 		if (convoy->uid==UID_NULL)
 			nextbftype=PLAYROUTEBF;
 		else
