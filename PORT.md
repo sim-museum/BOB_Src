@@ -1,5 +1,17 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 2 DONE (2026-06-10): DirectInput keyboard -> SDL
+> The game's keyboard pipeline is wired end-to-end: `sdl_to_dik` maps SDL_Scancode →
+> DIK (PS/2 set 1) scancodes (the codes the key map is indexed by); `pump_events`
+> queues `{dwOfs=DIK, dwData=0x80 down/0 up}` buffered events once the device is
+> Acquired; the keyboard `GetDeviceData` drains them (and `GetDeviceState` fills the
+> 256-byte immediate DIK array); `SetEventNotification` stores the keyboard handle and
+> `MsgWaitForMultipleObjects`/`bob_msg_wait` now receives the HANDLE array and returns
+> that handle's index when input is queued → `CMIGApp::Run` dispatches
+> `Inst3d::OnKeyInput` → `GetDeviceData` → the keymap. Verified via `BOB_INPUT_SMOKETEST`
+> (drains `{1e/80,1e/00,c8/80}`; `bob_msg_wait`→keyboard index). Mouse/joystick
+> (ANALOGUE.CPP) are the remaining input bits, for flight.
+
 > ## PHASE 1a DONE (2026-06-10): 2D textured-quad renderer (D3D7 device -> GL)
 > The DDraw7/D3D7 device methods in bob_video.cpp (were no-ops) now render the 2D
 > path: an FVF parser drives GL client arrays from any vertex layout;
