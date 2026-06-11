@@ -577,12 +577,21 @@ BOOL CMIGApp::InitInstance()
 		// Probe: how many map items exist, and pick one to view (its uid).
 		{
 			int nItems=0; int firstUid=-1;
+			int sizeHist[16]={0}; int uidBySize[16]; for(int k=0;k<16;k++) uidBySize[k]=-1;
 			for (int i=0;i<WorldStuff::PITEMTABLESIZE;i++)
 				if (WorldStuff::pItem[i]!=NULL) {
 					if (firstUid<0) firstUid=WorldStuff::pItem[i]->uniqueID.count;
+					int sz=(int)WorldStuff::pItem[i]->Status.size;
+					if (sz>=0 && sz<16) { sizeHist[sz]++; if(uidBySize[sz]<0) uidBySize[sz]=WorldStuff::pItem[i]->uniqueID.count; }
 					nItems++;
 				}
 			fprintf(stderr, "[boot] map items: %d firstUid=%d\n", nItems, firstUid);
+			for (int k=0;k<16;k++) if(sizeHist[k]) fprintf(stderr,"[boot]   size[%d]: %d items\n",k,sizeHist[k]);
+			/* prefer an aircraft (AirStrucSize=12), else a ship (11), else first item */
+			if (uidBySize[12]>=0) firstUid=uidBySize[12];
+			else if (uidBySize[11]>=0) firstUid=uidBySize[11];
+			const char* ov = getenv("BOB_VIEW_UID");
+			if (ov) firstUid = atoi(ov);
 			if (firstUid>=0) {
 				fprintf(stderr, "[boot] InitViewFromMap(uid=%d)\n", firstUid);
 				Persons4::InitViewFromMap((UniqueID)firstUid);
@@ -597,7 +606,9 @@ BOOL CMIGApp::InitInstance()
 		// flag=true -> the object/map-item view branch (SetToMapItem), matching the
 		// front-end's Inst3d(true) path (RTESTSH1.CPP:331). flag=false would take
 		// SetToPiloted, which needs a controlled aircraft we don't have in cold-start.
-		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, true);
+		// flag2=true -> RefreshLandscape() so the terrain mesh loads (otherwise the
+		// object view is just sky + flat backdrop with no landscape geometry).
+		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, true, true);
 		fprintf(stderr, "[boot] View3d interactive; draw thread running\n");
 	}
 #endif
