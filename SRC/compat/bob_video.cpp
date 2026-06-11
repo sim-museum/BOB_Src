@@ -635,7 +635,7 @@ static ULONG   VB_Release(IDirect3DVertexBuffer7* This) { GLVB7* vb=(GLVB7*)This
 #define BFVF_SPECULAR 0x080
 #define BFVF_TEXMASK  0xf00
 #define BFVF_TEXSHIFT 8
-struct FvfLayout { int stride, posOff, posComps, colOff, hasCol, texOff, hasTex; };
+struct FvfLayout { int stride, posOff, posComps, colOff, hasCol, specOff, hasSpec, texOff, hasTex; };
 static FvfLayout fvf_layout(DWORD fvf) {
 	FvfLayout L; memset(&L,0,sizeof(L)); int o=0;
 	L.posOff=o;
@@ -643,7 +643,7 @@ static FvfLayout fvf_layout(DWORD fvf) {
 	else if (fvf & BFVF_XYZ) { L.posComps=3; o+=12; }
 	if (fvf & BFVF_NORMAL) o+=12;
 	if (fvf & BFVF_DIFFUSE) { L.colOff=o; L.hasCol=1; o+=4; }
-	if (fvf & BFVF_SPECULAR) o+=4;
+	if (fvf & BFVF_SPECULAR) { L.specOff=o; L.hasSpec=1; o+=4; }
 	int ntex=(fvf & BFVF_TEXMASK)>>BFVF_TEXSHIFT;
 	if (ntex>0) { L.texOff=o; L.hasTex=1; o+=8; }  /* first 2-float set */
 	o += (ntex>1)?(ntex-1)*8:0;
@@ -783,6 +783,17 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   detailed ground tiles), skipping the sky/haze/font surfaces -- isolates terrain. */
 	if (is2D) { const char* otw=getenv("BOB_ONLY_TEXW");
 		if (otw) { int w=atoi(otw); if (!g_devTex[0] || g_devTex[0]->w!=w) return; } }
+	if (getenv("BOB_TRACE_COL") && is2D && L.hasCol && count>=3) {
+		int tw=g_devTex[0]?g_devTex[0]->w:0;
+		unsigned d=*(const unsigned*)(base+L.colOff);
+		static struct { int w; long n; long r,g,b; } buk[16]; static int nb=0; static long calls=0;
+		int bi=-1; for(int k=0;k<nb;k++) if(buk[k].w==tw){bi=k;break;}
+		if(bi<0&&nb<16){bi=nb++; buk[bi].w=tw; buk[bi].n=0; buk[bi].r=buk[bi].g=buk[bi].b=0;}
+		if(bi>=0){ buk[bi].n++; buk[bi].r+=(d>>16)&0xff; buk[bi].g+=(d>>8)&0xff; buk[bi].b+=d&0xff; }
+		if (++calls == 6000) for(int k=0;k<nb;k++) if(buk[k].n) fprintf(stderr,
+			"[col] tex%dw quads=%ld meanDiffuse=(%ld,%ld,%ld)\n",
+			buk[k].w,buk[k].n,buk[k].r/buk[k].n,buk[k].g/buk[k].n,buk[k].b/buk[k].n);
+	}
 	if (getenv("BOB_TRACE_FVF")) {
 		static int n2d=0, n3d=0;
 		/* global screen-space bounds of ALL 2D geometry + how many quads have a texture */

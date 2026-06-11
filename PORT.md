@@ -19,7 +19,27 @@
 > upload-timing. Remaining (next): terrain is still hazy/over-tiled and the cockpit is dark
 > (lighting/fog tuning, M3); ground tile set-0 UVs over-tile (cosmetic vs the wash).
 > Diagnostic toggles left in place (env-gated, default off): BOB_TEX_REPLACE, BOB_NOBLEND,
-> BOB_ONLY_TEXW, BOB_DEPTH3D, BOB_SKIP_BACKDROP, BOB_TEX_REUP.
+> BOB_ONLY_TEXW, BOB_DEPTH3D, BOB_SKIP_BACKDROP, BOB_TEX_REUP, BOB_TRACE_COL.
+>
+> ## M3 scoping (2026-06-11): lighting/fog is feature-implementation, not tuning
+> Investigated tuning lighting/fog; it isn't a knob. Findings (BOB_TRACE_COL, by texture):
+> - Lighting is **baked into vertex DIFFUSE** by Lib3D's software T&L (NO_HARD_TNL). The
+>   compat just MODULATEs texture×diffuse. Terrain diffuse ~ (138,150,150) (bright);
+>   cockpit-mesh diffuse ~ (45,45,45) (dark) -- the dark cockpit is Lib3D's baked interior
+>   lighting, plausibly close to correct, NOT a wash. SPECULAR is always 0 (no specular
+>   highlight, and no fog-factor-in-specular).
+> - Stage-0 tex op is plain MODULATE (LIB3D.CPP:13956) -- so we are NOT half-bright from a
+>   missing MODULATE2X.
+> - Two things the compat does NOT implement and the game uses:
+>   (a) **texture stage 1 = D3DTOP_ADDSIGNED** (LIB3D.CPP:14043) -- a 2nd texture added for
+>       terrain detail/shading. We bind only stage 0. (In the QM airfield view the active
+>       tiles had stage-1 NULL, so this is a separate double-textured path, e.g. the dither
+>       detail / GetDitherTexture.)
+>   (b) **fog** (FOGCOLOR/FOGSTART/FOGEND, FOGVERTEXMODE) -- set by the game, ignored by us.
+>       Note XYZRHW + ignored specular means vertex-fog has no carrier; pixel/eye-z fog over
+>       the screen-space z would be a heuristic.
+> So M3 = implement those two features (and optionally raise object ambient if the cockpit
+> reads too dark on a real display), each A/B-validated over the airfield with the harness.
 
 > ## M0 (2026-06-11): validation harness + controllable land view — and a root-cause correction
 > Built a pixel-truth harness so rendering is judged by captured frames, not impressions
