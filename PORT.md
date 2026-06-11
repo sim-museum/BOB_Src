@@ -54,16 +54,19 @@
 > Kept: D3D fog-state capture in DEV_SetRenderState (correct infra; BOB_TRACE_FOG) and the
 > env-gated BOB_FOG path (validated no-op, left for a future hardware-T&L revival).
 >
-> ## M3 mipmaps (2026-06-11): added (opt-in) — and they expose the real terrain bug
+> ## M3 mipmaps (2026-06-11): added (opt-in); terrain is soft-OK, stripes are the cockpit
 > Added GL 1.4 auto-mipmaps + anisotropic filtering (opt-in BOB_MIP; default off; the game
-> uses D3DTSS_MIPFILTER). With them the terrain detail jumps 113 -> ~18k distinct colours,
-> but it resolves into **regular vertical stripes**, not fields -- and anisotropic filtering
-> does NOT remove them. That's decisive: the stripes are **real UV data, not minification
-> aliasing**. The ground-tile UVs map the detail texture to vertical bands (u varies ~10x
-> faster than v across a quad; setIMapCoords(apd.x,apd.z) -> tu=apd.x/texW over-tiles one
-> axis). The no-mip blur was hiding this. So the real remaining terrain defect is the
-> **ground-tile UV mapping** (LoRezTile/HiRezTile setIMapCoords + tsW), a focused fix; mips
-> are left off by default because sharp stripes look worse than the blur until that lands.
+> uses D3DTSS_MIPFILTER). CORRECTION to first impression: isolating by texture width
+> (BOB_ONLY_TEXW) shows the **terrain (32w) is NOT striped** -- it renders as soft olive
+> ground (same 113-colour look mipped or not; the 32x32 detail texture over large tiles is
+> just low-detail/soft, not broken). The **vertical stripes** in the full mipmapped render
+> come from the **cockpit / other geometry** (64w/128w) that the piloted view draws on top;
+> mipmaps sharpen those into the frame/instrument banding. So there is NO terrain-UV
+> striping bug. The terrain's real limitation is low detail: it shows only the stage-0
+> detail texture; the **stage-1 base area-type imagemap** (the double-textured path that
+> gives fields their per-tile colour/pattern) is still unimplemented in the compat. That
+> remains the one genuine terrain enhancement. Mips left off by default (cockpit banding
+> looks worse sharp) but available once stage-1 + cockpit are addressed.
 
 > ## M0 (2026-06-11): validation harness + controllable land view — and a root-cause correction
 > Built a pixel-truth harness so rendering is judged by captured frames, not impressions
