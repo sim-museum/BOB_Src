@@ -10112,6 +10112,19 @@ Bool LandScape::SetLighting(SLong curTime)			//RJS 15Jun99
 		return FALSE;											//RJS 15Jun99
 	}
 
+#if BOB_LINUX
+	// The front-end boot probe's mission time is pre-dawn (6:30 vs 7:00 dawn), so
+	// SetLighting picks the dark night/dawn mix -> the whole scene reads as night.
+	// Force midday for the boot-probe path (BOB_BOOT_FRONTEND) or on request, so the
+	// world is daylit. Real missions (no boot-frontend) keep their actual time.
+	if (getenv("BOB_DAYLIGHT") || getenv("BOB_BOOT_FRONTEND"))
+		curTime = (MissManDawnTime()+MissManDuskTime())/2;
+	if (getenv("BOB_TRACE_LIGHT")) { static int lc=0; if(lc++<3)
+		fprintf(stderr,"[light] curTime=%ld dawn=%d dusk=%d fade=%ld -> %s\n",
+			(long)curTime, MissManDawnTime(), MissManDuskTime(), (long)fadeTime,
+			(curTime<MissManDawnTime()-fadeTime)?"NIGHT":
+			(curTime<MissManDuskTime()-fadeTime)?"day-ish":"dusk/night"); }
+#endif
 	if (curTime<MissManDawnTime()-fadeTime)		//it's night time
 	{
 		pLowLight=
