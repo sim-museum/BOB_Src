@@ -259,27 +259,9 @@ public:
 			bufferPos->rhw=			rhw;
 			// copy the rest of the vertex info ( 1 val for color, 1 for specular, 2 for each imapcoord pair );
 			memcpy( &bufferPos->color, &curVert->color, (2+(2*2))*sizeof( D3DVALUE ) );
-#if BOB_LINUX
-			/* Landscape verts reach the device with integer IMap texture coords (ix,iy, in a
-			   union with float tu,tv) but the ix->tu conversion is skipped for terrain (its
-			   verts bypass the software-transform path that does `tu = ix/texWidth`), so they
-			   arrive with tu,tv as a denormal (~0) and sample one texel. This converts the
-			   in-range IMap coords (tu = ix/256, 256 = atlas width) for the verts that need
-			   it, leaving object verts (real float UVs) alone.
-			   UNVERIFIED: gated behind BOB_LANDFIX. It removes the prior banding artifact, but
-			   I could NOT confirm it produces detailed terrain -- every view reachable from the
-			   QM mission is over open sea/haze, where a uniform result is correct regardless,
-			   and a GL_REPLACE (texture-only) probe there was uniform too. Needs a view over
-			   varied land to validate, plus the hardcoded 256 and the sky/horizon band. */
-			if (getenv("BOB_LANDFIX")) {
-				SWord ix,iy; curVert->getIMapCoords(ix,iy);
-				if (bufferPos->tu < 1e-20f && bufferPos->tu > -1e-20f &&
-				    ix>=0 && ix<=256 && iy>=0 && iy<=256 && (ix||iy)) {
-					bufferPos->tu = (D3DVALUE)ix * (1.0f/256.0f);
-					bufferPos->tv = (D3DVALUE)iy * (1.0f/256.0f);
-				}
-			}
-#endif
+			// (Linux: the earlier BOB_LANDFIX IMap->UV conversion here was removed -- the
+			// 2026-06-11 trace confirmed terrain texcoords arrive as correct floats; the
+			// grey terrain was the D3DBLEND->GL blend-mapping bug, since fixed in the compat.)
 			bufferPos++;
 			curVert=curVert->pNext;
 		}

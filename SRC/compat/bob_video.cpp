@@ -737,12 +737,7 @@ static void upload_texture(GLSurface7* s) {
 }
 
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); g_devRendered=1; pump_events();
-	/* BOB_DEPTH3D experiment: start each scene with a cleared depth buffer (clear=0.0,
-	   GEQUAL so nearer/larger-screen-z wins) -- tests whether the flat 3D world is the
-	   terrain being overdrawn in painter's order because depth is disabled. */
-	if (getenv("BOB_DEPTH3D")) { glClearDepth(0.0); glClear(GL_DEPTH_BUFFER_BIT); }
-	return D3D_OK; }
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
 	if (!g_win) return D3D_OK;
@@ -806,15 +801,6 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	FvfLayout L = fvf_layout(fvf);
 	if (!L.stride) return;
 	int is2D = (fvf & BFVF_XYZRHW) != 0;     /* pre-transformed screen-space */
-	/* BOB_SKIP_BACKDROP diagnostic: skip a near-full-screen near-z quad (the sky/haze
-	   backdrop) to see whether terrain is rendering behind it (a draw-order problem). */
-	if (is2D && getenv("BOB_SKIP_BACKDROP") && count>=3 && (fvf&BFVF_XYZRHW)) {
-		float mnx=1e9f,mxx=-1e9f,mny=1e9f,mxy=-1e9f;
-		for(DWORD i=0;i<count;i++){const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff);
-			if(p[0]<mnx)mnx=p[0]; if(p[0]>mxx)mxx=p[0]; if(p[1]<mny)mny=p[1]; if(p[1]>mxy)mxy=p[1];}
-		const float* p0=(const float*)(base+L.posOff);
-		if ((mxx-mnx) > g_scrW*0.7f && (mxy-mny) > g_scrH*0.7f && p0[2] < 0.01f) return;
-	}
 	/* BOB_ONLY_TEXW=N: draw ONLY 2D quads whose bound texture width==N (e.g. 32 = the
 	   detailed ground tiles), skipping the sky/haze/font surfaces -- isolates terrain. */
 	if (is2D) { const char* otw=getenv("BOB_ONLY_TEXW");
@@ -905,9 +891,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
 	if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);   /* DDraw screen coords: y down */
 	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
-	static int depth3d = -1; if (depth3d<0) depth3d = getenv("BOB_DEPTH3D") ? 1 : 0;
-	if (depth3d) { glEnable(GL_DEPTH_TEST); glDepthFunc(GL_GEQUAL); glDepthMask(GL_TRUE); }
-	else glDisable(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);   /* 2D/pre-transformed path: painter's order (depth off) */
 	if (getenv("BOB_NOBLEND")) glDisable(GL_BLEND);
 	else if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
 
@@ -927,15 +911,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
 	static int texMode = -2;
 	if (texMode==-2) texMode = getenv("BOB_TEX_REPLACE") ? GL_REPLACE : GL_MODULATE;
-	if (t) { if (getenv("BOB_TEX_REUP") || t->texDirty || !t->glTex) upload_texture(t);
+	if (t) { if (t->texDirty || !t->glTex) upload_texture(t);
 		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
 		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode); }
 	else glDisable(GL_TEXTURE_2D);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
-	/* XYZRHW stored as 4 floats; pass x,y(,z). With depth3d we pass z too (3 comps)
-	   so the screen-space z drives the depth test. */
-	glVertexPointer((is2D&&!depth3d&&!fogExp)?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	/* XYZRHW stored as 4 floats; pass x,y for 2D screen pos. With BOB_FOG we also pass z
+	   (3 comps) so screen-space z can feed GL fog. */
+	glVertexPointer((is2D&&!fogExp)?2:3, GL_FLOAT, L.stride, base + L.posOff);
 	if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
 	if (L.hasTex && t) { glEnableClientState(GL_TEXTURE_COORD_ARRAY);
