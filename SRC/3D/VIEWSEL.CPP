@@ -700,7 +700,7 @@ void ViewPoint::SetToMapItem(itemptr trg)
 		deathview=FALSE;
 //dead		enemydirection=0;
 		AllOutsideAnglesReset();
-		trackviewrec->pitch=ANGLES_45Deg;
+		trackviewrec->pitch = getenv("BOB_TOPDOWN") ? (ANGLES)atoi(getenv("BOB_TOPDOWN")) : ANGLES_45Deg;
 		currentvehicle=trg;
 		trackeditem2=NULL;
 		previousvehicle=NULL;
@@ -9007,7 +9007,7 @@ void ViewPoint::ExecuteMapViewCommand(UByte k)
 		break;
 	case SEL_5:	//reset view
 		ResetZoomRotate((ZmRtFlags)NULL);
-		trackviewrec->pitch=ANGLES_45Deg;
+		trackviewrec->pitch = getenv("BOB_TOPDOWN") ? (ANGLES)atoi(getenv("BOB_TOPDOWN")) : ANGLES_45Deg;
 		break;
 	default:
 		break;

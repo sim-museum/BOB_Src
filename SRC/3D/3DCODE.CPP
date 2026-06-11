@@ -911,6 +911,12 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
 			extSetup=true; View_Point->SetToMapItem((itemptr)Manual_Pilot.ControlledAC2);
 		}
 		View_Point->viewnum.viewmode = VM_Track;   // keep external if SelectView reverts it
+		// BOB_LOWALT: hold the player at a low altitude (Y-only, sector-safe) so the
+		// overhead camera stays close to the streamed airfield terrain.
+		if (getenv("BOB_LOWALT") && Manual_Pilot.ControlledAC2) {
+			long cap = atol(getenv("BOB_LOWALT"));
+			if (Manual_Pilot.ControlledAC2->World.Y > cap) Manual_Pilot.ControlledAC2->World.Y = cap;
+		}
 	}
 	// M0 validation harness: spectator camera. Teleport the tracked item (the
 	// piloted aircraft) to a fixed world pose each frame, just before SelectView
