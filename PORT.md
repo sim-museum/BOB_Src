@@ -1,5 +1,41 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 3 IN PROGRESS (2026-06-10): live rendering runtime — window + draw loop up
+> The full runtime now boots into a live, multi-threaded rendering state. An opt-in probe
+> (`BOB_BOOT_FRONTEND`, in `CMIGApp::InitInstance`) stands up a fresh campaign map world
+> (1037 map items), picks one via `Persons4::InitViewFromMap`, and opens an interactive
+> `View3d` on the front-end's object-view path (`new Inst3d(true)` + `MakeInteractive(...,true)`,
+> cf. RTESTSH1.CPP). `View3d::MakePassive → SetDriverAndMode` brings up the SDL2 window +
+> GL context (1024×768, NVIDIA), the D3D7 device, the ViewPoint/overlay, and spawns the
+> draw thread; the loader screen renders through the Phase 1a path. Three threads run:
+> main (`CMIGApp::Run`→`bob_msg_wait` message loop), the multimedia timer, and the draw
+> loop (`View3d::drawloop → ThreeDee::render → render3d`). The draw loop executes the
+> landscape/sky render path. Reaching here required, in order:
+> - **`-fno-delete-null-pointer-checks`** (CMakeLists): the codebase passes `*(T*)NULL` as a
+>   "no-arg" sentinel and tests `if (&param)` in the callee (e.g. `View3d::MakePassive`'s
+>   `const CRect& pos = *(CRect*)NULL`). GCC -O3 assumes a reference is never null and
+>   deletes the guard → NULL read. This is the same *class* of UB-miscompile as the
+>   implicit-int sweep (Phase 0); the flag keeps every such guard honest codebase-wide.
+> - **HtmlHelp stub** (bob_stubs.cpp): the flag kept a previously dead-stripped `HtmlHelpA`
+>   call alive (extern "C", from MAINFRM OnHelp); returns 0 (no help engine on Linux).
+> - **Lib3D device bring-up gaps** (compat): render-target texture `CreateSurface` now
+>   fails (→ designed back-buffer fallback in `CheckIfTextureCanBeRenderTarget`, no FBO RTT
+>   yet); `HandleNaffDriver` skips the cardbase.rc per-GPU quirk parse on Linux (D3D7
+>   driver-bug workarounds don't apply to the GL backend; the text parser also isn't robust
+>   against glibc's `istream::get` EOF semantics — a guard added there too); `ValidateDevice`
+>   wired (always 1 pass); `IDirectDrawGammaControl` QI rejected (no hardware gamma ramp);
+>   and a **device-vtbl backstop** fills every unwired slot with a cdecl no-op so an
+>   unimplemented method can never be a NULL function-pointer call.
+> - **GL context thread handoff** (bob_video.cpp): the context is created on the main thread
+>   (loader) but the draw loop runs on its own thread; `gl_bind_thread()` + a one-time
+>   release in `bob_msg_wait` hand the context off cleanly (usage is serialised).
+> - **Empty-world view guards** (VIEWSEL.CPP): `SetToMapItem`/`DrawTrack` no longer deref a
+>   NULL map item, so the draw loop survives even with no tracked content.
+>
+> NEXT: the full 3D lit pipeline (`DrawSphere` sky dome, `RenderLandscape` terrain) — the
+> next crash is in that path = **Phase 1b** (SetTransform/lighting/texture-stage combiner).
+> That, plus feeding real campaign content, turns the running draw loop into a visible scene.
+
 > ## PHASE 2 DONE (2026-06-10): DirectInput keyboard -> SDL
 > The game's keyboard pipeline is wired end-to-end: `sdl_to_dik` maps SDL_Scancode →
 > DIK (PS/2 set 1) scancodes (the codes the key map is indexed by); `pump_events`

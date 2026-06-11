@@ -556,19 +556,17 @@ BOOL CMIGApp::InitInstance()
 //	SetSysColors(2,sysnames,sysvals);
 
 #if BOB_LINUX
-	// Phase 2c step A (opt-in probe, BOB_BOOT_FRONTEND): stand up a fresh campaign
-	// world (the new-campaign / quick-mission path, cf. RFullPanelDial in FULLPANE.CPP)
-	// so Inst3d's LoadSetPiece has valid battlefields, then create a 3D View3d so
-	// MakeInteractive -> SetDriverAndMode opens the SDL/GL window + spawns the draw
-	// thread. Default and BOB_RUN_INIT runs are unaffected.
+	// Phase 3 (opt-in probe, BOB_BOOT_FRONTEND): stand up a fresh campaign map world,
+	// pick a map item to view, and open an interactive 3D View3d on the front-end's
+	// object-view path (cf. Rtestsh1::Set in RTESTSH1.CPP). This exercises the full
+	// runtime bring-up on Linux: MakeInteractive -> SetDriverAndMode opens the SDL/GL
+	// window + D3D7 device, spawns the draw thread, and runs the render loop.
+	// Default and BOB_RUN_INIT (no BOB_BOOT_FRONTEND) runs are unaffected.
 	//
-	// FINDING (2026-06-10): the camp assignment -> Campaign::CampaignInit (MISSINIT.CPP
-	// :1188) reaches Todays_Packages.WipeAll() (:1224) and crashes in
-	// SquadListRef::Free -> SquadList::squadsizes[...].remove(): the squad/package
-	// data model isn't stood up in cold-start order. The campaign init is a deep,
-	// interdependent subsystem (campaign -> packages -> squads/squadsizes -> nodes
-	// -> persons -> battlefields) the front-end orchestrates over many ordered steps;
-	// bringing it up is the substantial remaining work for a running map view.
+	// STATUS (2026-06-10): bring-up reaches a live, multi-threaded rendering runtime --
+	// window + GL context, device, ViewPoint/overlay, and the draw loop executing the
+	// landscape/sky render path. The remaining work is the full 3D lit pipeline
+	// (DrawSphere/RenderLandscape) -- see PORT.md Phase 1b.
 	if (getenv("BOB_BOOT_FRONTEND")) {
 		fprintf(stderr, "[boot] new-campaign setup (scramble)...\n");
 		Node_Data.BuildTargetTable();      // set up node/squad tables FIRST (cold start)
@@ -576,10 +574,30 @@ BOOL CMIGApp::InitInstance()
 		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
 		Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
 		Persons4::StartUpMapWorld();
-		fprintf(stderr, "[boot] world ready; creating View3d...\n");
-		Inst3d* inst = new Inst3d;
+		// Probe: how many map items exist, and pick one to view (its uid).
+		{
+			int nItems=0; int firstUid=-1;
+			for (int i=0;i<WorldStuff::PITEMTABLESIZE;i++)
+				if (WorldStuff::pItem[i]!=NULL) {
+					if (firstUid<0) firstUid=WorldStuff::pItem[i]->uniqueID.count;
+					nItems++;
+				}
+			fprintf(stderr, "[boot] map items: %d firstUid=%d\n", nItems, firstUid);
+			if (firstUid>=0) {
+				fprintf(stderr, "[boot] InitViewFromMap(uid=%d)\n", firstUid);
+				Persons4::InitViewFromMap((UniqueID)firstUid);
+			}
+		}
+		fprintf(stderr, "[boot] world ready; creating View3d (object-view path)...\n");
+		// Front-end object-view path (cf. RTESTSH1.CPP:323-324): Inst3d(true) skips
+		// LoadSetPiece (the campaign battlefield/convoy load that crashes in cold-start),
+		// giving an empty WorldStuff we can drive the window + draw loop against first.
+		Inst3d* inst = new Inst3d(true);
 		View3d* view = new View3d(inst, m_pMainWnd->m_hWnd, m_pMainWnd);
-		view->MakeInteractive(WinMode::WIN);
+		// flag=true -> the object/map-item view branch (SetToMapItem), matching the
+		// front-end's Inst3d(true) path (RTESTSH1.CPP:331). flag=false would take
+		// SetToPiloted, which needs a controlled aircraft we don't have in cold-start.
+		view->MakeInteractive(WinMode::WIN, *(CRect*)NULL, true);
 		fprintf(stderr, "[boot] View3d interactive; draw thread running\n");
 	}
 #endif

@@ -676,6 +676,26 @@ void ViewPoint::SetToMapItem(itemptr trg)
 		setDeath=DEATH_NULL;
 		viewcodeframetime=RealDrawFrameTime();	//10;	//dummy value just to make the code work
 		trg=(itemptr)WorldStuff::pMapItemHead;
+#if BOB_LINUX
+		/* No map item selected (e.g. the front-end boot probe stands up an empty map
+		   world without InitViewFromMap): the original dereferences pMapItemHead
+		   unconditionally. Leave the viewpoint at its default tracking state instead of
+		   crashing, so the draw loop can still run against an empty scene. */
+		if (!trg)
+		{
+			AllOutsideAnglesReset();
+			trackviewrec->pitch=ANGLES_45Deg;
+			InitTrack();
+			UpdateGlobalViewRec();
+			UpdateGlobalHPR();
+			viewnum.viewtarg=VT_Unlocked;
+			viewnum.viewmode=VM_Track;
+			viewnum.viewspec=VS_Null;
+			viewnum.viewchanged=VC_SuccessfulChange;
+			viewnum.viewcuttype=Gradual;
+			return;
+		}
+#endif
 		trg->World.Y=Land_Scape.GetGroundLevel(trg,NULL,true);
 		deathview=FALSE;
 //dead		enemydirection=0;
@@ -5141,6 +5161,11 @@ void ViewPoint::RelativeIntercept(itemptr srcp,itemptr trgp,
 //------------------------------------------------------------------------------
 void ViewPoint::DrawTrack()
 {
+#if BOB_LINUX
+	/* No tracked item (empty boot-probe world): nothing to follow, skip rather than
+	   dereferencing a NULL trackeditem so the draw loop survives. */
+	if (!trackeditem) return;
+#endif
  	CopyPositionHP(trackeditem,this);							//RDH 03Jun96
 //keep next line, good for side slip landings					//RDH 03Jun96
 //	CopyPositionHPVel(trackeditem,this);						//RDH 03Jun96
