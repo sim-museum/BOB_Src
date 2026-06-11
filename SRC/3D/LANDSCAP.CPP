@@ -4434,6 +4434,10 @@ inline void LandScape::HorizonTile( const int x, const int z )
 //------------------------------------------------------------------------------
 void LandScape::HighDetailTileRender(SLong ox,SLong oz)
 {
+#if BOB_LINUX
+	int dbg_doTrace = getenv("BOB_TRACE_LAND") ? 1 : 0;
+	int dbg_cone=0, dbg_tex=0, dbg_draw=0, dbg_total=0;
+#endif
 	static SLong totTime=0;
 	totTime += View_Point->RealDrawFrameTime();// ->DrawFrameTime();
 
@@ -4478,9 +4482,16 @@ void LandScape::HighDetailTileRender(SLong ox,SLong oz)
 			{
 
 				view.X=ix;
+#if BOB_LINUX
+				dbg_total++;
+#endif
 
 				if (*pConeData++)
 				{
+#if BOB_LINUX
+					dbg_cone++;
+					if (currentGridElement->textHandle!=HTEXT()) dbg_tex++;
+#endif
 //					HTEXT textureHandle,
 					const HTEXT nullHandle;
 //DeadCode JON 23Oct00 					ULong dataLen;
@@ -4505,6 +4516,9 @@ void LandScape::HighDetailTileRender(SLong ox,SLong oz)
 				
 //TempCode JON 23Oct00 						static int poo;
 //TempCode JON 23Oct00 						if ( (poo++&1) )
+#if BOB_LINUX
+					dbg_draw++;
+#endif
 					HiRezTile((UByte*)dataBlock->pData,dataBlock->dataLen,view,*currentGridElement,seaptr,ddx);
 
 	//					if (groundDetail==UByte(_doHighGround))
@@ -4525,9 +4539,14 @@ void LandScape::HighDetailTileRender(SLong ox,SLong oz)
 					HorizonTile( ix, oz );
 				currentGridElement++;
 				dataBlock++;
-			}		
+			}
 		}
 	}
+#if BOB_LINUX
+	if (dbg_doTrace) { static int fr=0; if((fr++%30)==0)
+		fprintf(stderr,"[land] tiles total=%d coneVisible=%d textured=%d drawn=%d  tileCacheGrid=%p gridCone=%p\n",
+			dbg_total,dbg_cone,dbg_tex,dbg_draw,(void*)tileCacheGrid,(void*)gridCone); }
+#endif
 }
 
 inline void LandScape::RenderSheep(const UByte* pDS,ULong sheepCount,const COORDS3D& view, const PointDef* inptDefs)

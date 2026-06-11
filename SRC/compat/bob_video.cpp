@@ -664,6 +664,11 @@ static GLenum g_srcBlend=GL_SRC_ALPHA, g_dstBlend=GL_ONE_MINUS_SRC_ALPHA;
 /* Upload a (16-bit / 32-bit) DDraw texture surface to its GL texture. */
 static void upload_texture(GLSurface7* s) {
 	if (!s || !s->bits || s->w<=0 || s->h<=0) return;
+	if (getenv("BOB_TRACE_TEXPIX")) { static int n=0; if(n++<24) {
+		/* sample centre + corner pixels to see if the texture has real content */
+		unsigned px0=0,pxc=0; if(s->bpp==16){ unsigned short* p=(unsigned short*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
+		else { unsigned* p=(unsigned*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
+		fprintf(stderr,"[texpix] %dx%d bpp%d px[0]=0x%x centre=0x%x\n",s->w,s->h,s->bpp,px0,pxc); } }
 	if (!s->glTex) glGenTextures(1, &s->glTex);
 	glBindTexture(GL_TEXTURE_2D, s->glTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -738,18 +743,30 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	int is2D = (fvf & BFVF_XYZRHW) != 0;     /* pre-transformed screen-space */
 	if (getenv("BOB_TRACE_FVF")) {
 		static int n2d=0, n3d=0;
-		/* per-quad screen-space bounds + texture, to see what's actually drawn */
-		static int logged=0;
-		if (is2D && logged<30) {
-			float minx=1e9f,miny=1e9f,maxx=-1e9f,maxy=-1e9f;
+		/* global screen-space bounds of ALL 2D geometry + how many quads have a texture */
+		static float gminx=1e9f,gminy=1e9f,gmaxx=-1e9f,gmaxy=-1e9f; static int textured=0, untex=0;
+		if (is2D) {
 			for (DWORD i=0;i<count;i++){ const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff);
-				if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0]; if(p[1]<miny)miny=p[1]; if(p[1]>maxy)maxy=p[1]; }
-			fprintf(stderr,"[fvf2D] #%d prim=%d cnt=%lu x[%.0f..%.0f] y[%.0f..%.0f] tex=%p\n",
-				logged,(int)prim,(unsigned long)count,minx,maxx,miny,maxy,(void*)g_devTex[0]);
-			logged++;
+				if(p[0]<gminx)gminx=p[0]; if(p[0]>gmaxx)gmaxx=p[0]; if(p[1]<gminy)gminy=p[1]; if(p[1]>gmaxy)gmaxy=p[1]; }
+			if (g_devTex[0]) textured++; else untex++;
 		}
 		if (!is2D) n3d++; else n2d++;
-		static int rep=0; if ((n2d+n3d)%500==0 && rep++<6) fprintf(stderr,"[fvf] totals: 2D=%d 3D=%d\n",n2d,n3d);
+		/* dump DIFFUSE colour + texcoords of the first few large textured quads (terrain) */
+		static int dq=0;
+		if (is2D && g_devTex[0] && count>=4 && dq<12) {
+			float maxx=-1e9f,minx=1e9f; for(DWORD i=0;i<count;i++){const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff); if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0];}
+			if (maxx-minx > 40 && L.hasTex) {  /* a big quad = terrain, not a HUD glyph */
+				fprintf(stderr,"[fvfd] cnt=%lu tex=%dx%d as-int16 ix,iy per vert:",(unsigned long)count,g_devTex[0]->w,g_devTex[0]->h);
+				for (DWORD i=0;i<count && i<4;i++){ const short* s=(const short*)(base+(size_t)i*L.stride+L.texOff);
+					fprintf(stderr," (%d,%d)",s[0],s[1]); }
+				fprintf(stderr,"\n");
+				dq++;
+			}
+		}
+		static int rep=0; if ((n2d+n3d)%1000==0 && rep++<8) {
+			fprintf(stderr,"[fvf] 2D=%d 3D=%d  ALL-quad bounds x[%.0f..%.0f] y[%.0f..%.0f] (scr %dx%d) textured=%d untex=%d\n",
+				n2d,n3d,gminx,gmaxx,gminy,gmaxy,g_scrW,g_scrH,textured,untex);
+		}
 	}
 
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
@@ -785,6 +802,9 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 
 static HRESULT DEV_DrawPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, LPDIRECT3DVERTEXBUFFER7 vb, DWORD start, DWORD count, DWORD) {
 	GLVB7* v=(GLVB7*)vb; if(!v||!v->data) return D3D_OK;
+	if (getenv("BOB_TRACE_DPVB")) { static int n=0,zero=0,nz=0; if(count==0)zero++; else nz++;
+		if (n++<30) fprintf(stderr,"[dpvb] prim=%d start=%lu count=%lu fvf=%03lx\n",(int)prim,(unsigned long)start,(unsigned long)count,(unsigned long)v->d.dwFVF);
+		if ((n%500)==0) fprintf(stderr,"[dpvb] totals: nonzero=%d zerocount=%d\n",nz,zero); }
 	FvfLayout L=fvf_layout(v->d.dwFVF);
 	draw_fvf(prim, (const unsigned char*)v->data + (size_t)start*L.stride, count, v->d.dwFVF);
 	return D3D_OK;
