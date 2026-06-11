@@ -738,10 +738,17 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	int is2D = (fvf & BFVF_XYZRHW) != 0;     /* pre-transformed screen-space */
 	if (getenv("BOB_TRACE_FVF")) {
 		static int n2d=0, n3d=0;
-		if (!is2D) { if (n3d<20) { const float* p=(const float*)(base+L.posOff);
-			fprintf(stderr,"[fvf-3D] prim=%d cnt=%lu fvf=%03lx stride=%d tex=%p v0=(%.1f,%.1f,%.1f)\n",
-				(int)prim,(unsigned long)count,(unsigned long)fvf,L.stride,(void*)g_devTex[0],p[0],p[1],p[2]); } n3d++; }
-		else n2d++;
+		/* per-quad screen-space bounds + texture, to see what's actually drawn */
+		static int logged=0;
+		if (is2D && logged<30) {
+			float minx=1e9f,miny=1e9f,maxx=-1e9f,maxy=-1e9f;
+			for (DWORD i=0;i<count;i++){ const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff);
+				if(p[0]<minx)minx=p[0]; if(p[0]>maxx)maxx=p[0]; if(p[1]<miny)miny=p[1]; if(p[1]>maxy)maxy=p[1]; }
+			fprintf(stderr,"[fvf2D] #%d prim=%d cnt=%lu x[%.0f..%.0f] y[%.0f..%.0f] tex=%p\n",
+				logged,(int)prim,(unsigned long)count,minx,maxx,miny,maxy,(void*)g_devTex[0]);
+			logged++;
+		}
+		if (!is2D) n3d++; else n2d++;
 		static int rep=0; if ((n2d+n3d)%500==0 && rep++<6) fprintf(stderr,"[fvf] totals: 2D=%d 3D=%d\n",n2d,n3d);
 	}
 

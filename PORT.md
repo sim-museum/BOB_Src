@@ -1,11 +1,19 @@
 # Rowan's Battle of Britain — Linux Native Port
 
-> ## MILESTONE (2026-06-10): Quick Mission loads — first 3D flight scene
-> The full `Inst3d()` → `Persons2::LoadSetPiece` mission path now completes and renders a
-> real 3D flight scene (sky, horizon, player + AI aircraft; 167 colours vs the 5-colour
-> map backdrop). The boot probe (`BOB_BOOT_FRONTEND=1`, full-mission by default;
-> `BOB_OBJECT_VIEW` for the lighter map-item view) sets up a Quick Mission so a player
-> aircraft exists. Getting here resolved a chain of "no player mission" issues:
+> ## MILESTONE (2026-06-10): Quick Mission loads + simulates (3D world NOT yet rendering)
+> The full `Inst3d()` → `Persons2::LoadSetPiece` mission path now completes, the simulation
+> ticks, and the player aircraft flies in the DATA MODEL (verified: full throttle
+> accelerates it down the runway and it lifts off — measured position data). The boot
+> probe (`BOB_BOOT_FRONTEND=1`, full-mission by default; `BOB_OBJECT_VIEW` for the lighter
+> map-item view) sets up a Quick Mission so a player aircraft exists.
+>
+> **CORRECTION (do not trust earlier "renders a flight scene" claims):** the 3D WORLD is
+> NOT rendering. `Three_Dee.render`/`render3d` runs (RenderLandscape executes in the
+> backtrace) but submits ZERO world geometry to the device (BOB_TRACE_FVF: `3D=0`, and the
+> only 2D draws are one ~160x20px HUD widget near screen centre). On screen: a grey clear
+> (clear colour 0x4a555c) + that small widget. No terrain/sky/aircraft. The texture +
+> present plumbing below is real, but the world geometry never reaches it -- that is the
+> open problem. Getting here resolved a chain of "no player mission" issues:
 > - **Phase 1b texture/present** (`4f8b9c2`): real `SURF_Blt`/`BltFast` surface copy (the
 >   D3D7 texture pipeline was a no-op → white screen) + 3D-framebuffer present.
 > - **ENDSCRAMBF guard** (`9ce9ccd`): `FindNextBf` derefed a NULL `Manual_Pilot.ControlledAC2`
