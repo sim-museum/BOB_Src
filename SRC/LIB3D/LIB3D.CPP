@@ -15241,7 +15241,15 @@ inline void getNextToken( char* token, fstream& input )
 	{
 		int i = 0;
 		while ( token[i] != ' ' && token[i] != '\t' && token[i] != ',' && token[i] != '\n' )
+		{
 			input.get( token[++i] );
+#if BOB_LINUX
+			/* istream::get(char&) leaves the char UNMODIFIED on failure (EOF), so a
+			   file whose last token isn't followed by a delimiter loops forever,
+			   running i past token[256] -> stack smash. Stop at EOF / buffer end. */
+			if ( !input.good() || i >= 254 ) { break; }
+#endif
+		}
 		if ( token[i] == '\n' )
 			input.putback( '\n' );
 		token[i] = 0;
@@ -15276,6 +15284,17 @@ HRESULT Lib3D::HandleNaffDriver()
 
 	flags=Flags(flags&~F_STIPPLEALPHA);
 
+#if BOB_LINUX
+	/* cardbase.rc holds per-GPU workarounds for D3D7-era driver bugs (W-buffer
+	   precision, guardband clipping, texture-format locking, stipple alpha, frame-time
+	   smoothing). The Linux port reimplements rendering on OpenGL and has none of those
+	   driver bugs, so no card fix applies. Skip the parse entirely: the defaults set
+	   above (no stipple alpha, no diags, no frame-time buffer) are exactly the
+	   "unknown card / no fix" state the parser would otherwise leave us in. The original
+	   text parser is also not robust against glibc's istream EOF semantics. */
+	return DD_OK;
+#endif
+
 	// right now a super new version that loads a test file, in human readable form...
 	fstream input;
 	input.open( "CardBase.rc", ios::in );
@@ -15283,7 +15302,7 @@ HRESULT Lib3D::HandleNaffDriver()
 	{
 //		INT3;
 		diagString = new char[100];
-		_snprintf( diagString, 99, "Warning: no cardbase.rc found, so no gfx card fixes possible", devID.dwDeviceId ); 
+		_snprintf( diagString, 99, "Warning: no cardbase.rc found, so no gfx card fixes possible", devID.dwDeviceId );
 	}
 
 	struct CardToken

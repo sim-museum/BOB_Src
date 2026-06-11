@@ -35,6 +35,25 @@ extern const GUID IID_IDirect3DHALDevice;
 /* ============================ SDL window/context ========================== */
 static SDL_Window*  g_win = NULL;
 static SDL_GLContext g_ctx = NULL;
+
+/* --- GL context thread handoff ------------------------------------------------
+   The game renders on a dedicated draw thread (View3d::drawloop), but the GL context
+   is created on the main thread (during SetDriverAndMode, where the loader screen is
+   also drawn). A GL context can be current on only one thread at a time, so we hand it
+   off: the main thread keeps it through setup, then releases it the first time it parks
+   in bob_msg_wait (it does no further rendering); the draw thread waits for that release
+   and then makes the context current on itself for the rest of the run. gl_bind_thread()
+   is a no-op once this thread already owns the context. */
+static volatile unsigned long g_glOwner = 0;   /* SDL_threadID owning g_ctx, 0 = none */
+static void gl_bind_thread(void)
+{
+	if (!g_win || !g_ctx) return;
+	unsigned long me = (unsigned long)SDL_ThreadID();
+	if (me == g_glOwner) return;
+	for (int spins=0; g_glOwner != 0 && spins < 3000; spins++) SDL_Delay(1);
+	SDL_GL_MakeCurrent(g_win, g_ctx);
+	g_glOwner = me;
+}
 static int g_scrW = 1024, g_scrH = 768;     /* current display-mode size */
 static int g_traceVid = 0;
 
@@ -64,6 +83,7 @@ static void ensure_window(int w, int h)
 	g_ctx = SDL_GL_CreateContext(g_win);
 	if (!g_ctx) { fprintf(stderr, "[vid] SDL_GL_CreateContext failed: %s\n", SDL_GetError()); return; }
 	SDL_GL_MakeCurrent(g_win, g_ctx);
+	g_glOwner = (unsigned long)SDL_ThreadID();   /* main thread owns it through setup */
 	fprintf(stderr, "[vid] SDL2 window %dx%d + GL context: %s | %s\n",
 		g_scrW, g_scrH, (const char*)glGetString(GL_RENDERER), (const char*)glGetString(GL_VERSION));
 	/* clear once so the window isn't garbage while the rest of init runs */
@@ -172,6 +192,13 @@ static void pump_events(void)
 extern "C" unsigned long bob_msg_wait(unsigned long nCount, void* const* handles, unsigned long dwMilliseconds)
 {
 	pump_events();
+	/* Hand the GL context off to the draw thread: the first time the owning (main)
+	   thread parks here it has finished all its rendering, so release the context and
+	   let the draw thread (waiting in gl_bind_thread) take it. */
+	if (g_glOwner == (unsigned long)SDL_ThreadID()) {
+		SDL_GL_MakeCurrent(g_win, NULL);
+		g_glOwner = 0;
+	}
 	/* if keyboard input is queued, wake the loop on the keyboard-notification
 	   handle (htable[EVENT_KEYS]) so CMIGApp::Run dispatches Inst3d::OnKeyInput. */
 	if (g_kbHead != g_kbTail && g_diKbNotify && handles) {
@@ -253,6 +280,7 @@ static HRESULT SURF_GetPixelFormat(IDirectDrawSurface7* This, LPDDPIXELFORMAT pf
 static GLuint g_presentTex = 0;
 static void present_surface(GLSurface7* s)
 {
+	gl_bind_thread();
 	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) SDL_GL_SwapWindow(g_win); return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
@@ -317,7 +345,17 @@ static HRESULT SURF_GetDC(IDirectDrawSurface7*, HDC* p) { if (p) *p = (HDC)0; re
 static HRESULT SURF_ReleaseDC(IDirectDrawSurface7*, HDC) { return DD_OK; }
 static HRESULT SURF_PageLock(IDirectDrawSurface7*, DWORD) { return DD_OK; }
 static HRESULT SURF_PageUnlock(IDirectDrawSurface7*, DWORD) { return DD_OK; }
-static HRESULT SURF_QueryInterface(IDirectDrawSurface7* This, REFIID, void** ppv) { if (ppv) *ppv = This; return DD_OK; }
+/* {69C11C3E-B46B-11D1-AD7A-00C04FC29B4E} (defined in bob_dx_extra.h, not pulled in here) */
+static const GUID BOB_IID_GammaControl =
+  {0x69C11C3E,0xB46B,0x11D1,{0xAD,0x7A,0,0xC0,0x4F,0xC2,0x9B,0x4E}};
+static HRESULT SURF_QueryInterface(IDirectDrawSurface7* This, REFIID riid, void** ppv) {
+	/* Reject IDirectDrawGammaControl: we don't expose a hardware gamma ramp. Returning
+	   the surface itself (default below) would hand back a vtbl whose SetGammaRamp slot
+	   is some unrelated surface method -> NULL/garbage call. Failing the QI makes
+	   Lib3D::SetGamma return early (no gamma adjust), which is purely cosmetic. */
+	if (riid == BOB_IID_GammaControl) { if (ppv) *ppv = NULL; return E_NOINTERFACE; }
+	if (ppv) *ppv = This; return DD_OK;
+}
 static ULONG   SURF_Release(IDirectDrawSurface7* This) { GLSurface7* s=(GLSurface7*)This; if(s->bits) free(s->bits); free(s); return 0; }
 static HRESULT SURF_GetCaps(IDirectDrawSurface7* This, LPDDSCAPS2 c) { GLSurface7* s=(GLSurface7*)This; if(c)*c=s->desc.ddsCaps; return DD_OK; }
 
@@ -339,6 +377,14 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 /* ============================ IDirectDraw7 methods ======================= */
 static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSurface7** out, IUnknown*) {
 	if (!out) return DDERR_INVALIDPARAMS;
+	/* Render-to-texture (TEXTURE+3DDEVICE) — used by Lib3D's water/mirror reflection
+	   probe (CheckIfTextureCanBeRenderTarget). Our GL backend has no FBO RTT yet, so
+	   report the surface uncreatable: the probe then takes its designed fallback
+	   (render straight to the back buffer, no mirror), exactly as on HW that lacks RTT. */
+	if (d && (d->ddsCaps.dwCaps & DDSCAPS_TEXTURE) && (d->ddsCaps.dwCaps & DDSCAPS_3DDEVICE)) {
+		*out = NULL;
+		return DDERR_OUTOFVIDEOMEMORY;
+	}
 	GLSurface7* s = make_surface(d, g_scrW, g_scrH);
 	/* complex flip chain -> also make the back buffer and attach it */
 	if (d && (d->ddsCaps.dwCaps & DDSCAPS_PRIMARYSURFACE)) {
@@ -543,10 +589,11 @@ static void upload_texture(GLSurface7* s) {
 }
 
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { pump_events(); return D3D_OK; }
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); pump_events(); return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
 	if (!g_win) return D3D_OK;
+	gl_bind_thread();
 	GLbitfield m=0;
 	if (flags & 0x1 /*D3DCLEAR_TARGET*/) {
 		glClearColor(((col>>16)&0xff)/255.f,((col>>8)&0xff)/255.f,(col&0xff)/255.f,((col>>24)&0xff)/255.f);
@@ -674,6 +721,10 @@ static HRESULT DEV_EnumTextureFormats(IDirect3DDevice7*, void* cbv, LPVOID arg) 
 }
 static HRESULT DEV_GetCaps(IDirect3DDevice7*, LPD3DDEVICEDESC7 d) { if(d) fill_devdesc(d,&IID_IDirect3DTnLHalDevice); return D3D_OK; }
 static HRESULT DEV_GetDirect3D(IDirect3DDevice7*, LPDIRECT3D7* p) { if(p)*p=(IDirect3D7*)&g_theD3D; return D3D_OK; }
+/* ValidateDevice: on real D3D7 this reports whether the current texture-stage/render
+   state combo is renderable in one pass. Our GL backend renders any state the game
+   sets, so always validate OK in a single pass (Lib3D::CkValidDevice). */
+static HRESULT DEV_ValidateDevice(IDirect3DDevice7*, LPDWORD passes) { if(passes)*passes=1; return D3D_OK; }
 
 /* ============================ clipper / palette ========================== */
 static HRESULT CLIP_SetHWnd(IDirectDrawClipper* This, DWORD, HWND h) { ((GLClipper*)This)->hwnd=h; return DD_OK; }
@@ -685,6 +736,14 @@ static HRESULT PAL_GetEntries(IDirectDrawPalette* This, DWORD, DWORD start, DWOR
 }
 
 /* ============================ vtbl wiring ================================ */
+/* Generic no-op for any device vtbl slot we don't implement. STDMETHODCALLTYPE is
+   cdecl here, so this single (void*)->HRESULT signature is ABI-compatible with every
+   slot regardless of its real argument list (the caller cleans the stack). */
+static HRESULT DEV_generic_stub(void*) { return D3D_OK; }
+/* QueryInterface that hands back the device itself (the game only ever QIs the device
+   for a directly-usable interface, never a distinct COM object). */
+static HRESULT DEV_QueryInterface(IDirect3DDevice7* This, REFIID, void** ppv) { if (ppv) *ppv = This; return D3D_OK; }
+
 static void init_vtbls_once(void)
 {
 	static int done = 0; if (done) return; done = 1;
@@ -729,7 +788,18 @@ static void init_vtbls_once(void)
 	g_devVtbl.DrawPrimitive=DEV_DrawPrimitive;
 	g_devVtbl.CreateStateBlock=DEV_CreateStateBlock; g_devVtbl.ApplyStateBlock=DEV_ApplyStateBlock;
 	g_devVtbl.EnumTextureFormats=DEV_EnumTextureFormats; g_devVtbl.GetCaps=DEV_GetCaps;
+	g_devVtbl.ValidateDevice=DEV_ValidateDevice;
 	g_devVtbl.GetDirect3D=DEV_GetDirect3D;
+	g_devVtbl.QueryInterface=DEV_QueryInterface;
+	/* Backstop: any device method left unwired above gets a no-op returning D3D_OK, so an
+	   unimplemented vtbl slot can never be a NULL function-pointer call. The device vtbl is
+	   a flat array of cdecl function pointers, so this is safe to fill positionally. */
+	{
+		typedef HRESULT (*devfn)(void*);
+		devfn* slots = (devfn*)&g_devVtbl;
+		unsigned n = sizeof(g_devVtbl)/sizeof(devfn);
+		for (unsigned i=0;i<n;i++) if (!slots[i]) slots[i] = (devfn)DEV_generic_stub;
+	}
 	g_theDevice.lpVtbl=&g_devVtbl;
 
 	g_d3dVtbl.AddRef=(ULONG(*)(IDirect3D7*))generic_addref;
