@@ -267,17 +267,21 @@ public:
 			   polygon's per-material texture scale (tsW[0] = 1/texWidth), so each tile maps
 			   correctly into its texture. Verts whose tu was already converted to a real
 			   float UV (|tu| not a denormal) are left untouched. */
-			if (getenv("BOB_LANDFIX") && bufferPos->tu < 1e-20f && bufferPos->tu > -1e-20f) {
+			/* Landscape vertices reach the device with integer IMap texture coords (ix,iy,
+			   0..texWidth, in a union with the float tu,tv) but the conversion to float UVs
+			   is skipped for the terrain (its verts bypass the software transform path that
+			   does `tu = ix/texWidth`). So they arrive with tu,tv as a denormal (~0) and
+			   sample one texel -> flat grey terrain. Convert here: ix,iy are already the
+			   per-tile atlas coords, so tu = ix/texWidth maps each tile correctly. Guard on
+			   a sane 0..256 IMap range so object verts -- which legitimately have a float
+			   tu of 0.0 (also a "denormal") but a garbage int16 reinterpretation -- are left
+			   untouched. (256 = the landscape texture/atlas width.) */
+			{
 				SWord ix,iy; curVert->getIMapCoords(ix,iy);
-				if (ix||iy) {
-					/* NOTE: a single global scale only TILES the atlas -> banding, not
-					   coherent terrain. The flushed verts carry raw <<7 IMap coords with no
-					   material context, so the correct per-tile atlas offset/scale (which
-					   TransformVertexAsRequired applies to a DIFFERENT vertex copy) isn't
-					   available here. This stays as a diagnostic until that path is fixed. */
-					const float s = getenv("BOB_IMAP_SCALE") ? (1.0f/atof(getenv("BOB_IMAP_SCALE"))) : (1.0f/32768.0f);
-					bufferPos->tu = (D3DVALUE)ix * s;
-					bufferPos->tv = (D3DVALUE)iy * s;
+				if (bufferPos->tu < 1e-20f && bufferPos->tu > -1e-20f &&
+				    ix>=0 && ix<=256 && iy>=0 && iy<=256 && (ix||iy)) {
+					bufferPos->tu = (D3DVALUE)ix * (1.0f/256.0f);
+					bufferPos->tv = (D3DVALUE)iy * (1.0f/256.0f);
 				}
 			}
 #endif
