@@ -654,11 +654,20 @@ static FvfLayout fvf_layout(DWORD fvf) {
 /* ---- device GL state ---- */
 static GLSurface7* g_devTex[8] = {0};   /* SetTexture per stage */
 static int g_devAlphaBlend = 0;
-static GLenum gl_blend(DWORD d) {        /* D3DBLEND -> GL */
-	switch(d){ case 1:return GL_ZERO; case 2:return GL_ONE; case 3:return GL_SRC_COLOR;
-		case 4:return GL_SRC_ALPHA; case 5:return GL_ONE_MINUS_SRC_ALPHA;
-		case 6:return GL_DST_ALPHA; case 7:return GL_ONE_MINUS_DST_ALPHA;
-		case 9:return GL_DST_COLOR; case 10:return GL_ONE_MINUS_DST_COLOR; default:return GL_ONE; }
+static GLenum gl_blend(DWORD d) {        /* D3DBLEND -> GL (D3DBLEND enum is 1-based) */
+	switch(d){
+		case 1:return GL_ZERO;                  /* D3DBLEND_ZERO */
+		case 2:return GL_ONE;                   /* D3DBLEND_ONE */
+		case 3:return GL_SRC_COLOR;             /* D3DBLEND_SRCCOLOR */
+		case 4:return GL_ONE_MINUS_SRC_COLOR;   /* D3DBLEND_INVSRCCOLOR */
+		case 5:return GL_SRC_ALPHA;             /* D3DBLEND_SRCALPHA */
+		case 6:return GL_ONE_MINUS_SRC_ALPHA;   /* D3DBLEND_INVSRCALPHA */
+		case 7:return GL_DST_ALPHA;             /* D3DBLEND_DESTALPHA */
+		case 8:return GL_ONE_MINUS_DST_ALPHA;   /* D3DBLEND_INVDESTALPHA */
+		case 9:return GL_DST_COLOR;             /* D3DBLEND_DESTCOLOR */
+		case 10:return GL_ONE_MINUS_DST_COLOR;  /* D3DBLEND_INVDESTCOLOR */
+		case 11:return GL_SRC_ALPHA_SATURATE;   /* D3DBLEND_SRCALPHASAT */
+		default:return GL_ONE; }
 }
 static GLenum g_srcBlend=GL_SRC_ALPHA, g_dstBlend=GL_ONE_MINUS_SRC_ALPHA;
 
@@ -770,6 +779,10 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		const float* p0=(const float*)(base+L.posOff);
 		if ((mxx-mnx) > g_scrW*0.7f && (mxy-mny) > g_scrH*0.7f && p0[2] < 0.01f) return;
 	}
+	/* BOB_ONLY_TEXW=N: draw ONLY 2D quads whose bound texture width==N (e.g. 32 = the
+	   detailed ground tiles), skipping the sky/haze/font surfaces -- isolates terrain. */
+	if (is2D) { const char* otw=getenv("BOB_ONLY_TEXW");
+		if (otw) { int w=atoi(otw); if (!g_devTex[0] || g_devTex[0]->w!=w) return; } }
 	if (getenv("BOB_TRACE_FVF")) {
 		static int n2d=0, n3d=0;
 		/* global screen-space bounds of ALL 2D geometry + how many quads have a texture */
@@ -848,7 +861,8 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	static int depth3d = -1; if (depth3d<0) depth3d = getenv("BOB_DEPTH3D") ? 1 : 0;
 	if (depth3d) { glEnable(GL_DEPTH_TEST); glDepthFunc(GL_GEQUAL); glDepthMask(GL_TRUE); }
 	else glDisable(GL_DEPTH_TEST);
-	if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
+	if (getenv("BOB_NOBLEND")) glDisable(GL_BLEND);
+	else if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
 
 	GLSurface7* t=g_devTex[0];
 	/* BOB_TEX_REPLACE: show texture only (ignore the software-lit/fogged vertex colour)

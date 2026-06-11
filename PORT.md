@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## M1 FIX (2026-06-11): the washout bug — D3DBLEND→GL mapping was misaligned
+> The grey-haze "washout" that hid the entire 3D world was a **blend-factor mapping bug**
+> in the compat. `gl_blend()` (D3DBLEND→GL) was misaligned for the alpha factors:
+> `D3DBLEND_SRCALPHA(5)` mapped to `GL_ONE_MINUS_SRC_ALPHA` and `INVSRCALPHA(6)` to
+> `GL_DST_ALPHA` (cases 4–8 all wrong). The game's standard alpha blend
+> (`SRCALPHA`/`INVSRCALPHA`) thus became a garbage blend that washed every blended
+> surface toward the clear colour — terrain, cockpit, and objects alike.
+> **Fix:** corrected `gl_blend()` to the real (1-based) D3DBLEND enum.
+> **Validated over the airfield (pixel-verified):** default render went from a flat
+> blue-grey gradient (~169–288 colours) to earth-toned terrain with field structure
+> (mean (106,99,72)); a normal piloted view now renders the **cockpit** (frame, instrument
+> panel) at 1653 distinct colours. This is the first time recognizable 3D geometry shows.
+>
+> How it was found (M0 harness): GL_REPLACE (texture-only) collapsed the frame to one
+> colour with blending ON but showed 412 colours with blending OFF — isolating blend as
+> the cause, after the harness had already disproven texcoords/coord-set/depth/draw-order/
+> upload-timing. Remaining (next): terrain is still hazy/over-tiled and the cockpit is dark
+> (lighting/fog tuning, M3); ground tile set-0 UVs over-tile (cosmetic vs the wash).
+> Diagnostic toggles left in place (env-gated, default off): BOB_TEX_REPLACE, BOB_NOBLEND,
+> BOB_ONLY_TEXW, BOB_DEPTH3D, BOB_SKIP_BACKDROP, BOB_TEX_REUP.
+
 > ## M0 (2026-06-11): validation harness + controllable land view — and a root-cause correction
 > Built a pixel-truth harness so rendering is judged by captured frames, not impressions
 > (the earlier repeated over-claims came from eyeballing hazy frames). Deliverables:
