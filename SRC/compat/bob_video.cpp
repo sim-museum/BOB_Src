@@ -704,7 +704,12 @@ static void upload_texture(GLSurface7* s) {
 }
 
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); g_devRendered=1; pump_events();
+	/* BOB_DEPTH3D experiment: start each scene with a cleared depth buffer (clear=0.0,
+	   GEQUAL so nearer/larger-screen-z wins) -- tests whether the flat 3D world is the
+	   terrain being overdrawn in painter's order because depth is disabled. */
+	if (getenv("BOB_DEPTH3D")) { glClearDepth(0.0); glClear(GL_DEPTH_BUFFER_BIT); }
+	return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
 	if (!g_win) return D3D_OK;
@@ -756,6 +761,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	FvfLayout L = fvf_layout(fvf);
 	if (!L.stride) return;
 	int is2D = (fvf & BFVF_XYZRHW) != 0;     /* pre-transformed screen-space */
+	/* BOB_SKIP_BACKDROP diagnostic: skip a near-full-screen near-z quad (the sky/haze
+	   backdrop) to see whether terrain is rendering behind it (a draw-order problem). */
+	if (is2D && getenv("BOB_SKIP_BACKDROP") && count>=3 && (fvf&BFVF_XYZRHW)) {
+		float mnx=1e9f,mxx=-1e9f,mny=1e9f,mxy=-1e9f;
+		for(DWORD i=0;i<count;i++){const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff);
+			if(p[0]<mnx)mnx=p[0]; if(p[0]>mxx)mxx=p[0]; if(p[1]<mny)mny=p[1]; if(p[1]>mxy)mxy=p[1];}
+		const float* p0=(const float*)(base+L.posOff);
+		if ((mxx-mnx) > g_scrW*0.7f && (mxy-mny) > g_scrH*0.7f && p0[2] < 0.01f) return;
+	}
 	if (getenv("BOB_TRACE_FVF")) {
 		static int n2d=0, n3d=0;
 		/* global screen-space bounds of ALL 2D geometry + how many quads have a texture */
@@ -793,12 +807,28 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				}
 			}
 			if(idx>=0){ seen[idx].n++; if(miny<seen[idx].ymin)seen[idx].ymin=miny; if(maxy>seen[idx].ymax)seen[idx].ymax=maxy; }
+			/* identify the largest-area textured 2D quad (the dominant/occluding surface) */
+			static float bestArea=-1; static int bw=0,bh=0; static float bz=0; static unsigned bcol=0; static float bu=0,bv=0; static float bminy=0,bmaxy=0;
+			float area=(maxx-minx)*(maxy-miny);
+			if(area>bestArea){ bestArea=area; bw=tt->w; bh=tt->h;
+				const float* p0=(const float*)(base+L.posOff); bz=p0[2];
+				if(L.hasCol){ bcol=*(const unsigned*)(base+L.colOff); }
+				float uu0=1e9f,uu1=-1e9f,vv0=1e9f,vv1=-1e9f;
+				for(DWORD i=0;i<count;i++){const float* fi=(const float*)(base+(size_t)i*L.stride+L.texOff);
+					if(fi[0]<uu0)uu0=fi[0]; if(fi[0]>uu1)uu1=fi[0]; if(fi[1]<vv0)vv0=fi[1]; if(fi[1]>vv1)vv1=fi[1];}
+				bu=uu1-uu0; bv=vv1-vv0; bminy=miny; bmaxy=maxy; }
+			if (getenv("BOB_DUMP_FRAME") && (n2d+n3d)==atoi(getenv("BOB_DUMP_FRAME"))*38) {
+				fprintf(stderr,"[bigquad] area=%.0f tex=%dx%d z=%.4f diffuse=0x%08x uv-SPAN=(%.3f,%.3f) scrY[%.0f..%.0f]\n",bestArea,bw,bh,bz,bcol,bu,bv,bminy,bmaxy);
+			}
 			static int gd=0;
 			if (tt->w==32 && tt->h==32 && gd<12) { gd++;
-				fprintf(stderr,"[gtile] 32x32 scr[%.0f..%.0f,%.0f..%.0f] uv:",minx,maxx,miny,maxy);
-				for (DWORD i=0;i<count && i<4;i++){ const float* f=(const float*)(base+(size_t)i*L.stride+L.texOff);
-					fprintf(stderr," (%.4f,%.4f)",f[0],f[1]); }
-				fprintf(stderr,"\n");
+				int ntex=(fvf & 0xf00)>>8;
+				fprintf(stderr,"[gtile] ntex=%d scr[%.0f..%.0f,%.0f..%.0f]\n",ntex,minx,maxx,miny,maxy);
+				for (int set=0; set<ntex && set<3; set++){
+					fprintf(stderr,"        set%d:",set);
+					for (DWORD i=0;i<count && i<4;i++){ const float* f=(const float*)(base+(size_t)i*L.stride+L.texOff+set*8);
+						fprintf(stderr," (%.3f,%.3f)",f[0],f[1]); }
+					fprintf(stderr,"\n"); }
 			}
 		}
 		static bool texreported=false;
@@ -815,7 +845,9 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
 	if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);   /* DDraw screen coords: y down */
 	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
-	glDisable(GL_DEPTH_TEST);
+	static int depth3d = -1; if (depth3d<0) depth3d = getenv("BOB_DEPTH3D") ? 1 : 0;
+	if (depth3d) { glEnable(GL_DEPTH_TEST); glDepthFunc(GL_GEQUAL); glDepthMask(GL_TRUE); }
+	else glDisable(GL_DEPTH_TEST);
 	if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
 
 	GLSurface7* t=g_devTex[0];
@@ -823,14 +855,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
 	static int texMode = -2;
 	if (texMode==-2) texMode = getenv("BOB_TEX_REPLACE") ? GL_REPLACE : GL_MODULATE;
-	if (t) { if (t->texDirty || !t->glTex) upload_texture(t);
+	if (t) { if (getenv("BOB_TEX_REUP") || t->texDirty || !t->glTex) upload_texture(t);
 		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
 		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode); }
 	else glDisable(GL_TEXTURE_2D);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
-	/* XYZRHW stored as 4 floats; pass x,y(,z) — use 2 comps for 2D screen pos */
-	glVertexPointer(is2D?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	/* XYZRHW stored as 4 floats; pass x,y(,z). With depth3d we pass z too (3 comps)
+	   so the screen-space z drives the depth test. */
+	glVertexPointer((is2D&&!depth3d)?2:3, GL_FLOAT, L.stride, base + L.posOff);
 	if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
 	if (L.hasTex && t) { glEnableClientState(GL_TEXTURE_COORD_ARRAY);
