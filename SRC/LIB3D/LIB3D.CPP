@@ -7350,6 +7350,16 @@ HRESULT Lib3D::SetMaterial(const HMATERIAL& hMaterial)
 				if ((lastError=CreateTextureMap(hLastMaterial.p[i],textureTable[hLastMaterial.p[i]->hTextureMap],i))!=D3D_OK)
 				{
 					INT3;
+#if BOB_LINUX
+					/* A single texture that can't be uploaded (e.g. a 0x0 sky map in the
+					   cold-start map view) must not tear down the whole device: the
+					   original calls CloseDown() (which releases the device and, mid-frame
+					   on the draw thread, crashed). Skip that texture and keep rendering. */
+					if (getenv("BOB_TRACE_TEX"))
+						fprintf(stderr,"[tex] CreateTextureMap failed err=0x%lx w=%d h=%d\n",
+							(unsigned long)lastError,(int)hLastMaterial.p[i]->w,(int)hLastMaterial.p[i]->h);
+					return lastError;
+#endif
 					CloseDown();
 					return lastError;
 				}

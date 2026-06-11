@@ -17,6 +17,8 @@
 #pragma pack(push,8)
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
+#include <fcntl.h>
+#include <unistd.h>
 #pragma pack(pop)
 
 #include <cstdio>
@@ -45,6 +47,13 @@ static SDL_GLContext g_ctx = NULL;
    and then makes the context current on itself for the rest of the run. gl_bind_thread()
    is a no-op once this thread already owns the context. */
 static volatile unsigned long g_glOwner = 0;   /* SDL_threadID owning g_ctx, 0 = none */
+
+/* Set when the 3D device renders into the GL framebuffer this frame (BeginScene/Clear/
+   DrawPrimitive). The game presents by flipping the DDraw back buffer, whose system-
+   memory bits the 3D path never touched -- so when this is set, present by swapping the
+   GL framebuffer instead of uploading the (stale) back-buffer bits over the 3D render.
+   Pure 2D frames (DDraw Lock/Blt, e.g. the loader) leave it clear and present via bits. */
+static int g_devRendered = 0;
 static void gl_bind_thread(void)
 {
 	if (!g_win || !g_ctx) return;
@@ -278,10 +287,36 @@ static HRESULT SURF_GetPixelFormat(IDirectDrawSurface7* This, LPDDPIXELFORMAT pf
    fullscreen quad (compatibility-profile immediate mode), then swap. This is the
    path 2D (DDraw blits/locks) and, later, 3D both reach the screen through. */
 static GLuint g_presentTex = 0;
+static void present_dbg(const char* path)
+{
+	if (!getenv("BOB_TRACE_PRESENT") && !getenv("BOB_DUMP_FRAME")) return;
+	static int frames=0; frames++;
+	if (getenv("BOB_TRACE_PRESENT") && (frames<=3 || (frames%60)==0)) {
+		unsigned char px[3]={0,0,0};
+		glReadPixels(g_scrW/2,g_scrH/2,1,1,GL_RGB,GL_UNSIGNED_BYTE,px);
+		fprintf(stderr,"[present] frame %d via %s centre rgb=(%d,%d,%d) glErr=%d\n",
+			frames,path,px[0],px[1],px[2],(int)glGetError());
+	}
+	const char* df = getenv("BOB_DUMP_FRAME");
+	if (df && frames == atoi(df)) {
+		int w=g_scrW,h=g_scrH; unsigned char* buf=(unsigned char*)malloc(w*h*3);
+		glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
+		/* raw POSIX open() to bypass the game's redirected fopen */
+		int fd=::open("/tmp/bobframe.ppm",O_WRONLY|O_CREAT|O_TRUNC,0644);
+		if (fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h);
+			if (write(fd,hdr,n)<0){} for (int y=h-1;y>=0;y--) if(write(fd,buf+y*w*3,w*3)<0){}
+			close(fd); fprintf(stderr,"[present] dumped frame %d to /tmp/bobframe.ppm (%dx%d) glErr=%d\n",frames,w,h,(int)glGetError()); }
+		else fprintf(stderr,"[present] dump open failed errno path\n");
+		free(buf);
+	}
+}
 static void present_surface(GLSurface7* s)
 {
 	gl_bind_thread();
-	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) SDL_GL_SwapWindow(g_win); return; }
+	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
+	   the back buffer's untouched system-memory bits over the top). */
+	if (g_devRendered) { g_devRendered = 0; if (g_win) { present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
+	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -304,11 +339,60 @@ static void present_surface(GLSurface7* s)
 		glTexCoord2f(0,0); glVertex2f(0,1);
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
+	present_dbg("2d-blit");
 	SDL_GL_SwapWindow(g_win);
 }
 
-static HRESULT SURF_Blt(IDirectDrawSurface7*, LPRECT, IDirectDrawSurface7*, LPRECT, DWORD, LPDDBLTFX) { pump_events(); return DD_OK; }
-static HRESULT SURF_BltFast(IDirectDrawSurface7*, DWORD, DWORD, IDirectDrawSurface7*, LPRECT, DWORD) { return DD_OK; }
+static void surf_alloc_bits(GLSurface7* s) {
+	if (s && !s->bits && s->w>0 && s->h>0) { s->bytes = surf_bytes(s->w, s->h, s->bpp); s->bits = calloc(1, s->bytes?s->bytes:1); }
+}
+/* Real surface->surface copy: the 3D texture pipeline (Lib3D::_CreateTextureMap) Locks a
+   temp surface, writes the palette-converted pixels, then BltFast's it into the texture
+   surface that actually gets bound. Without a real copy here, every uploaded texture is
+   blank (white). Same-format copies are a memcpy; size mismatch (mip levels) nearest-scales. */
+static HRESULT SURF_BltFast(IDirectDrawSurface7* This, DWORD dx, DWORD dy, IDirectDrawSurface7* src, LPRECT srcRect, DWORD) {
+	GLSurface7* d=(GLSurface7*)This; GLSurface7* s=(GLSurface7*)src;
+	if (!d || !s) return DD_OK;
+	surf_alloc_bits(s); surf_alloc_bits(d);
+	if (!s->bits || !d->bits || d->bpp!=s->bpp) { if(d) d->texDirty=1; return DD_OK; }
+	int bpp=(s->bpp+7)/8;
+	int sx0=0, sy0=0, sw=s->w, sh=s->h;
+	if (srcRect) { sx0=srcRect->left; sy0=srcRect->top; sw=srcRect->right-srcRect->left; sh=srcRect->bottom-srcRect->top; }
+	for (int y=0;y<sh;y++) {
+		int dyy=(int)dy+y, syy=sy0+y;
+		if (dyy<0||dyy>=d->h||syy<0||syy>=s->h) continue;
+		int cw=sw, cdx=(int)dx;
+		if (cdx+cw>d->w) cw=d->w-cdx;
+		if (cdx<0 || cw<=0 || sx0<0 || sx0+cw>s->w) continue;
+		memcpy((char*)d->bits+((size_t)dyy*d->w+cdx)*bpp, (char*)s->bits+((size_t)syy*s->w+sx0)*bpp, (size_t)cw*bpp);
+	}
+	d->texDirty=1;
+	return DD_OK;
+}
+static HRESULT SURF_Blt(IDirectDrawSurface7* This, LPRECT, IDirectDrawSurface7* src, LPRECT, DWORD flags, LPDDBLTFX fx) {
+	GLSurface7* d=(GLSurface7*)This;
+	if (!d) { pump_events(); return DD_OK; }
+	surf_alloc_bits(d);
+	if ((flags & DDBLT_COLORFILL) && d->bits) {
+		int bpp=(d->bpp+7)/8; size_t n=(size_t)d->w*d->h;
+		if (bpp==2) { unsigned short v=(unsigned short)(fx?fx->dwFillColor:0), *p=(unsigned short*)d->bits; for(size_t i=0;i<n;i++)p[i]=v; }
+		else if (bpp==4) { unsigned int v=(fx?fx->dwFillColor:0), *p=(unsigned int*)d->bits; for(size_t i=0;i<n;i++)p[i]=v; }
+		else memset(d->bits,0,n*bpp);
+		d->texDirty=1; pump_events(); return DD_OK;
+	}
+	if (src) {
+		GLSurface7* s=(GLSurface7*)src; surf_alloc_bits(s);
+		if (s->bits && d->bits && d->bpp==s->bpp) {
+			int bpp=(s->bpp+7)/8;
+			if (d->w==s->w && d->h==s->h) memcpy(d->bits,s->bits,(size_t)d->w*d->h*bpp);
+			else for (int y=0;y<d->h;y++){ int sy=s->h?y*s->h/d->h:0; for(int x=0;x<d->w;x++){ int sx=s->w?x*s->w/d->w:0;
+				memcpy((char*)d->bits+((size_t)y*d->w+x)*bpp,(char*)s->bits+((size_t)sy*s->w+sx)*bpp,bpp);} }
+		}
+		d->texDirty=1;
+	}
+	pump_events();
+	return DD_OK;
+}
 static HRESULT SURF_Flip(IDirectDrawSurface7* This, IDirectDrawSurface7*, DWORD) {
 	GLSurface7* s = (GLSurface7*)This;
 	present_surface(s->back ? s->back : s);   /* present the back buffer */
@@ -589,13 +673,15 @@ static void upload_texture(GLSurface7* s) {
 }
 
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); pump_events(); return D3D_OK; }
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
 	if (!g_win) return D3D_OK;
 	gl_bind_thread();
+	g_devRendered=1;
 	GLbitfield m=0;
 	if (flags & 0x1 /*D3DCLEAR_TARGET*/) {
+		if (getenv("BOB_TRACE_FVF")) { static int c=0; if(c++<4) fprintf(stderr,"[clear] col=0x%08lx flags=%lx\n",(unsigned long)col,(unsigned long)flags); }
 		glClearColor(((col>>16)&0xff)/255.f,((col>>8)&0xff)/255.f,(col&0xff)/255.f,((col>>24)&0xff)/255.f);
 		m|=GL_COLOR_BUFFER_BIT;
 	}
@@ -639,6 +725,14 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	FvfLayout L = fvf_layout(fvf);
 	if (!L.stride) return;
 	int is2D = (fvf & BFVF_XYZRHW) != 0;     /* pre-transformed screen-space */
+	if (getenv("BOB_TRACE_FVF")) {
+		static int n2d=0, n3d=0;
+		if (!is2D) { if (n3d<20) { const float* p=(const float*)(base+L.posOff);
+			fprintf(stderr,"[fvf-3D] prim=%d cnt=%lu fvf=%03lx stride=%d tex=%p v0=(%.1f,%.1f,%.1f)\n",
+				(int)prim,(unsigned long)count,(unsigned long)fvf,L.stride,(void*)g_devTex[0],p[0],p[1],p[2]); } n3d++; }
+		else n2d++;
+		static int rep=0; if ((n2d+n3d)%500==0 && rep++<6) fprintf(stderr,"[fvf] totals: 2D=%d 3D=%d\n",n2d,n3d);
+	}
 
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
 	if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);   /* DDraw screen coords: y down */
