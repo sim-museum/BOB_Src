@@ -1,5 +1,48 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## DIAGNOSIS CORRECTION (2026-06-12): the cockpit instruments are NOT a render-to-texture/FBO problem
+> The previous commit (d3f37c3) scoped "restore the cockpit instruments → implement FBO
+> render-to-texture." Running the live cockpit (`BOB_BOOT_FRONTEND=1`) with the diagnostics
+> from that commit and a fresh frame/texture capture **disproves the FBO premise.** Do NOT
+> build an FBO subsystem for the instruments — it would not fix them. Evidence:
+>
+> 1. **The instrument panel is ordinary RENDERTARGET_PRIMARY geometry, not a render target.**
+>    Lib3D has exactly three render-to-texture targets and every one is accounted for:
+>    `RENDERTARGET_PRIMARY` (back buffer), `RENDERTARGET_MIRROR` (rear-view mirror,
+>    `RenderMirror`, 3DCODE.CPP:6407), `RENDERTARGET_LANDSCAPE` (detail-tile compositing,
+>    TILEMAKE.CPP:5410). There is no instrument render target. `HRENDERTARGET::getType()`
+>    switches (LIB3D.CPP `_BeginScene`/`UploadTexture`) handle only those three. The panel
+>    and its dials are drawn into the primary scene as cockpit mesh + overlay.
+> 2. **The one rejected RTT surface is only the 128×128 probe** in
+>    `CheckIfTextureCanBeRenderTarget` (BOB_TRACE_RTT shows a single rejection,
+>    caps=0x10007000). On rejection the game cleanly takes `SetNoRenderToTexture`
+>    (pDDS7LandRT=pDDS7MirrorRT=pDDSB7) — the **landscape detail textures prove this
+>    back-buffer fallback works** (terrain renders correctly, GL-texture dumps #0–18 are
+>    real aerial imagery). So the missing RTT is cosmetic (no live mirror), not the panel.
+> 3. **The "garbage surface" (unaligned vtbl, w=0x700000 h=0 bpp=0 glTex=−1) is the LOADER
+>    SCREEN, not the cockpit.** `backtrace()` at the bind site (BOB_TRACE_SETTEX, now dumps
+>    a symbolized stack) gives: `CMIGApp::InitInstance → View3d::MakeInteractive →
+>    MakePassive → COverlay::LoaderScreen → Lib3D::EndScene → SetTexture`. It fires during
+>    setup while drawing the 2D loader, and is correctly skipped (→ untextured) by draw_fvf.
+>    It is a *different* bug from the cockpit corruption, mis-attributed in d3f37c3.
+> 4. **The real, visible cockpit defect** (frame dump at 800×600, see /tmp method below):
+>    geometry, canopy struts, sky and terrain all render; the instrument panel shows
+>    **rainbow banded strips** tiled across panel faces plus some **black panels**. The
+>    rainbow texture is a 565 `TF_NORM` map (GL dump: 32×32, alpha=0) whose *source bits*
+>    carry garbage in part of the image — i.e. bad source pixel data fed to
+>    `_CreateTextureMap` (palette-indexed `pMapDesc->body` → 16-bit), NOT a format/blit bug
+>    in the compat (all texFmt slots are 16bpp, so BltFast never bpp-skips). This matches
+>    the milestone's earlier, correct note: "cockpit .shp model UV/texture data — deep."
+>
+> **Capture recipe (for the next session):**
+> `BOB_BOOT_FRONTEND=1 BOB_DRIVE_C=… BOB_DUMP_FRAME=250 BOB_EXIT_AFTER_DUMP=1` → frame to
+> /tmp/bobframe.ppm; `BOB_DUMP_GLTEX=160` tiles every bound GL texture; `BOB_DUMP_TEX=160`
+> (gate lowered to ≥8px) tiles the pre-upload source bits; `BOB_TRACE_SETTEX=1` backtraces
+> any garbage bind. Convert with PIL (`Image.open('x.ppm').save('x.png')`).
+> **Next step:** identify *which* cockpit .shp/texture the rainbow 565 map comes from and
+> why its source `body` bytes are wrong (truncated read? wrong paletteindex? a .shp the
+> loader parses short) — a data/asset-pipeline bug, not a renderer/FBO bug.
+
 > ## RENDERING MILESTONE (2026-06-11): the 3D world renders in daylight, runs stably
 > End-to-end, the native port now renders a recognizable, daylit Battle of Britain scene
 > and runs it stably for minutes at a time (verified live on the user's display). The arc

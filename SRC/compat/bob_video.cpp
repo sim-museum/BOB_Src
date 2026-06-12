@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <execinfo.h>
 
 #include "compat_types.h"
 #include "ddraw.h"
@@ -726,7 +727,7 @@ static void upload_texture(GLSurface7* s) {
 		unsigned px0=0,pxc=0; if(s->bpp==16){ unsigned short* p=(unsigned short*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
 		else { unsigned* p=(unsigned*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
 		fprintf(stderr,"[texpix] %dx%d bpp%d px[0]=0x%x centre=0x%x\n",s->w,s->h,s->bpp,px0,pxc); } }
-	if (getenv("BOB_DUMP_TEX") && s->w>=64 && s->h>=64) {
+	if (getenv("BOB_DUMP_TEX") && s->w>=8 && s->h>=8) {
 		static int td=0; int cap=atoi(getenv("BOB_DUMP_TEX")); if(cap<=0)cap=6;
 		if (td<cap) {
 			char path[64]; snprintf(path,sizeof(path),"/tmp/bobtex_%d.ppm",td);
@@ -866,9 +867,13 @@ static HRESULT DEV_SetTexture(IDirect3DDevice7*, DWORD stage, LPDIRECTDRAWSURFAC
 	if (getenv("BOB_TRACE_SETTEX") && stage==0 && tex) {
 		GLSurface7* s=(GLSurface7*)tex;
 		int bad = (s->w<=0||s->w>4096||s->h<=0||s->h>4096||s->bpp<=0||s->bpp>32);
-		static int n=0; if(bad && n++<8)
+		static int n=0; if(bad && n++<3) {
 			fprintf(stderr,"[settex] GARBAGE surf=%p w=%d h=%d bpp=%d glTex=%u vtbl=%p\n",
-				(void*)tex,s->w,s->h,s->bpp,(unsigned)s->glTex,(void*)s->lpVtbl); }
+				(void*)tex,s->w,s->h,s->bpp,(unsigned)s->glTex,(void*)s->lpVtbl);
+			/* who bound it? addr2line the frames against build/bob. Established: this
+			   garbage comes from COverlay::LoaderScreen -> Lib3D::EndScene (the 2D loader
+			   blit), NOT the cockpit-instrument render -- so it is unrelated to RTT/FBO. */
+			void* bt[24]; int nb=backtrace(bt,24); backtrace_symbols_fd(bt,nb,2); } }
 	return D3D_OK;
 }
 static HRESULT DEV_SetMaterial(IDirect3DDevice7*, LPD3DMATERIAL7) { return D3D_OK; }
