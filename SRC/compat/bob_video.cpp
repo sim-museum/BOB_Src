@@ -763,6 +763,19 @@ static void upload_texture(GLSurface7* s) {
 		glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,s->w,s->h,0,GL_BGRA,GL_UNSIGNED_BYTE,s->bits);
 		hasAlpha=1;
 	}
+	if (getenv("BOB_DUMP_GLTEX")) { static int g=0; int cap=atoi(getenv("BOB_DUMP_GLTEX")); if(cap<=0)cap=10;
+		int onlyAlpha = getenv("BOB_GLTEX_ALPHA")!=0;
+		if (g<cap && s->w>=8 && s->h>=8 && s->w<2048 && s->h<2048 && (!onlyAlpha || hasAlpha)) {
+			int w=s->w,h=s->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*4);
+			glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,buf);
+			char path[64]; snprintf(path,sizeof(path),"/tmp/bobgl_%d.ppm",g);
+			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+			if(fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h); if(write(fd,hdr,n)<0){}
+				for(int i=0;i<w*h;i++){ unsigned char rgb[3]={buf[i*4],buf[i*4+1],buf[i*4+2]}; if(write(fd,rgb,3)<0){} }
+				close(fd); fprintf(stderr,"[gltex] #%d %dx%d alpha=%d Amask=0x%04x -> %s\n",g,w,h,hasAlpha,(unsigned)pf.dwRGBAlphaBitMask,path); }
+			free(buf); g++;
+		}
+	}
 	/* Mipmaps (auto-generated above): the game uses D3DTSS_MIPFILTER and terrain detail
 	   textures tile heavily (severe minification) -> trilinear mipmapping removes the
 	   aliasing that otherwise smears them. BOB_NOMIP disables for A/B. */
@@ -966,6 +979,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	} else glDisable(GL_FOG);
 
 	GLSurface7* t=g_devTex[0];
+	if (getenv("BOB_NOTEX")) t=0;   /* force untextured: everything shows vertex colour */
+	/* Never bind a garbage-dimensioned surface: a bound texture with w/h/bpp out of range
+	   (e.g. w=7340032 h=0 bpp=0 glTex=0xffffffff) is a corrupt/uninitialised surface; its
+	   glTex is invalid so GL samples garbage -> rainbow. Treat it as untextured. */
+	if (t && (t->w<=0 || t->w>4096 || t->h<=0 || t->h>4096 || t->bpp<=0 || t->bpp>32)) {
+		if (getenv("BOB_TRACE_GARBAGE")) { static int n=0; if(n++<6)
+			fprintf(stderr,"[garbage] skipped tex w=%d h=%d bpp=%d glTex=%u\n",t->w,t->h,t->bpp,(unsigned)t->glTex); }
+		if (!getenv("BOB_KEEP_GARBAGE")) t=0;
+	}
 	/* BOB_TEX_REPLACE: show texture only (ignore the software-lit/fogged vertex colour)
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
 	static int texMode = -2;
