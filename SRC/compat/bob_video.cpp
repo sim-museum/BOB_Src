@@ -509,6 +509,8 @@ static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSu
 	   report the surface uncreatable: the probe then takes its designed fallback
 	   (render straight to the back buffer, no mirror), exactly as on HW that lacks RTT. */
 	if (d && (d->ddsCaps.dwCaps & DDSCAPS_TEXTURE) && (d->ddsCaps.dwCaps & DDSCAPS_3DDEVICE)) {
+		if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx\n",
+			(unsigned long)d->dwWidth,(unsigned long)d->dwHeight,(unsigned long)d->ddsCaps.dwCaps);
 		*out = NULL;
 		return DDERR_OUTOFVIDEOMEMORY;
 	}
@@ -861,6 +863,12 @@ static HRESULT DEV_GetTextureStageState(IDirect3DDevice7*, DWORD, D3DTEXTURESTAG
 static HRESULT DEV_SetTransform(IDirect3DDevice7*, D3DTRANSFORMSTATETYPE, LPD3DMATRIX) { return D3D_OK; }
 static HRESULT DEV_SetTexture(IDirect3DDevice7*, DWORD stage, LPDIRECTDRAWSURFACE7 tex) {
 	if (stage<8) g_devTex[stage]=(GLSurface7*)tex;
+	if (getenv("BOB_TRACE_SETTEX") && stage==0 && tex) {
+		GLSurface7* s=(GLSurface7*)tex;
+		int bad = (s->w<=0||s->w>4096||s->h<=0||s->h>4096||s->bpp<=0||s->bpp>32);
+		static int n=0; if(bad && n++<8)
+			fprintf(stderr,"[settex] GARBAGE surf=%p w=%d h=%d bpp=%d glTex=%u vtbl=%p\n",
+				(void*)tex,s->w,s->h,s->bpp,(unsigned)s->glTex,(void*)s->lpVtbl); }
 	return D3D_OK;
 }
 static HRESULT DEV_SetMaterial(IDirect3DDevice7*, LPD3DMATERIAL7) { return D3D_OK; }
