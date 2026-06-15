@@ -1092,6 +1092,24 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		if (!getenv("BOB_KEEP_GARBAGE")) t=0;
 		if (getenv("BOB_GARBAGE_HILITE")) garbageHi=true;  /* paint garbage-textured geom magenta */
 	}
+	/* BOB_TRACE_BLACKGND: the airfield near-ground renders black -- it binds a black-CONTENT
+	   texture (BOB_NOTEX shows grey vertex colour). Find which texture + which game draw path:
+	   log + backtrace draws that bind a mostly-black texture on a large, low-on-screen quad. */
+	if (getenv("BOB_TRACE_BLACKGND") && t && t->bits && t->bpp==16 && is2D && L.hasTex && count>=3) {
+		unsigned short* p=(unsigned short*)t->bits; int n=t->w*t->h, step=n/64?n/64:1, blk=0, ns=0;
+		for(int i=0;i<n;i+=step){ if(p[i]==0)blk++; ns++; }
+		float miny=1e9f,maxy=-1e9f,minx=1e9f,maxx=-1e9f;
+		for(DWORD i=0;i<count;i++){const float* q=(const float*)(base+(size_t)i*L.stride+L.posOff);
+			if(q[1]<miny)miny=q[1]; if(q[1]>maxy)maxy=q[1]; if(q[0]<minx)minx=q[0]; if(q[0]>maxx)maxx=q[0];}
+		float area=(maxx-minx)*(maxy-miny);
+		if (ns && blk*100/ns>=80 && area>15000 && maxy>g_scrH*0.55f) {
+			static int bn=0; if(bn++<5){
+				fprintf(stderr,"[blackgnd] tex %dx%d glTex=%u black%%=%d ckey=%d quad scr[%.0f..%.0f,%.0f..%.0f] area=%.0f\n",
+					t->w,t->h,(unsigned)t->glTex,blk*100/ns,t->ckeyOn,minx,maxx,miny,maxy,area);
+				void* bt[24]; int nb=backtrace(bt,24); backtrace_symbols_fd(bt,nb,2);
+			}
+		}
+	}
 	/* BOB_TEX_REPLACE: show texture only (ignore the software-lit/fogged vertex colour)
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
 	static int texMode = -2;

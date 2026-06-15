@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ROOT CAUSE (2026-06-15): the black near-ground = missing landscape render-to-texture compositing
+> Chased the black airfield near-ground to its root. It is **not** over-tiling and **not**
+> the refcount class — it is the long-deferred **landscape RTT compositing** gap. Chain of
+> evidence (diagnostics, all default-off):
+> 1. `BOB_NOTEX` → ground turns grey `(127,127,127)`: geometry + vertex lighting are fine;
+>    it binds a **black-content texture** (MODULATE → black). `0` garbage binds.
+> 2. `BOB_TRACE_BLACKGND` (backtrace black-textured low quads): the ground is a **3D shape**
+>    (`shape::draw_shape → RenderPolyList`) bound to a **128×128, 100%-black** texture.
+> 3. GL dump: **three** 128×128 textures, all 100% black. `BOB_TRACE_TEXSRC` (temp probe in
+>    LIB3D, since reverted) showed the *cockpit's* 128s have valid body+palette — so the
+>    black ones are different surfaces. No 128-wide `BltFast` ever runs (so they are *not*
+>    filled by `_CreateTextureMap`).
+> 4. `BOB_TRACE_CREATE128` backtrace: the black 128s are created by
+>    **`Lib3D::AllocateLandscapeTextures()`** (caps TEXTURE|MIPMAP|COMPLEX, no 3DDEVICE) —
+>    they are `landTextures[]`, allocated **empty** at init, to be filled later.
+> 5. The fill path: the game renders detail into `pDDS7LandRT` then copies it to
+>    `landTextures[i]` (`UploadTexture` RENDERTARGET_LANDSCAPE, LIB3D.CPP:7639-7648). Our
+>    compat rejects RTT surfaces, so `AllocateLandscapeTextures` takes the fallback
+>    `pDDS7LandRT = pDDSB7` (the **back buffer**, LIB3D.CPP:8044). But our 3D detail render
+>    goes to the **GL framebuffer**, while the copy Blts the back buffer's untouched
+>    **system-memory bits** (the 3D path never writes them) → the tiles stay **black**.
+>
+> **So the airfield/near-ground detail tiles are black because landscape compositing needs
+> render-to-texture** (or framebuffer read-back) that the GL backend doesn't do. (The base
+> area imagemaps — the 256×256s — load from disk with content and render; it's the
+> composited *detail* tiles that are empty.) This is the RENDERTARGET_LANDSCAPE half of the
+> RTT/FBO work flagged-and-deferred in the 88044e8 era.
+>
+> **Fix options (each a sizeable, focused effort — not a quick patch):**
+> - **Targeted read-back:** special-case the `pDDS7LandRT(=back buffer) → landTextures[i]`
+>   Blt to `glReadPixels` the `landRect` from the GL framebuffer into the tile's bits
+>   (+texDirty). Smaller than general RTT, but depends on the detail being in the framebuffer
+>   at copy time (verify ordering vs present/swap).
+> - **Real FBO RTT:** create an FBO-backed texture for `pDDS7LandRT`, render detail into it,
+>   bind directly. Also fixes the rear-view **mirror** (RENDERTARGET_MIRROR). Bigger, cleaner.
+> Either needs a working sustained land view to A/B (see the investigation note below).
+> Diagnostic kept (default-off): `BOB_TRACE_BLACKGND`.
+
 > ## TERRAIN INVESTIGATION (2026-06-15): viewing is blocked + near-ground renders black — NOT simply "over-tiling"
 > Tried to take on the "terrain over-tiling" item and hit two blockers, both documented
 > here so the next session doesn't repeat the dead-ends. **No code changed; no regression**
