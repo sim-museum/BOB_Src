@@ -210,6 +210,7 @@ CMIGApp theApp;
 // Linux port: expose the real app object to the compat AfxGetApp() and give
 // the ELF entry (bob_main.cpp) a C-callable hook to drive the MFC boot path.
 CWinApp* g_pBobApp = &theApp;
+CWnd* g_pBobMainWnd = NULL;   // set when the CMainFrame is created; AfxGetMainWnd() returns it
 extern "C" int bob_init_instance(void) { return theApp.InitInstance() ? 1 : 0; }
 extern "C" int bob_run(void)           { return theApp.Run(); }
 #endif
@@ -472,12 +473,17 @@ BOOL CMIGApp::InitInstance()
 	// RDialog::m_pView (which CMIGApp::OnIdle dereferences each idle tick).
 	if (m_pMainWnd == NULL)
 		m_pMainWnd = new CMainFrame;
+	{ extern CWnd* g_pBobMainWnd; g_pBobMainWnd = m_pMainWnd; }  // AfxGetMainWnd() returns this
 	if (RDialog::m_pView == NULL) {
 		CMIGView::CreateObject();        // DYNCREATE factory (ctor is protected);
 		                                 // the ctor sets RDialog::m_pView = this
 		if (RDialog::m_pView)
 			RDialog::m_pView->m_currentpage = 1; // OnInitialUpdate would set this
 	}
+	// Register the view as the frame's active view (the doc/view framework that would do
+	// this is no-op'd) so CMainFrame::Initialise()'s GetActiveView() returns it.
+	if (RDialog::m_pView)
+		((CFrameWnd*)m_pMainWnd)->SetActiveView((CView*)RDialog::m_pView);
 #endif
 //	Rtestsh1::tmpinst=new Inst3d;
 //	if (!Rtestsh1::tmpview)
@@ -556,6 +562,15 @@ BOOL CMIGApp::InitInstance()
 //	SetSysColors(2,sysnames,sysvals);
 
 #if BOB_LINUX
+	// Workstream A: boot the REAL front-end (opt-in BOB_FRONTEND). On Windows the title
+	// screen launches via the MFC doc/view OnInitialUpdate flow (ProcessShellCommand ->
+	// OnFileNew), which our compat no-ops -- so the title never appears. Drive it directly:
+	// run OnInitialUpdate (creates the view's child windows) then LaunchFullPane(title).
+	// Iterative bring-up: expect a cascade of uninitialised-UI failures to fix one by one.
+	// Workstream A: the front-end (CMainFrame::Initialise -> toolbars/systembox ->
+	// LaunchFullPane(introsmack)->title) is triggered on Windows by the first WM_PAINT
+	// (InitialiseSafe runs it once `havedrawn` is set in OnPaint). Our compat dispatches
+	// no WM_PAINT, so InitialiseSafe (called above) force-triggers it under BOB_FRONTEND.
 	// Phase 3 (opt-in probe, BOB_BOOT_FRONTEND): stand up a fresh campaign map world,
 	// pick a map item to view, and open an interactive 3D View3d on the front-end's
 	// object-view path (cf. Rtestsh1::Set in RTESTSH1.CPP). This exercises the full

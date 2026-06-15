@@ -248,7 +248,10 @@ const DIDATAFORMAT c_dfDIKeyboard = {0};
 class CWinApp; class CWnd;
 extern CWinApp* g_pBobApp;
 CWinApp*   AfxGetApp()            { return g_pBobApp; }
-CWnd*      AfxGetMainWnd()        { return 0; }
+/* Real MFC returns theApp.m_pMainWnd. The front-end (LaunchFullPane -> HideToolbars)
+   derefs it; a 0 stub null-derefs. g_pBobMainWnd is set in MIG.CPP at frame creation. */
+extern CWnd* g_pBobMainWnd;
+CWnd*      AfxGetMainWnd()        { return g_pBobMainWnd; }
 HINSTANCE  AfxGetInstanceHandle() { return 0; }
 
 /* ===== HTML Help (no help engine on Linux) =============================== */

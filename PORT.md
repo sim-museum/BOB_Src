@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WORKSTREAM A started (2026-06-15): the real front-end now BOOTS (no crash) — render surface is next
+> Began driving the **real front-end** (the title/menu flow) instead of the `BOB_BOOT_FRONTEND`
+> quick-mission probe. Opt-in via **`BOB_FRONTEND=1`** (with `BOB_RUN_INIT=1`). The natural
+> entry is `CMainFrame::Initialise()` (creates toolbars + system box, then
+> `LaunchFullPane(&RFullPanelDial::introsmack)` → title). On Windows it's triggered by the
+> first `WM_PAINT` (`OnPaint` sets `havedrawn`, then `InitialiseSafe` runs `Initialise`); our
+> compat dispatches no `WM_PAINT`, so it never fired.
+>
+> **Result: `Initialise()` now runs to completion without crashing** — toolbars, system box,
+> and the front-end launch all execute; the game reads its input config and sits stably in
+> `CMIGApp::Run()`. Fixed three uninitialised-MFC null-derefs by driving the natural flow and
+> fixing at each first failure (gdb backtraces + faulting-instruction analysis):
+> 1. **`AfxGetMainWnd()`** was a `return 0` stub → `LaunchFullPane`'s `HideToolbars()`
+>    null-derefed `m_bHideToolbars`. Now returns `theApp.m_pMainWnd` via a `g_pBobMainWnd`
+>    global set at frame creation (`bob_stubs.cpp` + `MIG.CPP`).
+> 2. **`CFrameWnd::GetActiveView()`** was a `return NULL` stub → `Initialise()`'s
+>    `view->m_pScaleBar=…` null-derefed. Gave `CFrameWnd` a real active-view member
+>    (`SetActiveView`/`GetActiveView` in `afxwin.h`) and registered `RDialog::m_pView` as the
+>    frame's active view in `InitInstance` (the no-op'd doc/view framework never did).
+> 3. **`InitialiseSafe()`** gated `Initialise()` on `havedrawn` (set only by `OnPaint`) →
+>    never ran. Under `BOB_FRONTEND` it now force-triggers (no `WM_PAINT` on Linux yet).
+>
+> **Next (the render-surface layer):** the front-end launches but **opens no SDL window / paints
+> nothing** — it isn't reaching the DDraw 2D surface setup. Determine how the title/FullPane
+> paints (DDraw blit vs GDI/`CDC`; whether it needs a `View3d::MakePassive` to set up the 2D
+> overlay surface + window), then wire that to the `bob_video` present path. This is the start
+> of the RDialog/MFC-window 2D rendering subsystem (the bulk of Workstream A). Regression-safe:
+> default `./bob` exits 0; `BOB_RUN_INIT` without `BOB_FRONTEND` is unchanged.
+
 > ## READ-BACK ATTEMPT (2026-06-15): the simple fix is NOT enough — the detail is never rendered
 > Tried the "targeted read-back" fix from the root-cause entry below (populate the back
 > buffer's system bits from the GL framebuffer when the landscape compositing Locks it, so

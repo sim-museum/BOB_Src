@@ -761,11 +761,12 @@ public:
 
 class CFrameWnd : public CWnd {
 public:
+    CView* m_pActiveView_compat = NULL;   /* the doc/view framework is no-op'd; track it ourselves */
     BOOL Create(LPCSTR, LPCSTR, DWORD = 0, const RECT& = CRect(), CWnd* = NULL, LPCSTR = NULL) { return TRUE; }
-    CView* GetActiveView() const { return NULL; }
+    CView* GetActiveView() const { return m_pActiveView_compat; }
     CDocument* GetActiveDocument() const { return NULL; }
     void RecalcLayout(BOOL = TRUE) {}
-    BOOL SetActiveView(CView*, BOOL = TRUE) { return TRUE; }
+    BOOL SetActiveView(CView* v, BOOL = TRUE) { m_pActiveView_compat = v; return TRUE; }
     void ExitHelpMode() {}
 };
 
