@@ -185,6 +185,12 @@ static void kb_push(unsigned dik, int down) {
 }
 
 /* Pump the SDL event queue: window close + keyboard -> DIK queue. */
+static int g_clickX = 0, g_clickY = 0, g_clickPending = 0;   /* last left-click (framebuffer coords) */
+/* The front-end (bob_frontend_tick) polls this for menu clicks. */
+extern "C" int bob_gdi_get_click(int* x, int* y) {
+	if (!g_clickPending) return 0;
+	if (x) *x = g_clickX; if (y) *y = g_clickY; g_clickPending = 0; return 1;
+}
 static void pump_events(void)
 {
 	if (!g_win) return;
@@ -202,6 +208,12 @@ static void pump_events(void)
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) { fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0); }
+		else if (e.type==SDL_MOUSEBUTTONDOWN && e.button.button==SDL_BUTTON_LEFT) {
+				int lw=g_scrW, lh=g_scrH; if (g_win) SDL_GetWindowSize(g_win,&lw,&lh);  /* logical->drawable */
+				g_clickX = lw ? e.button.x * g_scrW / lw : e.button.x;
+				g_clickY = lh ? e.button.y * g_scrH / lh : e.button.y;
+				g_clickPending = 1;
+			}
 		else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
 			int dik = sdl_to_dik(e.key.keysym.scancode);
 			if (dik && g_diKbAcquired && !e.key.repeat) kb_push(dik, e.type==SDL_KEYDOWN);

@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WORKSTREAM A (2026-06-15): the menu is NAVIGABLE — mouse clicks change screens
+> The front-end menu now responds to the mouse: clicking an item navigates to its screen.
+> Verified: clicking "PC Config" (item 5) → the GFX config screen paints (its background +
+> items), matching the wine flow. End-to-end click → navigation → repaint works.
+> - **Click capture** (`bob_video.cpp`): `SDL_MOUSEBUTTONDOWN` → store the position mapped
+>   from window-logical to drawable coords (`SDL_GetWindowSize`); `bob_gdi_get_click()` polls it.
+> - **Hit-test + dispatch** (`FULLPSYS.CPP`): `bob_draw_menu` now records each item's rect;
+>   `bob_frontend_tick` (called each idle from `CMIGApp::OnIdle` under `BOB_FRONTEND`) maps a
+>   click to an item and calls the game's own `OnSelectRlistbox(i)` → `LaunchScreen(nextscreen)`,
+>   which repaints (the `LaunchScreen` hook now also draws the menu). `BOB_AUTOCLICK=N` = a
+>   headless test that synthesizes a click on item N through the real hit-test.
+>
+> **Next / known gaps:** sub-screens (config tabs, the map) use horizontal lists + `dial`
+> panels (dropdowns/spinners) that the generic left-column `bob_draw_menu` doesn't lay out
+> faithfully yet — navigation works but those screens aren't usable. Also: hover highlight,
+> continuous repaint, and the faithful `Intel.ttf`/OLE-RListBox path. Regression-safe
+> (default `./bob` exits 0).
+
 > ## WORKSTREAM A (2026-06-15): the MENU TEXT renders in the game's own font (TTF via stb_truetype)
 > The main-menu **items now render** (Quick Shots / Campaigns / Multi-Player / … / Quit),
 > centred and spaced, closely matching the wine reference. Saved:

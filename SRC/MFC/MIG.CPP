@@ -843,8 +843,14 @@ int CMIGApp::Run()
 
 
 
-BOOL CMIGApp::OnIdle(LONG lCount) 
+#if BOB_LINUX
+extern "C" void bob_frontend_tick(void);   /* front-end mouse-click dispatch (FULLPSYS.CPP) */
+#endif
+BOOL CMIGApp::OnIdle(LONG lCount)
 {
+#if BOB_LINUX
+	if (getenv("BOB_FRONTEND")) bob_frontend_tick();
+#endif
 	// TODO: Add your specialized code here and/or call the base class
 //DeadCode JIM 9Nov00 			Mono_Text.Prin(lCount,UByteP("I"));
 	if (CWinApp::OnIdle(lCount))

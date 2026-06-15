@@ -166,10 +166,17 @@ END_MESSAGE_MAP()
 extern "C" void bob_gdi_present(void);                              /* present (bob_video.cpp) */
 extern "C" int  bob_gdi_text(int,int,const char*,int,unsigned);    /* TTF text (bob_gdi_font.cpp) */
 extern "C" int  bob_gdi_text_width(const char*,int);
-/* Draw the screen's menu items (textlists) with the game's Intel.ttf, centred in the left
-   column to match the wine reference. Bring-up: bypasses the OLE RListBox layout/highlight. */
+extern "C" int  bob_gdi_get_click(int*,int*);                      /* pending left-click (bob_video.cpp) */
+/* The active front-end + its drawn menu-item rects, so a click can be mapped to an item. */
+static RFullPanelDial* g_bobActiveFP = NULL;
+static struct { int x,y,w,h; } g_bobMenuRect[10];
+static int g_bobMenuN = 0;
+/* Draw the screen's menu items (textlists) with the game's font, centred in the left column
+   to match the wine reference. Records each item's rect for click hit-testing. Bring-up:
+   bypasses the OLE RListBox layout/highlight. */
 static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 {
+	g_bobActiveFP = self; g_bobMenuN = 0;
 	if (!scr) return;
 	int fh = resW * 28 / 1000; if (fh < 14) fh = 14;   /* ~29px at 1024 wide */
 	int cx = resW / 4;                                  /* column centre (~256) */
@@ -178,10 +185,35 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		if (scr->textlists[i].text == NULL) break;
 		CString s; s.LoadString(scr->textlists[i].text);
 		const char* t = (const char*)(LPCSTR)s;
-		int x = cx - bob_gdi_text_width(t, fh) / 2;     /* centre each item */
-		int y = my + i*step;
+		int w = bob_gdi_text_width(t, fh);
+		int x = cx - w/2, y = my + i*step;
 		bob_gdi_text(x + 2, y + 2, t, fh, 0x301800);    /* shadow */
 		bob_gdi_text(x,     y,     t, fh, 0xF0C030);    /* gold   */
+		g_bobMenuRect[i].x=x; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=w; g_bobMenuRect[i].h=step;
+		g_bobMenuN = i+1;
+	}
+}
+/* Called each idle from CMIGApp::OnIdle (under BOB_FRONTEND): if a menu item was clicked,
+   fire the existing OnSelectRlistbox(i) which navigates to that item's screen (+ repaints). */
+extern "C" void bob_frontend_tick(void)
+{
+	if (!g_bobActiveFP) return;
+	int cx, cy; bool got = bob_gdi_get_click(&cx, &cy);
+	/* BOB_AUTOCLICK=N: headless test -- after a delay synthesize a click on item N's centre
+	   so the real hit-test path below runs (verifies click -> navigation without a display). */
+	const char* ac = getenv("BOB_AUTOCLICK");
+	if (!got && ac) { static int t=0; if (++t==120 && g_bobMenuN>0) {
+		int n=atoi(ac); if(n<0||n>=g_bobMenuN) n=0;
+		cx=g_bobMenuRect[n].x+g_bobMenuRect[n].w/2; cy=g_bobMenuRect[n].y+g_bobMenuRect[n].h/2; got=true;
+	}}
+	if (got) {
+		for (int i=0; i<g_bobMenuN; i++)
+			if (cx>=g_bobMenuRect[i].x && cx<g_bobMenuRect[i].x+g_bobMenuRect[i].w &&
+			    cy>=g_bobMenuRect[i].y && cy<g_bobMenuRect[i].y+g_bobMenuRect[i].h) {
+				fprintf(stderr,"[frontend] click (%d,%d) -> menu item %d\n", cx, cy, i);
+				g_bobActiveFP->OnSelectRlistbox(i, 0);
+				break;
+			}
 	}
 }
 #endif
@@ -527,8 +559,9 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 	// (SetDIBitsToDevice -> bob_gdi_setdibits); present uploads + swaps it to the window.
 	if (getenv("BOB_FRONTEND")) {
 		DoPaint(GetDC());
+		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);
 		bob_gdi_present();
-		fprintf(stderr, "[frontend] painted screen artnum=%d + presented\n", (int)artnum);
+		fprintf(stderr, "[frontend] painted screen artnum=%d + menu + presented\n", (int)artnum);
 	}
 #endif
 }
