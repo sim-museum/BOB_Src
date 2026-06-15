@@ -245,7 +245,10 @@ struct GLSurface7 {
 	int    texDirty;                /* bits changed since last upload (set on Unlock) */
 	int    ckeyOn;                  /* source colour-key set (transparent colour) */
 	DWORD  ckeyLow, ckeyHigh;       /* keyed colour range in the surface's pixel format */
+	int    ref;                     /* COM reference count (AddRef/Release); freed at 0 */
+	unsigned magic;                 /* MAGIC if created by make_surface; detects non-surface ptrs */
 };
+#define GLSURF_MAGIC 0xB0B5FACEu
 struct GLClipper  { IDirectDrawClipperVtbl* lpVtbl; HWND hwnd; };
 struct GLPalette  { IDirectDrawPaletteVtbl* lpVtbl; PALETTEENTRY ent[256]; };
 struct GLVB7      { IDirect3DVertexBuffer7Vtbl* lpVtbl; D3DVERTEXBUFFERDESC d; void* data; };
@@ -267,6 +270,33 @@ static GLD3D7    g_theD3D;
 static ULONG generic_release(void*) { return 0; }   /* leak-on-release for skeleton objs */
 static ULONG generic_addref(void*)  { return 1; }
 
+/* ---- surface integrity canary (BOB_CHECK_SURF): a texture surface gets its head
+   (lpVtbl/w/h/bpp/glTex) overwritten by a wild heap write while its tail magic survives,
+   corrupting the cockpit instrument textures. Register every surface and scan for the
+   corruption at compat boundaries; the first checkpoint to trip brackets the writer. */
+static GLSurface7* g_allSurf[16384];
+static int g_nSurf = 0;
+static int g_checkSurf = -1;   /* -1=unread; cached BOB_CHECK_SURF so registration is zero-cost when off */
+static inline int check_surf_on() { if (g_checkSurf<0) g_checkSurf = getenv("BOB_CHECK_SURF")?1:0; return g_checkSurf; }
+static void surf_register(GLSurface7* s) {
+	if (!check_surf_on()) return;
+	for (int i=0;i<g_nSurf;i++) if (!g_allSurf[i]) { g_allSurf[i]=s; return; }   /* reuse freed slots */
+	if (g_nSurf < (int)(sizeof(g_allSurf)/sizeof(g_allSurf[0]))) g_allSurf[g_nSurf++]=s;
+}
+static void check_surfaces(const char* tag) {
+	if (!check_surf_on()) return;
+	static int reported = 0; if (reported) return;
+	for (int i=0;i<g_nSurf;i++) { GLSurface7* s=g_allSurf[i];
+		if (s && s->magic==GLSURF_MAGIC && s->lpVtbl != &g_surfVtbl) {
+			reported=1;
+			fprintf(stderr,"[checksurf] CORRUPTION first seen at '%s': surf#%d=%p lpVtbl=%p(ours=%p) w=%d h=%d bpp=%d glTex=%u\n",
+				tag,i,(void*)s,(void*)s->lpVtbl,(void*)&g_surfVtbl,s->w,s->h,s->bpp,(unsigned)s->glTex);
+			void* bt[24]; int nb=backtrace(bt,24); backtrace_symbols_fd(bt,nb,2);
+			return;
+		}
+	}
+}
+
 /* ============================ surface methods ============================= */
 static size_t surf_bytes(int w, int h, int bpp) { return (size_t)w * h * ((bpp+7)/8 ? (bpp+7)/8 : 4); }
 
@@ -277,11 +307,12 @@ static HRESULT SURF_GetSurfaceDesc(IDirectDrawSurface7* This, LPDDSURFACEDESC2 d
 }
 static HRESULT SURF_Lock(IDirectDrawSurface7* This, LPRECT, LPDDSURFACEDESC2 d, DWORD, HANDLE) {
 	GLSurface7* s = (GLSurface7*)This;
+	check_surfaces("Lock-enter");
 	if (!s->bits) { s->bytes = surf_bytes(s->w, s->h, s->bpp); s->bits = calloc(1, s->bytes ? s->bytes : 1); }
 	if (d) { *d = s->desc; d->dwWidth=s->w; d->dwHeight=s->h; d->lPitch = s->w*((s->bpp+7)/8); d->lpSurface = s->bits; }
 	return DD_OK;
 }
-static HRESULT SURF_Unlock(IDirectDrawSurface7* This, LPRECT) { ((GLSurface7*)This)->texDirty=1; return DD_OK; }
+static HRESULT SURF_Unlock(IDirectDrawSurface7* This, LPRECT) { check_surfaces("Unlock-enter"); ((GLSurface7*)This)->texDirty=1; return DD_OK; }
 static HRESULT SURF_GetAttachedSurface(IDirectDrawSurface7* This, LPDDSCAPS2 caps, IDirectDrawSurface7** out) {
 	GLSurface7* s = (GLSurface7*)This;
 	if (!out) return DDERR_INVALIDPARAMS;
@@ -341,8 +372,11 @@ static void brighten_pass()
 	glDisable(GL_BLEND);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
 }
+static long g_frameNo = 0;   /* incremented each present; lets diagnostics target gameplay frames */
 static void present_surface(GLSurface7* s)
 {
+	g_frameNo++;
+	check_surfaces("present");
 	gl_bind_thread();
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
@@ -384,6 +418,7 @@ static void surf_alloc_bits(GLSurface7* s) {
 static HRESULT SURF_BltFast(IDirectDrawSurface7* This, DWORD dx, DWORD dy, IDirectDrawSurface7* src, LPRECT srcRect, DWORD) {
 	GLSurface7* d=(GLSurface7*)This; GLSurface7* s=(GLSurface7*)src;
 	if (!d || !s) return DD_OK;
+	check_surfaces("BltFast-enter");
 	surf_alloc_bits(s); surf_alloc_bits(d);
 	if (!s->bits || !d->bits || d->bpp!=s->bpp) { if(d) d->texDirty=1; return DD_OK; }
 	int bpp=(s->bpp+7)/8;
@@ -403,6 +438,7 @@ static HRESULT SURF_BltFast(IDirectDrawSurface7* This, DWORD dx, DWORD dy, IDire
 static HRESULT SURF_Blt(IDirectDrawSurface7* This, LPRECT, IDirectDrawSurface7* src, LPRECT, DWORD flags, LPDDBLTFX fx) {
 	GLSurface7* d=(GLSurface7*)This;
 	if (!d) { pump_events(); return DD_OK; }
+	check_surfaces("Blt-enter");
 	surf_alloc_bits(d);
 	if ((flags & DDBLT_COLORFILL) && d->bits) {
 		int bpp=(d->bpp+7)/8; size_t n=(size_t)d->w*d->h;
@@ -484,13 +520,30 @@ static HRESULT SURF_QueryInterface(IDirectDrawSurface7* This, REFIID riid, void*
 	if (riid == BOB_IID_GammaControl) { if (ppv) *ppv = NULL; return E_NOINTERFACE; }
 	if (ppv) *ppv = This; return DD_OK;
 }
-static ULONG   SURF_Release(IDirectDrawSurface7* This) { GLSurface7* s=(GLSurface7*)This; if(s->bits) free(s->bits); free(s); return 0; }
+static ULONG   SURF_AddRef(IDirectDrawSurface7* This) { GLSurface7* s=(GLSurface7*)This; return (ULONG)++s->ref; }
+/* Proper COM reference counting. The game AddRef/Releases texture surfaces in balanced
+   pairs (e.g. UpdateMipMaps does AddRef()+Release() on every just-created texture). The
+   old code freed on the FIRST Release regardless of refcount, so it freed live textures
+   that textureTable[] still pointed at -> dangling ptr -> the freed block got reused and
+   its head overwritten -> garbage texture binds (the missing/corrupt cockpit instruments).
+   Free only when the count actually reaches zero. */
+static ULONG   SURF_Release(IDirectDrawSurface7* This) {
+	GLSurface7* s=(GLSurface7*)This;
+	if (--s->ref > 0) return (ULONG)s->ref;
+	for (int i=0;i<g_nSurf;i++) if (g_allSurf[i]==s) { g_allSurf[i]=NULL; break; }  /* keep canary registry clean */
+	if (s->bits) free(s->bits);
+	free(s);
+	return 0;
+}
 static HRESULT SURF_GetCaps(IDirectDrawSurface7* This, LPDDSCAPS2 c) { GLSurface7* s=(GLSurface7*)This; if(c)*c=s->desc.ddsCaps; return DD_OK; }
 
 static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 {
 	GLSurface7* s = (GLSurface7*)calloc(1, sizeof(GLSurface7));
 	s->lpVtbl = &g_surfVtbl;
+	s->magic = GLSURF_MAGIC;
+	s->ref = 1;
+	surf_register(s);
 	if (in) s->desc = *in;
 	s->desc.dwSize = sizeof(DDSURFACEDESC2);
 	s->w = (in && (in->dwFlags & DDSD_WIDTH)  && in->dwWidth)  ? (int)in->dwWidth  : defW;
@@ -505,6 +558,7 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 /* ============================ IDirectDraw7 methods ======================= */
 static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSurface7** out, IUnknown*) {
 	if (!out) return DDERR_INVALIDPARAMS;
+	check_surfaces("CreateSurface");
 	/* Render-to-texture (TEXTURE+3DDEVICE) — used by Lib3D's water/mirror reflection
 	   probe (CheckIfTextureCanBeRenderTarget). Our GL backend has no FBO RTT yet, so
 	   report the surface uncreatable: the probe then takes its designed fallback
@@ -817,7 +871,7 @@ static void upload_texture(GLSurface7* s) {
 }
 
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { check_surfaces("BeginScene"); gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
 	if (!g_win) return D3D_OK;
@@ -879,6 +933,15 @@ static HRESULT DEV_SetTexture(IDirect3DDevice7*, DWORD stage, LPDIRECTDRAWSURFAC
 	if (getenv("BOB_TRACE_SETTEX") && stage==0 && tex) {
 		GLSurface7* s=(GLSurface7*)tex;
 		int bad = (s->w<=0||s->w>4096||s->h<=0||s->h>4096||s->bpp<=0||s->bpp>32);
+		/* Capture the GAMEPLAY caller of the garbage bind, not just the loader: skip
+		   binds before frame 100 (the loader fires at frame 0), then backtrace a few. */
+		static int gn=0; long minFrame=atol(getenv("BOB_TRACE_SETTEX"));
+		if (bad && g_frameNo>=minFrame && gn++<4) {
+			fprintf(stderr,"[settex-gameplay] frame=%ld GARBAGE surf=%p w=%d h=%d bpp=%d glTex=%u vtbl=%p ours-vtbl=%p magic=0x%x %s\n",
+				g_frameNo,(void*)tex,s->w,s->h,s->bpp,(unsigned)s->glTex,(void*)s->lpVtbl,(void*)&g_surfVtbl,
+				s->magic, s->magic==GLSURF_MAGIC?"(OUR SURFACE, fields corrupt)":"(NOT our surface / bad ptr)");
+			void* bt[24]; int nb=backtrace(bt,24); backtrace_symbols_fd(bt,nb,2);
+		}
 		static int n=0; if(bad && n++<3) {
 			fprintf(stderr,"[settex] GARBAGE surf=%p w=%d h=%d bpp=%d glTex=%u vtbl=%p\n",
 				(void*)tex,s->w,s->h,s->bpp,(unsigned)s->glTex,(void*)s->lpVtbl);
@@ -1008,10 +1071,12 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	/* Never bind a garbage-dimensioned surface: a bound texture with w/h/bpp out of range
 	   (e.g. w=7340032 h=0 bpp=0 glTex=0xffffffff) is a corrupt/uninitialised surface; its
 	   glTex is invalid so GL samples garbage -> rainbow. Treat it as untextured. */
+	bool garbageHi=false;
 	if (t && (t->w<=0 || t->w>4096 || t->h<=0 || t->h>4096 || t->bpp<=0 || t->bpp>32)) {
 		if (getenv("BOB_TRACE_GARBAGE")) { static int n=0; if(n++<6)
 			fprintf(stderr,"[garbage] skipped tex w=%d h=%d bpp=%d glTex=%u\n",t->w,t->h,t->bpp,(unsigned)t->glTex); }
 		if (!getenv("BOB_KEEP_GARBAGE")) t=0;
+		if (getenv("BOB_GARBAGE_HILITE")) garbageHi=true;  /* paint garbage-textured geom magenta */
 	}
 	/* BOB_TEX_REPLACE: show texture only (ignore the software-lit/fogged vertex colour)
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
@@ -1036,7 +1101,8 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	/* XYZRHW stored as 4 floats; pass x,y for 2D screen pos. With BOB_FOG we also pass z
 	   (3 comps) so screen-space z can feed GL fog. */
 	glVertexPointer((is2D&&!fogExp)?2:3, GL_FLOAT, L.stride, base + L.posOff);
-	if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
+	if (garbageHi) { glDisable(GL_TEXTURE_2D); glColor3f(1.f,0.f,1.f); }       /* debug: locate garbage-textured geom */
+	else if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
 	if (L.hasTex && t) { glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 		glTexCoordPointer(2, GL_FLOAT, L.stride, base + L.texOff); }
@@ -1044,6 +1110,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	GLenum mode = (prim==1)?GL_POINTS : (prim==2)?GL_LINES : (prim==6)?GL_TRIANGLE_FAN :
 	              (prim==5)?GL_TRIANGLE_STRIP : GL_TRIANGLES;
 	glDrawArrays(mode, 0, count);
+	if (garbageHi) glColor3f(1.f,1.f,1.f);   /* reset so the magenta doesn't bleed to later draws */
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_COLOR_ARRAY);
@@ -1132,7 +1199,7 @@ static void init_vtbls_once(void)
 {
 	static int done = 0; if (done) return; done = 1;
 
-	g_surfVtbl.AddRef=(ULONG(*)(IDirectDrawSurface7*))generic_addref;
+	g_surfVtbl.AddRef=SURF_AddRef;
 	g_surfVtbl.Release=SURF_Release;
 	g_surfVtbl.QueryInterface=SURF_QueryInterface;
 	g_surfVtbl.GetSurfaceDesc=SURF_GetSurfaceDesc;

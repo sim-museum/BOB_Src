@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## FIX (2026-06-15): the cockpit is restored — root cause was a surface refcount use-after-free
+> The missing/corrupt cockpit instruments are **fixed**. The native cockpit now renders
+> faithfully against the Windows reference: RAF interior **green**, **riveted** canopy
+> struts (no more grey "ladder"), legible **instrument gauges/placards**, and the gunsight
+> **reflector glass + orange reticle**. Before/after:
+> `doc/reference/cockpit-linux-nativeport-2026-06-15.png` (broken, grey/flat) →
+> `doc/reference/cockpit-linux-nativeport-FIXED-2026-06-15.png` (matches Windows).
+>
+> **Root cause: GLSurface7 had no reference counting.** `SURF_AddRef` was a no-op
+> (`generic_addref`, returns 1) and `SURF_Release` `free()`d the surface on the *first*
+> call regardless of count. But `_CreateTextureMap` finishes every non-dither texture by
+> calling `UpdateMipMaps(pddsTexture)` (LIB3D.CPP:7183), which does
+> `psrc->AddRef(); … psrc->Release();` on that surface. With real DDraw that is 1→2→1
+> (stays alive); with the broken refcount it was AddRef(no-op) then Release(**free**) —
+> so the just-created texture was freed while `textureTable[hTextureMap]` still pointed
+> at it. The freed block was then reused by a later allocation, overwriting the surface
+> head (lpVtbl/w/h/bpp/glTex) while the tail survived — exactly the
+> `w=0x700000 h=0 bpp=0 glTex=0xffffffff` garbage that `draw_fvf` was skipping, leaving
+> the cockpit polys untextured.
+>
+> **Fix (bob_video.cpp):** added a real `ref` count to GLSurface7 (init 1 in
+> `make_surface`), `SURF_AddRef` increments, `SURF_Release` decrements and frees only at
+> zero. Result: garbage texture binds during the cockpit frame went 6 → **0**; cockpit
+> detail returns; stable to frame 600, clean exit.
+>
+> **How it was found:** added a `magic` tag to GLSurface7 → proved the garbage surface
+> was *ours* with a corrupted head (not a stray pointer); a `BOB_CHECK_SURF` integrity
+> canary (registry + per-boundary scan) bracketed the corruption to a freed-then-reused
+> block; `SURF_AddRef`/`Release` were then obviously unbalanced. Diagnostics left in,
+> default-off: `BOB_CHECK_SURF` (surface canary), `BOB_TRACE_SETTEX=<frame>` (frame-gated
+> backtrace of garbage binds), `BOB_GARBAGE_HILITE` (paint garbage-textured geom magenta).
+>
+> **Remaining cockpit polish (secondary):** the gunsight sun-screen reads as an elongated
+> black arm vs the reference's compact sight (view-angle/transparency); panel is a touch
+> dark (object ambient). The per-stage texture-addressing gap (below) is still open for
+> terrain. This refcount bug likely also affected other lazily-created textures — worth a
+> general pass.
+
 > ## WINDOWS REFERENCE acquired (2026-06-15): the missing cockpit detail is the 2D instrument/overlay layer
 > The project finally has a **Windows reference**: the original `bob.exe` run under
 > wine/lutris (same DX7 game code via wine's D3D7→GL), captured by the user. Saved as
@@ -43,6 +81,14 @@
 > canopy-frame shade/over-tiling and missing green are secondary (3D-shell fidelity).
 > NOTE: this re-prioritises the per-stage-addressing work in the entry below — useful for
 > terrain, but NOT the cockpit's main problem.
+>
+> **CORRECTION (see the FIX entry above):** the "2D `COverlay` layer" attribution here was
+> wrong. A frame-gated backtrace (`BOB_TRACE_SETTEX=100`) showed the *gameplay* garbage
+> bind comes from the **3D shape path** (`shape::draw_shape → RenderPolyList →
+> InlineSetCurrentMaterial → SetTexture`), not the overlay; the `COverlay::LoaderScreen`
+> stack was only the loader-time bind. And the surface IS ours (magic intact) but freed
+> out from under `textureTable` by a refcount use-after-free — not "untracked". The
+> characterised gap (gauges/green/struts) was real and is now fixed.
 
 > ## DIAGNOSIS CORRECTION (2026-06-15): the "rainbow" focus is stale, and forcing CLAMP is the wrong lever
 > Re-ran the live cockpit (`BOB_BOOT_FRONTEND=1`, default QM) with a fresh frame +

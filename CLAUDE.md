@@ -31,17 +31,19 @@ The 3D world renders **daylit and stable**: sky, terrain, scenery, aircraft, and
 recognizable cockpit. Reaches an interactive Quick-Mission flight. Input (keyboard→DIK)
 works. Remaining work is rendering **fidelity**, not bring-up.
 
-Current focus — **restore the cockpit instrument/overlay layer**. We now have a Windows
-reference (original `bob.exe` under wine) in `doc/reference/`; comparison shows the native
-port is missing the entire 2D `COverlay` layer — instrument gauges, gunsight reticle, HUD
-text, and compass — while the 3D cockpit shell renders (with secondary fidelity issues:
-grey/over-tiled struts, missing RAF green). Root cause (top PORT.md entry): a malformed
-surface (`w=0x700000 h=0 bpp=0 glTex=0xffffffff`) is bound for the overlay draws every
-frame and skipped by `draw_fvf`'s garbage guard; it is not created via `DD_CreateSurface`,
-so the overlay's surface-creation path is untracked by the compat. Next: trace where that
-surface is created (BOB_TRACE_SETTEX → `COverlay::LoaderScreen → EndScene → SetTexture`).
-Secondary leads: per-stage texture addressing (terrain over-tiling; `BOB_CLAMP` probe) and
-the all-black 64/128 cockpit textures.
+Status update (2026-06-15): **the cockpit is fixed** and now matches the Windows reference
+(RAF green, riveted struts, legible gauges, gunsight glass + reticle). Root cause was a
+**surface refcount use-after-free**: `GLSurface7` had no reference count, so `SURF_Release`
+freed a texture on the first call while `_CreateTextureMap`'s `UpdateMipMaps` AddRef/Release
+pair (and `textureTable`) still referenced it — the freed block was reused and its head
+overwritten, producing the `w=0x700000` garbage binds. Fixed by adding real COM refcounting
+(see top PORT.md entry; before/after frames in `doc/reference/`). We have a Windows reference
+now (original `bob.exe` under wine) in `doc/reference/`.
+
+Current focus — remaining **rendering fidelity**: per-stage texture addressing (terrain
+over-tiling; `BOB_CLAMP` probe), minor cockpit polish (gunsight sun-screen, panel ambient),
+and a general check for other artifacts the refcount bug may have masked. Diagnostics
+(default-off): `BOB_CHECK_SURF`, `BOB_TRACE_SETTEX=<frame>`, `BOB_GARBAGE_HILITE`.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.
