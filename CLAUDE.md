@@ -31,15 +31,17 @@ The 3D world renders **daylit and stable**: sky, terrain, scenery, aircraft, and
 recognizable cockpit. Reaches an interactive Quick-Mission flight. Input (keyboard→DIK)
 works. Remaining work is rendering **fidelity**, not bring-up.
 
-Current focus — **cockpit rendering fidelity**. The catastrophic "rainbow" is gone
-(0c4ba38); the default cockpit now renders grey panels + grey "ladder" canopy struts +
-a few black panels (NOT rainbow, NOT an FBO/RTT problem, NOT a bad-`.shp` problem — see
-the top two PORT.md correction entries). The next genuine compat gap is **per-stage
-texture addressing**: the compat no-ops `SetTextureStageState` and the
-`D3DSBT_PIXELSTATE` state blocks, so the game's `D3DTSS_ADDRESS` (land=MIRROR/CLAMP,
-cockpit=WRAP) is discarded and everything gets `GL_REPEAT`. Implementing it faithfully
-may fix terrain over-tiling; the canopy "ladder" and flat instrument faces likely need a
-Windows reference to judge. See the top PORT.md entry for evidence and the `BOB_CLAMP` probe.
+Current focus — **restore the cockpit instrument/overlay layer**. We now have a Windows
+reference (original `bob.exe` under wine) in `doc/reference/`; comparison shows the native
+port is missing the entire 2D `COverlay` layer — instrument gauges, gunsight reticle, HUD
+text, and compass — while the 3D cockpit shell renders (with secondary fidelity issues:
+grey/over-tiled struts, missing RAF green). Root cause (top PORT.md entry): a malformed
+surface (`w=0x700000 h=0 bpp=0 glTex=0xffffffff`) is bound for the overlay draws every
+frame and skipped by `draw_fvf`'s garbage guard; it is not created via `DD_CreateSurface`,
+so the overlay's surface-creation path is untracked by the compat. Next: trace where that
+surface is created (BOB_TRACE_SETTEX → `COverlay::LoaderScreen → EndScene → SetTexture`).
+Secondary leads: per-stage texture addressing (terrain over-tiling; `BOB_CLAMP` probe) and
+the all-black 64/128 cockpit textures.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.

@@ -1,5 +1,49 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WINDOWS REFERENCE acquired (2026-06-15): the missing cockpit detail is the 2D instrument/overlay layer
+> The project finally has a **Windows reference**: the original `bob.exe` run under
+> wine/lutris (same DX7 game code via wine's D3D7→GL), captured by the user. Saved as
+> `doc/reference/cockpit-windows-spitfire-{1,2}.png`; the matching native-port frame is
+> `doc/reference/cockpit-linux-nativeport-2026-06-15.png`. This unblocks the long-standing
+> "no reference to validate a fix against" problem from the rendering milestone.
+>
+> **Side-by-side gap (native port vs Windows), Spitfire Mk I cockpit:**
+> | element | Windows (wine, correct) | native port (wrong) |
+> |---|---|---|
+> | instrument gauges | crisp, legible (RPM, altimeter, climb, "SPITFIRE MARK I / OXYGEN" placards) | **absent** — flat dark panel + a few coloured dots |
+> | gunsight | reflector sight: transparent glass + orange ring/cross reticle + "RANGE 100 YARDS" drum | **absent** — opaque black blob |
+> | HUD text (bottom-left) | red "Alt / Hdg / Speed" | **absent** |
+> | compass/map (top-right) | round instrument | **absent** |
+> | canopy frame | dark metal with crisp rivet rows | grey, over-tiled "ladder" |
+> | coaming / interior | RAF interior green | grey |
+>
+> **Root cause of the missing instruments (the dominant gap): the 2D overlay layer is
+> dropped.** With `BOB_TRACE_GARBAGE=1` during the live cockpit frame (250), a single
+> **malformed surface** (`w=0x700000 h=0 bpp=0 glTex=0xffffffff`) is bound for ~6 draws
+> and skipped by `draw_fvf`'s garbage guard. It is **not** one of our surfaces:
+> `DD_CreateSurface`/`make_surface` always yield sane `w/h/bpp` and `glTex` starts at 0
+> (never `0xffffffff`), so this is a surface pointer from a path the compat does not
+> track — the `COverlay` instrument/HUD layer (gauges, reticle, HUD text, compass).
+> Every such draw is dropped → all of it is invisible.
+>
+> **This CORRECTS the 88044e8 entry**, which attributed this same `w=0x700000` garbage
+> bind to "the 2D LOADER SCREEN, a different bug unrelated to the cockpit." It is the
+> same surface, but it recurs **every gameplay frame** and is (a) cause of the missing
+> instruments — not loader-only. (Also seen this session: the 64×64/128×128 cockpit
+> textures dump as all-black, while terrain 32/64 textures are fine — a possibly-related
+> lead; the *visible* 3D panel binds only low-detail 32×32 textures, and texture quality
+> is `HINT_FULL_RES_TEXTURE` with `dwMaxTextureWidth=4096`, so detail loss is not from
+> down-sampling.)
+>
+> **Next step (highest value): trace where the `COverlay` overlay surface is created and
+> why it is malformed / untracked by the compat** (start: `BOB_TRACE_SETTEX` backtraces
+> the bind to `COverlay::LoaderScreen → Lib3D::EndScene → SetTexture`; instrument the
+> overlay's surface-creation path — it is not going through `DD_CreateSurface`). Fixing
+> this should restore gauges, gunsight reticle, HUD and compass in one stroke. The
+> canopy-frame shade/over-tiling and missing green are secondary (3D-shell fidelity).
+> NOTE: this re-prioritises the per-stage-addressing work in the entry below — useful for
+> terrain, but NOT the cockpit's main problem.
+
 > ## DIAGNOSIS CORRECTION (2026-06-15): the "rainbow" focus is stale, and forcing CLAMP is the wrong lever
 > Re-ran the live cockpit (`BOB_BOOT_FRONTEND=1`, default QM) with a fresh frame +
 > GL-texture capture and re-examined the standing "cockpit rainbow" focus from the
