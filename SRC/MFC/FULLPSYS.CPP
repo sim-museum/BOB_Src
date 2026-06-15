@@ -162,6 +162,9 @@ END_MESSAGE_MAP()
 // RFullPanelDial message handlers
 
 
+#if BOB_LINUX
+extern "C" void bob_gdi_present(void);   /* GDI front-end present (bob_video.cpp) */
+#endif
 void RFullPanelDial::LaunchMain(FullScreen* startscreen)
 { // launches the main dialog window
 	CRect rect;
@@ -181,6 +184,16 @@ void RFullPanelDial::LaunchMain(FullScreen* startscreen)
 	m_pStartScreen=startscreen;
 	LaunchScreen(startscreen);
 	UpdateSize();
+#if BOB_LINUX
+	// Initial launch: UpdateSize() has now selected the resolution + correct artnum, so paint
+	// the screen (LaunchScreen ran before res selection). No WM_PAINT dispatch on Linux.
+	if (getenv("BOB_FRONTEND")) {
+		DoPaint(GetDC());
+		bob_gdi_present();
+		fprintf(stderr, "[frontend] LaunchMain painted artnum=%d res=%d + presented\n",
+			(int)artnum, (int)resolutions[m_currentres]);
+	}
+#endif
 	}
 }
 
@@ -487,6 +500,16 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 	enablepanelselfdrawstate=false;
 	if (m_currentscreen->InitProc) (this->*m_currentscreen->InitProc)();
 	enablepanelselfdrawstate=false;
+#if BOB_LINUX
+	// Workstream A: no WM_PAINT dispatch on Linux, so drive the front-end paint here.
+	// DoPaint draws this screen's background artwork (artnum) into the GDI framebuffer
+	// (SetDIBitsToDevice -> bob_gdi_setdibits); present uploads + swaps it to the window.
+	if (getenv("BOB_FRONTEND")) {
+		DoPaint(GetDC());
+		bob_gdi_present();
+		fprintf(stderr, "[frontend] painted screen artnum=%d + presented\n", (int)artnum);
+	}
+#endif
 }
 
 BEGIN_EVENTSINK_MAP(RFullPanelDial, CDialog)

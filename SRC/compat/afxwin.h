@@ -519,7 +519,7 @@ public:
     /* Linux port: return a shared no-op CDC (not NULL) so callers that deref the
        returned DC -- e.g. IconDescUI::LoadInstances(*pdc) in InitInstance -- have
        a valid object. A real GDI backend replaces this. */
-    CDC* GetDC() { static CDC s_stubDC; return &s_stubDC; }
+    CDC* GetDC() { static CDC s_stubDC; if(!s_stubDC.m_hDC) s_stubDC.m_hDC=(HDC)1; return &s_stubDC; }
 #else
     CDC* GetDC() { return NULL; }
 #endif
@@ -540,7 +540,7 @@ public:
     void RedrawWindow(LPCRECT = NULL, HRGN = NULL, UINT = 0) {}
     LRESULT DefWindowProc(UINT, WPARAM, LPARAM) { return 0; }
     BOOL ModifyStyleEx(DWORD, DWORD, UINT = 0) { return TRUE; }
-    CDC* BeginPaint(LPPAINTSTRUCT) { return NULL; }
+    CDC* BeginPaint(LPPAINTSTRUCT) { static CDC s_paintDC; if(!s_paintDC.m_hDC) s_paintDC.m_hDC=(HDC)1; return &s_paintDC; }
     void EndPaint(LPPAINTSTRUCT) {}
     void GetWindowPlacement(void*) const {}
     void SetWindowPlacement(const void*) {}

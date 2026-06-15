@@ -386,8 +386,15 @@ void CMainFrame::Initialise()
 //		m_wndSystemBox-.Init(CSystemBox::IDD,this);
 //		m_wndSystemBox.ShowWindow(SW_SHOW);
 		HideToolbars();
+#if BOB_LINUX
+		// Workstream A: skip the intro Smacker (stubbed, never advances) and go straight to
+		// the title menu so the front-end renders. Drop the #if once Smacker/transitions work.
+		if (getenv("BOB_FRONTEND"))
+			view->LaunchFullPane(&RFullPanelDial::title,SaveData::UIR_FIRST);
+		else
+#endif
 		view->LaunchFullPane(&RFullPanelDial::introsmack,SaveData::UIR_FIRST);			  //JIM 18/01/99
-		m_doIExist=1;	
+		m_doIExist=1;
 }
 
 #if BOB_LINUX

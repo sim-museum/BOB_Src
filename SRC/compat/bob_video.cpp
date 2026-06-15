@@ -420,6 +420,88 @@ static void present_surface(GLSurface7* s)
 	SDL_GL_SwapWindow(g_win);
 }
 
+/* ===================== GDI 2D front-end paint pipeline =====================
+   The MFC front-end (RDialog::DoPaint) paints into a window HDC via SetDIBitsToDevice.
+   We back that with a system-memory BGRA framebuffer (window-sized), decode the DIBs into
+   it, and present it to the SDL window. bob_gdi_dc_bits() = the buffer; bob_gdi_setdibits()
+   = the SetDIBitsToDevice decoder; bob_gdi_present() = upload + swap. */
+static unsigned* g_gdiFB = NULL; static int g_gdiW = 0, g_gdiH = 0;
+extern "C" unsigned* bob_gdi_dc_bits(int* w, int* h) {
+	ensure_window(g_scrW, g_scrH);
+	if (!g_gdiFB || g_gdiW != g_scrW || g_gdiH != g_scrH) {
+		free(g_gdiFB); g_gdiW = g_scrW; g_gdiH = g_scrH;
+		g_gdiFB = (unsigned*)calloc((size_t)g_gdiW * g_gdiH, 4);
+	}
+	if (w) *w = g_gdiW; if (h) *h = g_gdiH;
+	return g_gdiFB;
+}
+extern "C" void bob_gdi_present(void) {
+	if (!g_win || !g_gdiFB) return;
+	if (getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection */
+		int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;
+		int fd=::open("/tmp/bobgdi.ppm",O_WRONLY|O_CREAT|O_TRUNC,0644);
+		if(fd>=0){ char h[64]; int n=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",g_gdiW,g_gdiH); if(write(fd,h,n)<0){}
+			for(size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++){ unsigned p=g_gdiFB[i]; unsigned char rgb[3]={(unsigned char)(p>>16),(unsigned char)(p>>8),(unsigned char)p}; if(write(fd,rgb,3)<0){} }
+			close(fd); fprintf(stderr,"[gdi] framebuffer %dx%d nonblack=%d/%lu -> /tmp/bobgdi.ppm\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH)); }
+	}
+	gl_bind_thread();
+	if (!g_presentTex) glGenTextures(1, &g_presentTex);
+	glBindTexture(GL_TEXTURE_2D, g_presentTex);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,g_gdiW,g_gdiH,0,GL_BGRA,GL_UNSIGNED_BYTE,g_gdiFB);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	glViewport(0,0,g_scrW,g_scrH);
+	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(0,1,0,1,-1,1);
+	glMatrixMode(GL_MODELVIEW);  glPushMatrix(); glLoadIdentity();
+	glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glEnable(GL_TEXTURE_2D); glColor3f(1,1,1);
+	glBegin(GL_QUADS);                  /* framebuffer is top-down -> flip V */
+		glTexCoord2f(0,1); glVertex2f(0,0); glTexCoord2f(1,1); glVertex2f(1,0);
+		glTexCoord2f(1,0); glVertex2f(1,1); glTexCoord2f(0,0); glVertex2f(0,1);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
+	SDL_GL_SwapWindow(g_win);
+}
+/* Decode a DIB (BITMAPINFO `bmi` + `bits`) into the GDI framebuffer at (xDest,yDest).
+   Handles 8-bit palettized and 24/32-bit; honours bottom-up (biHeight>0) vs top-down. */
+extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, unsigned numScan,
+                                 const void* bits, const void* bmi) {
+	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
+	if (!fb || !bits || !bmi) return 0;
+	const unsigned char* hdr = (const unsigned char*)bmi;
+	unsigned biSize = *(const unsigned*)(hdr);
+	int   biWidth   = *(const int*)(hdr+4);
+	int   biHeight  = *(const int*)(hdr+8);
+	int   biBitCount= *(const short*)(hdr+14);
+	int absH = biHeight<0 ? -biHeight : biHeight;
+	int topDown = biHeight<0;
+	const unsigned char* pal = hdr + biSize;            /* RGBQUAD[] (B,G,R,0) for <=8bpp */
+	const unsigned char* src = (const unsigned char*)bits;
+	int srcPitch;
+	if      (biBitCount==8)  srcPitch = (biWidth + 3) & ~3;
+	else if (biBitCount==24) srcPitch = (biWidth*3 + 3) & ~3;
+	else if (biBitCount==32) srcPitch = biWidth*4;
+	else return 0;
+	int avail = (int)numScan; if (avail>absH) avail=absH;
+	for (int imgY=0; imgY<absH; imgY++) {
+		int srcRow = topDown ? imgY : (absH-1-imgY);
+		if (srcRow >= avail) continue;
+		int dy = yDest + imgY; if (dy<0 || dy>=fbh) continue;
+		const unsigned char* srow = src + (size_t)srcRow*srcPitch;
+		unsigned* drow = fb + (size_t)dy*fbw;
+		for (int x=0; x<biWidth; x++) {
+			int dx = xDest + x; if (dx<0||dx>=fbw) continue;
+			unsigned b,g,r;
+			if (biBitCount==8)  { const unsigned char* e=pal+(size_t)srow[x]*4; b=e[0]; g=e[1]; r=e[2]; }
+			else if (biBitCount==24){ const unsigned char* p=srow+x*3; b=p[0]; g=p[1]; r=p[2]; }
+			else                { const unsigned char* p=srow+x*4; b=p[0]; g=p[1]; r=p[2]; }
+			drow[dx] = 0xFF000000u | (r<<16) | (g<<8) | b;
+		}
+	}
+	return avail;
+}
+
 static void surf_alloc_bits(GLSurface7* s) {
 	if (s && !s->bits && s->w>0 && s->h>0) { s->bytes = surf_bytes(s->w, s->h, s->bpp); s->bits = calloc(1, s->bytes?s->bytes:1); }
 }

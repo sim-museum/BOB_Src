@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WORKSTREAM A milestone (2026-06-15): the MAIN MENU RENDERS — GDI 2D paint pipeline works
+> The real front-end's **main menu background now paints on screen** (the "BATTLE OF BRITAIN"
+> Spitfires-over-Tower-Bridge art), matching the wine reference. First front-end pixels. Saved:
+> `doc/reference/frontend-mainmenu-nativeport-2026-06-15.png`. Opt-in: `BOB_FRONTEND=1`.
+>
+> **The front-end paints via GDI, not DDraw:** `RDialog::DoPaint` loads the screen's artwork
+> BMP and calls `SetDIBitsToDevice(pDC->m_hDC, …)`. Built the GDI 2D pipeline in the compat:
+> - **Screen framebuffer + present** (`bob_video.cpp`): a window-sized BGRA buffer
+>   (`bob_gdi_dc_bits`) uploaded to GL + swapped (`bob_gdi_present`), V-flipped (top-down DIB).
+> - **`SetDIBitsToDevice` decoder** (`bob_gdi_setdibits`): decodes the DIB (8-bit palettized
+>   and 24/32-bit, bottom-up/top-down) into the framebuffer. Wired in `compat_wingdi.h`.
+> - **`CDC` backing**: `CWnd::BeginPaint`/`GetDC` now return a non-NULL `CDC` (`afxwin.h`).
+> - **Paint drive**: there is **no `WM_PAINT` dispatch** on Linux (`ON_WM_PAINT()` is empty,
+>   `WindowProc` returns 0), so `RFullPanelDial::LaunchMain`/`LaunchScreen` call `DoPaint` +
+>   present directly under `BOB_FRONTEND`. The initial paint must run **after `UpdateSize()`**
+>   (which selects the resolution `m_currentres` + the correct `artnum`; `LaunchScreen` runs
+>   before it, so its artnum is 0).
+> - **Skip the intro Smacker**: `CMainFrame::Initialise` launches `introsmack` (stubbed video,
+>   never advances); under `BOB_FRONTEND` it now launches `title` directly.
+>
+> **Next:** the menu **text/widgets** (Quick Shots / Campaigns / …) draw via a separate path
+> (the `RListBox`/text-list + `ExtTextOut`/fonts) — implement that GDI text path. Then
+> **continuous repaint + mouse input** (drive `DoPaint`+present each idle, route SDL mouse to
+> the panels' click handlers) to make the menu interactive and navigate into the campaign/QM
+> flow. Regression-safe: default `./bob` exits 0; cockpit (`BOB_BOOT_FRONTEND`) still renders.
+
 > ## WORKSTREAM A started (2026-06-15): the real front-end now BOOTS (no crash) — render surface is next
 > Began driving the **real front-end** (the title/menu flow) instead of the `BOB_BOOT_FRONTEND`
 > quick-mission probe. Opt-in via **`BOB_FRONTEND=1`** (with `BOB_RUN_INIT=1`). The natural
