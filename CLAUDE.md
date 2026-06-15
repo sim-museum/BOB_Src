@@ -31,12 +31,15 @@ The 3D world renders **daylit and stable**: sky, terrain, scenery, aircraft, and
 recognizable cockpit. Reaches an interactive Quick-Mission flight. Input (keyboard→DIK)
 works. Remaining work is rendering **fidelity**, not bring-up.
 
-Current focus — **cockpit instrument panel corruption** (rainbow-banded panel textures).
-Confirmed this session: it is **NOT** a render-to-texture/FBO problem (the panel is ordinary
-`RENDERTARGET_PRIMARY` geometry; the only rejected RTT surface is the 128×128 mirror probe,
-whose back-buffer fallback already works). The real defect is **bad source pixel data** for a
-565 `TF_NORM` cockpit texture — a `.shp`/asset-pipeline bug. Next: trace which cockpit `.shp`
-the rainbow map comes from and why its `body` bytes are wrong. See the top PORT.md entry.
+Current focus — **cockpit rendering fidelity**. The catastrophic "rainbow" is gone
+(0c4ba38); the default cockpit now renders grey panels + grey "ladder" canopy struts +
+a few black panels (NOT rainbow, NOT an FBO/RTT problem, NOT a bad-`.shp` problem — see
+the top two PORT.md correction entries). The next genuine compat gap is **per-stage
+texture addressing**: the compat no-ops `SetTextureStageState` and the
+`D3DSBT_PIXELSTATE` state blocks, so the game's `D3DTSS_ADDRESS` (land=MIRROR/CLAMP,
+cockpit=WRAP) is discarded and everything gets `GL_REPEAT`. Implementing it faithfully
+may fix terrain over-tiling; the canopy "ladder" and flat instrument faces likely need a
+Windows reference to judge. See the top PORT.md entry for evidence and the `BOB_CLAMP` probe.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.

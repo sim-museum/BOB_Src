@@ -1,5 +1,54 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## DIAGNOSIS CORRECTION (2026-06-15): the "rainbow" focus is stale, and forcing CLAMP is the wrong lever
+> Re-ran the live cockpit (`BOB_BOOT_FRONTEND=1`, default QM) with a fresh frame +
+> GL-texture capture and re-examined the standing "cockpit rainbow" focus from the
+> 2026-06-12 entry. Two corrections, both pixel-verified:
+>
+> 1. **The catastrophic rainbow is NOT present in default rendering.** Frame dump at
+>    800×600 (recipe below) shows the instrument panel as ordinary **grey** (dominant
+>    (89,93,86), only 2.0% strongly-saturated pixels = the instrument glow/indicator
+>    dots), the canopy struts as grey "ladder" bars, and a few black panels. The
+>    rainbow described in the 2026-06-12 entry's point 4 was carried-over text; the
+>    garbage-dimensioned-surface fix (0c4ba38) had already removed the visible rainbow.
+>    The dumped cockpit textures contain **no** rainbow content (terrain is solid-green,
+>    panel bases are near-flat grey #62/#63/#65 = 2–5 distinct colours). So the standing
+>    "trace the bad 565 .shp body" task is **moot** — there is no garbage 565 source in
+>    the default cockpit. (Build is 32-bit i386 `-m32`; `unsigned long`/IFF parsing are
+>    little-endian identical to Win32, so unmodified `.shp` loading yields byte-identical
+>    `pMapDesc->body` anyway — a loader-corruption theory was never well-founded.)
+>
+> 2. **Texture addressing IS unimplemented, but CLAMP is an unfaithful band-aid.** The
+>    compat no-ops `SetTextureStageState` AND the `D3DSBT_PIXELSTATE` state blocks
+>    (`DEV_SetTextureStageState`/`DEV_ApplyStateBlock` just `return D3D_OK`), so every
+>    texture is hardcoded to `GL_REPEAT`. The game *does* set per-stage `D3DTSS_ADDRESS`:
+>    land = `MIRROR` (LIB3D.CPP:14010) then `CLAMP` via `SetCurrentMaterial` (14537);
+>    single-textured (cockpit) geometry = `WRAP` (14108). A `BOB_CLAMP` A/B probe
+>    (added, default-off, in `upload_texture`) forces `GL_CLAMP_TO_EDGE`: the canopy
+>    "ladder" collapses into solid bars **and** the panels grow rainbow edge-streaks.
+>    That proves the cockpit has UV>1 surfaces (wrap mode visibly matters), but it also
+>    shows CLAMP is **not** faithful — the game uses `WRAP` there, so `REPEAT` is correct
+>    and the ladder is either faithful-to-Windows or a texcoord bug. **Do not chase a
+>    global-CLAMP cockpit fix.**
+>
+> **Capture recipe (note: must include `BOB_RUN_INIT=1`, else it exits before InitInstance):**
+> `BOB_RUN_INIT=1 BOB_BOOT_FRONTEND=1 BOB_DRIVE_C=… BOB_DUMP_FRAME=250 BOB_EXIT_AFTER_DUMP=1`
+> `BOB_DUMP_GLTEX=200` → 68 GL textures to /tmp/bobgl_*.ppm + frame to /tmp/bobframe.ppm.
+> Trace UV spans / which textures bind per draw with `BOB_TRACE_FVF=1` ([gtile]/[texuse]/
+> [texseen]); cockpit quads sample atlas sub-rects with set0 UVs in [0,1].
+>
+> **Genuine next steps (in priority order):**
+> - **Faithful per-stage addressing.** Track `D3DTSS_ADDRESS`/`ADDRESSU`/`ADDRESSV` per
+>   stage in `DEV_SetTextureStageState`; emulate `CreateStateBlock(D3DSBT_PIXELSTATE)` /
+>   `ApplyStateBlock` so the captured ADDRESS is replayed; apply the *current* stage-0
+>   mode at bind time (move the `glTexParameteri` wrap calls out of upload into the draw
+>   bind). This is faithful (WRAP cockpit unchanged) and may fix **terrain over-tiling**
+>   — land is set to CLAMP/MIRROR yet we REPEAT it. A/B over the airfield.
+> - **The canopy "ladder" and flat instrument faces need a Windows reference** to judge
+>   (data has no validation target, per the rendering milestone). Both may be faithful.
+> - Minor: a `BOB_TRACE_FVF` run segfaulted on *exit* (after the dump completed) — a
+>   cleanup-path crash, not a render bug; investigate if it recurs.
+
 > ## DIAGNOSIS CORRECTION (2026-06-12): the cockpit instruments are NOT a render-to-texture/FBO problem
 > The previous commit (d3f37c3) scoped "restore the cockpit instruments → implement FBO
 > render-to-texture." Running the live cockpit (`BOB_BOOT_FRONTEND=1`) with the diagnostics

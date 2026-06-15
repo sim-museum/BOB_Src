@@ -799,8 +799,20 @@ static void upload_texture(GLSurface7* s) {
 		if (maxA>1.f) glTexParameterf(GL_TEXTURE_2D,GL_TEXTURE_MAX_ANISOTROPY_EXT,maxA);
 	}
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+	/* DIAGNOSTIC PROBE (BOB_CLAMP, default off). The compat no-ops SetTextureStageState
+	   and the D3DSBT_PIXELSTATE state blocks, so the game's per-stage D3DTSS_ADDRESS is
+	   discarded and every texture gets GL_REPEAT. Forcing CLAMP here was an A/B probe:
+	   it collapses the canopy-frame "ladder" into solid bars AND makes the instrument
+	   panels show rainbow edge-streaks -- proving the cockpit has UV>1 surfaces, i.e.
+	   wrap mode currently affects the cockpit. BUT it is NOT a faithful fix: the game
+	   sets D3DTADDRESS_WRAP for single-textured cockpit geometry (LIB3D.CPP:14108), so
+	   REPEAT is the faithful mode there. The ladder is therefore either faithful-to-
+	   Windows or a texcoord issue -- unresolved without a Windows reference. (Land IS
+	   set to MIRROR/CLAMP by the game (14010/14537) yet we REPEAT it: a faithful
+	   per-stage-addressing implementation should A/B that against terrain over-tiling.) */
+	GLenum wrapMode = getenv("BOB_CLAMP") ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,wrapMode);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,wrapMode);
 	s->texDirty=0;
 }
 
