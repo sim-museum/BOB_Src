@@ -178,9 +178,32 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 {
 	g_bobActiveFP = self; g_bobMenuN = 0;
 	if (!scr) return;
-	int fh = resW * 28 / 1000; if (fh < 14) fh = 14;   /* ~29px at 1024 wide */
-	int cx = resW / 4;                                  /* column centre (~256) */
-	int my = resW * 23 / 100, step = resW * 31 / 1000;  /* ~235 top, ~32px pitch */
+	bool horiz = (scr->listalign & FullScreen::HORIZ) != 0;
+	int fh = resW * 36 / 1000; if (fh < 16) fh = 16;        /* ~37px at 1024 wide (matches wine) */
+	if (horiz) {
+		/* horizontal tab row across the top (e.g. config: GFX / More GFX / ... / Continue) */
+		int gap = resW * 14 / 1000, y = resW * 6 / 1000;
+		/* measure total to centre the row */
+		int total = 0, n = 0;
+		for (; n < 10 && scr->textlists[n].text; n++) {
+			CString s; s.LoadString(scr->textlists[n].text);
+			total += bob_gdi_text_width((const char*)(LPCSTR)s, fh) + gap;
+		}
+		int x = (resW - total) / 2; if (x < 8) x = 8;
+		for (int i = 0; i < n; i++) {
+			CString s; s.LoadString(scr->textlists[i].text);
+			const char* t = (const char*)(LPCSTR)s;
+			int w = bob_gdi_text_width(t, fh);
+			bob_gdi_text(x + 2, y + 2, t, fh, 0x301800);
+			bob_gdi_text(x,     y,     t, fh, 0xF0C030);
+			g_bobMenuRect[i].x=x; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=w; g_bobMenuRect[i].h=fh+fh/2;
+			x += w + gap;
+		}
+		g_bobMenuN = n;
+		return;
+	}
+	int cx = resW / 4;                                      /* left-column centre (~256) */
+	int my = resW * 23 / 100, step = resW * 35 / 1000;      /* ~235 top, ~36px pitch */
 	for (int i = 0; i < 10; i++) {
 		if (scr->textlists[i].text == NULL) break;
 		CString s; s.LoadString(scr->textlists[i].text);
