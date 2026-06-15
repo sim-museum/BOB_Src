@@ -35,8 +35,21 @@
 > **Remaining cockpit polish (secondary):** the gunsight sun-screen reads as an elongated
 > black arm vs the reference's compact sight (view-angle/transparency); panel is a touch
 > dark (object ambient). The per-stage texture-addressing gap (below) is still open for
-> terrain. This refcount bug likely also affected other lazily-created textures — worth a
-> general pass.
+> terrain.
+>
+> **Follow-up — general texture-lifetime pass (2026-06-15, done):** audited the whole
+> surface/texture lifecycle for sibling bugs. Added lifetime counters (`BOB_TRACE_LIFETIME`)
+> and ran a 1500-frame flight: surface counts are **stable** (447 made / 94 freed / 353
+> live; 106 GL textures) and the `BOB_CHECK_SURF` canary reports **zero** corruption — the
+> refcount fix is robust, no steady-state leak, and `DeRefAndNULL` (LIB3D.CPP:1503, which
+> reads the `Release()` return) now behaves correctly (old code always returned 0). Two
+> findings fixed/cleared: (1) `SURF_Release` never freed the GL texture — added a
+> thread-guarded `glDeleteTextures` (deletes when the caller owns the GL context, i.e. the
+> draw thread during `UnloadTexture` on scene change; the steady flight frees only
+> glTex-less temp surfaces so it didn't manifest yet, but it would on scene reload).
+> (2) Vertex buffers (`gpD3DVB7`/`gpD3DVBL7`) are created once and persist — `VB_Release`'s
+> lack of refcount is harmless; palettes/the primary back-buffer are one-time, not churn
+> leaks. Net: the lifecycle is sound; the glTex fix closes the one real (if latent) leak.
 
 > ## WINDOWS REFERENCE acquired (2026-06-15): the missing cockpit detail is the 2D instrument/overlay layer
 > The project finally has a **Windows reference**: the original `bob.exe` run under

@@ -276,6 +276,8 @@ static ULONG generic_addref(void*)  { return 1; }
    corruption at compat boundaries; the first checkpoint to trip brackets the writer. */
 static GLSurface7* g_allSurf[16384];
 static int g_nSurf = 0;
+/* lifetime counters (BOB_TRACE_LIFETIME): detect surface/GL-texture leaks across a session */
+static long g_surfMade=0, g_surfFreed=0, g_glTexMade=0, g_glTexDeleted=0, g_glTexLeakedOnFree=0;
 static int g_checkSurf = -1;   /* -1=unread; cached BOB_CHECK_SURF so registration is zero-cost when off */
 static inline int check_surf_on() { if (g_checkSurf<0) g_checkSurf = getenv("BOB_CHECK_SURF")?1:0; return g_checkSurf; }
 static void surf_register(GLSurface7* s) {
@@ -377,6 +379,9 @@ static void present_surface(GLSurface7* s)
 {
 	g_frameNo++;
 	check_surfaces("present");
+	if (getenv("BOB_TRACE_LIFETIME") && (g_frameNo % 200)==0)
+		fprintf(stderr,"[lifetime] frame=%ld surf made=%ld freed=%ld live=%ld | glTex made=%ld del=%ld leaked-on-free=%ld\n",
+			g_frameNo,g_surfMade,g_surfFreed,g_surfMade-g_surfFreed,g_glTexMade,g_glTexDeleted,g_glTexLeakedOnFree);
 	gl_bind_thread();
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
@@ -531,6 +536,14 @@ static ULONG   SURF_Release(IDirectDrawSurface7* This) {
 	GLSurface7* s=(GLSurface7*)This;
 	if (--s->ref > 0) return (ULONG)s->ref;
 	for (int i=0;i<g_nSurf;i++) if (g_allSurf[i]==s) { g_allSurf[i]=NULL; break; }  /* keep canary registry clean */
+	g_surfFreed++;
+	/* Free the GL texture too, else every UnloadTexture (scene change) orphans one. Safe
+	   only on the thread that owns the GL context (the draw thread owns it for the run);
+	   off-thread frees are rare (teardown) -- count them rather than risk a bad GL call. */
+	if (s->glTex) {
+		if (g_ctx && (unsigned long)SDL_ThreadID()==g_glOwner) { glDeleteTextures(1,&s->glTex); g_glTexDeleted++; }
+		else g_glTexLeakedOnFree++;
+	}
 	if (s->bits) free(s->bits);
 	free(s);
 	return 0;
@@ -543,6 +556,7 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 	s->lpVtbl = &g_surfVtbl;
 	s->magic = GLSURF_MAGIC;
 	s->ref = 1;
+	g_surfMade++;
 	surf_register(s);
 	if (in) s->desc = *in;
 	s->desc.dwSize = sizeof(DDSURFACEDESC2);
@@ -795,7 +809,7 @@ static void upload_texture(GLSurface7* s) {
 				close(fd); fprintf(stderr,"[texdump] wrote %s %dx%d bpp%d\n",path,s->w,s->h,s->bpp); td++; }
 		}
 	}
-	if (!s->glTex) glGenTextures(1, &s->glTex);
+	if (!s->glTex) { glGenTextures(1, &s->glTex); g_glTexMade++; }
 	glBindTexture(GL_TEXTURE_2D, s->glTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	/* GL 1.4 auto-mipmap (BEFORE glTexImage2D). Opt-in (BOB_MIP): mipmaps are correct GL
