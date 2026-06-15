@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## READ-BACK ATTEMPT (2026-06-15): the simple fix is NOT enough — the detail is never rendered
+> Tried the "targeted read-back" fix from the root-cause entry below (populate the back
+> buffer's system bits from the GL framebuffer when the landscape compositing Locks it, so
+> `PerformSlowCopy` copies real detail into the tile). Result: **no change** — and the probe
+> shows why. The composite path is `UploadTexture` → `PerformSlowCopy` reading
+> `pSrc->Lock` = the **800×600 back-buffer system bits** (confirmed: 29 screen-sized read
+> Locks with `g_devRendered=1`, on the GL thread, at frames 0–9 of load). The read-back
+> *fired*, but the **GL framebuffer is black at that moment** (`fbNonZero≈0`, centre &
+> corner `0x0`): `g_devRendered` is set because the pass did `BeginScene`+`Clear`, but the
+> **tile detail geometry is never drawn** to the framebuffer. So there is nothing to read
+> back. The blocker is one level deeper than the copy: the **landscape detail-compositing
+> render pass submits no geometry** in our backend (TILEMAKE.CPP:6178 `UploadTexture` runs,
+> but the detail draw that should precede it doesn't paint anything).
+>
+> **Revised fix scope:** this is a real subsystem revival, not a copy hook. Next session must
+> first find *why* the tile-detail render produces no geometry (is the detail draw gated on
+> `F_TEXTURECANBERENDERTARGET`? does it target a surface/viewport our device ignores? is the
+> geometry submitted at all — trace `DrawPrimitive` count during the frame-0–9 compositing
+> `BeginScene`/`Clear` pairs?). Only once detail actually renders does the read-back (or FBO
+> RTT) become the mechanism to capture it. The read-back experiment was reverted (it is
+> correct infrastructure but useless until the detail renders). No code change this step.
+
 > ## ROOT CAUSE (2026-06-15): the black near-ground = missing landscape render-to-texture compositing
 > Chased the black airfield near-ground to its root. It is **not** over-tiling and **not**
 > the refcount class — it is the long-deferred **landscape RTT compositing** gap. Chain of
