@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WORKSTREAM A (2026-06-15): the MENU TEXT renders in the game's own font (TTF via stb_truetype)
+> The main-menu **items now render** (Quick Shots / Campaigns / Multi-Player / … / Quit),
+> centred and spaced, closely matching the wine reference. Saved:
+> `doc/reference/frontend-mainmenu-text-nativeport-2026-06-15.png`.
+> - **Font backend**: vendored `stb_truetype.h` (header-only, public domain — no link dep,
+>   compiles under `-m32 -fpack-struct=1` wrapped in `#pragma pack(push,8)`). New
+>   `bob_gdi_font.cpp`: `bob_gdi_text(x,y,str,pixelH,rgb)` rasterizes antialiased glyphs,
+>   alpha-blended into the GDI framebuffer; `bob_gdi_text_width` for centring.
+> - **Font**: loads the game's own TTFs from `<drive_c>/windows/Fonts/`. `Intel.ttf` (the
+>   "Head font (large frontend)") is **non-standard and stb can't parse it**, so the loader
+>   tries a list and falls back to `g101016_.ttf` (FC-Glamour Bold) — a close serif match to
+>   the wine menu (then a system serif). FUSION_B.TTF (Fusion Bold) is the map title font.
+> - **Menu draw**: `bob_draw_menu` iterates `m_currentscreen->textlists[]`
+>   (`CString::LoadString(textlists[i].text)`), centres each item in the left column, gold
+>   with a shadow. Bring-up: bypasses the OLE `RListBox` (no highlight/exact layout yet).
+>
+> **Next:** mouse — route SDL clicks to the item rects and call the existing
+> `OnSelectRlistbox(i)` (which navigates + repaints). Then continuous repaint + hover, and
+> later parse `Intel.ttf` faithfully (FreeType runtime lib is present; no headers). Regression-
+> safe (default `./bob` exits 0). NOTE: faithful menu font is still pending (`Intel.ttf`).
+
 > ## WORKSTREAM A milestone (2026-06-15): the MAIN MENU RENDERS — GDI 2D paint pipeline works
 > The real front-end's **main menu background now paints on screen** (the "BATTLE OF BRITAIN"
 > Spitfires-over-Tower-Bridge art), matching the wine reference. First front-end pixels. Saved:

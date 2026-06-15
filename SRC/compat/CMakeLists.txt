@@ -11,6 +11,7 @@ add_library(bob_compat STATIC
     bob_video.cpp
     bob_resources.cpp
     bob_threads.cpp
+    bob_gdi_font.cpp
 )
 target_include_directories(bob_compat PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)
 # SDL2 + system OpenGL for the video backend (no sdl2.pc on this box -> link by name).

@@ -163,7 +163,27 @@ END_MESSAGE_MAP()
 
 
 #if BOB_LINUX
-extern "C" void bob_gdi_present(void);   /* GDI front-end present (bob_video.cpp) */
+extern "C" void bob_gdi_present(void);                              /* present (bob_video.cpp) */
+extern "C" int  bob_gdi_text(int,int,const char*,int,unsigned);    /* TTF text (bob_gdi_font.cpp) */
+extern "C" int  bob_gdi_text_width(const char*,int);
+/* Draw the screen's menu items (textlists) with the game's Intel.ttf, centred in the left
+   column to match the wine reference. Bring-up: bypasses the OLE RListBox layout/highlight. */
+static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
+{
+	if (!scr) return;
+	int fh = resW * 28 / 1000; if (fh < 14) fh = 14;   /* ~29px at 1024 wide */
+	int cx = resW / 4;                                  /* column centre (~256) */
+	int my = resW * 23 / 100, step = resW * 31 / 1000;  /* ~235 top, ~32px pitch */
+	for (int i = 0; i < 10; i++) {
+		if (scr->textlists[i].text == NULL) break;
+		CString s; s.LoadString(scr->textlists[i].text);
+		const char* t = (const char*)(LPCSTR)s;
+		int x = cx - bob_gdi_text_width(t, fh) / 2;     /* centre each item */
+		int y = my + i*step;
+		bob_gdi_text(x + 2, y + 2, t, fh, 0x301800);    /* shadow */
+		bob_gdi_text(x,     y,     t, fh, 0xF0C030);    /* gold   */
+	}
+}
 #endif
 void RFullPanelDial::LaunchMain(FullScreen* startscreen)
 { // launches the main dialog window
@@ -189,8 +209,9 @@ void RFullPanelDial::LaunchMain(FullScreen* startscreen)
 	// the screen (LaunchScreen ran before res selection). No WM_PAINT dispatch on Linux.
 	if (getenv("BOB_FRONTEND")) {
 		DoPaint(GetDC());
+		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);
 		bob_gdi_present();
-		fprintf(stderr, "[frontend] LaunchMain painted artnum=%d res=%d + presented\n",
+		fprintf(stderr, "[frontend] LaunchMain painted artnum=%d res=%d + menu + presented\n",
 			(int)artnum, (int)resolutions[m_currentres]);
 	}
 #endif
