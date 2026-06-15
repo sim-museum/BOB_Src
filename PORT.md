@@ -1,5 +1,41 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## TERRAIN INVESTIGATION (2026-06-15): viewing is blocked + near-ground renders black — NOT simply "over-tiling"
+> Tried to take on the "terrain over-tiling" item and hit two blockers, both documented
+> here so the next session doesn't repeat the dead-ends. **No code changed; no regression**
+> (the refcount/lifetime fixes were re-verified — the old commit's airfield was *blacker*).
+>
+> **1. A representative terrain view is currently hard to capture.** In the QM scramble:
+> - Camera *position* teleport (`BOB_CAM_X`, used by `tools/bob_validate.sh`) pauses the
+>   sim, which **stops terrain streaming** → the parked view shows only sky/clear colour
+>   (`distinct=1`). The validate default pose (`CAM_Z=35008512`) also aims ~6.5M units off
+>   the airfield (`Z≈28500882`), outside any streamed sector. So the M1-era harness view no
+>   longer yields terrain.
+> - Airborne, looking down (orientation-only `BOB_CAM_PITCH`, sector-safe) shows clear
+>   colour (`distinct=1`) — the scramble climbs out and terrain below isn't streamed/over
+>   water. `BOB_EXTVIEW` chase renders all black. Pitch sign: **negative = nose-down**.
+> - The only view with terrain is the **first ~2 s on the runway** (`BOB_NOCOCKPIT`, natural
+>   forward view, frame ~20–90): sky + horizon with scenery (trees, a hill) + near ground.
+>
+> **2. The airfield near-ground renders pure black `(0,0,0)`** (frame ~75). Characterised:
+> - `BOB_NOTEX` (force vertex colour) makes it grey `(127,127,127)` → **geometry and vertex
+>   lighting are fine; it binds a black-*content* texture** (MODULATE → black). `0` garbage
+>   binds, so it is NOT the use-after-free class (that's fixed). Green terrain *detail*
+>   textures (the seen-set 32×32s, avg ~(74,92,30)) load fine, and scenery renders — so it's
+>   specific near tiles or first-frames load-timing, not a global terrain failure. A 256×256
+>   bound texture (#0) is 2-colour cyan+white = a colour-keyed cloud/loader billboard, not
+>   the ground. The exact black tile/texture wasn't pinned (many 32×32 tiles; can't yet
+>   correlate per-quad screen-Y to a single texture).
+>
+> **Conclusion:** "over-tiling" can't be assessed or fixed until terrain (a) renders
+> correctly near the airfield (the black near-ground) and (b) is *viewable* in a sustained
+> land view. **Prerequisites first:** recalibrate a live, streamed-land capture (a land/
+> patrol `BOB_QM_INDEX`, or hold the player low over land without teleport-pause), then
+> chase the black-content near-ground texture. The per-stage texture-addressing gap
+> (state-block emulation; land=CLAMP/MIRROR vs our REPEAT) remains the likely lever for the
+> *actual* detail-tile over-tiling once a view exists. `BOB_NOTEX`/`BOB_NOCOCKPIT` +
+> early-frame forward view is the working terrain harness for now.
+
 > ## FIX (2026-06-15): the cockpit is restored — root cause was a surface refcount use-after-free
 > The missing/corrupt cockpit instruments are **fixed**. The native cockpit now renders
 > faithfully against the Windows reference: RAF interior **green**, **riveted** canopy
