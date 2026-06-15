@@ -390,6 +390,9 @@ void CMainFrame::Initialise()
 		m_doIExist=1;	
 }
 
+#if BOB_LINUX
+extern "C" void bob_gdi_ensure_window(void);
+#endif
 void	CMainFrame::InitialiseSafe()
 {
 	havesafe=true;
@@ -398,7 +401,10 @@ void	CMainFrame::InitialiseSafe()
 	// then calls Initialise). Our compat dispatches no WM_PAINT, so under BOB_FRONTEND we
 	// trigger the front-end bring-up here directly. (Opt-in while the RDialog/toolbar
 	// window subsystem is brought up; default BOB_RUN_INIT stays at the idle loop.)
-	if (getenv("BOB_FRONTEND")) havedrawn = true;
+	if (getenv("BOB_FRONTEND")) {
+		bob_gdi_ensure_window();   // open the SDL window so the front-end has a render target
+		havedrawn = true;
+	}
 #endif
 	if (havedrawn)
 		Initialise();

@@ -103,6 +103,13 @@ static void ensure_window(int w, int h)
 	SDL_GL_SwapWindow(g_win);
 }
 
+/* GDI/front-end bridge: the MFC front-end (RDialog::DoPaint -> SetDIBitsToDevice) and its
+   window-metric queries (GetClientRect/GetWindowRect) need a real window + size. Expose the
+   SDL window size and ensure the window exists, so the compat GDI shims report real geometry
+   instead of 0x0 (which made the front-end pick resolution 0 and size every panel to nothing). */
+extern "C" void bob_gdi_ensure_window(void) { ensure_window(g_scrW, g_scrH); }
+extern "C" void bob_gdi_screen_size(int* w, int* h) { if (w) *w = g_scrW; if (h) *h = g_scrH; }
+
 /* ====================================================================== *
  * Phase 2: DirectInput keyboard -> SDL.                                   *
  * The game opens GUID_SysKeyboard in BUFFERED mode and reads events via   *

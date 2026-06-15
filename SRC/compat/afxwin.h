@@ -30,6 +30,7 @@ struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 /* forward decls (classes reference each other before their definitions) */
 class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
 class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
+extern "C" void bob_gdi_screen_size(int*, int*);   /* live SDL window size (bob_video.cpp) */
 class CDataExchange; class CPrintInfo; class CCreateContext_;
 struct AFX_CMDHANDLERINFO; class CPropExchange; class CFile; class CWinApp;
 struct tagHELPINFO; struct COleControlSite;
@@ -488,8 +489,12 @@ public:
     static CWnd* GetDesktopWindow() { return NULL; }
     static CWnd* FromHandle(HWND) { return NULL; }
     CWnd* GetLastActivePopup() const { return NULL; }
-    void GetClientRect(LPRECT r) const { if (r) { r->left = r->top = 0; r->right = r->bottom = 0; } }
-    void GetWindowRect(LPRECT r) const { if (r) { r->left = r->top = r->right = r->bottom = 0; } }
+    /* Front-end needs real window geometry (else it picks resolution 0 and sizes panels to
+       nothing). Report the live SDL window size from the video backend (bob_gdi_screen_size). */
+    void GetClientRect(LPRECT r) const { if (r) {
+        int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
+    void GetWindowRect(LPRECT r) const { if (r) {
+        int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
     void ClientToScreen(LPPOINT) const {}
     void ClientToScreen(LPRECT) const {}
     void ScreenToClient(LPPOINT) const {}
