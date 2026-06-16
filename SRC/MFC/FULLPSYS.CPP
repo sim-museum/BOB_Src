@@ -581,10 +581,14 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 	// DoPaint draws this screen's background artwork (artnum) into the GDI framebuffer
 	// (SetDIBitsToDevice -> bob_gdi_setdibits); present uploads + swaps it to the window.
 	if (getenv("BOB_FRONTEND")) {
-		DoPaint(GetDC());
-		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);
+		DoPaint(GetDC());                                   /* screen background */
+		for (int d=0; d<3; d++) if (pdial[d]) {             /* dial panels (config widgets) */
+			pdial[d]->DoPaint(GetDC());
+			fprintf(stderr, "[frontend]   dial[%d] painted\n", d);
+		}
+		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);  /* tabs / menu items */
 		bob_gdi_present();
-		fprintf(stderr, "[frontend] painted screen artnum=%d + menu + presented\n", (int)artnum);
+		fprintf(stderr, "[frontend] painted screen artnum=%d + dials + menu + presented\n", (int)artnum);
 	}
 #endif
 }

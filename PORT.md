@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WORKSTREAM A (2026-06-15): started the R* control rendering — scoped to the RListBox
+> Began the R* widget rendering for sub-screens. **Dial panels now render**: the paint hooks
+> call `pdial[d]->DoPaint()` for each of a screen's up-to-3 `dial` panels (config etc.). They
+> draw their panel-art background where present (transparent for the GFX config, so no visible
+> change there yet) — the structural entry point for sub-screen widgets.
+>
+> **The key control is the RListBox** (`CRListBoxCtrl : public COleControl`, `SRC/RLISTBOX/`):
+> the config settings, the menu, and the campaign-map panels are all RListBoxes (multi-column:
+> label | dropdown-value, populated via `AddString`). Its `OnDraw` (RLISTBXC.CPP:557)
+> double-buffers to an offscreen DC and uses `CDC::GetTextExtent`/`GetTextMetrics`/
+> `GetTextExtentExPoint`/`ExtTextOut` per cell — **all currently stubbed**. So rendering the
+> RListBox (which unlocks config/loadout/map) is precisely:
+> 1. **CDC text-metrics** → wire `GetTextExtent`/`GetTextMetrics`/`GetTextExtentExPoint` to
+>    `stb_truetype` (we have `bob_gdi_text_width` + can add ascent/descent).
+> 2. **`CDC::ExtTextOut`** → `bob_gdi_text` (clip rect + alignment).
+> 3. **Offscreen DC**: `CreateCompatibleDC` + `CBitmap` backed by a real buffer, `BitBlt` to
+>    the screen FB (the RListBox draws offscreen then blits).
+> 4. **Drive `CRListBoxCtrl::OnDraw`** past the OLE-control stub (no `WM_PAINT`/OLE render
+>    dispatch on Linux) — call it directly from the paint hook with a screen `CDC`, like we
+>    drive `RFullPanelDial::DoPaint`.
+> This is a focused multi-step subsystem (the same OLE/widget grind the MiG Alley port faces).
+> Bring-up so far bypassed the RListBox by drawing `textlists` directly (menu/tabs); config
+> needs the real control. Regression-safe: default `./bob` exits 0.
+
 > ## WORKSTREAM A (2026-06-15): the menu is NAVIGABLE — mouse clicks change screens
 > The front-end menu now responds to the mouse: clicking an item navigates to its screen.
 > Verified: clicking "PC Config" (item 5) → the GFX config screen paints (its background +
