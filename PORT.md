@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## WORKSTREAM A ROOT CAUSE (2026-06-15): R* controls need OLE/ActiveX hosting (InvokeHelper)
+> Went after the RListBox and traced it to the true blocker. The R* controls are **ActiveX
+> (OLE) controls**: `CRListBoxCtrl : COleControl` (the impl, with the `m_list` data), hosted
+> by a thin `CWnd` wrapper `CRListBox`. The wrapper's methods forward via **OLE automation**:
+> `CRListBox::AddString` → `InvokeHelper(0x38, DISPATCH_METHOD, …)` (RLISTBOX.CPP). **In the
+> compat, `InvokeHelper` is a no-op and `CreateControl` returns FALSE** (`afxwin.h`). So:
+> - No `CRListBoxCtrl` instance is ever created, and every `AddString`/`Clear`/`AddColumn`
+>   call vanishes at the no-op `InvokeHelper`. `m_list` is never populated.
+> - Therefore nothing to draw — the earlier "wire CDC text-metrics + drive OnDraw" scope was
+>   premature: the *data* doesn't exist yet, not just the rendering.
+>
+> **The real R* subsystem = minimal OLE/ActiveX control hosting:**
+> 1. `CreateControl`/the DDX_Control bind instantiates the actual `CR*Ctrl` (the `COleControl`
+>    subclass — RListBox/RCombo/RSpinButton/RTickBox/RStatic) and links it to the wrapper.
+> 2. `InvokeHelper(dispid, …)` routes to that control's **dispatch map** (`DISP_FUNCTION`,
+>    e.g. AddString=0x38) with the varargs marshalled — so the control's real methods run and
+>    populate `m_list`.
+> 3. Then render: drive each control's `OnDraw` with a screen `CDC` (+ the CDC text-metrics /
+>    offscreen-DC pieces), or read `m_list`/state and draw directly (`m_list` is public).
+> This is a focused but real subsystem (IDispatch dispatch + per-control instances + draw) —
+> the same ActiveX/OLE layer the MiG Alley port hits. The title menu rendered only because we
+> bypassed it (drawing `textlists` directly); config/loadout/map need the controls hosted.
+> Regression-safe; no behavioural change this step (root-cause investigation).
+
 > ## WORKSTREAM A (2026-06-15): started the R* control rendering — scoped to the RListBox
 > Began the R* widget rendering for sub-screens. **Dial panels now render**: the paint hooks
 > call `pdial[d]->DoPaint()` for each of a screen's up-to-3 `dial` panels (config etc.). They
