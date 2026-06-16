@@ -93,6 +93,12 @@
 #ifndef _cdecl
 #define _cdecl
 #endif
+#ifndef CDECL
+#define CDECL
+#endif
+#ifndef BASED_CODE
+#define BASED_CODE
+#endif
 #ifndef _stdcall
 #define _stdcall
 #endif

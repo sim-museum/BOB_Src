@@ -88,6 +88,26 @@ extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned 
 	return (int)penx - x;
 }
 
+/* Draw a 1px line (x0,y0)->(x1,y1) into the GDI framebuffer (R* control borders).
+   color is 0xRRGGBB. Bresenham; clipped to the framebuffer. */
+extern "C" void bob_gdi_line(int x0, int y0, int x1, int y1, unsigned color)
+{
+	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
+	if (!fb) return;
+	unsigned px = 0xFF000000u | (color & 0xFFFFFF);
+	int dx = x1 - x0, dy = y1 - y0;
+	int adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
+	int sx = dx < 0 ? -1 : 1, sy = dy < 0 ? -1 : 1;
+	int err = (adx > ady ? adx : -ady) / 2, e2;
+	for (;;) {
+		if (x0 >= 0 && x0 < fbw && y0 >= 0 && y0 < fbh) fb[(size_t)y0 * fbw + x0] = px;
+		if (x0 == x1 && y0 == y1) break;
+		e2 = err;
+		if (e2 > -adx) { err -= ady; x0 += sx; }
+		if (e2 <  ady) { err += adx; y0 += sy; }
+	}
+}
+
 /* Measure the advance width of `str` at `pixelH` without drawing (for centring/click rects). */
 extern "C" int bob_gdi_text_width(const char* str, int pixelH)
 {

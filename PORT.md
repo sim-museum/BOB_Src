@@ -1,5 +1,370 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## OPEN FRONT #2 (2026-06-16): FBO RTT backend IMPLEMENTED (gated) — blocked on a setup hang
+> Built the FBO render-to-texture path in `bob_video.cpp`, gated on **`BOB_FBO_RTT`** (default `./bob` and
+> the default flight are byte-unchanged — verified: no-env flight still reaches "View3d interactive" + dumps
+> frames). Real **NVIDIA GL 4.6** here (not swrast), so FBO is fully supported.
+>
+> **What's implemented:**
+> - FBO entry points loaded via `SDL_GL_GetProcAddress` (`glGenFramebuffers`/`glBindFramebuffer`/
+>   `glFramebufferTexture2D`/`glCheckFramebufferStatus`).
+> - `GLSurface7` gains `fbo` + `isRTT`. `DD_CreateSurface`: with `BOB_FBO_RTT`, TEXTURE+3DDEVICE surfaces
+>   are **accepted** (was rejected) -> `CheckIfTextureCanBeRenderTarget` succeeds, `F_TEXTURECANBERENDERTARGET`
+>   on. The probe surface is accepted (traced).
+> - `DEV_SetRenderTarget` (was a no-op): RTT surface -> lazily create GL texture + FBO, `glBindFramebuffer`
+>   + viewport; back buffer -> bind 0 + restore viewport. `present_surface` force-unbinds (safety).
+> - `SURF_Lock` on an RTT surface -> `glReadPixels` the FBO into the system bits (row-flipped), so the
+>   game's existing `UploadTexture -> PerformSlowCopy` (reads Lock'd bits) gets the real detail pixels and
+>   copies them into `landTextures[i]` -> the ground shape's texture (no change to the game's copy path).
+>
+> **Blocker — enabling RTT hangs the game's setup BEFORE compositing.** With `BOB_FBO_RTT`, the boot
+> reaches the GL context + accepts the RTT probe, then **hangs at "creating View3d (LoadSetPiece)"** — it
+> never reaches "View3d interactive", and crucially **no FBO create / SetRenderTarget / Lock-readback trace
+> fires**, so the hang is upstream in the **real `Lib3D::AllocateLandscapeTextures`** (LIB3D.CPP:7781) on a
+> path that only runs when `F_TEXTURECANBERENDERTARGET` is set — a surface op the backend mishandles
+> (candidate: a Blt/Lock/AddAttachedSurface on the RTT land surfaces, or the `GetAvailableVidMem`-bounded
+> allocation loop behaving differently). The compositing fix itself is untested until this clears.
+> **Next:** instrument `AllocateLandscapeTextures` (or count CreateSurface/Blt calls under `BOB_FBO_RTT`) to
+> pin the hang, fix that surface op, then A/B the airfield ground (clearing the QM config-overlay capture
+> obstruction noted below). Code is committed but gated-off, so the tree is shippable as-is.
+
+> ## OPEN FRONT #2 SCOPING (2026-06-16): landscape RTT — test bed confirmed, FBO fix scoped, view obstruction
+> Pivoted to the black airfield ground (landscape render-to-texture). Confirmed and scoped the fix; did not
+> implement (it's a multi-piece backend change + needs the in-flight view). Findings:
+> - **Test bed works.** The 3D flight DOES run with a real GL context here (DISPLAY=:0 + 32-bit
+>   `swrast_dri.so`); `BOB_BOOT_FRONTEND=1` (no dummy SDL) renders + dumps frames (`BOB_DUMP_FRAME=N` ->
+>   `/tmp/bobframe.ppm`). Earlier sessions' headless front-end work used dummy SDL (CPU bob_gdi), but the
+>   real display is available for the 3D path.
+> - **Root cause = no FBO RTT in the backend** (`bob_video.cpp`): `DEV_SetRenderTarget` is a **no-op**, and
+>   `DD_CreateSurface` **rejects** render-target textures (TEXTURE+3DDEVICE -> `DDERR_OUTOFVIDEOMEMORY`,
+>   line ~682). So `CheckIfTextureCanBeRenderTarget` fails, `F_TEXTURECANBERENDERTARGET` is off, and the
+>   landscape composite takes the non-RTT path: it renders the detail to a **centred region of the main
+>   framebuffer** (LIB3D.CPP:4434) and `UploadTexture` copies the **back buffer's untouched system bits**
+>   into `landTextures[i]` -> black. (The detail geometry IS submitted — TILEMAKE.CPP:5479 `while(primCount--)`.)
+> - **The fix (FBO RTT), 6 pieces:** (1) `DD_CreateSurface` accept TEXTURE+3DDEVICE -> GLSurface7 with a GL
+>   texture + an FBO; (2) `DEV_SetRenderTarget(surf)` -> `glBindFramebuffer(surf->fbo)` + viewport, save/
+>   restore; (3) bind 0 + restore on SetRenderTarget(back buffer); (4) present binds 0; (5) `SURF_Blt`
+>   (RTT-surface src -> texture-surface dst) = a GPU copy (`glBlitFramebuffer`/`glCopyTexSubImage`), not the
+>   system-bits Blt; (6) verify the detail materials (`imagePtrs[at]`) aren't themselves empty. Gate on a new
+>   `BOB_FBO_RTT` so the default flight path is untouched (A/B). Same machinery fixes the rear-view mirror.
+> - **Obstruction found:** with the R* controls now hosted, `BOB_BOOT_FRONTEND`'s QM flow renders a **"3D II"
+>   config overlay** (combos: Software Driver / Minimum / Off ...) over the live flight at frames ~60–250 —
+>   it covers the early runway/terrain view (the only spot PORT.md notes terrain is reliably visible). The
+>   sim runs fine behind it (`View3d interactive; draw thread running`); this is a *capture* obstruction
+>   (controls render where they were blank before), to clear before A/B'ing the ground fix. No code changed.
+
+> ## WORKSTREAM A INVESTIGATION (2026-06-16): "box-art binary decode" — finding: it largely doesn't apply
+> Dug into decoding the DLGINIT property bags' *binary* values (vs the label strings, already extracted).
+> Result: there is **no combo/listbox box-art to decode** — the combo's `DoPropExchange` persists only
+> `FontNum`, `ListboxLength`, `Style`; **`m_FileNum` (box bitmap) is not in it** and is 0, so the genuine
+> `OnDraw` takes its border+arrow branch (text + 3D bevel + dropdown arrow), which is what we render. The
+> RStatic label IS the `String` property — which the existing string heuristic already extracts faithfully
+> (verified: `String`="Lowest Frame Rate", stock `Caption`="IDS_SDETAIL2"). So the two things "box-art"
+> implied — combo backgrounds and label text — are respectively non-existent and already done.
+>
+> **What's actually left (and why it's not a clean "decode"):**
+> - **Dropdown arrow** — drawn by `IconDescUI::MaskIcon` (an icon blit). We feed it a valid icon via
+>   `WM_GETFILE`, but it doesn't paint: that needs the **icon/bitmap blit path** (offscreen icon imagemaps
+>   + `BitBlt`/`SetDIBitsToDevice` into the framebuffer), a subsystem, not a property decode.
+> - **Faithful colours/style** (RListBox stripe/header/select colours, combo `Style`, RStatic `ShadowColor`)
+>   — these *are* in the binary stream, but decoding it means re-implementing MFC's `CArchivePropExchange`
+>   format incl. each control's exact **stock-property set** (Caption/ForeColor/BackColor/Font/Enabled/…)
+>   and version handling — error-prone to reverse-engineer for marginal, mostly-default-looks-fine payoff.
+>
+> **Assessment:** the config UI is functionally + largely visually complete (labels + populated values +
+> bevels). The remaining items are diminishing-returns cosmetics gated on sizeable subsystems. Higher-value
+> next work: apply the (now general) control pipeline to the campaign/loadout/map screens, or pivot to the
+> in-flight **landscape RTT** (CLAUDE.md open front #2). No code change this step — investigation only.
+
+> ## WORKSTREAM A (2026-06-16): config UI confirmed GENERAL — the Sound tab lights up the same way
+> Verified the host + position + DLGINIT + GetDlgItem pipeline isn't GFX-specific: navigated PC Config ->
+> the **Sound** tab and it renders as a full form — labels "Music Volume / Radio Chatter Volume / Engine
+> Volume" with its own populated combos ("3D Sound", "Stereo", "Not Available", "Off"/"Medium"/"High"...),
+> all distinct from GFX, no crash. Capture: `doc/reference/frontend-config-sound-tab-2026-06-16.png`. The
+> other tabs (More GFX / Controls / 2D / Sim) use the same sub-panel + SG2C/SETFIELD mechanism, so they
+> come along for free.
+>
+> **Test harness:** `BOB_AUTOCLICK` now takes a comma-separated **sequence** (e.g. `5,3` = open PC Config,
+> then click the Sound tab) -- one synthetic click per ~120 idle ticks -- to walk into sub-screens headless.
+>
+> So the front-end **R\* control subsystem (CLAUDE.md open front #1) is substantially done**: three genuine
+> ActiveX controls (RListBox/RCombo/RStatic) hosted, populated, positioned from the real `.rc`/DLGINIT, and
+> rendering across the config tabs. Remaining is cosmetic (widget box-art via the binary `FileNum` decode,
+> faithful fonts via a coherent-scaling pass, minor alignment) and applying the same pipeline to the
+> campaign/loadout/map screens (same controls, different data).
+
+> ## WORKSTREAM A MILESTONE (2026-06-16): the GFX-config form is COMPLETE — all 9 combos populated + labelled
+> The config screen is now a working, labelled form: every dropdown shows its real current value —
+> "BoB Linux OpenGL backend", "800 x 600 x 16", "Minimum", "Off", framerate numbers — under its label
+> ("Display Driver:", "Ground Shading", "Item Shading", "Gamma Correction", "Reflections", "Weather
+> Effects", ...). Capture: `doc/reference/frontend-config-combos-populated-2026-06-16.png`. Combo AddStrings
+> jumped 11 -> 57 with the real option lists (Off/On/Low/Medium/High/Minimum/Maximum + the resolution and
+> fps lists).
+>
+> **The fix — `GetDlgItem(id)` now resolves to the hosted control.** Only 2 of 9 combos had been
+> populating, because the config's `SG2C_DISPLAY` pass (the X-macro in `CSDetail::OnInitDialog`,
+> `sg2combo.h`) fills each combo via `GetDlgItem(IDC_CBO_x)->RESCOMBO(...)->SetIndex(val)` — and
+> `CWnd::GetDlgItem(int)` returned NULL on Linux, so those calls no-op'd on a null wrapper (the driver/
+> resolution combos worked only because they're populated by direct member access). Added
+> `bob_ole_find_wrapper(dialog, id)` — a reverse lookup over the host registry by `(parentDlg, ctrlId)` —
+> and wired `CWnd::GetDlgItem(int)` to it. The populate pass now reaches every hosted combo: option lists
+> + current selection all flow through the genuine `CRComboCtrl`.
+>
+> Regression-safe: `BOB_OLE_DRAW` opt-in; default `./bob` + `BOB_FRONTEND` unchanged; no crash. The GFX
+> config screen has gone from "InvokeHelper no-op" to a fully labelled, fully populated form this session.
+> **Remaining = cosmetic:** widget box-art (binary `FileNum` in the DLGINIT bags), faithful fonts (the
+> coherent-scaling pass), and minor Y-alignment. The other config tabs (2D/Sound/Sim/Controller) should
+> light up the same way now that the host + positioning + DLGINIT + GetDlgItem pipeline is general.
+
+> ## WORKSTREAM A MILESTONE (2026-06-16): the config LABELS render — DLGINIT design-time properties parsed
+> Broke through the design-time-property wall: the GFX-config screen now shows its real labels — "Display
+> Driver:", "Resolutions", "Gamma Correction", "Ground Shading", "Item Shading", "Reflections", "Weather
+> Effects", "Lowest Frame Rate", "Auto Frame Rate" — alongside the value combos. Capture:
+> `doc/reference/frontend-config-labels-DLGINIT-2026-06-16.png`. The labels come straight from the dialog's
+> **DLGINIT property bag**, the thing flagged last entry as the blocker.
+>
+> **Key discovery:** the real config dialog (`IDD_3DI`) lives in **BOB.RC**, not MIG.RC — there are two
+> resource files and the parser only read one. BOB.RC has 217 dialogs + **134 DLGINIT blocks** (the OLE
+> control property bags). Each control's blob holds length-prefixed strings; for RStatic the readable,
+> non-resource-id, non-licence string IS the label ("...Lowest Frame Rate", etc.) — verified decoding all
+> nine IDD_3DI statics, every one correct.
+>
+> **What was built:**
+> - **DLGINIT parser** (`bob_dlgtemplate.cpp`, plain C): walks each `<DLG> DLGINIT` block, decodes the
+>   `0xNNNN` words → bytes per control, and extracts the design-time caption. Keyed by **(dialogId,
+>   controlId)** — static ids repeat across dialogs, so the dialog context is required. Also now parses
+>   **BOB.RC** for positions (its IDD_3DI rects are the real config layout). 1039 captions, 951 rects.
+> - **Dialog-IDD threading:** `CDialog::Create(nID)` stashes `g_bobDlgIDD`; each hosted control records it
+>   (`OleHost::dlgId`) at create. New `OleHost::applyDesignProps()` runs once ids are known;
+>   `HostRStatic` looks up its `(dlgId,ctrlId)` caption and `SetString`s it.
+> - **`CDC::DrawText` wired to bob_gdi** — the static labels draw via `DrawText` (DT_LEFT/DT_CENTER), which
+>   was a stub; now it renders a line into the framebuffer (honouring centre alignment). (That was the last
+>   missing piece: the controls were created + positioned + captioned, just not painting.)
+>
+> Regression-safe: `BOB_OLE_DRAW` opt-in; default `./bob` + `BOB_FRONTEND` unchanged; no crash. **Next:**
+> the same DLGINIT bags also hold the binary-encoded combo/listbox **box-art** (`FileNum`), **FontNum** and
+> colours — those need a proper property-stream decode (vs the string heuristic that nails the labels);
+> plus minor label/combo Y-alignment (labels use BOB.RC/IDD_3DI rects, combos still the flat map).
+
+> ## WORKSTREAM A (2026-06-16): RStatic hosted (3rd control) — and the design-time-property wall identified
+> Brought the genuine `CRStaticCtrl` (the labels) online via the established split-TU pattern: 12 RStatic
+> controls are created+hosted on the config screen, no crash, no unhandled dispids. Compile cost was tiny
+> now the infra exists — one missing `PX_String`, plus `CString::AllocSysString` and two uncompiled
+> helpers (`GetResourceNumberFromID`/`ConvertResourceID` in `GETRESRC.CPP`). `HostRStatic` routes the
+> label properties (String=3 / Caption / FontNum / ResourceNumber / Central / ShadowColor).
+>
+> **The honest result — labels need design-time properties we don't have:** RStatic draws `m_string`,
+> which is set EITHER by a runtime `SetString(RESSTRING(...))` (used by campaign-name / reminder /
+> task screens — those labels WILL render) OR by a design-time **`ResourceNumber`** loaded via
+> `WM_GETSTRING` (the config labels). That ResourceNumber lives in the dialog's **DLGINIT** block — the
+> OLE control **property bag** (binary `IPersistStreamInit` data) — and **IDD_3DI/IDD_SDETAIL have no
+> DLGINIT** in MIG.RC at all. So the config labels render blank: not a hosting gap, a *property-
+> persistence* gap. The same wall blocks the combo **box-art** (`m_FileNum`) and faithful fonts.
+>
+> **=> The real next subsystem is design-time property persistence:** parse the `DLGINIT` property bags
+> (per control: dispid + a binary value stream) and feed them to each control's `DoPropExchange`/
+> property setters at create time. That single subsystem unlocks: config label text (ResourceNumber),
+> combo/listbox box-art (`m_FileNum`), fonts (`FontNum`), colours, `Centred`, etc. — i.e. the bulk of the
+> remaining front-end fidelity, for every screen that has a DLGINIT. (Screens whose dialog has none, like
+> IDD_3DI, set their controls at runtime instead — those already work.)
+>
+> Regression-safe: `BOB_OLE_DRAW` opt-in; default `./bob` + `BOB_FRONTEND` unchanged; no crash.
+
+> ## WORKSTREAM A (2026-06-16): combo BORDERS render; WM_GETGLOBALFONT explored (coherent-scaling finding)
+> The config combos now draw their **3D-bevel border frames** — they read as real boxed widgets, not
+> floating text. Capture: `doc/reference/frontend-config-combos-borders-2026-06-16.png`. Plus an honest
+> negative result on font fidelity (kept the infrastructure, reverted the visual change).
+>
+> **Combo borders (the win):** the control's `OnDraw` draws the box bevel with `CPen` + `MoveTo`/`LineTo`
+> (white top/left, dark bottom/right), all no-ops before. Added `bob_gdi_line` (Bresenham into the GDI
+> framebuffer), `CPen` colour storage, and `CDC::SelectObject(CPen*)`/`MoveTo`/`LineTo` wired to it
+> (control-relative coords offset by the viewport; gated by `m_bobScreen` like the text path).
+>
+> **`WM_GETGLOBALFONT` — explored, then reverted (with the infra kept):** wired `WM_GETGLOBALFONT`
+> (WM_USER+3) → `bob_dlg_getfont` → `g_AllFonts[fontnum]`, plus `CFont::m_height` (from `CreateFont`) and
+> `CDC::SelectObject(CFont*)`. Driving text size from the real font made the combos **and** the tab bar
+> tiny: the front-end panels are drawn **scaled-up** (template DLU rects x resolution, ~x1.6), but the
+> game's fonts are sized for **native** DLU, so the real font is far too small for our enlarged boxes
+> (and `m_scalingfactor` is ~0 at default `fontdpi`, so `OnGetGlobalFont` would pick the 1x font anyway).
+> Reverted the `SelectObject`-drives-`m_bobTextH` line — text stays sized to the **template box height**,
+> which is the *coherent* choice for our scaled layout. The font routing + `CFont::m_height` remain for a
+> future **DPI/scale pass** that would scale the layout and fonts together (the real fix).
+>
+> **Still default-off / no regression:** `BOB_OLE_DRAW`; default `./bob` and `BOB_FRONTEND` unchanged; tab
+> bar back to full size. **Next:** host RStatic (the labels — the most visible remaining gap, and it sits
+> on the positioning layer already), then a coherent DPI/scale pass to unlock faithful fonts + box art.
+
+> ## WORKSTREAM A MILESTONE (2026-06-16): Stage-2 — runtime .rc parser positions controls on EVERY screen
+> Generalised the dialog-template positioning: a runtime parser replaces the hand-coded SDETAIL table, so
+> any screen's hosted R* controls land at their true template coordinates automatically. On load it reads
+> **7514 symbols** (`MFC/RESOURCE.H`) + **349 control rects** (`ENGLISH/MIG.RC`); the config combos render
+> at positions byte-identical to the hand table ("BoB Linux OpenGL backend", "800 x 600 x 16…"). Opt-in
+> `BOB_OLE_DRAW=1`; default `./bob` and `BOB_FRONTEND` (without it) unchanged; no crash.
+>
+> **`bob_dlgtemplate.cpp` (new, in bob_compat):**
+> - Parses `#define SYM <int>` from RESOURCE.H into a symbol→id table, then every `CONTROL` statement in
+>   MIG.RC (joining the wrapped continuation lines) into a flat **controlId → DLU rect** map: the id is the
+>   field after the quoted caption; the rect is the last four integers *outside* quotes (so the `"{clsid}"`
+>   guid digits and `WS_*` styles are skipped). `bob_dlg_lookup(id,…)` serves it; `bob_ole_draw_panel`'s
+>   parent filter keeps the few shared ids unambiguous. The hand SDETAIL table remains as a fallback.
+> - **Source location** via a CMake `BOB_SRC_DIR` compile define (or `$BOB_RC_DIR`); a real install would
+>   later read the dialogs from the resource DLL instead of the source `.rc`.
+> - **Plain C, no libstdc++ containers** — deliberately: this TU is built with the project-wide
+>   `-fpack-struct=1`, which mis-lays `std::string`/`std::unordered_map` and SIGABRT'd the first
+>   (std-based) cut. Classic PORT.md principle #2 (the packing-ABI hazard); fixed-size arrays sidestep it.
+>
+> **Next:** finish the `WM_GET*` protocol (art-range `WM_GETFILE`, `WM_GETGLOBALFONT` for real font sizes/
+> centring, offscreen DC) for full combo/listbox fidelity; host RStatic (the labels) + RSpinBut/RTickBox;
+> feed the 7 enum combos' option lists. The dialog font is assumed MS-Sans-Serif-8 (base units 6/13) — read
+> it per-dialog from the template's `FONT` line if a screen needs different scaling.
+
+> ## WORKSTREAM A MILESTONE (2026-06-16): dialog-template POSITIONING — config combos RENDER at real positions
+> The config dropdowns now draw their selected values at their true dialog-template coordinates. On the
+> PC-Config (GFX) screen the display-driver combo shows **"BoB Linux OpenGL backend"** and the resolution
+> combo shows the current **"800 x 600 x 16…"** (ellipsized to its narrow template width — faithful), both
+> via the genuine `CRComboCtrl::OnDraw`. Capture: `doc/reference/frontend-config-combos-OLE-2026-06-16.png`.
+> Opt-in `BOB_OLE_DRAW=1`; default `./bob` and `BOB_FRONTEND` (without it) unchanged; no crash.
+>
+> **The positioning layer (Stage 1):** R* controls get their on-screen rects from the dialog resource
+> template (`IDD_SDETAIL` in `ENGLISH/MIG.RC`), in dialog units. Built:
+> - **Control id threaded** through `CreateControl`→`bob_ole_create_control(...,id)` onto each `OleHost`
+>   (+ its parent dialog).
+> - **Layout table** `controlId → DLU rect` (hardcoded for IDD_SDETAIL from the .rc; to be replaced by a
+>   runtime .rc parser — Stage 2). **DLU→px** via MS-Sans-Serif-8 base units (×6/4 horiz, ×13/8 vert).
+> - **`bob_ole_draw_panel(dialog, ox, oy)`** iterates the hosts owned by a dialog and drives each one's
+>   `OnDraw` at `panelOrigin + DLU→px(rect)`. The front-end paint hook calls it per `pdial[d]` with the
+>   panel's screen origin from `m_currentscreen->resolutions[res].dials[d].X/Y`.
+> - **Population trigger** already in place (`CDialog::Create` → `DoDataExchange` + `OnInitDialog`).
+>
+> **`WM_GETFILE` parent protocol (started):** combo `OnDraw` draws a dropdown-arrow icon via
+> `parent->SendMessage(WM_GETFILE,iconnum)` → `OnGetFile`, which was a no-op (→ NULL deref → SIGSEGV).
+> `CWnd::SendMessage` now routes `WM_GETFILE` (WM_USER+4) to `bob_dlg_getfile` (in the R* lib, has the game
+> types), replicating `OnGetFile`'s icon path: `IconsUI(filenum) → IconDescUI`, which `MaskIcon` then draws.
+> File/art loading (the `0x6600–0x7200` range, e.g. the listbox blackboard art) is still NULL — next.
+>
+> **Next:** (1) **Stage-2 general .rc parser** — parse `resource.h` (symbol↔id) + the `DIALOG` blocks at
+> runtime so *every* screen's controls position automatically (the SDETAIL table is the proof). (2) Finish
+> the `WM_GET*` protocol (`WM_GETFILE` art range, `WM_GETGLOBALFONT` for real font sizes, `WM_GETOFFSCREENDC`).
+> (3) Host RStatic (the labels) + RSpinBut/RTickBox. (4) The 7 enum combos render blank until their lists
+> populate (driver/resolution come from system enumeration; the rest need their option lists fed).
+
+> ## WORKSTREAM A MILESTONE (2026-06-16): RCombo hosted — the config DROPDOWNS populate with real data
+> Second R* control online: the genuine `CRComboCtrl` is compiled, hosted, and populated. On the PC-Config
+> screen all **9 CSDetail combos** are created, and the driver/resolution combos fill via the control's
+> real `AddString`: "BoB Linux OpenGL backend", "1024 x 768 x 16/32", "1280 x 1024 …", "800 x 600 …",
+> "1920 x 1080 …" — the actual enumerated display-mode list. No crash; default `./bob` and `BOB_FRONTEND`
+> (with/without `BOB_OLE_DRAW`) unchanged. Trace: `BOB_TRACE_OLE=1` ("created CRComboCtrl" + "Combo AddString").
+>
+> **Hosting infra generalised (so the next controls are quick):**
+> - **Split per-control TUs** behind a shared `OleHost` interface (`bob_ole_host.h`): `bob_ole.cpp` owns the
+>   `CWnd*→OleHost*` side-table + entry points (control-agnostic); `bob_ole_rlistbox.cpp` / `bob_ole_rcombo.cpp`
+>   each compile their genuine control in isolation. This was *required*: RLISTBOX and RCOMBO each have a
+>   `resource.h` with the **same include guard**, so one TU can't include both control trees (the second's
+>   IDs vanish). Per-control factories (`bob_make_rlistbox`/`bob_make_rcombo`) dispatch by CLSID.
+> - **Bring RCOMBOC.CPP into the build** (`CRComboCtrl`): needed compat additions — `CWnd` window-text store
+>   (`SetWindowText`→`m_bobText`, `InternalGetText`/`IsWindowEnabled`), `COleControl::OnTextChanged`/
+>   `GetEnabled`/`InternalSetText`, `CDC::GetNearestColor`, `MK_*` mouse flags, the standard negative stock
+>   dispids (`DISPID_FORECOLOR=-512`, …, fixed from earlier placeholders). One include (`rlistbox.h`, the
+>   combo's dropdown type) + one CPoint-rvalue named-temp in RCOMBOC.CPP (same minimal-portability class).
+> - **Population trigger:** `CDialog::Create` (the `BOB_FRONTEND` hook) now also calls `OnInitDialog()` after
+>   `DoDataExchange` — MFC populates controls there (`CSDetail::OnInitDialog` → `combo->AddString(...)`), and
+>   that path was otherwise no-op'd on Linux.
+>
+> **Next (combo rendering):** the combos are created+populated but not yet drawn, because their **screen
+> positions come from the dialog resource template** (`IDD_SDETAIL`), which Linux has no loader for — unlike
+> the tab-bar RListBox whose position `PositionRListBox` computes programmatically. So combo rendering is
+> gated on a **dialog-template/positioning layer** (parse/host the `.rc` `DIALOG` control rects, or a
+> per-screen layout table). `HostRCombo::draw` (the genuine `CRComboCtrl::OnDraw`) is wired and ready once
+> positions exist. Then RSpinBut/RTickBox/RStatic follow the same split-TU pattern.
+
+> ## WORKSTREAM A MILESTONE (2026-06-15): the genuine RListBox control now RENDERS (OnDraw → pixels)
+> The hosted `CRListBoxCtrl`'s **own `OnDraw` now paints to the front-end framebuffer**. Opt-in
+> `BOB_OLE_DRAW=1`: the config tab-bar RListBox renders "GFX / More GFX / Controls / Sound / 2D /
+> (blank) / Sim / Continue" via the control's real multi-column layout (`Shrink` column widths +
+> `ExtTextOut` per cell), over the config background. Capture:
+> `doc/reference/frontend-config-tabbar-OLE-rlistbox-2026-06-15.png`. No crash; default `./bob` and
+> `BOB_FRONTEND` (without `BOB_OLE_DRAW`, still the hand-drawn menu) unchanged.
+>
+> **Why OnDraw is drivable without the full Win32 GDI/window stack:** on the first sweep `m_FirstSweep`
+> is TRUE so `artnum` stays 0, and the parent's `SendMessage(WM_GETARTWORK)` is a no-op returning 0 too
+> — so OnDraw **always takes the `pOffScreenDC = pdc` branch**: it draws directly to the CDC we pass, no
+> offscreen `CreateCompatibleBitmap`/`WM_GETOFFSCREENDC` needed. `INT3` is `{}` on Linux so the parent
+> `IsWindow` guard is a no-op; we only need the control's `m_hWnd != 0` (sentinel set in `boot()`) and a
+> non-null `GetParent()`.
+>
+> **What was wired (compat-only + the existing front-end paint hook):**
+> - **CDC → bob_gdi** (`afxwin.h`): `SetTextColor` stores; `ExtTextOutA`/`TextOutA` draw via
+>   `bob_gdi_text` (COLORREF→0xRRGGBB, viewport origin = control screen pos), gated by `m_bobScreen`
+>   so only the CDC handed to OnDraw paints; `GetTextExtent` measures via `bob_gdi_text_width`;
+>   `GetTextMetrics` returns `tmHeight == m_bobTextH` so the control's row pitch and the text height
+>   agree (column widths computed at populate-time match render-time).
+> - **`bob_ole_draw_listbox(wrapper,x,y,w,h,textH)`** (`bob_ole.cpp`): looks up the host, builds a
+>   screen CDC (viewport=(x,y)), calls the genuine `OnDraw`. `boot()` now sets `m_hWnd` sentinel.
+> - **Front-end hook** (`FULLPSYS.CPP`, `BOB_OLE_DRAW`): the horizontal tab row calls
+>   `bob_ole_draw_listbox(&self->m_IDC_RLISTBOX, …)` instead of the hand-drawn text.
+> - **Headless dump fix** (`bob_video.cpp`): `BOB_DUMP_GDI` now writes `/tmp/bobgdi.ppm` before the
+>   GL-window check, so the CPU framebuffer is inspectable under `SDL_VIDEODRIVER=dummy`.
+>
+> **Font sizing fixed (same session):** the render now uses a single live height `g_bobListFontH`
+> (afxwin.h, default 18) shared by the stub `GetDC` CDC (the control's `Shrink`/`GetTextExtent` at
+> populate time) and the screen CDC (`OnDraw`/`ExtTextOut`). `HostRListBox::draw` sets it from the
+> screen CDC and **re-runs the control's own `Shrink`** so column widths are recomputed at the exact
+> draw height — no more truncation. The front-end passes a resolution-scaled height (`resW*26/1000`,
+> ~26px at 1024); all eight tabs incl. "Continue" now lay out and render correctly (updated capture).
+>
+> **Fidelity gap (next):** the control still renders with **default colours** (stock white text) and
+> left-aligned because the `.ocx`'s remaining design-time properties (`Centred`, stripe/select/fore
+> colours, the exact font face) aren't loaded — `DoPropExchange` only has version defaults and
+> `WM_GETGLOBALFONT` returns NULL. To finish: set fore/stripe colours via the existing property dispids
+> (or extract from the control resources), back `WM_GETGLOBALFONT`. Then host RCombo/RSpinBut/RTickBox/
+> RStatic the same way so the config **content** (dropdowns), not just the tab bar, renders.
+
+> ## WORKSTREAM A MILESTONE (2026-06-15): the genuine RListBox ActiveX control is HOSTED + POPULATED
+> Resolved the #1 open blocker: the R* controls are now real OLE/ActiveX controls hosted by the
+> compat, running the game's **own** `CRListBoxCtrl` code (the user chose max-fidelity — compile the
+> genuine control, not a reimplementation). Verified end-to-end (`BOB_TRACE_OLE=1`, headless dummy SDL):
+> the main menu's RListBox populates 10 rows×1 col ("Quick Shots"…"Website") and, after an autoclick to
+> PC Config, the config tab-bar RListBox populates 8 cols ("GFX","More GFX",…"Continue") — all through
+> the real `AddColumn`/`AddString`/`Clear`/`Shrink`/`ResizeToFit`. No crashes, no unhandled dispids;
+> default `./bob` still exits 0.
+>
+> **What was built (all in `SRC/compat/` + a new control lib):**
+> 1. **The control is in the build.** New `SRC/RLISTBOX/CMakeLists.txt` compiles the genuine
+>    `RLISTBXC.CPP` (84 KB `CRListBoxCtrl : COleControl`) + `MFC/GETSHADW.CPP` (shadow-offset helpers).
+>    The design-time property pages (`RLISTBXP`/`LP2`) are *not* compiled (never instantiated; only
+>    referenced in no-op `PROPPAGEID` macros). Linked into `bob` via a new `bob_rlistbox` module lib.
+> 2. **OLE/MFC compat fleshed out** (`afxwin.h`/`afxctl.h`/`afxcmn.h`/`afxole.h`): `__AFXCTL_H__`;
+>    `COleControl` Set/GetFore/BackColor + `InitializeIIDs`; `COlePropertyPage`/`COleObjectFactoryEx`
+>    + `Afx*Register*`/lic stubs + `OLEMISC_*`; the dispatch/event/factory macros now expand to real
+>    declarations where needed (`BEGIN_OLEFACTORY` declares the nested `…Factory`; `DISP_PROPERTY_EX`,
+>    `EVENT_CUSTOM`, `ON_OLEVERB`, `DISP_STOCKPROP_*` defined); `PX_*` persistence; `COleDataSource`/
+>    `DROPEFFECT` (drag-drop); `CDC::GetTextMetrics` now fills sane metrics; `GetTextExtentExPoint`/
+>    `ETO_CLIPPED`; `CDataExchange`-aware `DDX_Control`.
+> 3. **`CList` is now a real node-based list** with working `POSITION` semantics (the old std::list
+>    shim stubbed `GetHeadPosition`→NULL, which would NULL-deref the control's `m_list` of `m_list`).
+>    This was the hard prerequisite — the control iterates rows/cols by `POSITION` everywhere.
+> 4. **The hosting layer** (`SRC/RLISTBOX/bob_ole.cpp`): `CWnd::CreateControl(clsid)` (driven by
+>    `DDX_Control`) instantiates the genuine `CRListBoxCtrl` and side-tables it by wrapper `CWnd*`;
+>    `InvokeHelper`/`Get`/`SetProperty` route each dispid (RListBox.odl ids 1–84) to the control's
+>    real (protected) methods via a thin `HostRListBox : CRListBoxCtrl`. Defines the control's
+>    `_tlid`/`_wVerMajor/Minor`/`IID_DRListBox*` (the uncompiled module's symbols).
+> 5. **Binding trigger** (`CDialog::Create`, gated on `BOB_FRONTEND`): MFC binds controls in
+>    `OnInitDialog→DoDataExchange`, which is no-op'd on Linux, so `DDX_Control` never fired. `Create`
+>    now drives `DoDataExchange` (with `m_pDlgWnd=this` as the control's parent). `GetParent()` returns
+>    a settable parent so the control's `OnDraw`/`ResizeToFit` (which `GetParent()->SendMessage`) are safe.
+>
+> **Minimal game-source conformance edits** (pure portability, behaviour-identical, each commented
+> `/* Linux port ... */`): 3 MSVC for-scope-leak loops in `RLISTBXC.CPP` (`for(int x…){} …x;` → hoisted
+> `int x;`); one rvalue→`CPoint&` bind (named temp); restored the commented-out `CRScrlBar::SetFileNumOffset`
+> inline forwarder in `H/RSCRLBAR.H` (the control calls it; getter already existed). No game *logic* changed.
+>
+> **Next (the render half):** drive `CRListBoxCtrl::OnDraw(CDC*)` from the front-end paint hook. OnDraw
+> needs the offscreen-DC path backed (`CreateCompatibleBitmap`/`SelectObject`/`BitBlt`), the parent
+> `WM_GET{XYOFFSET,ARTWORK,OFFSCREENDC,GLOBALFONT,FILE,X2FLAG}` `SendMessage` protocol, and `CFont`/`CPen`
+> + the GDI text primitives (`ExtTextOut`/`GetTextExtent`) wired to the existing `bob_gdi` pipeline.
+> Then host the other R* controls (RCombo/RSpinBut/RTickBox/RStatic) the same way → config screens usable.
+> Diagnostic: `BOB_TRACE_OLE=1` (control create + per-`AddString` row/col counts + unhandled dispids).
+
 > ## WORKSTREAM A ROOT CAUSE (2026-06-15): R* controls need OLE/ActiveX hosting (InvokeHelper)
 > Went after the RListBox and traced it to the true blocker. The R* controls are **ActiveX
 > (OLE) controls**: `CRListBoxCtrl : COleControl` (the impl, with the `m_list` data), hosted

@@ -12,7 +12,11 @@ add_library(bob_compat STATIC
     bob_resources.cpp
     bob_threads.cpp
     bob_gdi_font.cpp
+    bob_dlgtemplate.cpp   # runtime .rc dialog-template parser (control positions)
 )
 target_include_directories(bob_compat PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)
+# the dialog-template parser reads the .rc/RESOURCE.H from the source tree at runtime
+set_source_files_properties(bob_dlgtemplate.cpp PROPERTIES
+    COMPILE_DEFINITIONS "BOB_SRC_DIR=\"${BOB_SRC}\"")
 # SDL2 + system OpenGL for the video backend (no sdl2.pc on this box -> link by name).
 target_include_directories(bob_compat PUBLIC /usr/include/SDL2)

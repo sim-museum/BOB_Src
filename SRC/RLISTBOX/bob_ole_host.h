@@ -1,0 +1,35 @@
+/* Shared interface for the R* ActiveX control hosts. Each genuine control lives in
+   its own TU (bob_ole_rlistbox.cpp, bob_ole_rcombo.cpp) so their conflicting
+   RCOMBO/RLISTBOX "resource.h" guards don't collide; bob_ole.cpp owns the side-table
+   and entry points and only sees this type-agnostic interface.
+   NOTE: include AFTER the MFC/windows types (DISPID/VARTYPE/CDC/CWnd) are available. */
+#ifndef BOB_OLE_HOST_H
+#define BOB_OLE_HOST_H
+#include <cstdarg>
+
+struct OleHost {
+    int         ctrlId = 0;      /* the dialog control id (DDX_Control) -> template lookup */
+    int         dlgId  = 0;      /* the owning dialog's IDD -> (dialog,control) DLGINIT caption */
+    class CWnd* parentDlg = NULL;/* owning dialog (for per-panel draw) */
+    virtual ~OleHost() {}
+    virtual void dispatch(DISPID id, VARTYPE vtRet, void* pvRet, va_list ap) = 0;
+    virtual void setprop(DISPID id, va_list ap) = 0;
+    virtual void getprop(DISPID id, void* pvRet) = 0;
+    virtual void draw(class CDC* pdc, int w, int h) = 0;
+    virtual void applyDesignProps() {}   /* set design-time props (e.g. RStatic label caption) once ids are known */
+};
+
+extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT caption (bob_dlgtemplate.cpp) */
+
+/* per-control factories (one per TU) */
+OleHost* bob_make_rlistbox(class CWnd* parent);
+OleHost* bob_make_rcombo(class CWnd* parent);
+OleHost* bob_make_rstatic(class CWnd* parent);
+
+bool bob_ole_trace();   /* BOB_TRACE_OLE gate, shared */
+
+/* standard OLE stock-property dispids (negative). */
+enum { DISPID_FORECOLOR_ = -512, DISPID_BACKCOLOR_ = -501, DISPID_ENABLED_ = -514,
+       DISPID_CAPTION_ = -518, DISPID_TEXT_ = -517 };
+
+#endif

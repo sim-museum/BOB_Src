@@ -1511,7 +1511,8 @@ void CRListBoxCtrl::OnLButtonDown(UINT nFlags, CPoint point)
 		POSITION position;
 		position=m_sizeList.GetHeadPosition();
 		m_iSeperator = -1;
-		for (int x=0;x<m_sizeList.GetCount();x++)
+		int x; /* Linux port: hoisted out of the for() -- used after the loop (MSVC for-scope) */
+		for (x=0;x<m_sizeList.GetCount();x++)
 		{
 			m_iOldSize=m_sizeList.GetNext(position);//*tm.tmHeight/16;
 			offset+=m_iOldSize;
@@ -1554,10 +1555,11 @@ void CRListBoxCtrl::OnLButtonUp(UINT nFlags, CPoint point)
 			int offset=0;
 			POSITION position;
 			position=m_sizeList.GetHeadPosition();
-			for (int x=0;x<m_sizeList.GetCount();x++)
+			int x; /* Linux port: hoisted out of the for() (MSVC for-scope) */
+			for (x=0;x<m_sizeList.GetCount();x++)
 			{
 				offset+=m_sizeList.GetNext(position);//*tm.tmHeight/16;
-				if (point.x+m_lHorzScrollPos<offset) 
+				if (point.x+m_lHorzScrollPos<offset)
 					break;
 			}
 			m_iColSel=x;
@@ -1775,7 +1777,8 @@ void CRListBoxCtrl::OnMouseMove(UINT nFlags, CPoint point)
 			int offset=0;
 			POSITION position;
 			position=m_sizeList.GetHeadPosition();
-			for (int x=0;x<m_sizeList.GetCount();x++)
+			int x; /* Linux port: hoisted out of the for() (MSVC for-scope) */
+			for (x=0;x<m_sizeList.GetCount();x++)
 			{
 				offset+=m_sizeList.GetNext(position);//*tm.tmHeight/16;
 				if (point.x+m_lHorzScrollPos<offset) break;
@@ -2380,7 +2383,8 @@ void CRListBoxCtrl::DrawClippedBitmap(CDC * pDC, FileNum filenum, int x, int y, 
 	if (filenum>=0x10000)
 	{
 		IconDescUI* icondesc=(IconDescUI*)pData;
-		icondesc->MaskIcon(pDC,CPoint(x,y));
+		CPoint maskpt(x,y); /* Linux port: named temp -- MaskIcon takes CPoint& (no rvalue bind) */
+		icondesc->MaskIcon(pDC,maskpt);
 	}
 	else
 	if (pData && pData[0]=='B' && pData[1]=='M') // checks if its a bitmap file

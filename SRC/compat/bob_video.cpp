@@ -17,9 +17,28 @@
 #pragma pack(push,8)
 #include <SDL2/SDL.h>
 #include <GL/gl.h>
+#include <GL/glext.h>
 #include <fcntl.h>
 #include <unistd.h>
 #pragma pack(pop)
+
+/* FBO render-to-texture entry points (GL 3.0 / ARB_framebuffer_object) loaded via
+   SDL_GL_GetProcAddress -- used by the landscape RTT path (BOB_FBO_RTT). */
+static PFNGLGENFRAMEBUFFERSPROC      p_glGenFramebuffers;
+static PFNGLBINDFRAMEBUFFERPROC      p_glBindFramebuffer;
+static PFNGLFRAMEBUFFERTEXTURE2DPROC p_glFramebufferTexture2D;
+static PFNGLCHECKFRAMEBUFFERSTATUSPROC p_glCheckFramebufferStatus;
+static int g_fboLoaded = 0;
+static int load_fbo_funcs(void) {
+	if (g_fboLoaded) return g_fboLoaded > 0;
+	p_glGenFramebuffers      = (PFNGLGENFRAMEBUFFERSPROC)      SDL_GL_GetProcAddress("glGenFramebuffers");
+	p_glBindFramebuffer      = (PFNGLBINDFRAMEBUFFERPROC)      SDL_GL_GetProcAddress("glBindFramebuffer");
+	p_glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC) SDL_GL_GetProcAddress("glFramebufferTexture2D");
+	p_glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC) SDL_GL_GetProcAddress("glCheckFramebufferStatus");
+	g_fboLoaded = (p_glGenFramebuffers && p_glBindFramebuffer && p_glFramebufferTexture2D) ? 1 : -1;
+	if (getenv("BOB_TRACE_RTT")) fprintf(stderr, "[rtt] FBO funcs %s\n", g_fboLoaded>0 ? "loaded" : "UNAVAILABLE");
+	return g_fboLoaded > 0;
+}
 
 #include <cstdio>
 #include <cstdlib>
@@ -261,6 +280,8 @@ struct GLSurface7 {
 	GLSurface7* zbuf;               /* attached z-buffer */
 	int   isPrimary;
 	GLuint glTex;                   /* GL texture (lazily created for texture surfaces) */
+	GLuint fbo;                     /* FBO for render-to-texture (RTT surfaces; lazy) */
+	int    isRTT;                   /* render-target texture (BOB_FBO_RTT landscape/mirror) */
 	int    texDirty;                /* bits changed since last upload (set on Unlock) */
 	int    ckeyOn;                  /* source colour-key set (transparent colour) */
 	DWORD  ckeyLow, ckeyHigh;       /* keyed colour range in the surface's pixel format */
@@ -268,6 +289,7 @@ struct GLSurface7 {
 	unsigned magic;                 /* MAGIC if created by make_surface; detects non-surface ptrs */
 };
 #define GLSURF_MAGIC 0xB0B5FACEu
+static GLSurface7* g_curRT = NULL;   /* current render-target texture surface (NULL = main FB) */
 struct GLClipper  { IDirectDrawClipperVtbl* lpVtbl; HWND hwnd; };
 struct GLPalette  { IDirectDrawPaletteVtbl* lpVtbl; PALETTEENTRY ent[256]; };
 struct GLVB7      { IDirect3DVertexBuffer7Vtbl* lpVtbl; D3DVERTEXBUFFERDESC d; void* data; };
@@ -330,6 +352,25 @@ static HRESULT SURF_Lock(IDirectDrawSurface7* This, LPRECT, LPDDSURFACEDESC2 d, 
 	GLSurface7* s = (GLSurface7*)This;
 	check_surfaces("Lock-enter");
 	if (!s->bits) { s->bytes = surf_bytes(s->w, s->h, s->bpp); s->bits = calloc(1, s->bytes ? s->bytes : 1); }
+	/* RTT surface: pull the rendered detail out of the FBO into the system bits so the
+	   game's copy (UploadTexture -> PerformSlowCopy reads Lock'd bits) gets real pixels.
+	   GL reads bottom-up; the surface is top-down, so flip rows. */
+	if (s->isRTT && s->fbo && s->bits && load_fbo_funcs()) {
+		gl_bind_thread();
+		p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
+		glReadBuffer(GL_COLOR_ATTACHMENT0);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		int bpp=(s->bpp+7)/8, pitch=s->w*bpp;
+		unsigned char* tmp=(unsigned char*)malloc((size_t)pitch*s->h);
+		if (tmp) {
+			if (s->bpp==16) glReadPixels(0,0,s->w,s->h,GL_RGB,GL_UNSIGNED_SHORT_5_6_5,tmp);
+			else            glReadPixels(0,0,s->w,s->h,GL_BGRA,GL_UNSIGNED_BYTE,tmp);
+			for (int y=0;y<s->h;y++) memcpy((char*)s->bits+(size_t)y*pitch, tmp+(size_t)(s->h-1-y)*pitch, pitch);
+			free(tmp);
+		}
+		p_glBindFramebuffer(GL_FRAMEBUFFER, g_curRT?g_curRT->fbo:0);
+		if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<20) fprintf(stderr,"[rtt] Lock readback %dx%d surf=%p\n",s->w,s->h,(void*)s); }
+	}
 	if (d) { *d = s->desc; d->dwWidth=s->w; d->dwHeight=s->h; d->lPitch = s->w*((s->bpp+7)/8); d->lpSurface = s->bits; }
 	return DD_OK;
 }
@@ -404,6 +445,7 @@ static void present_surface(GLSurface7* s)
 	gl_bind_thread();
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
+	if (g_curRT && load_fbo_funcs()) { p_glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0,0,g_scrW,g_scrH); g_curRT=NULL; } /* safety: never present with an FBO bound */
 	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
@@ -448,14 +490,15 @@ extern "C" unsigned* bob_gdi_dc_bits(int* w, int* h) {
 	return g_gdiFB;
 }
 extern "C" void bob_gdi_present(void) {
-	if (!g_win || !g_gdiFB) return;
-	if (getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection */
+	if (g_gdiFB && getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection
+	                                              (before the window check, so it works headless) */
 		int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;
 		int fd=::open("/tmp/bobgdi.ppm",O_WRONLY|O_CREAT|O_TRUNC,0644);
 		if(fd>=0){ char h[64]; int n=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",g_gdiW,g_gdiH); if(write(fd,h,n)<0){}
 			for(size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++){ unsigned p=g_gdiFB[i]; unsigned char rgb[3]={(unsigned char)(p>>16),(unsigned char)(p>>8),(unsigned char)p}; if(write(fd,rgb,3)<0){} }
 			close(fd); fprintf(stderr,"[gdi] framebuffer %dx%d nonblack=%d/%lu -> /tmp/bobgdi.ppm\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH)); }
 	}
+	if (!g_win || !g_gdiFB) return;
 	gl_bind_thread();
 	if (!g_presentTex) glGenTextures(1, &g_presentTex);
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
@@ -679,10 +722,23 @@ static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSu
 	   report the surface uncreatable: the probe then takes its designed fallback
 	   (render straight to the back buffer, no mirror), exactly as on HW that lacks RTT. */
 	if (d && (d->ddsCaps.dwCaps & DDSCAPS_TEXTURE) && (d->ddsCaps.dwCaps & DDSCAPS_3DDEVICE)) {
-		if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx\n",
-			(unsigned long)d->dwWidth,(unsigned long)d->dwHeight,(unsigned long)d->ddsCaps.dwCaps);
-		*out = NULL;
-		return DDERR_OUTOFVIDEOMEMORY;
+		if (!getenv("BOB_FBO_RTT")) {
+			/* default: no FBO RTT -> report uncreatable so the game falls back (render
+			   straight to the back buffer), exactly as on HW that lacks RTT. */
+			if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx\n",
+				(unsigned long)d->dwWidth,(unsigned long)d->dwHeight,(unsigned long)d->ddsCaps.dwCaps);
+			*out = NULL;
+			return DDERR_OUTOFVIDEOMEMORY;
+		}
+		/* BOB_FBO_RTT: accept it -> CheckIfTextureCanBeRenderTarget succeeds, the game
+		   uses the RTT compositing path. The GL texture + FBO are created lazily on the
+		   draw thread (SetRenderTarget). */
+		GLSurface7* rs = make_surface(d, 128, 128);
+		rs->isRTT = 1;
+		if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] ACCEPTED render-target texture %dx%d caps=0x%lx surf=%p\n",
+			rs->w, rs->h, (unsigned long)d->ddsCaps.dwCaps, (void*)rs);
+		*out = (IDirectDrawSurface7*)rs;
+		return DD_OK;
 	}
 	GLSurface7* s = make_surface(d, g_scrW, g_scrH);
 	/* complex flip chain -> also make the back buffer and attach it */
@@ -1009,7 +1065,48 @@ static HRESULT DEV_SetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7 vp) {
 static HRESULT DEV_GetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7 v) {
 	if (v) { v->dwX=0; v->dwY=0; v->dwWidth=g_scrW; v->dwHeight=g_scrH; v->dvMinZ=0; v->dvMaxZ=1; } return D3D_OK;
 }
-static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7, DWORD) { return D3D_OK; }
+/* Lazily create the GL texture + FBO for a render-target surface (on the draw thread). */
+static void ensure_rtt_fbo(GLSurface7* s) {
+	if (!s || !s->isRTT || s->fbo) return;
+	if (!load_fbo_funcs()) return;
+	int w = s->w>0?s->w:128, h = s->h>0?s->h:128;
+	if (!s->glTex) { glGenTextures(1,&s->glTex); g_glTexMade++; }
+	glBindTexture(GL_TEXTURE_2D, s->glTex);
+	glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,w,h,0,GL_RGBA,GL_UNSIGNED_BYTE,NULL);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+	p_glGenFramebuffers(1,&s->fbo);
+	p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
+	p_glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,s->glTex,0);
+	int ok = !p_glCheckFramebufferStatus || p_glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE;
+	p_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] created FBO=%u tex=%u %dx%d complete=%d surf=%p\n",s->fbo,s->glTex,w,h,ok,(void*)s);
+}
+
+static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 target, DWORD) {
+	GLSurface7* s = (GLSurface7*)target;
+	if (s && s->magic==GLSURF_MAGIC && s->isRTT) {
+		gl_bind_thread();
+		ensure_rtt_fbo(s);
+		if (s->fbo) {
+			p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
+			glViewport(0,0,s->w,s->h);
+			g_curRT = s;
+			if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<40)
+				fprintf(stderr,"[rtt] SetRenderTarget -> RTT surf=%p fbo=%u %dx%d\n",(void*)s,s->fbo,s->w,s->h); }
+		}
+	} else if (g_curRT) {
+		/* back buffer / primary -> main framebuffer */
+		gl_bind_thread();
+		if (load_fbo_funcs()) p_glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0,0,g_scrW,g_scrH);
+		if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<40) fprintf(stderr,"[rtt] SetRenderTarget -> MAIN (unbind fbo)\n"); }
+		g_curRT = NULL;
+	}
+	return D3D_OK;
+}
 static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWORD v) {
 	/* D3DRENDERSTATE_*: SRCBLEND=19, DESTBLEND=20, ALPHABLENDENABLE=27, ZENABLE=7, ZWRITEENABLE=14 */
 	switch ((int)st) {

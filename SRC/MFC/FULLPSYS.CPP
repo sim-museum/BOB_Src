@@ -167,6 +167,13 @@ extern "C" void bob_gdi_present(void);                              /* present (
 extern "C" int  bob_gdi_text(int,int,const char*,int,unsigned);    /* TTF text (bob_gdi_font.cpp) */
 extern "C" int  bob_gdi_text_width(const char*,int);
 extern "C" int  bob_gdi_get_click(int*,int*);                      /* pending left-click (bob_video.cpp) */
+/* Linux port: drive the genuine CRListBoxCtrl::OnDraw (BOB_OLE_DRAW) instead of the
+   hand-drawn menu text, to render the hosted ActiveX control's real layout. */
+extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, int textH);
+extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
+static int g_bobOleDraw = -1;
+static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_DRAW") ? 1 : 0; return g_bobOleDraw; }
+
 /* The active front-end + its drawn menu-item rects, so a click can be mapped to an item. */
 static RFullPanelDial* g_bobActiveFP = NULL;
 static struct { int x,y,w,h; } g_bobMenuRect[10];
@@ -190,6 +197,20 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 			total += bob_gdi_text_width((const char*)(LPCSTR)s, fh) + gap;
 		}
 		int x = (resW - total) / 2; if (x < 8) x = 8;
+		/* Real ActiveX control render: draw the hosted CRListBoxCtrl (multi-column
+		   tab row) and keep approximate click rects from the measured widths. */
+		int oleH = resW * 26 / 1000; if (oleH < 16) oleH = 16;   /* resolution-scaled list font height */
+		if (bobOleDraw() && bob_ole_draw_listbox((CWnd*)&self->m_IDC_RLISTBOX, x, y, total, fh + fh/2, oleH)) {
+			int rx = x;
+			for (int i = 0; i < n; i++) {
+				CString s; s.LoadString(scr->textlists[i].text);
+				int w = bob_gdi_text_width((const char*)(LPCSTR)s, fh);
+				g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=w; g_bobMenuRect[i].h=fh+fh/2;
+				rx += w + gap;
+			}
+			g_bobMenuN = n;
+			return;
+		}
 		for (int i = 0; i < n; i++) {
 			CString s; s.LoadString(scr->textlists[i].text);
 			const char* t = (const char*)(LPCSTR)s;
@@ -224,11 +245,19 @@ extern "C" void bob_frontend_tick(void)
 	int cx, cy; bool got = bob_gdi_get_click(&cx, &cy);
 	/* BOB_AUTOCLICK=N: headless test -- after a delay synthesize a click on item N's centre
 	   so the real hit-test path below runs (verifies click -> navigation without a display). */
+	/* BOB_AUTOCLICK supports a comma-separated SEQUENCE (e.g. "5,3" = open PC Config,
+	   then click the Sound tab) -- one click every 120 ticks, to walk into sub-screens. */
 	const char* ac = getenv("BOB_AUTOCLICK");
-	if (!got && ac) { static int t=0; if (++t==120 && g_bobMenuN>0) {
-		int n=atoi(ac); if(n<0||n>=g_bobMenuN) n=0;
-		cx=g_bobMenuRect[n].x+g_bobMenuRect[n].w/2; cy=g_bobMenuRect[n].y+g_bobMenuRect[n].h/2; got=true;
-	}}
+	if (!got && ac) { static int t=0; static int seq=0;
+		if (++t % 120 == 0 && g_bobMenuN>0) {
+			const char* p = ac; for (int k=0; k<seq && p; k++) { p=strchr(p,','); if(p) p++; }
+			if (p && *p) {
+				int n=atoi(p); if(n<0||n>=g_bobMenuN) n=0;
+				cx=g_bobMenuRect[n].x+g_bobMenuRect[n].w/2; cy=g_bobMenuRect[n].y+g_bobMenuRect[n].h/2; got=true;
+				seq++;
+			}
+		}
+	}
 	if (got) {
 		for (int i=0; i<g_bobMenuN; i++)
 			if (cx>=g_bobMenuRect[i].x && cx<g_bobMenuRect[i].x+g_bobMenuRect[i].w &&
@@ -584,6 +613,12 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 		DoPaint(GetDC());                                   /* screen background */
 		for (int d=0; d<3; d++) if (pdial[d]) {             /* dial panels (config widgets) */
 			pdial[d]->DoPaint(GetDC());
+			if (bobOleDraw()) {                             /* draw the panel's hosted R* controls
+			       at the panel's screen origin (FullScreen dial X/Y) + template offsets */
+				int ox = m_currentscreen->resolutions[m_currentres].dials[d].X;
+				int oy = m_currentscreen->resolutions[m_currentres].dials[d].Y;
+				bob_ole_draw_panel((CWnd*)pdial[d], ox, oy);
+			}
 			fprintf(stderr, "[frontend]   dial[%d] painted\n", d);
 		}
 		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);  /* tabs / menu items */

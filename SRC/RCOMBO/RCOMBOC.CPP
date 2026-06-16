@@ -70,6 +70,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 //#include "DosDefs.h"
 #include "stdafx.h"
+#include "rlistbox.h"   /* Linux port: full CRListBox wrapper (the combo's dropdown listbox);
+                           RComboC.h only forward-declares it, but the dropdown code uses it. */
 #include "RCombo.h"
 #include "uiicons.h"
 
@@ -882,7 +884,8 @@ void CRComboCtrl::DrawTransparentBitmap(IconsUI iconnum,CDC * pDC, int x, int y)
 	CWnd* parent=GetParent();
 	pData = (BYTE*)parent->SendMessage(WM_GETFILE,iconnum,NULL);
 	IconDescUI* icon=(IconDescUI*)pData;
-	icon->MaskIcon(pDC,CPoint(x,y));
+	CPoint maskpt(x,y); /* Linux port: named temp -- MaskIcon takes CPoint& (no rvalue bind) */
+	icon->MaskIcon(pDC,maskpt);
 }
 
 

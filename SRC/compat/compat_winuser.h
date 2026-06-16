@@ -245,6 +245,14 @@ extern "C" {
 #define VK_LBUTTON          0x01
 #define VK_RBUTTON          0x02
 #define VK_CANCEL           0x03
+/* mouse-button flags (WM_*BUTTON* wParam / drag hit-test) */
+#ifndef MK_LBUTTON
+#define MK_LBUTTON          0x0001
+#define MK_RBUTTON          0x0002
+#define MK_SHIFT            0x0004
+#define MK_CONTROL          0x0008
+#define MK_MBUTTON          0x0010
+#endif
 #define VK_MBUTTON          0x04
 #define VK_BACK             0x08
 #define VK_TAB              0x09

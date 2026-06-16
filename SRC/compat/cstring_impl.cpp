@@ -413,3 +413,15 @@ BOOL CString::LoadString(UINT nID)
 	Empty();
 	return FALSE;
 }
+
+/* Allocate a BSTR copy (used by the R* controls' Get* dispatch getters). Minimal:
+   a null-terminated wide buffer (our dispatch consumers read it as a wide string). */
+BSTR CString::AllocSysString() const
+{
+	const char* s = (const char*)(LPCTSTR)*this;
+	int n = s ? (int)strlen(s) : 0;
+	wchar_t* b = (wchar_t*)malloc((size_t)(n + 1) * sizeof(wchar_t));
+	for (int i = 0; i < n; i++) b[i] = (wchar_t)(unsigned char)s[i];
+	b[n] = 0;
+	return (BSTR)b;
+}

@@ -52,7 +52,9 @@ public:
 	BOOL GetUseMessagesInsteadOfEvents();
 	void SetUseMessagesInsteadOfEvents(BOOL);
 	long GetFileNumOffset();
-//	void SetFileNumOffset(long);
+	/* Linux port: restored (the RListBox control calls it; impl was commented in
+	   rscrlbar.cpp). Inline forwarder mirroring GetFileNumOffset (dispid 0x9). */
+	void SetFileNumOffset(long propVal) { SetProperty(0x9, VT_I4, propVal); }
 
 // Operations
 public:
