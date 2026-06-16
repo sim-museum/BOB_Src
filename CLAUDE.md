@@ -26,24 +26,50 @@ BOB_RUN_INIT=1 BOB_DRIVE_C="/home/m/sgl/TUE/BattleOfBritain/WP/drive_c" /home/m/
 Many `BOB_*` env toggles gate diagnostics/captures (frame/texture dumps, traces) — see
 `getenv("BOB_` sites and PORT.md. Frame/texture dumps land in `/tmp/*.ppm` (convert via PIL).
 
-## Status (2026-06-12)
-The 3D world renders **daylit and stable**: sky, terrain, scenery, aircraft, and a
-recognizable cockpit. Reaches an interactive Quick-Mission flight. Input (keyboard→DIK)
-works. Remaining work is rendering **fidelity**, not bring-up.
+## Status (2026-06-15)
+Two playable paths exist, both behind env toggles (default `./bob` exits 0):
+- **`BOB_BOOT_FRONTEND=1`** — boots a Quick-Mission **3D flight**: daylit sky/terrain/
+  scenery/aircraft and a **cockpit that matches the Windows reference** (fixed this session).
+- **`BOB_FRONTEND=1`** — boots the **real front-end**: the main menu now **renders and is
+  navigable** (mouse clicks change screens).
 
-Status update (2026-06-15): **the cockpit is fixed** and now matches the Windows reference
-(RAF green, riveted struts, legible gauges, gunsight glass + reticle). Root cause was a
-**surface refcount use-after-free**: `GLSurface7` had no reference count, so `SURF_Release`
-freed a texture on the first call while `_CreateTextureMap`'s `UpdateMipMaps` AddRef/Release
-pair (and `textureTable`) still referenced it — the freed block was reused and its head
-overwritten, producing the `w=0x700000` garbage binds. Fixed by adding real COM refcounting
-(see top PORT.md entry; before/after frames in `doc/reference/`). We have a Windows reference
-now (original `bob.exe` under wine) in `doc/reference/`.
+Run: `BOB_RUN_INIT=1 BOB_DRIVE_C=<wine drive_c> BOB_FRONTEND=1 ./build/bob` (or
+`BOB_BOOT_FRONTEND=1`). Windows reference (original `bob.exe` under wine) + before/after
+captures live in `doc/reference/`. Engine-level porting notes (also handed to the parallel
+MiG Alley port) are in `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
 
-Current focus — remaining **rendering fidelity**: per-stage texture addressing (terrain
-over-tiling; `BOB_CLAMP` probe), minor cockpit polish (gunsight sun-screen, panel ambient),
-and a general check for other artifacts the refcount bug may have masked. Diagnostics
-(default-off): `BOB_CHECK_SURF`, `BOB_TRACE_SETTEX=<frame>`, `BOB_GARBAGE_HILITE`.
+### What works
+- **3D flight / cockpit** — the cockpit corruption was a **surface refcount use-after-free**
+  (`GLSurface7` had no refcount; `SURF_Release` freed on the first call while
+  `_CreateTextureMap`'s `UpdateMipMaps` AddRef/Release + `textureTable` still referenced the
+  block). Fixed with real COM refcounting; also added GL-texture free + a `BOB_CHECK_SURF`
+  canary. Texture lifetime audited (no steady-state leak).
+- **Front-end (Workstream A)** — drives the natural flow (`CMainFrame::Initialise` →
+  `LaunchFullPane(title)`) after fixing `AfxGetMainWnd`/`GetActiveView`/the `WM_PAINT`
+  bootstrap. Built a **GDI 2D paint pipeline**: a window framebuffer + present
+  (`bob_gdi_*` in `bob_video.cpp`), real `SetDIBitsToDevice` (menu background BMP), and TTF
+  text via **stb_truetype** (`bob_gdi_font.cpp`) rendering the game's own fonts. The menu
+  draws (background + items in the game font, centred; horizontal tab layout on sub-screens
+  via `listalign`), and **mouse clicks navigate** (`bob_frontend_tick` → `OnSelectRlistbox`).
+
+### Open fronts (next work)
+1. **R\* controls need OLE/ActiveX hosting** (the big one for the UI). The config/loadout/
+   map widgets are ActiveX controls (`CRListBoxCtrl : COleControl`) hosted by `CWnd`
+   wrappers that forward via `InvokeHelper` — **a no-op in the compat**, so the controls are
+   never instantiated/populated (nothing to render). Real task: minimal OLE hosting
+   (instantiate the `CR*Ctrl`, route `InvokeHelper(dispid,…)` to its `DISP_FUNCTION` map),
+   then draw (`m_list` is public; the font/blit pieces exist). Unlocks every R* screen.
+   The title menu works only because it's drawn directly from `textlists`, bypassing the control.
+2. **Black landscape ground** — the airfield detail tiles are black because the landscape
+   **render-to-texture compositing** submits no geometry / reads empty back-buffer bits
+   (no FBO RTT). Needs FBO render-to-texture (also fixes the rear-view mirror).
+3. Secondary fidelity: per-stage texture addressing (terrain over-tiling), faithful menu
+   font (`Intel.ttf` won't parse with stb; using the game's FC-Glamour), hover/continuous
+   repaint, the intro Smacker, audio (DirectSound→OpenAL, stubbed), mouse/joystick input.
+
+Diagnostics (env-gated, default-off): `BOB_CHECK_SURF`, `BOB_TRACE_SETTEX=<frame>`,
+`BOB_GARBAGE_HILITE`, `BOB_TRACE_BLACKGND`, `BOB_DUMP_GDI`, `BOB_AUTOCLICK=<item>`,
+`BOB_TRACE_LIFETIME`. See PORT.md (newest first) for the full dated history.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.
