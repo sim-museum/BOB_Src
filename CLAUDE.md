@@ -79,8 +79,11 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    frames) because the mirror horizon quads carry **garbage v-texcoords** (`v≈-2.4e24`, clamped to one
    edge texel → flat) — a latent game-side bug in `InfiniteStrip`'s horizon UV setup (our FVF parsing is
    fine; `u` reads correctly, only `v` is garbage). RTT plumbing is correct; the fix is game-side horizon
-   UV work (or a compat texcoord sanitiser) — deferred below landscape texture polish. Also: 128×128 land
-   RT is small (push higher-res land options); confirm long-session lifetime.
+   UV work (or a compat texcoord sanitiser) — deferred. **Land textures: now default FULL_RES** — the QM
+   boot defaults `Save_Data.textureQuality=4`, so the land RT is **256×256** (4× the old 128 detail; sharp
+   fields/runways), default flight + cockpit stable. `BOB_TEXQ`/`BOB_FILTER` override; `BOB_TEXQ=0` reverts.
+   Trilinear (`BOB_FILTER=2`) still crashes in the game's mipmap upload (`CopyMapToSurface`) — default is
+   BILINEAR FULL_RES; real trilinear is a deeper mip-upload workstream. Confirm long-session lifetime.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/
@@ -99,7 +102,8 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
 Diagnostics (env-gated, default-off): `BOB_OLE_DRAW`, `BOB_TRACE_OLE`, `BOB_AUTOCLICK=<seq>`
 (comma-sep, e.g. `5,3`), `BOB_CLICKXY="tick,x,y;…"` (inject clicks at framebuffer coords —
 headless combo-click tests), `BOB_NO_FBO_RTT` (disable the now-default landscape RTT), `BOB_MIRROR`
-(force Reflections/`COCK3D_SKYIMAGES` on so the rear-view mirror RTT activates), `BOB_TRACE_RTT`,
+(force Reflections/`COCK3D_SKYIMAGES` on so the rear-view mirror RTT activates), `BOB_TEXQ=<0-4>` /
+`BOB_FILTER=<0-3>` (land texture quality / filtering; default max/bilinear), `BOB_TRACE_RTT`,
 `BOB_DUMP_RTT` (dump each RTT FBO → `/tmp/rtt_<ptr>.ppm`), `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
 `BOB_DUMP_PATH=<file>` (private frame-dump target — `/tmp` is shared with the MiG Alley port),
 `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.

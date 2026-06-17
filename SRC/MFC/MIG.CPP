@@ -617,6 +617,20 @@ BOOL CMIGApp::InitInstance()
 			Save_Data.cockpit3Ddetail|=COCK3D_SKYIMAGES;
 			fprintf(stderr,"[boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled\n");
 		}
+		/* Landscape texture quality: the QM boot defaults to MINIMUM (Save_Data.textureQuality=0 ->
+		   EIGHTH_RES, filtering=1 -> BILINEAR), so AllocateLandscapeTextures picks the lowest option
+		   (biggestWH=128). BOB_TEXQ (0..4: min/low/med/high/max) + BOB_FILTER (0..3: none/bi/tri/all)
+		   override Save_Data before 3D setup so STUB3D's GiveHint() raises the master texture hint ->
+		   a higher land-texture option (e.g. 4/2 -> FULL_RES 256x256, 4x the detail). */
+		/* Default the QM bring-up to MAXIMUM texture quality (FULL_RES -> 256x256 land RT, 4x the
+		   detail of the old minimum default) -- but leave filtering at its bilinear default:
+		   trilinear (FILTER=2) drives the game's mipmap upload (UploadAsMipMapLevel ->
+		   CopyMapToSurface) which still crashes on incomplete mip-level source data (a deeper compat
+		   gap). BOB_TEXQ (0..4) / BOB_FILTER (0..3) override; BOB_TEXQ=0 reverts to the old look. */
+		Save_Data.textureQuality = getenv("BOB_TEXQ") ? atoi(getenv("BOB_TEXQ")) : 4;
+		fprintf(stderr,"[boot] texture quality=%d%s\n",(int)Save_Data.textureQuality, getenv("BOB_TEXQ")?" (BOB_TEXQ)":" (default max)");
+		if (getenv("BOB_FILTER")) { Save_Data.filtering = atoi(getenv("BOB_FILTER"));
+			fprintf(stderr,"[boot] BOB_FILTER: Save_Data.filtering=%d\n",(int)Save_Data.filtering); }
 		Persons4::StartUpMapWorld();
 		// Probe: how many map items exist, and pick one to view (its uid).
 		{

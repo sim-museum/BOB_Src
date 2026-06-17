@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## OPEN FRONT #1 (2026-06-16): landscape textures — DEFAULT bumped to FULL_RES (256x256, 4x detail)
+> The QM bring-up was running the landscape at MINIMUM texture quality. Root cause: the boot never set
+> `Save_Data.textureQuality`, so it defaulted to 0 (minimum) → `STUB3D` `GiveHint(HINT_EIGHTH_RES_TEXTURE)`
+> → `AllocateLandscapeTextures` picked the lowest option (`i=9`, `biggestWH=128`, EIGHTH_RES, BILINEAR).
+> - **Fix (MIG.CPP, BOB_BOOT_FRONTEND scaffold):** default `Save_Data.textureQuality=4` (max) so the
+>   selection picks the FULL_RES option → the land RT is now **256x256** (`created FBO ... 256x256`) and
+>   the detail tiles are full-res. Visible A/B: the dumped land texture goes from blocky (128) to sharp
+>   256 (finer fields, clearer runways/buildings/hedgerows). Default flight + cockpit both stable to
+>   frames 120/150/250, no crash; default `./bob` exits 0. **The win is pure game-side selection — no
+>   compat change needed** (`bob_video.cpp` byte-unchanged).
+> - **Toggles:** `BOB_TEXQ` (0..4 min/low/med/high/max) and `BOB_FILTER` (0..3 none/bi/tri/all) override;
+>   `BOB_TEXQ=0` reverts to the old blocky look for A/B.
+> - **Trilinear is still capped out (FILTER=2 crashes).** Trilinear sets `mipMapCount=3`, driving the
+>   game's `UploadAsMipMapLevel`→`CopyMapToSurface` mip-upload path. Tried a compat mip-chain (build +
+>   lazy `GetAttachedSurface(MIPMAP)`): it cleared the first NULL-deref but `CopyMapToSurface` then
+>   crashes deeper in its palette/copy on incomplete mip-level *source* MAPDESCs — and lazy mip surfaces
+>   conflict with the documented "return NULL to terminate the mip-walk" contract (bug #6), risking a
+>   surface explosion under the default. So that attempt was **reverted**; the default stays BILINEAR
+>   FULL_RES (clean, sharp). Real trilinear = a separate, deeper mip-upload workstream. Next texture item:
+>   higher land-texture *option tables* (`maximumWH` is clamped to 256 in game code) and the detail-tile
+>   second-texture combiner (notes §4 bug #4).
+
 > ## OPEN FRONT #1 (2026-06-16): mirror ROOT CAUSE found — garbage horizon texcoords (latent game bug)
 > Pinned why the mirror is uniformly flat (variance 0 at frames 160 AND 400 — systematic, not an empty
 > view). Logged the UV span of every quad drawn into each RTT FBO:
