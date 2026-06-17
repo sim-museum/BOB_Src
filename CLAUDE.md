@@ -64,6 +64,11 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
   game-code NULL `Release()` exposed by the compat over-advertising `D3DPRASTERCAPS_ZBUFFERLESSHSR`;
   fixed by clearing that cap (game source stays pristine). `BOB_NO_FBO_RTT` reverts to the old
   back-buffer fallback (no RTT) for A/B + safety. See PORT.md (2026-06-16).
+- **Daylit sky with clouds + FULL_RES terrain (default).** The QM bring-up now defaults to faithful
+  settings that were off-by-default minimal: **fluffy clouds** (`HW_FLUFFYCLOUDS`, `CLOUD.CPP`) so the
+  sky matches the Windows reference (`BOB_NOCLOUDS` reverts), and **FULL_RES land textures** (256×256 RT,
+  4× detail; `BOB_TEXQ=0` reverts). The cockpit view now closely matches `doc/reference/cockpit-windows-
+  spitfire-1.png`. Pure game-side config enables — set in the `BOB_BOOT_FRONTEND` boot scaffold (MIG.CPP).
 - **Front-end GDI 2D pipeline** — window framebuffer + present (`bob_gdi_*`), `SetDIBitsToDevice`,
   stb_truetype text (`bob_gdi_font.cpp`), mouse-navigable menu (`bob_frontend_tick`).
 
@@ -103,7 +108,8 @@ Diagnostics (env-gated, default-off): `BOB_OLE_DRAW`, `BOB_TRACE_OLE`, `BOB_AUTO
 (comma-sep, e.g. `5,3`), `BOB_CLICKXY="tick,x,y;…"` (inject clicks at framebuffer coords —
 headless combo-click tests), `BOB_NO_FBO_RTT` (disable the now-default landscape RTT), `BOB_MIRROR`
 (force Reflections/`COCK3D_SKYIMAGES` on so the rear-view mirror RTT activates), `BOB_TEXQ=<0-4>` /
-`BOB_FILTER=<0-3>` (land texture quality / filtering; default max/bilinear), `BOB_TRACE_RTT`,
+`BOB_FILTER=<0-3>` (land texture quality / filtering; default max/bilinear), `BOB_NOCLOUDS` (disable the
+now-default clouds), `BOB_GROUNDSHADE` (ground-shading vertex lighting), `BOB_TRACE_TSS`, `BOB_TRACE_RTT`,
 `BOB_DUMP_RTT` (dump each RTT FBO → `/tmp/rtt_<ptr>.ppm`), `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
 `BOB_DUMP_PATH=<file>` (private frame-dump target — `/tmp` is shared with the MiG Alley port),
 `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.

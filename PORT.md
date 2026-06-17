@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## FIDELITY (2026-06-16): CLOUDS now render by default — the sky matches the Windows reference
+> A/B'd the cockpit render against `doc/reference/cockpit-windows-spitfire-1.png`: the cockpit/gunsight/
+> gauges already matched, but the **Windows sky has scattered fluffy clouds while ours was plain blue** —
+> the single biggest visible gap. Root cause (same pattern as the mirror/textures): the Weather config
+> (`HW_FLUFFYCLOUDS`) defaults OFF (`SDETAIL.CPP` `RESCOMBO(WEATHER_OFF,2)`), so `CLOUD.CPP`'s cloud layer
+> (gated at `LANDSCAP.CPP:8953`) never drew — even though it renders fine.
+> - **Fix (MIG.CPP boot):** `HW_FLUFFYCLOUDS` is a render-CAPABILITY flag (actual clouds still come from
+>   the mission weather), so default it (+`HW_WEATHEREFFECTS`) ON. Result: scattered white clouds across
+>   the sky, both no-cockpit and through-the-canopy — the cockpit view now closely matches the Windows
+>   reference. No crash; default flight + cockpit stable; default `./bob` exits 0. `BOB_NOCLOUDS` reverts.
+> - **Investigated but pivoted away from:** the multitexture detail combiner (notes 4 bug #4). Confirmed
+>   the compat no-ops `SetTextureStageState` and `draw_fvf` uses only stage 0, AND the terrain ground
+>   tiles carry 3 texcoord sets (`ntex=3`) — but a `BOB_TRACE_TSS` trace shows **stage-1 COLOROP stays
+>   DISABLE** in the open-field scene (with or without `BOB_GROUNDSHADE` — ground shading drives vertex
+>   *lighting* `LF_LIGHTING`, not the texture combiner). So the combiner has no visible effect on
+>   testable terrain; deferred. New toggles: `BOB_CLOUDS`/`BOB_NOCLOUDS`, `BOB_GROUNDSHADE`, `BOB_TRACE_TSS`.
+
 > ## OPEN FRONT #1 (2026-06-16): landscape textures — DEFAULT bumped to FULL_RES (256x256, 4x detail)
 > The QM bring-up was running the landscape at MINIMUM texture quality. Root cause: the boot never set
 > `Save_Data.textureQuality`, so it defaulted to 0 (minimum) → `STUB3D` `GiveHint(HINT_EIGHTH_RES_TEXTURE)`

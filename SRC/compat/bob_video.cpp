@@ -1226,7 +1226,14 @@ static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWOR
 	return D3D_OK;
 }
 static HRESULT DEV_GetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE, LPDWORD v) { if(v)*v=0; return D3D_OK; }
-static HRESULT DEV_SetTextureStageState(IDirect3DDevice7*, DWORD, D3DTEXTURESTAGESTATETYPE, DWORD) { return D3D_OK; }
+/* Texture-stage state is a no-op (single-texture stage 0 only). BOB_TRACE_TSS logs the calls --
+   used to confirm the terrain's 2nd/3rd detail-texture stages stay COLOROP=DISABLE in this scene
+   (the multitexture detail combiner, notes 4 bug #4, would need real per-stage state). */
+static HRESULT DEV_SetTextureStageState(IDirect3DDevice7*, DWORD stage, D3DTEXTURESTAGESTATETYPE type, DWORD val) {
+	if (getenv("BOB_TRACE_TSS")) { static int n=0; if(n++<40)
+		fprintf(stderr,"[tss] stage=%lu type=%d val=%lu\n",(unsigned long)stage,(int)type,(unsigned long)val); }
+	return D3D_OK;
+}
 static HRESULT DEV_GetTextureStageState(IDirect3DDevice7*, DWORD, D3DTEXTURESTAGESTATETYPE, LPDWORD v) { if(v)*v=0; return D3D_OK; }
 static HRESULT DEV_SetTransform(IDirect3DDevice7*, D3DTRANSFORMSTATETYPE, LPD3DMATRIX) { return D3D_OK; }
 static HRESULT DEV_SetTexture(IDirect3DDevice7*, DWORD stage, LPDIRECTDRAWSURFACE7 tex) {

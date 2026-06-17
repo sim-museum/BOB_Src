@@ -617,6 +617,23 @@ BOOL CMIGApp::InitInstance()
 			Save_Data.cockpit3Ddetail|=COCK3D_SKYIMAGES;
 			fprintf(stderr,"[boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled\n");
 		}
+		/* BOB_GROUNDSHADE: the terrain's 2nd/3rd detail-texture stage (ground shading) is gated on
+		   DETAIL3D_GROUNDSHADING, which defaults OFF -> stage-1 COLOROP=DISABLE, flat single-textured
+		   ground. Force it on so the multitexture detail combiner is exercised (compat impl below). */
+		if (getenv("BOB_GROUNDSHADE")) {
+			Save_Data.detail_3d|=DETAIL3D_GROUNDSHADING;
+			fprintf(stderr,"[boot] BOB_GROUNDSHADE: ground shading (DETAIL3D_GROUNDSHADING) enabled\n");
+		}
+		/* Clouds: the Weather config (HW_FLUFFYCLOUDS) defaults OFF (RESCOMBO(WEATHER_OFF,2)) so the
+		   sky is plain blue, but the Windows reference shows scattered clouds and CLOUD.CPP renders
+		   them fine (gated at LANDSCAP.CPP:8953). HW_FLUFFYCLOUDS is a render-CAPABILITY flag (the
+		   actual clouds still come from the mission's weather), so default it ON for a faithful sky;
+		   BOB_NOCLOUDS reverts to the cloudless look. */
+		if (!getenv("BOB_NOCLOUDS")) {
+			Save_Data.hardwareconfig|=HW_FLUFFYCLOUDS;
+			Save_Data.hardwareconfig|=HW_WEATHEREFFECTS;
+			fprintf(stderr,"[boot] clouds: fluffy clouds + weather effects enabled (default; BOB_NOCLOUDS to disable)\n");
+		}
 		/* Landscape texture quality: the QM boot defaults to MINIMUM (Save_Data.textureQuality=0 ->
 		   EIGHTH_RES, filtering=1 -> BILINEAR), so AllocateLandscapeTextures picks the lowest option
 		   (biggestWH=128). BOB_TEXQ (0..4: min/low/med/high/max) + BOB_FILTER (0..3: none/bi/tri/all)
