@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 7 / inc 1 (2026-06-17): the env-var-free unlock — the real click flow sets up the mission itself (preflight mission-forcing retired for click mode)
+> Toward the final DoD ("no `BOB_*` env vars"): resolved the key unknown — **does a real menu
+> click-through set up the QM mission (node tables + player squadron) without my forced preflight?**
+> **Yes.**
+> - **Finding:** the game's own click flow provides the mission setup — `SetQuickState` (title→QM) sets
+>   the campaign, and **`BoBFrag::OnInitDialog`** (BOBFRAG.CPP:438/528) sets `MMC.playersquadron` from
+>   `quickdef`/`Todays_Packages` + the node/target tables. Verified by gating my preflight's
+>   `BuildTargetTable`/`LoadCleanNodeTree`/`Miss_Man.camp` off for click mode and running the real
+>   `title→QM→Fly→bobfrag→Fly` click-through: **it still flies, 91.1% non-black**, no "No player A/C".
+> - **Change:** the per-mission world setup in `bob_startflying_preflight` is now **skipped for click
+>   mode** (left to the game's own handlers); the forced path (`=1`) still does it (it bypasses
+>   `bobfrag`). `BOB_PREMISSION` forces it back on for click mode if needed. So the faithful click path is
+>   now genuinely game-driven for the mission — only device init + `gamestate=HOT` + the `currquickmiss=-1`
+>   sentinel remain in the click preflight (the next things to source from the boot/flow).
+> - **No regression:** click path 91.1%, forced path 87.1%, both 1 flight; bare `./bob` 0.
+> - **Remaining Sprint-7 increments to full env-var-free:** (2) source device init (`InitPreferences`) +
+>   `gamestate`/`currquickmiss` sentinel from the game boot/flow so the click preflight can be dropped
+>   entirely; (3) make the Launch3d bridge + Alt+X flight-close **always-on** (decoupled from
+>   `BOB_STARTFLYING`/`BOB_AUTOQUIT`) so a real mouse-click + the player's own Alt+X drive it; (4) default
+>   boot to the real front-end. Then retire the harness. Evidence: `/tmp/s7gf.log`, `/tmp/s7c.log`.
+
 > ## SCRUM SPRINT 6 / R2.3 (2026-06-17): mission-loop stress + variety — NO latent uninit-state bugs surfaced (the feared grind didn't materialise)
 > R2.3 was budgeted (13 pts) for "expect several latent uninitialised-state bugs uncovered by the real
 > mission loop." Stress + variety testing found **none** — the real mission loop is robust.

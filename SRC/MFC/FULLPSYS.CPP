@@ -281,11 +281,17 @@ static void bob_startflying_preflight(bool clickMode, bool firstTime)
 			Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 0;
 		}
 	}
-	/* Per-mission world setup (the QM config screens do NOT do this; SetUpHotShot does). */
-	Node_Data.BuildTargetTable();                          /* node/squad tables first (cold start) */
-	Node_Data.LoadCleanNodeTree();
-	Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
-	Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+	/* Per-mission world setup. Sprint 7: the REAL click flow provides this itself
+	   (SetQuickState sets the campaign; BoBFrag::OnInitDialog sets playersquadron + node
+	   tables), so click mode leaves it to the game (verified: a real title->QM->Fly->bobfrag->
+	   Fly click-through flies with this skipped). The forced path (=1) doesn't pass through
+	   bobfrag, so it still needs the setup. BOB_PREMISSION forces it on for click mode too. */
+	if (!clickMode || getenv("BOB_PREMISSION")) {
+		Node_Data.BuildTargetTable();                      /* node/squad tables first (cold start) */
+		Node_Data.LoadCleanNodeTree();
+		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
+		Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+	}
 	/* R2.2: gamestate=HOT is the QM state (SetUpHotShot sets it). OnFlyingClosed routes an
 	   IDOK exit (EXITKEY/Alt+X) to quickmissiondebrief only when gamestate is HOT or QUICK;
 	   without it the close falls through to the campaign-map branch. */
