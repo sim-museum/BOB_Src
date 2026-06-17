@@ -209,10 +209,13 @@ more of the real flow.
     (free at 0), matching the surface model. **Flight now shuts down clean**; the full chain
     `OnCancel→OnFlyingClosed→LaunchScreen(options3d)` runs. No regression (scaffold 91.7% non-black,
     bare `./bob` 0). Evidence: PORT.md + `/tmp/sf43b_bt.log`.
-  - **4.3c** **NEXT:** post-flight `options3d`/`CSDetail` combo — `GetModes` returns empty
-    (`pDriver->pModes==NULL`) only after flight → empty resolution combo → `SetIndex` crash (INT3-
-    guard class). options3d works via direct nav, so it's a post-flight mode-enumeration state nuance.
-    Completes the fully-rendered fly→exit→menu round-trip.
+  - **4.3c** **NEXT:** post-flight `options3d`/`CSDetail` combo — `GetModes` returns a truncated mode
+    list only after flight → `SetIndex(selected)` past the combo (INT3-guard class). options3d works via
+    direct nav, so it's a post-flight mode-enumeration state nuance. **Fix-shape adopted from the MiG
+    Alley port's F3** (cross-port notes 2026-06-17): the combo isn't missing modes, it's an inconsistent
+    driver/mode state failing SDETAIL's filter — **pin the driver/mode state consistent before the
+    `CSDetail` fill** (their `ma_populate_software_modes()` analog). Completes the fully-rendered
+    fly→exit→menu round-trip.
 - **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
   treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.
 - **Increment demo:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` enters flight through

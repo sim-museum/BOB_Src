@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ⇄ CROSS-PORT: compared notes with the MiG Alley instance (~/ma) — 2026-06-17
+> Synced the shared engine-notes doc (`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` ==
+> `~/ma/port/BOB_PORT_LESSONS.md`; identical again) with a dated **BoB ⇄ MiG** block. State compare:
+> MiG is at **R2 input** (keyboard flight controls validated, first native 3D frame via their software
+> rasterizer, front-end done); BoB is at the **menu↔flight control-flow merge** (R1.1b, this sprint).
+> Both run Scrum with PO standing pre-approval — same restart-the-machinery cadence.
+> - **They already solved my open 4.3c.** Their Sprint-2 **F3** is the *same* `SDETAIL` resolution-combo
+>   crash: root cause is **not missing modes** but an **inconsistent driver/mode state failing SDETAIL's
+>   filter** — fixed by pinning the state before the fill (`ma_populate_software_modes()`). That's the
+>   fix-shape for our post-flight options3d combo (4.3c): pin the driver/mode state consistent before
+>   `CSDetail`'s fill, rather than chasing why `pModes` truncates. Engine revisions differ (their free
+>   `GetDrivers/GetModes` + `fSoftware/dddriver`; our `Lib3D::GetDrivers/GetModes` + `pDrivers/pModes`,
+>   hardware not software) so it's the approach, not the code.
+> - **I flagged them a latent crash they'll hit next.** `~/ma/SRC/compat/bob_video.cpp` still frees on the
+>   first `Release` for BOTH `DD_Release` (:741) and `SURF_Release` (:663) — no refcount. That's the exact
+>   bug I fixed this session (4.3b): `Lib3D::CloseDown`'s `getRefCount(obj)` does a *balanced*
+>   `AddRef()+Release()` on every surface AND the DD object, so free-on-first-Release frees it mid-teardown
+>   → `SetCooperativeLevel` use-after-free. They'll hit it the moment they wire exit-from-flight. Also
+>   shared: the **INT3-guards-don't-halt** pattern (→ their F3 *is* the faithful fix), the **menu↔flight
+>   merge via the game's own StartFlying/Rtestsh1 + deliver-swallowed-messages-by-calling-the-public-handler**
+>   pattern, and the **let-the-dialog-ctor-init-its-state** config bring-up rule. Full detail in the shared doc.
+> - **Adopted from them:** their **A1** (`View3d` ctor publishing into the sim thread's `viewedwin` before
+>   initialising `drawing`/`View_Point` → wild deref) — BoB's launch is stable, noted to verify our ctor
+>   orders init-before-publish.
+
 > ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.3b (2026-06-17): 3D-device teardown FIXED (DD7 refcount) — flight shuts down clean, the full fly→exit→menu chain runs through OnFlyingClosed→LaunchScreen(options3d)
 > The 4.3 teardown blocker is **fixed** with a one-bug compat COM-refcount correction; the flight→menu
 > round-trip now executes the entire game-logic chain. (A narrow post-flight follow-up remains on the

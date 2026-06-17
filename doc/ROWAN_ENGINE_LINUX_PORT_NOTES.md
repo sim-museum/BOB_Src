@@ -23,6 +23,55 @@ dated log with evidence; this is the distilled version.
 
 ## ★ MiG Alley specifics — READ THIS FIRST (tailored from `~/ma` recon)
 
+> ### ⇄ CROSS-PORT UPDATE — BoB ⇄ MiG (2026-06-17, after BoB Sprint 4 / MiG Sprints 1–3)
+> Compared notes against `~/ma` (you're at R2 input: keyboard flight + first 3D frame + front-end
+> done; we're at the menu↔flight control-flow merge). New load-bearing items each way:
+>
+> **BoB → MiG (apply these before you exercise exit-from-flight or more config screens):**
+> 1. **The §4.1 refcount-UAF also kills the DirectDraw OBJECT, and it detonates at TEARDOWN — and
+>    your tree still has the bug on BOTH the surface and the DD object.** `~/ma/SRC/compat/bob_video.cpp`
+>    still has `DD_Release(){ free(This); return 0; }` (:741) **and** `SURF_Release(){ free(s); return 0; }`
+>    (:663) — free-on-first-`Release`, no refcount. Besides the texture path, this bites the moment the
+>    engine *tears down a flight*: `Lib3D::CloseDown` (BoB) — and any equivalent shutdown that prints
+>    refcounts — calls **`getRefCount(obj)`**, a debug helper that does a *balanced* `obj->AddRef();
+>    obj->Release();` on **every surface AND the DirectDraw object**. Free-on-first-Release → that
+>    balanced pair **frees the object mid-teardown**; the next use (`pDD7->SetCooperativeLevel(...)`)
+>    use-after-frees a **zeroed vtable** → SIGSEGV as `call *0xNN(%edx)` with `%edx`→all-zeros. We chased
+>    it from a NULL-PC backtrace to `getRefCount`. **Fix BOTH `DD_Release` and `SURF_Release` with a real
+>    `int ref` (init 1 in the create fn, `AddRef` ++, `Release` -- and free only at 0)** — exactly §4.1,
+>    now also for the DD object. Do it before you wire any "exit flight → menu" path. [BoB inc 4.3b]
+> 2. **Game `INT3` "can't-happen" guards DON'T halt on compat — they fall through to the UB they were
+>    guarding.** `CRComboCtrl::SetIndex(row)` is `if(row>=GetCount()||row<0) INT3; ...GetAt(FindIndex(row))`.
+>    On Win32 INT3 traps; on Linux compat it's a no-op, so a bad index sails into `GetAt(NULL)` → SIGSEGV.
+>    This bit BoB's config dialogs (CSQuick1, CSDetail) whenever the combo's backing data was inconsistent.
+>    **The faithful fix is keeping the game's DATA consistent so the guard never trips (as on Win32) — which
+>    is precisely your F3.** Don't "fix" `SetIndex`; fix the state feeding it.
+> 3. **Menu↔flight in ONE process = drive the game's OWN path, and hand-deliver the messages compat
+>    swallows.** Entry: `LaunchScreen(flightscreen) → StartFlying() → <flight dialog> → Launch3d →
+>    View3d` (not a synthesized `new Inst3d/View3d` scaffold). Return: `KEY_CONFIGMENU (F12) →
+>    View3d::CloseWindow(IDCANCEL) → dialog OnCancel → OnFlyingClosed → LaunchScreen(menu)`. **Compat has
+>    NO message-map dispatch** (`ON_MESSAGE`/`DECLARE_MESSAGE_MAP` expand to nothing; `CWnd::PostMessage`
+>    is a no-op), so the posted messages the game's flow depends on (`WM_GETSTRING`→`OnGetString`,
+>    `WM_COMMAND`→`OnCancel`) are dropped on the floor. **Deliver them yourself: call the game's own
+>    PUBLIC method directly** (the one the message map would route to — e.g. `Rtestsh1::Launch3d`), and for
+>    the close, capture the swallowed `WM_COMMAND` inside `CWnd::PostMessage` and drain it on the main
+>    thread (the flight loop's only live thread). [BoB inc 4.1–4.3]
+> 4. **Config-dialog bring-up: let the dialog's OWN ctor initialise its state — don't pre-seed and defeat
+>    it.** BoB's QM screen crashed because our boot pre-set `currquickmiss=0`, skipping the `CSQuick1` ctor
+>    block that sets `currquickmiss=0; currquickfamily=0` *only when `currquickmiss==-1`* → a stale `-1`
+>    index → `SetIndex(-1)` (see #2). Reset to the fresh sentinel and let the game initialise.
+>
+> **MiG → BoB (adopted):** your **F3 `ma_populate_software_modes`** is the fix-shape for our open 4.3c
+> (post-flight SDETAIL/options3d resolution combo crash): the combo isn't *missing* modes, it's an
+> **inconsistent driver/mode state failing SDETAIL's filter** — pin the driver/mode state consistent
+> *before* the fill. Engine revision differs (your free `GetDrivers/GetModes` + `Save_Data.fSoftware`/
+> `dddriver` vs our `Lib3D::GetDrivers/GetModes` + `pDrivers`/`pModes` lists, hardware not software), so
+> it's the *approach* we're taking, not the code. Also noted your **A1** (`View3d` ctor publishing into
+> the sim thread's `viewedwin` before initialising `drawing`/`View_Point`) — BoB's launch is stable, but
+> we'll verify our `STUB3D` ctor orders init-before-publish too.
+>
+> Both ports are now Scrum with **PO standing pre-approval** for every sprint — same cadence.
+
 You're further along than this doc assumes: **Phase 1–2 done** (15/15 game unities compile,
 `wmig` links with 0 undefined symbols, boots into `CMIGApp::Run()`), and you're in **Phase 3
 first-frame bring-up** with the `ma_ddraw_present` software-framebuffer→GL bridge. Your
