@@ -129,7 +129,8 @@ Diagnostics (env-gated, default-off): `BOB_OLE_DRAW`, `BOB_TRACE_OLE`, `BOB_AUTO
 headless combo-click tests), `BOB_NO_FBO_RTT` (disable the now-default landscape RTT), `BOB_MIRROR`
 (force Reflections/`COCK3D_SKYIMAGES` on so the rear-view mirror RTT activates), `BOB_TEXQ=<0-4>` /
 `BOB_FILTER=<0-3>` (land texture quality / filtering; default max/bilinear), `BOB_NOCLOUDS` (disable the
-now-default clouds), `BOB_NOSOUND` (disable audio), `BOB_TRACE_SND` (audio trace), `BOB_GROUNDSHADE`
+now-default clouds), `BOB_NOSOUND` (disable audio), `BOB_TRACE_SND` (audio trace), `BOB_HUD` (enable the
+in-flight HUD info bar), `BOB_GROUNDSHADE`
 (ground-shading vertex lighting), `BOB_TRACE_TSS`, `BOB_TRACE_RTT`,
 `BOB_DUMP_RTT` (dump each RTT FBO → `/tmp/rtt_<ptr>.ppm`), `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
 `BOB_DUMP_PATH=<file>` (private frame-dump target — `/tmp` is shared with the MiG Alley port),

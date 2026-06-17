@@ -593,6 +593,12 @@ BOOL CMIGApp::InitInstance()
 		   (COverlay::DrawTopText `(altitude*305)/alt.mediummm`), the map/waypoint dialogs, weather,
 		   hostiles, etc. SetUnits() copies the metric/imperial factor tables -> all non-zero. */
 		Save_Data.SetUnits();
+		/* BOB_HUD: enable the in-flight HUD info bar (altitude/speed readout), normally toggled by
+		   the HUDTOGGLE key (GD_HUDINSTACTIVE, default off). Now safe to show since SetUnits() ran. */
+		if (getenv("BOB_HUD")) {
+			Save_Data.gamedifficulty|=GD_HUDINSTACTIVE;
+			fprintf(stderr,"[boot] BOB_HUD: HUD info bar (altitude/speed) enabled\n");
+		}
 		Node_Data.BuildTargetTable();      // set up node/squad tables FIRST (cold start)
 		Node_Data.LoadCleanNodeTree();
 		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
