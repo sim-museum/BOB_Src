@@ -587,6 +587,12 @@ BOOL CMIGApp::InitInstance()
 		// map-item view instead (no LoadSetPiece).
 		bool fullMission = getenv("BOB_OBJECT_VIEW") == NULL;
 		fprintf(stderr, "[boot] new-campaign setup (scramble)...\n");
+		/* The QM boot never ran the units config (normally SVIEWER does), leaving the
+		   altitude/speed/distance unit-conversion factors (Save_Data.alt.mediummm etc.) at 0 ->
+		   integer divide-by-zero (SIGFPE) the moment anything divides by them: the HUD info bar
+		   (COverlay::DrawTopText `(altitude*305)/alt.mediummm`), the map/waypoint dialogs, weather,
+		   hostiles, etc. SetUnits() copies the metric/imperial factor tables -> all non-zero. */
+		Save_Data.SetUnits();
 		Node_Data.BuildTargetTable();      // set up node/squad tables FIRST (cold start)
 		Node_Data.LoadCleanNodeTree();
 		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;

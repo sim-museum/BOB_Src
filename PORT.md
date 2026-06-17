@@ -1,5 +1,18 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## FIX (2026-06-16): unit factors uninitialised → divide-by-zero (HUD info bar / map / weather)
+> The QM boot never ran the units config (normally `SVIEWER` calls `SaveData::SetUnits()`), leaving the
+> altitude/speed/distance unit-conversion factors (`Save_Data.alt.mediummm`, `speed.mmpcs2perhr`, …) at
+> **0**. Anything that divides by them then takes an integer **divide-by-zero (SIGFPE)** — the HUD info
+> bar (`COverlay::DrawTopText`: `(altitude*305)/Save_Data.alt.mediummm`), and the waypoint/map dialogs,
+> weather, hostiles, RAF-combat screens (all divide by `alt.mediummm`). Surfaced via `BOB_AUTOFLY=sweep`
+> (a key toggled the info bar on → SIGFPE in the draw thread). **Fix:** call `Save_Data.SetUnits()` once
+> in the boot scaffold (MIG.CPP) — it copies the metric/imperial factor tables, so all factors are
+> non-zero. Default flight + cockpit unchanged; `./bob` exits 0.
+> - **Note:** `BOB_AUTOFLY=sweep` (presses *every* DIK rapidly) still hits a tail of artificial crashes —
+>   e.g. a lens-flare `AddLensObject` SIGSEGV (rapid lens-object spam overflowing the item table). Those
+>   are extreme-stress artifacts (real play presses keys deliberately), not normal-play bugs; not chased.
+
 > ## INPUT (2026-06-16): keyboard flight input WORKS — corrects the entry below
 > The entry below was **wrong** — it chased the joystick/`Analogue::runtimedevices` path. The keyboard
 > uses a **separate, event-driven** path that is fully functional:
