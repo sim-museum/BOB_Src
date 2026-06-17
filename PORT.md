@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## INPUT (2026-06-16): keyboard flight input WORKS — corrects the entry below
+> The entry below was **wrong** — it chased the joystick/`Analogue::runtimedevices` path. The keyboard
+> uses a **separate, event-driven** path that is fully functional:
+> `MsgWaitForMultipleObjects(EVENT_KEYS)` (MIG.CPP:809 bring-up loop) → `Inst3d::OnKeyInput()`
+> (STUB3D.CPP) drains the dedicated keyboard device `Master_3d.g_lpDIDevice`
+> (= the compat keyboard via `CreateDevice(GUID_SysKeyboard)` + buffered `GetDeviceData`) →
+> `OnKeyDown(dik)`/`OnKeyUp` → `commonkeymaps->mappings[dik]` → flight command. It fires only when a key
+> is actually pressed (so a no-input trace shows nothing — which misled the diagnosis below).
+> - **Proven:** `BOB_AUTOFLY=throttle` (injects DIK 0x0B via the SDL→DIK queue, which signals
+>   `EVENT_KEYS`) → `[key] OnKeyDown dik=0x0b -> index=50` (the throttle command), repeatedly, run clean
+>   to frame 200. So the full SDL→DIK→DirectInput→`OnKeyInput`→command pipeline works end-to-end; real
+>   keypresses on the GL window drive flight the same way.
+> - **Known issue:** `BOB_AUTOFLY=sweep` (presses *every* DIK in turn) SIGABRTs — some individual key
+>   *command handler* aborts (likely another packed-struct/`-fstack-protector` overflow in a key action,
+>   not the input pipeline). Walk the DIK range to find the offending command; unrelated to input wiring.
+> - **Joystick** is still unenumerated (`DI_EnumDevices` returns 0) AND there's no `/dev/input/js*` here to
+>   test — a separate, lower-priority add. Keyboard (the primary control) is the working path.
+
 > ## INPUT (2026-06-16): keyboard-flight gap located (NOT yet working) — `DI_EnumDevices` returns 0
 > Diagnosed why flight controls don't respond in the bring-up (keyboard input). The DInput **keyboard
 > backend is fully implemented** in `bob_video.cpp` (SDL→DIK: buffered `GetDeviceData`, immediate

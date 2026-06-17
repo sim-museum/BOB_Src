@@ -78,6 +78,11 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
   them 0 → silent); `BOB_NOSOUND` disables. (Found + worked around a latent game-code stack overflow:
   `Sample::LoadBuffer` copies a 20-byte `PCMWAVEFORMAT` into an 18-byte `WAVEFORMATEX` — benign on
   Windows, tripped `-fstack-protector`; disabled it for the HARDWARE TU.)
+- **Keyboard flight input (DirectInput → SDL).** Real keypresses on the GL window drive flight: SDL
+  keydown → DIK scancode → buffered DInput keyboard device → the game's event-driven `OnKeyInput`
+  (MIG.CPP:809 → STUB3D.CPP) → `OnKeyDown(dik)` → `commonkeymaps` → flight command. Proven end-to-end
+  (`BOB_AUTOFLY=throttle` → `[key] OnKeyDown dik=0x0b -> index=50`). Joystick is not enumerated yet
+  (`DI_EnumDevices` returns 0; also no joystick hardware here) — keyboard is the working control path.
 - **Front-end GDI 2D pipeline** — window framebuffer + present (`bob_gdi_*`), `SetDIBitsToDevice`,
   stb_truetype text (`bob_gdi_font.cpp`), mouse-navigable menu (`bob_frontend_tick`).
 
