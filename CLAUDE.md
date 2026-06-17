@@ -6,6 +6,12 @@ is a Win32 / MFC / DirectX 7 (DirectDraw7 + Direct3D7) / DirectInput / DirectSou
 The port keeps the **game code unedited** and provides a compatibility layer that maps the
 Windows/DirectX APIs onto **SDL2 + OpenGL + OpenAL** under `#if FF_LINUX` / `BOB_LINUX`.
 
+## Working mode
+You are porting a Windows codebase to Linux. Work autonomously until the task is complete.
+- Do NOT pause to ask for confirmation
+- When choosing between approaches, pick the most idiomatic Linux/POSIX solution and proceed
+- Only stop if you encounter a hard blocker with no reasonable path forward
+
 ## Layout
 - `SRC/` — original game sources (LIB3D, 3D, MFC, BFIELDS, …). Avoid editing game logic.
 - `SRC/compat/` — the Linux compat layer (the porting work lives here):
