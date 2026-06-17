@@ -72,11 +72,13 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    (ground renders; stable to frame 150; `BOB_NO_FBO_RTT` reverts). The rear-view **mirror** rides
    the same RTT machinery but is **dormant by default** (gated on the Reflections setting
    `COCK3D_SKYIMAGES`, which defaults OFF; force it with `BOB_MIRROR`). A/B'd (`BOB_DUMP_RTT` dumps
-   each RTT FBO): with reflections on the mirror FBO is created/bound/cleared/displayed (no crash),
-   **but renders flat (clear-only)** — the rear-view geometry (`RenderMirrorLandscape`/
-   `DrawVisibleObjects`) isn't reaching the mirror FBO (landscape FBO = real airfield, variance ~467;
-   mirror FBO = variance 0). Next: find why the reversed-camera scene doesn't draw into the mirror
-   FBO. Also: 128×128 land RT is small (push higher-res land options); confirm long-session lifetime.
+   each RTT FBO, `draw_fvf` per-quad tracing): the mirror FBO is created/bound/displayed and **real
+   geometry reaches it** — 296 textured fullscreen quads = the **horizon/`InfiniteStrip` backdrop**
+   (`RenderMirrorLandscape` renders the distant horizon+sky, *by design not* the detailed near-ground
+   tiles the land RTT composites). It looks blank (variance 0) because the rear view is uniform haze with
+   no aircraft behind in this QM moment, not because it's clear-only. Open (deeper, non-blocking): why the
+   horizon shows zero gradient, and confirm `DrawVisibleObjects` puts a trailing aircraft in the mirror.
+   Also: 128×128 land RT is small (push higher-res land options); confirm long-session lifetime.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/

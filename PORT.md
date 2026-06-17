@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## OPEN FRONT #1 (2026-06-16): mirror diagnosis REFINED — it renders the horizon backdrop, not clear-only
+> Dug deeper into the flat mirror (corrects the entry below, which guessed "clear-only / no geometry").
+> Instrumented `draw_fvf` to attribute every draw to its bound RTT FBO and log per-quad rects/textures:
+> - **Geometry DOES reach the mirror FBO** — 296 textured (terrain-texture, `texW=32`) quads per frame,
+>   not just the `Wipe`. So the earlier "no geometry" read was wrong.
+> - **But every mirror quad is a FULL-SCREEN quad** (`x[0..800] y[0..600]`, two alternating z-layers),
+>   whereas the working **landscape** RTT draws **small tiles spread across the surface**
+>   (`x[-2..30] y[432..536]`, `x[567..739] y[29..144]`, …). The mirror is drawing the **horizon /
+>   `InfiniteStrip` backdrop** (`LandScape::RenderMirrorLandscape` renders the horizon + sky, *by design
+>   not* the detailed near-ground tiles), so 296 stacked fullscreen sky/haze layers → the last one wins →
+>   uniform fill (variance 0).
+> - **So the mirror RTT is functionally rendering its intended content** (the distant rear view: horizon/
+>   sky via `RenderMirrorLandscape` + aircraft-behind via `DrawVisibleObjects`), it just looks blank
+>   because in this QM moment the rear view is empty haze with no aircraft behind, and the sky/horizon
+>   renders as a single flat colour. A real plane mirror shows distant sky + planes, not the ground below
+>   — the detailed ground (which the land RTT composites) is correctly absent here.
+> - **Open questions for a convincing mirror** (next, deeper game-render work, not blockers): why the
+>   sky/horizon shows *zero* gradient (variance exactly 0 — the InfiniteStrip should give a horizon line);
+>   and confirm `DrawVisibleObjects` actually places a trailing aircraft in the mirror (needs a scenario
+>   with one behind the player). The instrumentation was exploratory and has been reverted; the diagnosis
+>   stands on the captured evidence (`BOB_MIRROR` + `BOB_DUMP_RTT`).
+
 > ## OPEN FRONT #1 (2026-06-16): rear-view MIRROR A/B on the RTT path — wired but renders flat (clear-only)
 > A/B'd the rear-view mirror, which rides the same FBO RTT machinery (`pDDS7MirrorRT`). Findings:
 > - **Dormant by default.** The mirror is gated on the **Reflections** setting (`COCK3D_SKYIMAGES`),
