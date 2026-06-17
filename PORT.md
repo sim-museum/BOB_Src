@@ -1,5 +1,155 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 3 / R1.3d + R1.4 + R1.5 (2026-06-17): transient double-free FIXED — InitPreferences is now the DEFAULT init (Release 1)
+> Cracked the long-standing transient double-free and landed real factory init as the default. Ships
+> Release 1 ("real boot to flight, no feature env vars").
+> - **R1.3d — the transient double-free, root-caused with `-g` ASan line info.** `delete remove`
+>   (TRANSITE.CPP:554) ran the `~TransientItem` destructor **twice**: once directly (the delete-
+>   expression), then again inside **`TransientItem::operator delete`** (WORLDINC.H:885), whose body was
+>   `{::delete(TransientItemPtr) obj;}` — a delete-*expression* that re-destructs. The chain
+>   `~TransientItem → … → ItemBase::~ItemBase (WORLDINC.H:708) → animptr::Delete (WORLDINC.H:166)` freed
+>   the anim buffer (`SimplifiedSpriteLaunch→SetAnimData` `new UByte[]`) on **both** passes → double-free.
+>   On Win32 the `ptr=NULL` in `Delete()` masked it; at -O3 the compiler optimised against the UB and it
+>   became a real `free()`-twice. **Fix:** an operator-delete must only DEALLOCATE (the dtor is the
+>   compiler's job) → `{::operator delete(obj);}` (free once, no re-destruct). ASan: the
+>   `RemoveDeadListFromWorld` double-free is **gone (0)**; InitPreferences flight runs the full timeout.
+>   On the **normal build**, InitPreferences flight now runs **90s clean** (was: SIGABRT ~frame 150).
+>   *(The same `{::delete(SameType*)obj;}` idiom exists on the sibling item classes (waypoint/hdgitem/
+>   MovingItem/…); only `TransientItem` is exercised on the corruption path — the rest are a documented
+>   latent follow-up.)*
+> - **R1.4 — `InitPreferences()` is now the DEFAULT init** (MIG.CPP boot). It sets all the real factory
+>   defaults — volumes (sfx=125/engine=64/…), `textureQuality=3`, gamedifficulty (HUD on + units +
+>   messages), `detail_3d` (ground-shading + aircraft/item shadows + horizon + transparent smoke + routes),
+>   map filters, analogue tuning. The per-feature `BOB_*` `Save_Data` forces are **retired** — gated on
+>   `!initPrefs` (legacy A/B path) or kept only as env *overrides* (BOB_TEXQ/BOB_FILTER/BOB_NOSOUND/
+>   BOB_NOCLOUDS). Clouds (`HW_FLUFFYCLOUDS`, which InitPreferences doesn't set) stay default-on for the
+>   faithful sky; filtering pinned BILINEAR (R1.3c). `BOB_NOINITPREFS` reverts to the legacy bring-up.
+> - **R1.5 — regression sweep (no feature env vars).** With just the bring-up entry (env-cleared of
+>   BOB_HUD/TEXQ/FILTER/NOSOUND/NOCLOUDS), real init drives a faithful flight: reaches `View3d
+>   interactive`, **90s clean**, frame **92% non-black** (full sky/terrain/cockpit), **OpenAL engine loop
+>   + effects playing** (232756-byte @22050 `loop=1`), HUD on (InitPreferences set `GD_HUDINSTACTIVE`).
+>   Safe default `./bob` still exits 0; normal build links clean.
+> - **Net:** the env-gated `Save_Data` hacks the QM boot needed are gone — the game now initialises itself
+>   the way FULLPANE does. **Release 1 done.** Next (Sprint 4): the menu→mission→fly→debrief loop (R2.x)
+>   and the carried control-flow window merge (R1.1b). Evidence: `/tmp/asan_d.*` (double-free gone),
+>   `/tmp/bob_r15*.log` + `/tmp/bob_r15_frame.ppm` (regression sweep).
+
+> ## SCRUM SPRINT 2 / R1.3 (2026-06-17): setup-layer heap corruption FIXED — InitPreferences now reaches live flight; a deeper combat-loop double-free remains
+> Executing Sprint 2 (land real init). Fixed the corruption R1.2 diagnosed, as PO-approved **minimal
+> documented game-code exceptions**, and verified each under AddressSanitizer (`build-asan/`):
+> - **R1.3a — `shape::SetPilotedAcAnim` (3DCOM.CPP:~20877):** scalar `delete (oldanim)` on a buffer
+>   `SetAnimData` allocated with `new UByte[]` → operator mismatch. Fixed to `delete[] (UByteP)oldanim`
+>   (anim structs are trivially destructible → behaviour-identical, right operator). ASan: the
+>   `alloc-dealloc-mismatch` is **gone**.
+> - **R1.3b — `keytests::Reg3dConv` (KEYSTUB.CPP:~285):** `mappings[scancode][shiftstate]` with a 10-bit
+>   `scancode` (0..1023) / 6-bit `shiftstate` (0..63) but the array is only `[512][8]` → a 2-byte WRITE
+>   1207 B past the 8403-byte `KeyMap3d`. Bounded both indices (out-of-range entries skipped); also fixed
+>   the `breakif` terminator READ one entry past the file buffer (`i==0 ||` guard). ASan: both **gone**.
+> - **R1.3c — trilinear default (MIG.CPP boot, behind `BOB_INITPREFS`):** `InitPreferences` sets
+>   `filtering=2` (trilinear) → `CopyMapToSurface` NULL-deref in mip upload (deferred compat gap, R3.5).
+>   Pinned `filtering=1` (bilinear) after `InitPreferences`. ASan: the loader **SEGV is gone**; the run now
+>   reaches **`View3d interactive; draw thread running`** — i.e. InitPreferences gets into actual flight.
+> - **No regression:** normal build links clean, default `./bob` exits 0, and the **default flight**
+>   (`BOB_BOOT_FRONTEND`, no InitPreferences) runs a full 60s clean (reaches View3d interactive, no
+>   abort/segv) — the two game-code edits don't disturb the working path.
+>
+> **What the fixes revealed (the real gating bug for *default* init):** with the loader fixed, full combat
+> now runs under InitPreferences and the draw thread (T5) surfaces a deeper layer — **a double-free in
+> `TransObj::RemoveDeadListFromWorld()`** (19×): the anim buffer `SimplifiedSpriteLaunch`→`SetAnimData`
+> allocates with `new UByte[]` is freed **twice**, via two *distinct* inlined `delete[]` sites in the
+> dead-list removal (PCs …464fc / …4655a — so NOT a double-enqueue: the to-go-list dup-guard at
+> TRANSITE.CPP:388 holds; it's the destructor freeing an aliased `Anim` pointer through two paths). This is
+> the long-standing transient double-free PORT.md chased across prior sessions. **A/B confirms it is
+> InitPreferences-specific** — the default-boot ASan run shows NO `RemoveDeadListFromWorld` double-free
+> (only the items below). Two more T5 findings, both also present in the *default* flight (so latent in the
+> shipping path, absorbed by glibc):
+> - **568× `new-delete-type-mismatch` in `ViewPoint::UpdatePosWRTEye`** (alloc 59 B / delete 50 B, same
+>   pointer) — benign on glibc (sized-delete → `free()` ignores size); UB, deferrable.
+> - **20-byte WRITE in `Sound::SetUpSample`** (engine-start sound path) — same overrun *class* as the
+>   already-fixed `Sample::LoadBuffer` PCMWAVEFORMAT bug; real but low-frequency.
+>
+> **Status:** R1.3a/b/c done + verified. The transient double-free (call it **R1.3d**) is the gating bug
+> for R1.4 ("InitPreferences as *default*") and is a deeper, uncertain grind (multi-session history, no
+> `-g` line info at -O3). Surfaced to the PO as a Sprint-2 scope fork (ship the verified corruption-fix
+> increment with InitPreferences gated, vs. grind R1.3d now). Evidence: `/tmp/asan_v3.*` (post-fix run,
+> reaches flight, T5 double-free), `/tmp/bob_flight_regr.log` (default-flight no-regression).
+
+> ## SCRUM SPRINT 1 / R1.1 (2026-06-17): the window IS already unified — remaining work is control-flow, blocked by R1.3
+> Investigated "unify front-end + flight onto one GL window" (R1.1). Finding, with evidence: the
+> window/GL-context/event/present **infrastructure is already a single shared stack** — there is ONE
+> `SDL_CreateWindow`/`SDL_GL_CreateContext` (`bob_video.cpp` `ensure_window`, ~L108/112), ONE SDL pump
+> (`pump_events`, ~L230), and BOTH present paths swap the *same* `g_win`: flight via `present_surface()`
+> (`SDL_GL_SwapWindow` L483/508, gated on `g_devRendered`) and the front-end CPU framebuffer via
+> `bob_gdi_present()` (uploads `g_gdiFB` → GL quad → `SDL_GL_SwapWindow` L553). So "two windows fighting"
+> — the risky part of this story — **does not exist**; the present layer already multiplexes 2D-quad vs
+> 3D-GL on one window.
+> - **What's actually left** is *control-flow* unification: today a process runs EITHER `BOB_BOOT_FRONTEND`
+>   (build Inst3d/View3d → flight, draw thread) OR `BOB_FRONTEND` (MFC menu, main-thread GDI) — two
+>   mutually-exclusive env-gated forks in `MIG.CPP::InitInstance` (~L585) with opposite wait strategies in
+>   `Run()` (~L819: flight waits on kernel event handles; front-end polls in OnIdle). Merging them into a
+>   continuous menu→fly→menu app is Phase-1+Phase-3 sized, **bigger than the 8-pt estimate**, and
+>   **blocked-by R1.3**: you can't transition menu→flight in one process until flight-under-real-init stops
+>   corrupting the heap (the R1.2 bugs). Re-scoped: R1.1 splits into R1.1a (infra — done/verified) and
+>   R1.1b (control-flow merge — depends on R1.3). Carried to Sprint 2. No code changed for R1.1 (read-only).
+
+> ## SCRUM SPRINT 1 / R1.2 (2026-06-17): heap corruption DIAGNOSED under AddressSanitizer — it's two conflated bugs, not one
+> Sprint-1 critical-path story (R1.2): get a memory tool onto the `InitPreferences` combat path and capture
+> the first invalid write. **valgrind is absent** here, but **32-bit `-no-pie` `-fpack-struct=1` ASan links
+> and runs against real NVIDIA GL** — so ASan is the tool. Added an off-by-default `BOB_ASAN` CMake option
+> (`-fsanitize=address -fsanitize-recover=address -fno-omit-frame-pointer`, keeps the faithful `-O3`/packed
+> layout so the layout-sensitive bug still reproduces) → separate `build-asan/` tree; and a `BOB_INITPREFS`
+> boot gate (MIG.CPP) that calls the real `SaveData::InitPreferences((int)Master_3d.winst)`. Ran the
+> InitPreferences boot under `ASAN_OPTIONS=halt_on_error=0` (report-and-continue) to get every invalid
+> access in order. Default build/run untouched (both gated; `./bob` still exits 0).
+>
+> **The key finding: the "non-deterministic heap corruption" is actually TWO independent problems that were
+> conflated** (the earlier entry's single "transient double-free" was the *downstream symptom*):
+>
+> 1. **The immediate InitPreferences crasher is DETERMINISTIC and already-known — not heap corruption.**
+>    `InitPreferences` sets `filtering=2` (**trilinear**) as a factory default (confirmed:
+>    `[boot] BOB_INITPREFS: done texQ=3 filtering=2`). Trilinear drives the game's mipmap upload
+>    `LandScape::InitTextures → Lib3D::UploadAsMipMapLevel → Lib3D::CopyMapToSurface`, which **NULL-derefs**
+>    (SEGV on addr 0x0) in the loader, *before any combat frame*. This is exactly PORT.md open-front #1's
+>    trilinear mipmap gap — the manual QM boot dodged it by leaving `filtering=1` (bilinear). So the first
+>    wall InitPreferences hits is the mipmap upload, not the transient list.
+> 2. **The real heap corruption is LATENT and present in BOTH boots** (A/B'd: same errors with and without
+>    `BOB_INITPREFS`). Two game-code allocation bugs, benign on Windows / on glibc's allocator slack (which
+>    is why the default boot survives to frame 250), that corrupt the heap and surface non-deterministically
+>    as the `RemoveDeadListFromWorld` double-free / SEGV once combat allocation churn reuses poisoned blocks:
+>    - **`alloc-dealloc-mismatch` (new[] vs scalar delete):** `shape::SetAnimData(item*,short)` allocates the
+>      anim buffer with `new[]`; **`shape::SetPilotedAcAnim(AirStruc*)` frees it with scalar `delete`** (not
+>      `delete[]`) → corrupts the array cookie. Path: `LoadSetPiece → make_airgrp →
+>      Persons3::ColourRulePlayerSquadron → SetPilotedAcAnim`. Fires on every mission load (player squadron).
+>    - **2-byte WRITE overflow** in **`keytests::Reg3dConv(FileNum)`**: writes **1207 bytes past** the
+>      8403-byte buffer that `keytests::keytests()` ctor `new`s (also a paired READ 2 bytes past a 2200-byte
+>      region) → an out-of-bounds index stomping an adjacent allocation. Runs in `Inst3d::Inst3d()`.
+> 3. **Boot-path over-reads (benign, both boots):** `fileman::translatedirlist` + `retranslatedirlist`
+>    1-byte READ past an unterminated 530-byte `.DIR`-list buffer (the parser scans for `\n`/digit
+>    delimiters with no `datalength>0` guard at EOF); `ImageMap_Desc::FixLbmImageMap` 1-byte READ past the
+>    24636-byte LBM image. Harmless (reads), but real off-by-ones.
+> 4. **Frame-loop noise (default boot, only once flight runs):** a **`new-delete-type-mismatch` firing
+>    ~17.5k× in worker thread T5** (per-frame; a delete-through-wrong-type in the render/update thread),
+>    plus a **heap-use-after-free** and over-reads in `ViewPoint::UpdatePosWRTEye` / `Sound::SetUpSample`.
+>    Worth a follow-up pass but not the gating setup corruption.
+>
+> **Cross-validation (second tool):** valgrind 3.26 memcheck (installed this session; runs our i386 binary
+> directly) independently flags the **same `translatedirlist` `.DIR`-parser over-read** ("Invalid read of
+> size 1") on the identical `InitFileSystem → makerootdirlist → translatedirlist` call path, on the *normal*
+> (non-ASan) build under `SDL_VIDEODRIVER=dummy` — two independent tools, same finding. memcheck is now in
+> the toolkit for the Phase-3 uninitialised-value grind (the bug class ASan can't see). Evidence:
+> `/tmp/vg_init.log`.
+> **Evidence:** `/tmp/asan_full.*` (InitPreferences, 8 ordered errors, dies at the trilinear mipmap SEGV),
+> `/tmp/asan_noinit.*` (default boot, same setup errors + the T5 frame-loop spam, runs to the 300s timeout).
+> Repro: `cmake -S . -B build-asan -G Ninja -DBOB_ASAN=ON && ninja -C build-asan bob`, then
+> `ASAN_OPTIONS=halt_on_error=0:detect_leaks=0:detect_odr_violation=0 BOB_BOOT_FRONTEND=1 [BOB_INITPREFS=1] ./build-asan/bob`.
+>
+> **Hand-off to R1.3 (Sprint 2 fix story):** (a) `SetPilotedAcAnim` scalar-`delete`→`delete[]`; (b) bound
+> the `Reg3dConv` index / size the keytests buffer to the real `FileNum` range; (c) the trilinear mipmap
+> NULL-deref is the *separate* compat mipmap-upload gap (or have InitPreferences-default land on bilinear
+> until it's closed). NB these are *game-code* bugs (SRC, not compat) — R1.3 must decide compat-side
+> mitigation (custom array-cookie-tolerant free / allocator) vs. the minimal pristine-source exception, per
+> the no-edit-game-logic convention. Diagnosis-only this session; no fixes applied; bring-up still stable.
+
 > ## PHASE 2 SCOPING (2026-06-17): real init via `InitPreferences()` works — but surfaces a transient double-free
 > Toward completing the port (collapsing the env-gated bring-up scaffolds into the game's own flow): the
 > recurring "`Save_Data` field = 0" bugs all trace to one cause — the QM bring-up bypasses **FULLPANE**,

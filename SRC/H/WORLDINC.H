@@ -882,7 +882,16 @@ class	TransientItem:public	mobileitem		//o35	//o50
 {
 public:
 	static int transcount;
-	void	operator delete(void* obj)	{::delete(TransientItemPtr) obj;}
+	/* PORT FIX R1.3d (Linux, 2026-06-17): this was `{::delete(TransientItemPtr) obj;}` -- a delete-
+	   *expression*, which RE-RUNS the full ~TransientItem destructor. Since `delete remove` (TRANSITE.CPP
+	   :554) already ran the destructor before calling operator delete, the destructor ran TWICE -> the
+	   anim buffer (~ItemBase -> animptr::Delete()) was freed twice = the double-free AddressSanitizer
+	   caught in RemoveDeadListFromWorld (PORT.md Sprint-2/3 R1.3d). On Win32 the `ptr=NULL` in Delete()
+	   masked it; at -O3 here the compiler optimised against the UB and it became a real double-free. An
+	   operator-delete must only DEALLOCATE (the dtor is the compiler's job) -> call the global
+	   deallocation function once. (Same hierarchy-wide idiom exists on the sibling item classes; only
+	   TransientItem is exercised on the corruption path -- the rest are a documented latent follow-up.) */
+	void	operator delete(void* obj)	{::operator delete(obj);}
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif

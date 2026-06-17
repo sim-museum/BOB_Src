@@ -55,7 +55,17 @@ the port = collapsing them into the game's own end-to-end loop:
 
 ## Blockers / next concrete task
 
-### Gating bug (Phase 2/3): non-deterministic heap corruption in the combat sim
+### Gating bug (Phase 2/3): heap corruption in the combat sim — **RESOLVED (2026-06-17), InitPreferences is now the default init**
+**Update (Scrum Sprints 2–3, see PORT.md):** the "non-deterministic corruption" was four distinct bugs,
+all now fixed + ASan-verified: the `SetPilotedAcAnim` new[]/delete mismatch (R1.3a), the `Reg3dConv` OOB
+write (R1.3b), the trilinear loader-SEGV (pinned bilinear, R1.3c), and the transient **double-free** in
+`RemoveDeadListFromWorld` — `TransientItem::operator delete` re-ran the destructor → anim buffer freed
+twice; fixed to `::operator delete(obj)` (R1.3d). **`SaveData::InitPreferences()` is now the DEFAULT init**
+(R1.4): the env-gated `Save_Data` hacks are retired; the game initialises itself the way FULLPANE does.
+Verified (R1.5): faithful flight (sky/terrain/cockpit, OpenAL engine loop + effects, HUD) with no feature
+env vars, 90s clean. **Release 1 shipped.** The historical description below is retained for context.
+
+### (historical) non-deterministic heap corruption in the combat sim
 - `SaveData::InitPreferences()` (SAVEGAME.CPP:2279) is the real factory-defaults + `settings.cfg` +
   device-init function the QM boot skips (it bypasses FULLPANE). Wiring it in set all real defaults
   (volumes/`textureQuality=3`/HUD/units) and sound played — **the mechanism is correct.**

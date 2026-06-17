@@ -20874,7 +20874,14 @@ void shape::SetPilotedAcAnim(AirStrucPtr pilotedac)
 //	newanim->compasscount = 0;									//RJS 05Jun97
 //	newanim->muzzlego = FALSE;									//RJS 05Jun97
 
-	delete (oldanim);
+	/* PORT FIX R1.3a (Linux, 2026-06-17): oldanim points at a buffer allocated by
+	   shape::SetAnimData as `new UByte[animdatasize]` (array-new), so freeing it with a
+	   scalar `delete` is an operator mismatch (new[] vs delete) -- harmless on Win32's
+	   allocator, but real UB that corrupts the array-cookie/heap metadata (caught by
+	   AddressSanitizer: alloc-dealloc-mismatch; PORT.md Sprint-1 R1.2). The anim structs are
+	   trivially destructible (no ~AnimData), so freeing as the UByte[] it was allocated is
+	   behaviour-identical -- it just uses the matching operator delete[]. */
+	delete[] (UByteP)oldanim;
 
 	pilotedac->Anim = thenewanim;
 	pilotedac->Anim = (AnimSizeField)sizeof(PolyPitAnimData);		//RJS 01Dec99

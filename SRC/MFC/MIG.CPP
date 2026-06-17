@@ -593,6 +593,23 @@ BOOL CMIGApp::InitInstance()
 		   (COverlay::DrawTopText `(altitude*305)/alt.mediummm`), the map/waypoint dialogs, weather,
 		   hostiles, etc. SetUnits() copies the metric/imperial factor tables -> all non-zero. */
 		Save_Data.SetUnits();
+		/* R1.4 (Sprint-3): the game's own SaveData::InitPreferences() is now the DEFAULT init -- the
+		   single factory-defaults + settings.cfg + device-init function FULLPANE normally runs (the QM
+		   boot bypassed it). It sets all the real defaults: volumes (sfx=125/engine=64/music=64/...),
+		   textureQuality=3, gamedifficulty (HUD + units + display-messages), detail_3d (ground-shading +
+		   aircraft/item shadows + horizon + transparent smoke + routes), map filters, analogue tuning.
+		   This RETIRES the per-feature BOB_* Save_Data forces below (now gated on !initPrefs, kept only
+		   as env overrides + the legacy A/B path). The combat double-free that used to gate this is fixed
+		   (R1.3a/b/c/d). BOB_NOINITPREFS reverts to the legacy hand-forced bring-up. */
+		bool initPrefs = !getenv("BOB_NOINITPREFS");
+		if (initPrefs) {
+			Save_Data.InitPreferences((int)Master_3d.winst);
+			/* R1.3c: InitPreferences sets filtering=2 (TRILINEAR) -> CopyMapToSurface NULL-deref in the
+			   mip upload (deferred compat gap, R3.5). Pin BILINEAR; BOB_FILTER still overrides below. */
+			Save_Data.filtering = 1; /* BILINEAR */
+			fprintf(stderr,"[boot] R1.4: real init via SaveData::InitPreferences (default; BOB_NOINITPREFS reverts) -- texQ=%d filtering=%d[bilinear] vol.sfx=%d\n",
+				(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx);
+		}
 		/* BOB_HUD: enable the in-flight HUD info bar (altitude/speed readout), normally toggled by
 		   the HUDTOGGLE key (GD_HUDINSTACTIVE, default off). Now safe to show since SetUnits() ran. */
 		if (getenv("BOB_HUD")) {
@@ -650,12 +667,18 @@ BOOL CMIGApp::InitInstance()
 		   early-out (`if (Save_Data.vol.sfx && ...)`), so nothing reaches the DirectSound->OpenAL
 		   backend. Set the volumes so the engine/effects/UI/music sounds actually play. Shares the
 		   BOB_NOSOUND escape with the audio backend (which then skips alcOpenDevice too). */
-		if (!getenv("BOB_NOSOUND")) {
+		if (!initPrefs && !getenv("BOB_NOSOUND")) {
 			/* volumes are a 0..127 scale -- Sound::SetVolumes only PreLoadSFX()s the sample bank
 			   when `vol.sfx < 128`, so use ~100, NOT a big number (which skips the preload). */
 			Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 100;
 			Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 90;
 			fprintf(stderr,"[boot] sound: volumes set 0..127 (sfx/engine/music/...); BOB_NOSOUND to disable\n");
+		}
+		/* BOB_NOSOUND under real init: InitPreferences set the volumes ON, so silence them here. */
+		if (getenv("BOB_NOSOUND")) {
+			Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 0;
+			Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 0;
+			fprintf(stderr,"[boot] BOB_NOSOUND: volumes zeroed\n");
 		}
 		/* Landscape texture quality: the QM boot defaults to MINIMUM (Save_Data.textureQuality=0 ->
 		   EIGHTH_RES, filtering=1 -> BILINEAR), so AllocateLandscapeTextures picks the lowest option
@@ -667,8 +690,12 @@ BOOL CMIGApp::InitInstance()
 		   trilinear (FILTER=2) drives the game's mipmap upload (UploadAsMipMapLevel ->
 		   CopyMapToSurface) which still crashes on incomplete mip-level source data (a deeper compat
 		   gap). BOB_TEXQ (0..4) / BOB_FILTER (0..3) override; BOB_TEXQ=0 reverts to the old look. */
-		Save_Data.textureQuality = getenv("BOB_TEXQ") ? atoi(getenv("BOB_TEXQ")) : 4;
-		fprintf(stderr,"[boot] texture quality=%d%s\n",(int)Save_Data.textureQuality, getenv("BOB_TEXQ")?" (BOB_TEXQ)":" (default max)");
+		/* InitPreferences set textureQuality=3 (the real default); the legacy path defaults to 4 (max).
+		   BOB_TEXQ overrides either. */
+		if (getenv("BOB_TEXQ"))   Save_Data.textureQuality = atoi(getenv("BOB_TEXQ"));
+		else if (!initPrefs)      Save_Data.textureQuality = 4;
+		fprintf(stderr,"[boot] texture quality=%d (%s)\n",(int)Save_Data.textureQuality,
+			getenv("BOB_TEXQ")?"BOB_TEXQ":(initPrefs?"InitPreferences":"legacy max"));
 		if (getenv("BOB_FILTER")) { Save_Data.filtering = atoi(getenv("BOB_FILTER"));
 			fprintf(stderr,"[boot] BOB_FILTER: Save_Data.filtering=%d\n",(int)Save_Data.filtering); }
 		Persons4::StartUpMapWorld();

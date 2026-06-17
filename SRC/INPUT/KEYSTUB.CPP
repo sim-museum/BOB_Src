@@ -282,9 +282,18 @@ KeyMap3d*
 	keymap=(KeyMap3d*) reftable3d.flat;
 	while (i--)
 	{
-		keymap->mappings[mapreq->scancode][mapreq->shiftstate]=mapreq->bitflag;
+		/* PORT FIX R1.3b (Linux, 2026-06-17): KeyMapping::scancode is a 10-bit field (0..1023) and
+		   shiftstate a 6-bit field (0..63), but mappings is only [MAXKEYS=512][8]. A table entry with
+		   scancode>=512 or shiftstate>=8 indexes past the KeyMap3d struct -- a heap write-overflow
+		   (AddressSanitizer: 2-byte WRITE 1207 bytes past the 8403-byte KeyMap3d; PORT.md Sprint-1 R1.2).
+		   Benign on Win32 (stomped adjacent heap slack) but real UB. Bound both indices to the array
+		   dimensions; out-of-range entries are skipped (all in-range mappings register unchanged). */
+		if (mapreq->scancode < KeyMap3d::MAXKEYS && mapreq->shiftstate < 8)
+			keymap->mappings[mapreq->scancode][mapreq->shiftstate]=mapreq->bitflag;
 		mapreq++;
-		breakif(mapreq->bitflag==0);
+		/* ...and don't read the terminator past the end of the table on the final entry
+		   (count i is exhausted) -- that was a 2-byte READ overflow of the file buffer. */
+		breakif(i==0 || mapreq->bitflag==0);
 	}
 	((KeyMap3d*) reftable3d.flat)->active=TRUE;
 //DeadCode JIM 2Nov00 	ModeIs3D=TRUE;

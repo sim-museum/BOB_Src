@@ -23,6 +23,26 @@ add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:-m32> $<$<COMPILE_LANGUAGE:C,CXX
 add_link_options(-m32 -no-pie)
 set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 
+# --- AddressSanitizer diagnostic build (BOB_ASAN=ON) ---------------------
+# Off by default: the normal build is unaffected. Configure a SEPARATE tree
+# (e.g. build-asan/) with -DBOB_ASAN=ON to instrument heap accesses for the
+# Sprint-1 R1.2 heap-corruption hunt (InitPreferences combat path). Keeps the
+# faithful Release layout (-O3 + -fpack-struct) so the layout-sensitive bug
+# still reproduces; adds frame pointers for readable backtraces.
+option(BOB_ASAN "Build with AddressSanitizer (heap-corruption diagnostics)" OFF)
+if(BOB_ASAN)
+    # -fsanitize-recover=address: with ASAN_OPTIONS=halt_on_error=0 this makes
+    # ASan REPORT each invalid access and CONTINUE, so one run surfaces every
+    # error in order (the benign boot-path over-reads AND the later combat
+    # write-corruption) instead of stopping at the first.
+    # -g: line numbers for the inlined destructor/delete[] sites (R1.3d double-free hunt).
+    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:-fsanitize=address>
+                        $<$<COMPILE_LANGUAGE:C,CXX>:-fsanitize-recover=address>
+                        $<$<COMPILE_LANGUAGE:C,CXX>:-g>
+                        $<$<COMPILE_LANGUAGE:C,CXX>:-fno-omit-frame-pointer>)
+    add_link_options(-fsanitize=address)
+endif()
+
 set(BOB_SRC ${CMAKE_SOURCE_DIR}/SRC)
 
 # Platform / API-shim defines. /Zp1 in the original -> pack everything to 1.
