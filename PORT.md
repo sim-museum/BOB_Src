@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.3c (2026-06-17): full fly→exit→menu round-trip COMPLETE — R1.1b done
+> Closed the last 4.3 tail; the entire menu↔flight control-flow merge now runs in one process on one window.
+> - **Real root cause (my earlier "truncated mode list" guess was wrong).** Traced it with a SetIndex
+>   row/count print in the compat combo host (`bob_ole_rcombo.cpp`, behind `BOB_TRACE_OLE`): the crash is
+>   `Combo SetIndex(3) count=2` on a **2-item Off/On detail combo** in `CSDetail::OnInitDialog` — a
+>   `Save_Data` detail field holds a value (3) the combo can't represent when the screen is entered
+>   post-flight. The genuine `CRComboCtrl::SetIndex` guards out-of-range with `INT3` then falls through to
+>   `m_list.GetAt(FindIndex(row))`; on Win32 `INT3` traps first, on Linux compat it's a no-op so the bad
+>   index NULL-derefs. **Same INT3-guard-doesn't-halt class as CSQuick1 (4.2) — 3rd recurrence.**
+> - **Fix (general, compat-side, honours the guard's intent):** the RCombo host's `SetIndex` dispatch
+>   now **refuses an out-of-range index** (logs + skips; combo keeps its current index) instead of letting
+>   it NULL-deref — exactly what the game's `INT3` guard means to prevent. One place, fixes the whole class
+>   for every hosted R* combo. (The deeper "why is the detail field 3 post-flight" is a state nuance; the
+>   guard mitigation is the faithful port-layer behaviour and unblocks the screen.) The MiG-F3 "pin the
+>   state" approach also applies, but the guard-honouring clamp is the smaller, general fix.
+> - **Result:** `BOB_STARTFLYING=1 BOB_AUTOQUIT=6` → boot front-end → fly (faithful cockpit) → **F12** →
+>   `OnCancel`/teardown (clean, R1.1b/4.3b DD7 fix) → `OnFlyingClosed` → `LaunchScreen(options3d)` →
+>   **options3d Machine-Config screen fully renders** (`/tmp/bobgdi.png`: tab bar GFX/More GFX/Controls/
+>   Sound/2D/Sim/Continue, aerial-combat art, driver+resolution+detail combos populated; 800×600 99.97%
+>   non-black) → `back in front-end (InThe3D=0)`. The whole **menu→fly→menu loop runs in one process on one
+>   window.** No regression: bare `./bob` 0; 4.1 88.7%, 4.2 91.8% non-black.
+> - **R1.1b (the control-flow window merge) is COMPLETE.** Sprint 4 done. Next: Sprint 5 = R2.1 (real
+>   `LoadSetPiece` mission load + mission-end→debrief through the game's own flow), which the 4.1/4.2 menu→
+>   StartFlying seam and the 4.3 return path feed directly. Evidence: `/tmp/sf43c3.log`, `/tmp/bobgdi.png`.
+
 > ## ⇄ CROSS-PORT: compared notes with the MiG Alley instance (~/ma) — 2026-06-17
 > Synced the shared engine-notes doc (`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` ==
 > `~/ma/port/BOB_PORT_LESSONS.md`; identical again) with a dated **BoB ⇄ MiG** block. State compare:

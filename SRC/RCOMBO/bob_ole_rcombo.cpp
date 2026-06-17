@@ -51,7 +51,17 @@ struct HostRCombo : public CRComboCtrl, public OleHost {
         case 9:  { const char* t = va_arg(ap, const char*); AddString(t ? t : "");
                    if (bob_ole_trace()) fprintf(stderr, "[ole]   Combo AddString \"%s\" (n=%d)\n", t?t:"", m_list.GetCount()); } break;
         case 10: { long v = GetListbox(); if (pvRet) *(long*)pvRet = v; } break;
-        case 11: { long r = va_arg(ap, long); SetIndex(r); } break;
+        case 11: { long r = va_arg(ap, long); int n = m_list.GetCount();
+                   /* The genuine CRComboCtrl::SetIndex guards out-of-range with INT3 then falls
+                      through to m_list.GetAt(FindIndex(r)) -- on Win32 INT3 traps first, but on
+                      Linux compat INT3 is a no-op so a bad index NULL-derefs. The game only ever
+                      feeds a valid index when its Save_Data is consistent; our env-gated boot
+                      paths can leave a detail field out of range for a screen entered post-flight
+                      (e.g. a 2-item Off/On combo asked for index 3). Honour the guard's INTENT --
+                      refuse the invalid set (combo keeps its current index) instead of crashing. */
+                   if (r < 0 || r >= n) {
+                       if (bob_ole_trace()) fprintf(stderr, "[ole]   Combo SetIndex(%ld) OUT OF RANGE (count=%d) -- skipped\n", r, n);
+                   } else SetIndex(r); } break;
         case 12: { long v = GetIndex();   if (pvRet) *(long*)pvRet = v; } break;
         case 13: Clear(); break;
         case 14: { long i = va_arg(ap, long); DeleteString(i); } break;

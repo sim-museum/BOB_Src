@@ -209,13 +209,16 @@ more of the real flow.
     (free at 0), matching the surface model. **Flight now shuts down clean**; the full chain
     `OnCancel→OnFlyingClosed→LaunchScreen(options3d)` runs. No regression (scaffold 91.7% non-black,
     bare `./bob` 0). Evidence: PORT.md + `/tmp/sf43b_bt.log`.
-  - **4.3c** **NEXT:** post-flight `options3d`/`CSDetail` combo — `GetModes` returns a truncated mode
-    list only after flight → `SetIndex(selected)` past the combo (INT3-guard class). options3d works via
-    direct nav, so it's a post-flight mode-enumeration state nuance. **Fix-shape adopted from the MiG
-    Alley port's F3** (cross-port notes 2026-06-17): the combo isn't missing modes, it's an inconsistent
-    driver/mode state failing SDETAIL's filter — **pin the driver/mode state consistent before the
-    `CSDetail` fill** (their `ma_populate_software_modes()` analog). Completes the fully-rendered
-    fly→exit→menu round-trip.
+  - **4.3c** ☑ **DONE (2026-06-17).** Traced (combo-host SetIndex print): the crash was `SetIndex(3)` on a
+    2-item Off/On `CSDetail` detail combo (post-flight `Save_Data` field out of range) — the **INT3-guard-
+    doesn't-halt class** (3rd recurrence, cf. CSQuick1). Fix (general, compat-side): the RCombo host
+    **refuses an out-of-range `SetIndex`** (honours the game's guard intent) — fixes the whole class for
+    every hosted combo. **Accepted:** full **fly→F12→exit→options3d menu** round-trip renders in one
+    process (options3d 800×600 99.97% non-black, `back in front-end`); no regression. Evidence: PORT.md +
+    `/tmp/bobgdi.png`.
+
+  **✅ R1.1b COMPLETE — the menu↔flight control-flow window merge is done (Sprint 4 goal met):** menu→flight
+  (forced + real-click) and flight→menu (clean teardown + return to a rendered front-end screen), one process.
 - **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
   treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.
 - **Increment demo:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` enters flight through
@@ -283,7 +286,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 | 1 | 21 | 16 | ✅ accepted | PO-accepted as Done (Sprint Review, 2026-06-17). R1.2 (13) done; R1.1 split → R1.1a (3) done, R1.1b (8, re-est.) blocked-by R1.3, carried. Tooling: `BOB_ASAN` build + valgrind memcheck (cross-validated R1.2) added. |
 | 2 | 16 | 7 | ⚠️ partial | Shipped R1.3a/b/c (setup corruption fixed; InitPreferences reaches flight). R1.3d (transient double-free, NEW) gates init-as-default → R1.4/R1.5 + R1.3d split to Sprint 3. **Release 1 slips to Sprint 3.** PO-accepted the corruption-fix increment. |
 | 3 | 16 | 16 | ✅ **Release 1 shipped** | R1.3d (transient double-free root-caused + fixed), R1.4 (InitPreferences = default init), R1.5 (regression: faithful flight, no feature env vars). Full commit delivered. |
-| 4 | 13 | 5 (so far) | ⏳ in progress | **ACTIVE (2026-06-17, machinery restarted):** R1.1b. Spike done. SM (standing PO approval) chose the faithful path: the game's own `LaunchScreen(&quickmissionflight)→StartFlying()→Rtestsh1→Launch3d` in the front-end process (converges with R2.1). **4.1 ☑ DONE** — flight stands up via the real screen flow behind `BOB_STARTFLYING`; faithful cockpit (frame 120, 88.7% non-black, no crash); bare `./bob` exits 0. **4.2** menu-click→fly, **4.3** OnFlyingClosed→menu: next. R2.1/R2.2 → Sprint 5. |
+| 4 | 13 | 13 | ✅ **R1.1b shipped** | **R1.1b control-flow window merge DONE (2026-06-17).** Faithful path: the game's own `LaunchScreen(quickmissionflight)→StartFlying→Rtestsh1→Launch3d` (4.1), reached by **real menu clicks** (4.2, fixed CSQuick1), and the **return path** (4.3) F12→`CloseWindow`→`OnCancel`→`OnFlyingClosed`→menu — with the **DD7 refcount teardown fix** (4.3b, real compat COM bug) + the **out-of-range-SetIndex guard** (4.3c). Full **menu→fly→menu in one process on one window**. Cross-port notes synced with MiG Alley. No regression (bare 0; 4.1/4.2 ~89-92% non-black). R2.1/R2.2 → Sprint 5. |
 | 5+ | ~31 | — | — | Polish/peripherals. |
 
 Update the **Done pts** column at each Sprint Review; that's the running velocity.
