@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 6 / R2.4 (2026-06-17): campaign continuity — TWO consecutive missions through the game's own flow (fly→debrief→fly→debrief), one process
+> Closed the real game loop: the debrief→next-mission chain now runs end-to-end, proving a second
+> `StartFlying` stands up cleanly after the first tears down.
+> - **What:** added `BOB_REFLY=N` (chain N extra missions) to the `BOB_STARTFLYING` harness. After a
+>   bridged flight ends (out of 3D + `Rtestsh1::tmpinst==NULL` — the reliable "flight over" signal, since
+>   compat's `CDialog::OnOK` doesn't destruct the dialog so `THISTHIS` lingers), the trigger re-arms:
+>   re-runs the **per-mission** pre-flight (node tables + campaign + `gamestate=HOT` + QM selection; the
+>   one-time device/factory init is now gated to the first flight) and `LaunchScreen(quickmissionflight)`
+>   again → a fresh `StartFlying`/`Rtestsh1`/`Launch3d` → flight #2. `BOB_AUTOQUIT` now counts **per
+>   flight** (re-armed by a `g_bob_flight_active` flag the bridge sets and `OnFlyingClosed` clears) so the
+>   exit key fires for each mission.
+> - **Result (`BOB_STARTFLYING=1 BOB_REFLY=1 BOB_AUTOQUIT=debrief`):** trace shows the full loop —
+>   `pre-flight (mission 1/2) → Launch3d → flight close(IDOK) → OnFlyingClosed → debrief#1 → "mission 1
+>   ended; chaining next (#2/2)" → pre-flight (mission 2/2) → Launch3d (fresh tmpinst/tmpview) → flight
+>   close(IDOK) → debrief#2`. **Both debriefs render** (800×600, 97.9% non-black); the second flight builds
+>   a fresh `View3d` and runs — proving the **DD7 teardown fix (4.3b) holds across flight cycles** and the
+>   per-mission state resets correctly. Ran 100s+ across two full fly→debrief cycles, **no crash**.
+> - **Net:** the game's own **menu → mission → fly → debrief → next** loop runs in one process on one
+>   window — the Definition-of-Done flow (minus the cosmetic env-var-free packaging). No regression:
+>   bare `./bob` 0; single flight (no `BOB_REFLY`) launches exactly once (no spurious chaining); 4.1/R2.2
+>   intact. Evidence: `/tmp/r24b.log` (the 2-mission chain trace), `/tmp/r24_lastgdi.png` (debrief#2).
+> - **Next:** R2.3 (uninit-state grind on deeper mission variety) and the cosmetic "no env vars" packaging
+>   (drive the loop from real menu clicks end-to-end, retire `BOB_STARTFLYING`/`BOB_AUTOQUIT`).
+
 > ## SCRUM SPRINT 5 / R2.1 + R2.2 (2026-06-17): real mission load (already via LoadSetPiece) + mission-end → DEBRIEF through the game's own flow
 > Opened Sprint 5 (R2 "play a mission"). Both committed stories land:
 > - **R2.1 — real mission load via `LoadSetPiece`: satisfied by R1.1b (4.1/4.2).** Verified: the real menu

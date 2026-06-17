@@ -227,6 +227,9 @@ extern "C" int bob_gdi_get_click(int* x, int* y) {
 	if (!g_clickPending) return 0;
 	if (x) *x = g_clickX; if (y) *y = g_clickY; g_clickPending = 0; return 1;
 }
+/* R2.4: 1 while a flight is live (set by the Launch3d bridge in FULLPSYS, cleared when
+   OnFlyingClosed returns). Lets BOB_AUTOQUIT re-arm per mission when chaining (BOB_REFLY). */
+int g_bob_flight_active = 0;
 static void pump_events(void)
 {
 	if (!g_win) return;
@@ -247,18 +250,26 @@ static void pump_events(void)
 	if (getenv("BOB_AUTOQUIT") && g_diKbAcquired) {
 		const char* aq=getenv("BOB_AUTOQUIT");
 		bool toDebrief = strstr(aq,"debrief")!=NULL;      /* BOB_AUTOQUIT=debrief -> mission-end debrief */
-		static int qc=0; qc++;
 		int after=atoi(aq); if (after<=0) after=6;
 		int t0=after*60;                                  /* pump runs ~60Hz */
-		if (toDebrief) {
-			/* R2.2: EXITKEY ("Exit Game") = X + Left-Alt -> View3d::CloseWindow(IDOK) ->
-			   OnFlyingClosed(IDOK) -> (gamestate HOT) quickmissiondebrief. Hold LAlt (sets the
-			   keymap shift) then X so KeyPress3d(EXITKEY) resolves. */
-			if (qc>=t0 && qc<t0+10) { kb_push(0x38,1); kb_push(0x2D,1); }  /* LAlt + X down, held */
-			else if (qc==t0+10)     { kb_push(0x2D,0); kb_push(0x38,0); }  /* X, LAlt up */
-		} else {
-			if (qc>=t0 && qc<t0+8) kb_push(0x58,1);       /* F12 (KEY_CONFIGMENU) down, held */
-			else if (qc==t0+8)     kb_push(0x58,0);       /* F12 up */
+		/* R2.4: count from the START OF EACH FLIGHT (g_bob_flight_active, set by the Launch3d
+		   bridge, cleared when OnFlyingClosed returns) so the exit key re-arms per mission when
+		   chaining (BOB_REFLY). Idle in the front-end (active=0) holds the counter at 0. */
+		static int prevActive=0; static int fc=0;
+		if (g_bob_flight_active && !prevActive) fc=0;     /* new flight -> reset the timer */
+		prevActive = g_bob_flight_active;
+		if (g_bob_flight_active) {
+			fc++;
+			if (toDebrief) {
+				/* R2.2: EXITKEY ("Exit Game") = X + Left-Alt -> View3d::CloseWindow(IDOK) ->
+				   OnFlyingClosed(IDOK) -> (gamestate HOT) quickmissiondebrief. Hold LAlt (sets the
+				   keymap shift) then X so KeyPress3d(EXITKEY) resolves. */
+				if (fc>=t0 && fc<t0+10) { kb_push(0x38,1); kb_push(0x2D,1); }  /* LAlt + X down, held */
+				else if (fc==t0+10)     { kb_push(0x2D,0); kb_push(0x38,0); }  /* X, LAlt up */
+			} else {
+				if (fc>=t0 && fc<t0+8) kb_push(0x58,1);   /* F12 (KEY_CONFIGMENU) down, held */
+				else if (fc==t0+8)     kb_push(0x58,0);   /* F12 up */
+			}
 		}
 	}
 	SDL_Event e;

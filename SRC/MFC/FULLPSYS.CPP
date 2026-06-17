@@ -261,14 +261,27 @@ static void bob_fp_repaint(RFullPanelDial* fp)
    mission squadron). Mirrors the BOB_BOOT_FRONTEND scaffold's pre-flight (MIG.CPP), but here
    we hand the actual Inst3d/View3d construction to the game's OWN path (Rtestsh1::Launch3d)
    instead of synthesizing it -- this is the faithful menu->flight transition. */
-static void bob_startflying_preflight(bool clickMode)
+static void bob_startflying_preflight(bool clickMode, bool firstTime)
 {
-	/* Factory/world init the QM config screens do NOT do (these run regardless of mode). */
-	Save_Data.SetUnits();                                  /* unit-conversion factors (else SIGFPE) */
-	if (!getenv("BOB_NOINITPREFS")) {
-		Save_Data.InitPreferences((int)Master_3d.winst);  /* R1.4: real factory defaults */
-		Save_Data.filtering = 1;                          /* R1.3c: pin BILINEAR (trilinear NULL-derefs) */
+	/* One-time device/factory init (display/sound config that persists across missions) -- only
+	   on the first flight; re-flying (R2.4) skips it. The per-mission world setup below runs
+	   every flight (as the game's SetUpHotShot does per QM). */
+	if (firstTime) {
+		Save_Data.SetUnits();                              /* unit-conversion factors (else SIGFPE) */
+		if (!getenv("BOB_NOINITPREFS")) {
+			Save_Data.InitPreferences((int)Master_3d.winst);  /* R1.4: real factory defaults */
+			Save_Data.filtering = 1;                          /* R1.3c: pin BILINEAR (trilinear NULL-derefs) */
+		}
+		if (!getenv("BOB_NOCLOUDS")) {                     /* faithful sky (default-on, cf. scaffold) */
+			Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
+			Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
+		}
+		if (getenv("BOB_NOSOUND")) {
+			Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 0;
+			Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 0;
+		}
 	}
+	/* Per-mission world setup (the QM config screens do NOT do this; SetUpHotShot does). */
 	Node_Data.BuildTargetTable();                          /* node/squad tables first (cold start) */
 	Node_Data.LoadCleanNodeTree();
 	Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
@@ -277,14 +290,6 @@ static void bob_startflying_preflight(bool clickMode)
 	   IDOK exit (EXITKEY/Alt+X) to quickmissiondebrief only when gamestate is HOT or QUICK;
 	   without it the close falls through to the campaign-map branch. */
 	RFullPanelDial::gamestate = RFullPanelDial::HOT;
-	if (!getenv("BOB_NOCLOUDS")) {                         /* faithful sky (default-on, cf. scaffold) */
-		Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
-		Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
-	}
-	if (getenv("BOB_NOSOUND")) {
-		Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 0;
-		Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 0;
-	}
 	if (clickMode) {
 		/* 4.2: navigate the REAL QM config flow. Leave the quick-mission selection to the game's
 		   own CSQuick1 ctor, which (when currquickmiss==-1, the fresh-entry sentinel) sets
@@ -335,6 +340,7 @@ int bob_process_flight_close(void)
 		g_bobActiveFP->OnFlyingClosed(NULL, id);
 		fprintf(stderr,"[startfly] back in front-end (InThe3D=%d)\n",(int)Inst3d::InThe3D());
 	}
+	{ extern int g_bob_flight_active; g_bob_flight_active = 0; }   /* R2.4: flight ended -> re-arm auto-quit */
 	return 1;
 }
 
@@ -356,27 +362,45 @@ extern "C" void bob_frontend_tick(void)
 	if (getenv("BOB_STARTFLYING")) {
 		const char* mode = getenv("BOB_STARTFLYING");
 		bool clickMode = mode && strcmp(mode,"click")==0;   /* 4.2: reach Fly by real menu clicks */
+		int totalFlights = 1 + (getenv("BOB_REFLY") ? atoi(getenv("BOB_REFLY")) : 0);  /* R2.4 chaining */
+		extern int g_bob_flight_active;                     /* per-flight auto-quit re-arm (bob_video) */
 		static int sf_t = 0;
 		static bool sf_preflighted = false;
 		static bool sf_bridged = false;
+		static int  sf_flights = 0;                         /* flights started so far */
 
-		/* Run the QM pre-flight world setup once (factory init + the quick-mission the player
-		   would pick in the config UI; the deeper config screens are R2.1). Inc 4.1 (=1) then
-		   force-launches the flight screen; inc 4.2 (=click) seeds the same state and lets a
-		   real menu click drive OnSelectRlistbox -> CheckForMissingMission/FragFly2 ->
-		   LaunchScreen(quickmissionflight) -> StartFlying. */
+		/* R2.4 (campaign continuity): a flight we bridged has ended (Rtestsh1 torn down + out of
+		   3D, i.e. OnFlyingClosed reached the debrief/menu). If more missions remain, re-arm and
+		   fly the next one -- proving the game's debrief->next-mission loop runs in one process. */
+		/* "flight ended" = out of 3D + the view/inst the bridge built are gone (OnOK/OnCancel
+		   delete tmpinst/tmpview; compat's CDialog::OnOK doesn't destruct the dialog so THISTHIS
+		   can linger -- tmpinst==NULL is the reliable signal). The 30-tick pre-flight delay below
+		   keeps the bridge from re-firing on the stale dialog before the next LaunchScreen. */
+		if (sf_bridged && !Inst3d::InThe3D() && Rtestsh1::tmpinst==NULL) {
+			if (sf_flights < totalFlights) {
+				fprintf(stderr,"[startfly] === mission %d ended; chaining next (#%d/%d) ===\n",
+					sf_flights, sf_flights+1, totalFlights);
+				sf_bridged=false; sf_preflighted=false; sf_t=0;   /* re-arm for the next mission */
+			} else {
+				return;   /* all missions flown; stay in the front-end (final debrief) */
+			}
+		}
+		if (sf_bridged) return;   /* currently flying -- the Run loop owns it */
+
+		/* Pre-flight: one-time device init (firstTime) + per-mission world setup. Inc 4.1 (=1)
+		   force-launches the flight screen; inc 4.2 (=click) seeds the state and lets real menu
+		   clicks drive OnSelectRlistbox -> FragFly2 -> LaunchScreen(quickmissionflight). */
 		if (!sf_preflighted) {
-			if (++sf_t < 30) return;                        /* let the front-end paint its title */
-			fprintf(stderr,"[startfly] BOB_STARTFLYING=%s: pre-flight setup\n", mode);
-			bob_startflying_preflight(clickMode);
+			if (++sf_t < 30) return;                        /* let the prev screen settle/paint */
+			fprintf(stderr,"[startfly] BOB_STARTFLYING=%s: pre-flight (mission %d/%d)\n", mode, sf_flights+1, totalFlights);
+			bob_startflying_preflight(clickMode, sf_flights==0);
 			sf_preflighted = true;
 			if (!clickMode) {
-				fprintf(stderr,"[startfly] inc 4.1: forced LaunchScreen(quickmissionflight)\n");
+				fprintf(stderr,"[startfly] forced LaunchScreen(quickmissionflight)\n");
 				g_bobActiveFP->LaunchScreen(&RFullPanelDial::quickmissionflight);  /* fires StartFlying */
 			} else {
-				fprintf(stderr,"[startfly] inc 4.2: navigate to Fly by clicks (use BOB_AUTOCLICK=0,1,2)\n");
+				fprintf(stderr,"[startfly] navigate to Fly by clicks (use BOB_AUTOCLICK=0,1,2)\n");
 			}
-			/* fall through: clickMode wants the click-dispatch below to run this same tick */
 			if (!clickMode) return;
 		}
 
@@ -391,7 +415,7 @@ extern "C" void bob_frontend_tick(void)
 			Rtestsh1::THISTHIS->Launch3d(Rtestsh1::THISTHIS->wasrunning);
 			fprintf(stderr,"[startfly] Launch3d returned; tmpinst=%p tmpview=%p\n",
 				(void*)Rtestsh1::tmpinst,(void*)Rtestsh1::tmpview);
-			sf_bridged = true;
+			sf_bridged = true; sf_flights++; g_bob_flight_active = 1;   /* flight #sf_flights live */
 			return;
 		}
 		if (sf_bridged) return;   /* flight is up; the Run-loop / Inst3d path takes over */
