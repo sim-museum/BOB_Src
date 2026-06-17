@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 5 / R2.1 + R2.2 (2026-06-17): real mission load (already via LoadSetPiece) + mission-end → DEBRIEF through the game's own flow
+> Opened Sprint 5 (R2 "play a mission"). Both committed stories land:
+> - **R2.1 — real mission load via `LoadSetPiece`: satisfied by R1.1b (4.1/4.2).** Verified: the real menu
+>   Fly path already drives `StartFlying → Rtestsh1::Launch3d → new Inst3d → Persons_2.LoadSetPiece`
+>   (STUB3D.CPP:499) — a genuine quick-mission load, not the synthesized `BOB_BOOT_FRONTEND` scaffold.
+>   Checked the game's own `SetUpHotShot` (the QM mission-world setup: campaign + `BuildTargetTable` +
+>   `LoadCleanNodeTree` + `playersquadron`): **it is UNSAFE on BoB's data** — its
+>   `for(;quickmissions[i].titlename!=IDS_CONFIGIGNORED;i++)` sentinel doesn't exist in this data version,
+>   so the loop overruns the array. Our `bob_startflying_preflight` already performs the *identical*
+>   genuine setup, just selecting the mission by a valid index instead of the missing sentinel — so it's
+>   the faithful adaptation, not a synthesized shortcut. R2.1 = done.
+> - **R2.2 — mission-end → debrief: DONE.** The flight-exit key **EXITKEY ("Exit Game") = Alt+X**
+>   (`KeyMap(EXITKEY, x, AltL)`) drives `View3d::CloseWindow(IDOK)` (default arg `IDOK`, vs F12/
+>   `KEY_CONFIGMENU`'s explicit `IDCANCEL`). Our 4.3 close bridge captures the swallowed `WM_COMMAND` and
+>   the main thread runs `Rtestsh1::OnOK` + `OnFlyingClosed(IDOK)`; with `gamestate==HOT` (the QM state,
+>   which `SetUpHotShot` sets — now set in the pre-flight) `OnFlyingClosed` routes to
+>   `LaunchScreen(&quickmissiondebrief)`. Added: `gamestate=HOT` in the pre-flight + `BOB_AUTOQUIT=debrief`
+>   (injects Alt+X = LAlt 0x38 held + X 0x2D, vs F12 0x58 for the config-menu exit).
+> - **Result:** `BOB_STARTFLYING=1 BOB_AUTOQUIT=debrief` → fly (faithful cockpit) → **Alt+X** → clean
+>   teardown → `flight close (id=1=IDOK) → OnOK + OnFlyingClosed` → **the Quick-Mission debrief screen
+>   renders** (`/tmp/r22_debrief.png`: Back/Airport/Diary/Replay tabs, sepia photo-collage art, report
+>   listbox; artnum 27924, 800×600 89.7% non-black) → `back in front-end`. The two exit keys route
+>   faithfully: **F12→IDCANCEL→options3d** (artnum 27906), **Alt+X→IDOK→debrief** (artnum 27924).
+> - **Net:** the game's own **menu → fly → (exit) → debrief** flow now runs end-to-end in one process.
+>   No regression: bare `./bob` 0; 4.1 88.7%, 4.3c F12→options3d intact. Next: R2.3 (uninit-state grind
+>   on deeper mission variety) + R2.4 (campaign continuity: debrief → next mission). Evidence:
+>   `/tmp/r22.log`, `/tmp/r22_debrief.png`, `/tmp/rg43.log` (F12 path unregressed).
+
 > ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.3c (2026-06-17): full fly→exit→menu round-trip COMPLETE — R1.1b done
 > Closed the last 4.3 tail; the entire menu↔flight control-flow merge now runs in one process on one window.
 > - **Real root cause (my earlier "truncated mode list" guess was wrong).** Traced it with a SetIndex

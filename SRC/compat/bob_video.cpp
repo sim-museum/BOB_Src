@@ -245,11 +245,21 @@ static void pump_events(void)
 	   of flight, hold F12 (DIK 0x58 = KEY_CONFIGMENU) for a few frames so the per-frame
 	   KeyPress3d poll fires View3d::CloseWindow(IDCANCEL) -> the close bridge -> back to menu. */
 	if (getenv("BOB_AUTOQUIT") && g_diKbAcquired) {
+		const char* aq=getenv("BOB_AUTOQUIT");
+		bool toDebrief = strstr(aq,"debrief")!=NULL;      /* BOB_AUTOQUIT=debrief -> mission-end debrief */
 		static int qc=0; qc++;
-		int after=atoi(getenv("BOB_AUTOQUIT")); if (after<=0) after=5;
+		int after=atoi(aq); if (after<=0) after=6;
 		int t0=after*60;                                  /* pump runs ~60Hz */
-		if (qc>=t0 && qc<t0+8) kb_push(0x58,1);           /* F12 down, held ~8 frames */
-		else if (qc==t0+8)     kb_push(0x58,0);           /* F12 up */
+		if (toDebrief) {
+			/* R2.2: EXITKEY ("Exit Game") = X + Left-Alt -> View3d::CloseWindow(IDOK) ->
+			   OnFlyingClosed(IDOK) -> (gamestate HOT) quickmissiondebrief. Hold LAlt (sets the
+			   keymap shift) then X so KeyPress3d(EXITKEY) resolves. */
+			if (qc>=t0 && qc<t0+10) { kb_push(0x38,1); kb_push(0x2D,1); }  /* LAlt + X down, held */
+			else if (qc==t0+10)     { kb_push(0x2D,0); kb_push(0x38,0); }  /* X, LAlt up */
+		} else {
+			if (qc>=t0 && qc<t0+8) kb_push(0x58,1);       /* F12 (KEY_CONFIGMENU) down, held */
+			else if (qc==t0+8)     kb_push(0x58,0);       /* F12 up */
+		}
 	}
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {

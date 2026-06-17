@@ -273,6 +273,10 @@ static void bob_startflying_preflight(bool clickMode)
 	Node_Data.LoadCleanNodeTree();
 	Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
 	Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+	/* R2.2: gamestate=HOT is the QM state (SetUpHotShot sets it). OnFlyingClosed routes an
+	   IDOK exit (EXITKEY/Alt+X) to quickmissiondebrief only when gamestate is HOT or QUICK;
+	   without it the close falls through to the campaign-map branch. */
+	RFullPanelDial::gamestate = RFullPanelDial::HOT;
 	if (!getenv("BOB_NOCLOUDS")) {                         /* faithful sky (default-on, cf. scaffold) */
 		Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
 		Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
