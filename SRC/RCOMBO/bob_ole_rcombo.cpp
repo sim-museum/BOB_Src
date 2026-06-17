@@ -26,7 +26,25 @@ struct HostRCombo : public CRComboCtrl, public OleHost {
     void draw(CDC* pdc, int w, int h) override {
         g_bobListFontH = pdc->m_bobTextH;
         CRect rc(0, 0, w, h);
+        /* Keep the control on its direct-to-pdc path: after the first OnDraw the genuine code
+           switches to an offscreen-DC route (parent->SendMessage(WM_GETOFFSCREENDC) +
+           CreateCompatibleBitmap), which the GDI compat doesn't provide -> NULL deref on any
+           repaint (e.g. after a combo cycles). Forcing m_FirstSweep each draw renders straight
+           onto the framebuffer, matching the front-end's draw model. */
+        m_FirstSweep = TRUE;
         OnDraw(pdc, rc, rc);
+    }
+    /* Click cycles to the next value (the genuine R* combo is a click-to-advance spinner, not a
+       drop-list). Advances the real CRComboCtrl's index so OnDraw shows the new value, and the
+       config's writeback pass (PreDestroyPanel reads GetIndex) persists it on tab change. */
+    int onClick() override {
+        int n = m_list.GetCount();
+        if (n <= 1) return 0;
+        long cur = GetIndex();
+        long nxt = (cur + 1) % n;
+        SetIndex((int)nxt);
+        if (bob_ole_trace()) fprintf(stderr, "[ole]   RCombo cycle index %ld -> %ld (of %d)\n", cur, nxt, n);
+        return 1;
     }
     void dispatch(DISPID id, VARTYPE /*vtRet*/, void* pvRet, va_list ap) override {
         switch (id) {

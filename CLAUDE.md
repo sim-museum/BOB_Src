@@ -55,28 +55,41 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
   `bob_gdi` framebuffer (`CDC` text/line primitives wired). Captures in `doc/reference/`.
 - **3D flight / cockpit** — runs on real GL (`BOB_BOOT_FRONTEND`); the cockpit corruption was a
   surface refcount use-after-free (fixed with real COM refcounting + GL-texture free).
+- **Landscape ground via FBO render-to-texture** (`BOB_FBO_RTT`, gated). The airfield ground was
+  black because the landscape composite had no real render target; the FBO RTT path in
+  `bob_video.cpp` (accept RTT surfaces → GL texture + FBO, `DEV_SetRenderTarget` bind/restore,
+  `SURF_Lock` reads the FBO back into the bits the game's `UploadTexture` copies) now fills the
+  terrain — A/B at QM frame 80: ground non-black **51% → 99%** (black → green landscape). The
+  setup hang that blocked this was a latent game-code NULL `Release()` exposed by the compat
+  over-advertising `D3DPRASTERCAPS_ZBUFFERLESSHSR`; fixed by clearing that cap under `BOB_FBO_RTT`
+  only (game source stays pristine). Default flight is byte-unchanged. See PORT.md (2026-06-16).
 - **Front-end GDI 2D pipeline** — window framebuffer + present (`bob_gdi_*`), `SetDIBitsToDevice`,
   stb_truetype text (`bob_gdi_font.cpp`), mouse-navigable menu (`bob_frontend_tick`).
 
 ### Open fronts (next work)
-1. **Landscape RTT (the black airfield ground).** The **FBO render-to-texture backend is now
-   IMPLEMENTED and gated** on **`BOB_FBO_RTT`** (`bob_video.cpp`: accept RTT surfaces → GL
-   texture + FBO, `DEV_SetRenderTarget` bind/restore, `SURF_Lock` reads the FBO back into the
-   bits so the game's existing `UploadTexture` copy carries real detail). Default flight is
-   byte-unchanged (gated off). **BLOCKED:** enabling `BOB_FBO_RTT` hangs the game's
-   `LoadSetPiece`/`AllocateLandscapeTextures` (LIB3D.CPP:7781) **before** any compositing (no
-   FBO/SetRenderTarget/Lock trace) — a CPU-side hang on the `F_TEXTURECANBERENDERTARGET` path.
-   Next: instrument that path to pin the hang, fix the surface op, A/B the ground (clearing the
-   QM config-overlay that now covers the early runway view). Same machinery fixes the mirror.
+1. **Landscape RTT polish + make it default.** The FBO path works (ground renders) but is still
+   gated on `BOB_FBO_RTT`. Open items: the land RT is only 128×128 (option table picked
+   `biggestWH=128` — push for higher land-texture options/sharper detail tiles); the rear-view
+   **mirror** uses the same FBO path now and needs an A/B; verify steady-state texture lifetime
+   under RTT; then promote `BOB_FBO_RTT` to default once the mirror + lifetime are confirmed.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/
    label Y-alignment. Then apply the (general) pipeline to the campaign/loadout/map screens.
+   *Interaction is live:* clicking a hosted combo cycles its value (`bob_ole_click` →
+   `HostRCombo::onClick` → repaint; `SG2C_WRITEBACK` persists it). **Adopted from the MiG Alley
+   port (`~/ma`)** this session: **RLE8 (BI_RLE8) BMP decode** in `bob_gdi_setdibits` (was a
+   latent gap — backgrounds now decode). *Not adopted (verified N/A for BoB): RButton hosting +
+   RTTI eventsink — BoB's dialogs host only RCombo/RListBox/RStatic; buttons render via the
+   separate `bob_frontend_tick`/`bob_draw_menu` path, not as OCX.* Shared engine notes:
+   `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` (== `~/ma/port/BOB_PORT_LESSONS.md`, kept in sync);
+   cross-port dialogue in PORT.md (newest entries).
 3. Secondary: terrain over-tiling, intro Smacker, audio (DirectSound→OpenAL, stubbed),
    joystick/mouse-via-DInput.
 
 Diagnostics (env-gated, default-off): `BOB_OLE_DRAW`, `BOB_TRACE_OLE`, `BOB_AUTOCLICK=<seq>`
-(comma-sep, e.g. `5,3`), `BOB_FBO_RTT`, `BOB_TRACE_RTT`, `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
+(comma-sep, e.g. `5,3`), `BOB_CLICKXY="tick,x,y;…"` (inject clicks at framebuffer coords —
+headless combo-click tests), `BOB_FBO_RTT`, `BOB_TRACE_RTT`, `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
 `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.
 
 ## Conventions

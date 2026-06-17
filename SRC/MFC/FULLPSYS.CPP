@@ -171,6 +171,7 @@ extern "C" int  bob_gdi_get_click(int*,int*);                      /* pending le
    hand-drawn menu text, to render the hosted ActiveX control's real layout. */
 extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, int textH);
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
+extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
 static int g_bobOleDraw = -1;
 static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_DRAW") ? 1 : 0; return g_bobOleDraw; }
 
@@ -237,8 +238,26 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		g_bobMenuN = i+1;
 	}
 }
+/* Repaint the current screen in place (background + dial panels + hosted controls + menu),
+   without re-launching it (which would reset combo values). Used after a combo click cycles
+   its value, so the new value shows. Mirrors LaunchScreen's BOB_LINUX paint block. */
+static void bob_fp_repaint(RFullPanelDial* fp)
+{
+	fp->DoPaint(fp->GetDC());
+	for (int d=0; d<3; d++) if (fp->pdial[d]) {
+		fp->pdial[d]->DoPaint(fp->GetDC());
+		if (bobOleDraw()) {
+			int ox = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].X;
+			int oy = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].Y;
+			bob_ole_draw_panel((CWnd*)fp->pdial[d], ox, oy);
+		}
+	}
+	bob_draw_menu(fp, fp->m_currentscreen, RFullPanelDial::resolutions[fp->m_currentres]);
+	bob_gdi_present();
+}
 /* Called each idle from CMIGApp::OnIdle (under BOB_FRONTEND): if a menu item was clicked,
-   fire the existing OnSelectRlistbox(i) which navigates to that item's screen (+ repaints). */
+   fire the existing OnSelectRlistbox(i) which navigates to that item's screen (+ repaints).
+   A click that misses the menu but lands on a hosted combo cycles that combo's value. */
 extern "C" void bob_frontend_tick(void)
 {
 	if (!g_bobActiveFP) return;
@@ -259,12 +278,24 @@ extern "C" void bob_frontend_tick(void)
 		}
 	}
 	if (got) {
+		bool consumed = false;
 		for (int i=0; i<g_bobMenuN; i++)
 			if (cx>=g_bobMenuRect[i].x && cx<g_bobMenuRect[i].x+g_bobMenuRect[i].w &&
 			    cy>=g_bobMenuRect[i].y && cy<g_bobMenuRect[i].y+g_bobMenuRect[i].h) {
 				fprintf(stderr,"[frontend] click (%d,%d) -> menu item %d\n", cx, cy, i);
 				g_bobActiveFP->OnSelectRlistbox(i, 0);
+				consumed = true;
 				break;
+			}
+		/* missed the menu -> try the active panels' hosted combos (cycle on click) */
+		if (!consumed && bobOleDraw())
+			for (int d=0; d<3; d++) {
+				RDialog* pd = g_bobActiveFP->pdial[d];
+				if (pd && bob_ole_click((CWnd*)pd, cx, cy)) {
+					fprintf(stderr,"[frontend] click (%d,%d) -> combo cycled (panel %d)\n", cx, cy, d);
+					bob_fp_repaint(g_bobActiveFP);
+					break;
+				}
 			}
 	}
 }

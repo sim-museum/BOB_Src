@@ -111,10 +111,32 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         dc.m_bobVpX = sx; dc.m_bobVpY = sy;
         dc.m_bobTextH = hpx > 4 ? hpx - 4 : hpx;
         host->draw(&dc, dluX(r.w), hpx);
+        host->sx = sx; host->sy = sy; host->sw = dluX(r.w); host->sh = hpx;  /* for click hit-test */
         if (bob_ole_trace()) fprintf(stderr, "[ole] draw panel ctrl id=%d at (%d,%d) %dx%d\n", host->ctrlId, sx, sy, dluX(r.w), hpx);
         n++;
     }
     return n;
+}
+
+/* A click landed at screen (x,y) over `dialog`'s panel: hit-test its hosted controls' last-drawn
+   rects; an interactive control (RCombo) cycles its value (onClick). Returns 1 if a control
+   consumed the click (the caller then repaints). Mirrors the MiG Alley port's ma_ole_click. */
+extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
+    if (bob_ole_trace()) {
+        int match=0; for (auto& kv : hosts()) if (kv.second->parentDlg==dialog) match++;
+        fprintf(stderr, "[ole] click test dialog=%p (%d,%d) hostsForDialog=%d\n", (void*)dialog, x, y, match);
+    }
+    for (auto& kv : hosts()) {
+        OleHost* h = kv.second;
+        if (h->parentDlg != dialog || h->sw <= 0 || h->sh <= 0) continue;
+        if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
+            if (h->onClick()) {
+                if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> ctrl id=%d cycled\n", x, y, h->ctrlId);
+                return 1;
+            }
+        }
+    }
+    return 0;
 }
 
 extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vtRet, void* pvRet, const BYTE* /*pInfo*/, va_list ap) {

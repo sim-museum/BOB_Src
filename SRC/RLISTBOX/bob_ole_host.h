@@ -11,12 +11,14 @@ struct OleHost {
     int         ctrlId = 0;      /* the dialog control id (DDX_Control) -> template lookup */
     int         dlgId  = 0;      /* the owning dialog's IDD -> (dialog,control) DLGINIT caption */
     class CWnd* parentDlg = NULL;/* owning dialog (for per-panel draw) */
+    int         sx=0, sy=0, sw=0, sh=0;  /* last-drawn screen rect, for click hit-testing */
     virtual ~OleHost() {}
     virtual void dispatch(DISPID id, VARTYPE vtRet, void* pvRet, va_list ap) = 0;
     virtual void setprop(DISPID id, va_list ap) = 0;
     virtual void getprop(DISPID id, void* pvRet) = 0;
     virtual void draw(class CDC* pdc, int w, int h) = 0;
     virtual void applyDesignProps() {}   /* set design-time props (e.g. RStatic label caption) once ids are known */
+    virtual int  onClick() { return 0; } /* interactive controls (RCombo) cycle on click; return 1 if state changed */
 };
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT caption (bob_dlgtemplate.cpp) */

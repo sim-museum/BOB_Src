@@ -207,6 +207,23 @@ static void kb_push(unsigned dik, int down) {
 static int g_clickX = 0, g_clickY = 0, g_clickPending = 0;   /* last left-click (framebuffer coords) */
 /* The front-end (bob_frontend_tick) polls this for menu clicks. */
 extern "C" int bob_gdi_get_click(int* x, int* y) {
+	/* BOB_CLICKXY="tick,x,y;tick,x,y;..." injects clicks at arbitrary framebuffer coords on the
+	   given front-end tick (diagnostic; pairs with BOB_AUTOCLICK menu nav to reach + click a
+	   hosted combo headlessly). Default-off. */
+	static long calls = -1; calls++;
+	const char* cxy = getenv("BOB_CLICKXY");
+	if (cxy && !g_clickPending) {
+		const char* p = cxy;
+		while (p && *p) {
+			long T; int px, py;
+			if (sscanf(p, "%ld,%d,%d", &T, &px, &py) == 3 && calls == T) {
+				g_clickX = px; g_clickY = py; g_clickPending = 1;
+				fprintf(stderr, "[click] BOB_CLICKXY injected (%d,%d) at tick %ld\n", px, py, T);
+				break;
+			}
+			p = strchr(p, ';'); if (p) p++;
+		}
+	}
 	if (!g_clickPending) return 0;
 	if (x) *x = g_clickX; if (y) *y = g_clickY; g_clickPending = 0; return 1;
 }
@@ -531,6 +548,7 @@ extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, uns
 	int   biBitCount= *(const short*)(hdr+14);
 	int absH = biHeight<0 ? -biHeight : biHeight;
 	int topDown = biHeight<0;
+	unsigned biComp = biSize>=20 ? *(const unsigned*)(hdr+16) : 0; /* 0=BI_RGB 1=BI_RLE8 */
 	const unsigned char* pal = hdr + biSize;            /* RGBQUAD[] (B,G,R,0) for <=8bpp */
 	const unsigned char* src = (const unsigned char*)bits;
 	int srcPitch;
@@ -539,6 +557,41 @@ extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, uns
 	else if (biBitCount==32) srcPitch = biWidth*4;
 	else return 0;
 	int avail = (int)numScan; if (avail>absH) avail=absH;
+	/* BI_RLE8: many Rowan dialog/config backgrounds are RLE8-compressed (only a few are raw).
+	   Win32 SetDIBitsToDevice decompresses transparently; we must too, or the run/escape bytes
+	   decode as raw indices -> garbage. Inflate the RLE stream into a tight W*H index buffer
+	   (row 0 = bottom, BMP order) so the existing bottom-up loop below handles it unchanged.
+	   (Ported from the MiG Alley port's ma_gdi.cpp, which hit the same gap.) */
+	if (biComp==1 && biBitCount==8 && biWidth>0 && absH>0) {
+		static unsigned char* rle=NULL; static size_t rlecap=0;
+		size_t need=(size_t)biWidth*absH;
+		if (rlecap<need) { free(rle); rle=(unsigned char*)malloc(need); rlecap=rle?need:0; }
+		if (rle) {
+			memset(rle, 0, need);
+			unsigned sizeImage = biSize>=24 ? *(const unsigned*)(hdr+20) : 0;
+			const unsigned char* p = src;
+			const unsigned char* pend = src + (sizeImage ? sizeImage : need*2);
+			int x=0, row=0;
+			while (p+1 < pend && row < absH) {
+				unsigned char cnt=*p++;
+				if (cnt) {                                   /* encoded run */
+					unsigned char v=*p++;
+					while (cnt-- && x<biWidth) rle[(size_t)row*biWidth + x++]=v;
+				} else {                                     /* escape */
+					unsigned char sec=*p++;
+					if (sec==0) { x=0; row++; }                                 /* end of line */
+					else if (sec==1) break;                                     /* end of bitmap */
+					else if (sec==2) { if (p+1<pend) { x+=*p++; row+=*p++; } }  /* delta */
+					else {                                                      /* absolute run */
+						for (int i=0;i<sec;i++){ if(p>=pend) break; unsigned char v=*p++;
+							if (x<biWidth && row<absH) rle[(size_t)row*biWidth + x++]=v; }
+						if (sec & 1) p++;                                       /* word-align */
+					}
+				}
+			}
+			src = rle; srcPitch = biWidth; topDown = 0; avail = absH;
+		}
+	}
 	for (int imgY=0; imgY<absH; imgY++) {
 		int srcRow = topDown ? imgY : (absH-1-imgY);
 		if (srcRow >= avail) continue;
@@ -838,6 +891,14 @@ static void fill_devdesc(D3DDEVICEDESC7* dd, const GUID* guid) {
 	dd->dpcLineCaps.dwTextureAddressCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwShadeCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwRasterCaps = 0xFFFFFFFF;
+	/* ZBUFFERLESSHSR(0x8000): claims the device does hidden-surface removal without a
+	   z-buffer (a deferred-renderer trait, e.g. PowerVR). When set, Lib3D never creates
+	   the auxiliary z-buffers for the landscape/mirror render targets -- but
+	   CheckIfTextureCanBeRenderTarget then unconditionally Release()es a NULL pDDS7MirrorZB
+	   (LIB3D.CPP ~2269), which derefs NULL. Real z-buffered DX7 cards (the game's target)
+	   don't set this bit. Only the FBO render-target path exercises that code, so clear the
+	   bit ONLY under BOB_FBO_RTT -- the default flight path keeps its exact current caps. */
+	if (getenv("BOB_FBO_RTT")) dd->dpcLineCaps.dwRasterCaps &= ~0x00008000u; /* D3DPRASTERCAPS_ZBUFFERLESSHSR */
 	dd->dpcLineCaps.dwZCmpCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwSrcBlendCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwDestBlendCaps = 0xFFFFFFFF;
