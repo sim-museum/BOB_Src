@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## OPEN FRONT #1 (2026-06-16): mirror ROOT CAUSE found — garbage horizon texcoords (latent game bug)
+> Pinned why the mirror is uniformly flat (variance 0 at frames 160 AND 400 — systematic, not an empty
+> view). Logged the UV span of every quad drawn into each RTT FBO:
+> - **Land tiles:** clean UVs (`u[0.107..0.278] v[0.959..0.998]`, diffuse `0xffffffff`) → real texture.
+> - **Mirror horizon quads:** **garbage v-texcoords** — `v[-2417851639229258349412352.000..0.000]`
+>   (≈ -2.4e24) with degenerate `u`, diffuse `0x0090b8e8` (alpha 0). With `GL_CLAMP_TO_EDGE` the garbage
+>   `v` clamps to one edge row, so every fullscreen horizon quad samples a single texel → flat teal fill
+>   (mean-lum 45 = the colour we see).
+> - **It's the vertex data, not our FVF parsing:** `u` (the field just before `v`) reads fine and the
+>   texture binds correctly (`texW=32`); only `v` is garbage → the `InfiniteStrip` mirror-horizon
+>   vertices carry an uninitialised/garbage v. A latent game-side bug in `RenderMirrorLandscape`'s
+>   `InfiniteStrip(PlayerSeenAC->pitch, roll)` horizon setup (real DX7 HW likely ignored/clamped it),
+>   exposed by the port — like the other latent bugs we've hit. The RTT plumbing itself is correct.
+> - **Deferred** (lower priority than landscape texture work): fixing needs game-side investigation of the
+>   horizon UV computation (or a compat sanitiser that rejects non-finite/huge texcoords). Moving on to
+>   landscape texture resolution next. Probe (`BOB_TRACE_RTTUV`) was exploratory and reverted.
+
 > ## OPEN FRONT #1 (2026-06-16): mirror diagnosis REFINED — it renders the horizon backdrop, not clear-only
 > Dug deeper into the flat mirror (corrects the entry below, which guessed "clear-only / no geometry").
 > Instrumented `draw_fvf` to attribute every draw to its bound RTT FBO and log per-quad rects/textures:

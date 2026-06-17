@@ -75,10 +75,12 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    each RTT FBO, `draw_fvf` per-quad tracing): the mirror FBO is created/bound/displayed and **real
    geometry reaches it** — 296 textured fullscreen quads = the **horizon/`InfiniteStrip` backdrop**
    (`RenderMirrorLandscape` renders the distant horizon+sky, *by design not* the detailed near-ground
-   tiles the land RTT composites). It looks blank (variance 0) because the rear view is uniform haze with
-   no aircraft behind in this QM moment, not because it's clear-only. Open (deeper, non-blocking): why the
-   horizon shows zero gradient, and confirm `DrawVisibleObjects` puts a trailing aircraft in the mirror.
-   Also: 128×128 land RT is small (push higher-res land options); confirm long-session lifetime.
+   tiles the land RTT composites). It looks blank (variance 0, systematic across
+   frames) because the mirror horizon quads carry **garbage v-texcoords** (`v≈-2.4e24`, clamped to one
+   edge texel → flat) — a latent game-side bug in `InfiniteStrip`'s horizon UV setup (our FVF parsing is
+   fine; `u` reads correctly, only `v` is garbage). RTT plumbing is correct; the fix is game-side horizon
+   UV work (or a compat texcoord sanitiser) — deferred below landscape texture polish. Also: 128×128 land
+   RT is small (push higher-res land options); confirm long-session lifetime.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/
