@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.3b (2026-06-17): 3D-device teardown FIXED (DD7 refcount) — flight shuts down clean, the full fly→exit→menu chain runs through OnFlyingClosed→LaunchScreen(options3d)
+> The 4.3 teardown blocker is **fixed** with a one-bug compat COM-refcount correction; the flight→menu
+> round-trip now executes the entire game-logic chain. (A narrow post-flight follow-up remains on the
+> destination config screen — see end.)
+> - **Root cause (compat COM bug):** `GLDD7` (the IDirectDraw7 object, `bob_video.cpp`) had **no
+>   refcount** — its `AddRef` was a no-op (`generic_addref` → returns 1) and `DD_Release` was
+>   `{ free(This); return 0; }` (frees on the FIRST Release, ignoring any count). `Lib3D::CloseDown`'s
+>   `getRefCount(pDD7)` does a *balanced* `AddRef()`+`Release()` for a debug print — and that `Release`
+>   **freed pDD7 mid-teardown**, so the next line `pDD7->SetCooperativeLevel(hwTop,DDSCL_NORMAL)`
+>   use-after-freed a zeroed vtable (gdb: vtable all-zeros; disasm: `call *0x50(%edx)` = DD7 vtable
+>   idx 20 = SetCooperativeLevel). The surfaces already used proper `SURF_Release` refcounting; only
+>   the DD7 object was broken (the shutdown path was never run on Linux — nothing closed flight before
+>   inc 4.3). **Fix:** give `GLDD7` an `int ref`, init `=1` (the app's `DirectDrawCreate` reference),
+>   real `DD_AddRef` (`++ref`) + `DD_Release` (`--ref`; free only at 0) — matching the surface model.
+> - **Result:** `~View3d → Lib3D::CloseDown` completes cleanly; the close round-trip runs the full chain
+>   `Rtestsh1::OnCancel → EndDialog → OnFlyingClosed(IDCANCEL) → LaunchScreen(&options3d) →
+>   Options3dInit → CSDetail::OnInitDialog`. **No regression:** bare `./bob` exits 0; the
+>   `BOB_BOOT_FRONTEND` scaffold flight renders 91.7% non-black with the corrected teardown; 4.1/4.2
+>   unaffected; no spurious closes.
+> - **Remaining (narrow follow-up, 4.3c):** the IDCANCEL destination `options3d` (Machine Config)
+>   crashes in `CSDetail::OnInitDialog → SetIndex` **only after flight** — `GetModes` returns empty
+>   (`pDriver->pModes==NULL`) → empty resolution combo → `SetIndex` on empty (the same INT3-guard-
+>   doesn't-halt-on-compat NULL `GetAt` class as the CSQuick1/4.2 fix). **options3d works fine via
+>   direct front-end navigation** (title→Machine Config, no crash, screen paints) — so it's a
+>   post-flight device/mode-enumeration state nuance, not an options3d bring-up gap. Pinned for 4.3c.
+> - **Evidence:** `/tmp/sf43b_bt.log` (teardown now clean; crash moved to CSDetail), `/tmp/opt3d.log`
+>   (options3d OK via direct nav), `/tmp/dd7_reg.*` (scaffold 91.7% non-black, no regression).
+
 > ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.3 (2026-06-17): return-path PLUMBING done (fly→F12→OnCancel→OnFlyingClosed→menu) — blocked on the never-before-run 3D-device teardown (Lib3D::CloseDown NULL vtable)
 > Built the full flight→menu return path; the plumbing fires correctly, blocked on the game's 3D
 > shutdown which has **never run on Linux** (the scaffold never exits flight). Plumbing committed

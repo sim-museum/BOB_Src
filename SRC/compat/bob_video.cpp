@@ -322,7 +322,7 @@ struct GLPalette  { IDirectDrawPaletteVtbl* lpVtbl; PALETTEENTRY ent[256]; };
 struct GLVB7      { IDirect3DVertexBuffer7Vtbl* lpVtbl; D3DVERTEXBUFFERDESC d; void* data; };
 struct GLDevice7  { IDirect3DDevice7Vtbl* lpVtbl; };
 struct GLD3D7     { IDirect3D7Vtbl* lpVtbl; };
-struct GLDD7      { IDirectDraw7Vtbl* lpVtbl; HWND hwnd; DWORD coopFlags; };
+struct GLDD7      { IDirectDraw7Vtbl* lpVtbl; HWND hwnd; DWORD coopFlags; int ref; };
 
 /* one shared instance for the singleton sub-objects */
 static IDirectDrawSurface7Vtbl  g_surfVtbl;
@@ -868,7 +868,12 @@ static HRESULT DD_QueryInterface(IDirectDraw7*, REFIID riid, void** ppv) {
 	if (riid == IID_IDirect3D7) { *ppv = (void*)&g_theD3D; return DD_OK; }
 	*ppv = NULL; return E_NOINTERFACE;
 }
-static ULONG DD_Release(IDirectDraw7* This) { free((void*)This); return 0; }
+static ULONG DD_AddRef(IDirectDraw7* This) { GLDD7* dd=(GLDD7*)This; return (ULONG)++dd->ref; }
+/* Proper COM refcounting (was: free on first Release, ignoring the count). Lib3D::CloseDown's
+   getRefCount(pDD7) does a *balanced* AddRef()+Release(); the old unconditional free() freed
+   pDD7 mid-teardown, so the very next pDD7->SetCooperativeLevel() use-after-freed a zeroed
+   vtable (R1.1b inc 4.3b -- the flight->menu teardown crash). Free only at refcount 0. */
+static ULONG DD_Release(IDirectDraw7* This) { GLDD7* dd=(GLDD7*)This; if (--dd->ref > 0) return (ULONG)dd->ref; free(dd); return 0; }
 /* Report a couple of display modes so EnumerateDriverModes builds a list. */
 static HRESULT DD_EnumDisplayModes(IDirectDraw7*, DWORD, LPDDSURFACEDESC2, LPVOID ctx, LPDDENUMMODESCALLBACK2 cb) {
 	if (!cb) return DD_OK;
@@ -1603,7 +1608,7 @@ static void init_vtbls_once(void)
 	g_d3dVtbl.EvictManagedTextures=D3D_EvictManagedTextures;
 	g_theD3D.lpVtbl=&g_d3dVtbl;
 
-	g_ddVtbl.AddRef=(ULONG(*)(IDirectDraw7*))generic_addref;
+	g_ddVtbl.AddRef=DD_AddRef;
 	g_ddVtbl.Release=DD_Release;
 	g_ddVtbl.QueryInterface=DD_QueryInterface;
 	g_ddVtbl.CreateSurface=DD_CreateSurface;
@@ -1621,6 +1626,7 @@ extern "C" HRESULT DirectDrawCreateEx(GUID*, LPVOID* lplpDD, REFIID, IUnknown*)
 	init_vtbls_once();
 	GLDD7* dd = (GLDD7*)calloc(1, sizeof(GLDD7));
 	dd->lpVtbl = &g_ddVtbl;
+	dd->ref = 1;                       /* the app's own reference (DirectDrawCreate contract) */
 	if (lplpDD) *lplpDD = dd;
 	VLOG("DirectDrawCreateEx -> %p\n", (void*)dd);
 	return DD_OK;

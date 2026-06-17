@@ -203,8 +203,16 @@ more of the real flow.
     `~View3d → Lib3D::CloseDown` SIGSEGVs on a NULL vtable — `pDD7->SetCooperativeLevel` (idx 20) with
     pDD7's vtable zeroed (object freed mid-teardown; draw thread already stopped via `WaitEndDraw`). =
     a **compat DD7/D3D7 device-release refcount bug** in the never-before-run 3D shutdown.
-  - **4.3b** **NEXT:** compat 3D-device teardown — fix the `Lib3D::CloseDown` DD7/D3D7/surface
-    release refcounting so flight shuts down clean, completing the fly→exit→menu round-trip.
+  - **4.3b** ☑ **DONE (2026-06-17).** Compat COM bug: `GLDD7` had no refcount — `DD_Release` freed on
+    the first `Release`, so `CloseDown`'s balanced `getRefCount(pDD7)` freed pDD7 mid-teardown →
+    `SetCooperativeLevel` use-after-free. Fixed: real `int ref` (init 1) + `DD_AddRef`/`DD_Release`
+    (free at 0), matching the surface model. **Flight now shuts down clean**; the full chain
+    `OnCancel→OnFlyingClosed→LaunchScreen(options3d)` runs. No regression (scaffold 91.7% non-black,
+    bare `./bob` 0). Evidence: PORT.md + `/tmp/sf43b_bt.log`.
+  - **4.3c** **NEXT:** post-flight `options3d`/`CSDetail` combo — `GetModes` returns empty
+    (`pDriver->pModes==NULL`) only after flight → empty resolution combo → `SetIndex` crash (INT3-
+    guard class). options3d works via direct nav, so it's a post-flight mode-enumeration state nuance.
+    Completes the fully-rendered fly→exit→menu round-trip.
 - **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
   treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.
 - **Increment demo:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` enters flight through
