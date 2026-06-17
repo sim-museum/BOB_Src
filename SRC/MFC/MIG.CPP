@@ -610,6 +610,13 @@ BOOL CMIGApp::InitInstance()
 			fprintf(stderr,"[boot] QM: idx=%d title=%d plside=%d plwave=%d plgrp=%d plac=%d playersquadron=%d\n",
 				qi,(int)q.titlename,(int)q.plside,(int)q.plwave,(int)q.plgrp,(int)q.plac,(int)MMC.playersquadron);
 		}
+		/* BOB_MIRROR: force COCK3D_SKYIMAGES (the "Reflections" setting, default OFF) on so the
+		   rear-view mirror activates -- RenderMirror + UseMirror are both gated on it. Lets us
+		   A/B the mirror RTT path (pDDS7MirrorRT) which is otherwise never exercised in QM boot. */
+		if (getenv("BOB_MIRROR")) {
+			Save_Data.cockpit3Ddetail|=COCK3D_SKYIMAGES;
+			fprintf(stderr,"[boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled\n");
+		}
 		Persons4::StartUpMapWorld();
 		// Probe: how many map items exist, and pick one to view (its uid).
 		{

@@ -68,11 +68,15 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
   stb_truetype text (`bob_gdi_font.cpp`), mouse-navigable menu (`bob_frontend_tick`).
 
 ### Open fronts (next work)
-1. **Landscape RTT polish.** The FBO path is now **default-on** (ground renders; stable to frame
-   150; `BOB_NO_FBO_RTT` reverts). Remaining polish: the land RT is only 128×128 (option table
-   picked `biggestWH=128` — push for higher land-texture options/sharper detail tiles); A/B the
-   rear-view **mirror** (same FBO path); confirm long-session texture lifetime beyond a few
-   hundred frames.
+1. **Landscape RTT polish + the rear-view mirror.** The landscape FBO path is **default-on**
+   (ground renders; stable to frame 150; `BOB_NO_FBO_RTT` reverts). The rear-view **mirror** rides
+   the same RTT machinery but is **dormant by default** (gated on the Reflections setting
+   `COCK3D_SKYIMAGES`, which defaults OFF; force it with `BOB_MIRROR`). A/B'd (`BOB_DUMP_RTT` dumps
+   each RTT FBO): with reflections on the mirror FBO is created/bound/cleared/displayed (no crash),
+   **but renders flat (clear-only)** — the rear-view geometry (`RenderMirrorLandscape`/
+   `DrawVisibleObjects`) isn't reaching the mirror FBO (landscape FBO = real airfield, variance ~467;
+   mirror FBO = variance 0). Next: find why the reversed-camera scene doesn't draw into the mirror
+   FBO. Also: 128×128 land RT is small (push higher-res land options); confirm long-session lifetime.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/
@@ -90,9 +94,11 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
 
 Diagnostics (env-gated, default-off): `BOB_OLE_DRAW`, `BOB_TRACE_OLE`, `BOB_AUTOCLICK=<seq>`
 (comma-sep, e.g. `5,3`), `BOB_CLICKXY="tick,x,y;…"` (inject clicks at framebuffer coords —
-headless combo-click tests), `BOB_NO_FBO_RTT` (disable the now-default landscape RTT),
-`BOB_TRACE_RTT`, `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`, `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md
-(newest first) for the full dated history.
+headless combo-click tests), `BOB_NO_FBO_RTT` (disable the now-default landscape RTT), `BOB_MIRROR`
+(force Reflections/`COCK3D_SKYIMAGES` on so the rear-view mirror RTT activates), `BOB_TRACE_RTT`,
+`BOB_DUMP_RTT` (dump each RTT FBO → `/tmp/rtt_<ptr>.ppm`), `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
+`BOB_DUMP_PATH=<file>` (private frame-dump target — `/tmp` is shared with the MiG Alley port),
+`BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.

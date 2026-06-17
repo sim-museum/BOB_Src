@@ -387,6 +387,20 @@ static HRESULT SURF_Lock(IDirectDrawSurface7* This, LPRECT, LPDDSURFACEDESC2 d, 
 		}
 		p_glBindFramebuffer(GL_FRAMEBUFFER, g_curRT?g_curRT->fbo:0);
 		if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<20) fprintf(stderr,"[rtt] Lock readback %dx%d surf=%p\n",s->w,s->h,(void*)s); }
+		/* BOB_DUMP_RTT: write each RTT surface's read-back texture (the actual landscape detail /
+		   rear-view-mirror content) to /tmp/rtt_<ptr>.ppm -- a direct view of what the RTT path
+		   produced, independent of cockpit compositing. Overwrites (last = steady state). */
+		if (getenv("BOB_DUMP_RTT") && s->bits) {
+			char path[64]; snprintf(path,sizeof(path),"/tmp/rtt_%lx.ppm",(unsigned long)((size_t)s & 0xffffff));
+			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+			if (fd>=0){ char h[64]; int hn=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",s->w,s->h); if(write(fd,h,hn)<0){}
+				const unsigned char* sb=(const unsigned char*)s->bits;
+				for (int i=0;i<s->w*s->h;i++){ unsigned char rgb[3];
+					if (s->bpp==16){ unsigned v=sb[i*2]|(sb[i*2+1]<<8); rgb[0]=((v>>11)&0x1f)<<3; rgb[1]=((v>>5)&0x3f)<<2; rgb[2]=(v&0x1f)<<3; }
+					else { rgb[0]=sb[i*4+2]; rgb[1]=sb[i*4+1]; rgb[2]=sb[i*4]; }
+					if(write(fd,rgb,3)<0){} }
+				close(fd); }
+		}
 	}
 	if (d) { *d = s->desc; d->dwWidth=s->w; d->dwHeight=s->h; d->lPitch = s->w*((s->bpp+7)/8); d->lpSurface = s->bits; }
 	return DD_OK;
@@ -425,11 +439,14 @@ static void present_dbg(const char* path)
 	if (df && frames == atoi(df)) {
 		int w=g_scrW,h=g_scrH; unsigned char* buf=(unsigned char*)malloc(w*h*3);
 		glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
-		/* raw POSIX open() to bypass the game's redirected fopen */
-		int fd=::open("/tmp/bobframe.ppm",O_WRONLY|O_CREAT|O_TRUNC,0644);
+		/* raw POSIX open() to bypass the game's redirected fopen. BOB_DUMP_PATH overrides the
+		   default target -- the sibling MiG Alley port shares /tmp and also writes
+		   /tmp/bobframe.ppm, so a private path avoids the two instances clobbering each other. */
+		const char* dpath = getenv("BOB_DUMP_PATH"); if (!dpath||!*dpath) dpath="/tmp/bobframe.ppm";
+		int fd=::open(dpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
 		if (fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h);
 			if (write(fd,hdr,n)<0){} for (int y=h-1;y>=0;y--) if(write(fd,buf+y*w*3,w*3)<0){}
-			close(fd); fprintf(stderr,"[present] dumped frame %d to /tmp/bobframe.ppm (%dx%d) glErr=%d\n",frames,w,h,(int)glGetError()); }
+			close(fd); fprintf(stderr,"[present] dumped frame %d to %s (%dx%d) glErr=%d\n",frames,dpath,w,h,(int)glGetError()); }
 		else fprintf(stderr,"[present] dump open failed errno path\n");
 		free(buf);
 		if (getenv("BOB_EXIT_AFTER_DUMP")) { fflush(stderr); _exit(0); }
@@ -1160,6 +1177,18 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 	} else if (g_curRT) {
 		/* back buffer / primary -> main framebuffer */
 		gl_bind_thread();
+		/* BOB_DUMP_RTT: capture the just-rendered RTT FBO before unbinding (catches the mirror,
+		   which is bound directly as a texture and never SURF_Lock'd). /tmp/rtt_<ptr>.ppm. */
+		if (getenv("BOB_DUMP_RTT") && g_curRT->fbo && load_fbo_funcs()) {
+			int w=g_curRT->w,h=g_curRT->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*3);
+			if (buf){ glReadBuffer(GL_COLOR_ATTACHMENT0); glPixelStorei(GL_PACK_ALIGNMENT,1);
+				glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
+				char path[64]; snprintf(path,sizeof(path),"/tmp/rtt_%lx.ppm",(unsigned long)((size_t)g_curRT & 0xffffff));
+				int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+				if(fd>=0){ char hd[64]; int hn=snprintf(hd,sizeof(hd),"P6\n%d %d\n255\n",w,h); if(write(fd,hd,hn)<0){}
+					for(int y=h-1;y>=0;y--) if(write(fd,buf+(size_t)y*w*3,w*3)<0){} close(fd); }
+				free(buf); }
+		}
 		if (load_fbo_funcs()) p_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0,0,g_scrW,g_scrH);
 		if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<40) fprintf(stderr,"[rtt] SetRenderTarget -> MAIN (unbind fbo)\n"); }

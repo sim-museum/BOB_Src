@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## OPEN FRONT #1 (2026-06-16): rear-view MIRROR A/B on the RTT path — wired but renders flat (clear-only)
+> A/B'd the rear-view mirror, which rides the same FBO RTT machinery (`pDDS7MirrorRT`). Findings:
+> - **Dormant by default.** The mirror is gated on the **Reflections** setting (`COCK3D_SKYIMAGES`),
+>   which **defaults OFF** (`SDETAIL.CPP` `RESCOMBO(OFF,2)`) — both `UseMirror` (sets `mirrorSeen`) and
+>   `RenderMirror` require it. So default QM flight drives only **one** RTT surface (the landscape);
+>   confirmed (`BOB_TRACE_RTT`: 1 distinct `SetRenderTarget` surf). New diagnostic **`BOB_MIRROR`**
+>   (MIG.CPP, env-gated in the BOB_BOOT_FRONTEND scaffold) forces `COCK3D_SKYIMAGES` on for the test.
+> - **With reflections on, the mirror RTT path activates mechanically.** Two distinct RTT surfaces +
+>   **two FBOs** (`complete=1`) are created and driven (20 `SetRenderTarget`/frame each), no crash, runs
+>   stable, and the cockpit shows the mirror element. `pDDS7Mirror == pDDS7MirrorRT` (LIB3D.CPP:8124), so
+>   the mirror is bound **directly as a texture** (no `SURF_Lock`/copy, unlike the landscape).
+> - **But the mirror content is FLAT — clear-only.** Dumping each RTT FBO (`BOB_DUMP_RTT` →
+>   `/tmp/rtt_<ptr>.ppm`): the **landscape** FBO is a real airfield aerial (fields/runways, lum-variance
+>   ~467); the **mirror** FBO is **variance 0** — a uniform dark fill = just the `Wipe(fogCol)`. So the
+>   FBO is bound + cleared + displayed, but **the rear-view scene geometry (`RenderMirrorLandscape` /
+>   `DrawVisibleObjects`) is not reaching the mirror FBO.** Cockpit A/B (RTT on vs `BOB_NO_FBO_RTT`)
+>   looked identical in the mirror region for the same reason.
+> - **Not a regression.** The mirror never rendered a real reflection — the no-RTT back-buffer fallback
+>   also reads empty system bits. The RTT path at least clears + displays it without crashing.
+> - **Next (separate workstream):** find why the mirror's rear-view geometry doesn't draw into its FBO
+>   (candidates: `GetMirrorObjects` returns empty; the reversed-camera projection/viewport into the
+>   128×128 FBO culls everything; or the sub-renders re-bind off the mirror FBO). The landscape RTT
+>   (which DOES submit geometry) is the working reference.
+> - New env-gated diagnostics (default-off): **`BOB_MIRROR`** (force reflections), **`BOB_DUMP_RTT`**
+>   (dump each RTT FBO), **`BOB_DUMP_PATH=<file>`** (private frame-dump path — the sibling MiG Alley port
+>   shares `/tmp` and also writes `/tmp/bobframe.ppm`, so they were clobbering each other's captures).
+
 > ## OPEN FRONT #1 (2026-06-16): landscape FBO RTT PROMOTED TO DEFAULT (green ground out of the box)
 > The FBO render-to-texture path is no longer gated — **default flight renders the airfield ground** with no
 > env var. Inverted the two `BOB_FBO_RTT` gates in `bob_video.cpp` to default-on with a `BOB_NO_FBO_RTT`
