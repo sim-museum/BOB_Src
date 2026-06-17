@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## PHASE 2 SCOPING (2026-06-17): real init via `InitPreferences()` works — but surfaces a transient double-free
+> Toward completing the port (collapsing the env-gated bring-up scaffolds into the game's own flow): the
+> recurring "`Save_Data` field = 0" bugs all trace to one cause — the QM bring-up bypasses **FULLPANE**,
+> where the game normally calls **`SaveData::InitPreferences()`** (SAVEGAME.CPP:2279), the single function
+> that sets ALL factory defaults (volumes `vol.sfx=125`/`engine=64`/…, `textureQuality=3`=FULL_RES,
+> `gamedifficulty` incl. `GD_HUDINSTACTIVE`+`GD_UNITS`, `detail_3d` ground-shading/shadows/contour) then
+> loads `settings.cfg` + inits the sound/music devices (idempotent).
+> - **Verified:** calling `InitPreferences((int)Master_3d.winst)` in the boot replaced *all* my hand-forced
+>   `Save_Data` hacks with the real defaults — sound played (9 sources), `texQ=3 filtering=1 vol.sfx=125
+>   HUD=1 units-set`, reached `View3d interactive`. So the real-init mechanism is correct.
+> - **Blocker found:** with the real defaults the sim runs full combat, and that surfaces a **double-free**
+>   (`free(): double free detected in tcache 2`) in **`TransObj::RemoveDeadListFromWorld()`** (TRANSITE.CPP)
+>   — the transient-object dead-list logic deletes a `TransientItem` twice (NOT the `ImageMap_Desc` image,
+>   which null-guards its `delete[] body/palette/alpha`; the `TransToGoList` append is duplicate-guarded and
+>   `KillOldest` routes through it — so it's a list-relink/ordering bug in the remove loop). Every real
+>   mission spawns transient effects (smoke/contrails/hits), so this **must be fixed** for end-to-end play;
+>   it crashed the bring-up at ~frame 150 (vs 250 before), so `InitPreferences` was **reverted** to keep the
+>   bring-up stable.
+> - **Next (the first concrete Phase-3 bug):** build 3D/TRANSITE.CPP with `-g` (drop `-DNDEBUG` for that TU)
+>   to pin the double-deleted `TransientItem` in `RemoveDeadListFromWorld`'s inner walk (the `Ptr`/`lastitem`
+>   relink against the `TransToGoList` order), fix it, then re-land `InitPreferences` as the real default
+>   init and retire the per-feature `BOB_*` Save_Data forces.
+
 > ## FIX (2026-06-16): unit factors uninitialised → divide-by-zero (HUD info bar / map / weather)
 > The QM boot never ran the units config (normally `SVIEWER` calls `SaveData::SetUnits()`), leaving the
 > altitude/speed/distance unit-conversion factors (`Save_Data.alt.mediummm`, `speed.mmpcs2perhr`, …) at
