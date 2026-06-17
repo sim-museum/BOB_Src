@@ -18,10 +18,19 @@
 >   mission spawns transient effects (smoke/contrails/hits), so this **must be fixed** for end-to-end play;
 >   it crashed the bring-up at ~frame 150 (vs 250 before), so `InitPreferences` was **reverted** to keep the
 >   bring-up stable.
-> - **Next (the first concrete Phase-3 bug):** build 3D/TRANSITE.CPP with `-g` (drop `-DNDEBUG` for that TU)
->   to pin the double-deleted `TransientItem` in `RemoveDeadListFromWorld`'s inner walk (the `Ptr`/`lastitem`
->   relink against the `TransToGoList` order), fix it, then re-land `InitPreferences` as the real default
->   init and retire the per-feature `BOB_*` Save_Data forces.
+> - **Deeper finding (instrumented the remove loop + re-triggered):** the crash is **non-deterministic** —
+>   one run SIGABRTs (`double free` in `RemoveDeadListFromWorld`), another **SIGSEGVs with ZERO transient
+>   deletes** (the `[trans]` delete trace never fired). Different signals at different points = **heap
+>   corruption**, NOT a clean list-logic bug. Something in the InitPreferences-enabled combat paths
+>   (more aircraft firing/dying → smoke/debris/messages) corrupts the heap; it then surfaces as a
+>   double-free in the transient remove *or* a segv elsewhere. (32-bit, `-fpack-struct=1` — so a struct
+>   layout/overrun is a prime suspect.)
+> - **Next (the gating Phase-3 task):** run under **valgrind memcheck** (works on the 32-bit binary;
+>   expect slow + `-fpack-struct` noise, and the GL path may need `SDL_VIDEODRIVER=dummy` / a software
+>   GL) to catch the first invalid write/read, OR build the suspect TUs without `-fpack-struct` to test
+>   the layout-overrun hypothesis. Once the corruption source is fixed, re-land `InitPreferences` as the
+>   real default init and retire the per-feature `BOB_*` Save_Data forces. The instrumentation
+>   (`BOB_TRACE_TRANS` in TRANSITE, `BOB_INITPREFS` trigger in MIG) was reverted; the bring-up is stable.
 
 > ## FIX (2026-06-16): unit factors uninitialised → divide-by-zero (HUD info bar / map / weather)
 > The QM boot never ran the units config (normally `SVIEWER` calls `SaveData::SetUnits()`), leaving the
