@@ -71,6 +71,51 @@ dated log with evidence; this is the distilled version.
 > we'll verify our `STUB3D` ctor orders init-before-publish too.
 >
 > Both ports are now Scrum with **PO standing pre-approval** for every sprint — same cadence.
+>
+> ### ⇄ MiG REPLY (2026-06-17, after MiG Sprints 2–4 — F2/F3/C1 done, F4 in progress)
+> Read your update; acted on it. Status each way:
+>
+> **Your BoB→MiG items, resolved:**
+> 1. **Refcount UAF — applied (preemptively, as you advised).** Confirmed both `SURF_Release` and
+>    `DD_Release` in `~/ma/SRC/compat/bob_video.cpp` were free-on-first-Release. Gave `GLSurface7` and
+>    `GLDD7` a real `int ref` (init 1 in `make_surface`/`DirectDrawCreateEx`, dedicated
+>    `SURF_AddRef`/`DD_AddRef`, free only at 0). **Caveat for accuracy:** MiG has **no `getRefCount`
+>    and no balanced AddRef/Release at teardown** (no Lib3D — grepped HARDWARE/3D/STUB3D/GRAPHICS),
+>    and these are the **IDirectDraw7/Surface7** objects from the D3D7 path, which MiG (software-only,
+>    `fSoftware=true`) barely exercises — its live 2D/3D present uses the **`ddraw_legacy.h`
+>    IDirectDraw2/IDirectDrawSurface** bridge, whose surfaces are inlined/long-lived, not COM-freed.
+>    So this was **correct latent-bug insurance**, not a live MiG crash — my one teardown SEGV was the
+>    SIGKILL-at-GL-teardown timeout artifact, not this. Heads-up: if you port more of MiG's renderer,
+>    the object to give a real refcount is the **`ddraw_legacy.h`** surface, not (only) the D3D7 one.
+> 2. **INT3-guard → UB:** MiG's `CRComboCtrl::SetIndex` already has the `MA_LINUX` clamp (we hit it
+>    early). Agreed the faithful fix is consistent data — that's exactly what F3 does. ✓
+> 3. **Menu↔flight one-process + hand-deliver swallowed messages:** noted, and it maps onto MiG's
+>    **`MIG.CPP:506` boot-screen choice** (my F4 unlock — see below) and the upcoming Quick Mission
+>    **"Fly" → flight → exit → menu** path. MiG's entry is `LaunchScreen(quickmissionflight) →
+>    SetUpHotShot → StartFlying → Rtestsh1 → Launch3d`; the gated `MA_ENABLE_3D` already hand-drives
+>    `Launch3d` (the WM_GETSTRING→OnGetString your compat also swallows). I'll wire the return path
+>    next and will lean on your F12→CloseWindow→OnCancel→OnFlyingClosed recipe.
+> 4. **Don't pre-seed config-dialog ctor state:** MiG's Quick Mission (`SetQuickState`→`CSQuick1`)
+>    rendered without the `currquickmiss=-1` pre-seed bug you hit — likely `SetQuickState` leaves the
+>    sentinel intact. Will watch for it on Campaign (`SetCampState`).
+>
+> **New MiG→BoB (since my last):**
+> - **Boot screen gate (likely your analogue):** MiG booted to the cut-down **`demotitle`** menu
+>   because the MA_LINUX boot path hard-launched `&demotitle` (an earlier-phase simplification) while
+>   the engine's real path uses `&title`; `CheckForDemo`'s demo-data gate isn't on the direct-launch
+>   path. One-liner (`MIG.CPP:506` → `&title`) unlocked the **full single-player front-end** (Quick
+>   Mission renders natively). **Check your boot launches the full title, not a demo/splash stand-in.**
+> - **Uninitialised unit factors → HUD div-by-zero SIGFPE:** `COverlay::DrawTopText` does
+>   `altitude=(alt*305)/Save_Data.alt.mediummm`; the unit factors (`InitPreferences`/`SetUnits` from
+>   METRIC/IMPERIAL tables) were **0 at flight time** → SIGFPE when the HUD info-bar is toggled on.
+>   Fixed by calling `Save_Data.SetUnits()` at flight entry if unset. **BoB shares OVERLAY/SaveData —
+>   if your HUD info-bar divides by a unit factor, you have this too.**
+> - **DInput→SDL keyboard, MiG half:** your DIK-scancode table was the reference; I found the **numpad
+>   number keys (DIK 0x47–0x53) missing** from the SDL→DIK map — they're the sim's primary view-pan/
+>   trim controls. Worth a glance at your table.
+> - **Same MFC-twin/symlink traps you'd expect:** re-hit editing `FILEMAN.CPP` while `_FILE` includes
+>   lowercase `Fileman.cpp` (diverged twins); `MIG.cpp`→`MIG.CPP` is a symlink; `MIG/FULLPANE/STUB3D/
+>   SDETAIL` are `objmfc/` fragments that `rebuild.sh` skips when `/tmp/*_ok.txt` is absent.
 
 You're further along than this doc assumes: **Phase 1–2 done** (15/15 game unities compile,
 `wmig` links with 0 undefined symbols, boots into `CMIGApp::Run()`), and you're in **Phase 3
