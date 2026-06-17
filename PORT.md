@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.2 SPIKE (2026-06-17): real menu-click→fly works up to the Quick-Mission config screen, which crashes bringing up its hosted RCombo — hand-off to CSQuick1 config bring-up (R2.1-class)
+> Refactored the Launch3d bridge to be **trigger-agnostic** (fires the moment `Rtestsh1::THISTHIS`
+> appears, however `StartFlying` was reached) and added a `BOB_STARTFLYING=click` mode that seeds the
+> QM pre-flight then lets the real click dispatch (`bob_frontend_tick` → `OnSelectRlistbox`) navigate
+> the menu toward Fly. 4.1 (`=1`, forced) re-verified through the new bridge (frame 88.7% non-black,
+> bare `./bob` still 0).
+> - **Spike result (`BOB_STARTFLYING=click BOB_AUTOCLICK="0,1,2"`):** the very first real click
+>   (title item 0 = Quick Mission → `quickmission` via `SetQuickState`) **SIGSEGVs** standing up the
+>   Quick-Mission config form. Backtrace (gdb): `bob_frontend_tick → OnSelectRlistbox → LaunchScreen →
+>   RFullPanelDial::QuickMissionInit → LaunchDial → RDialog::AddChildren → CSQuick1::OnInitDialog →
+>   CRComboExtra::SetIndex → CWnd::InvokeHelper → CRComboCtrl::SetIndex(long)` → NULL deref.
+> - **Root:** `CRComboCtrl::SetIndex(row)` (rcomboc.cpp:798) does `m_list.GetAt(m_list.FindIndex(row))`;
+>   `CSQuick1::OnInitDialog` only `AddString`s the family combo inside `if (MissionsFound(...))`, so the
+>   combo's `m_list` is **empty** at `SetIndex(currquickfamily)`. The range guard `if (row>=GetCount()||
+>   row<0) INT3;` should catch row≥0 on an empty list, but `INT3` doesn't halt on Linux compat → falls
+>   through to `GetAt(FindIndex(0))` on an empty CList = NULL → SEGV. So either the data version yields
+>   no `MissionsFound` families, or the `IDC_FAMILYLISTS` host doesn't accumulate `AddString` into the
+>   real `m_list` (the GFX/Sound tabs' combos do — this QM form's combos aren't brought up yet).
+> - **Verdict:** 4.2's blocker is the **CSQuick1 Quick-Mission config-form bring-up** (its hosted
+>   RCombo/radio/mission-list population) — the same front-end pipeline the GFX/Sound config tabs got
+>   (open-front #2), and squarely R2.1's "menu Fly → real mission" territory. NOT a one-liner. The
+>   trigger-agnostic bridge means once that screen lives, 4.2/4.3 fall out (the real click already
+>   reaches `StartFlying`; the bridge already stands up flight). **Recorded; Sprint 4 ships at 4.1.**
+> - **Evidence:** `/tmp/sf42_bt.log` (backtrace), `/tmp/sf42_run.log` (crash on click 0), `/tmp/sf41b.*`
+>   (4.1 re-verified through the refactored bridge). `BOB_STARTFLYING=click` is the committed spike harness.
+
 > ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.1 (2026-06-17): the game's OWN menu→flight path stands up flight in the front-end process — `StartFlying → Rtestsh1 → Launch3d → View3d`, faithful cockpit
 > Scrum machinery restarted (PO standing approval: "approve every sprint in advance, just keep
 > working"). The spike's pending PO-direction is resolved by the SM under that approval → **the

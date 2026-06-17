@@ -188,8 +188,13 @@ more of the real flow.
     bits + calls the game's own public `Rtestsh1::Launch3d(wasrunning)` — exactly what
     `OnGetString` does. **Accepted:** faithful Spitfire cockpit (HUD/mirror/tower ATC), frame 120
     88.7% non-black, 60s+ no crash, bare `./bob` still exits 0. Evidence: PORT.md + `/tmp/sf_frame.png`.
-  - **4.2** Reach that screen by a real **menu click** (navigate Quick-Mission → Fly), not a forced `LaunchScreen`.
-  - **4.3** **Return path:** `OnOK/OnCancel → OnFlyingClosed → LaunchScreen(debrief/menu)` — fly, exit, land back in the menu, one process.
+  - **4.2** ◐ **SPIKED (2026-06-17) → blocked, hand-off.** Made the Launch3d bridge trigger-agnostic
+    + added `BOB_STARTFLYING=click`; a real click (`BOB_AUTOCLICK="0,1,2"`) navigates the genuine
+    `OnSelectRlistbox` path. **First click (Quick Mission) SIGSEGVs** in `CSQuick1::OnInitDialog →
+    CRComboCtrl::SetIndex` (empty `m_list`; `INT3` guard doesn't halt on compat). Blocker = the
+    **CSQuick1 Quick-Mission config-form bring-up** (R2.1-class, == open-front #2). Once that screen
+    lives, the real click already reaches `StartFlying` + the bridge stands up flight → 4.2/4.3 fall out.
+  - **4.3** **Return path:** `OnOK/OnCancel → OnFlyingClosed → LaunchScreen(debrief/menu)` — fly, exit, land back in the menu, one process. *(Depends on 4.2.)*
 - **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
   treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.
 - **Increment demo:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` enters flight through
@@ -266,6 +271,17 @@ Update the **Done pts** column at each Sprint Review; that's the running velocit
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 4:_ **The spike's "faithful path" call was right, and the trigger-agnostic bridge made the
+  next increment cheap to reach.** 4.1 (force `LaunchScreen` + bridge to `Launch3d`) shipped real
+  menu→flight fast; refactoring the bridge to fire on `Rtestsh1::THISTHIS` (not on *how* we got there)
+  meant the 4.2 click-path spike was a tiny addition that immediately surfaced the true blocker (the
+  CSQuick1 config-form combo crash) instead of hiding it. Lesson, reinforcing Sprint 1/2/3: **spike the
+  click-driven path early** — it located the exact R2.1 seam (front-end config bring-up) in one run.
+  Also: when porting a Win32 message flow with no compat dispatch, deliver the handler directly via the
+  game's own *public* method (here `Rtestsh1::Launch3d`, what `OnGetString` calls) — faithful, minus the
+  dead message hop. Watch-item: `INT3` range-guards don't halt on compat, so game-code "can't happen"
+  asserts fall through to the UB they were guarding — a recurring trap for the config grind ahead.
 
 - _Sprint 3:_ **Splitting R1.3d out (Sprint 2 decision) paid off — focused, it cracked in one session.** The
   multi-session "uncrackable" transient double-free fell quickly once given (a) `-g` line numbers on the ASan

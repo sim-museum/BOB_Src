@@ -307,41 +307,49 @@ extern "C" void bob_frontend_tick(void)
 	   Start3d bits here; that posts WM_GETSTRING -> (Run-loop pump) -> OnGetString -> Launch3d
 	   -> new Inst3d/View3d/MakeInteractive. Proves the real transition (not the scaffold). */
 	if (getenv("BOB_STARTFLYING")) {
+		const char* mode = getenv("BOB_STARTFLYING");
+		bool clickMode = mode && strcmp(mode,"click")==0;   /* 4.2: reach Fly by real menu clicks */
 		static int sf_t = 0;
-		static int sf_stage = 0;   /* 0=waiting, 1=launched(StartFlying fired), 2=flight kicked */
-		if (sf_stage == 0) {
-			if (++sf_t >= 30) {    /* let the front-end paint its title first */
-				fprintf(stderr,"[startfly] BOB_STARTFLYING: pre-flight + LaunchScreen(quickmissionflight)\n");
-				bob_startflying_preflight();
-				g_bobActiveFP->LaunchScreen(&RFullPanelDial::quickmissionflight);
-				fprintf(stderr,"[startfly] StartFlying fired (flybox/Rtestsh1 created); driving Start3d\n");
-				sf_stage = 1;
+		static bool sf_preflighted = false;
+		static bool sf_bridged = false;
+
+		/* Run the QM pre-flight world setup once (factory init + the quick-mission the player
+		   would pick in the config UI; the deeper config screens are R2.1). Inc 4.1 (=1) then
+		   force-launches the flight screen; inc 4.2 (=click) seeds the same state and lets a
+		   real menu click drive OnSelectRlistbox -> CheckForMissingMission/FragFly2 ->
+		   LaunchScreen(quickmissionflight) -> StartFlying. */
+		if (!sf_preflighted) {
+			if (++sf_t < 30) return;                        /* let the front-end paint its title */
+			fprintf(stderr,"[startfly] BOB_STARTFLYING=%s: pre-flight setup\n", mode);
+			bob_startflying_preflight();
+			sf_preflighted = true;
+			if (!clickMode) {
+				fprintf(stderr,"[startfly] inc 4.1: forced LaunchScreen(quickmissionflight)\n");
+				g_bobActiveFP->LaunchScreen(&RFullPanelDial::quickmissionflight);  /* fires StartFlying */
+			} else {
+				fprintf(stderr,"[startfly] inc 4.2: navigate to Fly by clicks (use BOB_AUTOCLICK=0,1,2)\n");
 			}
-			return;
+			/* fall through: clickMode wants the click-dispatch below to run this same tick */
+			if (!clickMode) return;
 		}
-		if (sf_stage == 1) {
-			/* Feed the two paint-driven Start3d bits so Start3d accumulates to 7: this sets
-			   setup3dstatus=S3D_GOING (the state other code tests, e.g. MIGVIEW) and posts
-			   WM_GETSTRING. Our compat has NO message-map dispatch (ON_MESSAGE expands to
-			   nothing; CWnd::PostMessage is a no-op), so the post is swallowed -- deliver the
-			   handler ourselves by calling the game's OWN public Rtestsh1::Launch3d(wasrunning),
-			   which is exactly what Rtestsh1::OnGetString does. Faithful, just minus the dead
-			   Win32 message hop. Launch3d -> new Inst3d/View3d/MakeInteractive -> flight. */
+
+		/* Trigger-agnostic Launch3d bridge: the moment StartFlying has created the Rtestsh1
+		   dialog (by force OR by a real click), drive Start3d to S3D_GOING and call the game's
+		   own public Rtestsh1::Launch3d(wasrunning) -- exactly what OnGetString does (compat has
+		   no message-map dispatch, so the posted WM_GETSTRING is swallowed; we deliver it). */
+		if (!sf_bridged && Rtestsh1::THISTHIS && !Rtestsh1::tmpinst) {
 			Rtestsh1::Start3d(Rtestsh1::S3D_DONEBACK);
 			Rtestsh1::Start3d(Rtestsh1::S3D_DONESHEET);
-			if (Rtestsh1::THISTHIS) {
-				fprintf(stderr,"[startfly] Start3d=GOING; calling Rtestsh1::Launch3d(wasrunning=%d)\n",
-					(int)Rtestsh1::THISTHIS->wasrunning);
-				Rtestsh1::THISTHIS->Launch3d(Rtestsh1::THISTHIS->wasrunning);
-				fprintf(stderr,"[startfly] Launch3d returned; tmpinst=%p tmpview=%p\n",
-					(void*)Rtestsh1::tmpinst,(void*)Rtestsh1::tmpview);
-			} else {
-				fprintf(stderr,"[startfly] ERROR: Rtestsh1::THISTHIS is NULL after StartFlying\n");
-			}
-			sf_stage = 2;
+			fprintf(stderr,"[startfly] Rtestsh1 up -> Launch3d(wasrunning=%d)\n",(int)Rtestsh1::THISTHIS->wasrunning);
+			Rtestsh1::THISTHIS->Launch3d(Rtestsh1::THISTHIS->wasrunning);
+			fprintf(stderr,"[startfly] Launch3d returned; tmpinst=%p tmpview=%p\n",
+				(void*)Rtestsh1::tmpinst,(void*)Rtestsh1::tmpview);
+			sf_bridged = true;
 			return;
 		}
-		return;   /* flight is up; the Run-loop / Inst3d path takes over */
+		if (sf_bridged) return;   /* flight is up; the Run-loop / Inst3d path takes over */
+		/* clickMode, not yet flying: fall through to the click dispatch so BOB_AUTOCLICK /
+		   real clicks navigate the menu toward Fly. */
 	}
 	int cx, cy; bool got = bob_gdi_get_click(&cx, &cy);
 	/* BOB_AUTOCLICK=N: headless test -- after a delay synthesize a click on item N's centre
