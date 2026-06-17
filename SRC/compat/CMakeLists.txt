@@ -12,6 +12,7 @@ add_library(bob_compat STATIC
     bob_resources.cpp
     bob_threads.cpp
     bob_gdi_font.cpp
+    openal_dsound.cpp     # DirectSound -> OpenAL audio backend
     bob_dlgtemplate.cpp   # runtime .rc dialog-template parser (control positions)
 )
 target_include_directories(bob_compat PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)

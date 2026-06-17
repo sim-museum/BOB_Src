@@ -192,7 +192,7 @@ extern "C" char *_itoa(int value, char *str, int radix) {
 /* ===== DirectX creation entry points (stub: all fail) =================== */
 /* DirectDrawCreateEx + DirectDrawEnumerateExA + DirectInputCreateA now live in
  * bob_video.cpp (the SDL2/OpenGL DirectDraw7/D3D7 backend + DirectInput stub). */
-HRESULT DirectSoundCreate(GUID *, LPDIRECTSOUND *ppDS, IUnknown *) { if (ppDS) *ppDS = NULL; return E_FAIL; }
+/* DirectSoundCreate now lives in openal_dsound.cpp (DirectSound -> OpenAL backend). */
 HRESULT DirectSoundEnumerateA(LPDSENUMCALLBACKA, void *) { return 0; }
 
 /* ===== GUIDs the game references (zero-filled; only stub-DX paths use) ====

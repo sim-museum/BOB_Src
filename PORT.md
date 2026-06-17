@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## AUDIO (2026-06-16): DirectSound → OpenAL — the game has SOUND (engine + effects play)
+> Audio was a silent `DirectSoundCreate`→`E_FAIL` stub. Implemented a real backend,
+> **`SRC/compat/openal_dsound.cpp`** (~340 lines, C-vtbl COM pattern like `bob_video.cpp`, no STL for the
+> `-fpack-struct=1` TU), and linked `-lopenal` (32-bit). It implements `IDirectSound`
+> (CreateSoundBuffer/GetCaps/SetCooperativeLevel/DuplicateSoundBuffer), `IDirectSoundBuffer`
+> (Lock/Unlock→`alBufferData`, Play→`alSourcePlay` with `AL_LOOPING`, Stop, SetVolume→`AL_GAIN` (dB→linear),
+> SetFrequency→`AL_PITCH` (RPM), SetPan→relative `AL_POSITION`, Get/SetCurrentPosition→`AL_BYTE_OFFSET`,
+> GetStatus), and the `IDirectSound3DBuffer`/`IDirectSound3DListener` 3D positional set (Position/Velocity/
+> Min-Max-Distance → AL source/listener). The game's `Sound`/`DigitalDriver` (`SOUND.CPP`/`DIGDRVR.CPP`,
+> compiled in `_HARD.CPP`) drives it unchanged.
+>
+> **Two gates had to be opened (same "QM boot leaves it minimal/off" pattern):**
+> 1. **Sound volumes default 0** → `Sound::PlayEngine` early-outs (`if (Save_Data.vol.sfx && ...)`), and
+>    `Sound::SetVolumes` only `PreLoadSFX()`es the sample bank when **`vol.sfx < 128`** (a 0..127 scale —
+>    setting a big number SKIPS the preload). Boot now sets the volumes to ~100; `BOB_NOSOUND` disables
+>    (and the backend then skips `alcOpenDevice` too).
+> 2. **Latent game-code stack overflow** in `Sample::LoadBuffer`: `*((PCMWAVEFORMAT*)&tmpwf)=wavformat`
+>    writes a 20-byte `PCMWAVEFORMAT` into an 18-byte `WAVEFORMATEX` stack local — a 2-byte overflow,
+>    harmless on Windows (no stack protector) but tripping `-fstack-protector` here (`__stack_chk_fail`
+>    abort the instant a sound plays). Game source stays pristine; added `-fno-stack-protector` to the
+>    HARDWARE TU (`SRC/HARDWARE/CMakeLists.txt`) to match the original.
+>
+> **Verified** (`BOB_TRACE_SND`): in flight, **10 OpenAL sources playing** — the looping engine sound
+> (232756-byte 16-bit @22050, `loop=1`, RPM-pitched) + one-shot effects (8/16-bit, 11k/22k/44k). No crash;
+> default flight + cockpit stable to frame 250; default `./bob` exits 0; `BOB_NOSOUND` runs clean/silent.
+> (Can't audition in this headless harness, but the full chain reaches `alSourcePlay`.) Music (MIDI/
+> DirectMusic) is still stubbed; that's the next audio item.
+
 > ## FIDELITY (2026-06-16): CLOUDS now render by default — the sky matches the Windows reference
 > A/B'd the cockpit render against `doc/reference/cockpit-windows-spitfire-1.png`: the cockpit/gunsight/
 > gauges already matched, but the **Windows sky has scattered fluffy clouds while ours was plain blue** —

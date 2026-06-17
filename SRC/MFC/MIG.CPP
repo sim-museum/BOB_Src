@@ -634,6 +634,17 @@ BOOL CMIGApp::InitInstance()
 			Save_Data.hardwareconfig|=HW_WEATHEREFFECTS;
 			fprintf(stderr,"[boot] clouds: fluffy clouds + weather effects enabled (default; BOB_NOCLOUDS to disable)\n");
 		}
+		/* Sound volumes default to 0 in the QM boot -> Sound::PlayEngine and the other play paths
+		   early-out (`if (Save_Data.vol.sfx && ...)`), so nothing reaches the DirectSound->OpenAL
+		   backend. Set the volumes so the engine/effects/UI/music sounds actually play. Shares the
+		   BOB_NOSOUND escape with the audio backend (which then skips alcOpenDevice too). */
+		if (!getenv("BOB_NOSOUND")) {
+			/* volumes are a 0..127 scale -- Sound::SetVolumes only PreLoadSFX()s the sample bank
+			   when `vol.sfx < 128`, so use ~100, NOT a big number (which skips the preload). */
+			Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 100;
+			Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 90;
+			fprintf(stderr,"[boot] sound: volumes set 0..127 (sfx/engine/music/...); BOB_NOSOUND to disable\n");
+		}
 		/* Landscape texture quality: the QM boot defaults to MINIMUM (Save_Data.textureQuality=0 ->
 		   EIGHTH_RES, filtering=1 -> BILINEAR), so AllocateLandscapeTextures picks the lowest option
 		   (biggestWH=128). BOB_TEXQ (0..4: min/low/med/high/max) + BOB_FILTER (0..3: none/bi/tri/all)

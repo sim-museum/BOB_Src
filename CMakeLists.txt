@@ -69,5 +69,5 @@ add_executable(bob ${BOB_SRC}/compat/bob_main.cpp)
 target_link_libraries(bob
     -Wl,--whole-archive ${BOB_MODULE_LIBS} -Wl,--no-whole-archive
     -Wl,--allow-multiple-definition
-    -L/usr/lib/i386-linux-gnu -lSDL2 -lGL
+    -L/usr/lib/i386-linux-gnu -lSDL2 -lGL -lopenal
     Threads::Threads m)
