@@ -232,7 +232,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 | 1 | 21 | 16 | ✅ accepted | PO-accepted as Done (Sprint Review, 2026-06-17). R1.2 (13) done; R1.1 split → R1.1a (3) done, R1.1b (8, re-est.) blocked-by R1.3, carried. Tooling: `BOB_ASAN` build + valgrind memcheck (cross-validated R1.2) added. |
 | 2 | 16 | 7 | ⚠️ partial | Shipped R1.3a/b/c (setup corruption fixed; InitPreferences reaches flight). R1.3d (transient double-free, NEW) gates init-as-default → R1.4/R1.5 + R1.3d split to Sprint 3. **Release 1 slips to Sprint 3.** PO-accepted the corruption-fix increment. |
 | 3 | 16 | 16 | ✅ **Release 1 shipped** | R1.3d (transient double-free root-caused + fixed), R1.4 (InitPreferences = default init), R1.5 (regression: faithful flight, no feature env vars). Full commit delivered. |
-| 4 | 21 | — | — | R2.1/R2.2 (menu→mission→debrief) + carried R1.1b (control-flow window merge). |
+| 4 | 8 | — | ⏸ in progress (spike done) | **ACTIVE (2026-06-17):** R1.1b (control-flow merge). SPIKE COMPLETE: Run() loop already unified; the merge is really the front-end's own `StartFlying()→Rtestsh1→OnFlyingClosed` bring-up, which converges with R2.1. **Implementation not started — awaiting PO direction** (fold into R2.1 / minimal scaffold transition / start StartFlying bring-up). See PORT.md. R2.1/R2.2 → Sprint 5. |
 | 5+ | ~31 | — | — | Polish/peripherals. |
 
 Update the **Done pts** column at each Sprint Review; that's the running velocity.

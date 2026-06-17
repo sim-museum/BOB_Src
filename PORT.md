@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b SPIKE (2026-06-17): control-flow merge scoped — it's the front-end's own StartFlying() bring-up, converges with R2.1 (decision pending)
+> Sprint 4 opened (PO: foundation-first, R1.1b only — control-flow window merge). Spiked the seam before
+> committing the build (retro lesson). Findings (read-only, no code changed):
+> - **The Run() loop is ALREADY unified** (MIG.CPP:828): one `MsgWaitForMultipleObjects` dispatches flight
+>   input (`EVENT_KEYS → Inst3d::OnKeyInput`) AND front-end messages/idle (`PumpMessage` / `OnIdle →
+>   bob_frontend_tick`), switching on `Inst3d::InThe3D()`. No loop merge needed.
+> - **The real menu↔flight transition is game-code:** `RFullPanelDial::StartFlying()` (FULLPANE.CPP:353)
+>   creates a `flybox` dialog hosting **`Rtestsh1`** (3D-view-in-a-dialog) and sets `OnFlyingClosed`
+>   (FULLPANE.CPP:378) to return to the menu. That is the genuine round-trip path.
+> - **The gap is the STARTUP fork:** `BOB_FRONTEND` (menu; main-thread GDI; `InitialiseSafe`+OnIdle) and
+>   `BOB_BOOT_FRONTEND` (flight via a *synthesized* direct `Inst3d`/`View3d`+`MakeInteractive`, bypassing
+>   `StartFlying`) are mutually exclusive. **Probe:** setting BOTH env vars exits during InitInstance
+>   (4 lines, reaches neither menu nor flight) — they conflict. So the merge is real work.
+> - **Conclusion:** R1.1b is NOT a loop merge — it's making the front-end's own
+>   `StartFlying() → Rtestsh1 → OnFlyingClosed` path work in one process. The code comments warn of "a
+>   cascade of uninitialised-UI failures to fix one by one" → a **bring-up grind** (like the front-end
+>   itself was), and `StartFlying` is exactly the path **R2.1** ("menu Fly → mission") drives — so R1.1b
+>   and R2.1 converge on the same seam.
+> - **Status: SPIKE COMPLETE, implementation NOT started — awaiting PO direction** (fold R1.1b into R2.1 as
+>   one StartFlying effort / build a minimal throwaway scaffold transition / start the StartFlying bring-up).
+>   No code committed for R1.1b; the spike de-risks whichever path is chosen.
+
 > ## SCRUM SPRINT 3 / R1.3d + R1.4 + R1.5 (2026-06-17): transient double-free FIXED — InitPreferences is now the DEFAULT init (Release 1)
 > Cracked the long-standing transient double-free and landed real factory init as the default. Ships
 > Release 1 ("real boot to flight, no feature env vars").
