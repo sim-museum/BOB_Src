@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 6 / R2.3 (2026-06-17): mission-loop stress + variety — NO latent uninit-state bugs surfaced (the feared grind didn't materialise)
+> R2.3 was budgeted (13 pts) for "expect several latent uninitialised-state bugs uncovered by the real
+> mission loop." Stress + variety testing found **none** — the real mission loop is robust.
+> - **Stress (chain depth):** `BOB_REFLY=3` → **4 consecutive fly→debrief cycles**, one process, 120s:
+>   4 flights launched, 4 debriefs, 3 chain steps, **0 crashes/aborts/double-frees**. Each flight builds
+>   a fresh `Inst3d`/`View3d` and tears down clean (the DD7 refcount fix holds across cycles).
+> - **Variety (mission selection):** `BOB_QM_INDEX=0..7`, single flight each → **all reach flight
+>   (`Launch3d`) with 0 crashes**. `BOB_QM_INDEX` does select distinct quick missions (trace `QM=0`,
+>   `QM=2`, …); they all resolve `playersquadron=0` (these QMs start the player in aircraft type 0 — a
+>   data/content fact, not a port bug). No mission-content path crashed.
+> - **Why the grind didn't bite:** the uninit-state classes the roadmap feared were already cleared
+>   upstream — InitPreferences as the real default init (R1.4), the four combat-corruption fixes
+>   (R1.3a–d), the DD7 teardown refcount (4.3b), and the out-of-range-`SetIndex` guard (4.3c). With those
+>   in place the QM mission loop is stable. **R2.3 = closed (stress-validated), no new fixes needed.**
+> - **Net:** Release 2 ("play a mission") is functionally complete — menu→mission→fly→debrief→next runs
+>   end-to-end and survives stress + variety. Remaining to the full DoD: the cosmetic **"no env vars"**
+>   packaging (drive the loop from real mouse clicks + the player's own Alt+X, retiring
+>   `BOB_STARTFLYING`/`BOB_AUTOQUIT`/`BOB_REFLY`). Evidence: `/tmp/r23.log` (4-mission chain),
+>   `/tmp/qmv_*.log` (per-index variety).
+
 > ## SCRUM SPRINT 6 / R2.4 (2026-06-17): campaign continuity — TWO consecutive missions through the game's own flow (fly→debrief→fly→debrief), one process
 > Closed the real game loop: the debrief→next-mission chain now runs end-to-end, proving a second
 > `StartFlying` stands up cleanly after the first tears down.
