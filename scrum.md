@@ -188,12 +188,13 @@ more of the real flow.
     bits + calls the game's own public `Rtestsh1::Launch3d(wasrunning)` — exactly what
     `OnGetString` does. **Accepted:** faithful Spitfire cockpit (HUD/mirror/tower ATC), frame 120
     88.7% non-black, 60s+ no crash, bare `./bob` still exits 0. Evidence: PORT.md + `/tmp/sf_frame.png`.
-  - **4.2** ◐ **SPIKED (2026-06-17) → blocked, hand-off.** Made the Launch3d bridge trigger-agnostic
-    + added `BOB_STARTFLYING=click`; a real click (`BOB_AUTOCLICK="0,1,2"`) navigates the genuine
-    `OnSelectRlistbox` path. **First click (Quick Mission) SIGSEGVs** in `CSQuick1::OnInitDialog →
-    CRComboCtrl::SetIndex` (empty `m_list`; `INT3` guard doesn't halt on compat). Blocker = the
-    **CSQuick1 Quick-Mission config-form bring-up** (R2.1-class, == open-front #2). Once that screen
-    lives, the real click already reaches `StartFlying` + the bridge stands up flight → 4.2/4.3 fall out.
+  - **4.2** ☑ **DONE (2026-06-17).** `BOB_STARTFLYING=click` + `BOB_AUTOCLICK="0,1,2"` navigates the
+    genuine `OnSelectRlistbox → CSQuick1 → CheckForMissingMission → FragFly2 → StartFlying` path into
+    flight. Crash root-caused: `CSQuick1::SetIndex(currquickfamily=-1)` (the `INT3` range-guard doesn't
+    halt on compat → NULL `GetAt`). Fix (boot scaffold, no game edit): click-mode pre-flight does
+    world-init only + resets `currquickmiss=-1` so the game's own `CSQuick1` ctor initialises the QM
+    screen. **Accepted:** faithful cockpit via real clicks, frame 150 90.7% non-black, no crash; 4.1
+    unregressed; bare `./bob` exits 0. Evidence: PORT.md + `/tmp/sf42b.png`.
   - **4.3** **Return path:** `OnOK/OnCancel → OnFlyingClosed → LaunchScreen(debrief/menu)` — fly, exit, land back in the menu, one process. *(Depends on 4.2.)*
 - **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
   treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.

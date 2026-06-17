@@ -261,8 +261,9 @@ static void bob_fp_repaint(RFullPanelDial* fp)
    mission squadron). Mirrors the BOB_BOOT_FRONTEND scaffold's pre-flight (MIG.CPP), but here
    we hand the actual Inst3d/View3d construction to the game's OWN path (Rtestsh1::Launch3d)
    instead of synthesizing it -- this is the faithful menu->flight transition. */
-static void bob_startflying_preflight(void)
+static void bob_startflying_preflight(bool clickMode)
 {
+	/* Factory/world init the QM config screens do NOT do (these run regardless of mode). */
 	Save_Data.SetUnits();                                  /* unit-conversion factors (else SIGFPE) */
 	if (!getenv("BOB_NOINITPREFS")) {
 		Save_Data.InitPreferences((int)Master_3d.winst);  /* R1.4: real factory defaults */
@@ -272,13 +273,6 @@ static void bob_startflying_preflight(void)
 	Node_Data.LoadCleanNodeTree();
 	Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
 	Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
-	const char* qix = getenv("BOB_QM_INDEX");
-	int qi = qix ? atoi(qix) : 0;
-	CSQuick1::currquickmiss = qi;
-	CSQuick1::quickdef = CSQuick1::quickmissions[qi];
-	QuickDef& q = CSQuick1::quickdef;
-	MMC.playersquadron = q.line[q.plside][q.plwave][q.plgrp].actype;
-	MMC.playeracnum = q.plac;
 	if (!getenv("BOB_NOCLOUDS")) {                         /* faithful sky (default-on, cf. scaffold) */
 		Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
 		Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
@@ -287,8 +281,27 @@ static void bob_startflying_preflight(void)
 		Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 0;
 		Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 0;
 	}
-	fprintf(stderr,"[startfly] pre-flight: texQ=%d filtering=%d vol.sfx=%d QM=%d playersquadron=%d\n",
-		(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx,qi,(int)MMC.playersquadron);
+	if (clickMode) {
+		/* 4.2: navigate the REAL QM config flow. Leave the quick-mission selection to the game's
+		   own CSQuick1 ctor, which (when currquickmiss==-1, the fresh-entry sentinel) sets
+		   currquickmiss=0, currquickfamily=0, quickdef=quickmissions[0]. Pre-seeding currquickmiss
+		   here would DEFEAT that init -> currquickfamily stays at the stale -1 -> SetIndex(-1)
+		   NULL-derefs the family combo. So reset to the sentinel and let the screen initialise. */
+		CSQuick1::currquickmiss = -1;
+		CSQuick1::currquickfamily = -1;
+		fprintf(stderr,"[startfly] pre-flight(click): world init done; QM left to CSQuick1 (currquickmiss=-1)\n");
+	} else {
+		/* 4.1: forced flight, no config screen -- seed the quick-mission + player squadron directly. */
+		const char* qix = getenv("BOB_QM_INDEX");
+		int qi = qix ? atoi(qix) : 0;
+		CSQuick1::currquickmiss = qi;
+		CSQuick1::quickdef = CSQuick1::quickmissions[qi];
+		QuickDef& q = CSQuick1::quickdef;
+		MMC.playersquadron = q.line[q.plside][q.plwave][q.plgrp].actype;
+		MMC.playeracnum = q.plac;
+		fprintf(stderr,"[startfly] pre-flight(forced): texQ=%d filtering=%d vol.sfx=%d QM=%d playersquadron=%d\n",
+			(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx,qi,(int)MMC.playersquadron);
+	}
 }
 
 /* Called each idle from CMIGApp::OnIdle (under BOB_FRONTEND): if a menu item was clicked,
@@ -321,7 +334,7 @@ extern "C" void bob_frontend_tick(void)
 		if (!sf_preflighted) {
 			if (++sf_t < 30) return;                        /* let the front-end paint its title */
 			fprintf(stderr,"[startfly] BOB_STARTFLYING=%s: pre-flight setup\n", mode);
-			bob_startflying_preflight();
+			bob_startflying_preflight(clickMode);
 			sf_preflighted = true;
 			if (!clickMode) {
 				fprintf(stderr,"[startfly] inc 4.1: forced LaunchScreen(quickmissionflight)\n");

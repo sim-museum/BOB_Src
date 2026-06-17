@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.2 (2026-06-17): real menu CLICKS drive flight — title → Quick Mission → Fly → Fly → StartFlying → faithful cockpit (CSQuick1 config form brought up)
+> The spike's blocker is fixed; **4.2 is done.** A genuine click sequence now navigates the game's own
+> screen flow into flight, in one process.
+> - **The fix (one line of boot-scaffold state, no game-logic edit):** the crash was
+>   `CSQuick1::OnInitDialog → combo->SetIndex(currquickfamily)` with `currquickfamily == -1` (the
+>   "no family selected" sentinel) → `row<0` → the `INT3` range-guard doesn't halt on compat →
+>   `m_list.GetAt(FindIndex(-1))` NULL-derefs. The game's **own** `CSQuick1` ctor initialises the QM
+>   state (`currquickmiss=0, currquickfamily=0, quickdef=quickmissions[0]`) — but **only when
+>   `currquickmiss==-1`** (fresh-entry sentinel). My click-mode pre-flight had pre-seeded
+>   `currquickmiss=0`, defeating that init and leaving `currquickfamily` at the stale `-1`. Fix: in
+>   click mode the pre-flight does **world/factory init only** and resets `currquickmiss=-1` (+
+>   `currquickfamily=-1`), letting the game's ctor initialise the QM screen the faithful way. The
+>   family combo (6 entries: Basic Training…Historic) then `SetIndex(0)` cleanly.
+> - **Result (`BOB_STARTFLYING=click BOB_AUTOCLICK="0,1,2"`):** click 0 (title→Quick Mission, brings
+>   up the CSQuick1 config form — no crash), click 1 (`quickmission` Fly→`bobfrag` via
+>   `CheckForMissingMission`), click 2 (`bobfrag` Fly→`quickmissionflight` via `FragFly2` → real
+>   `StartFlying`); the trigger-agnostic bridge then stands up flight. **Frame 150 = a faithful
+>   daylit Spitfire cockpit** (`/tmp/sf42b.png`: prop, gunsight reflector, instruments, cloudy sky,
+>   rear-view mirror, HUD + tower ATC), **90.7% non-black**, 60s+ no crash. So the whole chain
+>   `OnSelectRlistbox → QuickMissionInit/CSQuick1 → CheckForMissingMission → FragFly2 → StartFlying →
+>   Rtestsh1 → Launch3d → View3d` runs through the game's genuine menu navigation.
+> - **No regression:** 4.1 (`BOB_STARTFLYING=1`, forced) still flies (87.7% non-black); bare `./bob`
+>   exits 0; default + `BOB_BOOT_FRONTEND` unchanged.
+> - **Next:** 4.3 the **return path** — from flight, `OnOK/OnCancel → OnFlyingClosed →
+>   LaunchScreen(quickmissiondebrief/menu)` so you fly, exit, and land back in the menu (one process).
+> - **Evidence:** `/tmp/sf42b.log` + `/tmp/sf42b.png` (click→flight), `/tmp/qm_trace.log` (the family
+>   combo populated n=6 then the SetIndex(-1) crash, pre-fix), `/tmp/sf41c.*` (4.1 no-regression).
+
 > ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.2 SPIKE (2026-06-17): real menu-click→fly works up to the Quick-Mission config screen, which crashes bringing up its hosted RCombo — hand-off to CSQuick1 config bring-up (R2.1-class)
 > Refactored the Launch3d bridge to be **trigger-agnostic** (fires the moment `Rtestsh1::THISTHIS`
 > appears, however `StartFlying` was reached) and added a `BOB_STARTFLYING=click` mode that seeds the
