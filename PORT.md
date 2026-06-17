@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.3 (2026-06-17): return-path PLUMBING done (fly→F12→OnCancel→OnFlyingClosed→menu) — blocked on the never-before-run 3D-device teardown (Lib3D::CloseDown NULL vtable)
+> Built the full flight→menu return path; the plumbing fires correctly, blocked on the game's 3D
+> shutdown which has **never run on Linux** (the scaffold never exits flight). Plumbing committed
+> (default-off, no regression); teardown blocker pinned.
+> - **The return-path plumbing (4 pieces, all working):** (1) `BOB_AUTOQUIT=<sec>` injects **F12**
+>   (DIK 0x58 = `KEY_CONFIGMENU`) after N s of flight (`bob_video.cpp` `pump_events`); (2) the
+>   per-frame `KeyPress3d(KEY_CONFIGMENU)` poll (STUB3D.CPP:1644) fires
+>   `View3d::CloseWindow(IDCANCEL)` → `mfcwin->PostMessage(WM_COMMAND,IDCANCEL)`; (3) compat has no
+>   message dispatch, so `CWnd::PostMessage` (afxwin.h) hands `WM_COMMAND` to `bob_capture_wm_command`
+>   (FULLPSYS), which records it **only while flight is live** (`Rtestsh1::THISTHIS && InThe3D()`);
+>   (4) the main-thread Run loop drains it via `bob_process_flight_close` → the game's OWN public
+>   `Rtestsh1::OnCancel()` (teardown) then `RFullPanelDial::OnFlyingClosed(NULL,IDCANCEL)` (→
+>   `LaunchScreen(&options3d)`). Verified: the close fires (`[startfly] flight close (id=2) ->
+>   OnCancel + OnFlyingClosed`), default-off, **no spurious closes** in 4.1/4.2, bare `./bob` exits 0.
+> - **The blocker (next increment):** `Rtestsh1::OnCancel → delete tmpview → ~View3d →
+>   Lib3D::RestoreDisplayMode → Lib3D::CloseDown` **SIGSEGVs on a NULL function pointer**. Disasm +
+>   gdb pinned it: `call *0x50(%edx)` = vtable index 20 = `IDirectDraw7::SetCooperativeLevel`
+>   (`pDD7->SetCooperativeLevel(hwTop,DDSCL_NORMAL)`), and at the crash **pDD7's vtable is all zeros**
+>   — the DirectDraw7 object was **freed before the call**. The draw thread IS stopped first
+>   (`~View3d` does `WaitEndDraw(D_CLOSE)` on a real `CEvent` the draw thread signals — not a race);
+>   this is a **compat COM-refcount bug in the 3D-device teardown** (`CloseDown`'s
+>   `DeRefAndNULL`/`getRefCount` release chain drops `pDD7` — or an aliased DD7/device/surface — to 0
+>   and frees it, then `SetCooperativeLevel` derefs the zeroed vtable). The shutdown path
+>   (`CloseDown` releasing pD3DVB7/pDDS7Land*/pDDSZ7/pDDSB7/pDDSP7/pDD7/pD3DDEV7/pD3D7) was never
+>   exercised because no Linux path ever closed flight — it needs a compat DD7/D3D7 release/refcount pass.
+> - **Status:** 4.3 plumbing **DONE + committed** (the close round-trip is correct); 4.3 **BLOCKED** on
+>   the `Lib3D::CloseDown` device-teardown bring-up → that is the next increment (call it **4.3b**).
+> - **Evidence:** `/tmp/sf43.log` (close fires then SEGV), `/tmp/sf43_bt.log` (backtrace:
+>   CloseDown→0x0), `/tmp/sf43_gdb.log` (pDD7 vtable = zeros), `/tmp/sf_noreg.*` (4.1 unregressed,
+>   0 spurious closes).
+
 > ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.2 (2026-06-17): real menu CLICKS drive flight — title → Quick Mission → Fly → Fly → StartFlying → faithful cockpit (CSQuick1 config form brought up)
 > The spike's blocker is fixed; **4.2 is done.** A genuine click sequence now navigates the game's own
 > screen flow into flight, in one process.

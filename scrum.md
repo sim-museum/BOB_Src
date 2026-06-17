@@ -195,7 +195,16 @@ more of the real flow.
     world-init only + resets `currquickmiss=-1` so the game's own `CSQuick1` ctor initialises the QM
     screen. **Accepted:** faithful cockpit via real clicks, frame 150 90.7% non-black, no crash; 4.1
     unregressed; bare `./bob` exits 0. Evidence: PORT.md + `/tmp/sf42b.png`.
-  - **4.3** **Return path:** `OnOK/OnCancel → OnFlyingClosed → LaunchScreen(debrief/menu)` — fly, exit, land back in the menu, one process. *(Depends on 4.2.)*
+  - **4.3** ◐ **PLUMBING DONE, blocked → 4.3b.** Built the full return path: `BOB_AUTOQUIT` injects
+    F12 (`KEY_CONFIGMENU`) → `View3d::CloseWindow(IDCANCEL)` → `WM_COMMAND` captured by compat
+    (`CWnd::PostMessage`→`bob_capture_wm_command`, live-flight-only) → main-thread Run loop drains via
+    `bob_process_flight_close` → game's own `Rtestsh1::OnCancel` + `OnFlyingClosed`→`LaunchScreen`. The
+    close fires correctly (default-off, no spurious closes, bare `./bob` 0). **Blocked:** the teardown
+    `~View3d → Lib3D::CloseDown` SIGSEGVs on a NULL vtable — `pDD7->SetCooperativeLevel` (idx 20) with
+    pDD7's vtable zeroed (object freed mid-teardown; draw thread already stopped via `WaitEndDraw`). =
+    a **compat DD7/D3D7 device-release refcount bug** in the never-before-run 3D shutdown.
+  - **4.3b** **NEXT:** compat 3D-device teardown — fix the `Lib3D::CloseDown` DD7/D3D7/surface
+    release refcounting so flight shuts down clean, completing the fly→exit→menu round-trip.
 - **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
   treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.
 - **Increment demo:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` enters flight through

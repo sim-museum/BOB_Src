@@ -304,6 +304,36 @@ static void bob_startflying_preflight(bool clickMode)
 	}
 }
 
+/* R1.1b Increment 4.3: the return path (flight -> menu, one process). In flight, pressing
+   KEY_CONFIGMENU (F12) makes View3d::CloseWindow(IDCANCEL) post WM_COMMAND to the Rtestsh1
+   dialog -- which our compat swallows (no message dispatch). bob_capture_wm_command (called
+   from CWnd::PostMessage) records that close request while flight is live; the main-thread Run
+   loop drains it via bob_process_flight_close, running the game's OWN public teardown
+   (Rtestsh1::OnCancel/OnOK -> delete View3d/Inst3d) then OnFlyingClosed -> LaunchScreen(the
+   exit screen). Faithful, just delivering the message the dead Win32 hop would have. */
+static int g_bobFlightCloseId = -1;
+void bob_capture_wm_command(unsigned int /*msg*/, unsigned int id)
+{
+	if (Rtestsh1::THISTHIS && Inst3d::InThe3D())
+		g_bobFlightCloseId = (int)id;
+}
+int bob_process_flight_close(void)
+{
+	if (g_bobFlightCloseId < 0) return 0;
+	int id = g_bobFlightCloseId; g_bobFlightCloseId = -1;
+	fprintf(stderr,"[startfly] flight close (id=%d) -> %s + OnFlyingClosed\n",
+		id, id==IDOK ? "OnOK" : "OnCancel");
+	if (Rtestsh1::THISTHIS) {                 /* game's own teardown: Paused, delete view/inst */
+		if (id==IDOK) Rtestsh1::THISTHIS->OnOK();
+		else          Rtestsh1::THISTHIS->OnCancel();
+	}
+	if (g_bobActiveFP) {                       /* navigate back to a front-end screen */
+		g_bobActiveFP->OnFlyingClosed(NULL, id);
+		fprintf(stderr,"[startfly] back in front-end (InThe3D=%d)\n",(int)Inst3d::InThe3D());
+	}
+	return 1;
+}
+
 /* Called each idle from CMIGApp::OnIdle (under BOB_FRONTEND): if a menu item was clicked,
    fire the existing OnSelectRlistbox(i) which navigates to that item's screen (+ repaints).
    A click that misses the menu but lands on a hosted combo cycles that combo's value. */

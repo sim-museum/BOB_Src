@@ -682,7 +682,14 @@ public:
         return 0;
     }
     LRESULT SendMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageA(m, w, l); }
-    BOOL PostMessageA(UINT, WPARAM = 0, LPARAM = 0) { return TRUE; }
+    BOOL PostMessageA(UINT m, WPARAM w = 0, LPARAM = 0) {
+        /* R1.1b inc 4.3: View3d::CloseWindow posts WM_COMMAND(IDOK/IDCANCEL) to the flight
+           dialog to end flight; compat has no message dispatch, so hand it to the close
+           bridge (which only acts while flight is live). WM_COMMAND == 0x0111. */
+        if (m == 0x0111) { extern void bob_capture_wm_command(unsigned int, unsigned int);
+                           bob_capture_wm_command(m, (unsigned int)w); }
+        return TRUE;
+    }
     /* `PostMessage`/`GetWindowText`/... callers are macro-mapped to the A names */
     void ScrollWindow(int, int, LPCRECT = NULL, LPCRECT = NULL) {}
     class CMenu* GetMenu() const { return NULL; }

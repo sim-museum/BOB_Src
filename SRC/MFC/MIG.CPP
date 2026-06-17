@@ -825,8 +825,17 @@ int CMIGApp::Run()
 
 
 	// acquire and dispatch messages until a WM_QUIT message is received.
+#if BOB_LINUX
+	extern int bob_process_flight_close(void);   /* R1.1b inc 4.3: flight -> menu (FULLPSYS) */
+#endif
 	for (;;)
 	{
+#if BOB_LINUX
+		/* Drain a pending flight-close (F12/KEY_CONFIGMENU posted WM_COMMAND while flying):
+		   run the game's own teardown + OnFlyingClosed on the main thread, then InThe3D()
+		   goes false and the loop resumes OnIdle/the front-end on the same window. */
+		if (getenv("BOB_FRONTEND")) bob_process_flight_close();
+#endif
 
 		int result;
 		ULong t;;

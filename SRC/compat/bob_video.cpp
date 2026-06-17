@@ -241,6 +241,16 @@ static void pump_events(void)
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
 		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
 	}
+	/* BOB_AUTOQUIT=<sec>: R1.1b inc 4.3 headless test of the return path. After ~<sec> seconds
+	   of flight, hold F12 (DIK 0x58 = KEY_CONFIGMENU) for a few frames so the per-frame
+	   KeyPress3d poll fires View3d::CloseWindow(IDCANCEL) -> the close bridge -> back to menu. */
+	if (getenv("BOB_AUTOQUIT") && g_diKbAcquired) {
+		static int qc=0; qc++;
+		int after=atoi(getenv("BOB_AUTOQUIT")); if (after<=0) after=5;
+		int t0=after*60;                                  /* pump runs ~60Hz */
+		if (qc>=t0 && qc<t0+8) kb_push(0x58,1);           /* F12 down, held ~8 frames */
+		else if (qc==t0+8)     kb_push(0x58,0);           /* F12 up */
+	}
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) { fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0); }
