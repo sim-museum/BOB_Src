@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## INPUT (2026-06-16): keyboard-flight gap located (NOT yet working) — `DI_EnumDevices` returns 0
+> Diagnosed why flight controls don't respond in the bring-up (keyboard input). The DInput **keyboard
+> backend is fully implemented** in `bob_video.cpp` (SDL→DIK: buffered `GetDeviceData`, immediate
+> `GetDeviceState`, `Acquire`, `EnumObjects`/`SetProperty`/`SetDataFormat`/`SetCooperativeLevel`), and the
+> game's `Analogue::PollPosition()` (which drains the keyboard buffer → `Inst3d::OnKeyDown(dik)` →
+> flight control) **does run** in the bring-up (traced). **But the keyboard is never polled** —
+> `PollPosition` iterates `runtimedevices[]` (ANALOGUE's registered input devices), which is **empty**
+> because `SController::BuildEnumerationTables()` enumerates via `IDirectInput::EnumDevices`, and the
+> compat's **`DI_EnumDevices` returns 0** (enumerates nothing). So no device is registered → the keyboard
+> buffer is never drained → keys never reach the flight controller. (`Acquire(keyboard)` fires from a
+> separate path, which is why the device looks set up.)
+> - **Fix (next session):** implement `DI_EnumDevices` (bob_video.cpp ~1679) to call the callback with a
+>   `DIDEVICEINSTANCE` for the keyboard (`GUID_SysKeyboard`, keyboard dwDevType) — and a joystick if
+>   `SDL_NumJoysticks()>0` — so `SController::BuildEnumerationTables` registers them in `runtimedevices`.
+>   Then `PollPosition`→`GetDeviceData`→`OnKeyDown` lights up keyboard flight control. Verify by injecting
+>   a control key (`BOB_AUTOFLY`) and watching the attitude change over frames.
+> - **Joystick** also needs hardware to test (no `/dev/input/js*` on this box). Keyboard is the path to get
+>   working first. No code committed for input this session — the backend was already present; the gap is
+>   the one-function enumeration above.
+
 > ## AUDIO (2026-06-16): DirectSound → OpenAL — the game has SOUND (engine + effects play)
 > Audio was a silent `DirectSoundCreate`→`E_FAIL` stub. Implemented a real backend,
 > **`SRC/compat/openal_dsound.cpp`** (~340 lines, C-vtbl COM pattern like `bob_video.cpp`, no STL for the
