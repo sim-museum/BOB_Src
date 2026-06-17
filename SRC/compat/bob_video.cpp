@@ -770,22 +770,21 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSurface7** out, IUnknown*) {
 	if (!out) return DDERR_INVALIDPARAMS;
 	check_surfaces("CreateSurface");
-	/* Render-to-texture (TEXTURE+3DDEVICE) — used by Lib3D's water/mirror reflection
-	   probe (CheckIfTextureCanBeRenderTarget). Our GL backend has no FBO RTT yet, so
-	   report the surface uncreatable: the probe then takes its designed fallback
-	   (render straight to the back buffer, no mirror), exactly as on HW that lacks RTT. */
+	/* Render-to-texture (TEXTURE+3DDEVICE) — used by Lib3D's landscape detail compositing +
+	   the water/mirror reflection probe (CheckIfTextureCanBeRenderTarget). The FBO RTT path is
+	   now the DEFAULT (fills the airfield ground; black->green). Escape hatch BOB_NO_FBO_RTT
+	   reverts to rejecting the surface so the game takes its back-buffer fallback (no RTT),
+	   exactly as on HW that lacks RTT — kept for A/B + as a safety valve. */
 	if (d && (d->ddsCaps.dwCaps & DDSCAPS_TEXTURE) && (d->ddsCaps.dwCaps & DDSCAPS_3DDEVICE)) {
-		if (!getenv("BOB_FBO_RTT")) {
-			/* default: no FBO RTT -> report uncreatable so the game falls back (render
-			   straight to the back buffer), exactly as on HW that lacks RTT. */
-			if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx\n",
+		if (getenv("BOB_NO_FBO_RTT")) {
+			if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx (BOB_NO_FBO_RTT)\n",
 				(unsigned long)d->dwWidth,(unsigned long)d->dwHeight,(unsigned long)d->ddsCaps.dwCaps);
 			*out = NULL;
 			return DDERR_OUTOFVIDEOMEMORY;
 		}
-		/* BOB_FBO_RTT: accept it -> CheckIfTextureCanBeRenderTarget succeeds, the game
-		   uses the RTT compositing path. The GL texture + FBO are created lazily on the
-		   draw thread (SetRenderTarget). */
+		/* accept it -> CheckIfTextureCanBeRenderTarget succeeds, the game uses the RTT
+		   compositing path. The GL texture + FBO are created lazily on the draw thread
+		   (SetRenderTarget). */
 		GLSurface7* rs = make_surface(d, 128, 128);
 		rs->isRTT = 1;
 		if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] ACCEPTED render-target texture %dx%d caps=0x%lx surf=%p\n",
@@ -896,9 +895,9 @@ static void fill_devdesc(D3DDEVICEDESC7* dd, const GUID* guid) {
 	   the auxiliary z-buffers for the landscape/mirror render targets -- but
 	   CheckIfTextureCanBeRenderTarget then unconditionally Release()es a NULL pDDS7MirrorZB
 	   (LIB3D.CPP ~2269), which derefs NULL. Real z-buffered DX7 cards (the game's target)
-	   don't set this bit. Only the FBO render-target path exercises that code, so clear the
-	   bit ONLY under BOB_FBO_RTT -- the default flight path keeps its exact current caps. */
-	if (getenv("BOB_FBO_RTT")) dd->dpcLineCaps.dwRasterCaps &= ~0x00008000u; /* D3DPRASTERCAPS_ZBUFFERLESSHSR */
+	   don't set this bit. The FBO render-target path (now default) exercises that code, so
+	   clear the bit by default; restore it only under BOB_NO_FBO_RTT (the no-RTT fallback). */
+	if (!getenv("BOB_NO_FBO_RTT")) dd->dpcLineCaps.dwRasterCaps &= ~0x00008000u; /* D3DPRASTERCAPS_ZBUFFERLESSHSR */
 	dd->dpcLineCaps.dwZCmpCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwSrcBlendCaps = 0xFFFFFFFF;
 	dd->dpcLineCaps.dwDestBlendCaps = 0xFFFFFFFF;

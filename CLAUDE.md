@@ -55,23 +55,24 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
   `bob_gdi` framebuffer (`CDC` text/line primitives wired). Captures in `doc/reference/`.
 - **3D flight / cockpit** — runs on real GL (`BOB_BOOT_FRONTEND`); the cockpit corruption was a
   surface refcount use-after-free (fixed with real COM refcounting + GL-texture free).
-- **Landscape ground via FBO render-to-texture** (`BOB_FBO_RTT`, gated). The airfield ground was
-  black because the landscape composite had no real render target; the FBO RTT path in
-  `bob_video.cpp` (accept RTT surfaces → GL texture + FBO, `DEV_SetRenderTarget` bind/restore,
-  `SURF_Lock` reads the FBO back into the bits the game's `UploadTexture` copies) now fills the
-  terrain — A/B at QM frame 80: ground non-black **51% → 99%** (black → green landscape). The
-  setup hang that blocked this was a latent game-code NULL `Release()` exposed by the compat
-  over-advertising `D3DPRASTERCAPS_ZBUFFERLESSHSR`; fixed by clearing that cap under `BOB_FBO_RTT`
-  only (game source stays pristine). Default flight is byte-unchanged. See PORT.md (2026-06-16).
+- **Landscape ground via FBO render-to-texture — now DEFAULT.** The airfield ground was black
+  because the landscape composite had no real render target; the FBO RTT path in `bob_video.cpp`
+  (accept RTT surfaces → GL texture + FBO, `DEV_SetRenderTarget` bind/restore, `SURF_Lock` reads
+  the FBO back into the bits the game's `UploadTexture` copies) fills the terrain. A/B (now
+  default-on vs `BOB_NO_FBO_RTT` escape hatch): ground non-black **51% → 99%** (black → green
+  landscape), stable at frames 80 and 150. The setup hang that blocked this was a latent
+  game-code NULL `Release()` exposed by the compat over-advertising `D3DPRASTERCAPS_ZBUFFERLESSHSR`;
+  fixed by clearing that cap (game source stays pristine). `BOB_NO_FBO_RTT` reverts to the old
+  back-buffer fallback (no RTT) for A/B + safety. See PORT.md (2026-06-16).
 - **Front-end GDI 2D pipeline** — window framebuffer + present (`bob_gdi_*`), `SetDIBitsToDevice`,
   stb_truetype text (`bob_gdi_font.cpp`), mouse-navigable menu (`bob_frontend_tick`).
 
 ### Open fronts (next work)
-1. **Landscape RTT polish + make it default.** The FBO path works (ground renders) but is still
-   gated on `BOB_FBO_RTT`. Open items: the land RT is only 128×128 (option table picked
-   `biggestWH=128` — push for higher land-texture options/sharper detail tiles); the rear-view
-   **mirror** uses the same FBO path now and needs an A/B; verify steady-state texture lifetime
-   under RTT; then promote `BOB_FBO_RTT` to default once the mirror + lifetime are confirmed.
+1. **Landscape RTT polish.** The FBO path is now **default-on** (ground renders; stable to frame
+   150; `BOB_NO_FBO_RTT` reverts). Remaining polish: the land RT is only 128×128 (option table
+   picked `biggestWH=128` — push for higher land-texture options/sharper detail tiles); A/B the
+   rear-view **mirror** (same FBO path); confirm long-session texture lifetime beyond a few
+   hundred frames.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/
@@ -89,8 +90,9 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
 
 Diagnostics (env-gated, default-off): `BOB_OLE_DRAW`, `BOB_TRACE_OLE`, `BOB_AUTOCLICK=<seq>`
 (comma-sep, e.g. `5,3`), `BOB_CLICKXY="tick,x,y;…"` (inject clicks at framebuffer coords —
-headless combo-click tests), `BOB_FBO_RTT`, `BOB_TRACE_RTT`, `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
-`BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.
+headless combo-click tests), `BOB_NO_FBO_RTT` (disable the now-default landscape RTT),
+`BOB_TRACE_RTT`, `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`, `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md
+(newest first) for the full dated history.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.

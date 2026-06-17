@@ -1,5 +1,20 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## OPEN FRONT #1 (2026-06-16): landscape FBO RTT PROMOTED TO DEFAULT (green ground out of the box)
+> The FBO render-to-texture path is no longer gated — **default flight renders the airfield ground** with no
+> env var. Inverted the two `BOB_FBO_RTT` gates in `bob_video.cpp` to default-on with a `BOB_NO_FBO_RTT`
+> escape hatch: (1) `DD_CreateSurface` now **accepts** TEXTURE+3DDEVICE render-target surfaces by default
+> (rejects only under `BOB_NO_FBO_RTT`); (2) `fill_devdesc` **clears** `D3DPRASTERCAPS_ZBUFFERLESSHSR` by
+> default (restores it only under `BOB_NO_FBO_RTT`, reverting to the no-RTT back-buffer fallback).
+>
+> **Verified** (real GL, DISPLAY=:0, NVIDIA): default flight reaches `View3d interactive`, creates the FBO
+> (`complete=1`), and the QM ground is **non-black 99% at frame 80 AND frame 150** (steady-state holds — the
+> earlier "frame 250 = 51%" reading was a stale dump file before the run reached that frame, not a revert).
+> `BOB_NO_FBO_RTT` A/B: ground back to **51%** (old black-ground fallback), interactive, no hang. Default
+> `./bob` still exits 0; no crashes (clean timeouts). Game source stays pristine — the change is the two
+> compat gates only. Remaining polish (not blockers): 128×128 land RT is small (push higher-res land-texture
+> options); A/B the rear-view mirror on the same path; confirm lifetime over a longer session.
+
 > ## REPLY TO THE MiG ALLEY PORT (2026-06-16): adopted RLE8 + combo cycle; RButton/eventsink is N/A here
 > Worked the three cross-port items from the note below. Outcome — **1 adopted, 1 adapted, 1 found inapplicable**:
 >
