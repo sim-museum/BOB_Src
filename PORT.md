@@ -1,5 +1,40 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 4 / R1.1b INCREMENT 4.1 (2026-06-17): the game's OWN menu→flight path stands up flight in the front-end process — `StartFlying → Rtestsh1 → Launch3d → View3d`, faithful cockpit
+> Scrum machinery restarted (PO standing approval: "approve every sprint in advance, just keep
+> working"). The spike's pending PO-direction is resolved by the SM under that approval → **the
+> faithful path** (not a throwaway scaffold): drive the game's own screen flow. **Delivered.**
+> - **What:** behind a new default-off `BOB_STARTFLYING` (with `BOB_FRONTEND`+`BOB_OLE_DRAW`), once
+>   the real front-end is up + painted, the front-end idle (`bob_frontend_tick`, FULLPSYS.CPP)
+>   runs the QM pre-flight world setup then `g_bobActiveFP->LaunchScreen(&RFullPanelDial::
+>   quickmissionflight)`. That screen's `InitProc` IS `RFullPanelDial::StartFlying()` (FPLAYOUT.CPP:
+>   1461) → `flybox=MakeTopDialog(DialBox(...new Rtestsh1(NULL,fIsRunning)))` (FULLPANE.CPP:371).
+>   So flight is entered through the **genuine menu→flight transition**, replacing the
+>   `BOB_BOOT_FRONTEND` scaffold's synthesized direct `Inst3d/View3d` construction.
+> - **The one compat gap bridged (faithfully):** `Rtestsh1` reaches flight when `Start3d`
+>   accumulates `S3D_STARTSETUP|S3D_DONESHEET|S3D_DONEBACK (=7)` — the ctor sets STARTSETUP, the
+>   two `OnPaint`s set the others, hitting 7 → `THISTHIS->PostMessage(WM_GETSTRING)` → (pump) →
+>   `OnGetString` → `Launch3d`. But our compat has **no message-map dispatch** (`ON_MESSAGE`/
+>   `DECLARE_MESSAGE_MAP` expand to nothing; `CWnd::PostMessage` is a no-op stub) — the post is
+>   swallowed. Fix: feed the two paint bits via the public `Rtestsh1::Start3d` (sets the real
+>   `S3D_GOING` state other code tests), then call the game's **own public** `Rtestsh1::Launch3d(
+>   wasrunning)` directly — exactly what `OnGetString` does, just minus the dead Win32 message hop.
+>   No game logic changed; all hooks are `#if BOB_LINUX` + env-gated boot scaffold (cf. R1.4).
+> - **Evidence:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` → trace `StartFlying fired
+>   → Start3d=GOING → Launch3d → tmpinst/tmpview built`, runs 60s+ **no crash**, **frame 120 = a
+>   faithful Spitfire cockpit** (`/tmp/sf_frame.png`): prop/gunsight/instrument panel, cloudy sky,
+>   rear-view mirror, HUD bar (`Alt 4ft Hdg 242 Speed 0Kts … Gun Ammo 2800`) + the tower ATC intro
+>   ("…practise getting off the ground…"), **88.7% non-black** (cf. scaffold A/B 91.1% — darker only
+>   because the QM starts the player parked on the runway). Draw thread live (`[present] dumped
+>   frame 120`). **No regression:** bare `./bob` still exits 0; `BOB_BOOT_FRONTEND` scaffold
+>   unchanged. Logs `/tmp/sf_run3.log`, `/tmp/sf_default.log`; A/B `/tmp/scaffold_frame.png`.
+> - **Why it matters (R1.1b):** the menu and flight now run in **one process on one window** via
+>   the game's own `StartFlying` seam — the control-flow merge the spike scoped. This is exactly
+>   R2.1's entry point (`menu Fly → mission`), so the work carries straight into Release 2.
+> - **Next (Sprint 4 increments):** 4.2 reach this screen by a real **menu click** (navigate
+>   Quick-Mission → Fly) instead of the forced `LaunchScreen`; 4.3 the **return path**
+>   (`OnOK/OnCancel → OnFlyingClosed → debrief/menu`) so you fly, exit, and land back in the menu.
+
 > ## SCRUM SPRINT 4 / R1.1b SPIKE (2026-06-17): control-flow merge scoped — it's the front-end's own StartFlying() bring-up, converges with R2.1 (decision pending)
 > Sprint 4 opened (PO: foundation-first, R1.1b only — control-flow window merge). Spiked the seam before
 > committing the build (retro lesson). Findings (read-only, no code changed):

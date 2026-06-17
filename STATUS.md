@@ -22,6 +22,7 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 | **Keyboard flight input** | SDL→DIK→DirectInput→`OnKeyInput`→flight commands (event-driven) | proven via `BOB_AUTOFLY=throttle` |
 | **HUD info bar** | Altitude/speed + attitude indicator (after the unit-factor fix) | `BOB_HUD` |
 | **Front-end** | Navigable menu + config screens with real hosted R\* OLE controls (combo/static/listbox), combo cycle-on-click, RLE8 backgrounds | `BOB_FRONTEND=1 BOB_OLE_DRAW=1` |
+| **Menu→flight transition** | The game's own `LaunchScreen(quickmissionflight)→StartFlying→Rtestsh1→Launch3d→View3d` stands up faithful flight in the front-end process (R1.1b inc 4.1, Sprint 4) | `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1` |
 
 Cockpit render now closely matches `doc/reference/cockpit-windows-spitfire-1.png`.
 

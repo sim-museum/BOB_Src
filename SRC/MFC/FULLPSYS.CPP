@@ -78,6 +78,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "mig.h"
 #include "stdlib.h"
 #include "FullPane.h"
+#include "Rtestsh1.h"
 #include "messages.h"
 #include "MIGView.h"
 #include "replay.h"
@@ -255,12 +256,93 @@ static void bob_fp_repaint(RFullPanelDial* fp)
 	bob_draw_menu(fp, fp->m_currentscreen, RFullPanelDial::resolutions[fp->m_currentres]);
 	bob_gdi_present();
 }
+/* R1.1b (Scrum Sprint 4): the QM pre-flight world setup that the game normally runs before
+   StartFlying (factory init + node/squad tables + scramble campaign + the player's quick-
+   mission squadron). Mirrors the BOB_BOOT_FRONTEND scaffold's pre-flight (MIG.CPP), but here
+   we hand the actual Inst3d/View3d construction to the game's OWN path (Rtestsh1::Launch3d)
+   instead of synthesizing it -- this is the faithful menu->flight transition. */
+static void bob_startflying_preflight(void)
+{
+	Save_Data.SetUnits();                                  /* unit-conversion factors (else SIGFPE) */
+	if (!getenv("BOB_NOINITPREFS")) {
+		Save_Data.InitPreferences((int)Master_3d.winst);  /* R1.4: real factory defaults */
+		Save_Data.filtering = 1;                          /* R1.3c: pin BILINEAR (trilinear NULL-derefs) */
+	}
+	Node_Data.BuildTargetTable();                          /* node/squad tables first (cold start) */
+	Node_Data.LoadCleanNodeTree();
+	Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
+	Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+	const char* qix = getenv("BOB_QM_INDEX");
+	int qi = qix ? atoi(qix) : 0;
+	CSQuick1::currquickmiss = qi;
+	CSQuick1::quickdef = CSQuick1::quickmissions[qi];
+	QuickDef& q = CSQuick1::quickdef;
+	MMC.playersquadron = q.line[q.plside][q.plwave][q.plgrp].actype;
+	MMC.playeracnum = q.plac;
+	if (!getenv("BOB_NOCLOUDS")) {                         /* faithful sky (default-on, cf. scaffold) */
+		Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
+		Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
+	}
+	if (getenv("BOB_NOSOUND")) {
+		Save_Data.vol.sfx = Save_Data.vol.engine = Save_Data.vol.anim = 0;
+		Save_Data.vol.music = Save_Data.vol.rchat = Save_Data.vol.uisfx = Save_Data.vol.uiambient = 0;
+	}
+	fprintf(stderr,"[startfly] pre-flight: texQ=%d filtering=%d vol.sfx=%d QM=%d playersquadron=%d\n",
+		(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx,qi,(int)MMC.playersquadron);
+}
+
 /* Called each idle from CMIGApp::OnIdle (under BOB_FRONTEND): if a menu item was clicked,
    fire the existing OnSelectRlistbox(i) which navigates to that item's screen (+ repaints).
    A click that misses the menu but lands on a hosted combo cycles that combo's value. */
 extern "C" void bob_frontend_tick(void)
 {
 	if (!g_bobActiveFP) return;
+
+	/* R1.1b Increment 4.1 (BOB_STARTFLYING, default-off): drive the game's own
+	   menu->flight path in one process. Once the front-end is up + has painted a few idles,
+	   run the QM pre-flight then LaunchScreen(quickmissionflight) -- whose InitProc is
+	   RFullPanelDial::StartFlying() -> flybox dialog hosting Rtestsh1. Rtestsh1 reaches flight
+	   when Start3d accumulates STARTSETUP|DONESHEET|DONEBACK(=7): the ctor sets STARTSETUP, and
+	   the two paints set the other bits. Our compat dispatches no WM_PAINT, so feed those two
+	   Start3d bits here; that posts WM_GETSTRING -> (Run-loop pump) -> OnGetString -> Launch3d
+	   -> new Inst3d/View3d/MakeInteractive. Proves the real transition (not the scaffold). */
+	if (getenv("BOB_STARTFLYING")) {
+		static int sf_t = 0;
+		static int sf_stage = 0;   /* 0=waiting, 1=launched(StartFlying fired), 2=flight kicked */
+		if (sf_stage == 0) {
+			if (++sf_t >= 30) {    /* let the front-end paint its title first */
+				fprintf(stderr,"[startfly] BOB_STARTFLYING: pre-flight + LaunchScreen(quickmissionflight)\n");
+				bob_startflying_preflight();
+				g_bobActiveFP->LaunchScreen(&RFullPanelDial::quickmissionflight);
+				fprintf(stderr,"[startfly] StartFlying fired (flybox/Rtestsh1 created); driving Start3d\n");
+				sf_stage = 1;
+			}
+			return;
+		}
+		if (sf_stage == 1) {
+			/* Feed the two paint-driven Start3d bits so Start3d accumulates to 7: this sets
+			   setup3dstatus=S3D_GOING (the state other code tests, e.g. MIGVIEW) and posts
+			   WM_GETSTRING. Our compat has NO message-map dispatch (ON_MESSAGE expands to
+			   nothing; CWnd::PostMessage is a no-op), so the post is swallowed -- deliver the
+			   handler ourselves by calling the game's OWN public Rtestsh1::Launch3d(wasrunning),
+			   which is exactly what Rtestsh1::OnGetString does. Faithful, just minus the dead
+			   Win32 message hop. Launch3d -> new Inst3d/View3d/MakeInteractive -> flight. */
+			Rtestsh1::Start3d(Rtestsh1::S3D_DONEBACK);
+			Rtestsh1::Start3d(Rtestsh1::S3D_DONESHEET);
+			if (Rtestsh1::THISTHIS) {
+				fprintf(stderr,"[startfly] Start3d=GOING; calling Rtestsh1::Launch3d(wasrunning=%d)\n",
+					(int)Rtestsh1::THISTHIS->wasrunning);
+				Rtestsh1::THISTHIS->Launch3d(Rtestsh1::THISTHIS->wasrunning);
+				fprintf(stderr,"[startfly] Launch3d returned; tmpinst=%p tmpview=%p\n",
+					(void*)Rtestsh1::tmpinst,(void*)Rtestsh1::tmpview);
+			} else {
+				fprintf(stderr,"[startfly] ERROR: Rtestsh1::THISTHIS is NULL after StartFlying\n");
+			}
+			sf_stage = 2;
+			return;
+		}
+		return;   /* flight is up; the Run-loop / Inst3d path takes over */
+	}
 	int cx, cy; bool got = bob_gdi_get_click(&cx, &cy);
 	/* BOB_AUTOCLICK=N: headless test -- after a delay synthesize a click on item N's centre
 	   so the real hit-test path below runs (verifies click -> navigation without a display). */

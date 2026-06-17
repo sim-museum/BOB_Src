@@ -49,6 +49,11 @@ Working agreement (from `CLAUDE.md`): work autonomously, don't pause for confirm
 the idiomatic Linux/POSIX path, only stop on a hard blocker. Anonymous repo — commit as
 `curator <noreply@anthropic.com>`.
 
+> **PO standing approval (2026-06-17):** the Product Owner approves every sprint in advance —
+> "just keep working." The Scrum Master (Claude) therefore makes per-sprint planning/scope
+> calls itself (incl. the R1.1b direction below) without pausing for acceptance, and runs the
+> ceremonies as a log rather than a gate. Increments are still demoed + recorded in `PORT.md`.
+
 ---
 
 ## 4. Definition of Ready (DoR)
@@ -170,6 +175,26 @@ more of the real flow.
   valgrind memcheck for the uninitialised-value cross-check.
 - **Note:** the original Sprint-3 mission-loop work (R2.1/R2.2) shifts one sprint later.
 
+### Sprint 4 — "Real menu→flight transition (StartFlying bring-up)" → *Increment: flight via the game's own screen flow* — **ACTIVE (2026-06-17)**
+- **Sprint Goal:** R1.1b — make the game's own menu→flight path stand up flight **in one process**:
+  `LaunchScreen(&quickmissionflight) → RFullPanelDial::StartFlying() → flybox/Rtestsh1 →
+  Start3d(7) → Launch3d → View3d interactive`, replacing the synthesized `BOB_BOOT_FRONTEND`
+  scaffold's direct `Inst3d/View3d` construction. **SM decision (standing PO approval):** the
+  faithful path, not a throwaway scaffold — it *is* R2.1's seam, so the work carries forward.
+- **Committed (13 pts):** R1.1b, delivered as increments —
+  - **4.1** ☑ **DONE (2026-06-17).** Factored the QM pre-flight; `BOB_STARTFLYING` drives
+    `LaunchScreen(&quickmissionflight) → StartFlying() → flybox/Rtestsh1`, then (compat has no
+    message-map dispatch, so the `WM_GETSTRING` post is swallowed) feeds the two `Start3d` paint
+    bits + calls the game's own public `Rtestsh1::Launch3d(wasrunning)` — exactly what
+    `OnGetString` does. **Accepted:** faithful Spitfire cockpit (HUD/mirror/tower ATC), frame 120
+    88.7% non-black, 60s+ no crash, bare `./bob` still exits 0. Evidence: PORT.md + `/tmp/sf_frame.png`.
+  - **4.2** Reach that screen by a real **menu click** (navigate Quick-Mission → Fly), not a forced `LaunchScreen`.
+  - **4.3** **Return path:** `OnOK/OnCancel → OnFlyingClosed → LaunchScreen(debrief/menu)` — fly, exit, land back in the menu, one process.
+- **Risk (spike-flagged):** a "cascade of uninitialised-UI failures" in the dialog/paint compat —
+  treat as an onion (per the Sprint-2/3 retro); each fix logged in `PORT.md`, ASan available.
+- **Increment demo:** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1 ./bob` enters flight through
+  the game's own `StartFlying` screen flow on the front-end window.
+
 ### Sprint 2 (original plan, superseded by the CLOSED block above)
 - **Sprint Goal:** `InitPreferences()` is the real default init; flight runs faithfully with
   **no `BOB_*` Save_Data forces**.
@@ -232,7 +257,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 | 1 | 21 | 16 | ✅ accepted | PO-accepted as Done (Sprint Review, 2026-06-17). R1.2 (13) done; R1.1 split → R1.1a (3) done, R1.1b (8, re-est.) blocked-by R1.3, carried. Tooling: `BOB_ASAN` build + valgrind memcheck (cross-validated R1.2) added. |
 | 2 | 16 | 7 | ⚠️ partial | Shipped R1.3a/b/c (setup corruption fixed; InitPreferences reaches flight). R1.3d (transient double-free, NEW) gates init-as-default → R1.4/R1.5 + R1.3d split to Sprint 3. **Release 1 slips to Sprint 3.** PO-accepted the corruption-fix increment. |
 | 3 | 16 | 16 | ✅ **Release 1 shipped** | R1.3d (transient double-free root-caused + fixed), R1.4 (InitPreferences = default init), R1.5 (regression: faithful flight, no feature env vars). Full commit delivered. |
-| 4 | 8 | — | ⏸ in progress (spike done) | **ACTIVE (2026-06-17):** R1.1b (control-flow merge). SPIKE COMPLETE: Run() loop already unified; the merge is really the front-end's own `StartFlying()→Rtestsh1→OnFlyingClosed` bring-up, which converges with R2.1. **Implementation not started — awaiting PO direction** (fold into R2.1 / minimal scaffold transition / start StartFlying bring-up). See PORT.md. R2.1/R2.2 → Sprint 5. |
+| 4 | 13 | 5 (so far) | ⏳ in progress | **ACTIVE (2026-06-17, machinery restarted):** R1.1b. Spike done. SM (standing PO approval) chose the faithful path: the game's own `LaunchScreen(&quickmissionflight)→StartFlying()→Rtestsh1→Launch3d` in the front-end process (converges with R2.1). **4.1 ☑ DONE** — flight stands up via the real screen flow behind `BOB_STARTFLYING`; faithful cockpit (frame 120, 88.7% non-black, no crash); bare `./bob` exits 0. **4.2** menu-click→fly, **4.3** OnFlyingClosed→menu: next. R2.1/R2.2 → Sprint 5. |
 | 5+ | ~31 | — | — | Polish/peripherals. |
 
 Update the **Done pts** column at each Sprint Review; that's the running velocity.
