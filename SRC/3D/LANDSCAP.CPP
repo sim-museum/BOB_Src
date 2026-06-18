@@ -487,6 +487,15 @@ void LandScape::RenderLandscape(	CLib3D *lib3d )
 	}
 	lightDesc.specularRGB=currentLighting.specularHighlight.col();
 
+#if BOB_LINUX
+	/* R3.1 diagnostic (env-gated): dump the ambient lighting the landscape sets -- lowRGB is the
+	   ambient floor for back-facing geometry (cockpit interior, instruments). */
+	if (getenv("BOB_TRACE_LIGHT")) { static int n=0; if(n++<4) fprintf(stderr,
+		"[light] lowRGB=%06lx highRGB=%06lx ambient(sun)=%06lx spec=%06lx drawmap=%d\n",
+		(unsigned long)(lightDesc.lowRGB&0xffffff),(unsigned long)(lightDesc.highRGB&0xffffff),
+		(unsigned long)(lightDesc.ambientRGB&0xffffff),(unsigned long)(lightDesc.specularRGB&0xffffff),
+		(int)View_Point->drawmap); }
+#endif
 	g_lpLib3d->SetAmbientLighting(lightDesc);
 
 

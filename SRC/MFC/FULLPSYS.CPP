@@ -295,6 +295,11 @@ static void bob_startflying_preflight(bool clickMode, bool firstTime)
 		Node_Data.LoadCleanNodeTree();
 		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
 		Miss_Man.camp = Miss_Man.campaigntable[MissMan::SCRAMBLECAMPAIGN];
+		/* R3.1: SetQuickState sets an afternoon time + clear sky for QM; the campaign default is
+		   PRE-DAWN (curTime 23400 < dawn 25200) -> dark twilight lighting. The forced path (=1)
+		   skips SetQuickState, so set them here too -- otherwise headless flight is wrongly dark. */
+		Miss_Man.camp.currtime = HR14;                     /* 2pm (matches SetQuickState) */
+		Miss_Man.camp.Sky.Conditions = 0;                  /* clear */
 	}
 	/* R2.2: gamestate=HOT is the QM state (SetUpHotShot sets it). OnFlyingClosed routes an
 	   IDOK exit (EXITKEY/Alt+X) to quickmissiondebrief only when gamestate is HOT or QUICK;
