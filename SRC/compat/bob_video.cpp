@@ -1131,12 +1131,18 @@ static void upload_texture(GLSurface7* s) {
 	/* Mipmaps (auto-generated above): the game uses D3DTSS_MIPFILTER and terrain detail
 	   textures tile heavily (severe minification) -> trilinear mipmapping removes the
 	   aliasing that otherwise smears them. BOB_NOMIP disables for A/B. */
-	/* Masked (alpha) textures: GL_NEAREST avoids LINEAR pulling the keyed mask colour into
-	   the alpha edges (the rainbow/magenta fringe). Opaque textures keep LINEAR. */
-	GLenum minF = (hasAlpha && !getenv("BOB_ALPHA_LINEAR")) ? GL_NEAREST
-	            : (wantMip?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
+	/* Alpha-texture filtering, split by alpha depth (R3.3):
+	   - 1-bit masked / colour-keyed (1555 Amask 0x8000, or ckey): GL_NEAREST so LINEAR doesn't
+	     pull the keyed mask colour into the alpha edges (the rainbow/magenta fringe).
+	   - SMOOTH alpha (4444 Amask 0xf000, or 32-bit): GL_LINEAR -- these are the soft sprites
+	     (fluffy clouds / smoke). Their dithered 4-bit alpha under NEAREST showed as a hard
+	     white CHECKERBOARD (first-pilot report); LINEAR smooths it into a soft cloud.
+	   Overrides: BOB_ALPHA_LINEAR forces all alpha->LINEAR, BOB_ALPHA_NEAREST forces all->NEAREST. */
+	bool smoothA = hasAlpha && !s->ckeyOn && (pf.dwRGBAlphaBitMask==0xF000 || s->bpp==32) && !getenv("BOB_ALPHA_NEAREST");
+	bool hardA   = hasAlpha && !smoothA && !getenv("BOB_ALPHA_LINEAR");
+	GLenum minF = hardA ? GL_NEAREST : ((wantMip && !hasAlpha)?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, minF);
-	if (hasAlpha && !getenv("BOB_ALPHA_LINEAR")) { glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	if (hardA) { glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT); glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT); s->texDirty=0; return; }
 	if (wantMip) { /* anisotropic filtering: terrain is viewed at a grazing angle, where u
 	                  compresses far faster than v -- isotropic mips alias into stripes. */
@@ -1481,6 +1487,12 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   (the magenta/cyan key). Discard alpha~0 on the opaque path (blend off); opaque RGB
 	   textures sample alpha 1 and are unaffected. Smooth-alpha (blended) polys keep blend.
 	   BOB_NOATEST opts out. */
+	/* R3.3 diag: 4444 alpha textures (A=0xf000) are the soft-alpha sprites (clouds/smoke). If
+	   they hit the opaque alpha-test path (blend off), the soft 4-bit alpha gets thresholded to
+	   1-bit -> hard checkerboard edges instead of soft blending. */
+	if (getenv("BOB_TRACE_CLOUDA") && t && t->desc.ddpfPixelFormat.dwRGBAlphaBitMask==0xf000) {
+		static int n=0; if(n++<8) fprintf(stderr,"[clouda] 4444 tex %dx%d blend=%d atest=%d srcB=0x%x dstB=0x%x\n",
+			t->w,t->h,g_devAlphaBlend,g_alphaTest,(unsigned)g_srcBlend,(unsigned)g_dstBlend); }
 	if (t && !g_devAlphaBlend && !getenv("BOB_NOATEST")) {
 		glEnable(GL_ALPHA_TEST);
 		glAlphaFunc(g_alphaTest?g_alphaFunc:GL_GREATER, g_alphaTest?g_alphaRef:0.5f);
