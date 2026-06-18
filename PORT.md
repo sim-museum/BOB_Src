@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## SCRUM SPRINT 7 / inc 2 (2026-06-17): a real menu CLICK-THROUGH flies — no `BOB_STARTFLYING`. Boot device-init + always-on Launch3d bridge + a frame-based auto-quit; env-var-free flight renders the cockpit
+> Built the env-var-free playthrough (no state-forcing env vars; only boot-mode `BOB_FRONTEND`/
+> `BOB_OLE_DRAW` + the headless click/key simulation that stands in for mouse/keyboard remain).
+> - **Boot device init (MIG.CPP):** on Windows the intro-Smacker screen (`IntroSmackInit`) calls
+>   `InitPreferences`; that screen is stubbed on Linux, so the `BOB_FRONTEND` boot now runs `SetUnits` +
+>   `InitPreferences` (texQ=3/bilinear) + clouds once — what the front-end needs to fly faithfully without
+>   the preflight forcing it. (Mission setup stays game-driven — inc 1.)
+> - **Always-on Launch3d bridge (FULLPSYS):** decoupled from `BOB_STARTFLYING` — whenever the game's own
+>   flow reaches `quickmissionflight` and `StartFlying` creates a fresh `Rtestsh1` (`S3D_STARTSETUP` set,
+>   no `Inst3d` yet), the bridge delivers the swallowed `WM_GETSTRING` by calling the game's `Launch3d`.
+>   Driving `Start3d` to 7 sets `S3D_GOING` so it fires **once per StartFlying**, not on the stale post-
+>   flight dialog. Skipped under `BOB_STARTFLYING` (the harness has its own copy) — verified no double-fire.
+> - **The bug this surfaced — auto-quit fired ~1s in, before terrain loaded (black flight).** The
+>   `BOB_AUTOQUIT` timer counted `pump_events` calls, which run ~333/s during flight (`SDL_Delay(3)`), so
+>   `after*60` triggered Alt+X in ~1s → the flight closed at ~frame 5 (black). (R2.2/R2.4 hid it — I'd
+>   checked the *debriefs*, which render regardless; the flights were closing fast too.) **Fix:** the timer
+>   now counts **presented 3D frames** (`g_frameNo`, ++ per present) since flight start — `after*30` frames
+>   ≈ real seconds of rendering. So the flight runs long enough to draw the world.
+> - **Result (`BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_AUTOCLICK="0,1,2" BOB_AUTOQUIT=debrief`, NO
+>   `BOB_STARTFLYING`):** boot device-init → real clicks (QM→Fly→Fly) → `(bridge) StartFlying → Launch3d`
+>   (`InThe3D=1`) → **the faithful Spitfire cockpit renders, frame 100 91.1% non-black** (`/tmp/s7ok.png`)
+>   → Alt+X → debrief → back in front-end. A genuine menu click-through flies + debriefs with no
+>   state-forcing env vars.
+> - **Remaining to full DoD:** make `BOB_FRONTEND`/`BOB_OLE_DRAW` the default boot (so bare `./bob` opens
+>   the real menu), then it's mouse+keyboard only. Evidence: `/tmp/s7ok.png`, `/tmp/s7free.log`.
+
 > ## SCRUM SPRINT 7 / inc 1 (2026-06-17): the env-var-free unlock — the real click flow sets up the mission itself (preflight mission-forcing retired for click mode)
 > Toward the final DoD ("no `BOB_*` env vars"): resolved the key unknown — **does a real menu
 > click-through set up the QM mission (node tables + player squadron) without my forced preflight?**

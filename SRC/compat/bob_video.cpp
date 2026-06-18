@@ -230,6 +230,7 @@ extern "C" int bob_gdi_get_click(int* x, int* y) {
 /* R2.4: 1 while a flight is live (set by the Launch3d bridge in FULLPSYS, cleared when
    OnFlyingClosed returns). Lets BOB_AUTOQUIT re-arm per mission when chaining (BOB_REFLY). */
 int g_bob_flight_active = 0;
+static long g_frameNo = 0;   /* incremented each 3D present; the frame-based BOB_AUTOQUIT timer reads it */
 static void pump_events(void)
 {
 	if (!g_win) return;
@@ -251,24 +252,26 @@ static void pump_events(void)
 		const char* aq=getenv("BOB_AUTOQUIT");
 		bool toDebrief = strstr(aq,"debrief")!=NULL;      /* BOB_AUTOQUIT=debrief -> mission-end debrief */
 		int after=atoi(aq); if (after<=0) after=6;
-		int t0=after*60;                                  /* pump runs ~60Hz */
-		/* R2.4: count from the START OF EACH FLIGHT (g_bob_flight_active, set by the Launch3d
-		   bridge, cleared when OnFlyingClosed returns) so the exit key re-arms per mission when
-		   chaining (BOB_REFLY). Idle in the front-end (active=0) holds the counter at 0. */
-		static int prevActive=0; static int fc=0;
-		if (g_bob_flight_active && !prevActive) fc=0;     /* new flight -> reset the timer */
+		/* Count PRESENTED FLIGHT FRAMES (g_frameNo, ++ per 3D present) since the flight started --
+		   NOT pump_events calls (those run ~333/s via SDL_Delay(3), which fired the key in ~1s,
+		   before the terrain finished loading -> a black, instantly-closed flight). g_bob_flight_active
+		   (set by the Launch3d bridge, cleared when OnFlyingClosed returns) re-arms per mission for
+		   chaining (BOB_REFLY). t0 = after*30 presented frames (~after seconds of real rendering). */
+		int t0f = after*30;
+		static int prevActive=0; static long startFrame=0; static int hold=0;
+		if (g_bob_flight_active && !prevActive) { startFrame=g_frameNo; hold=0; }  /* new flight */
 		prevActive = g_bob_flight_active;
-		if (g_bob_flight_active) {
-			fc++;
+		if (g_bob_flight_active && (g_frameNo - startFrame) >= t0f) {
+			hold++;   /* increments each pump call once the frame threshold is reached */
 			if (toDebrief) {
 				/* R2.2: EXITKEY ("Exit Game") = X + Left-Alt -> View3d::CloseWindow(IDOK) ->
-				   OnFlyingClosed(IDOK) -> (gamestate HOT) quickmissiondebrief. Hold LAlt (sets the
-				   keymap shift) then X so KeyPress3d(EXITKEY) resolves. */
-				if (fc>=t0 && fc<t0+10) { kb_push(0x38,1); kb_push(0x2D,1); }  /* LAlt + X down, held */
-				else if (fc==t0+10)     { kb_push(0x2D,0); kb_push(0x38,0); }  /* X, LAlt up */
+				   OnFlyingClosed(IDOK) -> (gamestate HOT) quickmissiondebrief. Press LAlt (sets the
+				   keymap shift) + X once, hold ~24 pump calls so the per-frame poll sees it, release. */
+				if (hold==1)       { kb_push(0x38,1); kb_push(0x2D,1); }  /* LAlt + X down */
+				else if (hold==24) { kb_push(0x2D,0); kb_push(0x38,0); }  /* X, LAlt up */
 			} else {
-				if (fc>=t0 && fc<t0+8) kb_push(0x58,1);   /* F12 (KEY_CONFIGMENU) down, held */
-				else if (fc==t0+8)     kb_push(0x58,0);   /* F12 up */
+				if (hold==1)       kb_push(0x58,1);       /* F12 (KEY_CONFIGMENU) down */
+				else if (hold==24) kb_push(0x58,0);       /* F12 up */
 			}
 		}
 	}
@@ -499,7 +502,7 @@ static void brighten_pass()
 	glDisable(GL_BLEND);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
 }
-static long g_frameNo = 0;   /* incremented each present; lets diagnostics target gameplay frames */
+/* g_frameNo defined above (moved up for the BOB_AUTOQUIT frame timer) */
 static void present_surface(GLSurface7* s)
 {
 	g_frameNo++;

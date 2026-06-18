@@ -556,6 +556,28 @@ BOOL CMIGApp::InitInstance()
 	((CMainFrame*)(m_pMainWnd))->InitialiseSafe();
 	m_pMainWnd->UpdateWindow();
 
+#if BOB_LINUX
+	/* Sprint 7 (env-var-free): device/factory init for the real front-end. On Windows the intro
+	   Smacker screen (RFullPanelDial::IntroSmackInit) calls SaveData::InitPreferences; that screen
+	   is stubbed on Linux, so the BOB_FRONTEND boot would otherwise leave the device unconfigured
+	   (textureQuality=0, volumes=0). Run it once here so a real menu click-through to flight is
+	   faithful WITHOUT the BOB_STARTFLYING pre-flight forcing it. (Mission setup stays game-driven
+	   -- SetQuickState + BoBFrag::OnInitDialog -- per Sprint-7 inc 1.) BOB_NOINITPREFS reverts. */
+	if (getenv("BOB_FRONTEND") && !getenv("BOB_BOOT_FRONTEND")) {
+		Save_Data.SetUnits();
+		if (!getenv("BOB_NOINITPREFS")) {
+			Save_Data.InitPreferences((int)Master_3d.winst);
+			Save_Data.filtering = 1;                       /* R1.3c: pin BILINEAR */
+		}
+		if (!getenv("BOB_NOCLOUDS")) {
+			Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
+			Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
+		}
+		fprintf(stderr,"[frontend] device init (IntroSmackInit-equivalent): texQ=%d filtering=%d vol.sfx=%d\n",
+			(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx);
+	}
+#endif
+
 	// Enable drag/drop open
 	m_pMainWnd->DragAcceptFiles();
 

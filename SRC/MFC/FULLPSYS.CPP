@@ -357,6 +357,25 @@ extern "C" void bob_frontend_tick(void)
 {
 	if (!g_bobActiveFP) return;
 
+	/* Sprint 7 (env-var-free): ALWAYS-ON Launch3d bridge for a real menu click-through (no
+	   BOB_STARTFLYING harness). When the game's own flow reaches quickmissionflight and StartFlying
+	   creates a fresh Rtestsh1 (S3D_STARTSETUP set by its ctor, no Inst3d yet), deliver the
+	   WM_GETSTRING the compat swallows by calling the game's own Rtestsh1::Launch3d -- exactly what
+	   OnGetString does. Driving Start3d to 7 sets S3D_GOING (clears STARTSETUP) so it fires once per
+	   StartFlying, not on the stale post-flight dialog. The BOB_STARTFLYING harness has its own copy
+	   of this (with chaining/trace), so skip here when the harness is active to avoid double-firing. */
+	if (!getenv("BOB_STARTFLYING") && Rtestsh1::THISTHIS && !Rtestsh1::tmpinst
+	    && (Rtestsh1::setup3dstatus & Rtestsh1::S3D_STARTSETUP)) {
+		Rtestsh1::Start3d(Rtestsh1::S3D_DONEBACK);
+		Rtestsh1::Start3d(Rtestsh1::S3D_DONESHEET);     /* -> S3D_GOING */
+		fprintf(stderr,"[frontend] (bridge) StartFlying -> Launch3d(wasrunning=%d)\n",(int)Rtestsh1::THISTHIS->wasrunning);
+		Rtestsh1::THISTHIS->Launch3d(Rtestsh1::THISTHIS->wasrunning);
+		fprintf(stderr,"[frontend] (bridge) Launch3d done; tmpinst=%p tmpview=%p InThe3D=%d\n",
+			(void*)Rtestsh1::tmpinst,(void*)Rtestsh1::tmpview,(int)Inst3d::InThe3D());
+		extern int g_bob_flight_active; g_bob_flight_active = 1;
+		return;
+	}
+
 	/* R1.1b Increment 4.1 (BOB_STARTFLYING, default-off): drive the game's own
 	   menu->flight path in one process. Once the front-end is up + has painted a few idles,
 	   run the QM pre-flight then LaunchScreen(quickmissionflight) -- whose InitProc is
