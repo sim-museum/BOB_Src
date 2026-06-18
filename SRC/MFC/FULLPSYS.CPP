@@ -192,21 +192,25 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 	if (horiz) {
 		/* horizontal tab row across the top (e.g. config: GFX / More GFX / ... / Continue) */
 		int gap = resW * 14 / 1000, y = resW * 6 / 1000;
+		/* The OLE listbox draws the row at oleH (the list font), so measure widths/centring/
+		   hit-rects at oleH too -- NOT fh. (First-pilot bug: rects measured at fh, ~38% wider
+		   than the drawn text, drifted each item right -> the last item ("Fly") landed ~1cm
+		   right of its text, so clicks missed. Use one font height for draw + hit-test.) */
+		int oleH = resW * 26 / 1000; if (oleH < 16) oleH = 16;   /* resolution-scaled list font height */
 		/* measure total to centre the row */
 		int total = 0, n = 0;
 		for (; n < 10 && scr->textlists[n].text; n++) {
 			CString s; s.LoadString(scr->textlists[n].text);
-			total += bob_gdi_text_width((const char*)(LPCSTR)s, fh) + gap;
+			total += bob_gdi_text_width((const char*)(LPCSTR)s, oleH) + gap;
 		}
 		int x = (resW - total) / 2; if (x < 8) x = 8;
 		/* Real ActiveX control render: draw the hosted CRListBoxCtrl (multi-column
-		   tab row) and keep approximate click rects from the measured widths. */
-		int oleH = resW * 26 / 1000; if (oleH < 16) oleH = 16;   /* resolution-scaled list font height */
+		   tab row) and keep click rects from the same oleH-measured widths. */
 		if (bobOleDraw() && bob_ole_draw_listbox((CWnd*)&self->m_IDC_RLISTBOX, x, y, total, fh + fh/2, oleH)) {
 			int rx = x;
 			for (int i = 0; i < n; i++) {
 				CString s; s.LoadString(scr->textlists[i].text);
-				int w = bob_gdi_text_width((const char*)(LPCSTR)s, fh);
+				int w = bob_gdi_text_width((const char*)(LPCSTR)s, oleH);
 				g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=w; g_bobMenuRect[i].h=fh+fh/2;
 				rx += w + gap;
 			}
