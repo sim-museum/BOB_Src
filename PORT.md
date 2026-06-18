@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R3.4 (2026-06-17): rear-view mirror RE-DIAGNOSED on real GL — renders flat SKY, not garbage-textured; the prior "garbage horizon UVs" theory was wrong
+> Sprint 9 opened on R3.4 (mirror horizon UVs). With a real GL display available here
+> (`DISPLAY=:0`, NVIDIA — flight renders for real, not the dummy-SDL boot loop), captured the mirror
+> RTT directly and **corrected the prior diagnosis**.
+> - **Tooling (committed):** `BOB_DUMP_RTT` only dumped an RTT FBO when it was unbound to the *back
+>   buffer*, but the mirror's target switches **RTT→RTT** (mirror 128² → landscape 256²) without ever
+>   unbinding, so the mirror was never captured. Factored the dump into `dump_rtt_fbo()` and fire it on
+>   the RTT→RTT switch too. Now both FBOs dump: landscape `rtt_<p>.ppm` 256² (real terrain — the working
+>   ground) **and** the mirror 128².
+> - **Finding (corrects PORT.md R3.4 prior entry):** the mirror is **flat sky-blue** — a clean, uniform
+>   sky colour, *not* the texture-noise that "garbage v-texcoords sampling a stale texture" would produce.
+>   So the real issue is **not** a UV/texcoord bug (`InfiniteStrip` in fact sets *no* texcoords at all —
+>   it is a `NULL_MATERIAL`/`IS_PLAIN` vertex-colour gradient, drawn untextured; the *main* flight sky uses
+>   the same `InfiniteStrip` and renders correctly). The mirror's **`RenderMirrorLandscape` low-rez landscape
+>   grid + the horizon/ground bands of the gradient aren't appearing** — only the top sky band fills the
+>   128² mirror. That's a deeper game-side mirror-camera / `horizPoint` visibility / `RANGE_FAR_MIRROR`
+>   view-setup issue, not a compat texcoord sanitiser.
+> - **Scrum call (Sprint-8 retro discipline — bank value, don't rabbit-hole low-value render fidelity):**
+>   the rear-view mirror is **niche + dormant by default** (gated on `COCK3D_SKYIMAGES`/`BOB_MIRROR`).
+>   Banked the tooling + corrected diagnosis; **re-ordered Sprint 9** to the highest-value *visible* bug —
+>   **R3.2 clouds-over-cockpit** — now that real GL is available to A/B it properly (the exact thing the
+>   Sprint-8 retro said that spike needed). R3.4 stays open, re-pointed as a deeper game-3D item.
+> - **Evidence:** `/tmp/rtt_*.ppm` (mirror 128² flat blue, landscape 256² real terrain), `/tmp/mirror_base.log`.
+>   No regression: bare `./bob` exits 0; build clean.
+>
 > ## R3.x (2026-06-17): "CRASHED WHEN I HIT THE GROUND" FIXED — landscape-tile free was new[]/delete mismatch (heap corruption on every texture free)
 > The pilot flew low and the game **crashed on ground impact** (SIGABRT, heap corruption). Diagnosed +
 > fixed with ASan as the oracle (report-and-continue, `halt_on_error=0`).

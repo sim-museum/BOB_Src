@@ -1231,12 +1231,30 @@ static void ensure_rtt_fbo(GLSurface7* s) {
 	if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] created FBO=%u tex=%u %dx%d complete=%d surf=%p\n",s->fbo,s->glTex,w,h,ok,(void*)s);
 }
 
+/* BOB_DUMP_RTT: capture the given RTT FBO to /tmp/rtt_<ptr>.ppm before it is switched away
+   (catches the mirror, which is bound directly as a texture and never SURF_Lock'd, and whose
+   target can switch RTT->RTT to the landscape without ever unbinding to the back buffer). */
+static void dump_rtt_fbo(GLSurface7* s) {
+	if (!s || !s->fbo || !getenv("BOB_DUMP_RTT") || !load_fbo_funcs()) return;
+	int w=s->w,h=s->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*3);
+	if (!buf) return;
+	glReadBuffer(GL_COLOR_ATTACHMENT0); glPixelStorei(GL_PACK_ALIGNMENT,1);
+	glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
+	char path[64]; snprintf(path,sizeof(path),"/tmp/rtt_%lx.ppm",(unsigned long)((size_t)s & 0xffffff));
+	int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+	if(fd>=0){ char hd[64]; int hn=snprintf(hd,sizeof(hd),"P6\n%d %d\n255\n",w,h); if(write(fd,hd,hn)<0){}
+		for(int y=h-1;y>=0;y--) if(write(fd,buf+(size_t)y*w*3,w*3)<0){} close(fd); }
+	free(buf);
+}
+
 static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 target, DWORD) {
 	GLSurface7* s = (GLSurface7*)target;
 	if (s && s->magic==GLSURF_MAGIC && s->isRTT) {
 		gl_bind_thread();
 		ensure_rtt_fbo(s);
 		if (s->fbo) {
+			/* switching RTT -> RTT (e.g. mirror -> landscape): dump the outgoing FBO first */
+			if (g_curRT && g_curRT != s) dump_rtt_fbo(g_curRT);
 			p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
 			glViewport(0,0,s->w,s->h);
 			g_curRT = s;
@@ -1246,18 +1264,7 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 	} else if (g_curRT) {
 		/* back buffer / primary -> main framebuffer */
 		gl_bind_thread();
-		/* BOB_DUMP_RTT: capture the just-rendered RTT FBO before unbinding (catches the mirror,
-		   which is bound directly as a texture and never SURF_Lock'd). /tmp/rtt_<ptr>.ppm. */
-		if (getenv("BOB_DUMP_RTT") && g_curRT->fbo && load_fbo_funcs()) {
-			int w=g_curRT->w,h=g_curRT->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*3);
-			if (buf){ glReadBuffer(GL_COLOR_ATTACHMENT0); glPixelStorei(GL_PACK_ALIGNMENT,1);
-				glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
-				char path[64]; snprintf(path,sizeof(path),"/tmp/rtt_%lx.ppm",(unsigned long)((size_t)g_curRT & 0xffffff));
-				int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
-				if(fd>=0){ char hd[64]; int hn=snprintf(hd,sizeof(hd),"P6\n%d %d\n255\n",w,h); if(write(fd,hd,hn)<0){}
-					for(int y=h-1;y>=0;y--) if(write(fd,buf+(size_t)y*w*3,w*3)<0){} close(fd); }
-				free(buf); }
-		}
+		dump_rtt_fbo(g_curRT);
 		if (load_fbo_funcs()) p_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0,0,g_scrW,g_scrH);
 		if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<40) fprintf(stderr,"[rtt] SetRenderTarget -> MAIN (unbind fbo)\n"); }
