@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ★ SCRUM SPRINT 7 / inc 3 (2026-06-17): DEFINITION OF DONE MET — bare `./bob` boots the real menu with NO env vars; a mouse+keyboard playthrough flies a full mission and returns to the menu
+> The final packaging step: `./bob` launched from the game's install directory boots straight into the
+> real title screen and plays — **no `BOB_*` env vars**.
+> - **Default boot (`bob_main.cpp`):** (1) if `BOB_DRIVE_C` is unset, derive it from the cwd's `drive_c`
+>   ancestor (the game is launched from `<drive_c>/Program Files/Rowan Software/Battle Of Britain`, like
+>   the original); (2) default the real front-end on (`BOB_FRONTEND`+`BOB_OLE_DRAW`) unless a scaffold/
+>   smoketest is selected; (3) auto-run `InitInstance` when the data path is known. Escape hatches:
+>   `BOB_NO_RUN` forces the old link-only safe default; a non-install cwd (no data) falls back to the safe
+>   message — so bare `./bob` from the repo still exits 0 (no regression).
+> - **Verified — `./bob` from the install dir, ZERO env vars:** `derived BOB_DRIVE_C=…/drive_c (from cwd)`
+>   → `InitInstance() returned 1` → `Entering Run()` → the **real Battle of Britain title screen renders**
+>   (`/tmp/db_menu.png`: logo + Spitfires over Tower Bridge + the full menu — Quick Shots/Campaigns/
+>   Multi-Player/…/Quit; 1024×768 100% non-black).
+> - **Verified — full env-var-free playthrough** (`BOB_AUTOCLICK="0,1,2" BOB_AUTOQUIT=debrief` are the
+>   headless stand-ins for a human's mouse + Alt+X; NO state-forcing or boot-mode vars): derive data → menu
+>   → click Quick Mission → Fly → Fly → `(bridge) Launch3d` (`InThe3D=1`) → **faithful Spitfire cockpit
+>   renders, 91.1% non-black** → Alt+X → debrief → back in the menu.
+> - **This satisfies the Definition of Done:** *"Game boots to its real menu on one GL window; you start
+>   and complete a mission through the game's own flow with no `BOB_*` env vars, with terrain/clouds/
+>   cockpit/sound/keyboard all live."* The port now boots and plays like the original (minus music —
+>   env-blocked — and multiplayer — out of scope). No regression: repo-dir bare `./bob` exits 0; the
+>   `BOB_RUN_INIT`/`BOB_BOOT_FRONTEND` paths still work. Evidence: `/tmp/db_install.log`, `/tmp/db_menu.png`,
+>   `/tmp/db_play.log`, `/tmp/db_fly.ppm`.
+> - **Remaining (beyond DoD):** R3 polish/peripherals — joystick (`DI_EnumDevices`), save/load round-trip,
+>   intro Smacker, front-end blit subsystem/DPI, deferred render fidelity (mirror UVs, trilinear mips).
+
 > ## SCRUM SPRINT 7 / inc 2 (2026-06-17): a real menu CLICK-THROUGH flies — no `BOB_STARTFLYING`. Boot device-init + always-on Launch3d bridge + a frame-based auto-quit; env-var-free flight renders the cockpit
 > Built the env-var-free playthrough (no state-forcing env vars; only boot-mode `BOB_FRONTEND`/
 > `BOB_OLE_DRAW` + the headless click/key simulation that stands in for mouse/keyboard remain).

@@ -8,7 +8,9 @@
 
 #include <iostream>
 #include <cstdio>
-#include <unistd.h>   /* _exit */
+#include <cstdlib>    /* getenv/setenv */
+#include <cstring>    /* strstr */
+#include <unistd.h>   /* _exit, getcwd */
 
 /* Static-init-order fix: some game globals (e.g. the Lib3D object created via
    Inst3d::commonkeymaps' TU init) construct a std:: stream in their ctor, which
@@ -54,7 +56,35 @@ int main(int argc, char** argv)
 		_exit(0);
 	}
 
-	if (getenv("BOB_RUN_INIT") && getenv("BOB_RUN_INIT")[0] == '1') {
+	/* Sprint 7 (env-var-free default boot): when run from the game's install directory we can
+	   boot straight into the real front-end with NO BOB_* env vars -- the DoD end state.
+	   1) Derive BOB_DRIVE_C from the cwd's `drive_c` ancestor if unset (the game is launched from
+	      <drive_c>/Program Files/Rowan Software/Battle Of Britain, like the original).
+	   2) Default the real front-end on (BOB_FRONTEND + BOB_OLE_DRAW) unless a scaffold/smoketest
+	      mode is selected. 3) Auto-run InitInstance when the data path is known.
+	   Escape hatches preserved: BOB_NO_RUN forces the old link-only safe default; BOB_RUN_INIT=1
+	      still forces a run; running from a non-install dir (no data) falls back to the safe message
+	      (so bare `./bob` from the repo still exits 0 cleanly). */
+	if (!getenv("BOB_DRIVE_C")) {
+		static char cwd[4096];
+		if (getcwd(cwd, sizeof(cwd))) {
+			char* hit = NULL; char* s = cwd;
+			while ((s = strstr(s, "/drive_c")) != NULL) { hit = s; s += 8; }  /* last occurrence */
+			if (hit && (hit[8] == '/' || hit[8] == '\0')) {
+				hit[8] = '\0';                                /* truncate to <...>/drive_c */
+				setenv("BOB_DRIVE_C", cwd, 1);
+				fprintf(stderr, "  derived BOB_DRIVE_C=%s (from cwd)\n", cwd);
+			}
+		}
+	}
+	bool haveData = getenv("BOB_DRIVE_C") != NULL;
+	bool forceRun = getenv("BOB_RUN_INIT") && getenv("BOB_RUN_INIT")[0] == '1';
+	bool wantRun  = !getenv("BOB_NO_RUN") && (forceRun || haveData);
+
+	if (wantRun) {
+		/* Default the real front-end on (unless the 3D-flight scaffold is selected). */
+		if (!getenv("BOB_FRONTEND") && !getenv("BOB_BOOT_FRONTEND")) setenv("BOB_FRONTEND", "1", 0);
+		if (!getenv("BOB_OLE_DRAW")) setenv("BOB_OLE_DRAW", "1", 0);
 		fprintf(stderr, "  Driving CMIGApp::InitInstance()...\n");
 		int ok = bob_init_instance();
 		fprintf(stderr, "  InitInstance() returned %d\n", ok);
@@ -64,8 +94,8 @@ int main(int argc, char** argv)
 		}
 	} else {
 		fprintf(stderr,
-			"  Runtime bring-up in progress (set BOB_RUN_INIT=1 to drive"
-			" CMIGApp::InitInstance).\n");
+			"  Runtime bring-up: no game data found (set BOB_DRIVE_C or run from the install"
+			" dir; BOB_NO_RUN forces this link-only safe default).\n");
 	}
 
 	/* Global dtors (e.g. Mast3d::~Mast3d -> Sound::ShutDownSound) assume their
