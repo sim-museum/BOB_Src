@@ -1037,6 +1037,11 @@ static FvfLayout fvf_layout(DWORD fvf) {
 /* ---- device GL state ---- */
 static GLSurface7* g_devTex[8] = {0};   /* SetTexture per stage */
 static int g_devAlphaBlend = 0;
+/* depth state (D3DRS_ZENABLE/ZWRITEENABLE). Lib3D pre-transforms geometry to screen-space
+   RHW quads with a real screen-z; honouring these (BOB_ZTEST) depth-sorts the 3D world so the
+   near cockpit occludes far clouds, instead of pure painter's order. Default-on values match
+   the device default (z-test + z-write enabled). */
+static int g_zEnable = 1, g_zWrite = 1;
 /* fog state (D3D fog -> GL). Start/End are float bit-patterns from the game. */
 static int    g_fogEnable = 0;
 static float  g_fogColor[4] = {0.5f,0.55f,0.6f,1.f};
@@ -1174,6 +1179,11 @@ static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCO
 		m|=GL_COLOR_BUFFER_BIT;
 	}
 	if (flags & 0x2 /*D3DCLEAR_ZBUFFER*/) { glClearDepth(z); m|=GL_DEPTH_BUFFER_BIT; }
+	/* BOB_ZTEST: the game only z-clears the FBO render targets (painter's order on the back
+	   buffer), so the back-buffer depth is never cleared -> depth-test reads garbage. When a
+	   colour clear happens without a z-clear, clear depth too (to far) so the scene sorts. */
+	if (getenv("BOB_ZTEST") && (flags & 0x1) && !(flags & 0x2)) { glClearDepth(1.0); m|=GL_DEPTH_BUFFER_BIT; }
+	if (m & GL_DEPTH_BUFFER_BIT) glDepthMask(GL_TRUE);   /* a masked-off write would skip the clear */
 	if (m) glClear(m);
 	return D3D_OK;
 }
@@ -1242,6 +1252,8 @@ static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWOR
 	/* D3DRENDERSTATE_*: SRCBLEND=19, DESTBLEND=20, ALPHABLENDENABLE=27, ZENABLE=7, ZWRITEENABLE=14 */
 	switch ((int)st) {
 		case 27: g_devAlphaBlend=(int)v; if(g_win){ if(v) glEnable(GL_BLEND); else glDisable(GL_BLEND);} break;
+		case 7:  g_zEnable=(v!=0); break;       /* D3DRS_ZENABLE (1=TRUE,0=FALSE,2=USEW) */
+		case 14: g_zWrite =(v!=0); break;       /* D3DRS_ZWRITEENABLE */
 		case 19: g_srcBlend=gl_blend(v); break;
 		case 20: g_dstBlend=gl_blend(v); break;
 		/* fog: FOGENABLE=28, FOGCOLOR=34, FOGTABLEMODE=35, FOGSTART=36, FOGEND=37,
@@ -1401,7 +1413,16 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
 	if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);   /* DDraw screen coords: y down */
 	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
-	glDisable(GL_DEPTH_TEST);   /* 2D/pre-transformed path: painter's order (depth off) */
+	/* Depth: by default painter's order (depth off) -- the long-standing behaviour. BOB_ZTEST
+	   honours the game's ZENABLE/ZWRITE so the screen-space RHW geometry is z-sorted by its
+	   screen-z (LEQUAL, clear=far): the near cockpit then occludes far cloud billboards instead
+	   of clouds painting over it. The RHW z is in [0,1] (0=near); glOrtho's -1..1 maps it into
+	   the front NDC half, valid for the test. */
+	if (getenv("BOB_ZTEST") && g_zEnable) {
+		glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(g_zWrite?GL_TRUE:GL_FALSE);
+	} else {
+		glDisable(GL_DEPTH_TEST);   /* 2D/pre-transformed path: painter's order (depth off) */
+	}
 	if (getenv("BOB_NOBLEND")) glDisable(GL_BLEND);
 	else if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
 
