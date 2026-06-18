@@ -151,6 +151,7 @@ The DoD increment shipped (bare `./bob` boots + plays, no env vars) and a human 
 | R3.6 | **Terrain detail combiner + over-tiling** — 2-stage detail-texture blend (ground shading) + `D3DTSS_ADDRESS` (CLAMP/MIRROR/WRAP) so terrain isn't over-tiled. | 5 | ☐ |
 | R3.7 | **In-flight effects** — smoke/contrails/tracers/muzzle-flash/explosions/flak render faithfully (transient sprites). | 5 | ☐ |
 | R3.8 | **Render regression sweep** — A/B each in-flight view vs Wine `bob.exe`; pixel-truth + long-session render stability. | 3 | ☐ |
+| R3.9 | **Ground-impact crash (field fix)** — ☑ **DONE (2026-06-17).** Pilot reported a crash on hitting the ground. ASan: `LandMapNumRecord::Reset`/`~LandMapNumRecord` freed `new UByte[]` landscape-tile buffers (body/palette/alpha, from `FixLbmImageMap`) with scalar `delete` → new[]/delete mismatch corrupting the heap on every landscape-texture free (10× in flight; low flight streams tiles → the ground rush trips it). Fixed → `delete[]`; bonus `SetPilotedAcAnim` scalar-new → `new[1]` matching `animptr::Delete`'s `delete[]` (1× teardown). Same bug family as R1.3a/e. ASan 10→0 / 1→0; bare `./bob` 0. Repro `BOB_AUTOFLY=dive`. Commit `ceb3083`. | 5 | ☑ |
 
 ### Release 4 — "The campaign"
 *Play the strategic Battle-of-Britain campaign, not just Quick Missions (the empty campaign screen the pilot hit).*
@@ -295,6 +296,21 @@ Sprints 1–4 (Release 1, R1.1b window merge), 5–6 (Release 2, play-a-mission 
 7 (env-var-free default boot → **DoD met**) are done — see the Burndown table (§9) and PORT.md. The
 game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has flown it.
 
+### Sprint 9 — "Faithful flight II" → *Increment: render-fidelity polish + flight stability* — **ACTIVE (2026-06-17)**
+- **Sprint Goal:** finish the Release-3 render-fidelity tail and harden in-flight stability. **Ships Release 3.**
+- **Opened with a field fix banked:** ☑ **R3.9 ground-impact crash** (5 pts) — pilot-reported crash on
+  hitting the ground; root-caused (landscape-tile `new[]`/`delete` mismatch, ASan 10→0) + fixed +
+  committed (`ceb3083`) before the planned stories. Standing PO approval.
+- **Committed (planned, ~23 pts):** R3.4 mirror-horizon UVs (5), R3.5 trilinear mips (5), R3.6 terrain
+  detail/over-tiling (5), R3.7 in-flight effects (5), R3.8 render regression sweep (3). The R3.2 cloud-depth
+  spike (13, carried from Sprint 8) runs as a **dedicated focused spike** within/after this sprint — it
+  needs a Wine A/B and is *not* a live patch (Sprint-8 retro).
+- **Starting story — R3.4 (mirror-horizon UVs):** well-scoped, known root cause (PORT.md: `InfiniteStrip`
+  horizon quads carry garbage v-texcoords, `v≈-2.4e24`, clamped to one edge texel → flat mirror), compat-side
+  (no game edit), headlessly verifiable (`BOB_MIRROR` + `BOB_DUMP_RTT` → mirror FBO variance > 0).
+- **Increment demo:** `BOB_MIRROR` rear-view mirror shows the horizon/sky backdrop (not a flat edge texel);
+  in-flight stability holds a long session; bare `./bob` exits 0.
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -351,7 +367,8 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 | 6 | 21 | 21 | ✅ **R2.4 + R2.3 — Release 2 done** | **Campaign continuity + mission-loop stress (2026-06-17).** R2.4: `BOB_REFLY=N` chains missions — 2+ consecutive fly→debrief→fly→debrief cycles in one process (debriefs render; 2nd `StartFlying` clean). R2.3: 4-mission chain + `BOB_QM_INDEX=0..7` variety, **0 crashes** (grind pre-empted by upstream fixes). **Release 2 ("play a mission") complete** — the game's own menu→mission→fly→debrief→next loop runs end-to-end + survives stress. |
 | 7 | ~16 | ~16 | ✅ **DoD MET** | **"No env vars" — DEFINITION OF DONE (2026-06-17).** inc1 mission setup game-driven; inc2 real click-through flies with NO `BOB_STARTFLYING` (boot device-init + always-on bridge + frame-based auto-quit fixing a black-flight bug); inc3 **bare `./bob` from the install dir boots the real title screen, ZERO env vars**, mouse+keyboard playthrough flies → debrief → menu. **First human pilot flew it.** Field fixes (R2.5): gun-fire double-free crash (R1.3e, 7 sibling classes) + menu click-offset. Safe fallback + `BOB_NO_RUN`/`BOB_RUN_INIT` preserved. |
 | 8 | 19 | 13 | ✅ **closed — 2 wins** | **Faithful flight I (2026-06-17).** ☑ R3.1 scene lighting (pilot-confirmed — pre-dawn time bug), ☑ R3.3 cloud checkerboard (smooth-alpha → GL_LINEAR, pilot can re-test). R3.2 clouds-over-cockpit re-scoped 8→13 to a dedicated **Sprint-9 depth spike** (2 failed real-time attempts: RHW-z not sent to GL; then a wrong z-mapping blanked the scene — needs careful work, default rendering unaffected/reverted). PO standing approval; closed per the onion rule (bank verified value, spike the unknown). |
-| **9–19** | — | — | — | **See §7a roadmap** → R3 rest (R3.2 depth spike, mirror UVs, mips, terrain combiner, effects), R4 campaign, R5 control & sim, R6 front-end & media, R7 multiplayer. |
+| 9 | 23 | 5 | ◐ **active** | **Faithful flight II (2026-06-17).** Opened with a banked field fix: ☑ **R3.9 ground-impact crash** — landscape-tile `new[]`/`delete` mismatch (ASan 10→0; pilot-reported "crashed when I hit the ground"; commit `ceb3083`). Planned: R3.4 mirror UVs, R3.5 trilinear mips, R3.6 terrain combiner, R3.7 effects, R3.8 regression sweep; R3.2 cloud-depth spike carried (dedicated, Wine-A/B). Started R3.4. |
+| **10–19** | — | — | — | **See §7a roadmap** → R4 campaign, R5 control & sim, R6 front-end & media, R7 multiplayer. |
 
 Update the **Done pts** column at each Sprint Review; that's the running velocity. Cumulative done: ~110 pts
 across Sprints 0–7 (Releases 1–2 + DoD). Remaining to all-functionality: ~180 pts (§7a).
