@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R3.x (2026-06-17): "CRASHED WHEN I HIT THE GROUND" FIXED — landscape-tile free was new[]/delete mismatch (heap corruption on every texture free)
+> The pilot flew low and the game **crashed on ground impact** (SIGABRT, heap corruption). Diagnosed +
+> fixed with ASan as the oracle (report-and-continue, `halt_on_error=0`).
+> - **Repro (headless):** added `BOB_AUTOFLY=dive` (`bob_video.cpp`) — full throttle + hold Ctrl + tap
+>   `ELEVTRIMUP` (Home/DIK 0xC7) to climb steeply → stall → fall into the terrain — the player's
+>   crash path, and it drives the low-altitude landscape streaming the bug rides on.
+> - **Root cause (ASan: `alloc-dealloc-mismatch`, 10× during flight):** `LandMapNumRecord::Reset`
+>   (`MIGLAND.CPP:4514-4516` and `:4538-4540`) freed each landscape tile's `body`/`palette`/`alpha` with
+>   **scalar `delete`**, but those buffers are allocated **`new UByte[]`** by `ImageMap_Desc::FixLbmImageMap`
+>   (`lbmcpp.h`/Imagemap.cpp). new[]/scalar-delete is a real operator mismatch — benign on Win32's
+>   allocator, but on Linux it **corrupts the heap on every landscape-texture free**. Flying low streams
+>   tiles in/out heavily, so the ground rush = a burst of these frees = the non-deterministic abort. The
+>   anim structs/tile buffers are trivially destructible, so freeing as the `UByte[]` they were allocated is
+>   behaviour-identical — it just uses the matching `delete[]`. **Same bug class as R1.3a/R1.3e** (the
+>   new[]-vs-scalar / delete-expression family). Game source stays semantically pristine (operator-form fix
+>   + comment only).
+> - **Fix:** both `Reset` free blocks → `delete[] lm[i].body/palette/alpha`.
+> - **Bonus (same pass, ASan 1× at teardown):** `shape::SetPilotedAcAnim` (`3DCOM.CPP:20860`) scalar-`new`'d
+>   its replacement `PolyPitAnimData`, but every `animptr` buffer is array-allocated and `animptr::Delete`
+>   (`WORLDINC.H:166`) frees with `delete[](char*)` — the lone odd-one-out. Made it `new PolyPitAnimData[1]`
+>   so the array-delete matches.
+> - **Verified:** dedicated ASan re-run dropped **Migland Reset mismatches 10 → 0**; `animptr::Delete` 1 → 0.
+>   No regression: bare `./bob` exits 0; normal + ASan builds compile clean; `BOB_AUTOFLY=dive` flies the
+>   ground rush without aborting. Remaining alloc-dealloc (`RLISTBXC::ReplaceString`, 2×) is a **front-end**
+>   listbox path, not flight — triaged separately. Evidence: `/tmp/animfix_asan.log`, `/tmp/normal_dive.log`.
+>
 > ## R1.3e (2026-06-17): FIRST HUMAN PILOT — gun-fire crash FIXED (operator-delete double-free on 7 sibling item classes)
 > A human flew the port for real (title → Quick Mission → 3D Spitfire cockpit → F6 chase view → guns).
 > **First field bug:** firing the guns (Space = `SHOOT`) crashed — `malloc(): unaligned tcache chunk

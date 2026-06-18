@@ -4511,9 +4511,9 @@ LandMapNumRecord::~LandMapNumRecord()
 		{
 			Land_Scape.g_lpLib3d->UnloadTexture( lm + i );				//JON 7Aug00
 			
-			delete lm[i].body;						//RJS 09Feb98
-			delete lm[i].palette;					//RJS 09Feb98
-			delete lm[i].alpha;						//RJS 09Feb98
+			delete[] lm[i].body;	/* R3.x: new UByte[] (FixLbmImageMap) -> MUST delete[]; scalar */
+			delete[] lm[i].palette;	/* delete was an alloc-dealloc-mismatch corrupting the heap on */
+			delete[] lm[i].alpha;	/* every landscape-texture free (ASan 10x in flight). Cf. R1.3a. */
 			lm[i].body=NULL;						//RJS 09Feb98
 			lm[i].palette=NULL;						//RJS 09Feb98
 			lm[i].alpha=NULL;						//RJS 09Feb98
@@ -4535,9 +4535,9 @@ void LandMapNumRecord::Reset(FileNum dir)
 	
 			Land_Scape.g_lpLib3d->UnloadTexture( lm + i );				//JON 7Aug00
 
-			delete lm[i].body;						//RJS 09Feb98
-			delete lm[i].palette;					//RJS 09Feb98
-			delete lm[i].alpha;						//RJS 09Feb98
+			delete[] lm[i].body;	/* R3.x: new UByte[] (FixLbmImageMap) -> MUST delete[]; scalar */
+			delete[] lm[i].palette;	/* delete was an alloc-dealloc-mismatch corrupting the heap on */
+			delete[] lm[i].alpha;	/* every landscape-texture free (ASan 10x in flight). Cf. R1.3a. */
 			lm[i].body=NULL;						//RJS 09Feb98
 			lm[i].palette=NULL;						//RJS 09Feb98
 			lm[i].alpha=NULL;						//RJS 09Feb98

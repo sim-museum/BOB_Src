@@ -20857,7 +20857,14 @@ void shape::SetPilotedAcAnim(AirStrucPtr pilotedac)
 {
 	int		count;												//RJS 23Aug96
 
-	PolyPitAnimData		*newanim = new PolyPitAnimData;
+	/* PORT FIX R3.x (Linux, 2026-06-17): newanim is stored into pilotedac->Anim (an animptr)
+	   and is later released by animptr::Delete() as `delete[](char*)ptr` -- array-delete. Every
+	   other animptr buffer is array-allocated (shape::SetAnimData uses `new UByte[]`), so the
+	   scalar `new PolyPitAnimData` here is the lone odd-one-out: a new/delete[] operator mismatch
+	   (AddressSanitizer: alloc-dealloc-mismatch at WorldInc.h:166, 1x at teardown). PolyPitAnimData
+	   is trivially destructible (no ~AnimData), so array-allocating one element is behaviour-
+	   identical and makes the matching delete[] correct. Cf. the R1.3a oldanim fix just below. */
+	PolyPitAnimData		*newanim = new PolyPitAnimData[1];
 	AircraftAnimData	*oldanim = (AircraftAnimData* )pilotedac->Anim,
 						*naa=newanim;
 

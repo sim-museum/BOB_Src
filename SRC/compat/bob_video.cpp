@@ -244,6 +244,17 @@ static void pump_events(void)
 		if (mode && strstr(mode,"shoot")) {   /* repro: tap SPACE (SHOOT, DIK 0x39) during flight */
 			if (g_bob_flight_active && (cnt%15)==0) { kb_push(0x39,1); kb_push(0x39,0); }
 		}
+		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->
+			   climb steeply -> stall -> fall -> hit the ground (the player-crash path) */
+			static int dc=0, prevA=0;
+			if (g_bob_flight_active && !prevA) dc=0;   /* reset at flight start */
+			prevA = g_bob_flight_active;
+			if (g_bob_flight_active) { dc++;
+				if (dc==20) { kb_push(0x0B,1); kb_push(0x0B,0); }       /* full throttle */
+				else if (dc==30) kb_push(0x1D,1);                      /* Ctrl down (held: ELEVTRIM shift) */
+				else if (dc>30 && (dc%3)==0) { kb_push(0xC7,1); kb_push(0xC7,0); }  /* Home = nose-UP trim (climb->stall) */
+			}
+		}
 		else if (mode && mode[0]=='s') { static int sweep=1;
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
 		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
