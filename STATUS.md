@@ -28,17 +28,21 @@ Cockpit render now closely matches `doc/reference/cockpit-windows-spitfire-1.png
 
 ---
 
-## The core gap to "complete"
+## ★ The core gap to "complete" — CLOSED (Definition of Done met, 2026-06-17)
 
-The above are **separate env-gated bring-up scaffolds**, not the real game flow. Completing
-the port = collapsing them into the game's own end-to-end loop:
+The three gaps below are all **closed**. Bare **`./bob`** launched from the game's install dir now
+**boots to the real Battle of Britain title screen with no `BOB_*` env vars** (derives the data path
+from cwd), and a mouse+keyboard playthrough flies a full Quick Mission and returns to the menu —
+menu → mission → fly → debrief → next, the game's own flow, one GL window. (Minus music — env-blocked
+32-bit synth — and multiplayer — out of scope.) See PORT.md (newest entries, Sprints 4–7).
 
-1. **One window for 2D + 3D.** Front-end runs on the bob_gdi CPU framebuffer (presents via a GL
-   quad); flight runs on real GL. They were never unified into one continuous app.
-2. **Real initialization.** ~85 `BOB_*` env gates force state the QM boot leaves at 0. The fix is
-   the game's own `SaveData::InitPreferences()` (see below) — **mechanism proven, blocked on one bug.**
-3. **Real mission loop.** `BOB_BOOT_FRONTEND` *synthesizes* a scramble; the real menu → mission →
-   fly → debrief → campaign flow isn't driven end-to-end.
+1. **One window for 2D + 3D — DONE (R1.1b).** The menu↔flight control-flow merge: the game's own
+   `StartFlying→Rtestsh1→Launch3d` (entry) + F12/Alt+X→`OnFlyingClosed` (return), one process/window.
+   Fixed the 3D-device teardown (DD7 refcount COM bug) so flight cycles cleanly.
+2. **Real initialization — DONE (R1.4).** `SaveData::InitPreferences()` is the default init (the four
+   combat-corruption bugs that blocked it are fixed); device init now also runs at the front-end boot.
+3. **Real mission loop — DONE (R2.x).** The real menu Fly drives `LoadSetPiece`; Alt+X→debrief; the
+   debrief→next chain runs (campaign continuity); stress + variety validated, 0 crashes.
 
 ---
 
@@ -89,7 +93,11 @@ DirectPlay multiplayer (large, low priority).
 
 ---
 
-## Definition of done
+## Definition of done — ✅ MET (2026-06-17)
 Game boots to its real menu on one GL window; you start and complete a mission through the game's own
 flow with **no `BOB_*` env vars**, with terrain/clouds/cockpit/sound/keyboard all live — i.e. it plays
-the way it did on Windows, minus music (env-blocked) and multiplayer (out of scope).
+the way it did on Windows, minus music (env-blocked) and multiplayer (out of scope). **Achieved:** bare
+`./bob` from the install dir boots the real title screen (data path derived from cwd) and a mouse+keyboard
+playthrough flies a full Quick Mission → debrief → menu. Run: `cd "<drive_c>/Program Files/Rowan
+Software/Battle Of Britain" && /path/to/bob`. (`BOB_NO_RUN` = link-only safe default; `BOB_DRIVE_C`
+overrides the data path.) Beyond DoD: R3 polish/peripherals (joystick, save/load, Smacker, render fidelity).
