@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R3.2 (2026-06-17): "landscape shows through cockpit" — depth-sort spike, real-GL A/B; correct z-mapping + opaque-only depth-write (gated BOB_ZDEPTH)
+> Pilot screenshot: the **landscape shows through the cockpit panel** (and clouds over the canopy) —
+> the long-standing R3.2 depth/draw-order bug. The cockpit, terrain and clouds are all pre-transformed
+> 2D RHW quads; with depth off they paint in submission order, so the FBO-composited landscape (a flat
+> billboard) shows through the dashboard. **Real GL is available here (`DISPLAY=:0`, NVIDIA), so this was
+> A/B'd visually** instead of guessed (the exact thing the Sprint-8 retro said the spike needed).
+> - **Correct z-mapping (the prior blanker, fixed):** RHW z is [0,1] (0=near,1=far). To make `LEQUAL`
+>   (clear=1.0=far) let the near cockpit win, passed-z must map monotonically z=0→win0, z=1→win1. With
+>   identity modelview the passed z IS eye-z, so `glOrtho(0,w,h,0, near=0, far=-1)` → `z_ndc = 2z-1`.
+>   (Sprint-8's `(-1,1)` gave `z_ndc=-z` — INVERTED; far won, the near cockpit was depth-rejected and the
+>   scene blanked.) Also: actually send the z (3 comps; the old `BOB_ZTEST` only sent x,y, so it was a
+>   no-op) and clear depth to 1.0 each frame.
+> - **Force depth WRITES (the game runs this pass ZWRITE-off → honouring it sorts nothing):** with writes
+>   forced, near cockpit-z rejects the far landscape billboard regardless of submission order.
+> - **Opaque-only write (the cloud-artifact fix):** blanket depth-write put a **dark cut-out streak** over
+>   the clouds — depth-testing translucent sprites rejects the ones behind and breaks the alpha blend. Fix:
+>   **write depth only for opaque/keyed geometry** (cockpit structure, terrain); translucent smooth-alpha
+>   (4444 clouds/smoke, 32-bit) depth-**tests but doesn't write**, staying painter's-ordered. Mirrors the
+>   R3.3 alpha split. **A/B at altitude: the streak is gone, clouds blend correctly, cockpit solid, scene
+>   not blanked** (`/tmp/ab_zon3.png` vs `/tmp/ab_lowalt_zoff.png`; forced-all-write `/tmp/ab_zon2.png`
+>   shows the rejected streak).
+> - **Status — gated `BOB_ZDEPTH`, default-off, awaiting the terrain-behind-cockpit A/B.** Could not
+>   reproduce the *low-altitude nose-down* view headlessly — only the throttle autofly achieves powered
+>   flight and it climbs to sky (the `dive`/`plunge` repro modes stall with engine power 0); so the
+>   terrain-through-cockpit case itself is unverified here. Handed to the pilot (who has the exact repro)
+>   for the definitive A/B: fly with `BOB_ZDEPTH=1` and compare. No regression: bare `./bob` 0; the default
+>   path is unchanged (depth off, original ortho). Diagnostics added (env-gated, default-off): `BOB_ZDEPTH`,
+>   `BOB_ZDEPTH_MASK` (honour game ZWRITE for A/B), `BOB_TRACE_CLOUDZ` (world/isRTT vs cockpit z buckets),
+>   and the RTT→RTT `dump_rtt_fbo`. Evidence: `/tmp/ab_*.png`, `/tmp/cockpit_base.png`.
+>
 > ## R3.4 (2026-06-17): rear-view mirror RE-DIAGNOSED on real GL — renders flat SKY, not garbage-textured; the prior "garbage horizon UVs" theory was wrong
 > Sprint 9 opened on R3.4 (mirror horizon UVs). With a real GL display available here
 > (`DISPLAY=:0`, NVIDIA — flight renders for real, not the dummy-SDL boot loop), captured the mirror

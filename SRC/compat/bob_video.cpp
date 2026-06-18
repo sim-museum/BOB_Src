@@ -255,6 +255,18 @@ static void pump_events(void)
 				else if (dc>30 && (dc%3)==0) { kb_push(0xC7,1); kb_push(0xC7,0); }  /* Home = nose-UP trim (climb->stall) */
 			}
 		}
+		else if (mode && strstr(mode,"plunge")) {  /* R3.2 repro: throttle + nose-DOWN -> point the
+			   nose at the terrain so the landscape fills the view BEHIND the cockpit panel (the
+			   "landscape shows through cockpit" depth-sort symptom). */
+			static int pc=0, prevA=0;
+			if (g_bob_flight_active && !prevA) pc=0;
+			prevA = g_bob_flight_active;
+			if (g_bob_flight_active) { pc++;
+				if (pc==20) { kb_push(0x0B,1); kb_push(0x0B,0); }       /* full throttle */
+				else if (pc==30) kb_push(0x1D,1);                      /* Ctrl held: ELEVTRIM shift */
+				else if (pc>30 && (pc%3)==0) { kb_push(0xCF,1); kb_push(0xCF,0); }  /* End = nose-DOWN trim */
+			}
+		}
 		else if (mode && mode[0]=='s') { static int sweep=1;
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
 		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
@@ -1199,7 +1211,7 @@ static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCO
 	/* BOB_ZTEST: the game only z-clears the FBO render targets (painter's order on the back
 	   buffer), so the back-buffer depth is never cleared -> depth-test reads garbage. When a
 	   colour clear happens without a z-clear, clear depth too (to far) so the scene sorts. */
-	if (getenv("BOB_ZTEST") && (flags & 0x1) && !(flags & 0x2)) { glClearDepth(1.0); m|=GL_DEPTH_BUFFER_BIT; }
+	if ((getenv("BOB_ZTEST")||getenv("BOB_ZDEPTH")) && (flags & 0x1) && !(flags & 0x2)) { glClearDepth(1.0); m|=GL_DEPTH_BUFFER_BIT; }
 	if (m & GL_DEPTH_BUFFER_BIT) glDepthMask(GL_TRUE);   /* a masked-off write would skip the clear */
 	if (m) glClear(m);
 	return D3D_OK;
@@ -1351,6 +1363,29 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   detailed ground tiles), skipping the sky/haze/font surfaces -- isolates terrain. */
 	if (is2D) { const char* otw=getenv("BOB_ONLY_TEXW");
 		if (otw) { int w=atoi(otw); if (!g_devTex[0] || g_devTex[0]->w!=w) return; } }
+	/* BOB_TRACE_CLOUDZ (R3.2 spike): for pre-transformed 2D textured quads, bucket by alpha-blend
+	   state -- blended ~= cloud/sprite billboards, opaque ~= cockpit/terrain -- and accumulate the
+	   RHW screen-z range + screen-Y range of each bucket. If blended (cloud) z and opaque (cockpit)
+	   z ranges separate, a depth test on the RHW z can sort clouds behind the cockpit; if they
+	   overlap/are identical, the problem is draw-order, not depth. */
+	if (getenv("BOB_TRACE_CLOUDZ") && is2D && L.hasTex && count>=3) {
+		const float* p0=(const float*)(base+L.posOff);
+		float zmin=1e9f,zmax=-1e9f,ymin=1e9f,ymax=-1e9f;
+		for (DWORD i=0;i<count;i++){ const float* p=(const float*)(base+(size_t)i*L.stride+L.posOff);
+			if(p[2]<zmin)zmin=p[2]; if(p[2]>zmax)zmax=p[2]; if(p[1]<ymin)ymin=p[1]; if(p[1]>ymax)ymax=p[1]; }
+		static struct { long n; double zlo,zhi; float ylo,yhi; } world={0,1e9,-1e9,1e9f,-1e9f}, cock={0,1e9,-1e9,1e9f,-1e9f};
+		/* bucket by isRTT: the FBO-composited landscape is drawn as an isRTT-textured quad (the
+		   "world/terrain"); everything else 2D-textured here is the cockpit/HUD overlay. The fix
+		   needs world-z (far) > cockpit-z (near) so a LEQUAL depth test occludes terrain. */
+		GLSurface7* ct=g_devTex[0];
+		auto* b = (ct && ct->isRTT) ? &world : &cock;
+		b->n++; if(zmin<b->zlo)b->zlo=zmin; if(zmax>b->zhi)b->zhi=zmax; if(ymin<b->ylo)b->ylo=ymin; if(ymax>b->yhi)b->yhi=ymax;
+		(void)p0;
+		static long calls=0;
+		if (++calls % 4000 == 0) fprintf(stderr,
+			"[cloudz] WORLD/terrain(isRTT) n=%ld z[%.4f..%.4f] scrY[%.0f..%.0f]  COCKPIT/overlay n=%ld z[%.4f..%.4f] scrY[%.0f..%.0f]\n",
+			world.n,world.zlo,world.zhi,world.ylo,world.yhi, cock.n,cock.zlo,cock.zhi,cock.ylo,cock.yhi);
+	}
 	if (getenv("BOB_TRACE_COL") && is2D && L.hasCol && count>=3) {
 		int tw=g_devTex[0]?g_devTex[0]->w:0;
 		unsigned d=*(const unsigned*)(base+L.colOff);
@@ -1434,15 +1469,43 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		}
 	}
 
+	/* R3.2 depth-sort of pre-transformed screen-space (RHW) geometry. The cockpit, terrain and
+	   cloud billboards are all 2D RHW quads; without a depth test they paint in submission order,
+	   so the FBO-composited landscape shows THROUGH the cockpit panel (and clouds over the canopy).
+	   The RHW z is in [0,1] (0=near, 1=far). To make LEQUAL (clear=1.0=far) let the near cockpit
+	   win, passed-z must map to window-z monotonically: z=0->win 0, z=1->win 1. With identity
+	   modelview the passed z IS eye-z, so we need glOrtho(.., near=0, far=-1):
+	     z_ndc = -2/(f-n)*z - (f+n)/(f-n) = 2z-1  ->  z=0->ndc -1->win 0 ; z=1->ndc +1->win 1.
+	   (The earlier attempt used (-1,1), i.e. z_ndc=-z, which INVERTED it -- far won, the near
+	   cockpit was depth-rejected and the scene blanked.) Gated on BOB_ZDEPTH while A/B'd. */
+	int zdepth = is2D && getenv("BOB_ZDEPTH");
+	/* Translucent (smooth-alpha) geometry -- 4444 clouds/smoke, 32-bit alpha sprites -- must NOT
+	   write depth: depth-testing blended sprites rejects the ones behind and breaks the blend (a
+	   dark cut-out). Opaque/keyed geometry (cockpit structure, terrain) DOES write, so it sorts.
+	   Mirrors the R3.3 smooth-alpha split. (g_devTex[0] is the texture about to be bound.) */
+	int zd_translucent = 0;
+	if (zdepth && g_devTex[0]) { GLSurface7* zt=g_devTex[0];
+		DDPIXELFORMAT& zpf=zt->desc.ddpfPixelFormat;
+		if (!zt->ckeyOn && (zpf.dwRGBAlphaBitMask==0xF000 || zt->bpp==32)) zd_translucent=1; }
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity();
-	if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);   /* DDraw screen coords: y down */
+	if (zdepth)    glOrtho(0, g_scrW, g_scrH, 0, 0, -1);  /* near=0 far=-1: z[0,1] -> win[0,1] */
+	else if (is2D) glOrtho(0, g_scrW, g_scrH, 0, -1, 1);  /* DDraw screen coords: y down */
 	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
-	/* Depth: by default painter's order (depth off) -- the long-standing behaviour. BOB_ZTEST
-	   honours the game's ZENABLE/ZWRITE so the screen-space RHW geometry is z-sorted by its
-	   screen-z (LEQUAL, clear=far): the near cockpit then occludes far cloud billboards instead
-	   of clouds painting over it. The RHW z is in [0,1] (0=near); glOrtho's -1..1 maps it into
-	   the front NDC half, valid for the test. */
-	if (getenv("BOB_ZTEST") && g_zEnable) {
+	/* Depth: by default painter's order (depth off) -- the long-standing behaviour. BOB_ZDEPTH
+	   honours the game's ZWRITE so screen-space RHW geometry is z-sorted by its screen-z (LEQUAL,
+	   clear=far): the near cockpit occludes the far landscape/clouds instead of them painting over.
+	   We test for ALL is2D (not only when the game's ZENABLE is set) because the game leaves overlays
+	   that must stay on top -- HUD, gunsight, mirror -- as ZWRITE-off draws; honouring ZWRITE keeps
+	   them on top while still sorting the world+cockpit. */
+	if (zdepth) {
+		/* Force depth WRITES on (the game runs this screen-space pass with ZWRITE off, so honouring
+		   it writes no depth and nothing sorts). With writes forced, near cockpit-z rejects the far
+		   landscape billboard regardless of submission order. BOB_ZDEPTH_MASK keeps the game's mask
+		   for A/B. Overlays drawn last at z~=0 (HUD/gunsight) still win on top. */
+		glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
+		/* opaque/keyed -> write depth (sorts); translucent clouds -> test only (keep blend). */
+		glDepthMask(zd_translucent ? GL_FALSE : GL_TRUE);
+	} else if (getenv("BOB_ZTEST") && g_zEnable) {
 		glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(g_zWrite?GL_TRUE:GL_FALSE);
 	} else {
 		glDisable(GL_DEPTH_TEST);   /* 2D/pre-transformed path: painter's order (depth off) */
@@ -1517,9 +1580,9 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	} else glDisable(GL_ALPHA_TEST);
 
 	glEnableClientState(GL_VERTEX_ARRAY);
-	/* XYZRHW stored as 4 floats; pass x,y for 2D screen pos. With BOB_FOG we also pass z
-	   (3 comps) so screen-space z can feed GL fog. */
-	glVertexPointer((is2D&&!fogExp)?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	/* XYZRHW stored as 4 floats; pass x,y for 2D screen pos. With BOB_FOG/BOB_ZDEPTH we also pass
+	   z (3 comps) so the screen-space RHW z feeds GL fog / the depth test. */
+	glVertexPointer((is2D&&!fogExp&&!zdepth)?2:3, GL_FLOAT, L.stride, base + L.posOff);
 	if (garbageHi) { glDisable(GL_TEXTURE_2D); glColor3f(1.f,0.f,1.f); }       /* debug: locate garbage-textured geom */
 	else if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
