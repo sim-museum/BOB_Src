@@ -241,7 +241,10 @@ static void pump_events(void)
 	if (getenv("BOB_AUTOFLY") && g_diKbAcquired) {
 		const char* mode=getenv("BOB_AUTOFLY");
 		static int cnt=0; cnt++;
-		if (mode && mode[0]=='s') { static int sweep=1;
+		if (mode && strstr(mode,"shoot")) {   /* repro: tap SPACE (SHOOT, DIK 0x39) during flight */
+			if (g_bob_flight_active && (cnt%15)==0) { kb_push(0x39,1); kb_push(0x39,0); }
+		}
+		else if (mode && mode[0]=='s') { static int sweep=1;
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
 		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
 	}

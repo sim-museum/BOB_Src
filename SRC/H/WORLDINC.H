@@ -610,7 +610,7 @@ typedef	InfoItemFlag*	InfoItemFlagPtr;
 struct	WayPoint:public	WPOverlayItem	//o14 //o30	//uniqueid and position	
 {
 	friend	COORDS3D* FindDesPos(WayPointPtr);
-	void	operator delete(void* obj)	{::delete(WayPointPtr) obj;}
+	void	operator delete(void* obj)	{::operator delete(obj);}	/* R1.3e: was {::delete(WayPointPtr)obj;} -- re-ran the dtor (double-free); see R1.3d @894 */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif
@@ -718,7 +718,7 @@ class	hdgitem:public	item			//o1Cs02
 public:
 	ANGLES		hdg;
 	hdgitem()	{Status.size=HdgSize;}
-	void	operator delete(void* obj)	{::delete(HdgItemPtr) obj;}
+	void	operator delete(void* obj)	{::operator delete(obj);}	/* R1.3e: was {::delete(HdgItemPtr)obj;} (re-ran dtor; see R1.3d @894) */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif
@@ -733,7 +733,7 @@ class	hpitem:public	hdgitem			//o1Es02
 public:
 	ANGLES		pitch;
 	hpitem()	{Status.size=HPSize;}
-	void	operator delete(void* obj) {::delete(hpitem*) obj;}
+	void	operator delete(void* obj) {::operator delete(obj);}	/* R1.3e: was {::delete(hpitem*)obj;} (re-ran dtor; see R1.3d @894) */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif
@@ -748,7 +748,7 @@ class	rotitem:public	hpitem			//o20s02
 public:
 	ANGLES		roll;
 	rotitem()	{Status.size=RotatedSize;}
-	void	operator delete(void* obj) {::delete(rotitem*) obj;}
+	void	operator delete(void* obj) {::operator delete(obj);}	/* R1.3e: was {::delete(rotitem*)obj;} (re-ran dtor; see R1.3d @894) */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif
@@ -823,7 +823,7 @@ static	UByte	timerseed;
 static int	timeofday;
 static	void SetWorld(WorldStuff* w)	{currworld=w;}					//JIM 25Jul96
 static	WorldStuff& GetWorld() {return *currworld;}				//ARM 25Jul96
-	void	operator delete(void* obj)	{::delete(MovingItemPtr) obj;}
+	void	operator delete(void* obj)	{::operator delete(obj);}	/* R1.3e (gun-fire crash): was {::delete(MovingItemPtr)obj;} -- firing spawns/frees mobileitems (tracers); the re-run dtor double-freed the anim buffer (ASan: 7772x double-free in animptr::Delete). See R1.3d @894 */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif
@@ -992,7 +992,7 @@ FormationItemPtr&	Follower()	{return (follower);}
 		leader=NULL;follower=NULL;contourlist=NULL;
 	}
 
-	void	operator delete(void* obj)	{::delete(FormationItemPtr) obj;}
+	void	operator delete(void* obj)	{::operator delete(obj);}	/* R1.3e: was {::delete(FormationItemPtr)obj;} (re-ran dtor; see R1.3d @894) */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif
@@ -1321,7 +1321,7 @@ static UWord vel_to_aoa[];
 #endif
 
 	void AddToList();
-	void	operator delete(void* obj)	{::delete(AirStrucPtr) obj;}
+	void	operator delete(void* obj)	{::operator delete(obj);}	/* R1.3e: was {::delete(AirStrucPtr)obj;} (re-ran dtor; see R1.3d @894) */
 #ifndef	__BCPLUSPLUS__
 	void	operator	delete(void* p,const char*,int)	{operator delete(p);}
 #endif

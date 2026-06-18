@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R1.3e (2026-06-17): FIRST HUMAN PILOT — gun-fire crash FIXED (operator-delete double-free on 7 sibling item classes)
+> A human flew the port for real (title → Quick Mission → 3D Spitfire cockpit → F6 chase view → guns).
+> **First field bug:** firing the guns (Space = `SHOOT`) crashed — `malloc(): unaligned tcache chunk
+> detected` (SIGABRT, heap corruption).
+> - **Repro (headless):** added `BOB_AUTOFLY=shoot` (taps Space/DIK 0x39 during flight) — reproduces the
+>   abort in ~seconds of firing.
+> - **Root cause (ASan, report-and-continue):** **7772× `double-free` in `animptr::Delete` + 7776×
+>   `new-delete-type-mismatch` in `mobileitem::operator delete`** (WORLDINC.H:826). Firing spawns and frees
+>   `mobileitem`s (tracers/bullets); the **exact same bug class as R1.3d** — `operator delete` was a
+>   delete-*expression* `{::delete(MovingItemPtr)obj;}` that RE-RUNS the destructor, so the anim buffer was
+>   freed twice. R1.3d fixed only `TransientItem` (the one path then exercised) and flagged the sibling item
+>   classes as a documented latent follow-up — **full combat now triggers them.**
+> - **Fix (R1.3e):** corrected the same idiom on **all 7 sibling classes** — `WayPoint`, `hdgitem`,
+>   `hpitem`, `rotitem`, **`mobileitem`/MovingItem** (the gun-fire one), `formationitem`, `AirStruc` —
+>   each `{::delete(T*)obj;}` → `{::operator delete(obj);}` (deallocate only; the dtor is the compiler's
+>   job). (WORLDINC.H is a symlink → real file `WORLDINC.H`, the MFC twin trap.)
+> - **Verified:** `BOB_AUTOFLY=shoot` now **survives 40s of continuous firing** (was: abort in seconds);
+>   no regression (bare `./bob` 0; env-free playthrough flies + debriefs). ASan re-run confirms the
+>   double-free/new-delete-mismatch counts drop to ~0.
+> - **Other first-pilot findings (triaged, next):** menu click hit-boxes offset ~1cm from the text (ASan
+>   flagged `global-buffer-overflow` in `PositionRListBox` fullpsys.cpp:974 — likely the same root); clouds
+>   depth-sort over the cockpit; scene darkening; campaign screen empty (not wired); squadron-select font
+>   scaling. Evidence: `/tmp/shoot.log` (repro), `/tmp/shoot_asan3.log` (ASan root-cause), `/tmp/shoot2.log`
+>   (fixed).
+
 > ## ★ SCRUM SPRINT 7 / inc 3 (2026-06-17): DEFINITION OF DONE MET — bare `./bob` boots the real menu with NO env vars; a mouse+keyboard playthrough flies a full mission and returns to the menu
 > The final packaging step: `./bob` launched from the game's install directory boots straight into the
 > real title screen and plays — **no `BOB_*` env vars**.
