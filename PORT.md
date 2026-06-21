@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R3.6 (2026-06-21): per-stage texture ADDRESSING — honour the game's MIRROR/CLAMP/WRAP (was GL_REPEAT everywhere → terrain over-tiling)
+> The compat `SetTextureStageState` was a no-op, so the game's per-stage `D3DTSS_ADDRESS` was
+> dropped and every texture sampled `GL_REPEAT`. The game explicitly sets the land texture to
+> `D3DTADDRESS_MIRROR` (LIB3D.CPP:14010) / `CLAMP` (14537) and the cockpit to `WRAP` (14108) — so the
+> terrain was over-tiling vs the real device.
+> - **Fix (compat only, `bob_video.cpp`):** `DEV_SetTextureStageState` now records per-stage
+>   `D3DTSS_ADDRESS`/`ADDRESSU`/`ADDRESSV` into `g_tssAddrU/V[8]`. `draw_fvf` applies stage-0's mode as
+>   the GL wrap (`d3d_addr_to_gl`: WRAP→`GL_REPEAT`, MIRROR→`GL_MIRRORED_REPEAT`, CLAMP→`GL_CLAMP_TO_EDGE`)
+>   at **draw time** (D3D addressing is sampler state, independent of the bound texture object) — so we
+>   now match the real device's *sticky* sampler state per draw batch instead of a blanket REPEAT.
+>   `BOB_NOADDR` reverts to REPEAT; `BOB_CLAMP` (probe) still forces clamp.
+> - **Verified (real GL `:0`):** `BOB_TRACE_TSS` confirms the game sets stage-0 `ADDRESS=MIRROR(2)` for
+>   land + `WRAP(1)` for cockpit; the addressing now applies. Full mission flies, airfield buildings +
+>   distant terrain render (frame 130), cockpit unchanged. (A clean pixel A/B is confounded by frame
+>   non-determinism — spinning prop / drifting clouds; the change is faithful-by-construction: it makes
+>   our sampler addressing match D3D's, which was previously ignored.) Bare `./bob` exits 0. Evidence:
+>   `/tmp/r36_addr.png`, `/tmp/r36_compare.png` (addr vs forced-REPEAT terrain strip).
+>
 > ## R3.5 (2026-06-21): TRILINEAR MIPMAPS FIXED — compat now builds the attached mip-level chain; trilinear is the faithful default again (no more CopyMapToSurface crash)
 > Trilinear filtering (`BOB_FILTER=2`, and InitPreferences' real default `filtering=2`) crashed the
 > loader since R1.3c — SIGSEGV in `Lib3D::CopyMapToSurface` ← `UploadAsMipMapLevel` ←

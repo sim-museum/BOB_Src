@@ -1102,6 +1102,11 @@ static FvfLayout fvf_layout(DWORD fvf) {
 
 /* ---- device GL state ---- */
 static GLSurface7* g_devTex[8] = {0};   /* SetTexture per stage */
+/* Per-stage texture addressing (D3DTSS_ADDRESS/U/V). The game sets MIRROR/CLAMP for the
+   land texture (LIB3D.CPP:14010/14537) and WRAP for cockpit/detail; honouring it stops the
+   terrain over-tiling that GL_REPEAT-everywhere produces. Default WRAP (D3DTADDRESS_WRAP=1). */
+static DWORD g_tssAddrU[8] = {1,1,1,1,1,1,1,1};
+static DWORD g_tssAddrV[8] = {1,1,1,1,1,1,1,1};
 static int g_devAlphaBlend = 0;
 /* depth state (D3DRS_ZENABLE/ZWRITEENABLE). Lib3D pre-transforms geometry to screen-space
    RHW quads with a real screen-z; honouring these (BOB_ZTEST) depth-sorts the 3D world so the
@@ -1369,7 +1374,20 @@ static HRESULT DEV_GetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE, LPDWORD
 static HRESULT DEV_SetTextureStageState(IDirect3DDevice7*, DWORD stage, D3DTEXTURESTAGESTATETYPE type, DWORD val) {
 	if (getenv("BOB_TRACE_TSS")) { static int n=0; if(n++<40)
 		fprintf(stderr,"[tss] stage=%lu type=%d val=%lu\n",(unsigned long)stage,(int)type,(unsigned long)val); }
+	/* R3.6: capture per-stage texture addressing so draw_fvf can apply the faithful GL wrap
+	   mode (the game sets MIRROR/CLAMP for land, WRAP for cockpit -- without this, everything
+	   gets GL_REPEAT and the terrain over-tiles). D3DTSS_ADDRESS sets both axes. */
+	if (stage < 8) {
+		if (type == D3DTSS_ADDRESS)  { g_tssAddrU[stage] = g_tssAddrV[stage] = val; }
+		else if (type == D3DTSS_ADDRESSU) g_tssAddrU[stage] = val;
+		else if (type == D3DTSS_ADDRESSV) g_tssAddrV[stage] = val;
+	}
 	return D3D_OK;
+}
+/* D3DTADDRESS -> GL wrap. WRAP=1, MIRROR=2, CLAMP=3 (BORDER=4 -> clamp). */
+static GLenum d3d_addr_to_gl(DWORD a) {
+	switch (a) { case 2: return GL_MIRRORED_REPEAT; case 3: case 4: return GL_CLAMP_TO_EDGE;
+	             default: return GL_REPEAT; }
 }
 static HRESULT DEV_GetTextureStageState(IDirect3DDevice7*, DWORD, D3DTEXTURESTAGESTATETYPE, LPDWORD v) { if(v)*v=0; return D3D_OK; }
 static HRESULT DEV_SetTransform(IDirect3DDevice7*, D3DTRANSFORMSTATETYPE, LPD3DMATRIX) { return D3D_OK; }
@@ -1607,7 +1625,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	if (texMode==-2) texMode = getenv("BOB_TEX_REPLACE") ? GL_REPLACE : GL_MODULATE;
 	if (t) { if (t->texDirty || !t->glTex) upload_texture(t);
 		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
-		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode); }
+		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode);
+		/* R3.6: apply the game's per-stage addressing (D3DTSS_ADDRESS) as the GL wrap mode at
+		   draw time -- it's sampler state in D3D (independent of the bound texture), so set it
+		   here rather than baking REPEAT into the texture object. Stops terrain over-tiling
+		   (land is MIRROR/CLAMP). BOB_NOADDR reverts to REPEAT; BOB_CLAMP forces clamp (probe). */
+		if (!getenv("BOB_NOADDR") && !getenv("BOB_CLAMP")) {
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S, d3d_addr_to_gl(g_tssAddrU[0]));
+			glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T, d3d_addr_to_gl(g_tssAddrV[0]));
+		} }
 	else glDisable(GL_TEXTURE_2D);
 	/* Masked-texture transparency: Lib3D bakes a 1-bit mask into the texture alpha (masked
 	   texels = alpha 0) and expects the device to alpha-test them out -- but never sets the
