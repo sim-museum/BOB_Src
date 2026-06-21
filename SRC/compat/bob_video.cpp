@@ -355,6 +355,8 @@ struct GLSurface7 {
 	size_t bytes;
 	GLSurface7* back;               /* attached back buffer (complex primary) */
 	GLSurface7* zbuf;               /* attached z-buffer */
+	GLSurface7* mip;                /* attached next-lower mip level (DDSCAPS_MIPMAP chain) */
+	int   isMip;                    /* a mip sub-level surface (upload target only, never bound) */
 	int   isPrimary;
 	GLuint glTex;                   /* GL texture (lazily created for texture surfaces) */
 	GLuint fbo;                     /* FBO for render-to-texture (RTT surfaces; lazy) */
@@ -470,6 +472,16 @@ static HRESULT SURF_GetAttachedSurface(IDirectDrawSurface7* This, LPDDSCAPS2 cap
 	GLSurface7* s = (GLSurface7*)This;
 	if (!out) return DDERR_INVALIDPARAMS;
 	if (caps && (caps->dwCaps & DDSCAPS_ZBUFFER)) { *out = (IDirectDrawSurface7*)s->zbuf; return s->zbuf?DD_OK:DDERR_NOTFOUND; }
+	/* DDSCAPS_MIPMAP: the next-lower mip level of a complex mipmap texture (R3.5 trilinear).
+	   DX7 auto-creates the whole chain when a DDSCAPS_COMPLEX|DDSCAPS_MIPMAP surface is made;
+	   the game walks it level by level (UploadAsMipMapLevel) to upload each downsampled map. */
+	if (caps && (caps->dwCaps & DDSCAPS_MIPMAP)) {
+		/* DX GetAttachedSurface AddRefs the returned surface; the game's mip-walk loop balances
+		   with Release(). Without the AddRef the loop's Release would free a sub-level mid-walk
+		   (dangling-chain). The chain's owning ref (1, from make_surface) is freed at base teardown. */
+		if (s->mip) ++s->mip->ref;
+		*out = (IDirectDrawSurface7*)s->mip; return s->mip?DD_OK:DDERR_NOTFOUND;
+	}
 	*out = (IDirectDrawSurface7*)s->back;          /* default: back buffer */
 	return s->back ? DD_OK : DDERR_NOTFOUND;
 }
@@ -818,6 +830,17 @@ static ULONG   SURF_Release(IDirectDrawSurface7* This) {
 		if (g_ctx && (unsigned long)SDL_ThreadID()==g_glOwner) { glDeleteTextures(1,&s->glTex); g_glTexDeleted++; }
 		else g_glTexLeakedOnFree++;
 	}
+	/* Free the attached mip sub-level chain (R3.5): these are owned by the base surface, never
+	   independently released to zero by the game (GetAttachedSurface AddRefs keep them >=1), so
+	   they must be torn down here. Walk + free each (registry, GL texture, bits, struct). */
+	for (GLSurface7* m=s->mip; m; ) {
+		GLSurface7* next=m->mip;
+		for (int i=0;i<g_nSurf;i++) if (g_allSurf[i]==m) { g_allSurf[i]=NULL; break; }
+		if (m->glTex && g_ctx && (unsigned long)SDL_ThreadID()==g_glOwner) { glDeleteTextures(1,&m->glTex); g_glTexDeleted++; }
+		if (m->bits) free(m->bits);
+		free(m);
+		m=next;
+	}
 	if (s->bits) free(s->bits);
 	free(s);
 	return 0;
@@ -840,6 +863,26 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 	          ? (int)in->ddpfPixelFormat.dwRGBBitCount : 16;
 	VLOG("CreateSurface %dx%d bpp%d caps=%08x\n", s->w, s->h, s->bpp,
 	     in?(unsigned)in->ddsCaps.dwCaps:0);
+	/* R3.5: a complex mipmap texture (DDSCAPS_COMPLEX|DDSCAPS_MIPMAP, trilinear path) must
+	   carry its full attached sub-level chain, exactly as the DX7 driver would auto-create it
+	   -- the game walks it (GetAttachedSurface(DDSCAPS_MIPMAP)) to upload each downsampled
+	   level. Without the chain, UploadAsMipMapLevel gets a NULL target and CopyMapToSurface
+	   crashes (the long-standing trilinear NULL-deref). GL regenerates the actual sampled mips
+	   from level 0 in upload_texture, so these sub-surfaces are upload sinks for fidelity only. */
+	if (in && (in->ddsCaps.dwCaps & DDSCAPS_MIPMAP) && (in->ddsCaps.dwCaps & DDSCAPS_COMPLEX)) {
+		int levels = (in->dwFlags & DDSD_MIPMAPCOUNT) && in->dwMipMapCount>0 ? (int)in->dwMipMapCount : 0;
+		GLSurface7* cur = s; int w=s->w, h=s->h;
+		for (int lvl=1; (levels?lvl<levels:(w>1||h>1)) && lvl<16; lvl++) {
+			w=(w>1)?w>>1:1; h=(h>1)?h>>1:1;
+			DDSURFACEDESC2 md = s->desc;
+			md.dwFlags = DDSD_WIDTH|DDSD_HEIGHT|DDSD_PIXELFORMAT|DDSD_CAPS;
+			md.dwWidth=w; md.dwHeight=h;
+			md.ddsCaps.dwCaps = DDSCAPS_TEXTURE|DDSCAPS_MIPMAP;
+			GLSurface7* sub = make_surface(&md, w, h);
+			sub->isMip = 1;
+			cur->mip = sub; cur = sub;
+		}
+	}
 	return s;
 }
 
@@ -1121,7 +1164,11 @@ static void upload_texture(GLSurface7* s) {
 	   they sharpen the terrain into vertical stripes (the UVs sample a ~1-texel strip;
 	   v barely varies). Default off until the terrain-UV mapping is fixed -- the blurred
 	   look is less wrong than stripes. */
-	int wantMip = getenv("BOB_MIP") != 0;
+	/* Mipmaps: requested explicitly (BOB_MIP) OR when this is a real trilinear texture -- the
+	   game only builds the attached mip chain (s->mip) for HINT_TRILINEAR (mipMapCount>1); a
+	   bilinear texture gets dwMipMapCount=1 -> no chain -> no GL mips (unchanged). BOB_NOMIP
+	   forces the old no-mip behaviour for A/B. (R3.5) */
+	int wantMip = getenv("BOB_NOMIP") ? 0 : (getenv("BOB_MIP")!=0 || s->mip!=NULL);
 	if (wantMip) glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 	const DDPIXELFORMAT& pf = s->desc.ddpfPixelFormat;
 	if (getenv("BOB_TRACE_TEXFMT") && s->bpp==16) { static int n=0; if(n++<24)

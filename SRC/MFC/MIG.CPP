@@ -567,7 +567,10 @@ BOOL CMIGApp::InitInstance()
 		Save_Data.SetUnits();
 		if (!getenv("BOB_NOINITPREFS")) {
 			Save_Data.InitPreferences((int)Master_3d.winst);
-			Save_Data.filtering = 1;                       /* R1.3c: pin BILINEAR */
+			/* R3.5: trilinear (InitPreferences' real default, filtering=2) now works -- the
+			   CopyMapToSurface NULL-deref is fixed (attached mip-chain in compat). Honour it;
+			   BOB_BILINEAR forces filtering=1 for A/B / safety. */
+			if (getenv("BOB_BILINEAR")) Save_Data.filtering = 1;
 		}
 		if (!getenv("BOB_NOCLOUDS")) {
 			Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
@@ -626,10 +629,12 @@ BOOL CMIGApp::InitInstance()
 		bool initPrefs = !getenv("BOB_NOINITPREFS");
 		if (initPrefs) {
 			Save_Data.InitPreferences((int)Master_3d.winst);
-			/* R1.3c: InitPreferences sets filtering=2 (TRILINEAR) -> CopyMapToSurface NULL-deref in the
-			   mip upload (deferred compat gap, R3.5). Pin BILINEAR; BOB_FILTER still overrides below. */
-			Save_Data.filtering = 1; /* BILINEAR */
-			fprintf(stderr,"[boot] R1.4: real init via SaveData::InitPreferences (default; BOB_NOINITPREFS reverts) -- texQ=%d filtering=%d[bilinear] vol.sfx=%d\n",
+			/* R3.5 (was R1.3c): InitPreferences sets filtering=2 (TRILINEAR). The mip upload
+			   (UploadAsMipMapLevel -> CopyMapToSurface) used to NULL-deref because compat had no
+			   attached mip-level chain; that's now fixed (DDSCAPS_MIPMAP sub-surfaces + GL auto-mips),
+			   so honour the real trilinear default. BOB_BILINEAR forces filtering=1 for A/B. */
+			if (getenv("BOB_BILINEAR")) Save_Data.filtering = 1;
+			fprintf(stderr,"[boot] R1.4: real init via SaveData::InitPreferences (default; BOB_NOINITPREFS reverts) -- texQ=%d filtering=%d vol.sfx=%d\n",
 				(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx);
 		}
 		/* BOB_HUD: enable the in-flight HUD info bar (altitude/speed readout), normally toggled by

@@ -1,5 +1,41 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R3.5 (2026-06-21): TRILINEAR MIPMAPS FIXED — compat now builds the attached mip-level chain; trilinear is the faithful default again (no more CopyMapToSurface crash)
+> Trilinear filtering (`BOB_FILTER=2`, and InitPreferences' real default `filtering=2`) crashed the
+> loader since R1.3c — SIGSEGV in `Lib3D::CopyMapToSurface` ← `UploadAsMipMapLevel` ←
+> `LandScape::InitTextures`. It was pinned to bilinear as a stopgap. Now fixed; real GL (`:0`) A/B'd.
+> - **Root cause (gdb backtrace):** for `HINT_TRILINEAR` the game creates the land texture as a
+>   `DDSCAPS_TEXTURE|DDSCAPS_COMPLEX|DDSCAPS_MIPMAP` surface with `dwMipMapCount` (5+) and **expects
+>   the DX7 driver to auto-create the whole attached mip sub-level chain** (LIB3D.CPP:7118-7146). It
+>   then walks the chain with `GetAttachedSurface(DDSCAPS_MIPMAP)` to upload each downsampled level.
+>   Our compat created **no** sub-levels, so `GetAttachedSurface` returned NULL → `UploadAsMipMapLevel`
+>   handed a NULL target to `CopyMapToSurface` → `targetSurface->GetSurfaceDesc(NULL)` SIGSEGV.
+> - **Fix (compat only, `bob_video.cpp`):** `make_surface` now builds the attached mip chain for a
+>   complex mipmap texture — `dwMipMapCount` sub-surfaces (each half-size, allocated bits), linked via
+>   a new `GLSurface7::mip`. `SURF_GetAttachedSurface(DDSCAPS_MIPMAP)` returns the next level **and
+>   AddRefs it** (DX semantics) so the game's mip-walk loop's balanced `Release()` can't free a
+>   sub-level mid-walk (the dangling-chain class from the surface-refcount comment). `SURF_Release`
+>   tears the chain down with the base. `upload_texture` enables GL auto-mipmap (`GL_GENERATE_MIPMAP`
+>   + `LINEAR_MIPMAP_LINEAR` + existing anisotropy) **only** for surfaces that actually carry a chain
+>   (`s->mip`, i.e. real trilinear — bilinear gets `dwMipMapCount=1` → no chain → unchanged). GL
+>   regenerates the sampled mips from level 0, so the per-level uploads are fidelity sinks.
+> - **Lifted the bilinear pins (R1.3c) in the MIG.CPP boot scaffold:** `InitPreferences`' real
+>   `filtering=2` (trilinear) now stands; `BOB_BILINEAR` forces bilinear for A/B. `BOB_NOMIP` disables
+>   the GL mips. `BOB_FILTER` override unchanged.
+> - **Verified (real GL `:0`):** `BOB_FILTER=2` was SIGSEGV (exit 139) → now flies full mission, frame
+>   120 88.6% non-black, cockpit solid, distant terrain smooth (no mip stripes — anisotropy holds).
+>   **Default flight** now boots `filtering=2` and renders faithfully (88.8% non-black). Bare `./bob`
+>   exits 0. Evidence: `/tmp/r35_fixed.png` (trilinear), `/tmp/r35_default.png` (new default).
+>
+> ## R3.2 (2026-06-21 follow-up): depth-sort A/B on real GL — forced depth-write REGRESSES the propeller (not default-ready)
+> Re-ran the gated `BOB_ZDEPTH` A/B with real GL available (the test that was "awaiting a pilot").
+> Confirmed the spike is **not** ready to default: with `BOB_ZDEPTH=1` the **lower propeller blade is
+> depth-rejected** (forced depth-write on screen-space RHW geometry occludes the prop disc), a visible
+> regression vs the painter's-order default. Also reproduced the team's note that the headless autofly
+> stays parked (Speed 0, Power 0) so the true *nose-down terrain-through-cockpit* case still needs a
+> powered-flight repro. Banked finding; `BOB_ZDEPTH` stays gated/off. Evidence: `/tmp/r32_off.png` vs
+> `/tmp/r32_on.png` (note the missing prop blade with ZDEPTH on).
+>
 > ## R3.2 (2026-06-17): "landscape shows through cockpit" — depth-sort spike, real-GL A/B; correct z-mapping + opaque-only depth-write (gated BOB_ZDEPTH)
 > Pilot screenshot: the **landscape shows through the cockpit panel** (and clouds over the canopy) —
 > the long-standing R3.2 depth/draw-order bug. The cockpit, terrain and clouds are all pre-transformed
