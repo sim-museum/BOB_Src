@@ -180,6 +180,54 @@ static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_D
 static RFullPanelDial* g_bobActiveFP = NULL;
 static struct { int x,y,w,h; } g_bobMenuRect[10];
 static int g_bobMenuN = 0;
+
+/* R4.1: the Campaigns side-select screen (RFullPanelDial::singleplayer -> SinglePlayerInit ->
+   SideSelect dialog). Its choices are not text menu items but POLYGON hit-areas over the
+   RAF/Luftwaffe art -- the faithful regions are SideSelect::SideSelectOutlines (SIDESEL.CPP),
+   authored at 1024x768; a click in a polygon fires OnSelectRlistbox(index) (== the real
+   OnClickedRaf/Luftwaffe/Cancel -> FullPanel()->OnSelectRlistbox path). The text-menu loop in
+   bob_draw_menu breaks on the screen's NULL captions, so without this the screen is unnavigable.
+   We replicate the polygons here (1024x768, scaled to the live res) + the standard ray-cast test. */
+struct BobPoly { int n; int pt[6][2]; int item; };
+static const BobPoly g_sideSelectPolys[] = {
+	{ 4, {{0,0},{700,0},{300,650},{0,650}},                 0 },  /* RAF    -> item 0 */
+	{ 5, {{1024,0},{1024,768},{300,768},{300,650},{700,0}}, 1 },  /* LW     -> item 1 */
+	{ 4, {{0,650},{300,650},{300,768},{0,768}},             2 },  /* Cancel -> item 2 */
+};
+static bool bob_pt_in_poly(int x, int y, const int pt[][2], int n) {
+	bool in=false;
+	for (int i=0,j=n-1; i<n; j=i++) {
+		int xi=pt[i][0], yi=pt[i][1], xj=pt[j][0], yj=pt[j][1];
+		if (((yi>y)!=(yj>y)) && (x < (long)(xj-xi)*(y-yi)/(double)(yj-yi)+xi)) in=!in;
+	}
+	return in;
+}
+/* Hit-test a click (live framebuffer coords) against the side-select art polygons, scaled from
+   1024x768 to the current resolution (4:3). Returns the OnSelectRlistbox item index, or -1. */
+static int bob_sideselect_hit(int cx, int cy, int resW) {
+	double sx = resW/1024.0, sy = (resW*3/4)/768.0;
+	for (unsigned k=0; k<sizeof(g_sideSelectPolys)/sizeof(g_sideSelectPolys[0]); k++) {
+		int scaled[6][2]; const BobPoly& P=g_sideSelectPolys[k];
+		for (int i=0;i<P.n;i++){ scaled[i][0]=(int)(P.pt[i][0]*sx); scaled[i][1]=(int)(P.pt[i][1]*sy); }
+		if (bob_pt_in_poly(cx,cy,scaled,P.n)) return P.item;
+	}
+	return -1;
+}
+/* Centroid of side-select polygon `item` (live res) -- the synthetic AUTOCLICK target so the
+   headless campaign-nav test reaches RAF/LW/Cancel without a display. */
+static bool bob_sideselect_centroid(int item, int resW, int* ox, int* oy) {
+	double sx = resW/1024.0, sy = (resW*3/4)/768.0;
+	for (unsigned k=0; k<sizeof(g_sideSelectPolys)/sizeof(g_sideSelectPolys[0]); k++) {
+		const BobPoly& P=g_sideSelectPolys[k];
+		if (P.item!=item) continue;
+		long mx=0,my=0; for(int i=0;i<P.n;i++){ mx+=P.pt[i][0]; my+=P.pt[i][1]; }
+		*ox=(int)(mx/P.n*sx); *oy=(int)(my/P.n*sy); return true;
+	}
+	return false;
+}
+static bool bob_on_sideselect() {
+	return g_bobActiveFP && g_bobActiveFP->m_currentscreen == &RFullPanelDial::singleplayer;
+}
 /* Draw the screen's menu items (textlists) with the game's font, centred in the left column
    to match the wine reference. Records each item's rect for click hit-testing. Bring-up:
    bypasses the OLE RListBox layout/highlight. */
@@ -463,12 +511,18 @@ extern "C" void bob_frontend_tick(void)
 	   then click the Sound tab) -- one click every 120 ticks, to walk into sub-screens. */
 	const char* ac = getenv("BOB_AUTOCLICK");
 	if (!got && ac) { static int t=0; static int seq=0;
-		if (++t % 120 == 0 && g_bobMenuN>0) {
+		bool sideSel = bob_on_sideselect();   /* R4.1: art-polygon screen has no text menu */
+		if (++t % 120 == 0 && (g_bobMenuN>0 || sideSel)) {
 			const char* p = ac; for (int k=0; k<seq && p; k++) { p=strchr(p,','); if(p) p++; }
 			if (p && *p) {
-				int n=atoi(p); if(n<0||n>=g_bobMenuN) n=0;
-				cx=g_bobMenuRect[n].x+g_bobMenuRect[n].w/2; cy=g_bobMenuRect[n].y+g_bobMenuRect[n].h/2; got=true;
-				seq++;
+				int n=atoi(p);
+				int resW = RFullPanelDial::resolutions[g_bobActiveFP->m_currentres];
+				if (sideSel && bob_sideselect_centroid(n, resW, &cx, &cy)) { got=true; seq++; }
+				else if (g_bobMenuN>0) {
+					if(n<0||n>=g_bobMenuN) n=0;
+					cx=g_bobMenuRect[n].x+g_bobMenuRect[n].w/2; cy=g_bobMenuRect[n].y+g_bobMenuRect[n].h/2; got=true;
+					seq++;
+				}
 			}
 		}
 	}
@@ -482,6 +536,18 @@ extern "C" void bob_frontend_tick(void)
 				consumed = true;
 				break;
 			}
+		/* R4.1: Campaigns side-select -- hit-test the RAF/LW/Cancel art polygons (faithful
+		   SideSelectOutlines) and fire the real OnSelectRlistbox navigation. */
+		if (!consumed && bob_on_sideselect()) {
+			int resW = RFullPanelDial::resolutions[g_bobActiveFP->m_currentres];
+			int hit = bob_sideselect_hit(cx, cy, resW);
+			if (hit >= 0) {
+				fprintf(stderr,"[frontend] click (%d,%d) -> side-select item %d (%s)\n", cx, cy, hit,
+					hit==0?"RAF":hit==1?"Luftwaffe":"Cancel");
+				g_bobActiveFP->OnSelectRlistbox(hit, hit);
+				consumed = true;
+			}
+		}
 		/* missed the menu -> try the active panels' hosted combos (cycle on click) */
 		if (!consumed && bobOleDraw())
 			for (int d=0; d<3; d++) {

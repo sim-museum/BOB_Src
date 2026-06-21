@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.1 (2026-06-21): CAMPAIGN FRONT-END bring-up — the Campaigns flow is navigable (side-select polygon hit-areas + campaignselect no longer crashes)
+> The pilot's "empty campaign screen" — opened it up on real GL. Two fixes make the Campaigns flow
+> reach a rendered phase-select screen (was: side-select unnavigable, then crash on entry).
+> - **Side-select navigation (RAF / Luftwaffe).** `Campaigns` → `RFullPanelDial::singleplayer` →
+>   `SinglePlayerInit` → a `SideSelect` dialog whose choices are **polygon hit-areas over the RAF/LW
+>   art**, not text menu items (so `bob_draw_menu`'s caption loop registered no click rects → the
+>   screen was a dead end). Wired the faithful regions in the front-end scaffold (`FULLPSYS.CPP`):
+>   replicated `SideSelect::SideSelectOutlines` (the exact 1024×768 polygons from `SIDESEL.CPP`), a
+>   standard ray-cast point-in-polygon test scaled to the live res, and on a hit fire the game's own
+>   `OnSelectRlistbox(0/1/2)` — i.e. the real `OnClickedRaf/Luftwaffe/Cancel` navigation. `BOB_AUTOCLICK`
+>   drives it via polygon centroids. Verified: `click (250,325) -> side-select item 0 (RAF)`.
+> - **`campaignselect` no longer crashes (hosted-listbox columns).** `CSCampaign::OnInitDialog`
+>   `AddString`s the four BoB phases into columns 0–3 **without** calling `AddColumn` — the real OCX
+>   gets its column count from its **persisted property bag**; our host boots from an empty
+>   `CPropExchange`, so `m_list` had 0 columns and `AddString(text, col)` derefed a NULL list position
+>   (`CRListBoxCtrl::AddString` SIGSEGV). Fix (compat-side, `bob_ole_rlistbox.cpp`): `ensureColumns(col)`
+>   auto-creates missing columns on demand before `AddString` (default width 100; real widths recompute
+>   at draw via `Shrink`; `m_hWnd` cleared around `AddColumn` to skip the DC/global-font scaling). A
+>   general fix for any listbox that relies on persisted columns.
+> - **Result:** Campaigns → RAF → **campaignselect renders** (artnum 27922) — the four phases
+>   *Convoys / Eagle Attack / Critical Period / Blitz* populate the list, with the pilot portrait +
+>   phase description. No crash. The `Begin → campaignentername` step is the next layer (enter-name
+>   screen not yet brought up). No regression: bare `./bob` 0; QM still flies (`InThe3D=1`). Evidence:
+>   `/tmp/r41_camp.png` (side-select art), `/tmp/r41_campsel2.png` (phase-select).
+>
 > ## R3.6 (2026-06-21): per-stage texture ADDRESSING — honour the game's MIRROR/CLAMP/WRAP (was GL_REPEAT everywhere → terrain over-tiling)
 > The compat `SetTextureStageState` was a no-op, so the game's per-stage `D3DTSS_ADDRESS` was
 > dropped and every texture sampled `GL_REPEAT`. The game explicitly sets the land texture to

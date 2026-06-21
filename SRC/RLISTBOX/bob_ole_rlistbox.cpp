@@ -33,10 +33,23 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
         CRect rc(0, 0, w, h);
         OnDraw(pdc, rc, rc);
     }
+    /* R4.1: some hosted listboxes (e.g. CSCampaign's IDC_RLIST_CAMPAIGNS) rely on a column
+       count persisted in the OCX property bag rather than calling AddColumn -- the game just
+       AddString's into column 0..N. Our host boots from an empty CPropExchange, so m_list has
+       no columns and AddString(text, col) derefs a NULL position. Auto-create the missing
+       columns on demand (default width 100; real widths are recomputed at draw via Shrink).
+       m_hWnd is cleared around AddColumn so it skips the GetDC/global-font width scaling. */
+    void ensureColumns(int col) {
+        while ((int)m_list.GetCount() <= col) {
+            HWND save = m_hWnd; m_hWnd = 0;
+            AddColumn(100);
+            m_hWnd = save;
+        }
+    }
     void dispatch(DISPID id, VARTYPE /*vtRet*/, void* pvRet, va_list ap) override {
         switch (id) {
         case 55: { short r = GetCount();                       if (pvRet) *(short*)pvRet = r; } break;
-        case 56: { const char* t = va_arg(ap, const char*); int i = va_arg(ap, int); AddString(t ? t : "", (short)i);
+        case 56: { const char* t = va_arg(ap, const char*); int i = va_arg(ap, int); ensureColumns(i); AddString(t ? t : "", (short)i);
                    if (bob_ole_trace()) fprintf(stderr, "[ole]   AddString[col %d] \"%s\"  (cols=%d, rows=%d)\n", i, t?t:"", m_list.GetCount(), (int)GetCount()); } break;
         case 57: { int r = va_arg(ap, int); int c = va_arg(ap, int); DeleteString((short)r, (short)c); } break;
         case 58: Clear(); break;

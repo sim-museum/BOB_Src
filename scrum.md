@@ -157,7 +157,7 @@ The DoD increment shipped (bare `./bob` boots + plays, no env vars) and a human 
 *Play the strategic Battle-of-Britain campaign, not just Quick Missions (the empty campaign screen the pilot hit).*
 | ID | Story | Pts | Status |
 |---|---|---|---|
-| R4.1 | **Campaign front-end bring-up** — campaign-select / new-campaign / enter-name screens host their R* controls + data (was an empty screen). | 8 | ☐ |
+| R4.1 | **Campaign front-end bring-up** — ◐ **IN PROGRESS (2026-06-21).** Campaigns flow now navigable to the phase-select screen. (1) Side-select (RAF/LW) wired via the faithful `SideSelectOutlines` polygon hit-areas → real `OnSelectRlistbox` nav (`FULLPSYS.CPP`); the art-region screen was a dead end (no text menu). (2) `campaignselect` crash fixed: `CSCampaign` AddString's into columns 0–3 without AddColumn (relies on the persisted OCX column count); host now `ensureColumns()` auto-creates them (`bob_ole_rlistbox.cpp`). **campaignselect renders** — the 4 BoB phases (Convoys/Eagle Attack/Critical Period/Blitz) + portrait + description. Remaining: `Begin → campaignentername` (enter-name screen), then into the campaign proper. | 8 | ◐ |
 | R4.2 | **Strategic map screen** — `LaunchMap` / `Persons4::StartUpMapWorld`: render + interact (squadrons, raids, scramble/intercept). | 13 | ☐ |
 | R4.3 | **Campaign mission flow** — briefing → fly → debrief → next day/period through the game's own flow (`MMC.NextMission`, day/period progression, end-of-day/war review). | 13 | ☐ |
 | R4.4 | **Campaign save/load** — persist + resume a campaign through the real menu (binary-compatible). | 8 | ☐ |
