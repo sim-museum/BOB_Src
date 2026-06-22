@@ -429,7 +429,12 @@ extern "C" void bob_frontend_tick(void)
 		bob_map_paint_begin();
 		RDialog::m_pView->UpdateBitmaps(&dc, rc);
 		bob_map_paint_end();
-		static int mp = 0; if (mp++ < 3) fprintf(stderr, "[map] painted strategic map %dx%d (tick)\n", sw, sh);
+		static int mp = 0; if (getenv("BOB_TRACE_MAP") && mp++ < 3) {
+			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;
+			fprintf(stderr, "[map] painted strategic map %dx%d zoom=%.2f scroll=(%d,%d) worlditems=%d\n",
+				sw, sh, (double)RDialog::m_pView->m_zoom,
+				(int)RDialog::m_pView->m_scrollpoint.x, (int)RDialog::m_pView->m_scrollpoint.y, nItems);
+		}
 		bob_gdi_present();
 		return;
 	}
