@@ -39,6 +39,11 @@ class CMapDlg : public CDialog
 // Construction
 public:
 	UINT	maptimer;
+#if BOB_LINUX
+	/* R4.3: the MFC WM_TIMER doesn't fire on Linux, so the campaign clock never advances.
+	   The map-paint tick drives this each ~second to run the day (OnTimer is protected). */
+	void bob_drive_timer() { OnTimer(maptimer); }
+#endif
 //DeadCode JIM 9Nov00 	enum	{MAX_SAGINVALIDATES=256};
 //DeadCode JIM 8Nov00 	Coords3D	itemrefreshrequests[MAX_SAGINVALIDATES];
 	bool	InvalidateAnotherItem();

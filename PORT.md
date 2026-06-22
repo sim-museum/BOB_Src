@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.3 (2026-06-21): campaign-clock drive — SPIKE; the MFC WM_TIMER is wired (forwarder) but the sim crashes pre-deployment
+> Started the campaign loop (R4.3). On Windows the strategic map runs off a 1Hz `WM_TIMER`
+> (`SetTimer(TIMER_MAP,1000)`) → `CMapDlg::OnTimer` advances `MMC.currtime`, runs `StartOfDay`, then
+> `PerformMoveCycle`/`PerformNextPeriod` (raids move, periods tick). On Linux the MFC timer never fires,
+> so the campaign is frozen — no raids, no dynamic map icons.
+> - **Wired the clock (compat scaffold):** a `BOB_LINUX` public forwarder `CMapDlg::bob_drive_timer()`
+>   (the handler is protected) called from the map-paint tick (`BOB_MAP_TIMER`, ~few×realtime).
+> - **Finding (gdb):** driving it advances the clock + `StartOfDay`, but the **first `PerformMoveCycle`
+>   SIGSEGVs in `SAGairgrp::MoveAllSAGs`** ← `Profile::MoveSAGs` — the air-group movement runs before the
+>   campaign is **deployed/initialised** for the sim (no packages/squadrons placed by the click-through;
+>   on Windows the player deploys on the map before the day starts). Not the toolbars (those weren't
+>   reached). This is the deeper R4.3 thread: campaign deployment/`Todays_Packages` setup + likely an
+>   uninit-state grind (the R1.3/R4.5 class) to make the sim heap-clean.
+> - **Status:** the clock-drive mechanism is built + the sim blocker characterized; **gated OFF by
+>   default** (`BOB_MAP_TIMER` to opt in) so the **map render stays stable** (no crash, no regression;
+>   bare `./bob` 0). Carried: deploy the campaign before running the day, then crack the MoveAllSAGs sim
+>   crash. Evidence: `/tmp/r43t.log` (sim SIGSEGV bt), default map still renders.
+>
 > ## R4.2 (2026-06-21): STRATEGIC MAP RENDERS — the campaign map (terrain/coast/sectors/cities) draws on Linux
 > The campaign payoff: clicking through Campaigns → RAF → Begin → Begin now shows the **strategic
 > Battle-of-Britain map** — South-East England + the Channel + the French coast, RAF Fighter Command

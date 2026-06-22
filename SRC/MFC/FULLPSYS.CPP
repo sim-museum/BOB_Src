@@ -426,6 +426,13 @@ extern "C" void bob_frontend_tick(void)
 		int sw = 1024, sh = 768; bob_gdi_screen_size(&sw, &sh);
 		CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1; dc.m_bobVpX = 0; dc.m_bobVpY = 0;
 		CRect rc(0, 0, sw, sh);
+		/* R4.3 (experimental, BOB_MAP_TIMER): drive the campaign clock -- the MFC WM_TIMER doesn't
+		   fire on Linux, so the day never starts. CMapDlg::OnTimer advances the clock + runs the
+		   sim, but PerformMoveCycle->MoveAllSAGs SIGSEGVs because the campaign isn't deployed/
+		   initialised for the sim yet (a deeper R4.3 campaign-state thread). Default OFF so the
+		   map render stays stable; opt-in to continue the campaign-loop bring-up. */
+		static int tc = 0; if (getenv("BOB_MAP_TIMER") && (tc++ % 12) == 0)
+			RDialog::m_pView->m_mapdlg.bob_drive_timer();
 		bob_map_paint_begin();
 		RDialog::m_pView->UpdateBitmaps(&dc, rc);
 		bob_map_paint_end();
