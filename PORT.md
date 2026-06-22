@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R6.2 (2026-06-21): font scale — multi-line text controls no longer render at giant box-height font
+> The campaign phase-description (and any tall multi-line text control) drew its text **enormous and
+> overlapping** — e.g. campaignselect's "During this phase the Luftwaffe attacked British shipping…"
+> filled the lower third of the screen in one giant line.
+> - **Root cause (`bob_ole_draw_panel`, `bob_ole.cpp`):** the hosted control's text/font height was set
+>   to the control's **box height** (`dluY(r.h) - 4`). For a single-line label/combo (the standard
+>   control is 16 DLU ≈ 26px tall) that's the right font size, but a tall **multi-line** text control
+>   (the `PhaseDescription` `CRStatic`, many DLU tall) then drew its font at the full box height.
+> - **Fix:** the dialog font is one text line regardless of how tall the box is — cap the font at the
+>   single-line height (16-DLU box) for clearly multi-line controls (box > 1.8 lines); single-line
+>   controls keep their exact current size (no regression).
+> - **Verified (real GL `:0`):** campaignselect description now reads at a normal size; the GFX/Sound
+>   config combos + labels are unchanged. Bare `./bob` 0. Evidence: `/tmp/r62_campsel.png` (fixed
+>   description), `/tmp/r62_cfg.png` (config screen unregressed) vs `/tmp/r41_campsel2.png` (giant before).
+>
+> ## R4.2 (2026-06-21): strategic-map SPIKE — characterized; it's a parallel UI subsystem (map view + CMainFrame toolbars), carried as a multi-session story
+> Spiked the strategic map (the campaign payoff). With R4.1 the campaign front-end is navigable, and
+> enter-name's `Begin` fires `LaunchMapFirstTime` → `Persons4::StartUpMapWorld` (clears `pItem`,
+> `InitTables`, `LoadSubPiece(FIL_1_MAINWLD)`, `LoadConvoys`, packages — the strategic-world **data**
+> load, runs) → `RFullPanelDial::LaunchMap` → **`CMIGView::LaunchMap`**. That last step is the wall:
+> it `m_pfullpane->DestroyWindow()`s the front-end, then `ShowToolbars` + `m_titlebar/m_reportbar`
+> redraw + `m_mapdlg.ShowWindow(SW_SHOW)` — i.e. it hands off to a **whole separate UI**: the scrolling
+> strategic **map view** (`m_mapdlg`) and the `CMainFrame` **toolbars/title/report bars**. None of that
+> is wired for compat rendering yet (the front-end `RFullPanelDial` got that treatment over many
+> increments; the map is the equivalent effort). gdb shows **no crash** — after the fullpane is
+> destroyed nothing paints the map, the window goes idle and an eventual SDL_QUIT exits.
+> - **Conclusion (scrum):** R4.2 is a genuine ~13-pt parallel-subsystem bring-up (map-view paint +
+>   CMainFrame toolbars + map scroll/interaction), not a half-sprint item. Banked the spike +
+>   characterization; carried as a dedicated story. No code changed; no regression.
+>
 > ## R4.1 (2026-06-21): CAMPAIGN FRONT-END bring-up — the Campaigns flow is navigable (side-select polygon hit-areas + campaignselect no longer crashes)
 > The pilot's "empty campaign screen" — opened it up on real GL. Two fixes make the Campaigns flow
 > reach a rendered phase-select screen (was: side-select unnavigable, then crash on entry).

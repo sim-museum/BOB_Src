@@ -109,7 +109,16 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         int hpx = dluY(r.h);
         CDC dc; dc.m_hDC = (HDC)1; dc.m_bobScreen = true;
         dc.m_bobVpX = sx; dc.m_bobVpY = sy;
-        dc.m_bobTextH = hpx > 4 ? hpx - 4 : hpx;
+        /* R6.2: the text/font height tracked the control's BOX height (hpx-4). That's right for a
+           single-line label/combo (the standard control is 16 DLU tall), but a TALL multi-line text
+           control -- e.g. the campaign PhaseDescription RStatic -- then drew its font at the full
+           box height -> giant overlapping text. The dialog font is one text line regardless of how
+           tall the text box is: cap the font at the single-line height for clearly multi-line boxes;
+           single-line controls keep their current size (no regression). */
+        int oneLineBox = dluY(16);                 /* standard single-line control box (~26px) */
+        int textH = hpx > 4 ? hpx - 4 : hpx;
+        if (hpx > oneLineBox * 9 / 5) textH = oneLineBox - 4;   /* multi-line area -> one-line font */
+        dc.m_bobTextH = textH;
         host->draw(&dc, dluX(r.w), hpx);
         host->sx = sx; host->sy = sy; host->sw = dluX(r.w); host->sh = hpx;  /* for click hit-test */
         if (bob_ole_trace()) fprintf(stderr, "[ole] draw panel ctrl id=%d at (%d,%d) %dx%d\n", host->ctrlId, sx, sy, dluX(r.w), hpx);

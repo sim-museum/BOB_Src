@@ -176,7 +176,7 @@ The DoD increment shipped (bare `./bob` boots + plays, no env vars) and a human 
 | ID | Story | Pts | Status |
 |---|---|---|---|
 | R6.1 | **Front-end blit subsystem** — `MaskIcon`/`BitBlt` → framebuffer: combo box-art, dropdown arrows, button icons, all screen art. | 8 | ☐ |
-| R6.2 | **Font / DPI fidelity** — native-DLU fonts + coherent scale pass (squadron-select huge-overlapping-text bug). | 5 | ☐ |
+| R6.2 | **Font / DPI fidelity** — ◐ **multi-line text fixed (2026-06-21).** The huge-overlapping-text bug was `bob_ole_draw_panel` setting the font height = the control's BOX height — right for single-line labels/combos, but a tall multi-line text control (campaign PhaseDescription `CRStatic`) drew its font at the full box height. Fixed: cap the font at the single-line (16-DLU) height for multi-line boxes; single-line controls unchanged. campaignselect description now readable; config screens unregressed. Remaining: native-DLU base-font pass + multi-line word-wrap to fill the box. | 5 | ◐ |
 | R6.3 | **Remaining UI screens** — loadout, readyroom, options tabs (Controls/Sim/2D), diary, all debrief variants. | 8 | ☐ |
 | R6.4 | **Replay** — record + playback through the menu (the debrief Replay option). | 8 | ☐ |
 | R6.5 | **Save/load round-trip** — all game state (settings/campaign/replay) binary-compatible. | 5 | ☐ |
