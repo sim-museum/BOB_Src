@@ -410,8 +410,30 @@ int bob_process_flight_close(void)
 /* Called each idle from CMIGApp::OnIdle (under BOB_FRONTEND): if a menu item was clicked,
    fire the existing OnSelectRlistbox(i) which navigates to that item's screen (+ repaints).
    A click that misses the menu but lands on a hosted combo cycles that combo's value. */
+extern "C" int g_bob_map_active = 0;            /* R4.2: strategic-map mode (set by LaunchMap) */
+extern "C" void bob_map_paint_begin(void);
+extern "C" void bob_map_paint_end(void);
+extern "C" void bob_gdi_present(void);
+extern "C" void bob_gdi_screen_size(int*, int*);
+
 extern "C" void bob_frontend_tick(void)
 {
+	/* R4.2: paint the strategic map each idle. CMIGView::LaunchMap destroyed the front-end
+	   panel and switched to the map view (m_mapdlg); drive its terrain render
+	   (CMIGView::UpdateBitmaps) onto the framebuffer with a screen DC, then present. Map coords
+	   are full-window, so the DC viewport is (0,0). Keeps the window live (no idle->SDL_QUIT). */
+	if (g_bob_map_active && RDialog::m_pView && !Inst3d::InThe3D()) {
+		int sw = 1024, sh = 768; bob_gdi_screen_size(&sw, &sh);
+		CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1; dc.m_bobVpX = 0; dc.m_bobVpY = 0;
+		CRect rc(0, 0, sw, sh);
+		bob_map_paint_begin();
+		RDialog::m_pView->UpdateBitmaps(&dc, rc);
+		bob_map_paint_end();
+		static int mp = 0; if (mp++ < 3) fprintf(stderr, "[map] painted strategic map %dx%d (tick)\n", sw, sh);
+		bob_gdi_present();
+		return;
+	}
+
 	if (!g_bobActiveFP) return;
 
 	/* Sprint 7 (env-var-free): ALWAYS-ON Launch3d bridge for a real menu click-through (no
@@ -1082,6 +1104,7 @@ void RFullPanelDial::PositionRListBox()
 // some utility procedures for launching map or 3d
 #ifndef	BOB_DEMO_VER
 
+extern "C" int g_bob_map_active;   /* R4.2: front-end is showing the strategic map (paint via the tick) */
 Bool RFullPanelDial::LaunchMap(FullScreen*&fs, bool firsttime)
 {
 //DeadCode DAW 25Feb100 	CloseSmack();
@@ -1091,7 +1114,10 @@ Bool RFullPanelDial::LaunchMap(FullScreen*&fs, bool firsttime)
 //	Persons4::StartUpMapWorld();
 	Node_Data.SetPlayerInfoLevel();
 	m_pView->LaunchMap(firsttime);
-
+#if BOB_LINUX
+	g_bob_map_active = 1;   /* the map tick (bob_frontend_tick) now paints CMIGView::UpdateBitmaps */
+	fprintf(stderr,"[map] LaunchMap done -> strategic map active (firsttime=%d)\n", (int)firsttime);
+#endif
 	return FALSE;
 }
 #endif

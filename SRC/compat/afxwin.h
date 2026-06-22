@@ -382,6 +382,9 @@ extern "C" {
                    int srcScreen, void* srcBmp, int sx, int sy, unsigned long rop);
     void  bob_stretchblit(int dstScreen, void* dstBmp, int dvpx, int dvpy, int dx, int dy, int dwd, int dhd,
                           int srcScreen, void* srcBmp, int sx, int sy, int sws, int shs, unsigned long rop);
+    void  bob_gdi_fillrect(int x, int y, int w, int h, unsigned long rgb);  /* R4.2 map backdrop */
+    void  bob_map_paint_begin(void);
+    void  bob_map_paint_end(void);
 }
 
 class CGdiObject : public CObject {
@@ -552,8 +555,11 @@ public:
     }
     BOOL CreateCompatibleDC(CDC*) { m_bobMemDC = true; return TRUE; }
     int FillRect(LPCRECT, CBrush*) { return 0; }
-    void FillSolidRect(LPCRECT, COLORREF) {}
-    void FillSolidRect(int, int, int, int, COLORREF) {}
+    /* R4.2: solid-fill on a screen DC -> framebuffer (the strategic-map backdrop). */
+    void FillSolidRect(LPCRECT r, COLORREF c) { if (m_bobScreen && r) bob_gdi_fillrect(
+            m_bobVpX+r->left, m_bobVpY+r->top, r->right-r->left, r->bottom-r->top, bobColor(c)); }
+    void FillSolidRect(int x, int y, int w, int h, COLORREF c) { if (m_bobScreen) bob_gdi_fillrect(
+            m_bobVpX+x, m_bobVpY+y, w, h, bobColor(c)); }
     void Draw3dRect(LPCRECT, COLORREF, COLORREF) {}
     void Draw3dRect(int, int, int, int, COLORREF, COLORREF) {}
     BOOL StretchBlt(int dx, int dy, int dw, int dh, CDC* src, int sx, int sy, int sw, int sh, DWORD rop) {

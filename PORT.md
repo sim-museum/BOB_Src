@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.2 (2026-06-21): STRATEGIC MAP RENDERS — the campaign map (terrain/coast/sectors/cities) draws on Linux
+> The campaign payoff: clicking through Campaigns → RAF → Begin → Begin now shows the **strategic
+> Battle-of-Britain map** — South-East England + the Channel + the French coast, RAF Fighter Command
+> **sector boundaries** (Sectors A–E, Y, Z), city labels (London, Dover, Southampton, Brighton,
+> Bournemouth), the Thames, and the "No. 11 Group" label. Built on R6.1's blit subsystem.
+> - **The render path:** enter-name `Begin` → `LaunchMapFirstTime` → `StartUpMapWorld` (world data) →
+>   `CMIGView::LaunchMap` (destroys the front-end panel, switches to the map view). The map terrain is
+>   drawn by `CMIGView::UpdateBitmaps`, which `StretchDIBits` each 256² terrain tile (`m_MapFiles`) and
+>   `FillSolidRect`s the backdrop — both were stubbed.
+> - **Wired (compat + scaffold):** implemented C-GDI `StretchDIBits` and `CDC::FillSolidRect` on top of
+>   R6.1 (`bob_stretchdibits` decodes each tile DIB → `bob_stretchblit` to the framebuffer;
+>   `bob_gdi_fillrect` for the backdrop), gated on a `g_mapPaintActive` flag (map coords are full-window
+>   screen coords). A **map-paint tick** in `bob_frontend_tick` (set by `RFullPanelDial::LaunchMap` via
+>   `g_bob_map_active`) drives `m_pView->UpdateBitmaps(screenDC, fullRect)` + `bob_gdi_present` each idle
+>   — which also keeps the window live (the post-`DestroyWindow` idle that used to fall to SDL_QUIT).
+> - **Verified (real GL `:0`):** `AUTOCLICK="1,0,1,1"` → `[map] LaunchMap done` → `[map] painted
+>   strategic map 1024x768` (steady), no crash; the map image (`/tmp/r42_map.png`) shows the real
+>   terrain/coastline/sectors/cities. No regression: bare `./bob` 0; QM still flies (`InThe3D=1`, map
+>   tick gated off). **Remaining R4.2:** unit icons (airfields/squadrons/raids via `DrawIcons`/`MaskIcon`
+>   — the blit is ready), the `CMainFrame` toolbars/title/report bars, and scroll/zoom + click
+>   interaction (scramble/intercept).
+>
 > ## R6.1 (2026-06-21): GDI BLIT SUBSYSTEM — real CBitmap/BitBlt/StretchBlt/CreateDIBitmap (was all stubbed); icon sheet decodes + blits
 > The whole GDI bitmap path was stubbed (`CreateDIBitmap`→NULL, `CDC::BitBlt`→no-op, `CBitmap` held
 > no pixels), so no icon, button face, or map tile ever reached the screen. This blocked the front-end

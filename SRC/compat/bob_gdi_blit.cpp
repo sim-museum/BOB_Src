@@ -27,6 +27,9 @@ extern "C" unsigned* bob_gdi_dc_bits(int* w, int* h);   /* the front-end framebu
 namespace {
 struct BobBmp { int w, h; uint32_t* pix; };
 void* g_lastDib = nullptr;   /* most-recently decoded bitmap (for the BOB_BLIT_TEST self-test) */
+int   g_mapPaintActive = 0;  /* R4.2: while a strategic-map paint runs, the C-GDI StretchDIBits/
+                                FillSolidRect target the front-end framebuffer (map coords are
+                                full-window/screen coords). Off otherwise so stray GDI is a no-op. */
 
 /* The standard Win32 BITMAPINFOHEADER prefix we need (matches compat_wingdi.h's struct
    layout: DWORD biSize, LONG biWidth/biHeight, WORD biPlanes/biBitCount, DWORD biCompression...). */
@@ -183,6 +186,37 @@ void bob_stretchblit(int dstScreen, void* dstBmp, int dvpx, int dvpy,
             if (rop == 0x008800C6) *d &= s; else if (rop == 0x00EE0086) *d |= s; else *d = s;
         }
     }
+}
+
+/* --- R4.2 strategic-map C-GDI plumbing -------------------------------------
+ * The map (CMIGView::UpdateBitmaps) draws with the C GDI API on an HDC: StretchDIBits for
+ * each 256x256 terrain tile and FillSolidRect for the backdrop. HDC carries no surface in
+ * compat, but map coords are full-window screen coords, so while a map paint is active we
+ * route these straight to the bob_gdi framebuffer. */
+void bob_map_paint_begin(void) { g_mapPaintActive = 1; }
+void bob_map_paint_end(void)   { g_mapPaintActive = 0; }
+
+/* StretchDIBits: decode the source DIB (info+bits) and stretch-blit a sub-rect to the
+   framebuffer. Mirrors the Win32 signature's geometry (dest x/y/w/h, src x/y/w/h). */
+int bob_stretchdibits(int xd, int yd, int wd, int hd, int xs, int ys, int ws, int hs,
+                      const void* bits, const void* info, unsigned long rop) {
+    if (!g_mapPaintActive || !bits || !info) return 0;
+    void* tmp = bob_dib_decode(info, bits);
+    if (!tmp) return 0;
+    /* src sub-rect (xs,ys,ws,hs) of the decoded tile -> dest (xd,yd,wd,hd) on the framebuffer */
+    bob_stretchblit(/*dstScreen*/1, NULL, 0, 0, xd, yd, wd, hd,
+                    /*srcScreen*/0, tmp, xs, ys, ws, hs, rop);
+    bob_bmp_free(tmp);
+    return hd;
+}
+
+/* FillSolidRect on the framebuffer (map backdrop). rgb is 0x00RRGGBB. */
+void bob_gdi_fillrect(int x, int y, int w, int h, unsigned long rgb) {
+    if (!g_mapPaintActive) return;
+    int fw, fh; uint32_t* fb = (uint32_t*)bob_gdi_dc_bits(&fw, &fh); if (!fb) return;
+    for (int row = 0; row < h; row++) { int ty = y + row; if (ty < 0 || ty >= fh) continue;
+        for (int col = 0; col < w; col++) { int tx = x + col; if (tx < 0 || tx >= fw) continue;
+            fb[(size_t)ty * fw + tx] = (uint32_t)rgb; } }
 }
 
 /* R6.1 self-test: SRCCOPY-blit the most-recently decoded bitmap (the icon sheet) onto the

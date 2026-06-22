@@ -115,7 +115,14 @@ static inline void*   LockResource(HGLOBAL) { return (void*)0; }
 // ---- misc Win32 funcs missing from the compat layer -------------------------
 // (Sleep / QueryPerformanceCounter / timeGetTime / GetWindowRect are already in
 //  compat_winbase.h, so they are NOT redefined here.)
-static inline int  StretchDIBits(HDC,int,int,int,int,int,int,int,int,const void*,const void*,UINT,DWORD) { return 0; }
+/* R4.2: strategic-map terrain tiles draw via StretchDIBits; route to the framebuffer
+   (bob_gdi_blit.cpp) while a map paint is active. */
+extern "C" int bob_stretchdibits(int xd,int yd,int wd,int hd,int xs,int ys,int ws,int hs,
+                                 const void* bits,const void* info,unsigned long rop);
+static inline int  StretchDIBits(HDC, int xd,int yd,int wd,int hd, int xs,int ys,int ws,int hs,
+                                 const void* bits, const void* info, UINT, DWORD rop) {
+    return bob_stretchdibits(xd,yd,wd,hd,xs,ys,ws,hs,bits,info,rop);
+}
 static inline char* _i64toa(long long v, char* s, int radix) {
     if (radix==16) sprintf(s, "%llx", (unsigned long long)v); else sprintf(s, "%lld", v); return s;
 }
