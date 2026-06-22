@@ -23,10 +23,22 @@
 >   pass**: the day's raid packages reference SAG *instances* that are only created when a raid launches,
 >   so `MoveAllSAGs` must run against a world where those air groups exist — a focused investigation of
 >   the campaign raid/SAG lifecycle (generation → spawn/register → move), a deep R4.3 thread.
-> - **Status:** the clock-drive mechanism is built + the sim blocker characterized; **gated OFF by
->   default** (`BOB_MAP_TIMER` to opt in) so the **map render stays stable** (no crash, no regression;
->   bare `./bob` 0). Carried: the campaign raid/SAG deployment subsystem, then the live sim + toolbars
->   + briefing→fly→debrief→next-day. Evidence: `/tmp/r43t.log` (sim SIGSEGV bt), default map renders.
+> - **Root cause pinned (gdb):** the fault is `mov 0x4(%edx),%ecx` with `edx=0` in `MoveAllSAGs+1096` —
+>   a NULL `SAGairgrp* as`. `ConvertPtrUID(uid)` returns `pItem[uid][0]` (a direct index into the world
+>   table), and `pItem[uid]` is NULL: the package's SAG **isn't in `pItem`**. SAG creation *does*
+>   register (`PackageList`...`Persons2::tabulateUID(a)` after `assignuid`, PACKAGES.CPP:1816-1821), so
+>   the day's raid SAGs were **never created/tabulated** — i.e. the campaign isn't fully **started/
+>   deployed**. The headless click-through (enter-name `Begin`) reaches the map but doesn't run the full
+>   campaign-start (German order-of-battle deploy + raid generation that creates+tabulates the SAGs).
+> - **Hypotheses tested + ruled out:** (1) `if(as)` NULL-guard → next deref crashes (systemic, reverted);
+>   (2) `Todays_Packages.WipeAll()` to clear stale pre-`StartUpMapWorld` package refs → **no change** to
+>   the crash (the *repopulated* SAGs are also absent from `pItem`), so it's not just stale packages.
+>   Both reverted (no unverified game-state changes).
+> - **Status:** the clock-drive mechanism is built + the blocker pinned to the exact instruction; **gated
+>   OFF by default** (`BOB_MAP_TIMER`) so the **map render stays stable** (no crash, no regression; bare
+>   `./bob` 0). The deep R4.3 thread: trace the campaign-start/deployment (`SkipToDate` / OOB deploy /
+>   `LaunchDirectiveMissions`) to find where the day's SAGs should be created+tabulated and why the Linux
+>   click-through path skips it. Evidence: `/tmp/r43w.log`, gdb fault `edx=0 @ MoveAllSAGs+1096`.
 >
 > ## R4.2 (2026-06-21): STRATEGIC MAP RENDERS — the campaign map (terrain/coast/sectors/cities) draws on Linux
 > The campaign payoff: clicking through Campaigns → RAF → Begin → Begin now shows the **strategic
