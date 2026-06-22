@@ -21,9 +21,13 @@
 >   general fix for any listbox that relies on persisted columns.
 > - **Result:** Campaigns → RAF → **campaignselect renders** (artnum 27922) — the four phases
 >   *Convoys / Eagle Attack / Critical Period / Blitz* populate the list, with the pilot portrait +
->   phase description. No crash. The `Begin → campaignentername` step is the next layer (enter-name
->   screen not yet brought up). No regression: bare `./bob` 0; QM still flies (`InThe3D=1`). Evidence:
->   `/tmp/r41_camp.png` (side-select art), `/tmp/r41_campsel2.png` (phase-select).
+>   phase description. No crash. **Verified the chain continues:** `Begin → campaignentername` (the
+>   enter-name screen, shares the FIL_CAMPAIGNSELECT art + the FIL_PHASESELECT smacker box) → its
+>   `Begin → LaunchMapFirstTime` (`Persons4::StartUpMapWorld`) **runs without crashing** — so the whole
+>   campaign *front-end* (side-select → phase-select → enter-name) is navigable. The **strategic map**
+>   itself (`StartUpMapWorld` / `CMIGView::LaunchMap` render path) is R4.2 (the next major subsystem).
+>   No regression: bare `./bob` 0; QM still flies (`InThe3D=1`). Evidence: `/tmp/r41_camp.png`
+>   (side-select art), `/tmp/r41_campsel2.png` (phase-select), `/tmp/r41_entername.png` (enter-name).
 >
 > ## R3.6 (2026-06-21): per-stage texture ADDRESSING — honour the game's MIRROR/CLAMP/WRAP (was GL_REPEAT everywhere → terrain over-tiling)
 > The compat `SetTextureStageState` was a no-op, so the game's per-stage `D3DTSS_ADDRESS` was
