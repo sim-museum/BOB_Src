@@ -7,12 +7,15 @@
 > so the campaign is frozen — no raids, no dynamic map icons.
 > - **Wired the clock (compat scaffold):** a `BOB_LINUX` public forwarder `CMapDlg::bob_drive_timer()`
 >   (the handler is protected) called from the map-paint tick (`BOB_MAP_TIMER`, ~few×realtime).
-> - **Finding (gdb):** driving it advances the clock + `StartOfDay`, but the **first `PerformMoveCycle`
->   SIGSEGVs in `SAGairgrp::MoveAllSAGs`** ← `Profile::MoveSAGs` — the air-group movement runs before the
->   campaign is **deployed/initialised** for the sim (no packages/squadrons placed by the click-through;
->   on Windows the player deploys on the map before the day starts). Not the toolbars (those weren't
->   reached). This is the deeper R4.3 thread: campaign deployment/`Todays_Packages` setup + likely an
->   uninit-state grind (the R1.3/R4.5 class) to make the sim heap-clean.
+> - **Finding (gdb + source):** driving it advances the clock + `StartOfDay`, but the **first
+>   `PerformMoveCycle` SIGSEGVs in `SAGairgrp::MoveAllSAGs`** ← `Profile::MoveSAGs`. Exact line
+>   `SAGMOVE.CPP:970-971`: `SAGairgrp* as = Persons2::ConvertPtrUID(Todays_Packages[p][s].instance);
+>   as->MoveSAG(p,s)` — the package has a squadron **instance UID** but `ConvertPtrUID` returns **NULL**
+>   because that SAG isn't placed in the world, so `as->MoveSAG` derefs NULL. I.e. `StartOfDay` built the
+>   day's raid *packages* but the SAG *items* aren't deployed (on Windows the player deploys on the map
+>   before the day starts). Not the toolbars (never reached). The deeper R4.3 thread: campaign
+>   deployment so `Todays_Packages[p][s].instance` resolves + likely an uninit-state grind (R1.3/R4.5
+>   class). A defensive `if (as)` guard would stop the crash but mask the real (un-deployed) cause.
 > - **Status:** the clock-drive mechanism is built + the sim blocker characterized; **gated OFF by
 >   default** (`BOB_MAP_TIMER` to opt in) so the **map render stays stable** (no crash, no regression;
 >   bare `./bob` 0). Carried: deploy the campaign before running the day, then crack the MoveAllSAGs sim
