@@ -384,6 +384,18 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
+- _Sprints 13–14 (R4.2 map render → R4.3 live-sim spike):_ **The R6.1→R4.2 bet paid off spectacularly —
+  the blit subsystem lit up the whole strategic map in one increment — and the R4.3 spike correctly
+  stopped a whack-a-mole.** Building R6.1 first meant R4.2's terrain render was a thin C-GDI shim
+  (`StretchDIBits`→`bob_stretchblit`) + a paint tick: the map drew on the first try. Then the R4.3
+  clock-drive immediately surfaced the real shape of the campaign loop — the live sim (`MoveAllSAGs`)
+  is *systematically* built on deployed SAGs (an `if(as)` guard cleared one deref only to hit the next),
+  so it's a deployment-subsystem dependency, not a bug to patch. Lesson reinforced: when a spike shows a
+  story is a whole subsystem (campaign raid/SAG lifecycle, or the `CRToolBar` toolbars), bank the precise
+  characterization and don't grind game-code guards that mask the cause. Kept well: every visible
+  increment gated so the default path stays stable (the map renders with `BOB_MAP_TIMER` off); reverting
+  the guard rather than committing a half-measure.
+
 - _Sprint 12 (R6.1 GDI blit):_ **Spiking R4.2 first paid off by revealing the real dependency — a
   blit subsystem — which is itself an independently-valuable, cleanly-verifiable story.** Rather than
   grind the map subsystem blind, the Sprint-11 spike found that both the map *and* front-end icons gate
