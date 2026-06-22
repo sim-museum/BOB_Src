@@ -16,10 +16,17 @@
 >   before the day starts). Not the toolbars (never reached). The deeper R4.3 thread: campaign
 >   deployment so `Todays_Packages[p][s].instance` resolves + likely an uninit-state grind (R1.3/R4.5
 >   class). A defensive `if (as)` guard would stop the crash but mask the real (un-deployed) cause.
+> - **Guard experiment (reverted):** tried an `if (as)` NULL-guard at the deref — it cleared that line
+>   but the **next** deref in `MoveAllSAGs` SIGSEGV'd (same un-deployed cause, +3 bytes), confirming the
+>   sim is **systematically** built on deployed SAGs; guarding individual derefs is whack-a-mole that
+>   masks the real issue. Reverted (no half-measures in game code). The correct fix is the **deployment
+>   pass**: the day's raid packages reference SAG *instances* that are only created when a raid launches,
+>   so `MoveAllSAGs` must run against a world where those air groups exist — a focused investigation of
+>   the campaign raid/SAG lifecycle (generation → spawn/register → move), a deep R4.3 thread.
 > - **Status:** the clock-drive mechanism is built + the sim blocker characterized; **gated OFF by
 >   default** (`BOB_MAP_TIMER` to opt in) so the **map render stays stable** (no crash, no regression;
->   bare `./bob` 0). Carried: deploy the campaign before running the day, then crack the MoveAllSAGs sim
->   crash. Evidence: `/tmp/r43t.log` (sim SIGSEGV bt), default map still renders.
+>   bare `./bob` 0). Carried: the campaign raid/SAG deployment subsystem, then the live sim + toolbars
+>   + briefing→fly→debrief→next-day. Evidence: `/tmp/r43t.log` (sim SIGSEGV bt), default map renders.
 >
 > ## R4.2 (2026-06-21): STRATEGIC MAP RENDERS — the campaign map (terrain/coast/sectors/cities) draws on Linux
 > The campaign payoff: clicking through Campaigns → RAF → Begin → Begin now shows the **strategic
