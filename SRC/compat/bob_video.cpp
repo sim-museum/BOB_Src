@@ -595,7 +595,9 @@ extern "C" unsigned* bob_gdi_dc_bits(int* w, int* h) {
 	if (w) *w = g_gdiW; if (h) *h = g_gdiH;
 	return g_gdiFB;
 }
+extern "C" void bob_blit_selftest(void);
 extern "C" void bob_gdi_present(void) {
+	if (getenv("BOB_BLIT_TEST")) bob_blit_selftest();   /* R6.1: blit the icon sheet (verify screen blit) */
 	if (g_gdiFB && getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection
 	                                              (before the window check, so it works headless) */
 		int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;

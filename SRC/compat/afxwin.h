@@ -372,6 +372,18 @@ public:
 /* ============================================================
  * GDI objects
  * ============================================================ */
+/* R6.1: GDI blit subsystem (bob_gdi_blit.cpp) -- bitmap registry + DIB decode + ROP blit. */
+extern "C" {
+    void* bob_bmp_create(int w, int h);
+    void  bob_bmp_free(void* h);
+    void  bob_bmp_dims(void* h, int* w, int* ph);
+    void* bob_dib_decode(const void* info, const void* bits);
+    void  bob_blit(int dstScreen, void* dstBmp, int dvpx, int dvpy, int dx, int dy, int w, int h,
+                   int srcScreen, void* srcBmp, int sx, int sy, unsigned long rop);
+    void  bob_stretchblit(int dstScreen, void* dstBmp, int dvpx, int dvpy, int dx, int dy, int dwd, int dhd,
+                          int srcScreen, void* srcBmp, int sx, int sy, int sws, int shs, unsigned long rop);
+}
+
 class CGdiObject : public CObject {
 public:
     HGDIOBJ m_hObject;
@@ -418,12 +430,22 @@ public:
 
 class CBitmap : public CGdiObject {
 public:
-    BOOL CreateCompatibleBitmap(CDC*, int, int) { return TRUE; }
-    BOOL CreateBitmap(int, int, UINT, UINT, const void*) { return TRUE; }
-    BOOL LoadBitmapA(LPCSTR) { return TRUE; }
-    BOOL LoadBitmapA(UINT) { return TRUE; }
-    static CBitmap* FromHandle(HBITMAP) { return NULL; }
-    int GetBitmap(void*) { return 0; }
+    /* R6.1: real pixel-backed bitmaps. m_hObject holds the bob_gdi_blit registry handle. */
+    BOOL CreateCompatibleBitmap(CDC*, int w, int h) { m_hObject = (HGDIOBJ)bob_bmp_create(w, h); return m_hObject != NULL; }
+    BOOL CreateBitmap(int w, int h, UINT, UINT, const void*) { m_hObject = (HGDIOBJ)bob_bmp_create(w, h); return m_hObject != NULL; }
+    BOOL LoadBitmapA(LPCSTR) { return FALSE; }
+    BOOL LoadBitmapA(UINT) { return FALSE; }
+    BOOL DeleteObject() { if (m_hObject) bob_bmp_free((void*)m_hObject); m_hObject = NULL; return TRUE; }
+    /* FromHandle wraps an HBITMAP in a CBitmap (MFC returns a temporary). LoadInstances does
+       imagemapinstances[0].SelectObject(CBitmap::FromHandle(map)) -- the wrapper is read
+       immediately by SelectObject, so a small rotating pool of wrappers is sufficient. */
+    static CBitmap* FromHandle(HBITMAP hb) {
+        static CBitmap pool[8]; static int n = 0;
+        CBitmap* b = &pool[n++ & 7]; b->m_hObject = (HGDIOBJ)hb; return b;
+    }
+    int GetBitmap(void* p) { if (p && m_hObject) { int w, h; bob_bmp_dims((void*)m_hObject, &w, &h);
+            /* BITMAP: LONG bmType, bmWidth, bmHeight, bmWidthBytes; WORD bmPlanes, bmBitsPixel; LPVOID bmBits */
+            long* L = (long*)p; L[0]=0; L[1]=w; L[2]=h; L[3]=w*4; return 1; } return 0; }
     operator HBITMAP() const { return (HBITMAP)m_hObject; }
 };
 
@@ -437,6 +459,10 @@ public:
     int  m_bobVpX = 0, m_bobVpY = 0;   /* viewport origin -> the control's screen pos */
     int  m_bobTextH = 18;              /* pixel height for bob_gdi_text/measure (== row pitch) */
     bool m_bobScreen = false;
+    /* R6.1: blit support. m_bobBmp = the bitmap handle SelectObject'd into a memory DC (the
+       blit source/target); m_bobMemDC = a CreateCompatibleDC offscreen DC. */
+    void* m_bobBmp = NULL;
+    bool  m_bobMemDC = false;
     static unsigned bobColor(COLORREF c) { /* COLORREF 0x00BBGGRR -> bob 0xRRGGBB */
         return ((unsigned)(c & 0xff) << 16) | (unsigned)(c & 0xff00) | ((unsigned)(c >> 16) & 0xff); }
     CDC() : m_hDC(NULL) {}
@@ -510,14 +536,32 @@ public:
         if (m_bobScreen) bob_gdi_line(m_bobVpX+m_penX, m_bobVpY+m_penY, m_bobVpX+x, m_bobVpY+y, CDC::bobColor(m_penColor));
         m_penX=x; m_penY=y; return TRUE; }
     BOOL LineTo(POINT pt) { return LineTo(pt.x, pt.y); }
-    BOOL BitBlt(int, int, int, int, CDC*, int, int, DWORD) { return TRUE; }
-    BOOL CreateCompatibleDC(CDC*) { return TRUE; }
+    /* R6.1: real blits. A screen DC (m_bobScreen) targets the bob_gdi framebuffer at its
+       viewport origin; a memory DC targets its selected bitmap (m_bobBmp). */
+    CBitmap* SelectObject(CBitmap* b) {
+        void* old = m_bobBmp; m_bobBmp = b ? (void*)b->m_hObject : NULL;
+        return CBitmap::FromHandle((HBITMAP)old);
+    }
+    BOOL BitBlt(int dx, int dy, int w, int h, CDC* src, int sx, int sy, DWORD rop) {
+        if (!src) { /* pattern blits (BLACKNESS/WHITENESS) have no source */
+            bob_blit(m_bobScreen?1:0, m_bobBmp, m_bobVpX, m_bobVpY, dx, dy, w, h, 0, NULL, 0, 0, rop);
+            return TRUE; }
+        bob_blit(m_bobScreen?1:0, m_bobBmp, m_bobVpX, m_bobVpY, dx, dy, w, h,
+                 src->m_bobScreen?1:0, src->m_bobBmp, sx, sy, rop);
+        return TRUE;
+    }
+    BOOL CreateCompatibleDC(CDC*) { m_bobMemDC = true; return TRUE; }
     int FillRect(LPCRECT, CBrush*) { return 0; }
     void FillSolidRect(LPCRECT, COLORREF) {}
     void FillSolidRect(int, int, int, int, COLORREF) {}
     void Draw3dRect(LPCRECT, COLORREF, COLORREF) {}
     void Draw3dRect(int, int, int, int, COLORREF, COLORREF) {}
-    BOOL StretchBlt(int, int, int, int, CDC*, int, int, int, int, DWORD) { return TRUE; }
+    BOOL StretchBlt(int dx, int dy, int dw, int dh, CDC* src, int sx, int sy, int sw, int sh, DWORD rop) {
+        if (!src) return FALSE;
+        bob_stretchblit(m_bobScreen?1:0, m_bobBmp, m_bobVpX, m_bobVpY, dx, dy, dw, dh,
+                        src->m_bobScreen?1:0, src->m_bobBmp, sx, sy, sw, sh, rop);
+        return TRUE;
+    }
     int  GetDeviceCaps(int) const { return 0; }
     COLORREF GetNearestColor(COLORREF c) const { return c; }
     CSize GetTextExtent(LPCSTR s, int len) const {

@@ -393,7 +393,14 @@ static inline HRGN CreateRectRgn(int, int, int, int) { return NULL; }
 static inline HRGN CreatePolygonRgn(const POINT*, int, int) { return NULL; }
 static inline HRGN CreateRectRgnIndirect(LPCRECT) { return NULL; }
 static inline int  CombineRgn(HRGN, HRGN, HRGN, int) { return 0; }
-static inline HBITMAP CreateDIBitmap(HDC, const void*, DWORD, const void*, const void*, UINT) { return NULL; }
+/* R6.1: decode a packed DIB into a pixel-backed bitmap (bob_gdi_blit.cpp). pInfo is the
+   BITMAPINFO (header + palette), pData the bits -- exactly what IconDescUI::LoadInstances passes. */
+extern "C" void* bob_dib_decode(const void* info, const void* bits);
+static inline HBITMAP CreateDIBitmap(HDC, const void* pInfoH, DWORD init, const void* pData, const void* pInfo, UINT) {
+    const void* info = pInfo ? pInfo : pInfoH;
+    if (!(init & 0x04 /*CBM_INIT*/) || !pData || !info) return NULL;
+    return (HBITMAP)bob_dib_decode(info, pData);
+}
 static inline HBITMAP CreateDIBSection(HDC, const void*, UINT, void**, HANDLE, DWORD) { return NULL; }
 #ifndef CBM_INIT
 #define CBM_INIT 0x04

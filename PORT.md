@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R6.1 (2026-06-21): GDI BLIT SUBSYSTEM — real CBitmap/BitBlt/StretchBlt/CreateDIBitmap (was all stubbed); icon sheet decodes + blits
+> The whole GDI bitmap path was stubbed (`CreateDIBitmap`→NULL, `CDC::BitBlt`→no-op, `CBitmap` held
+> no pixels), so no icon, button face, or map tile ever reached the screen. This blocked the front-end
+> icon/box-art (R6.1) *and* the strategic map tiles (R4.2). Built the real subsystem.
+> - **New `bob_gdi_blit.cpp`:** a bitmap registry (handle → `0x00RRGGBB` pixels), a **DIB decoder**
+>   (`bob_dib_decode`: 8/24/32/4/1-bit, top- or bottom-up, palettised or direct), and a **raster-op
+>   blit** (`bob_blit` / `bob_stretchblit`: SRCCOPY/SRCAND/SRCPAINT/SRCINVERT/BLACKNESS/WHITENESS,
+>   bitwise on packed RGB exactly like Win32) between bitmaps and/or the `bob_gdi` framebuffer.
+> - **Wired the inline GDI classes (`afxwin.h`, `compat_wingdi.h`):** `CBitmap` is now pixel-backed
+>   (`CreateBitmap`/`CreateCompatibleBitmap`/`FromHandle`/`DeleteObject` over the registry); `CDC` gains
+>   a memory-DC mode (`CreateCompatibleDC`) + `SelectObject(CBitmap*)`, and real `BitBlt`/`StretchBlt`
+>   (screen DC → framebuffer at the viewport origin; memory DC → its selected bitmap). `CreateDIBitmap`
+>   decodes via `bob_dib_decode`. This is the exact path `IconDescUI::LoadInstances` → `MaskIcon`
+>   (SRCAND mask + SRCPAINT colour) and `CMIGView::UpdateBitmaps` (tile `StretchBlt`) need.
+> - **Verified (real GL `:0`):** `LoadInstances` now decodes the icon sheet — `[blit] dib decode
+>   1408x1024 bpp24 bottom-up` — and `BOB_DUMP_BLIT` dumps it: a **perfect** UI icon sheet (combo pills,
+>   spin/dropdown arrows, check/X marks, magnifier, reticle, RAF/Luftwaffe roundels, aircraft). The
+>   `BOB_BLIT_TEST` self-test SRCCOPY-blits it onto the front-end framebuffer through the full chain —
+>   icons render on screen (`/tmp/r61_selftest.png`). No regression: default front-end + config screen
+>   render identically (blit only fires on paths that previously no-op'd; self-test gated off); bare
+>   `./bob` 0. Evidence: `/tmp/blit_icons.png` (decoded sheet), `/tmp/r61_selftest.png` (blitted),
+>   `/tmp/r61_reg.png` (config unregressed). **Unblocks R4.2** (map tiles) + front-end icon fidelity.
+>
 > ## R6.2 (2026-06-21): font scale — multi-line text controls no longer render at giant box-height font
 > The campaign phase-description (and any tall multi-line text control) drew its text **enormous and
 > overlapping** — e.g. campaignselect's "During this phase the Luftwaffe attacked British shipping…"

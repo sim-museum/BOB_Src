@@ -12,6 +12,7 @@ add_library(bob_compat STATIC
     bob_resources.cpp
     bob_threads.cpp
     bob_gdi_font.cpp
+    bob_gdi_blit.cpp      # R6.1: GDI blit subsystem (CBitmap/BitBlt/CreateDIBitmap)
     openal_dsound.cpp     # DirectSound -> OpenAL audio backend
     bob_dlgtemplate.cpp   # runtime .rc dialog-template parser (control positions)
 )
