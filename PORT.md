@@ -28,6 +28,20 @@
 >   `AutoLWPackages`), not a node-tree item. Next: trace `AutoLWPackages` raid-waypoint creation
 >   (`new info_waypoint`+`tabulateUID`, PACKAGES.CPP:2379/2616/4686) to find why this SAG's `wpref`
 >   waypoint is absent (uncreated, or the SAG is a stale leftover with a dangling `wpref`).
+> - **Lifecycle traced (Explore agent, read-only):** all 3 raid-waypoint creation sites tabulate
+>   correctly (`MakeInterceptWP`/`InsertWpBetween`/`Insert109ReturnWP` → `tabulateUID`), and a SAG's
+>   `wpref` is first set at takeoff (`SAGDecisionTakeOff` walks the chain from `takeoffwp`). The one
+>   **deletion site that frees waypoints without updating SAG `wpref`** is `Profile::ReturnHome()`
+>   (PACKAGES.CPP:6578-6584): on an `AM_PATROL → AM_INTERCEPT` revector it `delUID`s + `delete`s the
+>   patrol-waypoint chain, leaving any SAG still pointing into it with a **dangling `wpref`** — exactly
+>   our NULL `ConvertPtrUID(wpref)`. **Two candidate fixes for the next (Bash-available) session:**
+>   (A) **root-cause:** in `ReturnHome` iterate the package's SAGs and repoint any `wpref` in the
+>   deleted chain to a surviving WP (`ip`/egress) before freeing; (B) **defensive (R1.3 class):**
+>   `GetCruiseToWp` derefs `ConvertPtrUID(wpref)` with **no NULL check** (SAGMOVE.CPP:1361-1364) — guard
+>   it (`if(!wp) return 0;`), since a NULL deref is UB that Win32 happened to tolerate. **Caveat to
+>   verify first:** our crash is on the *first* sim frame at day-start, so confirm `ReturnHome` actually
+>   ran before it (add a gated trace) vs. the `wpref` being stale from `SkipToDate`'s fast-forward — that
+>   decides whether (A) is the true root cause or just one of several dangling-`wpref` sources.
 >
 > ## R4.3 (2026-06-21): campaign-clock drive — SPIKE; the MFC WM_TIMER is wired (forwarder) but the sim crashes pre-deployment
 > Started the campaign loop (R4.3). On Windows the strategic map runs off a 1Hz `WM_TIMER`
