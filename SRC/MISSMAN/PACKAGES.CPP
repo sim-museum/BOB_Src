@@ -5878,10 +5878,15 @@ int	Profile::RecostRaidList()
 		}
 	}
 	int totalraids=targetsusedbits.Count()+farescorts.Count()+nearescortused+returnescortused;
-	RaidNumEntry* rne2=new RaidNumEntry[totalraids+1];
+	/* R4.5: RemakeRaidList writes no explicit terminator -- it relies on these pre-set ones, but
+	   its currentry can reach totalraids (the worst-case count undercounts by 1 for some configs),
+	   overwriting the only terminator at [totalraids] and leaving the raid list unterminated -> the
+	   reader loop (MoveAllSAGs) runs off the end (ASan heap-buffer-overflow; garbage raid entries
+	   on Linux). Allocate one extra guard slot so a terminator always survives. (R1.3b bounds class.) */
+	RaidNumEntry* rne2=new RaidNumEntry[totalraids+2];
 
 	rne2[0].squadliststart=0;
-	for (int i=0;i<=totalraids;i++)
+	for (int i=0;i<=totalraids+1;i++)
 	{
 		rne2[i].squadliststart=RNEC_LISTVALISLASTREC;
 		rne2[i].raidnum=totalraids;
