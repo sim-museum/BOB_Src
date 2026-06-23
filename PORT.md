@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.3/R4.5 (2026-06-22): BREAKTHROUGH — the campaign sim RUNS; the crash is an uninit-state bug in the SAG movement AI (not a deployment gap)
+> Instrumented `MoveAllSAGs` (temporary `BOB_TRACE_SAG`, reverted) to settle the root cause, and it
+> **overturned the earlier "campaign not deployed" theory** — the campaign is initialised and the day's
+> raids ARE created:
+> - **Trace at the crash:** `[sag] p=0 s=0/1 instance=4608 as=0x95f7150 movecode=2 localplayer=1`.
+>   `localplayer=1` (NAT_RAF, so `Campaign::CampaignInit`→`InitIcons` ran), the package has a real squad,
+>   and **`as` is NON-NULL** — `ConvertPtrUID(4608)` resolves, the raid SAG exists + is tabulated in
+>   `pItem`. So the SAG is deployed; the deployment theory was wrong.
+> - **Real cause:** the crash is **inside** `as->MoveSAG` (inlined into `MoveAllSAGs`), which dispatches
+>   on `movecode.Evaluate()`. `movecode=2 = AUTOSAG_FOLLOWWP` → `SAGMovementFollowWP(p,s,secs)`
+>   (SAGMOVE.CPP:2021) → `CruiseToWp`/`SAGExecuteWaypoint`, which follow the waypoint at `wpref`. The
+>   `edx=0 @ +4` fault is a **NULL member deref** there — almost certainly the **waypoint item** (`wpref`
+>   not in `pItem`) or the squadron, i.e. an *incompletely-created raid* (SAG present but its flight-path
+>   waypoints/target not all created+tabulated).
+> - **Reframe:** this is the **R4.5 campaign uninit-state grind** (the backlog's budgeted "latent bugs the
+>   deeper campaign data paths surface"), not an R4.3 deployment gap. The campaign clock + sim run; the
+>   work is a multi-bug grind through the raid-data lifecycle (SAG → waypoints → squadron → target), each
+>   a locate-the-NULL + fix (the R1.3 class), starting at `SAGMovementFollowWP`→`CruiseToWp`. The map
+>   render stays stable (`BOB_MAP_TIMER` gated off); bare `./bob` 0. Evidence: `/tmp/sag2.log`.
+>   Re-instrument: a gated `fprintf` of `p/s/instance/as/movecode` before `as->MoveSAG` (SAGMOVE.CPP:970).
+>
 > ## R4.3 (2026-06-21): campaign-clock drive — SPIKE; the MFC WM_TIMER is wired (forwarder) but the sim crashes pre-deployment
 > Started the campaign loop (R4.3). On Windows the strategic map runs off a 1Hz `WM_TIMER`
 > (`SetTimer(TIMER_MAP,1000)`) → `CMapDlg::OnTimer` advances `MMC.currtime`, runs `StartOfDay`, then
