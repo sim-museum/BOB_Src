@@ -7075,9 +7075,11 @@ SquadNum	NodeData::WhereToReassignProduction(PlaneTypeSelect planetype,bool forc
 				}
 			}
 		}
-		Geshwader&	gw=geschwader[gruppe[bestsq].wadernum];
 		if (bestsq!=-1)
 		{
+			/* R4.5: gw indexes gruppe[bestsq] -- only valid (and only used) when bestsq!=-1.
+			   Moved inside the guard so bestsq==-1 (no candidate squadron) doesn't read gruppe[-1]. */
+			Geshwader&	gw=geschwader[gruppe[bestsq].wadernum];
 			newsq=gruppe[bestsq].squadron;
 			if (gw.reconn)	//DeliverProductionRates assumes that we will only make single reconn aircraft
 				reqstr=gruppe[bestsq].acavail+1; 
@@ -7104,7 +7106,7 @@ SquadNum	NodeData::WhereToReassignProduction(PlaneTypeSelect planetype,bool forc
 			if (gruppe[bestsq].ACTotal()-gruppe[bestsq].acavail+reqstr>Gruppen::MAX_AC)
 				reqstr=Gruppen::MAX_AC-(gruppe[bestsq].ACTotal()-gruppe[bestsq].acavail);
 		}
-		dosay=(newsq!=production[bestsq].recipient);
+		dosay=(bestsq!=-1) && (newsq!=production[bestsq].recipient);  /* R4.5: bestsq==-1 -> don't read production[-1] (ASan global-buffer-overflow, campaign production reassignment) */
 	}
 	return	newsq;
 }
