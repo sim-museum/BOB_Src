@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R5.1b (2026-06-22): JOYSTICK FLY-TEST PASSED — buffered read was the last piece; "90% throttle" diagnosed as *faithful* boost-cutout behaviour, not a bug
+> The PO physically flew with the stick and confirmed **"joystick works"** — pitch, roll, rudder and
+> throttle all drive the flight model. Two follow-ups were raised and run to ground this session:
+>
+> - **Buffered `GetDeviceData` — the final missing piece (`bob_video.cpp`).** R5.1 wired the *immediate*
+>   `GetDeviceState`, but the flight loop (`Analogue::PollPosition`) actually reads the stick via
+>   **buffered** `GetDeviceData` (change-events keyed by the negotiated `dwOfs`). My handler only served
+>   the keyboard, so the stick read empty → "keyboard only". Added the joystick branch: per-poll diff each
+>   SDL axis/button against `g_joyLastAxis/g_joyLastBtn`, emit `DIDEVICEOBJECTDATA{dwOfs=negotiated, dwData=SDL+0x8000}`
+>   for every change. Verified `[joy] GetDeviceData: 16 change events` and the PO's fly-test. R5.1 **DONE**.
+> - **Calibration telemetry (`BOB_TRACE_JOY`).** Added per-axis min/max tracking + a `LIVE a0..a3` line so a
+>   stick can be mapped from the log without code spelunking. Used it to confirm the Logitech Extreme 3D
+>   layout: a0=roll, a1=pitch, a2=twist/rudder, a3=slider/throttle (a3 swept the full ±32768). Env-gated, default-off.
+> - **"Power slider only reaches 90, not 100" → NOT A BUG; it is faithful.** Traced the throttle axis all the
+>   way down: `ANALOGUE.CPP` maps the slider to `axisvalues[AU_THROTTLE]` (full at a3=−32768), and the engine
+>   model in **`KEYFLY.CPP:319-325`** deliberately clamps to `const int MAXSAFETHROTTLE = 90` — but **only when
+>   `Save_Data.flightdifficulty[FD_SPINS]` is on AND `!pModel->BoostCutout`**. This is the real Spitfire/Hurricane
+>   **boost cut-out**: +6¼ lbs is the safe limit; emergency war power (100 %+) requires pulling the cut-out
+>   (`FK_BOOSTCUTOUT`, toggled at `KEYFLY.CPP:389`; cockpit switch `INST_BOOSTCUTOUT`). The Windows original
+>   behaves identically. **Left game code unedited** (per the faithfulness mandate) — the fix is to engage the
+>   boost cut-out (or lower the `FD_SPINS` realism), not to raise the clamp. Documented for the PO.
+> - **Still open — cockpit see-through in F7 (clouds/landscape bleed through the canopy):** confirmed this is
+>   the long-standing **R3.2 depth/draw-order bug** (flat pre-transformed RHW layers painted in submission
+>   order, no depth test), now reproduced by a human pilot. Separate, larger workstream; `BOB_ZDEPTH` spike
+>   regressed the prop. Carried forward.
+
 > ## R5.1 (2026-06-22): JOYSTICK WORKS — DirectInput → SDL_Joystick; a connected stick drives flight (PO unblocked the hardware)
 > The PO connected a joystick (Logitech Extreme 3D, 4 axes / 12 buttons / 1 hat), unblocking R5.1.
 > Implemented the full DirectInput joystick path on SDL and verified the whole chain reads the stick.

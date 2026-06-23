@@ -1880,6 +1880,10 @@ static int g_joyAxisOfs[16];      /* SDL axis index -> data-format buffer offset
 static int g_joyButtonOfs[64];    /* SDL button index -> offset */
 static int g_joyHatOfs = -1;      /* POV/hat offset */
 static int g_joyTraced = 0;
+static int g_joyLastAxis[16];     /* last reported axis values (for buffered change events) */
+static int g_joyLastBtn[64];
+static int g_joyLastInit = 0;
+static int g_joyAxMin[16], g_joyAxMax[16];   /* observed raw range per axis (for calibration) */
 
 static void joy_open(void) {
 	static int tried=0; if (tried) return; tried=1;
@@ -1939,6 +1943,45 @@ static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID 
 }
 static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEOBJECTDATA buf, LPDWORD inout, DWORD flags) {
 	if (!inout) return 0;
+	/* R5.1: the flight loop (Analogue::PollPosition) reads the joystick via BUFFERED GetDeviceData,
+	   not immediate GetDeviceState. Emit a change event per moved axis/button: dwOfs = the offset the
+	   game assigned in its data format, dwData = the value. For an absolute axis the game does
+	   axisvalues = dwData-0x8000, so DInput's 0..65535 is expected -> SDL(-32768..32767)+0x8000. */
+	if (This==&g_diJoystick && g_sdlJoy) {
+		if (!g_joyLastInit) { for(int i=0;i<16;i++){ g_joyLastAxis[i]=-999999; g_joyAxMin[i]=99999; g_joyAxMax[i]=-99999; } for(int i=0;i<64;i++) g_joyLastBtn[i]=-1; g_joyLastInit=1; }
+		SDL_JoystickUpdate();
+		if (getenv("BOB_TRACE_JOY")) {   /* track per-axis range for calibration */
+			for (int i=0;i<g_joyNAxes && i<16;i++) { int r=SDL_JoystickGetAxis(g_sdlJoy,i);
+				if(r<g_joyAxMin[i])g_joyAxMin[i]=r; if(r>g_joyAxMax[i])g_joyAxMax[i]=r; }
+			static int rc=0; if ((rc++ % 20)==0)
+				fprintf(stderr,"[joy] LIVE a0=%6d a1=%6d a2=%6d a3=%6d | ranges a0[%d..%d] a1[%d..%d] a2[%d..%d] a3[%d..%d]\n",
+					SDL_JoystickGetAxis(g_sdlJoy,0),SDL_JoystickGetAxis(g_sdlJoy,1),SDL_JoystickGetAxis(g_sdlJoy,2),SDL_JoystickGetAxis(g_sdlJoy,3),
+					g_joyAxMin[0],g_joyAxMax[0],g_joyAxMin[1],g_joyAxMax[1],g_joyAxMin[2],g_joyAxMax[2],g_joyAxMin[3],g_joyAxMax[3]);
+		}
+		DWORD want=*inout, got=0;
+		for (int i=0;i<g_joyNAxes && i<16 && got<want;i++) if (g_joyAxisOfs[i]>=0) {
+			int v=SDL_JoystickGetAxis(g_sdlJoy,i)+0x8000;   /* 0..65535 */
+			if (v!=g_joyLastAxis[i]) {
+				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_joyAxisOfs[i];
+					buf[got].dwData=(DWORD)v; buf[got].dwSequence=++g_kbSeq; }
+				if (!(flags & 0x1 /*DIGDD_PEEK*/)) g_joyLastAxis[i]=v;
+				got++;
+			}
+		}
+		for (int i=0;i<g_joyNButtons && i<64 && got<want;i++) if (g_joyButtonOfs[i]>=0) {
+			int v=SDL_JoystickGetButton(g_sdlJoy,i)?0x80:0;
+			if (v!=g_joyLastBtn[i]) {
+				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_joyButtonOfs[i];
+					buf[got].dwData=(DWORD)v; buf[got].dwSequence=++g_kbSeq; }
+				if (!(flags & 0x1)) g_joyLastBtn[i]=v;
+				got++;
+			}
+		}
+		if (getenv("BOB_TRACE_JOY") && got && g_joyTraced++<8)
+			fprintf(stderr,"[joy] GetDeviceData: %lu change events (ax0=%d)\n",(unsigned long)got,SDL_JoystickGetAxis(g_sdlJoy,0));
+		*inout=got;
+		return 0;
+	}
 	if (This!=&g_diKeyboard) { *inout=0; return 0; }
 	DWORD want=*inout, got=0;
 	while (got<want && g_kbHead!=g_kbTail) {
