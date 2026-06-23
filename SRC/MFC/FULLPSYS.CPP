@@ -426,21 +426,29 @@ extern "C" void bob_frontend_tick(void)
 		int sw = 1024, sh = 768; bob_gdi_screen_size(&sw, &sh);
 		CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1; dc.m_bobVpX = 0; dc.m_bobVpY = 0;
 		CRect rc(0, 0, sw, sh);
-		/* R4.3 (experimental, BOB_MAP_TIMER): drive the campaign clock -- the MFC WM_TIMER doesn't
-		   fire on Linux, so the day never starts. CMapDlg::OnTimer advances the clock + runs the
-		   sim, but PerformMoveCycle->MoveAllSAGs SIGSEGVs because the campaign isn't deployed/
-		   initialised for the sim yet (a deeper R4.3 campaign-state thread). Default OFF so the
-		   map render stays stable; opt-in to continue the campaign-loop bring-up. */
-		static int tc = 0; if (getenv("BOB_MAP_TIMER") && (tc++ % 12) == 0)
-			RDialog::m_pView->m_mapdlg.bob_drive_timer();
+		/* R4.5 (BOB_MAP_TIMER): drive the campaign clock -- the MFC WM_TIMER doesn't fire on Linux,
+		   so the day never starts. CMapDlg::OnTimer advances the clock + runs the sim. (The
+		   raid-generator heap bugs that used to SIGSEGV the first PerformMoveCycle are fixed --
+		   ReorderPackage new[]/delete + RecostRaidList terminator off-by-one.) Default OFF while the
+		   dynamic-icon / mission-flow bring-up continues. */
+		if (getenv("BOB_MAP_TIMER")) {
+			/* The campaign map starts PAUSED (curracceltype=ACCEL_PAUSED, rate 0) -- the player
+			   normally clicks a UI accel button to run time. Headlessly, un-pause it so the day
+			   advances and raids reach their launch times. */
+			MMC.curracceltype = MMC.ACCEL_RAIDSPD;
+			MMC.curraccelrate = MMC.accelrates[MMC.ACCEL_RAIDSPD] > 0 ? MMC.accelrates[MMC.ACCEL_RAIDSPD] : 20;
+			/* fast-forward factor: BOB_MAP_TIMER=N drives the campaign clock N times per paint so the
+			   day reaches raid-launch times quickly headlessly. */
+			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
+			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+		}
 		bob_map_paint_begin();
 		RDialog::m_pView->UpdateBitmaps(&dc, rc);
 		bob_map_paint_end();
-		static int mp = 0; if (getenv("BOB_TRACE_MAP") && mp++ < 3) {
+		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;
-			fprintf(stderr, "[map] painted strategic map %dx%d zoom=%.2f scroll=(%d,%d) worlditems=%d\n",
-				sw, sh, (double)RDialog::m_pView->m_zoom,
-				(int)RDialog::m_pView->m_scrollpoint.x, (int)RDialog::m_pView->m_scrollpoint.y, nItems);
+			fprintf(stderr, "[map] paint#%d zoom=%.2f currtime=%d worlditems=%d\n",
+				mp, (double)RDialog::m_pView->m_zoom, (int)MMC.currtime, nItems);
 		}
 		bob_gdi_present();
 		return;
