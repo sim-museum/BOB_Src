@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 (2026-06-22): ★ CAMPAIGN SIM RUNS ★ — ASan found two raid-generator heap bugs; the strategic-map day now advances without crashing
+> The campaign live simulation **runs on Linux** for the first time. Following the prior session's plan
+> (ASan on the campaign TUs), the `build-asan` instrumented build run under the day-start sim
+> (`BOB_MAP_TIMER`) was the oracle — it caught the heap corruption directly, both bugs in the Luftwaffe
+> raid generator (`AutoLWPackages` → `MakeLWPackages` → `Todays_Packages_NewPackage` → `ReorderPackage`):
+> - **Bug 1 — `new[]`/`delete` mismatch (`PACKAGES.CPP:5828`, `ReorderPackage`).** `sqlist` is
+>   `new Profile::Squad[order.maxsquad]` but freed with scalar `delete`. ASan: `alloc-dealloc-mismatch`,
+>   12× during day-start raid gen. Benign on Win32, corrupts the heap on Linux. → `delete[]`. (Same
+>   class as R1.3a/R3.9.) Cleared all 12 alloc-dealloc-mismatches.
+> - **Bug 2 — raid-list terminator off-by-one (`PACKAGES.CPP:5881`, `RecostRaidList`).** The
+>   `raidnumentries` array was `new RaidNumEntry[totalraids+1]` with every slot pre-set to the
+>   `RNEC_LISTVALISLASTREC` terminator, but `RemakeRaidList` writes **no explicit terminator** — it
+>   overwrites slots `0..currentry` with real `squadliststart` values, and `currentry` can reach
+>   `totalraids` (the worst-case count undercounts by 1), clobbering the only terminator → unterminated
+>   list → the reader (`MoveAllSAGs:958`) runs off the array end (ASan `heap-buffer-overflow`; reads
+>   garbage raid entries on Linux). This was the cascade leaving raid SAGs with NULL waypoints → the
+>   `SAGDecisionWaitTakeOff` NULL-`waypoint` crash chased across the prior session. Fix: allocate one
+>   guard slot (`totalraids+2`) + init it (R1.3b bounds class).
+> - **Result:** with both fixes, `BOB_MAP_TIMER` drives the campaign day for 90s with **no crash** (was
+>   SIGSEGV on the first `PerformMoveCycle`). The strategic-map terrain renders, the clock advances, raids
+>   generate. **No regression:** bare `./bob` 0; QM flight still flies (`InThe3D=1`); map render stable.
+>   ASan was the oracle exactly as for the R1.3 combat-corruption family. Evidence: `/tmp/asan2.log`
+>   (mismatch 12→0), `/tmp/r45_running.png`, `/tmp/r45fix2.log` (90s, no segv). Remaining: lower-severity
+>   ASan reads (`SetVisibilityFlags`, the FILEMAN dir-list + front-end `PositionRListBox` overflows) +
+>   wiring the dynamic raid icons / toolbars — the campaign loop is now *runnable* to build on.
+>
 > ## R4.3/R4.5 (2026-06-22): BREAKTHROUGH — the campaign sim RUNS; the crash is an uninit-state bug in the SAG movement AI (not a deployment gap)
 > Instrumented `MoveAllSAGs` (temporary `BOB_TRACE_SAG`, reverted) to settle the root cause, and it
 > **overturned the earlier "campaign not deployed" theory** — the campaign is initialised and the day's
