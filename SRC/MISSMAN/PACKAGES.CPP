@@ -5825,7 +5825,8 @@ AttackMethodField	Profile::ReorderPackage(AttackMethodField am)
 			sqlist[find]=squadlist[order.back[find]];
 		for (find=0;find<order.maxsquad;find++)
 			squadlist[find]=sqlist[find];
-		delete sqlist;
+		delete[] sqlist;   /* R4.5: new[]/delete mismatch corrupts the heap on Linux during raid
+		                      generation -> invalid raid waypoints; same class as R1.3a/R3.9 */
 	}
 	//Need to reorder the waypoints as well. Need the forward list for that.
 	int wpcount=0;
