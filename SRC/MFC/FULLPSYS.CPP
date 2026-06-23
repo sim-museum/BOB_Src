@@ -474,8 +474,9 @@ extern "C" void bob_frontend_tick(void)
 			fprintf(stderr,"[configscreen] LaunchScreen(%s)\n", w);
 			g_bobActiveFP->LaunchScreen(scr);
 			cs_done=true;
+			return;
 		}
-		return;
+		/* launched -> fall through to the normal tick so click injection / combo hosting run. */
 	}
 
 	/* Sprint 7 (env-var-free): ALWAYS-ON Launch3d bridge for a real menu click-through (no

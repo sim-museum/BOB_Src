@@ -130,6 +130,8 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
 /* A click landed at screen (x,y) over `dialog`'s panel: hit-test its hosted controls' last-drawn
    rects; an interactive control (RCombo) cycles its value (onClick). Returns 1 if a control
    consumed the click (the caller then repaints). Mirrors the MiG Alley port's ma_ole_click. */
+extern "C" int bob_scontroller_combo_changed(void* dlg, int ctrlId);   /* R5.3 rebind bridge (SCONTROL.CPP) */
+
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     if (bob_ole_trace()) {
         int match=0; for (auto& kv : hosts()) if (kv.second->parentDlg==dialog) match++;
@@ -140,6 +142,11 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (h->parentDlg != dialog || h->sw <= 0 || h->sh <= 0) continue;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
             if (h->onClick()) {
+                /* R5.3: the controls screen needs the combo's change handler to run so the new
+                   device/axis assignment actually applies (no OCX eventsink on Linux). Routes to
+                   SController::bob_combo_changed if this dialog is the live SController; otherwise a
+                   no-op. Other config screens persist via writeback-on-destroy, so this is harmless. */
+                bob_scontroller_combo_changed((void*)dialog, h->ctrlId);
                 if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> ctrl id=%d cycled\n", x, y, h->ctrlId);
                 return 1;
             }

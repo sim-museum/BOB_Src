@@ -595,6 +595,9 @@ void SController::DoDataExchange(CDataExchange* pDX)
 
 void SController::PreDestroyPanel()
 {
+#if BOB_LINUX
+	{ extern void bob_scontroller_set(SController*); bob_scontroller_set(NULL); }   /* R5.3 rebind bridge */
+#endif
 #define	SG2C_WRITEBACK setlevel
 #include "sg2combo.h"
 //DEADCODE RDH 29/11/99 	OPTIONS	
@@ -606,6 +609,61 @@ void SController::PreDestroyPanel()
 }
 #define SG2C_CLEANUP
 #include "sg2combo.h"
+
+#if BOB_LINUX
+/* R5.3: compat rebind bridge. The OCX eventsink (ON_EVENT -> OnTextChanged*) isn't wired on Linux,
+   so a hosted-combo cycle (compat bob_ole_click) would change only the displayed value, not the
+   assignment. Route the cycle to the genuine change handler -- it reads the combo's new GetIndex
+   (ChangedAxesCombo) and updates connectedaxes[].assignedtask; PreDestroyPanel -> SetAxisConfig then
+   persists it into _Analogue.runtimedevices. (The handler's (text,index) args are unused stubs.) */
+static SController* g_bobSController = NULL;
+void bob_scontroller_set(SController* p) { g_bobSController = p; }
+extern "C" int bob_scontroller_combo_changed(void* dlg, int ctrlId) {
+	if (!g_bobSController || (void*)g_bobSController != dlg) return 0;
+	g_bobSController->bob_combo_changed(ctrlId);
+	return 1;
+}
+void SController::bob_combo_changed(int ctrlId)
+{
+	/* (ctrlId -> change handler) mirrors the BEGIN_EVENTSINK_MAP above; the compiler validates each
+	   handler name. Device/axis assignment combos + per-axis mode/deadzone tuning. */
+	#define BOB_CTRL_COMBOS(X) \
+		X(IDC_DEVLIST,         OnTextChangedDevlist) \
+		X(IDC_MOUSEDEV,        OnTextChangedMousedev) \
+		X(IDC_PANDEV,          OnTextChangedPandev) \
+		X(IDC_RUDDEV,          OnTextChangedRuddev) \
+		X(IDC_STICKDEV,        OnTextChangedStickdev) \
+		X(IDC_THROTDEV,        OnTextChangedThrotdev) \
+		X(IDC_ZOOMDEV,         OnTextChangedZoomdev) \
+		X(IDC_THROTDEV_2,      OnTextChangedThrotdev2) \
+		X(IDC_PROPPITCH2,      OnTextChangedProppitch2) \
+		X(IDC_PROPPITCH,       OnTextChangedProppitch) \
+		X(IDC_INTERACTIVECPIT, OnTextChangedInteractivecockpit) \
+		X(IDC_GUNNER,          OnTextChangedGunner) \
+		X(IDC_CBO_STICKDZ,     OnTextChangedCboStickdz) \
+		X(IDC_CBO_STICKMODE,   OnTextChangedCboStickdmode) \
+		X(IDC_CBO_ZOOMMODE,    OnTextChangedCboZoommode) \
+		X(IDC_CBO_THROTDZ,     OnTextChangedCboThrotdz) \
+		X(IDC_CBO_THROT2DZ,    OnTextChangedCboThrot2dz) \
+		X(IDC_CBO_RUDMODE,     OnTextChangedCboRudmode) \
+		X(IDC_CBO_RUDDZ,       OnTextChangedCboRuddz) \
+		X(IDC_CBO_PPDZ,        OnTextChangedCboPpdz) \
+		X(IDC_CBO_PP2DZ,       OnTextChangedCboPp2dz) \
+		X(IDC_CBO_PANMODE,     OnTextChangedCboPanmode) \
+		X(IDC_CBO_PANDZ,       OnTextChangedCboPandz) \
+		X(IDC_CBO_GUNNERMODE,  OnTextChangedCboGunnermode) \
+		X(IDC_CBO_GUNNERDZ,    OnTextChangedCboGunnerdz) \
+		X(IDC_CBO_COCKPITMODE, OnTextChangedCboCockpitmode)
+	if (getenv("BOB_TRACE_OLE")) fprintf(stderr, "[rebind] combo ctrlId=%d -> change handler\n", ctrlId);
+	switch (ctrlId) {
+		#define X(id, fn) case id: fn((LPCTSTR)"", 0); break;
+		BOB_CTRL_COMBOS(X)
+		#undef X
+		default: break;
+	}
+	#undef BOB_CTRL_COMBOS
+}
+#endif
 
 BEGIN_MESSAGE_MAP(SController, CDialog)
 	//{{AFX_MSG_MAP(SController)
@@ -1613,9 +1671,12 @@ static void SetDZCombo(SController::CRCombo* combo,int level,int midlevel)	/* BO
 		combo->RESCOMBO(SMALL,3)->SetIndex(index);
 
 }
-BOOL SController::OnInitDialog() 
+BOOL SController::OnInitDialog()
 {
 	CDialog::OnInitDialog();
+#if BOB_LINUX
+	{ extern void bob_scontroller_set(SController*); bob_scontroller_set(this); }   /* R5.3 rebind bridge */
+#endif
 	//Moved this form DoDataExchange. Using both functions is dicey and confusing...
 	CREdtBt*	calib=GETDLGITEM(IDC_CALIB);
 	calib->SetCaption(RESSTRING(CALIBRATE));

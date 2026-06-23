@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R5.3b (2026-06-23): CONTROLS REBIND IS INTERACTIVE — clicking a device/axis combo reassigns controls (the OCX eventsink, bridged)
+> Sprint 22 (Release 5). Completed the controls screen from "renders" (R5.3) to "interactive": clicking a
+> hosted device/axis combo now actually **reassigns** the control, with the game's full interdependent
+> recomputation, and persists.
+> - **The gap.** The combos render + cycle on click (`bob_ole_click → HostRCombo::onClick`), but the cycle
+>   only changed the *displayed* value — the reassignment lives in `SController::OnTextChanged*` →
+>   `ChangedAxesCombo` (updates `connectedaxes[].assignedtask`), fired by the OCX **eventsink**
+>   (`BEGIN_EVENTSINK_MAP`/`ON_EVENT`), which is a **no-op on Linux** (the macros are empty). A general
+>   eventsink (member-fn-ptr dispatch + per-class maps + a `CWnd` vtable change) would touch every dialog —
+>   high risk for a power-user feature whose defaults already fly. **Deferred** in favour of a targeted bridge.
+> - **Targeted rebind bridge (low-risk).** A `BOB_LINUX` scaffold on `SController` (`SCONTROL.CPP/.H`):
+>   `bob_combo_changed(ctrlId)` switches a control id → its genuine `OnTextChanged*` handler (an X-macro list
+>   mirrors the `ON_EVENT` map so the compiler validates every handler name). The instance registers itself
+>   in `OnInitDialog` / clears in `PreDestroyPanel`; `bob_ole_click` calls `bob_scontroller_combo_changed`
+>   after a cycle. No vtable/macro-infrastructure changes — only a scaffold method + one compat call.
+> - **Verified end-to-end (real GL, `BOB_CONFIGSCREEN=controls` + `BOB_CLICKXY`).** Clicking the Stick combo:
+>   `RCombo cycle 1→0` → `[rebind] combo ctrlId=2148 → change handler` → `OnTextChangedStickdev` →
+>   `ChangedAxesCombo`+`RemakeAxes`. The Stick combo's display changes ("First Joystick Axis 0 & Axis 1" →
+>   "Keyboard"), and — the real proof — the **other combos recompute**: the freed joystick axes ("First
+>   Joystick Axis 0/1") now appear as available options in the Rudder/Throttle/Pan combos. That's the genuine
+>   interdependent axis-assignment logic, not a display toggle. Persistence rides the unedited
+>   `PreDestroyPanel → SetAxisConfig` path (writes `connectedaxes` → `_Analogue.runtimedevices`).
+> - **Scaffold fix.** `BOB_CONFIGSCREEN` returned every tick, starving click injection; now it falls through
+>   after launch so clicks/combo-hosting run. `[rebind]` trace is env-gated (`BOB_TRACE_OLE`).
+> - **No regression:** bare `./bob` 0; `BOB_BOOT_FRONTEND` flight clean; the controls form renders + rebinds
+>   stably (15s click sessions, no crash). **R5.3 done** (form + interaction); the only remaining controls
+>   nicety is the in-game *keyboard* rebind list (separate from the axis combos). Wired 26 combo handlers
+>   (device/axis + per-axis mode/deadzone). Captures: `/tmp/stick_after.png`.
+
 > ## R5.3 (2026-06-23): CONTROLS CONFIG SCREEN RENDERS + a game-wide CString-in-varargs ABI bug fixed (garbled `%s` text)
 > Sprint 21 (Release 5). Brought up the front-end **Controls config screen** (`SController`, the
 > device/axis-assignment form) — and the work uncovered + fixed a pervasive Win32→Linux text bug.
