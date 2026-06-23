@@ -20,6 +20,14 @@
 >   a locate-the-NULL + fix (the R1.3 class), starting at `SAGMovementFollowWP`→`CruiseToWp`. The map
 >   render stays stable (`BOB_MAP_TIMER` gated off); bare `./bob` 0. Evidence: `/tmp/sag2.log`.
 >   Re-instrument: a gated `fprintf` of `p/s/instance/as/movecode` before `as->MoveSAG` (SAGMOVE.CPP:970).
+> - **Crash pinned to the exact line:** `GetCruiseToWp` (SAGMOVE.CPP:1361-1364) does `wp =
+>   ConvertPtrUID(wpref); despos = wp->World;` with **no NULL check**, and `wp` is NULL — the raid SAG's
+>   flight-plan **waypoint** (`wpref`, a valid `>10` UID) **isn't in `pItem`**. **Hypothesis tested + ruled
+>   out:** rebuilding the node tree (`BuildTargetTable`+`LoadCleanNodeTree`) after `StartUpMapWorld`'s wipe
+>   — **no change** (reverted), so the missing waypoint is a *raid flight-plan* waypoint (from
+>   `AutoLWPackages`), not a node-tree item. Next: trace `AutoLWPackages` raid-waypoint creation
+>   (`new info_waypoint`+`tabulateUID`, PACKAGES.CPP:2379/2616/4686) to find why this SAG's `wpref`
+>   waypoint is absent (uncreated, or the SAG is a stale leftover with a dangling `wpref`).
 >
 > ## R4.3 (2026-06-21): campaign-clock drive — SPIKE; the MFC WM_TIMER is wired (forwarder) but the sim crashes pre-deployment
 > Started the campaign loop (R4.3). On Windows the strategic map runs off a 1Hz `WM_TIMER`
