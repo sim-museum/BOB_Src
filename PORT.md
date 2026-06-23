@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## Cross-port notes ↔ MiG Alley (`~/ma`) — 2026-06-23
+> Compared notes with the sister Rowan-engine port (MA is at: joystick LIVE-validated, REdit OCX hosting,
+> loadgame file-select → campaign map). Convergences + exchanges:
+> - **CString-in-varargs (BoB→MA, high value).** MA has this **verbatim and latent** — its
+>   `cstring_impl.cpp::FormatV` is byte-identical to BoB's pre-fix version and it passes `CString` to
+>   `CSprintf("%s",…)` pervasively (fuel/altitude readouts). It hides because their tested screens use
+>   `AddString(CString)` (no varargs). Pushed the fix + diagnosis into the shared engine notes (§2b);
+>   BoB commit `6a8aa77` is copy-pasteable into MA.
+> - **All-zero `BOBGUID` (convergent).** Both ports independently hit it: MA on the axis GUIDs
+>   (`GUID_XAxis…RzAxis` all equal → every axis classified X), BoB on device + object GUIDs. Same root
+>   cause; both fixed by distinct real DInput GUIDs. Generalised in §5.
+> - **Dead OCX eventsink (MA→BoB, adopt later).** Both hit "control clicks go nowhere" (the `ON_EVENT`
+>   macros are no-ops). MA built the **general** fix (`ma_eventsink.cpp`: a `{typeid,id,dispid,thunk}`
+>   registry, RTTI dispatch, overloaded arg-marshalling templates — no `CWnd` vtable change). BoB R5.3b
+>   used a targeted per-screen bridge to avoid touching shared `afxwin.h`; MA's is the better long-term
+>   pattern — **adopt it when BoB needs a 2nd event-driven dialog** (save/load R6.5). Documented in §5.
+> - Engine notes (`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`) updated with all three; the `~/ma` copy had
+>   diverged (it predates BoB's joystick/mouse/CString work) and should pull these.
+
 > ## R5.3b (2026-06-23): CONTROLS REBIND IS INTERACTIVE — clicking a device/axis combo reassigns controls (the OCX eventsink, bridged)
 > Sprint 22 (Release 5). Completed the controls screen from "renders" (R5.3) to "interactive": clicking a
 > hosted device/axis combo now actually **reassigns** the control, with the game's full interdependent

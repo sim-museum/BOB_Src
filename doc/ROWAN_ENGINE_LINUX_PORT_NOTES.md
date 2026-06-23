@@ -243,6 +243,27 @@ very similar API surface — you can lift most of these headers wholesale.
   obvious local cause, especially around file I/O, streams, or anything touching libc/libstdc++.
   Suspect a packed std/libc type first.
 
+### 2b. The #2 recurring ABI bug: `CString` passed to `printf`/`CSprintf` varargs **[ENGINE]** (BoB 2026-06-23)
+- The engine pervasively writes `CSprintf("%s", aCString)` / `str.Format("%s", aCString)` **without a
+  `(LPCTSTR)` cast** (`RESSTRING`/`LoadResString`/`.name` all *return `CString`*). On MSVC a `CString`
+  is one pointer member, passed to varargs **by value**, so `%s` reads the `char*` — works. Under the
+  **Itanium/SysV C++ ABI (Linux GCC)** a class with a non-trivial copy ctor/dtor (CString) is passed to
+  varargs **by invisible reference** (a pointer to the object), so `vsnprintf %s` prints the object's
+  `m_pchData` *bytes* as text → garbage (e.g. `",J\t·+J\t…"`). Confirmed with a standalone `-m32` repro.
+- **This is latent across the WHOLE game**, not one screen — it bites wherever `CSprintf`-`%s` text is
+  shown (BoB: controls device/axis combos, config labels). It HIDES on screens that use
+  `AddString(CString)` / direct CString draw (no varargs) — so "some text renders fine" does **not**
+  clear you. **MiG Alley has this bug verbatim** — its `SRC/compat/cstring_impl.cpp::FormatV` is the
+  byte-identical plain-`vsnprintf` version and it passes `CString` to `CSprintf("%s",…)` everywhere
+  (fuel/altitude readouts, etc.). Check any `CSprintf("…%s…", <CString>)` output.
+- **Fix (drop-in, `cstring_impl.cpp::FormatV`):** pure-numeric formats keep the trusted `vsnprintf`
+  path (byte-identical; zero risk). Only `%s`-bearing formats are token-parsed; each `%s` arg is
+  resolved as CString-by-ref vs genuine `char*` by validating the `CStringData{nRefs,nDataLength,
+  nAllocLength}` header behind a real CString's buffer, with `/proc/self/maps`-guarded reads so a stray
+  `char*` can never fault. **Bounded blast radius:** only `%s` formats change, and those are *all*
+  broken, so a working (numeric) screen cannot regress. BoB's implementation is copy-pasteable. See
+  BoB `PORT.md` R5.3 (2026-06-23) + commit `6a8aa77`.
+
 ---
 
 ## 3. The Rowan engine internals you need to know **[ENGINE]**
@@ -455,11 +476,45 @@ Listed by how much pain they cost. Grep for the named functions to pre-empt them
   buffered events `{dwOfs = DIK scancode, dwData = 0x80 down / 0 up}` and indexes its keymap by
   `dwOfs`, so you must translate `SDL_Scancode` → the **PS/2 set-1 DIK** values DirectInput
   uses (not ASCII). Keyboard is done in BoB.
-- **Mouse + joystick are stubbed** in BoB (vtbls exist, no SDL wiring). You'll need both:
-  mouse for the entire menu/UI (every front-end screen is click-driven) and joystick for
-  faithful flight. Mirror the keyboard approach: SDL mouse motion/buttons →
-  `GetDeviceState`/`GetDeviceData` on the mouse device; SDL game controller → the joystick
-  device.
+- **Joystick + in-flight mouse are now DONE in BoB** (2026-06-23, R5.1/R5.2) — mirror them:
+  - **Joystick (`SDL_Joystick` → DirectInput).** `EnumDevices(JOYSTICK)`/`CreateDevice`/`EnumObjects`
+    (report axes/buttons/POV; the `dwType` instance = SDL index so `SetDataFormat` can learn the
+    game's per-object buffer offsets) / `GetDeviceState` + **buffered `GetDeviceData`**. The flight
+    loop (`Analogue::PollPosition`) reads the stick via **buffered `GetDeviceData`, not** immediate
+    `GetDeviceState` — wiring only the immediate read gives "stick detected but doesn't fly." With no
+    saved controls config, inject a default flight mapping (axis 0=aileron/1=elevator/2=rudder/
+    3=throttle) into `runtimedevices`.
+  - **Mouse (`SDL_GetRelativeMouseState` → DirectInput).** Report 2 **relative** axes + buttons;
+    `GetDeviceData` emits relative-delta change events; default-map axis 0→`AU_UI_X`, 1→`AU_UI_Y`
+    (the in-3D UI cursor — otherwise `ReadPosition(AU_UI_X)` returns `-0x8000` = disabled).
+  - **★ Keystone GUID bug (BOTH ports hit this independently).** The generic `BOBGUID` macro defines
+    every GUID all-zero, so device GUIDs (`GUID_Joystick == GUID_SysKeyboard == GUID_SysMouse`) AND
+    object-type GUIDs (`GUID_XAxis == GUID_YAxis == … == GUID_Button == GUID_POV`) compare equal →
+    `CreateDevice(joystick)` returns the keyboard, and the analogue enum classifier sees every axis as
+    X (roll drives rudder, etc.). **Give every device + object-type GUID a distinct, real DInput
+    value.** (MA fixed the axis GUIDs; BoB fixed device + object GUIDs — same root cause.)
+  - **`EnumObjects` MUST honour the `dwFlags` DIDFT type filter.** The controls-config enumerates with
+    `EnumObjects(DIDFT_AXIS+DIDFT_POV)` and counts every reported object as an *axis*; reporting
+    buttons there overflows the config's `firstaxes` reservation (OOB write, `CString` corruption). The
+    flight path requests all types, so honouring the filter is unregressive.
+
+### The dead OCX eventsink → control clicks go nowhere **[ENGINE/UI]** (both ports, 2026-06-23)
+- Real MFC routes an OCX control's events (`Clicked`/`TextChanged`/`Select`) to the hosting dialog's
+  `ON_EVENT` handlers via the eventsink map + `IConnectionPoint`. **On Linux the `ON_EVENT`/
+  `BEGIN_EVENTSINK_MAP` macros are no-ops**, so a hosted combo/listbox/button click changes nothing —
+  the dialog's `OnTextChanged*`/`OnSelectRlistbox*` never runs (combos that "cycle but don't apply",
+  list picks that don't propagate, buttons that don't fire).
+- **MA built the general fix — adopt it (`ma_eventsink.cpp` + redefined `afxwin.h` macros).** A global
+  `{&typeid(Class), id, dispid, thunk}` registry: redefined `ON_EVENT` generates a per-handler free
+  thunk (defined inside the class's static `MaRegEvents()`, so it can reach the *protected* handler) +
+  registers it; `ma_evt_fire(dlg, &typeid(*dlg), id, dispid)` dispatches by control-id + event +
+  **RTTI runtime type** (disambiguates the many dialogs reusing the same `IDC_` ids). Overloaded
+  `ma_evt_call` templates marshal each handler signature (`void()`, `(int)`, `(short)`, `(int,int)`,
+  `(LPCSTR)`); event args via `ma_evtA0/A1/P` globals. **Key insight:** RTTI replaces a `CWnd` vtable
+  change, and the static-member map context grants protected access — so this needs *no* game-class
+  layout change. BoB R5.3b instead used a *targeted* per-screen bridge (`SController::bob_combo_changed`
+  + an X-macro list) to avoid touching shared `afxwin.h`; MA's general approach is the better long-term
+  pattern and should be cross-adopted when BoB needs a second event-driven dialog (load/save, etc.).
 
 ---
 
