@@ -1,5 +1,49 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R5.2 (2026-06-23): IN-FLIGHT MOUSE — DirectInput → SDL relative motion; the in-3D UI cursor is live (and a latent config-enum overflow found + fixed)
+> Sprint 20 (Release 5, "Control & sim depth"). With the joystick done (R5.1), wired the **in-flight
+> mouse** on the same DirectInput→SDL pattern, and the work surfaced a real compat bug in the R5.1
+> joystick enumeration too.
+> - **Compat mouse device (`bob_video.cpp`).** Mirrors the joystick path for `g_diMouse`:
+>   `DI_EnumDevices(DIDEVTYPE_MOUSE)` reports the system mouse; `DI_CreateDevice(GUID_SysMouse)` returns
+>   the device; `DIDEV_EnumObjects` reports 2 **relative** axes (X,Y) + 3 buttons; `DIDEV_SetDataFormat`
+>   learns the game's per-object buffer offsets (keyed by the reported instance); **buffered
+>   `DIDEV_GetDeviceData`** emits a relative-motion change event per moved axis (`dwData=(short)delta`)
+>   + button transitions, reading **`SDL_GetRelativeMouseState`**; `DIDEV_GetCaps` reports a 2-axis,
+>   3-button mouse. `BOB_NOMOUSE` disables the device; `BOB_MOUSEFLY=dx,dy` injects synthetic motion for
+>   headless tests; `BOB_TRACE_MOUSE` traces.
+> - **Distinct `GUID_SysMouse` (`bob_stubs.cpp`) — same keystone as R5.1.** The all-zero `BOBGUID` macro
+>   made every device GUID equal, so `CreateDevice(GUID_SysMouse)` would have collided. Gave it the real
+>   non-zero DInput value (`0x6F1D2B60…`), distinct from keyboard/joystick.
+> - **Default cursor mapping (`ANALOGUE.CPP`, `BOB_LINUX` scaffold).** With no saved controls config the
+>   mouse is unmapped, so the in-flight cursor is disabled (`ReadPosition(AU_UI_X)` returns `-0x8000`).
+>   Append the mouse to `runtimedevices` (ismouse, relative) with axis 0→`AU_UI_X`, 1→`AU_UI_Y` — the
+>   in-3D UI cursor the F-menu/clickable cockpit reads (and the axes the `AA_UI_PAN` alias rides for view
+>   pan). `BOB_NOMOUSEDEFAULT` disables. Parallels the R5.1 joystick scaffold; game logic unedited.
+> - **Keystone bug found + fixed — `DIDEV_EnumObjects` now honours the DIDFT filter.** Enabling the mouse
+>   SIGSEGV'd in `SController::BuildEnumerationTables` (`CString::operator=`, garbage `m_pchData=3`). Root
+>   cause (gdb): EnumObjects **ignored the `dwFlags` type filter**. The controls-config enumerates with
+>   `EnumObjects(DIDFT_AXIS+DIDFT_POV)` and counts every reported object as an *axis*; reporting the
+>   joystick's 12 buttons + the mouse's buttons there inflated the per-device axis count and **underflowed
+>   the config's `firstaxes` reservation** (`connectedaxes[--firstaxes]` with `firstaxes<0` wrote before
+>   the array, clobbering the adjacent `connecteddevices[]` CStrings). The joystick alone stayed just under
+>   the bound (so R5.1 flight worked); adding the mouse tipped it negative. Fix: `DIDEV_EnumObjects` honours
+>   `DIDFT_ALL`/`DIDFT_AXIS`/`DIDFT_BUTTON`/`DIDFT_POV` (real DInput semantics) — the config gets axes+POV
+>   only; the **flight path (requests all three types) is unchanged**, so the R5.1 joystick mapping/flight
+>   is unregressed. Also fixes the cosmetic "buttons listed as axes" in the controls UI.
+> - **Verified end-to-end.** Real GL boot (`BOB_BOOT_FRONTEND`, GTX 1660): `SetDataFormat` learned the
+>   flight offsets **Xofs=912, Yofs=916** = exactly `AX_FLAG_RELAXIS(0x380)+(AU_UI_X=4<<2)` and
+>   `+(AU_UI_Y=5<<2)`; `GetDeviceData` feeds the deltas there. A temporary `PollPosition` trace (added,
+>   verified, **reverted** — game code pristine) proved the consumer responds: injecting `dx=6,dy=−4`
+>   ramps `axisvalues[AU_UI_X]` **positive** (→ clamp +32767) and `[AU_UI_Y]` **negative** (→ −32767),
+>   signs + 6:−4 ratio matching; with no motion both stay at `−0x8000` (disabled — no spurious drift), so
+>   the in-flight cursor (`COverlay::UpdateMousePos`) now gets live values instead of "mouse disabled".
+> - **Regression sweep:** bare `./bob` exits 0; flight with the mouse default-on runs 30s clean (joystick
+>   *and* mouse mappings install, no crash); `BOB_NOMOUSEDEFAULT` cleanly suppresses just the mouse;
+>   joystick flight unregressed. **R5.2 DONE** (pending a PO mouse-look fly-test — I can't move the mouse).
+>   Carried: in-3D UI cursor *click* → menu-select wiring + optional grab/relative-mode for true mouse-look
+>   (the axes are live; only the modifier/click polish remains).
+
 > ## R5.1b (2026-06-22): JOYSTICK FLY-TEST PASSED — buffered read was the last piece; "90% throttle" diagnosed as *faithful* boost-cutout behaviour, not a bug
 > The PO physically flew with the stick and confirmed **"joystick works"** — pitch, roll, rudder and
 > throttle all drive the flight model. Two follow-ups were raised and run to ground this session:

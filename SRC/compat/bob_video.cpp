@@ -1907,6 +1907,30 @@ static void joy_open(void) {
    uses this to map a fresh stick to flight axes without the controls UI. */
 extern "C" int bob_joystick_present(void) { joy_open(); return g_sdlJoy != NULL; }
 
+/* ====================================================================== *
+ * R5.2 in-flight mouse (SDL relative motion -> DirectInput relative axes).*
+ * Mirrors the joystick path: the game (ANALOGUE.CPP) EnumDevices(MOUSE) ->*
+ * CreateDevice(GUID_SysMouse) -> EnumObjects (relative X/Y axes + buttons)*
+ * -> SetDataFormat (learns our offsets) -> buffered GetDeviceData. We feed *
+ * SDL relative mouse deltas at the negotiated offsets; the game maps them  *
+ * to AU_UI_X/AU_UI_Y (the in-flight cursor) by default (ANALOGUE.CPP).     *
+ * BOB_NOMOUSE disables the device; BOB_MOUSEFLY=dx,dy injects synthetic    *
+ * motion for headless tests; BOB_TRACE_MOUSE traces.                       *
+ * ====================================================================== */
+static int g_mouseAxisOfs[3]   = {-1,-1,-1};   /* SDL axis 0=X 1=Y 2=wheel -> data-format offset */
+static int g_mouseButtonOfs[8];                /* SDL button index -> offset */
+static int g_mouseLastBtn[8];
+static int g_mouseInit  = 0;
+static int g_mouseTraced= 0;
+
+/* relative mouse delta since last call (or the injected test delta). */
+static void mouse_get_delta(int* dx, int* dy) {
+	*dx=0; *dy=0;
+	const char* mf = getenv("BOB_MOUSEFLY");   /* headless: inject a constant per-poll delta */
+	if (mf && *mf) { int a=0,b=0; if (sscanf(mf,"%d,%d",&a,&b)>=1){*dx=a;*dy=b;} return; }
+	SDL_GetRelativeMouseState(dx, dy);
+}
+
 static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID buf) {
 	if (buf && cb) memset(buf,0,cb);
 	/* keyboard immediate state: 256-byte DIK array, 0x80 = down (some code uses this) */
@@ -1938,6 +1962,14 @@ static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID 
 		if (getenv("BOB_TRACE_JOY") && g_joyTraced++<4)
 			fprintf(stderr,"[joy] state ax0=%d ax1=%d buf=%d bytes\n",
 				SDL_JoystickGetAxis(g_sdlJoy,0), g_joyNAxes>1?SDL_JoystickGetAxis(g_sdlJoy,1):0, n);
+	}
+	/* R5.2: mouse immediate state -- relative axes read 0 (deltas are consumed buffered); fill the
+	   button bytes at the negotiated offsets. (The game calls this once at device init.) */
+	if (This==&g_diMouse && buf) {
+		int n=(int)cb;
+		Uint32 bmask = SDL_GetMouseState(NULL,NULL);
+		for (int i=0;i<3;i++) { int o=g_mouseButtonOfs[i];
+			if (o>=0 && o<n) ((unsigned char*)buf)[o] = (bmask & SDL_BUTTON(i+1))?0x80:0; }
 	}
 	return 0;
 }
@@ -1982,6 +2014,38 @@ static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEO
 		*inout=got;
 		return 0;
 	}
+	/* R5.2: in-flight mouse -- emit a relative-motion change event per moved axis (X,Y) + button
+	   transitions. The game reads (SWord)dwData as the per-poll delta for a relative axis. */
+	if (This==&g_diMouse) {
+		if (!g_mouseInit) { for(int i=0;i<8;i++) g_mouseLastBtn[i]=-1; g_mouseInit=1; }
+		int dx=0,dy=0; mouse_get_delta(&dx,&dy);
+		Uint32 bmask = SDL_GetMouseState(NULL,NULL);
+		DWORD want=*inout, got=0;
+		if (g_mouseAxisOfs[0]>=0 && dx && got<want) {
+			if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_mouseAxisOfs[0];
+				buf[got].dwData=(DWORD)(short)dx; buf[got].dwSequence=++g_kbSeq; }
+			got++;
+		}
+		if (g_mouseAxisOfs[1]>=0 && dy && got<want) {
+			if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_mouseAxisOfs[1];
+				buf[got].dwData=(DWORD)(short)dy; buf[got].dwSequence=++g_kbSeq; }
+			got++;
+		}
+		for (int i=0;i<3 && got<want;i++) if (g_mouseButtonOfs[i]>=0) {
+			int v=(bmask & SDL_BUTTON(i+1))?0x80:0;
+			if (v!=g_mouseLastBtn[i]) {
+				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_mouseButtonOfs[i];
+					buf[got].dwData=(DWORD)v; buf[got].dwSequence=++g_kbSeq; }
+				if (!(flags & 0x1 /*DIGDD_PEEK*/)) g_mouseLastBtn[i]=v;
+				got++;
+			}
+		}
+		if (getenv("BOB_TRACE_MOUSE") && got && g_mouseTraced++<8)
+			fprintf(stderr,"[mouse] GetDeviceData: %lu events (dx=%d dy=%d ofsX=%d ofsY=%d)\n",
+				(unsigned long)got,dx,dy,g_mouseAxisOfs[0],g_mouseAxisOfs[1]);
+		*inout=got;
+		return 0;
+	}
 	if (This!=&g_diKeyboard) { *inout=0; return 0; }
 	DWORD want=*inout, got=0;
 	while (got<want && g_kbHead!=g_kbTail) {
@@ -2016,29 +2080,68 @@ static HRESULT DIDEV_SetDataFormat(IDirectInputDeviceA* This, LPCDIDATAFORMAT fm
 		if (getenv("BOB_TRACE_JOY")) fprintf(stderr,"[joy] SetDataFormat: %lu objs, ax0ofs=%d btn0ofs=%d povofs=%d\n",
 			(unsigned long)fmt->dwNumObjs, g_joyAxisOfs[0], g_joyButtonOfs[0], g_joyHatOfs);
 	}
+	/* R5.2: learn the mouse object offsets the game assigned (keyed by the reported instance). */
+	if (This==&g_diMouse && fmt && fmt->rgodf) {
+		for (int i=0;i<3;i++) g_mouseAxisOfs[i]=-1;
+		for (int i=0;i<8;i++) g_mouseButtonOfs[i]=-1;
+		for (DWORD i=0;i<fmt->dwNumObjs;i++) {
+			DWORD t=fmt->rgodf[i].dwType; int inst=(int)DIDFT_GETINSTANCE(t); int type=(int)DIDFT_GETTYPE(t);
+			int ofs=(int)fmt->rgodf[i].dwOfs;
+			if (type & (DIDFT_ABSAXIS|DIDFT_RELAXIS)) { if (inst>=0 && inst<3) g_mouseAxisOfs[inst]=ofs; }
+			else if (type & DIDFT_BUTTON)             { if (inst>=0 && inst<8) g_mouseButtonOfs[inst]=ofs; }
+		}
+		if (getenv("BOB_TRACE_MOUSE")) fprintf(stderr,"[mouse] SetDataFormat: %lu objs, Xofs=%d Yofs=%d btn0ofs=%d\n",
+			(unsigned long)fmt->dwNumObjs, g_mouseAxisOfs[0], g_mouseAxisOfs[1], g_mouseButtonOfs[0]);
+	}
 	return 0;
 }
 static HRESULT DIDEV_SetCoop(IDirectInputDeviceA*, HWND, DWORD) { return 0; }
-static HRESULT DIDEV_EnumObjects(IDirectInputDeviceA* This, LPDIENUMDEVICEOBJECTSCALLBACKA cb, LPVOID ref, DWORD) {
+/* honour the EnumObjects dwFlags filter: DIDFT_ALL(0) = everything, else a mask of
+   DIDFT_AXIS(0x03)/DIDFT_BUTTON(0x0C)/DIDFT_POV(0x10). This MATTERS: the controls-config
+   (SController::BuildEnumerationTables) calls EnumObjects(DIDFT_AXIS+DIDFT_POV) and counts every
+   reported object as an "axis"; reporting buttons there miscounts them and underflows the config's
+   firstaxes reservation (corrupting adjacent globals). The flight path requests all three types. */
+static inline int didft_want(DWORD flags, DWORD typebit) { return flags==DIDFT_ALL || (flags & typebit); }
+static HRESULT DIDEV_EnumObjects(IDirectInputDeviceA* This, LPDIENUMDEVICEOBJECTSCALLBACKA cb, LPVOID ref, DWORD flags) {
 	/* R5.1: report the joystick's axes/buttons/POV so the game builds its data format. The dwType
 	   instance is the SDL index; the game preserves it, so SetDataFormat can map offset<->index.
 	   Order matters: the game's axismaps[axiscount]/buttoncount track the enumeration order. */
+	/* R5.2: mouse -- report 2 relative axes (X,Y) then buttons, so the game builds a relative
+	   data format and maps axiscount 0->X, 1->Y to its axismaps (AU_UI_X/AU_UI_Y by default). */
+	if (This==&g_diMouse) {
+		if (!cb) return 0;
+		const GUID* mAx[2]={&GUID_XAxis,&GUID_YAxis};
+		DIDEVICEOBJECTINSTANCEA o;
+		if (didft_want(flags,DIDFT_AXIS)) for (int i=0;i<2;i++) {
+			memset(&o,0,sizeof(o)); o.dwSize=sizeof(o);
+			o.guidType=*mAx[i]; o.dwType=DIDFT_RELAXIS|DIDFT_MAKEINSTANCE(i); o.dwOfs=i*4;
+			snprintf(o.tszName,sizeof(o.tszName),"Mouse Axis %d",i);
+			if (!cb(&o,ref)) return 0;
+		}
+		if (didft_want(flags,DIDFT_BUTTON)) for (int i=0;i<3;i++) {
+			memset(&o,0,sizeof(o)); o.dwSize=sizeof(o);
+			o.guidType=GUID_Button; o.dwType=DIDFT_BUTTON|DIDFT_MAKEINSTANCE(i);
+			snprintf(o.tszName,sizeof(o.tszName),"Mouse Button %d",i);
+			if (!cb(&o,ref)) return 0;
+		}
+		return 0;
+	}
 	if (This!=&g_diJoystick || !cb || !g_sdlJoy) return 0;
 	const GUID* axisGuids[4]={&GUID_XAxis,&GUID_YAxis,&GUID_ZAxis,&GUID_RzAxis};
 	DIDEVICEOBJECTINSTANCEA o;
-	for (int i=0;i<g_joyNAxes && i<16;i++) {
+	if (didft_want(flags,DIDFT_AXIS)) for (int i=0;i<g_joyNAxes && i<16;i++) {
 		memset(&o,0,sizeof(o)); o.dwSize=sizeof(o);
 		o.guidType=*axisGuids[i<4?i:0]; o.dwType=DIDFT_ABSAXIS|DIDFT_MAKEINSTANCE(i); o.dwOfs=i*4;
 		snprintf(o.tszName,sizeof(o.tszName),"Axis %d",i);
 		if (!cb(&o,ref)) return 0;   /* callback returns DIENUM_STOP(0) to halt */
 	}
-	for (int i=0;i<g_joyNButtons && i<64;i++) {
+	if (didft_want(flags,DIDFT_BUTTON)) for (int i=0;i<g_joyNButtons && i<64;i++) {
 		memset(&o,0,sizeof(o)); o.dwSize=sizeof(o);
 		o.guidType=GUID_Button; o.dwType=DIDFT_BUTTON|DIDFT_MAKEINSTANCE(i);
 		snprintf(o.tszName,sizeof(o.tszName),"Button %d",i);
 		if (!cb(&o,ref)) return 0;
 	}
-	for (int i=0;i<g_joyNHats && i<4;i++) {
+	if (didft_want(flags,DIDFT_POV)) for (int i=0;i<g_joyNHats && i<4;i++) {
 		memset(&o,0,sizeof(o)); o.dwSize=sizeof(o);
 		o.guidType=GUID_POV; o.dwType=DIDFT_POV|DIDFT_MAKEINSTANCE(i);
 		snprintf(o.tszName,sizeof(o.tszName),"Hat %d",i);
@@ -2051,6 +2154,8 @@ static HRESULT DIDEV_GetCaps(IDirectInputDeviceA* This, LPDIDEVCAPS c) {
 	if (c) { DWORD sz=c->dwSize; memset(c,0,sz?sz:sizeof(*c)); c->dwSize=sz?sz:sizeof(*c);
 		if (This==&g_diJoystick && g_sdlJoy) {   /* R5.1: report the joystick's real object counts */
 			c->dwDevType=DIDEVTYPE_JOYSTICK; c->dwAxes=g_joyNAxes; c->dwButtons=g_joyNButtons; c->dwPOVs=g_joyNHats; }
+		else if (This==&g_diMouse) {             /* R5.2: a 2-axis, 3-button relative mouse */
+			c->dwDevType=DIDEVTYPE_MOUSE; c->dwAxes=2; c->dwButtons=3; c->dwPOVs=0; }
 	}
 	return 0;
 }
@@ -2062,6 +2167,7 @@ static HRESULT DI_CreateDevice(IDirectInputA*, REFGUID rguid, LPDIRECTINPUTDEVIC
 	/* hand back a shared dummy device (any of them is fine -- all no-op) */
 	if      (rguid == GUID_SysKeyboard) *out = &g_diKeyboard;
 	else if (rguid == GUID_Joystick)    *out = &g_diJoystick;   /* R5.1 */
+	else if (rguid == GUID_SysMouse)    *out = &g_diMouse;      /* R5.2 */
 	else                                *out = &g_diGeneric;
 	return 0;
 }
@@ -2076,6 +2182,15 @@ static HRESULT DI_EnumDevices(IDirectInputA*, DWORD devtype, LPDIENUMDEVICESCALL
 		const char* nm=SDL_JoystickName(g_sdlJoy); if(!nm) nm="SDL Joystick";
 		strncpy(ddi.tszInstanceName,nm,259); strncpy(ddi.tszProductName,nm,259);
 		if (getenv("BOB_TRACE_JOY")) fprintf(stderr,"[joy] EnumDevices -> reporting '%s'\n",nm);
+		cb(&ddi, ref);
+	}
+	/* R5.2: report the system mouse so the game enumerates + opens it (GetFirstMouse / config). */
+	if ((devtype==DIDEVTYPE_MOUSE || devtype==0) && !getenv("BOB_NOMOUSE")) {
+		DIDEVICEINSTANCEA ddi; memset(&ddi,0,sizeof(ddi)); ddi.dwSize=sizeof(ddi);
+		ddi.guidInstance=GUID_SysMouse; ddi.guidProduct=GUID_SysMouse;
+		ddi.dwDevType=DIDEVTYPE_MOUSE;
+		strncpy(ddi.tszInstanceName,"System Mouse",259); strncpy(ddi.tszProductName,"System Mouse",259);
+		if (getenv("BOB_TRACE_MOUSE")) fprintf(stderr,"[mouse] EnumDevices -> reporting System Mouse\n");
 		cb(&ddi, ref);
 	}
 	return 0;

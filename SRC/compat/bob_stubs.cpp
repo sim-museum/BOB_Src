@@ -214,6 +214,9 @@ BOBGUID(DPSPGUID_MODEM);
    (The generic BOBGUID is all-zero, which made every device GUID compare equal.) */
 extern const GUID GUID_SysKeyboard; extern const GUID GUID_SysKeyboard = {0x6F1D2B61,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
 extern const GUID GUID_Joystick;    extern const GUID GUID_Joystick    = {0x6F1D2B70,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+/* R5.2: the real DInput system-mouse GUID -- must be distinct + non-zero (same keystone as R5.1:
+   the all-zero BOBGUID made every device GUID equal, so CreateDevice(GUID_SysMouse) collided). */
+extern const GUID GUID_SysMouse;    extern const GUID GUID_SysMouse    = {0x6F1D2B60,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
 /* R5.1: object-type GUIDs must be DISTINCT (real DInput values) -- the analogue enum proc tells
    axes from buttons/POVs by GUID equality (if(guidType==GUID_Button)...). The all-zero BOBGUID made
    GUID_XAxis==GUID_Button==GUID_POV, so joystick axes were misclassified as buttons (no flight). */

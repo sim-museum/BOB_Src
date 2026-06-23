@@ -456,6 +456,33 @@ Bool	Analogue::Initialise(int HWNDw,int HINSTANCEi,AllowAliasing mousemode,Allow
 			}
 		}
 	}
+	/* R5.2: with no saved controls config the mouse is unmapped, so the in-flight cursor is
+	   disabled (ReadPosition(AU_UI_X) returns -0x8000). Install a sensible default so the mouse
+	   drives the in-3D UI cursor out of the box: append it to runtimedevices (ismouse, relative)
+	   with axis 0->AU_UI_X, 1->AU_UI_Y (the same axes the game's AA_UI_PAN alias rides for view
+	   pan). The compat reports the mouse under GUID_SysMouse. BOB_NOMOUSEDEFAULT disables. */
+	{
+		extern const GUID GUID_SysMouse;
+		if (!getenv("BOB_NOMOUSEDEFAULT") && !getenv("BOB_NOMOUSE")) {
+			int rd; bool have=false;
+			for (rd=0; rd<MAXDEVICES && runtimedevices[rd].devid.Data1; rd++)
+				if (runtimedevices[rd].devid==GUID_SysMouse) have=true;
+			if (!have && rd<MAXDEVICES-1) {
+				runtimedevices[rd].devid=GUID_SysMouse;
+				runtimedevices[rd].ismouse=true;  runtimedevices[rd].useff=false;
+				runtimedevices[rd].usedelta=false; runtimedevices[rd].bigdead=false;
+				runtimedevices[rd].dev=NULL; runtimedevices[rd].dev2=NULL;
+				memset(runtimedevices[rd].axismaps,   AU_UNUSED, RunTimeDevDesc::MAXMAPS);
+				memset(runtimedevices[rd].sh_axismaps,AU_UNUSED, RunTimeDevDesc::MAXMAPS);
+				memset(runtimedevices[rd].hatmaps,    AU_UNUSED, RunTimeDevDesc::MAXMAPS);
+				runtimedevices[rd].axismaps[0]=AU_UI_X;
+				runtimedevices[rd].axismaps[1]=AU_UI_Y;
+				if (rd+1<MAXDEVICES) runtimedevices[rd+1].devid.Data1=0;   /* terminate the list */
+				fprintf(stderr,"[mouse] default cursor mapping installed at runtimedevices[%d] "
+					"(0=UI_X 1=UI_Y)\n", rd);
+			}
+		}
+	}
 #endif
 //DeadCode JIM 7Sep00 	if (!reinit)														//AMM 19/05/00
 //DeadCode JIM 7Sep00 	{
