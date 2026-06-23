@@ -209,8 +209,11 @@ BOBGUID(DPSPGUID_IPX);
 BOBGUID(DPSPGUID_TCPIP);
 BOBGUID(DPSPGUID_SERIAL);
 BOBGUID(DPSPGUID_MODEM);
-BOBGUID(GUID_SysKeyboard);
-BOBGUID(GUID_Joystick);   /* R5.1 */
+/* R5.1: device GUIDs must be DISTINCT + non-zero -- DI_CreateDevice tells keyboard from
+   joystick by GUID equality, and the analogue device loop gates on devid.Data1 != 0.
+   (The generic BOBGUID is all-zero, which made every device GUID compare equal.) */
+extern const GUID GUID_SysKeyboard; extern const GUID GUID_SysKeyboard = {0x6F1D2B61,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
+extern const GUID GUID_Joystick;    extern const GUID GUID_Joystick    = {0x6F1D2B70,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
 BOBGUID(GUID_XAxis);
 BOBGUID(GUID_YAxis);
 BOBGUID(GUID_ZAxis);      /* R5.1 */

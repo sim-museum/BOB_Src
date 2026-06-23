@@ -402,6 +402,9 @@ void	Analogue::ResetF5()
 //Description: 
 //
 //////////////////////////////////////////////////////////////////////
+#if BOB_LINUX
+extern "C" int bob_joystick_present(void);   /* R5.1 (bob_video.cpp): SDL joystick connected? */
+#endif
 Bool	Analogue::Initialise(int HWNDw,int HINSTANCEi,AllowAliasing mousemode,AllowAliasing aliasingmode, bool reinit)
 {
 //DeadCode JIM 2Nov00 	(*(UByte*)0xB0000)++;
@@ -424,6 +427,36 @@ Bool	Analogue::Initialise(int HWNDw,int HINSTANCEi,AllowAliasing mousemode,Allow
 		SController::SetAxisConfig(false,false);
 //##		runtimedevices[0].useff=true;
 	}
+#if BOB_LINUX
+	/* R5.1: with no saved controls config the game leaves a connected joystick unmapped (the
+	   player would assign axes in the Controls UI). Install a sensible default so a stick flies
+	   out of the box: append it to runtimedevices with axis 0->aileron, 1->elevator, 2->rudder,
+	   3->throttle (the Logitech Extreme 3D layout; extra axes/buttons stay unused). The compat
+	   reports the stick under GUID_Joystick. BOB_NOJOYDEFAULT disables. */
+	{
+		if (!getenv("BOB_NOJOYDEFAULT") && bob_joystick_present()) {
+			int rd; bool have=false;
+			for (rd=0; rd<MAXDEVICES && runtimedevices[rd].devid.Data1; rd++)
+				if (runtimedevices[rd].devid==GUID_Joystick) have=true;
+			if (!have && rd<MAXDEVICES-1) {
+				runtimedevices[rd].devid=GUID_Joystick;
+				runtimedevices[rd].ismouse=false; runtimedevices[rd].useff=false;
+				runtimedevices[rd].usedelta=false; runtimedevices[rd].bigdead=false;
+				runtimedevices[rd].dev=NULL; runtimedevices[rd].dev2=NULL;
+				memset(runtimedevices[rd].axismaps,   AU_UNUSED, RunTimeDevDesc::MAXMAPS);
+				memset(runtimedevices[rd].sh_axismaps,AU_UNUSED, RunTimeDevDesc::MAXMAPS);
+				memset(runtimedevices[rd].hatmaps,    AU_UNUSED, RunTimeDevDesc::MAXMAPS);
+				runtimedevices[rd].axismaps[0]=AU_AILERON;
+				runtimedevices[rd].axismaps[1]=AU_ELEVATOR;
+				runtimedevices[rd].axismaps[2]=AU_RUDDER;
+				runtimedevices[rd].axismaps[3]=AU_THROTTLE;
+				if (rd+1<MAXDEVICES) runtimedevices[rd+1].devid.Data1=0;   /* terminate the list */
+				fprintf(stderr,"[joy] default flight mapping installed at runtimedevices[%d] "
+					"(0=aileron 1=elevator 2=rudder 3=throttle)\n", rd);
+			}
+		}
+	}
+#endif
 //DeadCode JIM 7Sep00 	if (!reinit)														//AMM 19/05/00
 //DeadCode JIM 7Sep00 	{
 //DeadCode JIM 7Sep00 		bool backup;

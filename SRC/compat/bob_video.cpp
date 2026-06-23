@@ -1899,6 +1899,10 @@ static void joy_open(void) {
 	}
 }
 
+/* R5.1: is a joystick connected? (opens it lazily.) The game's BOB_LINUX default-config block
+   uses this to map a fresh stick to flight axes without the controls UI. */
+extern "C" int bob_joystick_present(void) { joy_open(); return g_sdlJoy != NULL; }
+
 static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID buf) {
 	if (buf && cb) memset(buf,0,cb);
 	/* keyboard immediate state: 256-byte DIK array, 0x80 = down (some code uses this) */
