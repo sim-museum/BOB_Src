@@ -214,13 +214,17 @@ BOBGUID(DPSPGUID_MODEM);
    (The generic BOBGUID is all-zero, which made every device GUID compare equal.) */
 extern const GUID GUID_SysKeyboard; extern const GUID GUID_SysKeyboard = {0x6F1D2B61,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
 extern const GUID GUID_Joystick;    extern const GUID GUID_Joystick    = {0x6F1D2B70,0xD5A0,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
-BOBGUID(GUID_XAxis);
-BOBGUID(GUID_YAxis);
-BOBGUID(GUID_ZAxis);      /* R5.1 */
-BOBGUID(GUID_RzAxis);     /* R5.1 */
-BOBGUID(GUID_Key);
-BOBGUID(GUID_Button);
-BOBGUID(GUID_POV);
+/* R5.1: object-type GUIDs must be DISTINCT (real DInput values) -- the analogue enum proc tells
+   axes from buttons/POVs by GUID equality (if(guidType==GUID_Button)...). The all-zero BOBGUID made
+   GUID_XAxis==GUID_Button==GUID_POV, so joystick axes were misclassified as buttons (no flight). */
+#define DIOBJGUID(n,d1) extern const GUID n; extern const GUID n = {d1,0xC9F3,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}}
+DIOBJGUID(GUID_XAxis,  0xA36D02E0);
+DIOBJGUID(GUID_YAxis,  0xA36D02E1);
+DIOBJGUID(GUID_ZAxis,  0xA36D02E2);
+DIOBJGUID(GUID_RzAxis, 0xA36D02E3);
+DIOBJGUID(GUID_Button, 0xA36D02F0);
+DIOBJGUID(GUID_POV,    0xA36D02F2);
+extern const GUID GUID_Key; extern const GUID GUID_Key = {0x55728220,0xD33C,0x11CF,{0xBF,0xC7,0x44,0x45,0x53,0x54,0x00,0x00}};
 BOBGUID(GUID_ConstantForce);
 BOBGUID(GUID_RampForce);
 BOBGUID(GUID_Square);
