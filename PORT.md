@@ -1,5 +1,42 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R5.3 (2026-06-23): CONTROLS CONFIG SCREEN RENDERS + a game-wide CString-in-varargs ABI bug fixed (garbled `%s` text)
+> Sprint 21 (Release 5). Brought up the front-end **Controls config screen** (`SController`, the
+> device/axis-assignment form) — and the work uncovered + fixed a pervasive Win32→Linux text bug.
+> - **`BOB_CONFIGSCREEN` scaffold (`FULLPSYS.CPP`, `BOB_LINUX`, default-off).** Jumps straight to a
+>   config screen (`controls`/`gfx`/`gfx2`/`sound`/`2d`/`sim`) via the public `LaunchScreen` — the same
+>   entry a title-bar tab click uses — so each form can be rendered + captured headlessly without
+>   walking the menu tree. Used to drive the Controls screen.
+> - **The Controls screen now renders** (it would previously SIGSEGV): a complete form with the tab bar,
+>   labels (Stick/Throttle/Rudder/Pan/Gunner/Zoom…), and the hosted **device/axis-assignment combos**,
+>   99.97% non-black. This validates the **R5.2 `DIDEV_EnumObjects` DIDFT-filter fix end-to-end in the
+>   front-end** — with a joystick connected, `SController::BuildEnumerationTables` is exactly the path
+>   whose `firstaxes` underflow R5.2 cured.
+> - **Root-caused the garbled combo text → CString-in-varargs ABI bug (the real prize).** The device/axis
+>   combo strings came out as pointer garbage (`",J\t\xb7+J\t…"`). Cause: the game pervasively writes
+>   `CSprintf("%s",aCString)` / `str.Format("%s",aCString)` **without a `(LPCTSTR)` cast**. On MSVC a
+>   `CString` (one pointer member) is passed to varargs **by value**, so `%s` reads the `char*`. Under the
+>   **Itanium/SysV C++ ABI (Linux GCC)** a class with a non-trivial copy ctor/dtor (CString) is passed to
+>   varargs **by invisible reference** (a pointer to the object), so `vsnprintf %s` prints the object's
+>   `m_pchData` *bytes* → garbage. Confirmed with a standalone `-m32` repro (uncast → `"p\xe2\x80\xa6"`,
+>   cast → `"HELLO WORLD"`). This is **game-wide**, not controls-specific — every `CSprintf("%s",CString)`
+>   was affected (`RESSTRING`/`LoadResString`/`.name` all return `CString`).
+> - **Fix — robust `CString::FormatV` (`cstring_impl.cpp`, compat-owned).** Pure-numeric formats keep the
+>   trusted libc `vsnprintf` path (byte-identical; zero risk). Only when the format contains `%s` do we
+>   walk the conversions and, per `%s`, decide CString-by-ref vs genuine `char*` by **validating the
+>   `CStringData{nRefs,nDataLength,nAllocLength}` header** behind a real CString's buffer, with
+>   `/proc/self/maps`-guarded reads so a stray `char*` can never fault (cached, refreshed on miss; mutex
+>   for thread-safety). Bounded blast radius: only `%s`-bearing formats change, and those were *all*
+>   broken, so a working (numeric) screen cannot regress. The token parser delegates actual formatting
+>   back to `snprintf` per-conversion (correct width/precision/length handling, no reimplementation).
+> - **Verified.** Controls combos now read **"First Joystick: Logitech Extreme 3D"**, **"First Mouse:
+>   System Mouse"**, **"First Joystick Axis 0 & Axis 1"**, **"… Axis 3"**, **"View Pan:"**, etc. — correct
+>   device + axis names. Regression sweep: bare `./bob` 0; `BOB_BOOT_FRONTEND` flight runs clean; the GFX
+>   config (Display Drivers, resolution `1024 x 768 x 16`, Ground Shading) and Sound config (Music/Radio
+>   Chatter/Engine Volume) forms render correctly (no regression). Captures: `/tmp/controls2.png`,
+>   `/tmp/cfg_gfx.png`, `/tmp/cfg_sound.png`. **R5.3 form bring-up done**; remaining: the rebind
+>   *interaction* (clicking a combo to reassign an axis + persist), the R5.3 polish tail.
+
 > ## R5.2 (2026-06-23): IN-FLIGHT MOUSE — DirectInput → SDL relative motion; the in-3D UI cursor is live (and a latent config-enum overflow found + fixed)
 > Sprint 20 (Release 5, "Control & sim depth"). With the joystick done (R5.1), wired the **in-flight
 > mouse** on the same DirectInput→SDL pattern, and the work surfaced a real compat bug in the R5.1

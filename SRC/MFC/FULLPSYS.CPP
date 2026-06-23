@@ -456,6 +456,28 @@ extern "C" void bob_frontend_tick(void)
 
 	if (!g_bobActiveFP) return;
 
+	/* R5.3 (BOB_CONFIGSCREEN, default-off): jump straight to a config screen for a headless
+	   render test, instead of walking the whole menu tree. controls -> the SController controls
+	   form (device/axis assignment combos); also gfx/gfx2/sound/2d/sim. Forces LaunchScreen(scr)
+	   once the front-end is up + settled (the same public entry the title-bar tab click uses). */
+	if (getenv("BOB_CONFIGSCREEN")) {
+		static int cs_t=0; static bool cs_done=false;
+		if (!cs_done) {
+			if (++cs_t < 30) return;   /* let the front-end settle + paint */
+			const char* w=getenv("BOB_CONFIGSCREEN");
+			FullScreen* scr=&RFullPanelDial::options3d;
+			if      (strstr(w,"control")) scr=&RFullPanelDial::controloptions;
+			else if (strstr(w,"sound"))   scr=&RFullPanelDial::soundoptions;
+			else if (strstr(w,"2d"))      scr=&RFullPanelDial::twodoptions;
+			else if (strstr(w,"sim"))     scr=&RFullPanelDial::flightoptions;
+			else if (strstr(w,"gfx2"))    scr=&RFullPanelDial::options3d2;
+			fprintf(stderr,"[configscreen] LaunchScreen(%s)\n", w);
+			g_bobActiveFP->LaunchScreen(scr);
+			cs_done=true;
+		}
+		return;
+	}
+
 	/* Sprint 7 (env-var-free): ALWAYS-ON Launch3d bridge for a real menu click-through (no
 	   BOB_STARTFLYING harness). When the game's own flow reaches quickmissionflight and StartFlying
 	   creates a fresh Rtestsh1 (S3D_STARTSETUP set by its ctor, no Inst3d yet), deliver the
