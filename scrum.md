@@ -391,7 +391,17 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
-- _Sprint 20 (R5.2 in-flight mouse):_ **Extending a proven pattern (R5.1 joystick) to a sibling device
+- _Sprint 21 (R5.3 controls form + CString-varargs fix):_ **A scaffold-to-render the target screen turned a
+  "make the UI work" story into a game-wide correctness win.** Forcing the Controls screen directly
+  (`BOB_CONFIGSCREEN`) — instead of grinding the menu nav to reach it — got it on screen in minutes and
+  immediately exposed the real defect: not a layout/combo bug but the **CString-in-varargs ABI mismatch**
+  affecting *every* `CSprintf("%s",CString)` in the game. Banking-vs-fixing tension resolved by the
+  *bounded-blast-radius* insight: because `%s`-formats were already 100% broken, a FormatV change scoped to
+  only `%s`-formats can't regress a working (numeric) screen — which flipped a scary "touches all text"
+  change into a safe one, worth doing now rather than deferring. Lesson: a cheap "jump straight to the
+  artifact" scaffold pays for itself by surfacing the true root cause fast; and quantifying a fix's blast
+  radius (what it can/can't break) is what licenses doing the bigger, higher-value fix in-sprint. Validated
+  with a standalone ABI repro + cross-screen regression captures (controls/gfx/sound) before committing.
   flushed out a latent bug in the *original* pattern.** Reusing the DirectInput→SDL device shape for the
   mouse was fast, but enabling it SIGSEGV'd — and the root cause was an R5.1 shortcut (`EnumObjects`
   ignored the DIDFT type filter) that the joystick alone happened to survive (it stayed one slot under
