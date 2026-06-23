@@ -20,8 +20,13 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 | **Clouds** | Fluffy clouds — sky matches the Windows reference | default; `BOB_NOCLOUDS` reverts |
 | **Audio** | DirectSound→OpenAL: looping engine + one-shot effects play (10 sources) | default; `BOB_NOSOUND`, `BOB_TRACE_SND` |
 | **Keyboard flight input** | SDL→DIK→DirectInput→`OnKeyInput`→flight commands (event-driven) | proven via `BOB_AUTOFLY=throttle` |
+| **Joystick flight input** | DirectInput→SDL_Joystick (enumerate/caps/objects/buffered `GetDeviceData`); default axis map (aileron/elevator/rudder/throttle). **PO fly-test passed.** | connect a stick; `BOB_TRACE_JOY` |
+| **In-flight mouse** | DirectInput→SDL relative motion → the in-3D UI cursor (`AU_UI_X/Y`) | default; `BOB_MOUSEFLY`, `BOB_NOMOUSE` |
 | **HUD info bar** | Altitude/speed + attitude indicator (after the unit-factor fix) | `BOB_HUD` |
 | **Front-end** | Navigable menu + config screens with real hosted R\* OLE controls (combo/static/listbox), combo cycle-on-click, RLE8 backgrounds | `BOB_FRONTEND=1 BOB_OLE_DRAW=1` |
+| **Config screens** | All 6 options tabs render as readable forms (GFX/More GFX/Controls/Sound/2D/Sim); **Controls** screen is interactively re-bindable (click a device/axis combo → reassign) | `BOB_CONFIGSCREEN=controls\|gfx\|sound\|2d\|sim` |
+| **Text rendering** | Game-wide `CSprintf("%s",CString)` fixed (Itanium-ABI varargs) — config/debrief/controls text readable | (always on; `cstring_impl.cpp::FormatV`) |
+| **Load-game screen** | `CLoad` reaches + renders (RAF/LW/Back/Load + hosted file-list); save/load gated on the campaign | `BOB_CONFIGSCREEN=load` |
 | **Menu↔flight (one process)** | **R1.1b complete:** menu→flight via the game's own `StartFlying→Rtestsh1→Launch3d` (forced + real menu clicks) AND flight→menu (F12→`CloseWindow`→`OnFlyingClosed`→rendered front-end screen); clean 3D-device teardown (DD7 refcount fix). Full menu→fly→menu, one window. | `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1` (`=click` + `BOB_AUTOCLICK=0,1,2`; `BOB_AUTOQUIT=<s>` to exit) |
 
 Cockpit render now closely matches `doc/reference/cockpit-windows-spitfire-1.png`.
