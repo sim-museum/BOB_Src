@@ -392,6 +392,18 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
+- _Sprint 22 (R5.3 controls rebind):_ **Choosing a targeted bridge over the "correct" general mechanism
+  was the right risk call.** The textbook fix for the dead OCX eventsink is to implement
+  `BEGIN_EVENTSINK_MAP`/`ON_EVENT` generically — but that means member-fn-ptr dispatch, per-class maps,
+  and a `CWnd` vtable change touching *every* dialog: a large, broad-blast-radius change to land a
+  power-user rebind feature whose defaults already work. A scoped `BOB_LINUX` scaffold on the one screen
+  that needs it (`SController::bob_combo_changed`, an X-macro list the compiler checks) got the same user
+  outcome with the blast radius of a single file. Lesson (mirrors S21's blast-radius framing): when the
+  "proper" fix is general infrastructure but only one caller needs it today, a targeted bridge is often
+  the better sprint-sized move — and the X-macro-mirrors-the-event-map trick keeps it from rotting. The
+  recompute-the-other-combos evidence (freed axes reappearing elsewhere) was the tell that it's the real
+  logic, not a façade — pick a verification that only passes if the deep path actually ran.
+
 - _Sprint 21 (R5.3 controls form + CString-varargs fix):_ **A scaffold-to-render the target screen turned a
   "make the UI work" story into a game-wide correctness win.** Forcing the Controls screen directly
   (`BOB_CONFIGSCREEN`) — instead of grinding the menu nav to reach it — got it on screen in minutes and
