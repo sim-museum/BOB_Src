@@ -390,6 +390,17 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
+- _Sprint 20 (R5.2 in-flight mouse):_ **Extending a proven pattern (R5.1 joystick) to a sibling device
+  flushed out a latent bug in the *original* pattern.** Reusing the DirectInput→SDL device shape for the
+  mouse was fast, but enabling it SIGSEGV'd — and the root cause was an R5.1 shortcut (`EnumObjects`
+  ignored the DIDFT type filter) that the joystick alone happened to survive (it stayed one slot under
+  the config's `firstaxes` bound; the mouse's extra objects tipped it negative → OOB write). Lesson: when
+  a second client exercises shared compat code, treat the first client's "it works" as *under-tested*, not
+  proven — honour the real API contract (here, the enum filter) rather than the narrowest thing that
+  passed. gdb's faulting-pointer value (garbage `m_pchData=3`) + tracing the index arithmetic pinned it
+  fast. Kept well: trace-and-revert for the game-side `axisvalues` proof (game code stays pristine);
+  diagnostics env-gated; every default-on path re-swept (bare 0, joystick unregressed).
+
 - _Sprints 13–14 (R4.2 map render → R4.3 live-sim spike):_ **The R6.1→R4.2 bet paid off spectacularly —
   the blit subsystem lit up the whole strategic map in one increment — and the R4.3 spike correctly
   stopped a whack-a-mole.** Building R6.1 first meant R4.2's terrain render was a thin C-GDI shim
