@@ -471,6 +471,7 @@ extern "C" void bob_frontend_tick(void)
 			else if (strstr(w,"2d"))      scr=&RFullPanelDial::twodoptions;
 			else if (strstr(w,"sim"))     scr=&RFullPanelDial::flightoptions;
 			else if (strstr(w,"gfx2"))    scr=&RFullPanelDial::options3d2;
+			else if (strstr(w,"load"))    scr=&RFullPanelDial::loadgame;   /* R6.5: CLoad save-file screen */
 			fprintf(stderr,"[configscreen] LaunchScreen(%s)\n", w);
 			g_bobActiveFP->LaunchScreen(scr);
 			cs_done=true;

@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R6.5 (2026-06-23): LOAD-GAME SCREEN RENDERS + save/load dependency mapped (gated on the campaign)
+> Sprint 23 (Release 6, save/load slice). Brought up the front-end **Load Game** screen and mapped exactly
+> what the full save/load loop needs — surfacing strong cross-port leverage with MiG Alley.
+> - **`loadgame` reachable + renders** (`BOB_CONFIGSCREEN=load` → `LaunchScreen(&loadgame)` → `SetUpLoadGame`
+>   → `SetUpRafLoadGame` → `LaunchDial(new CLoad(IDDX_LOADFULL,LSD_LOAD,FIL_SAVEGAMEDIR,"*.bsr",…))`). The
+>   screen paints — the white-cliffs-of-Dover art + the **RAF / Luftwaffe / Back / Load** menu bar + the
+>   hosted `CLoad` controls (file-list listbox + name field) — no crash. The file **list is empty** because
+>   there are **no save files** in the data dir (`*.bsr`/`*.bsl` absent).
+> - **Why no saves → save/load is gated on the campaign.** `CFiling::SaveGame` serialises `Miss_Man` + the
+>   strategic-map view (`m_pView->m_zoom`/scroll) — i.e. it saves **campaign** state and needs the campaign
+>   map running. BoB auto-saves "Auto Save.BSR" from `CMainFrame` only during campaign play
+>   (`Save_Data.minsbetweensavegame`). So a real load can't be exercised until the campaign (R4.3 mission
+>   flow) produces a save. **Save/load is an R4.4 (campaign) dependency, not an independent feature.**
+> - **★ Cross-port leverage — BoB and MiG Alley share the `CLoad` class.** MA has already brought up CLoad
+>   end-to-end this week (S12–S14): the file-list **render** (root cause: a row drawn at `y=-rowheight`
+>   because `m_lVertScrollPos` clamped against a zero client rect at populate-time → re-clamp in
+>   `CRListBoxCtrl::OnDraw` from the real draw-time bounds), and the file-list **click → load** (route the
+>   click to `CLoad::OnSelectRlistboxfile` via the eventsink → `selectedfile` set → `DoLoadGame`). Those two
+>   fixes should port near-directly to BoB once saves exist.
+> - **Eventsink, deferred (with a plan).** The CLoad file-list click → `OnSelectRlistboxfile` needs the OCX
+>   event routing that's a no-op on Linux — the same gap R5.3b bridged narrowly for the controls combos.
+>   MA's **general** `ma_eventsink.cpp` (RTTI dispatch, no `CWnd` vtable change) is the adopt-target; BoB's
+>   `(LPCTSTR,short)` `OnTextChanged*` signature needs one extra `evt_call` overload added. Adopt it when
+>   wiring the CLoad click (a real 2nd consumer) rather than speculatively (Sprint-22 retro). No regression
+>   (bare `./bob` 0; `BOB_CONFIGSCREEN=load` reusable). Capture: `/tmp/loadgame.png`.
+
 > ## Cross-port notes ↔ MiG Alley (`~/ma`) — 2026-06-23
 > Compared notes with the sister Rowan-engine port (MA is at: joystick LIVE-validated, REdit OCX hosting,
 > loadgame file-select → campaign map). Convergences + exchanges:
