@@ -42,6 +42,20 @@
 >   verify first:** our crash is on the *first* sim frame at day-start, so confirm `ReturnHome` actually
 >   ran before it (add a gated trace) vs. the `wpref` being stale from `SkipToDate`'s fast-forward — that
 >   decides whether (A) is the true root cause or just one of several dangling-`wpref` sources.
+> - **CRASH PINPOINTED + ROOT TRIANGULATED (2026-06-22 cont.):** flushed gated traces corrected two
+>   mistakes and nailed it. (1) `movecode=2` is **`AUTO_WAIT4TIME`=`AUTOSAG_WAITTAKEOFF`** (a fresh raid
+>   *waiting to take off*), **not** FOLLOWWP — so the crash is **not** in `GetCruiseToWp` (that trace
+>   never fired) but in **`SAGDecisionWaitTakeOff` (SAGMOVE.CPP:1204)**: `if (timeofday>=waypoint->ETA)`
+>   with the SAG's **`waypoint` member NULL** (NULL+4 = the `ETA` offset = the gdb `edx=0 @+4` fault).
+>   (2) `ReassignTo` never ran (trace silent), so the dangling-`wpref`/`ReturnHome` theory is **not** this
+>   crash. **Root, triangulated:** both the `waypoint` member and `ConvertPtrUID(wpref)` are NULL because
+>   **the raid's flight-plan waypoint *items* aren't in `pItem`** — the raid SAG is created+tabulated but
+>   its waypoints are not. So `AutoLWPackages` (day-start LW raid generation) builds the SAGs but their
+>   waypoints aren't created/tabulated on the Linux path. **Next session (precise):** trace
+>   `AutoLWPackages` → the raid flight-plan builder → the `new info_waypoint`+`tabulateUID` sites
+>   (PACKAGES.CPP:2379/2616/4686) and find why they're skipped/failing for these raids (build the
+>   campaign TUs with `-O0 -g`/ASan so gdb has locals + catches the first bad write). All traces reverted;
+>   game code pristine; map render stable; bare `./bob` 0.
 >
 > ## R4.3 (2026-06-21): campaign-clock drive — SPIKE; the MFC WM_TIMER is wired (forwarder) but the sim crashes pre-deployment
 > Started the campaign loop (R4.3). On Windows the strategic map runs off a 1Hz `WM_TIMER`
