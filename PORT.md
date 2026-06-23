@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R5.1 (2026-06-22): JOYSTICK WORKS — DirectInput → SDL_Joystick; a connected stick drives flight (PO unblocked the hardware)
+> The PO connected a joystick (Logitech Extreme 3D, 4 axes / 12 buttons / 1 hat), unblocking R5.1.
+> Implemented the full DirectInput joystick path on SDL and verified the whole chain reads the stick.
+> - **Compat (`bob_video.cpp`):** `joy_open` (SDL_INIT_JOYSTICK + open[0]); `DI_EnumDevices` reports the
+>   stick (for `DIDEVTYPE_JOYSTICK` and the config's `devtype=0`); `DIDEV_GetCaps` returns the real
+>   axis/button/POV counts; `DIDEV_EnumObjects` reports each object with `dwType` instance = SDL index;
+>   `DIDEV_SetDataFormat` learns the game's per-object buffer offsets (the game builds a custom
+>   `AX_TABLE_SIZE` format); `DIDEV_GetDeviceState` fills that buffer from SDL axes (-32768..32767),
+>   buttons (0x80), and the hat (POV); `DIDEV_QueryInterface` returns the device (the game QIs
+>   `IDirectInputDevice2`). `bob_joystick_present()` exposes connectivity.
+> - **Distinct device GUIDs (`bob_stubs.cpp`) — the keystone bug:** the generic `BOBGUID` macro defined
+>   *every* GUID as all-zero, so `GUID_SysKeyboard == GUID_Joystick` — `DI_CreateDevice(GUID_Joystick)`
+>   returned the **keyboard**, and the analogue device loop (gates on `devid.Data1 != 0`) skipped the
+>   all-zero joystick. Gave `GUID_SysKeyboard`/`GUID_Joystick` distinct, non-zero real DInput GUIDs.
+> - **Default flight mapping (`ANALOGUE.CPP`, `BOB_LINUX`):** with no saved controls config the game
+>   leaves a stick unmapped (the player would assign axes in the Controls UI). Append it to
+>   `runtimedevices` with axis 0→aileron, 1→elevator, 2→rudder, 3→throttle. `BOB_NOJOYDEFAULT` disables.
+> - **Verified (`BOB_TRACE_JOY`), the full chain runs in flight:** `default flight mapping installed at
+>   runtimedevices[1]` → `SetDataFormat: 17 objs` (4 axes + 12 buttons + 1 POV) → `state ax0=32 ax1=-417`
+>   — `GetDeviceState` reading **real SDL axis values** at the negotiated offsets. SDL axis 0→aileron etc.
+>   **No regression:** keyboard flight still runs (`GUID_SysKeyboard` resolves to the keyboard,
+>   acquisition independent); bare `./bob` 0. **Implemented; pending the PO's physical fly-test** (I can't
+>   move the stick). `BOB_TRACE_JOY` shows live axis values. Evidence: `/tmp/joy5.log`.
+>
 > ## R4.5 (2026-06-22): ★ CAMPAIGN SIM RUNS ★ — ASan found two raid-generator heap bugs; the strategic-map day now advances without crashing
 > The campaign live simulation **runs on Linux** for the first time. Following the prior session's plan
 > (ASan on the campaign TUs), the `build-asan` instrumented build run under the day-start sim
