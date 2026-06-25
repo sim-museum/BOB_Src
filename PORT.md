@@ -1,5 +1,37 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.2 (2026-06-24): SPIKE — why the strategic map shows no unit icons (root-caused: empty clip rect → world-rect cull rejects every item)
+> Sprint 27 (Release 4, strategic-map fidelity). The gold-standard Wine captures (this session) show the
+> strategic map with **dynamic unit icons** — green RAF squadron/airfield dots, raid markers, waypoint
+> route lines, target boxes (`doc/reference/wine-strategic-map-icons-2026-06-24.png`). The port renders the
+> terrain but **no icons**. Spiked the render path to find why; banked a precise root cause (game code left
+> pristine — the trace was added, measured, reverted).
+> - **The icon path is wired + reached.** `CMIGView::UpdateBitmaps` (the terrain paint the R4.2 scaffold
+>   drives) calls `Todays_Packages.SetVisibilityFlags()` then, per terrain block,
+>   `DrawIcons(pDC, inter)` → `DrawIconTest` (assign an icon per item) → `DrawIcon`/`DrawIconExtra` →
+>   `IconDescUI::MaskIcon` (`UIICONS.CPP`: the 2-pass `BitBlt(imagemap→target, SRCAND/SRCPAINT)` masked
+>   blit, on the R6.1 `bob_gdi_blit` subsystem). All present.
+> - **Root cause (gated counters in `DrawIcons`):** `raw_p` is large (`ConvertPtrUID` returns plenty of
+>   items — they exist) but `survived_cull=0` and **`drawn=0`** — *every* item is rejected by the visible
+>   world-rect cull. The tell: the `inter` clip rect handed to `DrawIcons` is **empty, `(0,0,0,0)`**, so
+>   `WorldXY(inter.corners)` yields a degenerate world rect `[Wx1,Wx2]×[Wz1,Wz2]` that contains nothing →
+>   `p=NULL` for all. (`scroll=(500,800)`, the block-vs-bounds `IntersectRect` came back empty.) Terrain
+>   still draws because the per-block `StretchDIBits` uses the block rect directly, **not** `inter` — so
+>   terrain and icons diverge exactly here.
+> - **Why:** the icons are positioned by the **`CMapDlg` view transform** (scroll point + world↔screen
+>   mapping the scrolling map view owns), which the headless scaffold's direct `UpdateBitmaps(&dc,
+>   CRect(0,0,sw,sh))` call **does not set up** — so the clip/scroll state that makes `inter` non-empty and
+>   the cull admit on-screen items is absent. Static items (airfields, `SGT==UID_Null`) would draw at this
+>   zoom; dynamic SAGs (`SGT!=UID_Null`) need `m_zoom≥ZOOMTHRESHOLDDETAIL(16)` **or** the lollipop/route
+>   path in `DrawIconExtra` (`MIGVIEW.CPP:720`) — a second sub-path. Both ride the same broken clip/scroll.
+> - **Conclusion — R4.2 icons is a coordinate-system subsystem, not a one-liner.** The fix is to drive the
+>   real `CMapDlg` paint (its scroll/world transform) rather than bolting icons onto the terrain
+>   `UpdateBitmaps` shim — equivalent in spirit to the Sprint-11 finding that the map is a *parallel UI*.
+>   Banked as a dedicated story; **no code shipped this sprint** (trace reverted; `ninja bob` clean; bare
+>   `./bob` + the campaign loop unchanged). **Cross-port:** the `inter`-empty/world-rect-cull + the
+>   CMapDlg-transform dependency are shared-engine with MiG Alley (whose map view is further along — a
+>   candidate to adopt rather than rebuild).
+
 > ## R4.3 (2026-06-24): THE CAMPAIGN MISSION CYCLE CLOSES — fly → mission-end → back to the strategic map
 > Sprint 26 (Release 4, campaign mission-flow slice, cont.). Turned the one-shot campaign flight (R4.3 this
 > afternoon) into a **loop**: map → intercept → briefing → fly → **mission end → return to the strategic
