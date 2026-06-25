@@ -1,5 +1,38 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S35 (2026-06-25): POST-LOAD SIM CRASH ROOT-CAUSED — stale serialized `fly.leadflight` (corrects the GetCruiseAt characterization) + ASan repro infra
+> Sprint 35 (Release 4, campaign sim). Spiked the post-load campaign-sim crash (the R4.5 layer that gates
+> day-advance after a load/mission). Built the repro, ASan'd it, and **precisely root-caused the first
+> fatal crash — which is NOT the documented `GetCruiseAt`/`Plane_Type_Translate` family** (that's the
+> post-*mission* path); the post-*load* first-crash is in the **radio-chatter intel** generation.
+> - **Repro infrastructure (`BOB_POSTLOAD_FF`, new, default-off).** The `BOB_LOAD_GO` scaffold loads a
+>   save + `LaunchMap` (proper `StartUpMapWorld` rebuild) but sets `g_campfly_flown=1` to stop the
+>   post-load fast-forward. `BOB_POSTLOAD_FF` leaves it running so `BOB_MAP_TIMER` advances the
+>   loaded+rebuilt world — the deterministic repro for ASan'ing the post-load SAG sim. Reusable for the
+>   rest of the R4.5 grind (mirrors the ASan-oracle investment).
+> - **The crash (ASan, build-asan).** Load `Auto Save.bsr` (currtime=32180) → LaunchMap → fast-forward →
+>   **SEGV (READ 0x008000f1)** in:
+>   `MoveAllSAGs → RAFDetectLW::SetDetectionLevel (SAGMOVE.CPP:908) → IntelBuffer::AddMessage →
+>   RadioChatter::ExpandMessage → TRG_NUM_ESTIMATE → GetForceSize (RCHATTER.CPP:6439) →
+>   ArtInt::CountFormationSize (MSGAI.CPP:2367)`. Line 2367 walks `trg->fly.leadflight->World` and
+>   `trg->fly.leadflight` is garbage (`0x008000f1`).
+> - **Root cause.** `flight_ctl` (`WORLDINC.H:1184`) marks `nextflight`/`leadflight`/`expandedsag`
+>   (raw `AirStrucPtr`s) **`//save`** — they're serialized. So a **loaded raid aircraft carries a stale
+>   pointer from the saved session** (the ctor NULLs them; the sim re-links them at runtime — but the
+>   deserialised value is a dead address). When a SAG is detected post-load, the intel force-size estimate
+>   walks that stale formation link → SEGV. Same *class* as the S29 `RecostRaidList` fix (re-run the
+>   runtime rebuild on deserialised data), one layer deeper (AI formation linkage, not the raid list).
+> - **Candidate fix (next session, deferred — too deep to land safely blind).** At the load boundary,
+>   reset the loaded AirStrucs' formation pointers (`fly.leadflight/nextflight/expandedsag = NULL`) so the
+>   SAG AI re-links them (it owns that linkage: `SAGMOVE.CPP:537`, `AUTOMOVE.CPP:9583`), rather than
+>   trusting the serialized addresses — or UID-reconvert them if the save stores resolvable UIDs. Needs the
+>   loaded-AirStruc enumeration point + a check that the sim re-link is unconditional; risk of save-format/
+>   AI regression means it wants its own focused pass, not an end-of-session edit.
+> - **Verified / no regression.** `BOB_POSTLOAD_FF` is default-off; bare `./bob` exits 0; release build
+>   clean. ASan confirms **one** fatal SEGV (the 36 `FILEMAN`/`fplayout.cpp` reports are pre-existing
+>   init + front-end-layout noise, S19-noted). **Banked precise root cause + reusable repro**, correcting
+>   the team's prior `GetCruiseAt` assumption for the post-load path.
+
 > ## R4.2 / S34 (2026-06-25): STRATEGIC-MAP UNIT ICONS RENDER — squadron/raid markers over SE England (the per-block empty-clip cull, fixed)
 > Sprint 34 (Release 4, strategic map). The campaign's strategic map drew terrain + sector labels but
 > **no unit icons** (the visible gap vs the Wine gold ref). Now the full icon layer renders: **green RAF

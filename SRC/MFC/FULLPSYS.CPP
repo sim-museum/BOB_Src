@@ -698,7 +698,10 @@ extern "C" void bob_frontend_tick(void)
 				   screen re-init, which wipes selectedfile back to the player name. */
 				const char* nm=getenv("BOB_SAVE_NAME"); if(!nm||!*nm) nm="Auto Save.bsr";
 				CFiling::selectedfile = nm;
-				g_campfly_flown = 1;          /* don't fast-forward the loaded campaign sim (un-rebuilt world) */
+				/* Normally stop the post-load fast-forward (R4.5 SAG-AI crash). BOB_POSTLOAD_FF (R4.5
+				   diagnostic, default-off) leaves it running so BOB_MAP_TIMER advances the loaded+
+				   LaunchMap-rebuilt world -- the repro for ASan'ing the post-load SAG crash. */
+				if (!getenv("BOB_POSTLOAD_FF")) g_campfly_flown = 1;
 				bool ok = CFiling::LoadGame(CFiling::selectedfile);
 				fprintf(stderr,"[loadgo] selectedfile='%s' -> LoadGame=%d (currtime=%d) -> LaunchMap\n",
 					nm, (int)ok, (int)MMC.currtime);
