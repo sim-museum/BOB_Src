@@ -78,9 +78,41 @@ struct tagHELPINFO; struct COleControlSite;
 #define DECLARE_DISPATCH_MAP()
 #define BEGIN_DISPATCH_MAP(theClass, baseClass)
 #define END_DISPATCH_MAP()
-#define DECLARE_EVENTSINK_MAP()
-#define BEGIN_EVENTSINK_MAP(theClass, baseClass)
-#define END_EVENTSINK_MAP()
+/* Linux/GCC port (S33): real OCX-event routing (bob_eventsink.cpp) — adopted from the MiG Alley
+   port's general ma_eventsink, retiring BoB's two targeted bridges (R5.3b SController combo +
+   R4.4 CLoad file-row). The eventsink map becomes a per-class member MaRegEvents() (so it can take
+   the addresses of the PROTECTED afx_msg handlers); a file-scope registrar auto-calls it at
+   static-init, registering {dialog-CLASS, control-id, event-dispid} -> thunk. bob_evt_fire matches
+   by the dialog's RUNTIME type (typeid — the many dialogs reuse the same IDC_ ids). bob_evt_call
+   adapts to each handler signature via overload resolution on the member-fn-ptr type. */
+#include <typeinfo>
+extern "C" void bob_evt_register(const void* tinfo, int id, int dispid, void (*thunk)(void*));
+extern "C" int  bob_evt_fire(void* dlg, const void* tinfo, int id, int dispid);
+extern "C" { extern long bob_evtA0, bob_evtA1; extern void* bob_evtP; }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)())          { (c->*f)(); }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(int))       { (c->*f)((int)bob_evtA0); }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(long))      { (c->*f)((long)bob_evtA0); }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(short))     { (c->*f)((short)bob_evtA0); }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(int,int))   { (c->*f)((int)bob_evtA0,(int)bob_evtA1); }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(long,long)) { (c->*f)((long)bob_evtA0,(long)bob_evtA1); }
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(LPCSTR))    { (c->*f)((LPCSTR)bob_evtP); }
+/* BoB delta over MA: the SController combo handlers are OnTextChanged*(LPCTSTR, short) — the args
+   are unused stubs (the handler reads the combo's new GetIndex), so empty text + 0 is faithful. */
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(LPCTSTR,short)) { (c->*f)((LPCTSTR)(bob_evtP?bob_evtP:""),(short)bob_evtA0); }
+template<class C, class M> inline void bob_evt_call(C*, M) {}   /* fallback: uncovered signature compiles, doesn't fire */
+#define BOB_EVT_CAT2(a,b) a##b
+#define BOB_EVT_CAT(a,b) BOB_EVT_CAT2(a,b)
+#define DECLARE_EVENTSINK_MAP() public: static void MaRegEvents();
+/* The file-scope auto-registrar's name must be unique within the translation unit. BoB's unity
+   builds #include several .cpp into one TU, so __LINE__ collides (two files' BEGIN at the same
+   line) — use __COUNTER__ (TU-unique), captured ONCE via the _IMPL indirection so the 4 textual
+   uses share one value rather than incrementing four times. */
+#define BEGIN_EVENTSINK_MAP(theClass, baseClass) BOB_EVTSINK_IMPL(theClass, __COUNTER__)
+#define BOB_EVTSINK_IMPL(theClass, ctr) \
+    static struct BOB_EVT_CAT(BobEvtAuto_,ctr) { BOB_EVT_CAT(BobEvtAuto_,ctr)(); } BOB_EVT_CAT(g_bobEvtAuto_,ctr); \
+    BOB_EVT_CAT(BobEvtAuto_,ctr)::BOB_EVT_CAT(BobEvtAuto_,ctr)() { theClass::MaRegEvents(); } \
+    void theClass::MaRegEvents() {
+#define END_EVENTSINK_MAP() }
 #define DECLARE_EVENT_MAP()
 #define BEGIN_EVENT_MAP(theClass, baseClass)
 #define END_EVENT_MAP()
@@ -88,7 +120,9 @@ struct tagHELPINFO; struct COleControlSite;
 #define EVENT_CUSTOM_ID(name, dispid, fn, vts)
 #define EVENT_STOCK_CLICK()
 #define EVENT_STOCK_DBLCLICK()
-#define ON_EVENT(theClass, id, dispid, fn, vts)
+#define ON_EVENT(theClass, id, dispid, fn, vts) \
+    { struct BOB_EVT_CAT(BobT_,__LINE__) { static void thunk(void* d){ bob_evt_call((theClass*)d, &theClass::fn); } }; \
+      bob_evt_register(&typeid(theClass), (int)(id), (int)(dispid), &BOB_EVT_CAT(BobT_,__LINE__)::thunk); }
 #define ON_EVENT_RANGE(theClass, idFirst, idLast, dispid, fn, vts)
 #ifndef CN_EVENT
 #define CN_EVENT  0x0800   /* control-notification: OLE control event */

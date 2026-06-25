@@ -43,12 +43,6 @@ public:
 #ifdef __AFXWIN_H__
 	SController(CWnd* pParent = NULL);   // standard constructor
 	void PreDestroyPanel();
-#if BOB_LINUX
-	/* R5.3: the OCX eventsink that fires the OnTextChanged/OnClicked handlers isn't wired on Linux,
-	   so a hosted combo cycle (compat bob_ole_click) would not reassign anything. Route the cycle
-	   here to the genuine change handler (it reads the combo's new GetIndex); PreDestroyPanel saves. */
-	void bob_combo_changed(int ctrlId);
-#endif
 	void	SetEnabled(int newaxis);
 // Dialog Data
 	//{{AFX_DATA(SController)

@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S33 (2026-06-25): GENERAL OCX EVENTSINK ADOPTED — the two targeted bridges retired (cross-port: MA's ma_eventsink)
+> Sprint 33 (cross-port infrastructure). Adopted the MiG Alley port's **general OCX eventsink** so the
+> game's own `BEGIN_EVENTSINK_MAP`/`ON_EVENT` maps drive control events on Linux — **retiring BoB's two
+> targeted `BOB_LINUX` bridges** (R5.3b SController combo-rebind + R4.4 CLoad file-row-click). Every
+> dialog's events are now pre-wired, not just the two we hand-bridged.
+> - **Mechanism (`SRC/compat/afxwin.h` + `bob_eventsink.cpp`).** The no-op eventsink macros became the
+>   real thing: `DECLARE_EVENTSINK_MAP` declares a per-class `static MaRegEvents()` (so it can take the
+>   addresses of the **protected** afx_msg handlers); `BEGIN_EVENTSINK_MAP` emits a file-scope auto-registrar
+>   struct whose ctor calls `MaRegEvents()` at **static-init**; `ON_EVENT` registers
+>   `{&typeid(theClass), id, dispid} -> thunk`, the thunk does `bob_evt_call(dlg, &Class::fn)`.
+>   `bob_evt_fire(parent, &typeid(*dlg), id, dispid)` (from `bob_ole_click`) matches by **RTTI + id +
+>   dispid** (the many dialogs reuse the same IDC_ ids; `CWnd`/`CObject` is polymorphic so `typeid(*dlg)`
+>   resolves the derived dialog) and calls the handler. `bob_evt_call` overloads adapt each handler
+>   signature; an `(C*, M){}` fallback template keeps the **83** `BEGIN_EVENTSINK_MAP` TUs compile-safe.
+> - **Two deltas vs MA's drop-in.** (1) BoB's combo handlers are `OnTextChanged*(LPCTSTR, short)` — added
+>   that `bob_evt_call` overload (args are unused stubs; the handler reads the combo's new `GetIndex`).
+>   (2) **BoB's unity builds** `#include` several `.cpp` into one TU, so MA's `__LINE__`-based registrar
+>   name **collided** (two files' `BEGIN_EVENTSINK_MAP` at the same line → duplicate `BobEvtAuto_120`);
+>   fixed by using **`__COUNTER__`** (TU-unique), captured once via a `_IMPL` indirection so its 4 textual
+>   uses share one value. (MA compiles each file as its own TU, so it never hit this — flagged back to MA.)
+> - **`bob_ole_click` now fires the eventsink** instead of the bridges: a combo cycle fires the control's
+>   TextChanged (dispid 1) on the dialog's runtime type; a hosted-list row-click sets `bob_evtA0=row` and
+>   fires Select (dispid 1). The `id==0` FullPanelDial menu listbox is skipped (handled elsewhere).
+> - **Retired** (game-adjacent `#if BOB_LINUX` scaffolds removed): `SController::bob_combo_changed` +
+>   `bob_scontroller_combo_changed`/`_set` (SCONTROL.CPP/.H, the X-macro list), `CLoad::bob_file_clicked`
+>   + `bob_cload_file_clicked`/`_set` (LOAD.CPP/.H). The genuine handlers in the `BEGIN_EVENTSINK_MAP`s now
+>   reach the same code directly.
+> - **Verified (full rebuild + genuine clicks, `BOB_TRACE_OLE`).** Build links clean (83 EVENTSINK TUs now
+>   take handler addresses). Bare `./bob` exits 0 (safe default unregressed). Static-init **registration**
+>   populates the map across every dialog (`[evt_register]` CMIGView/CLoad/GeschwaderList/…). **CLoad:**
+>   click the "Auto Save" row → `[evt_fire] id=1062 dispid=1 type=5CLoad -> HANDLER CALLED` →
+>   `OnSelectRlistboxfile` runs with `listempty=0` (real save), no crash. **SController:** cycle a device
+>   combo → `[evt_fire] id=2150 dispid=1 type=11SController -> HANDLER CALLED` (genuine rebind handler), no
+>   crash. Both consumers fire through the **one general path**.
+> - **Cross-port (MiG Alley).** This is the reciprocal of MA's S33 offer — BoB adopted `ma_eventsink.cpp`'s
+>   design (renamed `bob_*`). New finding handed back to MA: the **`__LINE__`→`__COUNTER__`** unity-build
+>   collision (MA is per-TU so latent there, but it'll bite if MA ever unity-builds). Notes synced.
+
 > ## R4.4 (2026-06-24): SAVE/LOAD IS FULLY CLICK-DRIVEN — click a save → click Load → the campaign loads (file-row-click bridge) — R4.4 DONE
 > Sprint 32 (Release 4, save/load UI slice — completes R4.4). Wired the last piece: the **file-row click**
 > on the load screen now selects a save via the genuine handler, so save/load is **fully click-driven** end

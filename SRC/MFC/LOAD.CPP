@@ -141,22 +141,9 @@ BEGIN_EVENTSINK_MAP(CLoad, CDialog)
 	//}}AFX_EVENTSINK_MAP
 END_EVENTSINK_MAP()
 
-#if BOB_LINUX
-/* R4.4 file-row-click bridge (mirrors the R5.3 SController combo bridge). The OCX eventsink is a
-   no-op on Linux, so clicking a save row in IDC_RLISTBOXFILE fires nothing. The live CLoad
-   registers itself in OnInitDialog; bob_ole_click (compat) computes the clicked row and calls
-   bob_cload_file_clicked, which routes to the genuine OnSelectRlistboxfile -> sets selectedfile. */
-static CLoad* g_bobCLoad = NULL;
-void bob_cload_set(CLoad* p) { g_bobCLoad = p; }
-extern "C" int bob_cload_file_clicked(void* dlg, int row) {
-	if (!g_bobCLoad || (void*)g_bobCLoad != dlg) return 0;
-	g_bobCLoad->bob_file_clicked(row);
-	if (getenv("BOB_TRACE_LOAD"))
-		fprintf(stderr,"[cload] file row %d clicked -> OnSelectRlistboxfile -> filename='%s'\n",
-			row, (const char*)(LPCTSTR)g_bobCLoad->filename);
-	return 1;
-}
-#endif
+/* S33: the R4.4 targeted file-row-click bridge (bob_cload_file_clicked) was retired here — the
+   general OCX eventsink (afxwin.h + bob_eventsink.cpp) now fires the genuine OnSelectRlistboxfile
+   (registered in the BEGIN_EVENTSINK_MAP below) directly from bob_ole_click. */
 
 void CLoad::OnSelectTab()
 {
@@ -351,9 +338,6 @@ void	CLoad::MakeFileList()
 BOOL CLoad::OnInitDialog()
 {
 	CDialog::OnInitDialog();
-#if BOB_LINUX
-	{ extern void bob_cload_set(CLoad*); bob_cload_set(this); }   /* R4.4 file-row-click bridge */
-#endif
 
 	PrintFileName();
 

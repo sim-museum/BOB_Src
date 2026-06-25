@@ -130,8 +130,9 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
 /* A click landed at screen (x,y) over `dialog`'s panel: hit-test its hosted controls' last-drawn
    rects; an interactive control (RCombo) cycles its value (onClick). Returns 1 if a control
    consumed the click (the caller then repaints). Mirrors the MiG Alley port's ma_ole_click. */
-extern "C" int bob_scontroller_combo_changed(void* dlg, int ctrlId);   /* R5.3 rebind bridge (SCONTROL.CPP) */
-extern "C" int bob_cload_file_clicked(void* dlg, int row);             /* R4.4 file-row-click bridge (LOAD.CPP) */
+#include <typeinfo>
+extern "C" int bob_evt_fire(void* dlg, const void* tinfo, int id, int dispid);  /* S33 general OCX eventsink */
+extern "C" { extern long bob_evtA0, bob_evtA1; }
 
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     if (bob_ole_trace()) {
@@ -143,21 +144,24 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (h->parentDlg != dialog || h->sw <= 0 || h->sh <= 0) continue;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
             if (h->onClick()) {
-                /* R5.3: the controls screen needs the combo's change handler to run so the new
-                   device/axis assignment actually applies (no OCX eventsink on Linux). Routes to
-                   SController::bob_combo_changed if this dialog is the live SController; otherwise a
-                   no-op. Other config screens persist via writeback-on-destroy, so this is harmless. */
-                bob_scontroller_combo_changed((void*)dialog, h->ctrlId);
-                if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> ctrl id=%d cycled\n", x, y, h->ctrlId);
+                /* S33: the value already cycled (onClick); now fire the combo's TextChanged event
+                   (dispid 1) on the dialog's RUNTIME type via the general eventsink so the genuine
+                   handler runs (e.g. SController::OnTextChanged* applies the device/axis rebind —
+                   it reads the combo's new GetIndex). Dialogs with no registered handler for this
+                   (id,dispid) no-op faithfully (they persist via writeback-on-destroy). */
+                bob_evt_fire((void*)dialog, &typeid(*dialog), h->ctrlId, 1);
+                if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> ctrl id=%d cycled (evt fired)\n", x, y, h->ctrlId);
                 return 1;
             }
-            /* R4.4: a click on a hosted LIST control (e.g. the load screen's file list) selects the
-               row under the cursor. The OCX Select eventsink is a no-op on Linux, so route the row
-               to the live CLoad's genuine OnSelectRlistboxfile (sets selectedfile). */
+            /* S33: a click on a hosted LIST control (e.g. the load screen's file list) selects the
+               row under the cursor — fire the listbox Select event (dispid 1, args row/col) via the
+               general eventsink so the genuine handler runs (e.g. CLoad::OnSelectRlistboxfile sets
+               selectedfile). id==0 is the FullPanelDial menu listbox (handled elsewhere) — skip. */
             int row = h->rowAtY(y - h->sy);
-            if (row >= 0) {
-                if (bob_cload_file_clicked((void*)dialog, row)) {
-                    if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> list id=%d row=%d selected\n", x, y, h->ctrlId, row);
+            if (row >= 0 && h->ctrlId) {
+                bob_evtA0 = row; bob_evtA1 = 0;
+                if (bob_evt_fire((void*)dialog, &typeid(*dialog), h->ctrlId, 1)) {
+                    if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> list id=%d row=%d selected (evt fired)\n", x, y, h->ctrlId, row);
                     return 1;
                 }
             }
