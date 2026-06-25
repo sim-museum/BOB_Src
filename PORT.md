@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.4 (2026-06-24): THE LOAD SCREEN LISTS THE SAVE — CLoad file-list enumeration fixed (third twin of the savegame-path bug)
+> Sprint 30 (Release 4, save/load UI slice). With the save written (S28) and the load round-trip working
+> (S29), brought the **loadgame screen's file list** to life: it now **lists the campaign save**.
+> - **Root cause — the same `fakefile` savegame-path bug, a THIRD time.** `CLoad::MakeFileList` (`LOAD.CPP`)
+>   builds its `_findfirst` search path from `File_Man.namenumberedfile(File_Man.fakefile(dirname,
+>   wildcard))` — the corrupted stateful-global path already fixed in `CFiling::SaveGame` (S28) and
+>   `CFiling::LoadGame` (the original LoadGame patch). So the directory scan looked in the wrong place and
+>   the list came up empty even with a save on disk. (The compat `_findfirst`/`_findnext` themselves are
+>   real — `opendir`+`fnmatch FNM_CASEFOLD` in `bob_stubs.cpp` — so only the path was wrong.)
+> - **Fix (mirrors the S28/S29 twins).** For the savegame dir (`dirname==FIL_SAVEGAMEDIR`), build a relative
+>   `"savegame/<wildcard>"` (`#if BOB_LINUX`) that the compat `_findfirst` resolves case-insensitively
+>   against `SAVEGAME/`; other dirs (videos/replays) keep the original path.
+> - **Verified.** `[loadlist] MakeFileList: dirname=13312 wildcard='*.bsr' listempty=0 found=-1` — the scan
+>   now finds files. **Screen capture:** the loadgame screen (Dover-cliffs art + RAF/Luftwaffe/Back/Load
+>   menu bar) shows **"Auto Save"** in the file-list column (`.BSR` stripped by MakeFileList) —
+>   `doc/reference/loadgame-lists-save-2026-06-24.png`. The MA "file-row drawn at `y=-rowheight`" render bug
+>   does **not** affect BoB (the row renders fine). No crash. (Trace-display caveat: `MakeFileList` reuses
+>   the path `buffer` for `filename` mid-function, so a naive trace of it shows the *default name*, not the
+>   search path — the real `_findfirst` used the correct path, proven by `listempty=0`.)
+> - **R4.4 save/load is now end-to-end visible:** save persists (S28) → load restores state (S29) → the load
+>   screen lists the save (S30). **Remaining R4.4 UI:** the **click→load** wiring — the file-row click
+>   (`OnSelectRlistboxfile`) + the Load button (`OnClickedFileok→CFiling::OnOK→LoadGame`) ride the OCX
+>   **eventsink** that's a no-op on Linux (the R5.3b targeted-bridge / MA general-eventsink gap); plus
+>   `CFiling::OnOK`'s `CMainFrame`/toolbar dependencies when loading from the menu. Banked as the final
+>   R4.4 UI piece. **No regression:** `#if BOB_LINUX` path fix + a gated trace; bare `./bob` + normal map
+>   clean. **Cross-port:** this is the third site of the savegame `fakefile`-path bug (Save/Load/CLoad) —
+>   MiG Alley should grep all three; the CLoad click→load (MA already did it) is BoB's adopt-target next.
+
 > ## R4.4 (2026-06-24): SAVE/LOAD ROUND-TRIP WORKS — load restores campaign state (ASan-pinned the deserialise crash); ConvertPtrUID-sentinel disproven
 > Sprint 29 (Release 4, save/load slice, cont.). Completed the load half: a campaign save written to disk
 > (Sprint 28) now **loads back and restores the campaign state** — the save/load round-trip is real.

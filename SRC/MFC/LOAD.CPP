@@ -246,8 +246,22 @@ void	CLoad::MakeFileList()
 	int found=-1;
 	_finddata_t filedesc;
 	char buffer[fileman::pathnamesize];
+#if BOB_LINUX
+	/* Linux port: the fakefile/namenumberedfile savegame path is corrupted (the same
+	   stateful-global bug fixed in CFiling::Save/LoadGame), so _findfirst searches the wrong
+	   directory and the file list comes up empty even when saves exist. For the savegame dir,
+	   build a relative "savegame/<wildcard>" that the compat _findfirst resolves
+	   case-insensitively against SAVEGAME/. Other dirs (videos/replays) keep the original path. */
+	char* dirnametext;
+	if (dirname==FIL_SAVEGAMEDIR) {
+		snprintf(buffer, fileman::pathnamesize, "savegame/%s", (const char*)(LPCTSTR)wildcard);
+		dirnametext = buffer;
+	} else
+		dirnametext = File_Man.namenumberedfile(File_Man.fakefile(dirname,wildcard),buffer);
+#else
 	char* dirnametext=
 		File_Man.namenumberedfile(File_Man.fakefile(dirname,wildcard),buffer);
+#endif
 	long	ffh=_findfirst(dirnametext,&filedesc);
 	listempty=true;
 	int beforestar=0;
@@ -280,6 +294,12 @@ void	CLoad::MakeFileList()
 		}while (!_findnext(ffh,&filedesc));
 		_findclose(ffh);
 	}
+#if BOB_LINUX
+	/* (dirnametext/buffer is reused for `filename` below, so don't print it here.) */
+	if (getenv("BOB_TRACE_LOAD"))
+		fprintf(stderr,"[loadlist] MakeFileList: dirname=%d wildcard='%s' ffh=%ld listempty=%d found=%d\n",
+			(int)dirname, (const char*)(LPCTSTR)wildcard, ffh, (int)listempty, found);
+#endif
 	if (found==-1)
 		if (acnum==LSD_SAVE || acnum==LSD_SAVE_DESELECT)
 		{
@@ -320,7 +340,7 @@ BOOL CLoad::OnInitDialog()
 	{
 		CREdit* e=GETDLGITEM(IDC_SAVENAME);
 		e->SetCaption("\b\b\x20");	//set max length of 32 characters
-		e->SetCaption("\b\t\v\n\\\"\':.|¦?*");	//block these characters. Space is allowed.
+		e->SetCaption("\b\t\v\n\\\"\':.|ï¿½?*");	//block these characters. Space is allowed.
 	}
 
 //	currrow = 0;
