@@ -76,6 +76,18 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(SRC)
 
+# --- cross-port doc sync guard --------------------------------------------
+# The shared Rowan-engine lessons doc (doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md) is
+# hand-synced with the sister MiG Alley port's copy (~/ma/port/BOB_PORT_LESSONS.md)
+# and drifts. Run the guard on every build: it prints a loud WARN on divergence but
+# is non-fatal (mirrors MA's rebuild.sh guard — a doc drift shouldn't wedge a code
+# build); no-ops when MA isn't checked out. BOB_NOTES_SYNC_STRICT=1 escalates to a
+# hard build failure for CI / pre-commit.
+add_custom_target(check_notes_sync ALL
+    COMMAND bash ${CMAKE_SOURCE_DIR}/tools/check_notes_sync.sh
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Checking shared lessons doc is in sync with the MiG Alley port")
+
 # --- the `bob` executable -------------------------------------------------
 # A game built around global ctors (the MFC theApp object, static dispatch
 # tables, the BFieldGlobalTable, ...) -> link every module --whole-archive so
