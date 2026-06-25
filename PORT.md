@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S40 (2026-06-25): SAG-LEVEL SKIP ATTEMPT — negative result (the `type` predicate is itself unsafe); reverted, next approach scoped
+> Sprint 40 (Release 4, post-mission funnel fix). Tried the S39-retro "fix-the-funnel" move — a SAG-level
+> skip in `MoveAllSAGs` so the broadly-corrupt post-mission SAG never reaches any of its crashing methods.
+> **Negative result, reverted** (no code shipped; build back at the clean S39 state).
+> - **What was tried.** A `bob_sag_movable(as)` guard in both `MoveAllSAGs` loops, skipping a SAG whose
+>   `((info_grndgrp*)as)->type.Evaluate()` is outside `[0, IllegalSepID]` (the corruption signal from S38/
+>   S39).
+> - **Why it failed.** The **predicate itself crashes**. Verified on `:0`: with the skip in, the run now
+>   SEGVs *inside* `MoveAllSAGs` on the render/move thread **during flight** (`InThe3D=1`, before
+>   mission-end) — `View3d::drawloop → … → mobileitem::MoveAll → SAGAirstruc::MoveAllSAGs`. Reading
+>   `type.Evaluate()` is **not safe on every SAG in the band**: the `(info_grndgrp*)` cast assumes one SAG
+>   view's layout, but the band holds other SAG subtypes (air groups, mid-construction in-flight SAGs)
+>   where `type` is at a different offset / not yet evaluable → evaluating it derefs garbage. So the
+>   funnel-skip is sound in principle, but **`type` is the wrong (unsafe) invariant to detect corruption
+>   with**. Reverted to keep flight + the S39 advance clean.
+> - **Next approach (scoped, for a fresh focused pass).** The skip needs a **safe** corruption predicate —
+>   found empirically: instrument `MoveAllSAGs` to dump the corrupt SAG's *raw* state (Status/deadtime,
+>   movecode, uniqueID, the raw `type` word) when S39's clamp fires, to learn which field reliably and
+>   safely distinguishes it (likely `Status.deaded`/`deadtime` or a movecode invariant, read at a known
+>   offset — not a complex-field `Evaluate()`). Better still is the **type-source** fix: why the
+>   post-mission `StartUpMapWorld` rebuild leaves a corrupt ground-group SAG in the band at all (a deleted/
+>   consumed raid whose slot wasn't cleared?). Both deserve their own session, not an end-of-run edit.
+> - **State unchanged from S39.** Post-load sim advances the full day (S37); post-mission advances past
+>   `GetCruiseAt` (S39) to `SAGDecisionPreCombat`; bare `./bob` 0. Negative result banked — rules out the
+>   `type`-predicate skip and scopes the empirical-invariant / type-source work.
+
 > ## R4.5 / S39 (2026-06-25): POST-MISSION GetCruiseAt CRASH FIXED — sim advances one layer; next is a broadly-corrupt SAG (→ S40 systemic skip)
 > Sprint 39 (Release 4, post-mission grind, continued from S38). Landed S38's banked fix and verified the
 > post-mission sim advances past it — then the next layer revealed the systemic shape, banked for S40.
