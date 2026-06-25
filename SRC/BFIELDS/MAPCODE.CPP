@@ -460,11 +460,22 @@ void	PackageList::LoadGame(BIStream& bis)
 	for (packnum=0;packnum<Profile::MAX_PACKS;packnum++)
 		if (pack[packnum].wpsused)
 			FixupAircraft(packnum);
+#if BOB_LINUX
+	/* Linux port: the deserialised packages' raidnumentries arrays come back WITHOUT the
+	   terminator that RemakeRaidList/RecostRaidList establish at runtime (the R4.5 guard slot),
+	   so SetVisibilityFlags's `while(raidnumentries[r].squadliststart<max) r++` loop
+	   (MIGView.cpp:2210) runs off the end -> ASan heap-buffer-overflow / SIGSEGV on load.
+	   RecostRaidList rebuilds the raid list (with terminator) purely from the squadlist, which
+	   IS restored correctly -- re-establishing the runtime invariant the consumers assume. */
+	for (packnum=0;packnum<Profile::MAX_PACKS;packnum++)
+		if (pack[packnum].packagestatus!=Profile::PS_SPARE)
+			pack[packnum].RecostRaidList();
+#endif
 	Todays_Packages.SetVisibilityFlags();
 	delete buffer;
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		InitViewFromMap
 //Author		Paul.   
 //Date			Thu 11 Mar 1999
@@ -505,7 +516,7 @@ void Persons4::InitViewFromMap(UniqueID trg_uid)
 	pItem=WorldStuff::pItem;
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		ShutDownViewFromMap
 //Author		Paul.   
 //Date			Fri 12 Mar 1999

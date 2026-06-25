@@ -2248,7 +2248,12 @@ void	PackageList::SetVisibilityFlags()
 						{
 							s++;
 							info_airgrpPtr ac=*Persons2::ConvertPtrUID(sl->instance);
-							ac->SetDraw();	//Leader of raid set is always flagged
+							if (ac) ac->SetDraw();	//Leader of raid set is always flagged
+							// BOB_LINUX: guard the deref. *ConvertPtrUID safely yields NULL (address
+							// cast) when sl->instance's world item isn't present -- which happens when
+							// SetVisibilityFlags runs during LoadGame deserialisation, before the world
+							// is rebuilt (the raid isn't spawned yet). Matches the if(wp)/if(ag) idiom
+							// the loops above use; a not-yet-spawned raid is correctly skipped.
 							if (Save_Data.lwplots>PL_RAID)		//PL_RAID level: only leader is flagged
 								if (Save_Data.lwplots<PL_STAFF)
 								{								//PL_GRUPP or PL_GESH level - offset already set up
@@ -2271,7 +2276,7 @@ void	PackageList::SetVisibilityFlags()
 											{
 												alreadyseen=true;
 												info_airgrpPtr ac=*Persons2::ConvertPtrUID(sl->instance);
-												ac->SetDraw();
+												if (ac) ac->SetDraw();	// BOB_LINUX: guard (see leader note above)
 												comparevalue=squadtest;
 											}
 										}
@@ -2284,7 +2289,7 @@ void	PackageList::SetVisibilityFlags()
 										if (sl->playercansee && sl->status!=Profile::PS_COMPLETE)
 										{
 											info_airgrpPtr ac=*Persons2::ConvertPtrUID(sl->instance);
-											ac->SetDraw();
+											if (ac) ac->SetDraw();	// BOB_LINUX: guard (see leader note above)
 										}
 									}
 

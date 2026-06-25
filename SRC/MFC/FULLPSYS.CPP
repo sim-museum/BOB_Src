@@ -486,6 +486,11 @@ extern "C" void bob_frontend_tick(void)
 				fprintf(stderr,"[campload] CFiling::LoadGame(\"%s\") -> %s (currtime %d -> %d, localplayer=%d gamestate=%d)\n",
 					nm, ok?"OK":"FAIL", before, (int)MMC.currtime,
 					(int)Todays_Packages.localplayer, (int)RFullPanelDial::gamestate);
+				/* LoadGame restores Miss_Man but does NOT rebuild the world (the real flow does that
+				   via LaunchMap->StartUpMapWorld next); fast-forwarding the sim over the loaded-but-
+				   un-rebuilt world then crashes in the SAG AI (R4.5 family). Stop the headless
+				   fast-forward after a load, exactly as after a flown mission. */
+				if (ok) g_campfly_flown = 1;
 			}
 		}
 		/* R4.3 (BOB_CAMPAIGN_FLY, default-off): drive the campaign's OWN map->mission seam. Once

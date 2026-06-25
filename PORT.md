@@ -1,5 +1,44 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.4 (2026-06-24): SAVE/LOAD ROUND-TRIP WORKS — load restores campaign state (ASan-pinned the deserialise crash); ConvertPtrUID-sentinel disproven
+> Sprint 29 (Release 4, save/load slice, cont.). Completed the load half: a campaign save written to disk
+> (Sprint 28) now **loads back and restores the campaign state** — the save/load round-trip is real.
+> - **Strategy redirect — the `ConvertPtrUID`-sentinel hypothesis is DISPROVEN.** The Sprint-28 retro flagged
+>   a "general `ConvertPtrUID` safe-sentinel" as a possible one-shot fix for the recurring
+>   `*ConvertPtrUID(uid)`-NULL family (R4.5/R4.3/R4.4). Reading the contract killed it:
+>   `Persons2::ConvertPtrUID` returns `ItemBase&` and the `info_*Ptr` conversions (`WorldInc.h:461+`,
+>   compiled on GCC) are pure **address casts** (`(WayPoint*)this`) — *no memory read* — so
+>   `*ConvertPtrUID(missing)` already yields **NULL safely**, and the `if(wp)`/`if(ag)` guards work as the
+>   author intended. The crashes are therefore genuine (unguarded derefs / bad data), exactly as the R4.5
+>   retro warned — a sentinel would mask, not fix. Valuable: it steered away from a wrong multi-site change.
+> - **ASan-pinned the load crash (the R4.5 oracle).** `CFiling::LoadGame` → `bis >> Miss_Man` →
+>   `PackageList::LoadGame` (`BFIELDS/MAPCODE.CPP:463`) → `SetVisibilityFlags` SEGV'd — ASan:
+>   **heap-buffer-overflow READ at `MIGView.cpp:2210`**, the
+>   `while(raidnumentries[r].squadliststart<max) r++` loop **running off the array**. Same **R4.5
+>   `RecostRaidList` terminator family** (the ASan stack even names `RecostRaidList`/`ReorderPackage`) —
+>   but on the *deserialised* packages, whose `raidnumentries` come back **without the terminator**
+>   `RemakeRaidList`/`RecostRaidList` set at runtime (the R4.5 guard slot). NOT a `ConvertPtrUID` issue.
+> - **Fix (two parts, ASan-verified):** (1) in `PackageList::LoadGame` (`MAPCODE.CPP`, `#if BOB_LINUX`,
+>   before `SetVisibilityFlags`): re-run `RecostRaidList()` on each non-spare loaded package — it rebuilds
+>   the raid list (with terminator) purely from the `squadlist`, which *is* restored correctly,
+>   re-establishing the runtime invariant. (2) the three **unguarded `ac->SetDraw()`** sites in
+>   `SetVisibilityFlags` (`MIGView.cpp:2251/2274/2287`) get an `if(ac)` guard — during load the world isn't
+>   rebuilt yet, so `ConvertPtrUID(sl->instance)` is legitimately NULL; the guard matches the function's own
+>   `if(wp)`/`if(ag)` idiom (a not-yet-spawned raid is correctly skipped).
+> - **Verified.** `[campload] CFiling::LoadGame("Auto Save.BSR") -> OK (currtime 26660 -> 32180 …)` — the
+>   loaded `currtime` jumps to **exactly the saved value (32180)**: the campaign state round-trips. ASan
+>   (rebuilt with the fix): the `MIGView.cpp:2210` overflow is **gone** (remaining ASan noise = the
+>   pre-existing benign FILEMAN dir-list overread + unity-twin odr-violations, none in the load path). A
+>   `g_campfly_flown` guard stops the headless fast-forward after load too (LoadGame restores `Miss_Man` but
+>   doesn't rebuild the world — the real flow does that via `LaunchMap`→`StartUpMapWorld` next; driving the
+>   sim over the un-rebuilt world is the R4.5 grind). Round-trip run is clean (`BOBEXIT` 139→124).
+> - **R4.4 save/load core is DONE** — save persists (S28) + load restores (S29). Remaining R4.4: the CLoad
+>   file-list **UI** enumeration (same `fakefile` path; adopt MA's render+click) and wiring load from the
+>   menu screen rather than the gated scaffold. **No regression:** the load fix is `#if BOB_LINUX` in the
+>   load path + a harmless NULL check; both scaffolds env-gated; bare `./bob` + normal map clean.
+>   **Cross-port:** the deserialised-raidnumentries-terminator fix and the `ConvertPtrUID`-is-already-safe
+>   finding are shared-engine with MiG Alley.
+
 > ## R4.4 (2026-06-24): CAMPAIGN SAVE PERSISTS — first save on Linux (fixed the SaveGame path bug); load path characterized
 > Sprint 28 (Release 4/6, save/load slice). With the campaign now running (R4.3), unblocked the
 > long-gated save/load (R6.5: "gated on the campaign producing a save"). **A campaign save now lands on
