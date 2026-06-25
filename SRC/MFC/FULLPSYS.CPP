@@ -387,6 +387,7 @@ static void bob_startflying_preflight(bool clickMode, bool firstTime)
    exit screen). Faithful, just delivering the message the dead Win32 hop would have. */
 int g_campfly_shot = 0;   /* R4.3 (BOB_CAMPFLY_SHOT): frames-until-bobfrag-capture countdown */
 int g_campfly_go = 0;     /* R4.3 (BOB_CAMPFLY_GO): frames-until-Fly (bobfrag -> campaign flight) */
+int g_campfly_flown = 0;  /* R4.3: a campaign mission has been launched -> stop the post-mission sim FF */
 extern "C" int bob_gdi_dump_to(const char*);   /* R4.3: one-shot framebuffer dump (bob_video.cpp) */
 static int g_bobFlightCloseId = -1;
 void bob_capture_wm_command(unsigned int /*msg*/, unsigned int id)
@@ -436,7 +437,14 @@ extern "C" void bob_frontend_tick(void)
 		   raid-generator heap bugs that used to SIGSEGV the first PerformMoveCycle are fixed --
 		   ReorderPackage new[]/delete + RecostRaidList terminator off-by-one.) Default OFF while the
 		   dynamic-icon / mission-flow bring-up continues. */
-		if (getenv("BOB_MAP_TIMER")) {
+		/* R4.3: once a campaign mission has been flown + we've returned to the map, STOP the
+		   headless fast-forward. PerformMoveCycle over the post-mission world (a returned
+		   interceptor / consumed raid) SIGSEGVs in the SAG-movement AI (GetCruiseAt ->
+		   Plane_Type_Translate[bad ptype]) -- the R4.5 uninit-SAG grind, a distinct onion layer.
+		   In real play the returned map is PAUSED (the player reviews, then advances), so not
+		   driving it is faithful; the post-mission sim fix is deferred to R4.5. */
+		extern int g_campfly_flown;
+		if (getenv("BOB_MAP_TIMER") && !g_campfly_flown) {
 			/* The campaign map starts PAUSED (curracceltype=ACCEL_PAUSED, rate 0) -- the player
 			   normally clicks a UI accel button to run time. Headlessly, un-pause it so the day
 			   advances and raids reach their launch times. */
@@ -593,8 +601,9 @@ extern "C" void bob_frontend_tick(void)
 				}
 			}
 			int flyIdx = g_bobMenuN > 0 ? g_bobMenuN - 1 : 2;   /* Fly is the last menu item */
-			fprintf(stderr,"[campfly] Fly: playersquadron=%d menuN=%d -> OnSelectRlistbox(%d)\n",
-				(int)MMC.playersquadron, g_bobMenuN, flyIdx);
+			fprintf(stderr,"[campfly] Fly: playersquadron=%d gamestate=%d menuN=%d -> OnSelectRlistbox(%d)\n",
+				(int)MMC.playersquadron, (int)RFullPanelDial::gamestate, g_bobMenuN, flyIdx);
+			g_campfly_flown = 1;   /* after this mission, don't headlessly fast-forward the map sim */
 			g_bobActiveFP->OnSelectRlistbox(flyIdx, 0);
 			return;
 		}

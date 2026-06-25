@@ -1,5 +1,40 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.3 (2026-06-24): THE CAMPAIGN MISSION CYCLE CLOSES — fly → mission-end → back to the strategic map
+> Sprint 26 (Release 4, campaign mission-flow slice, cont.). Turned the one-shot campaign flight (R4.3 this
+> afternoon) into a **loop**: map → intercept → briefing → fly → **mission end → return to the strategic
+> map** — all in one process, no crash.
+> - **The return path is the game's own (spike).** `OnFlyingClosed(rv)` (`FULLPANE.CPP:378`) routes by
+>   `gamestate`: `IDCANCEL`(F12)→`options3d`; `HOT`/`QUICK`→`quickmissiondebrief`; **else (campaign)** →
+>   `MMC.NextMission(); Persons4::StartUpMapWorld(true); LaunchMap(s,true)` — i.e. advance the campaign +
+>   go back to the strategic map. The campaign flight's `gamestate` is **COMMANDER(5)** (a campaign state,
+>   set by `SetUpCommander`; not the QM `HOT`), so the campaign branch is taken — no new code needed.
+> - **Driving it.** `BOB_AUTOQUIT=debrief` (R2.2) injects EXITKEY (Left-Alt+X) → `View3d::CloseWindow(IDOK)`
+>   → the R1.1b close bridge (`bob_process_flight_close` → `OnOK` + `OnFlyingClosed(IDOK)`) → the campaign
+>   branch. Verified on real GL (`:0`): `Fly … gamestate=5` → flight → `flight close (id=1) -> OnOK +
+>   OnFlyingClosed` → `[map] LaunchMap done` → `back in front-end (InThe3D=0)`. **The strategic map comes
+>   back.** The never-run-on-Linux campaign return (incl. `CMainFrame`/toolbar ops, `StartUpMapWorld`,
+>   `LaunchMap`) runs clean.
+> - **One deferral (precisely characterized).** Continuing to **headlessly fast-forward** the map sim
+>   (`BOB_MAP_TIMER`) over the *post-mission* world then SIGSEGVs in the SAG-movement AI:
+>   `MoveAllSAGs → SAGMovementFollowWP → CruiseToWp → GetCruiseToWp → GetCruiseAt` — `GetCruiseAt`
+>   (`SAGMOVE.CPP:1479`) indexes `Plane_Type_Translate[ptype]` with a **post-mission SAG whose `type` is
+>   uninit/garbage** (a returned interceptor / consumed raid). This is the **R4.5 campaign-sim grind**, a
+>   distinct onion layer from the return path (pre-mission the sim ran 90s clean — Sprint 18). In real play
+>   the returned map is **PAUSED** (the player reviews, then advances), so the fix here is faithful: a
+>   `g_campfly_flown` guard stops the headless fast-forward once a mission has been flown → the returned map
+>   is **stable** (`BOBEXIT` 139→124, no crash). The post-mission SAG-uninit root-cause is deferred to R4.5
+>   (needs ASan, per the Sprint 15–19 playbook).
+> - **No regression:** build links clean; the guard is `!g_campfly_flown` (0 until a mission is flown), so
+>   the **normal campaign map still fast-forwards** (pre-mission sim unaffected) and bare `./bob` boots +
+>   enters `Run()` clean. Gamestate trace is env-gated.
+> - **Release 4 milestone:** the **core campaign loop is now closed** — strategic map → intercept a raid →
+>   mission briefing → fly the scrambled interceptor → mission end → back to the strategic map. Remaining
+>   R4.3: the post-mission SAG-uninit (R4.5) so the day can advance + the next mission run; the in-cockpit
+>   Continue/Quit dialog; debrief screen polish; briefing widget population (R6.3). **Cross-port:** the
+>   `OnFlyingClosed`-routes-by-`gamestate` map-return + the post-mission `GetCruiseAt`/`Plane_Type_Translate`
+>   crash are shared-engine with MiG Alley.
+
 > ## R4.3 (2026-06-24): A CAMPAIGN MISSION FLIES — briefing → Fly → the scrambled interceptor's cockpit on real GL
 > Sprint 25 (Release 4, campaign mission-flow slice, cont.). Closed the loop from the campaign mission
 > briefing (R4.3 this morning) to **actually flying the campaign mission** — the strategic map now leads
