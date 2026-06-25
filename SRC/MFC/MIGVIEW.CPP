@@ -3153,6 +3153,9 @@ void CMIGView::DrawIcons( CDC* pDC,CRect& bounds)
 	Wxb2=Wx2+radius;
 	Wzb1=Wz1-radius;
 	Wzb2=Wz2+radius;
+#if BOB_LINUX
+	int _icScan=0,_icPass=0,_icDrawn=0;   /* R4.2 BOB_TRACE_ICONS spike counters */
+#endif
 //	m_bDontUpdateBitmaps=TRUE;
 	int dontdraw=m_mapdlg.m_buttonid;
 	if (m_mapdlg.TargetSelectMode)
@@ -3161,6 +3164,9 @@ void CMIGView::DrawIcons( CDC* pDC,CRect& bounds)
 	for (int i=IllegalSepID;i>=UID_NULL;i--)
 	{
 		p=Persons2::ConvertPtrUID(UniqueID(i));
+#if BOB_LINUX
+		if (p) _icScan++;
+#endif
 		if (p)
 			if (p->Status.size>=AIRSTRUCSIZE)
 			{
@@ -3185,6 +3191,9 @@ void CMIGView::DrawIcons( CDC* pDC,CRect& bounds)
 					p=NULL;
 		if (p)
 		{
+#if BOB_LINUX
+			_icPass++;
+#endif
 			bool	drawselected=false;
 			switch (m_mapdlg.TargetSelectMode)
 			{
@@ -3214,13 +3223,25 @@ void CMIGView::DrawIcons( CDC* pDC,CRect& bounds)
 			f = (IconsUI)DrawIconTest( p, UniqueID(i), drawselected,false);//,redUIDs,FL_Icon);
 		  	if ((f))
 			{
+#if BOB_LINUX
+				_icDrawn++;
+#endif
 				ScreenXY(p,px,py,0,0);
 				DrawIcon(pDC,px,py, (IconsUI)f);
 				DrawIconExtra(pDC,px,py,IconsUI(f),UniqueID(i), drawselected);
 			}
-				
+
 		}
 	}
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_ICONS")) {
+		static int _icCall=0; _icCall++;
+		if (_icCall<=4 || _icDrawn>0 || _icPass>0)
+			fprintf(stderr,"[icons] call#%d zoom=%.2f bounds=(%d,%d,%d,%d) world=(%d,%d..%d,%d) radius=%d scan=%d cull_pass=%d drawn=%d\n",
+				_icCall,(double)m_zoom,(int)bounds.left,(int)bounds.top,(int)bounds.right,(int)bounds.bottom,
+				Wx1,Wz1,Wx2,Wz2,radius,_icScan,_icPass,_icDrawn);
+	}
+#endif
 	p=Persons2::ConvertPtrUID(UniqueID(m_mapdlg.m_buttonid));
 	if (p && !m_mapdlg.TargetSelectMode)
 	{
@@ -3494,6 +3515,17 @@ void CMIGView::UpdateBitmaps(CDC* pDC,CRect bounds)
 	if (rect.bottom>m_size.cy)
 		pDC->FillSolidRect(CRect(0,m_size.cy,rect.right,rect.bottom),
 							RGB(0,0,0));//180,200,200));
+#if BOB_LINUX
+	/* R4.2 (S34): the per-block DrawIcons(inter) calls in the zoom loops above pass each tile's
+	   screen-rect intersected with the paint rect; on Linux the headless paint carries no per-region
+	   paint rect, so `inter` collapses to (0,0,0,0) and the world-rect cull (computed from the rect
+	   corners) lands ~2.16M world-units from every item -> nothing survives (BOB_TRACE_ICONS:
+	   scan=1238 cull_pass=0). Draw the icons ONCE over the full client `bounds` -- exactly the game's
+	   own pre-DAW-13/03/00 call (now the DEADCODE `DrawIcons(pDC,bounds)` below) -- so
+	   WorldXY(bounds corners) yields the real visible-world rect using the live m_scrollpoint/m_zoom
+	   (the same transform the terrain tiles already render correctly with). */
+	DrawIcons(pDC, bounds);
+#endif
 	// now draw the icons...
 //DEADCODE ROD 16/12/99 	UniqueIDField redUIDs;
 //DEADCODE JIM 16/11/99 	SupplyTree::FillNatForUID(redUIDs);

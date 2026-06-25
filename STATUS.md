@@ -28,6 +28,7 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 | **OCX event routing** | **General eventsink (S33):** the game's own `BEGIN_EVENTSINK_MAP`/`ON_EVENT` maps drive control events via RTTI dispatch — combo TextChanged + listbox Select fire the genuine handlers (replaces the two targeted R5.3b/R4.4 bridges) | `BOB_TRACE_OLE` |
 | **Text rendering** | Game-wide `CSprintf("%s",CString)` fixed (Itanium-ABI varargs) — config/debrief/controls text readable | (always on; `cstring_impl.cpp::FormatV`) |
 | **Load-game screen** | `CLoad` reaches + renders (RAF/LW/Back/Load + hosted file-list); save/load gated on the campaign | `BOB_CONFIGSCREEN=load` |
+| **Strategic map** | Campaign map renders terrain (SE England/Channel/France, sector labels) **+ the unit-icon layer** (RAF squadron/airfield/fighter + LW raid markers) — matches the Wine gold ref. Toolbars + scroll/zoom/click still to do. | enter the campaign map (e.g. load a save); `BOB_TRACE_ICONS` |
 | **Menu↔flight (one process)** | **R1.1b complete:** menu→flight via the game's own `StartFlying→Rtestsh1→Launch3d` (forced + real menu clicks) AND flight→menu (F12→`CloseWindow`→`OnFlyingClosed`→rendered front-end screen); clean 3D-device teardown (DD7 refcount fix). Full menu→fly→menu, one window. | `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=1` (`=click` + `BOB_AUTOCLICK=0,1,2`; `BOB_AUTOQUIT=<s>` to exit) |
 
 Cockpit render now closely matches `doc/reference/cockpit-windows-spitfire-1.png`.

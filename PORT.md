@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.2 / S34 (2026-06-25): STRATEGIC-MAP UNIT ICONS RENDER — squadron/raid markers over SE England (the per-block empty-clip cull, fixed)
+> Sprint 34 (Release 4, strategic map). The campaign's strategic map drew terrain + sector labels but
+> **no unit icons** (the visible gap vs the Wine gold ref). Now the full icon layer renders: **green RAF
+> squadron/airfield, blue fighter, yellow Luftwaffe raid** markers, matching
+> `doc/reference/wine-strategic-map-icons-2026-06-24.png`. Capture: `doc/reference/strategic-map-icons-2026-06-25.png`.
+> - **Root cause (measured, not guessed — `BOB_TRACE_ICONS`).** The S27 spike's "empty `inter` clip rect"
+>   was right but its *attribution* (the CMapDlg scroll/world transform "never set up") was wrong — the
+>   transform is fine (the **terrain tiles render correctly** with the same `m_scrollpoint`/`m_zoom`). The
+>   real mechanism: `CMIGView::UpdateBitmaps` calls `DrawIcons(pDC, inter)` **per terrain block**, where
+>   `inter = block ∩ bounds` — a Windows paint-region optimization (added DAW 13/03/00, replacing the
+>   original single `DrawIcons(pDC,bounds)`, still present as DEADCODE at MIGVIEW.CPP). On Linux the
+>   headless paint carries **no per-region paint rect**, so every `inter` collapses to `(0,0,0,0)`; the
+>   world-rect cull computed from those corners lands a huge `radius` (~2.16M world-units) away from every
+>   item. Trace at zoom 2.0 on a loaded mid-campaign save: `bounds=(0,0,0,0) world=(15.3M,39.8M..17.4M,41.9M)
+>   scan=1238 cull_pass=0 drawn=0`.
+> - **Fix (1 line, `#if BOB_LINUX`, MIGVIEW.CPP `UpdateBitmaps`).** Draw the icons **once over the full
+>   client `bounds`** (`(0,0,1024,768)`) after the tile loops — exactly the game's own pre-optimization
+>   call. `WorldXY(bounds corners)` then yields the real visible-world rect from the live transform.
+>   After: `bounds=(0,0,1024,768) world=(15.3M,14.6M..51.0M,41.9M) scan=1238 cull_pass=768 drawn=99` — **99
+>   unit icons drawn** (was 0). The per-block empty calls remain (harmless no-ops; minor wasted scans).
+> - **Why icons need the campaign sim.** At zoom 2.0 (`< ZOOMTHRESHOLDDETAIL=16`) `DrawIconTest` yields
+>   icons mainly for **dynamic** units (raids/squadrons/sectors); the loaded save (`currtime=32180`, 1238
+>   worlditems) supplies them — so this lands on top of the R4.3/R4.5 campaign-sim work that populates them.
+> - **Verified.** Build clean; **bare `./bob` exits 0** (the added call is map-only, behind `g_bob_map_active`);
+>   the captured map matches the gold ref's marker layout. `BOB_TRACE_ICONS` (new, default-off) prints the
+>   world rect + scan/cull_pass/drawn counts. Remaining R4.2 (separate interaction stories): CMainFrame
+>   toolbars/bars, scroll/zoom + click (scramble/intercept). **Cross-port:** MA solved the same empty-clip
+>   class with a `GetBoundsRect→DCB_RESET→GetClientRect` fallback inside its (single-call) DrawIcons; BoB's
+>   per-block architecture differs, so the faithful fix here is the original full-bounds call — noted to MA.
+
 > ## S33 (2026-06-25): GENERAL OCX EVENTSINK ADOPTED — the two targeted bridges retired (cross-port: MA's ma_eventsink)
 > Sprint 33 (cross-port infrastructure). Adopted the MiG Alley port's **general OCX eventsink** so the
 > game's own `BEGIN_EVENTSINK_MAP`/`ON_EVENT` maps drive control events on Linux — **retiring BoB's two
