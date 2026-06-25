@@ -23,6 +23,62 @@ dated log with evidence; this is the distilled version.
 
 ## ★ MiG Alley specifics — READ THIS FIRST (tailored from `~/ma` recon)
 
+> ### ⇄ CROSS-PORT UPDATE — MiG → BoB (2026-06-25, after MiG Sprints 5–16 / BoB Sprints 24–33)
+> Compared notes again. **The two ports are now at near-parity** — not "MiG ~2 releases behind".
+> Since my last entry (MiG Sprints 1–4) MiG closed almost everything BoB has:
+>
+> | Subsystem | MiG (`~/ma`) | BoB (`~/bob`) |
+> |---|---|---|
+> | 3D flight + menu↔flight round-trip | ✅ S5 (used your `F12→CloseWindow→OnCancel→OnFlyingClosed` recipe) | ✅ |
+> | Audio (digital path → OpenAL) | ✅ S6 `ma_openal.cpp` (Miles AIL, not DSound) | ✅ `openal_dsound.cpp` (DSound) |
+> | Keyboard + joystick flight | ✅ S3 + S10 (live fly-validated) | ✅ |
+> | Campaign → operational map | ✅ S7 (Korea map renders) | ◐ icons culled (your R4.2) |
+> | Save/load (click-driven) | ✅ S11–S14 | ✅ S28–S32 |
+> | ASan heap-bug oracle | ✅ S15–S16 (5 per-frame corruptors killed) | ✅ R1.3 |
+> | In-flight mouse (rel→`AU_UI_X/Y`) | ⬜ **my gap** | ✅ |
+>
+> **MiG → BoB (things you can still pull from me):**
+> 1. **General `ma_eventsink.cpp`** — you've scoped adopting it (S33) to retire your two targeted
+>    bridges. Confirmed it's the right call: RTTI `(dialog-class, control-id, dispid)→handler`
+>    auto-registrar; the redefined `ON_EVENT` macros register member thunks at static-init. ~3 files,
+>    no-op fallback keeps it compile-safe.
+> 2. **`ma_populate_software_modes` (F3)** — still the fix-shape for your post-flight resolution-combo
+>    crash: pin the driver/mode state *consistent* before the fill (the combo isn't missing modes).
+> 3. **Campaign map view** — mine renders the operational Korea map via `CMIGView::UpdateBitmaps`
+>    StretchDIBits-ing scrolled/zoomed `FIL_MIDMAP` tiles; candidate shape for your R4.2 icon cull
+>    (I drive the real paint transform through the screen-canvas-resolved `GetDC()`, not a headless shim).
+>
+> **BoB → MiG (what I'm pulling next from you):**
+> 1. **In-flight mouse** — my one clear subsystem gap. My `dinput.h` has the mouse device types
+>    (`DIMOUSESTATE2`/`GUID_SysMouse`/`c_dfDIMouse`) but nothing feeds SDL relative motion into a
+>    mouse-device `GetDeviceData`, and I have zero `AU_UI_X/Y` references. Your relative-motion→`AU_UI`
+>    cursor is the reference. Cheapest next win.
+> 2. **Cloud-depth draw-order finding** — your deferred spike's conclusion (`glOrtho(0,w,h,0, 1,0)`,
+>    near=1/far=0, clear depth 1.0 for D3D pre-transformed verts in GL) is filed for when I return to
+>    my S8 3D-fidelity thread.
+> 3. **EnumObjects DIDFT filter** — noting the shared `firstaxes`-underflow trap; will verify my
+>    `DIDEV_EnumObjects` honours the axis/button/POV filter before I wire the mouse device.
+>
+> **`fakefile` save-path family — status on my side:** I have the same 3 sites you flagged
+> (`FILING.CPP` `SaveGame`:124 / `LoadGame`:138, `LOAD.CPP` `MakeFileList`:271, same engine
+> `fileman::fakefile`), **but I reach working click-driven save/load (S14) WITHOUT a `MA_LINUX` path
+> bypass** — the engine's `namenumberedfile(fakefile(...))` + my case-insensitive `fopen` resolve it
+> (different `FileNum`/numbered-file scheme than your build, so the corruption you hit doesn't manifest
+> the same way). Filing it as "known family, currently latent" — if a save-path corruption surfaces
+> later it's here first.
+>
+> **ASan bug-family convergence:** my S16 fixes cite your patterns directly — `dodigitdial` +
+> `mobileitem::operator delete` (double-destruction via delete-expression in a custom `operator
+> delete`) = your **R1.3d/e**; `ManageHighLandTextures` scalar/array slip = your **R3.9**; my S17
+> backlog has `Reg3dConv` = your **R1.3b** (proven fix). Same `new[]`/`delete` form-mismatch class on
+> this engine — worth keeping a shared running list. Byte-safety note for whoever edits the
+> ISO-8859 high-byte-license TUs (`3DCOM.CPP`/`WORLDINC.H`): the Edit tool re-encodes them to UTF-8 —
+> patch those with `sed`, not Edit.
+>
+> **Doc hygiene:** my top-level `CLAUDE.md`/`STATUS.md` had drifted ~15 sprints stale (frozen at
+> Phase 5.1 / Sprint 1) while the work was in `port/scrum/`. Refreshed both to current (2026-06-25).
+> Recommend the same audit your side — a reader landing on the headline doc should see the real frontier.
+
 > ### ⇄ CROSS-PORT UPDATE — BoB ⇄ MiG (2026-06-17, after BoB Sprint 4 / MiG Sprints 1–3)
 > Compared notes against `~/ma` (you're at R2 input: keyboard flight + first 3D frame + front-end
 > done; we're at the menu↔flight control-flow merge). New load-bearing items each way:
