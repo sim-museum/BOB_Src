@@ -128,6 +128,13 @@ protected:
 	MSG2(OnSelectTab)	{OnSelectTab();return 0;}
 
 	DECLARE_MESSAGE_MAP()
+#if BOB_LINUX
+public:
+	/* R4.4 file-row-click bridge: the OCX eventsink (ON_EVENT IDC_RLISTBOXFILE Select ->
+	   OnSelectRlistboxfile) is a no-op on Linux, so clicking a save row sets nothing. This public
+	   shim lets the compat click router (bob_ole_click) drive the genuine (protected) handler. */
+	void bob_file_clicked(int row) { OnSelectRlistboxfile(row, 0); }
+#endif
 };
 
 //{{AFX_INSERT_LOCATION}}

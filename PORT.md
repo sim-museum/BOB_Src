@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.4 (2026-06-24): SAVE/LOAD IS FULLY CLICK-DRIVEN — click a save → click Load → the campaign loads (file-row-click bridge) — R4.4 DONE
+> Sprint 32 (Release 4, save/load UI slice — completes R4.4). Wired the last piece: the **file-row click**
+> on the load screen now selects a save via the genuine handler, so save/load is **fully click-driven** end
+> to end — no scaffold injecting `selectedfile`.
+> - **The bridge (mirrors the R5.3b SController combo bridge).** The OCX eventsink
+>   (`ON_EVENT(CLoad, IDC_RLISTBOXFILE, Select, OnSelectRlistboxfile)`) is a no-op on Linux. Added a
+>   targeted `BOB_LINUX` shim: `CLoad::bob_file_clicked(row)` (public, calls the protected
+>   `OnSelectRlistboxfile(row,0)`); a `g_bobCLoad` registry set in `OnInitDialog`; `bob_cload_file_clicked`
+>   dispatches to the live CLoad. The click router computes the row: `OleHost::rowAtY(localY)` (new virtual)
+>   → `HostRListBox` overrides it as `GetRowFromY` (the genuine control's hit-test); `bob_ole_click`, on a
+>   click that hits a hosted **list** (not a combo), calls `rowAtY(y - host.sy)` and routes the row to the
+>   CLoad bridge. ~40 lines across `LOAD.H/.CPP`, `bob_ole_host.h`, `bob_ole_rlistbox.cpp`, `bob_ole.cpp`.
+> - **Verified end-to-end (genuine clicks, `BOB_CLICKXY`).** Click the "Auto Save" row → `[ole] click
+>   (90,388) -> list id=1062 (IDC_RLISTBOXFILE) row=0 selected` → `[cload] OnSelectRlistboxfile ->
+>   filename='Auto Save.bsr'` (the real handler set `selectedfile`). Then click the "Load" menu →
+>   `[frontend] click -> menu item 3` → `[doload] selectedfile='Auto Save.bsr' -> LoadGame=1 -> LaunchMap`
+>   → `[map] strategic map active`. **The campaign loads and the strategic map appears, from clicks alone.**
+>   No crash (124). (The Sprint-31 "menu re-init wipes `selectedfile`" worry was specific to *pre-seeding*;
+>   the genuine row-click sets it on the live screen and it survives the Load nav.)
+> - **★ R4.4 save/load is COMPLETE** — fully click-driven: **save persists (S28) → load restores state (S29)
+>   → the load screen lists saves (S30) → load enters the campaign map (S31) → the file-row click selects a
+>   save (S32)**. The player can save a campaign and load it back entirely through the real UI. **No
+>   regression:** the bridge is a targeted `BOB_LINUX` shim + a default-returning virtual; bare `./bob` +
+>   normal map clean. **Cross-port:** this is the 2nd targeted OCX-eventsink bridge (after R5.3b controls) —
+>   two genuine consumers now exist, so MA's *general* eventsink (`ma_eventsink.cpp`) is worth adopting next
+>   to retire both targeted bridges; the `rowAtY`/`GetRowFromY` list-click pattern is shared-engine with MA.
+
 > ## R4.4 (2026-06-24): LOAD FROM THE SCREEN → THE CAMPAIGN MAP — the menu-driven load completes (DoLoadGame path)
 > Sprint 31 (Release 4, save/load UI slice, cont.). Closed the save/load loop from the UI: selecting a save
 > on the load screen and loading it now **restores the campaign and enters the strategic map**.

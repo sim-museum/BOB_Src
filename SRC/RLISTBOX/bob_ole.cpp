@@ -131,6 +131,7 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
    rects; an interactive control (RCombo) cycles its value (onClick). Returns 1 if a control
    consumed the click (the caller then repaints). Mirrors the MiG Alley port's ma_ole_click. */
 extern "C" int bob_scontroller_combo_changed(void* dlg, int ctrlId);   /* R5.3 rebind bridge (SCONTROL.CPP) */
+extern "C" int bob_cload_file_clicked(void* dlg, int row);             /* R4.4 file-row-click bridge (LOAD.CPP) */
 
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     if (bob_ole_trace()) {
@@ -149,6 +150,16 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
                 bob_scontroller_combo_changed((void*)dialog, h->ctrlId);
                 if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> ctrl id=%d cycled\n", x, y, h->ctrlId);
                 return 1;
+            }
+            /* R4.4: a click on a hosted LIST control (e.g. the load screen's file list) selects the
+               row under the cursor. The OCX Select eventsink is a no-op on Linux, so route the row
+               to the live CLoad's genuine OnSelectRlistboxfile (sets selectedfile). */
+            int row = h->rowAtY(y - h->sy);
+            if (row >= 0) {
+                if (bob_cload_file_clicked((void*)dialog, row)) {
+                    if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> list id=%d row=%d selected\n", x, y, h->ctrlId, row);
+                    return 1;
+                }
             }
         }
     }

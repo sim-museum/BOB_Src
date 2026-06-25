@@ -33,6 +33,8 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
         CRect rc(0, 0, w, h);
         OnDraw(pdc, rc, rc);
     }
+    /* R4.4: map a click's local Y (relative to the control's drawn top) to a list row. */
+    int rowAtY(int localY) override { return (int)(short)GetRowFromY(localY); }
     /* R4.1: some hosted listboxes (e.g. CSCampaign's IDC_RLIST_CAMPAIGNS) rely on a column
        count persisted in the OCX property bag rather than calling AddColumn -- the game just
        AddString's into column 0..N. Our host boots from an empty CPropExchange, so m_list has
