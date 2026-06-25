@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S36 (2026-06-25): POST-LOAD FORMATION-POINTER CRASH FIXED — sim advances one grind layer (next: stale SquadTarget UID)
+> Sprint 36 (Release 4, campaign sim — the R4.5 post-load grind, continued from S35). **Fixed** the S35
+> crash (`CountFormationSize` walking a stale `fly.leadflight`) and ASan-confirmed it gone; the post-load
+> sim now advances one layer further before the **next** (separate, pre-identified) crash.
+> - **Fix (`#if BOB_LINUX`, `MAPCODE.CPP` `PackageList::FixupAircraft`).** `flight_ctl`'s
+>   `leadflight`/`nextflight`/`expandedsag` are `//save`-serialized raw `AirStrucPtr`s, so a deserialised
+>   SAG carries dead addresses. `FixupAircraft` already reconverts the SAG's waypoint/package/squadron
+>   pointers via `ConvertPtrUID` (the proper post-load fixup) but never touched the formation pointers —
+>   so I reset them to the ctor default (`NULL`) for each loaded SAG aircraft (`Status.size>=AIRSTRUCSIZE`).
+>   The SAG-movement AI re-establishes formation linkage at runtime (`SAGMOVE.CPP`), so `NULL` is the
+>   correct restored-invariant state (same shape as the S29 `RecostRaidList`-on-load fix, one layer deeper).
+> - **Verified (build-asan, `BOB_POSTLOAD_FF`).** Re-ran the S35 repro: the `CountFormationSize` SEGV is
+>   **gone** (count 0). The sim advances to the next layer and hits a **different, genuine R4.5 crash** (not
+>   a side-effect — a separate code path): `MoveAllSAGs → MoveSAG → SAGMovementFollowWP → SAGExecuteWaypoint
+>   (SAGMOVE.CPP:1837) → ConvertPtrUID(SquadTarget(s))` — a **garbage package-target UID** in the
+>   `AM_LWPACKS` branch (the loaded LW raid's bombing-target reference is stale post-load, despite
+>   `SetTargetUIDs`). This is the S15–17 "SAG→target/waypoint UID" family, now in the load path.
+> - **Banked next layer (S37 candidate).** The stale `SquadTarget` UID needs its own fixup (why
+>   `PackageList::SetTargetUIDs` / `FixupAircraft` doesn't reconvert it on load) — a focused next pass.
+>   Also noted (non-fatal, ASan-recovers): a `RecostRaidList` `BITSET`/`MakeField` stack-OOB read
+>   (`PACKAGES.CPP:5867`) in the load path — pre-existing, separate.
+> - **No regression.** Fix is load-path only; bare `./bob` exits 0; release + ASan builds clean. **Real
+>   fix this sprint** (vs S35's spike): one R4.5 post-load crash eliminated, ASan-verified, next layer pinned.
+
 > ## R4.5 / S35 (2026-06-25): POST-LOAD SIM CRASH ROOT-CAUSED — stale serialized `fly.leadflight` (corrects the GetCruiseAt characterization) + ASan repro infra
 > Sprint 35 (Release 4, campaign sim). Spiked the post-load campaign-sim crash (the R4.5 layer that gates
 > day-advance after a load/mission). Built the repro, ASan'd it, and **precisely root-caused the first

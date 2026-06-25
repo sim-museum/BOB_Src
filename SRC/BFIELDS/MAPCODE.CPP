@@ -383,6 +383,19 @@ void	PackageList::FixupAircraft(int packnum)
 		a->knowntime=a->lasttime=MMC.currtime;
 		assert(a," Just loaded. What's going on?");
 		a->package=&pack[packnum];
+#if BOB_LINUX
+		/* R4.5 (S36): flight_ctl's fly.leadflight/nextflight/expandedsag are //save raw AirStrucPtrs,
+		   so a deserialised SAG carries STALE pointers (dead addresses from the saved session). The
+		   SAG-movement AI re-establishes formation linkage at runtime (SAGMOVE.CPP), and the ctor
+		   default is NULL, so reset them here -- else the radio-chatter intel path
+		   (RAFDetectLW::SetDetectionLevel -> ... -> ArtInt::CountFormationSize) walks the garbage
+		   pointer -> SEGV when a loaded raid is first detected. Mirrors the S29 RecostRaidList
+		   "restore the runtime invariant on load" fix, one layer deeper (AI formation linkage). */
+		{	AirStrucPtr as=(AirStrucPtr)a;
+			if (as->Status.size>=AIRSTRUCSIZE)
+				as->fly.leadflight=as->fly.nextflight=as->fly.expandedsag=NULL;
+		}
+#endif
 		if (a->wpref)
 		{
 			info_waypointPtr w=Persons2::ConvertPtrUID(a->wpref);
