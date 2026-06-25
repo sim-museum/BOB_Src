@@ -82,6 +82,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "messages.h"
 #include "MIGView.h"
 #include "replay.h"
+#include "package.h"   /* R4.3 (BOB_CAMPAIGN_FLY): Todays_Packages / Profile for the map->frag seam */
+#include "misssub.h"   /* R4.3 (BOB_CAMPAIGN_FLY): Directives / RAFDirectivesResults::RAFInterceptType */
 #include "winmove.h"
 #include "aggrgtor.h"
 #include "stub3d.h"
@@ -383,6 +385,8 @@ static void bob_startflying_preflight(bool clickMode, bool firstTime)
    loop drains it via bob_process_flight_close, running the game's OWN public teardown
    (Rtestsh1::OnCancel/OnOK -> delete View3d/Inst3d) then OnFlyingClosed -> LaunchScreen(the
    exit screen). Faithful, just delivering the message the dead Win32 hop would have. */
+int g_campfly_shot = 0;   /* R4.3 (BOB_CAMPFLY_SHOT): frames-until-bobfrag-capture countdown */
+extern "C" int bob_gdi_dump_to(const char*);   /* R4.3: one-shot framebuffer dump (bob_video.cpp) */
 static int g_bobFlightCloseId = -1;
 void bob_capture_wm_command(unsigned int /*msg*/, unsigned int id)
 {
@@ -442,6 +446,103 @@ extern "C" void bob_frontend_tick(void)
 			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
 		}
+		/* R4.3 (BOB_CAMPAIGN_FLY, default-off): drive the campaign's OWN map->mission seam. Once
+		   the sim has run a while (raids generated; the RAF has standing patrols/intercepts),
+		   find a flyable RAF package (attackmethod PATROL/INTERCEPT, i.e. < AM_FIELD_MIN; not
+		   SPARE; has squadrons), highlight it (hipack/hisquad -- exactly what a map squadron-click
+		   + the RAF mission folder set), and call the game's own
+		   CMIGView::LaunchFullPane(&bobfrag, UIR_FRAG) -- the precise seam OnClickedFrag2 uses to
+		   raise the campaign mission briefing. Bypasses the CRToolBar/mission-folder UI (a
+		   separate ~13pt subsystem) with the faithful public entry. BOB_CAMPAIGN_FLY=<paints-to-wait>. */
+		if (getenv("BOB_CAMPAIGN_FLY")) {
+			static int cf_t = 0; static bool cf_done = false;
+			if (!cf_done) {
+				int wait = atoi(getenv("BOB_CAMPAIGN_FLY")); if (wait < 1) wait = 1;
+				/* Past the initial wait, RE-SCAN every paint until a flyable mission appears --
+				   enemy raids spawn airborne only at/after their takeoff time, so the first scan
+				   may find none; keep trying. cf_done is set only once we actually launch bobfrag. */
+				if (++cf_t >= wait) {
+					static int cf_log = 0; bool logScan = (cf_log++ % 60 == 0);  /* throttle the retry log */
+					/* Player side decides which packages are flyable: the RAF player flies its own
+					   PATROL/INTERCEPT squadrons (attackmethod < AM_FIELD_MIN); the LW player flies
+					   its raid packages (attackmethod >= AM_LWPACKS). In a fresh campaign the RAF has
+					   no packages yet (squadrons sit at airfields until scrambled via the mission
+					   folder) -- so the LW side has flyable packages first. */
+					bool lwPlayer = ((int)Todays_Packages.localplayer == (int)NAT_LUF);
+					int found = -1, nNonSpare = 0, nMine = 0;
+					for (int p = 0; p < Profile::MAX_PACKS; p++) {
+						Profile& pk = Todays_Packages.pack[p];
+						if (pk.packagestatus == Profile::PS_SPARE) continue;
+						nNonSpare++;
+						bool mine = lwPlayer ? ((int)pk.attackmethod >= (int)Profile::AM_LWPACKS)
+						                     : ((int)pk.attackmethod <  (int)Profile::AM_FIELD_MIN);
+						if (mine) nMine++;
+						if (getenv("BOB_TRACE_CAMPFLY") && logScan)
+							fprintf(stderr,"[campfly] pack %d: method=%d status=%d squads=%d%s\n",
+								p,(int)pk.attackmethod,(int)pk.packagestatus,(int)(ULong)pk.squadlist, mine?" MINE":"");
+						if (found < 0 && mine && (int)(ULong)pk.squadlist >= 1) found = p;
+					}
+					/* If the player has no own package yet (the usual RAF case), AUTHORISE AN
+					   INTERCEPTION against the first enemy raid -- the exact action
+					   HostilesList::OnClickedRbuttonauthorise performs: NewPackage(raid-squadron
+					   instance, the directives' RAF intercept profile) scrambles a real RAF
+					   interceptor, then we highlight + brief it. This is the genuine campaign
+					   player action, just reached without the hostiles-list OCX UI. */
+					/* Find an enemy raid whose squadron has actually SPAWNED in the world
+					   (instance != 0). Raids appear in pItem only at/after their takeoff time, so
+					   the squadron UID is 0 for not-yet-launched raids; NewPackage on a 0 instance
+					   SIGSEGVs. Pick the first LW squadron with a live instance (preferring one the
+					   player can see, as OnClickedRbuttonauthorise does). */
+					int enemy = -1, enemySq = -1;
+					if (found < 0 && !lwPlayer) {
+						for (int p = 0; p < Profile::MAX_PACKS && enemy < 0; p++) {
+							Profile& pk = Todays_Packages.pack[p];
+							if (pk.packagestatus == Profile::PS_SPARE) continue;
+							if ((int)pk.attackmethod < (int)Profile::AM_LWPACKS) continue;
+							int ns = (int)(ULong)pk.squadlist;
+							for (int s = 0; s < ns; s++) {
+								if ((unsigned)pk[s].instance == 0) continue;
+								if (enemySq < 0) { enemy = p; enemySq = s; }       /* first live one */
+								if (pk[s].playercansee) { enemy = p; enemySq = s; break; }
+							}
+						}
+					}
+					if (logScan)
+						fprintf(stderr,"[campfly] scan: localplayer=%d(%s) nonspare=%d mine=%d own=%d enemyraid=%d sq=%d (currtime=%d)\n",
+							(int)Todays_Packages.localplayer, lwPlayer?"LW":"RAF", nNonSpare, nMine, found, enemy, enemySq, (int)MMC.currtime);
+
+					int hipack = found;
+					if (hipack < 0 && enemy >= 0) {
+						Profile& pk = Todays_Packages.pack[enemy];
+						int sq = enemySq;
+						UniqueID inst = pk[sq].instance;
+						Directives::RAF::MissTypes mt = RAFDirectivesResults::RAFInterceptType(enemy, sq);
+						fprintf(stderr,"[campfly] authorise intercept: raid pack=%d sq=%d inst=%u misstype=%d\n",
+							enemy, sq, (unsigned)inst, (int)mt);
+						int packnum = Todays_Packages_NewPackage(inst, MMC.directives.raf.userprofiles[mt]);
+						fprintf(stderr,"[campfly] NewPackage -> packnum=%d\n", packnum);
+						if (packnum >= 0) {
+							Todays_Packages[packnum].CalcRoutePositionsAndTime();
+							Todays_Packages.InvalidateRoute(&Todays_Packages[packnum], true, true);
+							hipack = packnum;
+						}
+					}
+
+					if (hipack >= 0) {
+						cf_done = true;                       /* committed -- stop scanning */
+						Todays_Packages.hipack = (char)hipack;
+						Todays_Packages.hisquad = 0;
+						fprintf(stderr,"[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=%d hisquad=0\n", hipack);
+						g_bob_map_active = 0;                 /* leave map mode -> front-end paint path */
+						RDialog::m_pView->LaunchFullPane(&RFullPanelDial::bobfrag, SaveData::UIR_FRAG);
+						if (getenv("BOB_CAMPFLY_SHOT")) g_campfly_shot = 12;  /* dump bobfrag after it settles */
+						return;
+					}
+					if (logScan)
+						fprintf(stderr,"[campfly] no live mission yet (currtime=%d) -- waiting for a raid to launch\n",(int)MMC.currtime);
+				}
+			}
+		}
 		bob_map_paint_begin();
 		RDialog::m_pView->UpdateBitmaps(&dc, rc);
 		bob_map_paint_end();
@@ -455,6 +556,18 @@ extern "C" void bob_frontend_tick(void)
 	}
 
 	if (!g_bobActiveFP) return;
+
+	/* R4.3 (BOB_CAMPFLY_SHOT): deterministic one-shot capture of the campaign briefing. After
+	   BOB_CAMPAIGN_FLY launches bobfrag, wait a few front-end paints for it to populate, then dump
+	   the framebuffer to a dedicated PPM and exit -- avoids the per-frame BOB_DUMP_GDI race. */
+	if (g_campfly_shot > 0) {
+		if (--g_campfly_shot == 0) {
+			int nz = bob_gdi_dump_to("/tmp/bobfrag_shot.ppm");
+			fprintf(stderr,"[campfly] one-shot bobfrag capture (nonblack=%d) -- exiting\n", nz);
+			fflush(stderr);
+			_exit(0);
+		}
+	}
 
 	/* R5.3 (BOB_CONFIGSCREEN, default-off): jump straight to a config screen for a headless
 	   render test, instead of walking the whole menu tree. controls -> the SController controls

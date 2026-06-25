@@ -596,6 +596,19 @@ extern "C" unsigned* bob_gdi_dc_bits(int* w, int* h) {
 	return g_gdiFB;
 }
 extern "C" void bob_blit_selftest(void);
+/* R4.3 (BOB_CAMPAIGN_FLY): one-shot framebuffer dump to a named PPM, callable from a boot
+   scaffold once a target screen is up -- deterministic (no per-frame BOB_DUMP_GDI race on the
+   shared /tmp/bobgdi.ppm). Returns nonblack pixel count, -1 if no framebuffer. */
+extern "C" int bob_gdi_dump_to(const char* path) {
+	if (!g_gdiFB) return -1;
+	int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;
+	int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
+	if(fd>=0){ char h[64]; int n=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",g_gdiW,g_gdiH); if(write(fd,h,n)<0){}
+		for(size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++){ unsigned p=g_gdiFB[i]; unsigned char rgb[3]={(unsigned char)(p>>16),(unsigned char)(p>>8),(unsigned char)p}; if(write(fd,rgb,3)<0){} }
+		close(fd); fprintf(stderr,"[gdi] one-shot framebuffer %dx%d nonblack=%d/%lu -> %s\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH),path); }
+	return nz;
+}
+
 extern "C" void bob_gdi_present(void) {
 	if (getenv("BOB_BLIT_TEST")) bob_blit_selftest();   /* R6.1: blit the icon sheet (verify screen blit) */
 	if (g_gdiFB && getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection

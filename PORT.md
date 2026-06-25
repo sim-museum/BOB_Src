@@ -1,5 +1,55 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.3 (2026-06-24): CAMPAIGN MISSION BRIEFING REACHED — a real in-game interception scrambles an interceptor → bobfrag renders
+> Sprint 24 (Release 4, campaign mission-flow slice). Pushed the campaign loop from "the strategic-map sim
+> runs" (R4.5) to "the player launches a mission": from the running campaign map, perform the game's **own
+> interception action** and bring up the **campaign mission briefing** (`bobfrag`) — without the
+> CRToolBar/mission-folder OCX subsystem.
+> - **The seam (mapped first).** `map-click → CMainToolbar → RAF/LW MissionFolder → OnClickedFrag2 →
+>   CMIGView::LaunchFullPane(&bobfrag, UIR_FRAG)` (the briefing) → `StartFlying` → fly → `OnFlyingClosed`
+>   → debrief → next day. The toolbar + mission-folder dialogs are the heavy ~13pt subsystem (Sprint-11
+>   retro); `LaunchFullPane` is a **public** entry, so it's the faithful seam to drive directly — same
+>   pattern as `BOB_CONFIGSCREEN`/`BOB_STARTFLYING`.
+> - **Key finding — a fresh campaign day has only the AI opponent's packages.** Scanning `Todays_Packages`
+>   on the running map: as **RAF** the only packages are **LW raids** (`attackmethod` 10/11 ≥ `AM_LWPACKS`);
+>   as **LW** they're **RAF patrols** (`attackmethod` 0). The **player's own** mission package doesn't exist
+>   until the player scrambles/plans one — RAF squadrons sit at airfields until scrambled. So "fly a campaign
+>   mission" *requires creating a player package*, faithfully.
+> - **The faithful action — authorise an interception.** New `BOB_CAMPAIGN_FLY` scaffold (`FULLPSYS.CPP`,
+>   `BOB_LINUX`, default-off) replicates `HostilesList::OnClickedRbuttonauthorise`: find an enemy LW raid
+>   whose **squadron has actually spawned in the world** (`Squad::instance != 0` — raids appear in `pItem`
+>   only at/after takeoff time; `NewPackage` on a 0 instance SIGSEGVs), then
+>   `Todays_Packages_NewPackage(raidSquadron.instance, MMC.directives.raf.userprofiles[RAFInterceptType(...)])`
+>   **scrambles a real RAF interceptor**, `CalcRoutePositionsAndTime` + `InvalidateRoute`, set
+>   `hipack`/`hisquad`, then `LaunchFullPane(&bobfrag, UIR_FRAG)`. The scaffold **re-scans each map paint**
+>   until a raid is airborne (the first scans find none — timing), committing only on launch.
+> - **Verified end-to-end (headless, dummy SDL).** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_AUTOCLICK="1,0,1,1"
+>   BOB_MAP_TIMER=32 BOB_CAMPAIGN_FLY=200`: `[campfly] scan: localplayer=1(RAF) … enemyraid=1 sq=0` →
+>   `authorise intercept: raid pack=1 sq=0 inst=4609 misstype=2` → `NewPackage -> packnum=3` →
+>   `LaunchFullPane(bobfrag, UIR_FRAG) hipack=3` → **bobfrag paints** (`artnum=27917`; one-shot capture
+>   `nonblack=786432/786432`, clean self-exit). The **campaign mission briefing renders** — the
+>   pilot/ground-crew photo-montage backdrop + the **Back / Sim Config / Fly** menu bar (the "Fly" button
+>   is the campaign-mission launch). **No crash** (bobfrag's `OnInitDialog`→`FillSquadronsFromCamp` runs;
+>   earlier inst=0 SIGSEGV fixed by the live-instance selection). Capture: `/tmp/s24_bobfrag.png`.
+> - **Tooling:** `bob_gdi_dump_to(path)` (compat) — a deterministic one-shot framebuffer dump to a named
+>   PPM, triggered from the scaffold a few paints after bobfrag settles (`BOB_CAMPFLY_SHOT`), then `_exit(0)`.
+>   Avoids the per-frame `BOB_DUMP_GDI` race on the shared `/tmp/bobgdi.ppm` (multiple stuck dummy-SDL
+>   instances corrupt it). Note: dummy-SDL `bob` ignores SIGTERM — use `timeout -s KILL`.
+> - **No regression:** build links clean; all new code is gated behind `getenv("BOB_CAMPAIGN_FLY")` /
+>   `g_campfly_shot` (default 0), so the default path runs zero new code. Bare `./bob` boots the title +
+>   enters `CMIGApp::Run()` with no crash; the normal campaign map (no campfly) advances + renders cleanly.
+> - **Remaining R4.3:** the briefing's hosted-control population (squadron list / pilot slots / combos —
+>   the R6.3-class OCX widget tail), then the **Fly** button → `StartFlying` into the **campaign mission
+>   flight** (reuses the QM `Launch3d` bridge), and debrief → next day. **Cross-port:** the `bobfrag`
+>   briefing + `Todays_Packages` raid lifecycle are shared with MiG Alley; the interception-via-NewPackage
+>   pattern + the live-`instance` guard should port directly.
+> - **Reference (this session, gold-standard Wine captures `/run/media/m/BEA6-BBCE/bob`, 2026-06-24):**
+>   full front-end + the campaign setup flow (side-select, phase-select, enter-name) + the **LW Directives
+>   planning screen** and the **strategic map with dynamic unit icons + CRToolBar bars** — the latter two
+>   confirm the open **R4.2 tail** (dynamic raid/squadron icons + `CMainFrame` toolbars) the port doesn't
+>   render yet. The reference flow stops at the strategic map; this sprint takes the port *past* it to the
+>   mission briefing.
+
 > ## R6.5 (2026-06-23): LOAD-GAME SCREEN RENDERS + save/load dependency mapped (gated on the campaign)
 > Sprint 23 (Release 6, save/load slice). Brought up the front-end **Load Game** screen and mapped exactly
 > what the full save/load loop needs — surfacing strong cross-port leverage with MiG Alley.
