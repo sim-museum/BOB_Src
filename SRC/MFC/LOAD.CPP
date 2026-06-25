@@ -283,6 +283,11 @@ void	CLoad::MakeFileList()
 				//strip prefix and postfix from filename here
 				filedesc.name[strlen(filedesc.name)-afterstar]=0;
 				l->ReplaceString(filedesc.name+beforestar,segindexes[count],0);
+#if BOB_LINUX
+				if (getenv("BOB_TRACE_LOAD"))
+					fprintf(stderr,"[loadlist] file='%s' default='%s' match=%d\n",
+						filedesc.name+beforestar, buffer+beforestar, !strcmp(buffer+beforestar,filedesc.name+beforestar));
+#endif
 				if (found>=segindexes[count])
 					found++;
 				else

@@ -663,12 +663,53 @@ extern "C" void bob_frontend_tick(void)
 			else if (strstr(w,"sim"))     scr=&RFullPanelDial::flightoptions;
 			else if (strstr(w,"gfx2"))    scr=&RFullPanelDial::options3d2;
 			else if (strstr(w,"load"))    scr=&RFullPanelDial::loadgame;   /* R6.5: CLoad save-file screen */
+			/* R4.4 (BOB_LOAD_GO): pre-seed the selected save BEFORE the load screen launches, so
+			   CLoad::MakeFileList finds it as the default and PRE-SELECTS it (found>=0). Setting it
+			   after launch is wiped because re-init resets selectedfile="" when the default isn't in
+			   the list. With it pre-selected, the "Load" menu -> DoLoadGame reads it. */
+			if (getenv("BOB_LOAD_GO") && scr==&RFullPanelDial::loadgame) {
+				const char* nm=getenv("BOB_SAVE_NAME"); if(!nm||!*nm) nm="Auto Save.bsr";
+				CFiling::selectedfile = nm;
+			}
 			fprintf(stderr,"[configscreen] LaunchScreen(%s)\n", w);
 			g_bobActiveFP->LaunchScreen(scr);
 			cs_done=true;
 			return;
 		}
 		/* launched -> fall through to the normal tick so click injection / combo hosting run. */
+	}
+
+	/* R4.4 (BOB_LOAD_GO, default-off): drive the loadgame screen's "Load" end-to-end. After the
+	   load screen settles, set the selected file and fire the "Load" menu item (the last entry,
+	   RAF/Luftwaffe/Back/Load) -> RFullPanelDial::DoLoadGame -> CFiling::LoadGame(selectedfile)
+	   (the working S29 deserialise) -> LaunchMap (enter the campaign map on the loaded state).
+	   This is the file-selection the OCX eventsink would set on a row click; the Load nav itself
+	   already rides the menu-click path. BOB_LOAD_GO=<paints-to-wait>; BOB_SAVE_NAME picks the file. */
+	if (getenv("BOB_LOAD_GO") && g_bobActiveFP) {
+		static int lg_t=0; static bool lg_done=false;
+		if (!lg_done && g_bobMenuN>0) {
+			if (++lg_t >= atoi(getenv("BOB_LOAD_GO"))) {
+				lg_done=true;
+				/* Set the selected file (what clicking the "Auto Save" row -> OnSelectRlistboxfile
+				   sets -- the OCX file-row click is the one piece the no-op eventsink can't deliver,
+				   so the scaffold sets it directly), then run the game's own DoLoadGame body:
+				   CFiling::LoadGame (the working S29 deserialise) -> LaunchMap (enter the campaign
+				   map on the loaded state). Driving the load directly avoids OnSelectRlistbox's
+				   screen re-init, which wipes selectedfile back to the player name. */
+				const char* nm=getenv("BOB_SAVE_NAME"); if(!nm||!*nm) nm="Auto Save.bsr";
+				CFiling::selectedfile = nm;
+				g_campfly_flown = 1;          /* don't fast-forward the loaded campaign sim (un-rebuilt world) */
+				bool ok = CFiling::LoadGame(CFiling::selectedfile);
+				fprintf(stderr,"[loadgo] selectedfile='%s' -> LoadGame=%d (currtime=%d) -> LaunchMap\n",
+					nm, (int)ok, (int)MMC.currtime);
+				if (ok) {
+					Save_Data.lastsavegame = CFiling::selectedfile;
+					FullScreen* fs = &RFullPanelDial::loadgame;
+					g_bobActiveFP->LaunchMap(fs, false);
+				}
+				return;
+			}
+		}
 	}
 
 	/* Sprint 7 (env-var-free): ALWAYS-ON Launch3d bridge for a real menu click-through (no

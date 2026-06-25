@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.4 (2026-06-24): LOAD FROM THE SCREEN → THE CAMPAIGN MAP — the menu-driven load completes (DoLoadGame path)
+> Sprint 31 (Release 4, save/load UI slice, cont.). Closed the save/load loop from the UI: selecting a save
+> on the load screen and loading it now **restores the campaign and enters the strategic map**.
+> - **The Load action is clean (`DoLoadGame`).** The loadgame FullScreen's "Load" menu item is
+>   `{IDS_LOAD, NULL, &RFullPanelDial::DoLoadGame}` (`FPLAYOUT.CPP:311`); `DoLoadGame` (`FULLPANE.CPP:2190`)
+>   is just `CFiling::LoadGame(selectedfile)` (the working S29 deserialise) → `LaunchMap(fs,false)` — it
+>   does **not** use the R4.2-blocked `CFiling::OnOK` CMainFrame/toolbar path. So "load → campaign map" only
+>   needs `selectedfile` set + `LoadGame` + `LaunchMap`, all of which work.
+> - **The one OCX gap — file selection.** `selectedfile` is set by the **file-row click**
+>   (`CLoad::OnSelectRlistboxfile`), which rides the no-op OCX eventsink (the R5.3b/MA-eventsink gap).
+>   Pre-seeding `CFiling::selectedfile` before the screen fails — the loadgame setup **overwrites it with the
+>   player name** ("Bob") and `MakeFileList` only pre-selects a default that's already a listed file
+>   (`[loadlist] file='Auto Save' default='Bob' match=0`); and firing the "Load" menu via `OnSelectRlistbox`
+>   **re-inits CLoad**, wiping `selectedfile` to "". So the genuine file-selection needs the row-click bridge.
+> - **Scaffold (`BOB_LOAD_GO`, default-off).** Sets `selectedfile` to the chosen save (what a row-click would
+>   set — the only OCX-dependent piece) and runs `DoLoadGame`'s own body directly (`LoadGame` + `LaunchMap`),
+>   bypassing the re-initting menu nav. **Verified:** `[loadgo] selectedfile='Auto Save.bsr' -> LoadGame=1
+>   (currtime=32180) -> LaunchMap` → `[map] LaunchMap done -> strategic map active` — the loaded campaign
+>   (currtime restored to the saved 32180) renders on the strategic map, no crash. `g_campfly_flown` stops
+>   the post-load sim fast-forward (un-rebuilt-world R4.5 grind). Capture:
+>   `doc/reference/loadgame-into-map-2026-06-24.png`.
+> - **R4.4 save/load is now functionally complete end-to-end:** save persists (S28) → load restores state
+>   (S29) → the load screen lists saves (S30) → loading enters the campaign map (S31). **The only remaining
+>   piece is the OCX file-row-click bridge** (so the user clicks "Auto Save" instead of the scaffold setting
+>   it) — the RListBox-host row-click → `OnSelectRlistboxfile` (the `GetRowFromY` dispid exists) + a targeted
+>   CLoad bridge (R5.3b pattern) or MA's general eventsink. **No regression:** `BOB_LOAD_GO` + `BOB_TRACE_LOAD`
+>   gated; bare `./bob` + normal map clean. **Cross-port:** the `DoLoadGame`-is-the-clean-path finding + the
+>   selectedfile-overwrite/re-init subtleties are shared-engine with MiG Alley (which already wired its CLoad
+>   row-click — BoB's adopt-target for the last piece).
+
 > ## R4.4 (2026-06-24): THE LOAD SCREEN LISTS THE SAVE — CLoad file-list enumeration fixed (third twin of the savegame-path bug)
 > Sprint 30 (Release 4, save/load UI slice). With the save written (S28) and the load round-trip working
 > (S29), brought the **loadgame screen's file list** to life: it now **lists the campaign save**.

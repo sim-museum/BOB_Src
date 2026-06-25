@@ -2189,9 +2189,18 @@ Bool	RFullPanelDial::DoLoadCommsGame(FullScreen*&fs)
 }
 Bool	RFullPanelDial::DoLoadGame(FullScreen*&fs)
 {
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_LOAD"))
+		fprintf(stderr,"[doload] selectedfile='%s'\n", (const char*)(LPCTSTR)selectedfile);
+#endif
 	if (selectedfile=="" || selectedfile==".sav")
 		return FALSE;
-	if (!CFiling::LoadGame(selectedfile))
+	bool ok = CFiling::LoadGame(selectedfile);
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_LOAD"))
+		fprintf(stderr,"[doload] LoadGame -> %d; calling LaunchMap\n", (int)ok);
+#endif
+	if (!ok)
 		return FALSE;
 	Save_Data.lastsavegame = selectedfile;
 	return LaunchMap(fs, false);
