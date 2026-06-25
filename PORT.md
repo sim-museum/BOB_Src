@@ -1,5 +1,37 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S37 (2026-06-25): ★ POST-LOAD CAMPAIGN SIM ADVANCES — the load-boundary reference-audit lands one systemic fix (ConvertPtrUID bounds-honor)
+> Sprint 37 (Release 4, campaign sim). PO chose the **load-boundary reference-audit** (catch the whole
+> stale-deserialised-reference family at once) over point-fixing the next layer. Result: the **post-load
+> campaign sim now advances the day without crashing** — loaded `Auto Save.bsr` (currtime 32180)
+> fast-forwards to **62540+** over 1000+ sim cycles, raids processing (`worlditems 1238→1218`), no fatal
+> crash. This was the deepest remaining campaign gap.
+> - **The audit's finding.** The post-load fatal crashes (S35/S36 `CountFormationSize`; S36-exposed
+>   `SAGExecuteWaypoint→ConvertPtrUID(SquadTarget)`; and others) are one family: a deserialised reference
+>   is incompletely restored → a **garbage UID** reaches `Persons2::ConvertPtrUID`, which indexes `pItem[]`
+>   **out of bounds → SEGV**. `ConvertPtrUID`'s OWN `assert(tmpUID>0 && tmpUID<=IllegalSepID)` already
+>   declares such a UID illegal — but the assert doesn't halt on compat (the R1.3b/4.3c "INT3-guard-
+>   doesn't-fire" class), so the OOB it guarded happens.
+> - **Systemic fix (`#if BOB_LINUX`, `PERSONS2.CPP` `ConvertPtrUID`).** Honor that bounds contract: return
+>   the **same null reference the function already returns for `UID==0`** when `tmpUID` is outside
+>   `[1, IllegalSepID]` (0x3fff). The OOB read becomes the handled-NULL callers already expect for 0
+>   (they take `&ConvertPtrUID(...)` or NULL-check). **Transparent for valid UIDs** (always in range), so
+>   zero behavior change for normal play — it only fires for garbage UIDs that would have SEGV'd. This is
+>   NOT the "fake-valid sentinel" the S29 retro rejected: it returns NULL exactly where the game declares
+>   the UID invalid. One change retires the whole garbage-UID fatal family (vs N per-reference point-fixes).
+> - **Verified (build-asan, `BOB_POSTLOAD_FF`).** Post-load fast-forward: **no `SEGV on unknown`**, runs
+>   the full duration (`exit=124` = timeout, not crash). Release: clock advances 32180→40940→51740→62540,
+>   1000+ paints, no crash. **Bare `./bob` exits 0; fresh-campaign sim unregressed** (exit 124, 0 crash
+>   markers — the out-of-range-only guard is transparent there). Remaining ASan reports are all
+>   pre-existing non-fatal recoverable noise (alloc-dealloc R1.3 family, FILEMAN init, fplayout layout,
+>   RecostRaidList `BITSET` stack-OOB).
+> - **Honest caveat / future faithful-work.** The guard makes garbage UIDs non-fatal but doesn't *restore*
+>   them — a loaded raid whose target/waypoint UID is stale now resolves to NULL (it may not perfectly
+>   re-acquire its target → minor post-load fidelity gap), rather than crashing. The per-reference
+>   restoration (why `squadlist.targetindex`/`SGT` resolution is stale post-load — a `FixupAircraft`/
+>   `SetTargetUIDs` deserialise gap) is the faithful follow-up; banked. The crash-blocker is cleared, so
+>   campaign **day-advance + next-mission post-load is unblocked**.
+
 > ## R4.5 / S36 (2026-06-25): POST-LOAD FORMATION-POINTER CRASH FIXED — sim advances one grind layer (next: stale SquadTarget UID)
 > Sprint 36 (Release 4, campaign sim — the R4.5 post-load grind, continued from S35). **Fixed** the S35
 > crash (`CountFormationSize` walking a stale `fly.leadflight`) and ASan-confirmed it gone; the post-load

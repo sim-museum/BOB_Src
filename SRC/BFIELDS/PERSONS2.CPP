@@ -228,6 +228,21 @@ ItemBase&		Persons2::ConvertPtrUID(UniqueID tmpUID)
 {
 	if (tmpUID==0)
 		return *(ItemBase*)NULL;
+#if BOB_LINUX
+	/* R4.5 (S37): honor this function's OWN contract (the assert below) on Linux. A UID outside
+	   [1, IllegalSepID] is illegal -- on Windows debug the assert catches it; on Linux the assert
+	   doesn't halt, so a garbage UID (from an incompletely-restored deserialised reference, e.g. a
+	   stale SquadTarget/targetindex post-load) indexes pItem[] out of bounds -> SEGV. Return the
+	   SAME null reference the function already returns for UID==0, so the OOB read becomes the
+	   handled-NULL callers already expect for 0 (they take &ConvertPtrUID(...) or NULL-check).
+	   This is the compat-non-halting-assert class (cf. R1.3b Reg3dConv, 4.3c SetIndex): the game's
+	   bounds-guard exists but INT3/assert doesn't fire on compat, so the OOB it guarded happens.
+	   NOT a fake-valid sentinel (S29 caution) -- it returns NULL exactly where the game declares the
+	   UID invalid. The underlying deserialise gap (why the UID is garbage) is the per-reference
+	   FixupAircraft/SetTargetUIDs work tracked separately; this stops the OOB crash for the family. */
+	if (!(tmpUID>0 && tmpUID<=IllegalSepID))
+		return *(ItemBase*)NULL;
+#endif
 #ifndef	__BCPLUSPLUS__
 	assert (tmpUID>0 && tmpUID<=IllegalSepID);
 #endif
