@@ -1,5 +1,38 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S38 (2026-06-25): POST-MISSION SIM CRASH REPRODUCED + ROOT-CAUSED (the OTHER campaign-continuity half) — spike
+> Sprint 38 (Release 4, campaign sim — the post-*mission* path, the half S35–37's post-*load* work didn't
+> cover). Built a repro and captured the precise post-mission crash on real GL, refining the S26
+> characterization. Spike (repro + root cause + a bonus bug); the fix is a focused next pass.
+> - **Repro infra (`BOB_POSTMISSION_FF`, new, default-off).** Overrides the `g_campfly_flown` guard that
+>   stops the headless fast-forward after a flown mission (the map tick only runs when `!InThe3D`, so it's
+>   dormant during flight). Repro chain on `:0`: `BOB_CONFIGSCREEN=load BOB_LOAD_GO BOB_POSTLOAD_FF`
+>   (load a campaign → map) → `BOB_CAMPAIGN_FLY BOB_CAMPFLY_GO` (intercept a loaded raid → bobfrag → Fly)
+>   → `BOB_AUTOQUIT=debrief` (mission-end → `OnFlyingClosed` → back to map) → `BOB_POSTMISSION_FF
+>   BOB_MAP_TIMER` (advance the post-mission world). The whole campaign loop runs end-to-end, then crashes.
+> - **The crash (gdb on the release build).** After the mission returns to the map (`InThe3D=0`,
+>   `firsttime=1`), advancing the post-mission world SEGVs in **`info_grndgrp::GetCruiseAt`
+>   (SAGMOVE.CPP:1481)** via `MoveAllSAGs → MoveSAG → SAGMovementFollowWP → CruiseToWp → GetCruiseToWp →
+>   GetCruiseAt`. Root: `int ptype=type.Evaluate();` is **garbage** for a post-mission ground-group SAG
+>   (`info_grndgrp`), so `Plane_Type_Translate[ptype]` reads out of the 34-entry / `[0,PT_BADMAX)` array →
+>   a garbage `PlaneInit* wi` → `wi->cruisevel` deref → SEGV. So S26 was right that it's
+>   `Plane_Type_Translate[bad ptype]` — now pinned to `GetCruiseAt` on a mis-typed post-mission SAG. The
+>   **same systemic shape as S37** (a stale field indexes a table OOB), here an array+enum not a UID.
+> - **Why the build matters (gotcha).** Under ASan the run crashes *earlier* — an in-flight 3D-render
+>   **use-after-free** on the draw thread (`ThreeDee::AddLensObject`/`shape::SunItemAnim`, 3dcode.cpp:1982,
+>   writing to a 3-byte animation buffer freed by `animptr::Delete` — the R1.3a/R3.9 animation-lifetime
+>   family) which ASan's slower timing exposes before reaching the post-mission phase. So the post-mission
+>   backtrace came from **gdb on the release build** (which flies past the UAF). **New bonus finding**
+>   banked: a separate in-flight lens/sun-anim UAF, distinct from this post-mission crash.
+> - **Banked fix candidates (S39).** (a) S37-pattern **bounds-honor** the `Plane_Type_Translate[ptype]`
+>   index (18 sites; clamp/skip when `ptype∉[0,PT_BADMAX)`) — crash-removal, same tradeoff as S37 (a
+>   mis-typed SAG moves with a default plane's params); or (b) the faithful **type-source** fix (why a
+>   post-mission ground-group SAG has garbage `type` — the StartUpMapWorld post-mission rebuild). Plus the
+>   in-flight anim UAF as its own item.
+> - **No regression.** `BOB_POSTMISSION_FF` default-off; bare `./bob` exits 0. Spike: game code pristine
+>   bar the default-off toggle. Reproduced + precisely root-caused the post-mission crash (correcting/
+>   refining S26), with reusable repro infra — the honest first step on the post-mission half (cf. S35).
+
 > ## R4.5 / S37 (2026-06-25): ★ POST-LOAD CAMPAIGN SIM ADVANCES — the load-boundary reference-audit lands one systemic fix (ConvertPtrUID bounds-honor)
 > Sprint 37 (Release 4, campaign sim). PO chose the **load-boundary reference-audit** (catch the whole
 > stale-deserialised-reference family at once) over point-fixing the next layer. Result: the **post-load

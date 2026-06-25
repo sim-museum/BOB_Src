@@ -445,7 +445,11 @@ extern "C" void bob_frontend_tick(void)
 		   In real play the returned map is PAUSED (the player reviews, then advances), so not
 		   driving it is faithful; the post-mission sim fix is deferred to R4.5. */
 		extern int g_campfly_flown;
-		if (getenv("BOB_MAP_TIMER") && !g_campfly_flown) {
+		if (getenv("BOB_MAP_TIMER") && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))) {
+			/* BOB_POSTMISSION_FF (R4.5 diagnostic, default-off): override the post-mission/post-fly
+			   g_campfly_flown guard so BOB_MAP_TIMER advances the world AFTER a flown mission returns
+			   to the map (the map tick only runs when !InThe3D, so this is dormant during flight) --
+			   the repro for ASan'ing the post-mission SAG sim (GetCruiseAt/Plane_Type_Translate). */
 			/* The campaign map starts PAUSED (curracceltype=ACCEL_PAUSED, rate 0) -- the player
 			   normally clicks a UI accel button to run time. Headlessly, un-pause it so the day
 			   advances and raids reach their launch times. */
