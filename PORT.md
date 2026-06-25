@@ -1,5 +1,37 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.4 (2026-06-24): CAMPAIGN SAVE PERSISTS — first save on Linux (fixed the SaveGame path bug); load path characterized
+> Sprint 28 (Release 4/6, save/load slice). With the campaign now running (R4.3), unblocked the
+> long-gated save/load (R6.5: "gated on the campaign producing a save"). **A campaign save now lands on
+> disk** — the first ever on the Linux port.
+> - **Root cause of "no saves ever existed":** `CFiling::SaveGame` (`FILING.CPP`) wrote via
+>   `File_Man.namenumberedfile(File_Man.fakefile(FIL_SAVEGAMEDIR,fname))` — the **same corrupted savegame
+>   path** (`fakefile` stateful-global bug) that `LoadGame` already had a `#if BOB_LINUX` bypass for, but
+>   `SaveGame` was never given the fix. So the campaign autosave (`Auto Save.BSR`) silently went nowhere.
+> - **Fix (mirrors the LoadGame bypass):** `SaveGame` now writes `"savegame/<fname>"` relative to the cwd
+>   (the game dir), resolved case-insensitively to the real `SAVEGAME/`. Plus a `BOB_CAMPAIGN_SAVE`
+>   scaffold to trigger `CFiling::SaveGame` from the running map. **Verified:** `[campsave]
+>   CFiling::SaveGame("Auto Save.BSR") -> OK` → **`SAVEGAME/Auto Save.BSR`, 225 245 bytes** of real
+>   serialised `Miss_Man` (matches the `dreplay.dat` campaign-state size). The save is the genuine `bos <<
+>   Miss_Man`.
+> - **Load path — characterized into two scoped gaps (deferred):**
+>   1. **File-list enumeration.** The `loadgame`/`CLoad` screen renders (RAF/LW/Back/Load) but its file
+>      list still doesn't show the save — `CLoad` enumerates `FIL_SAVEGAMEDIR` via the same `fakefile`
+>      path, so it browses the wrong dir. MiG Alley already fixed the `CLoad` file-list render + click→load
+>      (S12–S14); per R6.5 those "port near-directly" — the adopt target.
+>   2. **Deserialisation crash.** `CFiling::LoadGame` → `bis >> Miss_Man` → `PackageList::LoadGame` →
+>      `PackageList::SetVisibilityFlags` SIGSEGVs at `*Persons2::ConvertPtrUID(UniqueID(i))`
+>      (`MIGVIEW.CPP:2181`) — it **dereferences before the `if(wp)` NULL check**, and on compat
+>      `ConvertPtrUID` returns NULL when the package's referenced world item isn't present (the world isn't
+>      rebuilt at deserialise-time). Same **R4.5 `ConvertPtrUID`-NULL family** — a load-ordering/world-rebuild
+>      grind (`BOB_CAMPAIGN_LOAD` is the gated repro). Pinned via gdb.
+> - **Increment:** save persistence (the explicitly-blocked R6.5 dependency) is **done** — the campaign now
+>   produces real `.BSR` saves on disk. **No regression:** both scaffolds env-gated (`BOB_CAMPAIGN_SAVE` /
+>   `BOB_CAMPAIGN_LOAD`, default-off); bare `./bob` boots + enters `Run()` clean; normal campaign map
+>   advances. **Cross-port:** the `fakefile` savegame-path bug + the `SetVisibilityFlags`
+>   `ConvertPtrUID`-NULL deref are shared-engine with MiG Alley; BoB now matches MA's save side, and MA's
+>   CLoad file-list work is the adopt target for the load side.
+
 > ## R4.2 (2026-06-24): SPIKE — why the strategic map shows no unit icons (root-caused: empty clip rect → world-rect cull rejects every item)
 > Sprint 27 (Release 4, strategic-map fidelity). The gold-standard Wine captures (this session) show the
 > strategic map with **dynamic unit icons** — green RAF squadron/airfield dots, raid markers, waypoint

@@ -84,6 +84,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "replay.h"
 #include "package.h"   /* R4.3 (BOB_CAMPAIGN_FLY): Todays_Packages / Profile for the map->frag seam */
 #include "misssub.h"   /* R4.3 (BOB_CAMPAIGN_FLY): Directives / RAFDirectivesResults::RAFInterceptType */
+#include "filing.h"    /* R4.4 (BOB_CAMPAIGN_SAVE): CFiling::SaveGame */
 #include "winmove.h"
 #include "aggrgtor.h"
 #include "stub3d.h"
@@ -454,6 +455,38 @@ extern "C" void bob_frontend_tick(void)
 			   day reaches raid-launch times quickly headlessly. */
 			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+		}
+		/* R4.4 (BOB_CAMPAIGN_SAVE, default-off): produce a campaign save from the running map.
+		   CFiling::SaveGame serialises Miss_Man (the campaign state) -- the same call the autosave
+		   + OnClickedFrag2 make. The fakefile savegame path was corrupted on Linux (fixed here +
+		   in LoadGame), so this is the first save that actually lands on disk. BOB_CAMPAIGN_SAVE=<n>
+		   = save after n paints (let the sim populate the campaign first). */
+		if (getenv("BOB_CAMPAIGN_SAVE")) {
+			static int sv_t = 0; static bool sv_done = false;
+			if (!sv_done && ++sv_t >= atoi(getenv("BOB_CAMPAIGN_SAVE"))) {
+				sv_done = true;
+				const char* nm = getenv("BOB_SAVE_NAME"); if (!nm || !*nm) nm = "Auto Save.BSR";
+				bool ok = CFiling::SaveGame(nm);
+				fprintf(stderr,"[campsave] CFiling::SaveGame(\"%s\") -> %s (currtime=%d localplayer=%d)\n",
+					nm, ok?"OK":"FAIL", (int)MMC.currtime, (int)Todays_Packages.localplayer);
+			}
+		}
+		/* R4.4 (BOB_CAMPAIGN_LOAD, default-off): load a campaign save into the running map.
+		   CFiling::LoadGame deserialises Miss_Man (bis >> Miss_Man) + restores the map view. Proof
+		   of the save/load round-trip: a freshly-started campaign is at day-start (currtime ~23400);
+		   after loading a save taken later, currtime jumps to the saved value. BOB_CAMPAIGN_LOAD=<n>
+		   = load after n paints; BOB_SAVE_NAME picks the file (default "Auto Save.BSR"). */
+		if (getenv("BOB_CAMPAIGN_LOAD")) {
+			static int ld_t = 0; static bool ld_done = false;
+			if (!ld_done && ++ld_t >= atoi(getenv("BOB_CAMPAIGN_LOAD"))) {
+				ld_done = true;
+				const char* nm = getenv("BOB_SAVE_NAME"); if (!nm || !*nm) nm = "Auto Save.BSR";
+				int before = (int)MMC.currtime;
+				bool ok = CFiling::LoadGame(nm);
+				fprintf(stderr,"[campload] CFiling::LoadGame(\"%s\") -> %s (currtime %d -> %d, localplayer=%d gamestate=%d)\n",
+					nm, ok?"OK":"FAIL", before, (int)MMC.currtime,
+					(int)Todays_Packages.localplayer, (int)RFullPanelDial::gamestate);
+			}
 		}
 		/* R4.3 (BOB_CAMPAIGN_FLY, default-off): drive the campaign's OWN map->mission seam. Once
 		   the sim has run a while (raids generated; the RAF has standing patrols/intercepts),

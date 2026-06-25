@@ -211,7 +211,17 @@ bool	CFiling::SaveGame(CString	fname)
 	Save_Data.currmapy=m_pView->m_size.cy;
 	Save_Data.currmapx2=m_pView->m_scrollpoint.x;
 	Save_Data.currmapy2=m_pView->m_scrollpoint.y;
+#if BOB_LINUX
+	// Linux port: same fix as LoadGame -- fileman's fakefile/namenumberedfile path
+	// construction for the savegame dir comes out corrupted (stateful global bug, see
+	// PORT.md), so the campaign autosave never lands on disk. We run with cwd = the game
+	// dir, so a relative "savegame/<fname>" resolves correctly via BOStream's path
+	// handling. Bypass the buggy fakefile (mirrors the LoadGame BOB_LINUX block).
+	snprintf(buffer, sizeof(buffer), "savegame/%s", (const char*)(LPCSTR)fname);
+	BOStream bos(buffer);
+#else
 	BOStream bos(File_Man.namenumberedfile(File_Man.fakefile(FIL_SAVEGAMEDIR,fname),buffer));
+#endif
 	if (!bos.is_open())
 		return false;
 	bos<<Miss_Man;
