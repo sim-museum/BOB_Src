@@ -1481,6 +1481,14 @@ int	info_grndgrp::GetCruiseAt(Coords3D& pos,ANGLES& pitchintercept)  //returns c
 	int	ptype=type.Evaluate();
 	if (ptype>SQ_BR_START)
 		ptype=Node_Data[SquadNum(ptype)].AcType();
+#if BOB_LINUX
+	/* R4.5 (S39): bounds-honor Plane_Type_Translate[] (S37 ConvertPtrUID pattern). A post-mission
+	   ground-group SAG can carry a garbage `type` -> ptype outside [0,PT_BADMAX) -> OOB array read ->
+	   garbage PlaneInit* -> SEGV in MoveAllSAGs. Clamp an out-of-range ptype to 0 (a valid default
+	   plane) so the corrupt SAG moves with default params instead of crashing. Crash-removal; the
+	   faithful fix (why post-mission `type` is garbage) is the type-source follow-up. */
+	if ((unsigned)ptype>=(unsigned)PT_BADMAX) ptype=0;
+#endif
 	PlaneInit* pi=Plane_Type_Translate[ptype];
 	WheeledType* wi=(WheeledType*)pi;
 	DumbPlaneType* dp=(DumbPlaneType*)wi;
@@ -1498,6 +1506,14 @@ int	info_grndgrp::GetMinCruiseVel(int cuisevel,int* getmaxaswell)  //returns cm 
  	int	ptype=type.Evaluate();
 	if (ptype>SQ_BR_START)
 		ptype=Node_Data[SquadNum(ptype)].AcType();
+#if BOB_LINUX
+	/* R4.5 (S39): bounds-honor Plane_Type_Translate[] (S37 ConvertPtrUID pattern). A post-mission
+	   ground-group SAG can carry a garbage `type` -> ptype outside [0,PT_BADMAX) -> OOB array read ->
+	   garbage PlaneInit* -> SEGV in MoveAllSAGs. Clamp an out-of-range ptype to 0 (a valid default
+	   plane) so the corrupt SAG moves with default params instead of crashing. Crash-removal; the
+	   faithful fix (why post-mission `type` is garbage) is the type-source follow-up. */
+	if ((unsigned)ptype>=(unsigned)PT_BADMAX) ptype=0;
+#endif
 	PlaneInit* pi=Plane_Type_Translate[ptype];
 	WheeledType* wi=(WheeledType*)pi;
 	DumbPlaneType* dp=(DumbPlaneType*)wi;
@@ -1517,6 +1533,14 @@ int	info_grndgrp::GetMinVel(int* getmaxaswell)  //returns cm per second...
  	int	ptype=type.Evaluate();
 	if (ptype>SQ_BR_START)
 		ptype=Node_Data[SquadNum(ptype)].AcType();
+#if BOB_LINUX
+	/* R4.5 (S39): bounds-honor Plane_Type_Translate[] (S37 ConvertPtrUID pattern). A post-mission
+	   ground-group SAG can carry a garbage `type` -> ptype outside [0,PT_BADMAX) -> OOB array read ->
+	   garbage PlaneInit* -> SEGV in MoveAllSAGs. Clamp an out-of-range ptype to 0 (a valid default
+	   plane) so the corrupt SAG moves with default params instead of crashing. Crash-removal; the
+	   faithful fix (why post-mission `type` is garbage) is the type-source follow-up. */
+	if ((unsigned)ptype>=(unsigned)PT_BADMAX) ptype=0;
+#endif
 	PlaneInit* pi=Plane_Type_Translate[ptype];
 	WheeledType* wi=(WheeledType*)pi;
 	DumbPlaneType* dp=(DumbPlaneType*)wi;
@@ -1554,6 +1578,14 @@ int	SAGairgrp::FuelUse(Coords3D& pos,int velumcs,int timesecs)
 	int	ptype=type.Evaluate();
 	if (ptype>SQ_BR_START)
 		ptype=Node_Data[SquadNum(ptype)].AcType();
+#if BOB_LINUX
+	/* R4.5 (S39): bounds-honor Plane_Type_Translate[] (S37 ConvertPtrUID pattern). A post-mission
+	   ground-group SAG can carry a garbage `type` -> ptype outside [0,PT_BADMAX) -> OOB array read ->
+	   garbage PlaneInit* -> SEGV in MoveAllSAGs. Clamp an out-of-range ptype to 0 (a valid default
+	   plane) so the corrupt SAG moves with default params instead of crashing. Crash-removal; the
+	   faithful fix (why post-mission `type` is garbage) is the type-source follow-up. */
+	if ((unsigned)ptype>=(unsigned)PT_BADMAX) ptype=0;
+#endif
 	PlaneInit* pi=Plane_Type_Translate[ptype];
 	WheeledType* wi=(WheeledType*)pi;
 	DumbPlaneType* dpt = (DumbPlaneType*)wi;

@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S39 (2026-06-25): POST-MISSION GetCruiseAt CRASH FIXED — sim advances one layer; next is a broadly-corrupt SAG (→ S40 systemic skip)
+> Sprint 39 (Release 4, post-mission grind, continued from S38). Landed S38's banked fix and verified the
+> post-mission sim advances past it — then the next layer revealed the systemic shape, banked for S40.
+> - **Fix (`#if BOB_LINUX`, `SAGMOVE.CPP`, 3 `info_grndgrp` move methods).** Bounds-honor
+>   `Plane_Type_Translate[ptype]` (the S37 `ConvertPtrUID` pattern): after `ptype=type.Evaluate()` (garbage
+>   on a post-mission ground-group SAG) + the squadron-ref resolution, clamp an out-of-range `ptype`
+>   (`(unsigned)ptype>=PT_BADMAX`) to 0 so the OOB array read can't produce a garbage `PlaneInit*`.
+>   `replace_all` over the 3 identical `GetCruiseAt`/`GetMinCruiseVel`/`GetMinVel` sites. Transparent for
+>   valid types (clamp only fires on garbage) → zero normal-play change.
+> - **Verified (gdb on `:0`, the S38 repro chain).** Full campaign loop (load→intercept→fly→mission-end→
+>   return→advance): the **`GetCruiseAt` SEGV is gone**; the post-mission sim advances one layer and now
+>   crashes in **`SAGairgrp::SAGDecisionPreCombat`** via `DecideSAG → MoveAllSAGs`. Bare `./bob` 0;
+>   **post-load sim unregressed** (advances to 51740, the clamp is transparent for valid `ptype`).
+> - **The systemic finding (→ S40).** `SAGDecisionPreCombat` derefs more converted SAG pointers
+>   (`iag->OverFrance()`, `iag->target.Evaluate()`), and `MoveAllSAGs` iterates
+>   `as=ConvertPtrUID(UID(i)); as->MoveSAG()` over the SAG band — i.e. **every post-mission crash is the
+>   same broadly-corrupt ground-group SAG** hit through a different method. So per-method bounds-honoring is
+>   whack-a-mole; the S37-style "fix the funnel" move is a **SAG-level skip in `MoveAllSAGs`** (don't move a
+>   SAG whose `type`/state is invalid) or the faithful **type-source** fix (why the post-mission
+>   StartUpMapWorld rebuild leaves a corrupt ground-group SAG). Banked as the S40 systemic pass.
+> - **No regression.** Real fix (vs S38's spike): one post-mission crash eliminated + verified on `:0`,
+>   next layer pinned, systemic direction identified. Game code change is the `#if BOB_LINUX` clamp only.
+
 > ## R4.5 / S38 (2026-06-25): POST-MISSION SIM CRASH REPRODUCED + ROOT-CAUSED (the OTHER campaign-continuity half) — spike
 > Sprint 38 (Release 4, campaign sim — the post-*mission* path, the half S35–37's post-*load* work didn't
 > cover). Built a repro and captured the precise post-mission crash on real GL, refining the S26
