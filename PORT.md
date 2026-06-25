@@ -1,5 +1,42 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.3 (2026-06-24): A CAMPAIGN MISSION FLIES — briefing → Fly → the scrambled interceptor's cockpit on real GL
+> Sprint 25 (Release 4, campaign mission-flow slice, cont.). Closed the loop from the campaign mission
+> briefing (R4.3 this morning) to **actually flying the campaign mission** — the strategic map now leads
+> all the way into the cockpit of the squadron you scrambled.
+> - **The Fly seam is the QM flight path (spike finding).** `bobfrag`'s **Fly** menu item is
+>   `{IDS_FLY, &quickmissionflight, &FragFly2}` (`FPLAYOUT.CPP:1445`) — it navigates to the **same
+>   `quickmissionflight` screen Quick Mission uses**, whose InitProc is `StartFlying`. So a campaign
+>   mission flight is **not** a separate subsystem: trigger Fly → `FragFly2` → `StartFlying` creates the
+>   `Rtestsh1` flybox → the **always-on Launch3d bridge** (R1.1b, `FULLPSYS.CPP`) fires → 3D. `FragFly2`'s
+>   only gate is `MMC.playersquadron != -1`.
+> - **Driving Fly (BOB_CAMPFLY_GO).** Extended the campfly scaffold: a few paints after `bobfrag` settles,
+>   call `g_bobActiveFP->OnSelectRlistbox(flyIdx)` (Fly is the last menu item) — the same nav a real menu
+>   click uses.
+> - **The player-squadron gate (the one fix needed).** First attempt: `playersquadron=-1` → `FragFly2`
+>   blocked Fly. Cause: `bobfrag`'s `OnInitDialog`→`SetPlayersPositionCamp` only selects squadrons already
+>   in the **flyable status window** (`PS_ACTIVE_MIN..PS_REFUELLING`) and resets `playersquadron=-1`
+>   otherwise — and a **just-scrambled interceptor is still `PS_ACTIVE_MIN`** (status 8). The player
+>   explicitly chose to fly this interception, so the scaffold sets `MMC.playersquadron`/`playeracnum` from
+>   the highlighted package's first squadron **at Fly time** (post-`OnInitDialog`, so it survives the gate).
+> - **Verified end-to-end on real GL (`:0`).** `BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_AUTOCLICK="1,0,1,1"
+>   BOB_MAP_TIMER=32 BOB_CAMPAIGN_FLY=200 BOB_CAMPFLY_GO=1`: intercept → `NewPackage→packnum=3` → bobfrag →
+>   `set player squadron=38 (pack 3 sq0 status=8)` → `Fly … OnSelectRlistbox(2)` →
+>   `(bridge) StartFlying → Launch3d` → `InThe3D=1` (tmpinst/tmpview non-NULL) → `[present] dumped frame
+>   120 … 800x600 glErr=0`. **The campaign-mission cockpit renders** — Spitfire pit, prop, gunsight reticle,
+>   instruments (Alt 5ft / Hdg 80 / Speed 0Kts / Gun / Ammo 2800), rear-view gauge, sky+clouds with a smoke
+>   plume, + a campaign "1.Continue / 2.Quit" overlay. The 5ft/0Kts reading is faithful — the scrambled
+>   squadron starts **on the runway**. Capture: `doc/reference/campaign-mission-cockpit-2026-06-24.png`.
+> - **Headless proof too:** under dummy SDL the same chain runs to `InThe3D=1` (the 3D world/instance build;
+>   only GL rasterisation needs `:0`), so the navigation + mission-load is verifiable without a display.
+> - **No regression:** build links clean; the Fly path is gated behind `BOB_CAMPFLY_GO`/`g_campfly_go`
+>   (default 0). Bare `./bob` boots + enters `CMIGApp::Run()` with no crash.
+> - **Cross-port:** the `bobfrag`→`quickmissionflight`→`StartFlying` Fly seam and the player-squadron-at-Fly
+>   fix are shared-engine with MiG Alley; the *campaign mission reuses the QM flight bridge* is the key
+>   structural finding to hand over. **Remaining R4.3:** the in-cockpit "Continue/Quit" campaign dialog, the
+>   debrief→next-day return (reuses R2.2 `OnFlyingClosed`→debrief), and the briefing's hosted-control
+>   population (R6.3-class). **Release 4 is now flyable end-to-end** for the intercept slice.
+
 > ## R4.3 (2026-06-24): CAMPAIGN MISSION BRIEFING REACHED — a real in-game interception scrambles an interceptor → bobfrag renders
 > Sprint 24 (Release 4, campaign mission-flow slice). Pushed the campaign loop from "the strategic-map sim
 > runs" (R4.5) to "the player launches a mission": from the running campaign map, perform the game's **own

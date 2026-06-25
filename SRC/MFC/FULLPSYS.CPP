@@ -386,6 +386,7 @@ static void bob_startflying_preflight(bool clickMode, bool firstTime)
    (Rtestsh1::OnCancel/OnOK -> delete View3d/Inst3d) then OnFlyingClosed -> LaunchScreen(the
    exit screen). Faithful, just delivering the message the dead Win32 hop would have. */
 int g_campfly_shot = 0;   /* R4.3 (BOB_CAMPFLY_SHOT): frames-until-bobfrag-capture countdown */
+int g_campfly_go = 0;     /* R4.3 (BOB_CAMPFLY_GO): frames-until-Fly (bobfrag -> campaign flight) */
 extern "C" int bob_gdi_dump_to(const char*);   /* R4.3: one-shot framebuffer dump (bob_video.cpp) */
 static int g_bobFlightCloseId = -1;
 void bob_capture_wm_command(unsigned int /*msg*/, unsigned int id)
@@ -536,6 +537,7 @@ extern "C" void bob_frontend_tick(void)
 						g_bob_map_active = 0;                 /* leave map mode -> front-end paint path */
 						RDialog::m_pView->LaunchFullPane(&RFullPanelDial::bobfrag, SaveData::UIR_FRAG);
 						if (getenv("BOB_CAMPFLY_SHOT")) g_campfly_shot = 12;  /* dump bobfrag after it settles */
+						if (getenv("BOB_CAMPFLY_GO"))   g_campfly_go   = 12;  /* then Fly -> campaign flight */
 						return;
 					}
 					if (logScan)
@@ -566,6 +568,35 @@ extern "C" void bob_frontend_tick(void)
 			fprintf(stderr,"[campfly] one-shot bobfrag capture (nonblack=%d) -- exiting\n", nz);
 			fflush(stderr);
 			_exit(0);
+		}
+	}
+	/* R4.3 (BOB_CAMPFLY_GO): from the settled briefing, click "Fly" to launch the campaign
+	   mission flight. The bobfrag screen's Fly item (last menu entry) navigates to
+	   quickmissionflight via FragFly2 (which requires MMC.playersquadron, set by the briefing's
+	   SetPlayersPositionCamp), whose InitProc is StartFlying -> creates Rtestsh1 -> the always-on
+	   Launch3d bridge above fires -> campaign flight (the SAME path QM uses). */
+	if (g_campfly_go > 0) {
+		if (--g_campfly_go == 0) {
+			/* Ensure the scrambled interceptor is the player's squadron. bobfrag's OnInitDialog
+			   ran SetPlayersPositionCamp, which only selects squadrons already in the flyable
+			   status window (PS_ACTIVE_MIN..PS_REFUELLING) and resets playersquadron to -1
+			   otherwise -- and a just-scrambled squadron is still PS_PLANNING/TAKINGOFF. The
+			   player explicitly chose to fly this interception, so set it from the highlighted
+			   package's first squadron (post-init, so it survives into FragFly2's gate). */
+			if (MMC.playersquadron == -1) {
+				int hp = Todays_Packages.hipack;
+				if (hp >= 0 && (int)(ULong)Todays_Packages[hp].squadlist >= 1) {
+					MMC.playersquadron = Todays_Packages[hp][0].squadnum;
+					MMC.playeracnum = 0;
+					fprintf(stderr,"[campfly] set player squadron=%d (pack %d sq0 status=%d)\n",
+						(int)MMC.playersquadron, hp, (int)Todays_Packages[hp][0].status);
+				}
+			}
+			int flyIdx = g_bobMenuN > 0 ? g_bobMenuN - 1 : 2;   /* Fly is the last menu item */
+			fprintf(stderr,"[campfly] Fly: playersquadron=%d menuN=%d -> OnSelectRlistbox(%d)\n",
+				(int)MMC.playersquadron, g_bobMenuN, flyIdx);
+			g_bobActiveFP->OnSelectRlistbox(flyIdx, 0);
+			return;
 		}
 	}
 
