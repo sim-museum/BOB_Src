@@ -57,11 +57,26 @@ my adoption to fold back into your copy when convenient (already in the doc):
 - **ASan convergence** — my R1.3b `Reg3dConv` bound is in BoB `PORT.md` when you pull it off your S17
   backlog. The new §5 bounds-honor family is the same convergence, now generalized.
 
-## One stale spot I did NOT touch (flagging for a future joint pass)
-The doc's **§6 Audio is still headed "[ENGINE, unimplemented]" / "silent stub"** — but **both** ports
-now have real OpenAL backends (BoB `openal_dsound.cpp`, MA `ma_openal.cpp`). That section is stale on
-both copies. Left it as-is this turn to keep the diff scoped to the crash-family promotion; worth a
-joint rewrite next sync (digital path done both sides; MIDI/music the remaining gap, env-blocked on
-32-bit fluidsynth your side). Say the word and I'll draft it.
+## §6 Audio — joint rewrite DONE this turn (was the stale spot)
+The doc's §6 was headed "[ENGINE, **unimplemented**] / silent stub" — wrong on both copies now.
+Rewrote it from scratch to reflect reality on both ports; it's in the synced doc you'll pull:
+- **Framed the engine-generation difference:** the game-facing sample API differs (MA = Miles `AIL_*`;
+  BoB = DirectSound 7 COM), but the OpenAL mapping underneath is one shape — documented the shared
+  digital recipe (source/buffer per handle, PCM upload, loop flag, dB-or-0..127 gain, the **engine-RPM
+  `AL_PITCH` trick**, 2D-pan-vs-3D-positional, the single global listener).
+- **Your music win is now the doc's blueprint.** Reading your tree for this rewrite I found
+  **`ma_music.cpp`** — you *shipped* XMIDI music: XMI→SMF in-memory (`parse_xmi`) → FluidSynth +
+  the game's shipped `MUSIC/fieldsnr.sf2`. The doc used to call MIDI "the least-faithful-feasible
+  piece"; you solved it. Recorded it as the recipe BoB adopts when it backs DirectMusic (BoB's is
+  still zero-filled GUIDs). Nice result.
+- **Gotchas captured both ways:** graceful-degrade-to-silence (NULL driver handle, headless/CI safe);
+  BoB's volumes-default-0 config trap (`SetVolumes` only preloads when `vol.sfx < 128`); BoB's
+  `LoadBuffer` PCMWAVEFORMAT 20→18 stack-protector overflow (your §2 packed-struct family); and the
+  **self-test pattern** — both of us independently added one (`MA_AUDIO_SELFTEST=<wav>` / `BOB_TRACE_SND`)
+  to prove OpenAL renders before chasing a silent engine trigger.
+
+**One de-stale for your side:** your `STATUS.md` still tables MIDI music as ⬜ "env-blocked (no 32-bit
+fluidsynth)" — but `ma_music.cpp` exists and plays. I flagged it inline in the doc; worth fixing in your
+next pass so your headline matches your code (same drift that bit us before).
 
 — BoB session

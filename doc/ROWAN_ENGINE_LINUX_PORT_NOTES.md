@@ -614,15 +614,61 @@ so zero normal-play change; it only fires on the garbage that would have SEGV'd.
 
 ---
 
-## 6. Audio (DirectSound / Miles → OpenAL) **[ENGINE, unimplemented]**
+## 6. Audio (DirectSound / Miles → OpenAL + FluidSynth) **[ENGINE]** (both ports working, 2026-06)
 
-- Currently a **silent stub**: `DirectSoundCreate` returns `E_FAIL`; DirectMusic GUIDs are
-  zero-filled. There's an `openal_dsound.h` scaffold but **zero real OpenAL calls**.
-- To do it: back `IDirectSound`/`IDirectSoundBuffer` (and any Miles AIL calls) with OpenAL —
-  buffer creation, sample upload, play/stop/loop, volume/pan, and **positional 3D** (engine,
-  guns, radio chatter, ambient). Music (MIDI/DirectMusic) is the least-faithful-feasible
-  piece — a software synth (e.g. FluidSynth/TiMidity) or pre-rendered tracks. Self-contained;
-  parallelisable with everything else.
+**Done on both ports** — digital SFX *and* music play natively. The one thing that differs is the
+**game-facing API the engine drives, which is engine-generation-specific**, but the OpenAL mapping
+underneath is the same shape:
+
+| | MiG Alley (1999) | Battle of Britain (2000) |
+|---|---|---|
+| Sample API the game calls | **Miles Sound System** (`AIL_*` C API, cdecl) | **DirectSound 7** (COM: `IDirectSound`/`IDirectSoundBuffer`/`…3DBuffer`/`…3DListener`) |
+| Backend file | `SRC/compat/ma_openal.cpp` | `SRC/compat/openal_dsound.cpp` |
+| Music API | Miles XMIDI **sequence** API (`AIL_midiOutOpen`/`init_sequence`) | DirectMusic (GUIDs) |
+
+### Digital path — the recipe (same both ports)
+One OpenAL source + buffer per game sample handle; the global AL listener is the engine's 3D listener:
+- **Upload:** the game hands you PCM (BoB `IDirectSoundBuffer::Lock`/`Unlock` copies into the buffer;
+  MA `AIL_set_sample_file` parses a RIFF/WAV image, `AIL_set_sample_address` takes raw PCM for radio).
+  `alBufferData(fmt, pcm, bytes, freq)` → `alSourcei(AL_BUFFER)`.
+- **Play / loop:** `alSourcePlay`; loop flag (`DSBPLAY_LOOPING` / Miles `loopcount==0`) → `AL_LOOPING`.
+- **Volume:** DirectSound dB (`-10000..0`) → linear `AL_GAIN`; Miles `0..127` → `/127`. Master volume → `alListenerf(AL_GAIN)`.
+- **Pitch — the engine-RPM trick:** the looping engine sample is *one* buffer; the game calls
+  `SetFrequency`/`AIL_set_sample_playback_rate` every frame to pitch it with RPM →
+  `alSourcef(AL_PITCH, freq/baseFreq)`. Capture `baseFreq` at upload.
+- **Pan (2D) vs positional (3D):** a 2D pan flips the source to `AL_SOURCE_RELATIVE` with zero rolloff
+  and maps pan to a small `AL_POSITION.x`; a true 3D buffer takes world `AL_POSITION`/`AL_VELOCITY` +
+  reference/max distance + mode. The single global `alListener3f`/`alListenerfv(ORIENTATION)` is driven
+  by the cockpit camera.
+
+### Music path — MA solved the "least-faithful-feasible" piece; **candidate adoption for BoB**
+This section used to call MIDI music the hardest piece. **MA shipped it (`ma_music.cpp`):** the game's
+music is **XMIDI** (`.xmi` in `tune[].xmiPtr`) driven through Miles' sequence API; FluidSynth plays
+Standard MIDI not XMI, so MA **converts XMI→SMF in memory (`parse_xmi`)** and hands it to a
+`fluid_player` with the game's **own shipped SoundFont** (`MUSIC/fieldsnr.sf2`) — FluidSynth's own
+audio driver renders it, independent of the OpenAL SFX path. **BoB's DirectMusic is still zero-filled
+GUIDs** — the MA recipe (XMI→SMF + FluidSynth + the shipped `.sf2`) is the port's blueprint when BoB
+wants music; BoB just needs to back its DirectMusic/`IDirectMusicPerformance` surface instead of the
+Miles sequence API.
+
+### Gotchas worth copying (both ports verified)
+- **Graceful degradation to silence.** If OpenAL can't open a device (or FluidSynth can't init / the
+  SoundFont is missing), keep the driver handle NULL exactly like the old stub — the game zeroes its
+  audio volume and runs silent. No hard dependency on an audio device for headless/CI runs.
+- **The volumes-default-0 trap (BoB).** The QM boot left `Save_Data.vol.*` at 0 → `Sound::PlayEngine`
+  early-outs and `Sound::SetVolumes` only `PreLoadSFX()`es the bank when `vol.sfx < 128` (it's a `0..127`
+  scale — a *big* number SKIPS the preload). Boot must set volumes to ~100, not max. Silence here is a
+  *config* bug, not a backend bug — check the game's own volume state before suspecting OpenAL.
+- **`LoadBuffer` PCMWAVEFORMAT stack overflow (BoB, latent game-code).** `Sample::LoadBuffer` copies a
+  20-byte `PCMWAVEFORMAT` into an 18-byte `WAVEFORMATEX` — benign on Windows, trips `-fstack-protector`
+  on Linux (same packed-struct ABI family as §2). Fixed by relaxing the stack protector for that TU.
+- **Prove the backend independent of the engine.** Both ports added a self-test toggle
+  (`MA_AUDIO_SELFTEST=<wav>` / BoB `BOB_TRACE_SND`) that pushes a known WAV through the *real* sample
+  path and watches the source go PLAYING→DONE with byte offset advancing — confirms OpenAL renders
+  before you start chasing why an engine trigger is silent.
+
+> **Doc-hygiene note (2026-06-27):** MA's own `STATUS.md` still tables MIDI music as ⬜ "env-blocked
+> (no 32-bit fluidsynth)" — stale; `ma_music.cpp` exists and plays. De-stale on the next MA pass.
 
 ---
 
