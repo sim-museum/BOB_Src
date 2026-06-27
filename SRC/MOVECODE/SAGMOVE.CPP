@@ -114,6 +114,16 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "monotxt.h"
 #include	"miles.h"													//RJS 10Oct00
 
+#if BOB_LINUX
+/* R4.5 (S41): default-off post-mission SAG-state capture. Correlates the MoveAllSAGs loop
+   view (safe base fields) with the GetCruiseAt clamp that detects the garbage `type`, so a
+   SAFE skip predicate can be found (the S40 retro: a complex-field Evaluate() predicate is
+   unsafe on the heterogeneous SAG band). Gated on BOB_TRACE_SAG; game logic untouched. */
+#include <cstdio>
+#include <cstdlib>
+static int bobTraceSag() { static int t=-1; if(t<0) t=getenv("BOB_TRACE_SAG")?1:0; return t; }
+#endif
+
 #define MIN_NUM_ACS 240
 #define MAX_NUM_ACS 256
 
@@ -149,6 +159,14 @@ void	SAGAirstruc::MoveAllSAGs(WorldStuff& world)
 		SAGAirstruc* as=Persons2::ConvertPtrUID(UniqueID(i));
 		if (as)
 		{
+#if BOB_LINUX
+			/* R4.5 (S41) capture: SAFE base fields per SAG; correlate `as` ptr with the
+			   GetCruiseAt-clamp dump to read off the corrupt SAG's signature. */
+			if (bobTraceSag())
+				fprintf(stderr,"[sag] i=%d as=%p mc=%d deaded=%d deadtime=%d size=%d uid=%d\n",
+					i,(void*)as,(int)as->movecode,(int)as->Status.deaded,
+					(int)as->Status.deadtime,(int)as->Status.size,(int)as->uniqueID.count);
+#endif
 			UWord	oldsector=0xFFFF;										  //JIM 17/02/99
 			if(as->movecode != AUTOSAG_WAITTAKEOFF)
 				oldsector=	world.GetSector(as);					  //JIM 17/02/99
@@ -1487,7 +1505,13 @@ int	info_grndgrp::GetCruiseAt(Coords3D& pos,ANGLES& pitchintercept)  //returns c
 	   garbage PlaneInit* -> SEGV in MoveAllSAGs. Clamp an out-of-range ptype to 0 (a valid default
 	   plane) so the corrupt SAG moves with default params instead of crashing. Crash-removal; the
 	   faithful fix (why post-mission `type` is garbage) is the type-source follow-up. */
-	if ((unsigned)ptype>=(unsigned)PT_BADMAX) ptype=0;
+	if ((unsigned)ptype>=(unsigned)PT_BADMAX) {
+		if (bobTraceSag())
+			fprintf(stderr,"[sag] CLAMP GetCruiseAt this=%p garbage_ptype=%d deaded=%d deadtime=%d size=%d uid=%d\n",
+				(void*)this,(int)type.Evaluate(),(int)Status.deaded,(int)Status.deadtime,
+				(int)Status.size,(int)uniqueID.count);
+		ptype=0;
+	}
 #endif
 	PlaneInit* pi=Plane_Type_Translate[ptype];
 	WheeledType* wi=(WheeledType*)pi;

@@ -1,5 +1,48 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S41 (2026-06-27): POST-MISSION SAG-STATE CAPTURE — the empirical invariant the S40 retro scoped; result: NO safe skip predicate, the fix is the type/target-source (reframe + reusable trace)
+> Sprint 41 (Release 4, post-mission funnel — the S40-retro's scoped next step). Built the empirical
+> SAG-state capture S40 asked for and ran the full post-mission repro on `:0`. **Definitive result that
+> closes the S40 question**: there is **no safe base-field predicate** to skip the corrupt SAG, so the
+> "SAG-level skip in `MoveAllSAGs`" direction is dead — the faithful fix is the **type/target-source**.
+> Spike (capture + analysis + reusable infra); no behavioural fix shipped, but the open question is
+> resolved and the work precisely redirected (cf. S35/S38 characterization spikes).
+> - **The capture (`BOB_TRACE_SAG`, new, default-off, KEPT).** Two correlated dumps in `SAGMOVE.CPP`:
+>   per-SAG SAFE base fields in the `MoveAllSAGs` loop (`movecode`, `Status.deaded/deadtime/size`,
+>   `uniqueID.count`, `as` ptr) + a dump at the S39 `GetCruiseAt` clamp (`this`, garbage `ptype`, same
+>   safe fields) so the corrupt SAG's signature reads off directly. Both `#if BOB_LINUX` + `getenv`-gated.
+> - **What the data says (full repro on `:0`, the S38 chain).** The post-mission SAG band is uid 4608–4616
+>   (9 SAGs). The clamp fires for **uid 4612/4613/4614** — three *contiguous* SAGs — each with a **stable**
+>   `type.Evaluate()==160` (an invalid plane type: `PT_BADMAX < 160 ≤ SQ_BR_START`, so it's not remapped as
+>   a squadnum either). Their SAFE base fields are **byte-identical to the healthy neighbours**:
+>   `size=12, deaded=0, deadtime=0, movecode=2 (AUTOSAG_WAITTAKEOFF)`. uid 4609/4610/4611/4615 are *also*
+>   `movecode=2` but do **not** clamp. ⇒ **no `Status`/`movecode`/`size` field distinguishes corrupt from
+>   healthy** — the only difference is the garbage `type` itself, which S40 proved unsafe to read in the
+>   flight context. **So a safe SAG-level skip predicate does not exist.** (This is *why* S40 failed, now
+>   with proof, not just the flight-crash symptom.)
+> - **The reframe (the real shape).** The 3 corrupt SAGs are the **just-scrambled player interception
+>   package** (pack 3, `NewPackage`), still `WAITTAKEOFF`, carrying a garbage `type`=160. The crash is a
+>   **two-garbage-field family**: (a) `type` — S39 honours its `Plane_Type_Translate[]` array bound; (b)
+>   `target` — the post-S39 crash is `SAGairgrp::SAGDecisionPreCombat` (gdb on `:0`:
+>   `…→MoveAllSAGs→DecideSAG→SAGDecisionPreCombat`), where `if(target.Evaluate()<0||…>IllegalBAND) INT3;`
+>   is the engine's **own declared bound** on `target` — but `INT3` doesn't halt on Linux (the R1.3b/4.3c/
+>   S37 class), so a garbage `target` falls through to `Todays_Packages[tp]` OOB. There are ~8 identical
+>   `target`/`IllegalBAND` INT3 sites in `SAGMOVE.CPP` (2495/2687/2825/3196/3358/3425/3544/3565).
+> - **Why per-method honouring is NOT the clean fix here (confirms the S39-retro whack-a-mole call).**
+>   Honouring the `target` bound in-place is fragile: in `SAGDecisionPreCombat`, forcing the no-target path
+>   (`a=NULL`) still crashes — line 2801 derefs `a->World.Y` *assuming* a valid target survived the check.
+>   Each method has its own post-check assumptions, so N point-fixes don't converge cleanly. The faithful,
+>   convergent fix is the **type/target-source**: why the post-mission `StartUpMapWorld` rebuild leaves a
+>   just-flown player-package SAG in the band with garbage `type`+`target` (a consumed/returning squadron
+>   whose strategic-sim fields weren't reinitialised). That neutralises *both* garbage fields at once —
+>   the S37 "fix the funnel, not the N derefs" move, one level up. **Scoped for the next focused pass**
+>   (trace `type`/`target` at `NewPackage` vs post-mission to localise creation-vs-corruption).
+> - **No regression / increment.** `BOB_TRACE_SAG` default-off; bare `./bob` exits 0; the S39 clamp +
+>   post-load advance unchanged. Game code change = the default-off trace only (the reusable infra the S40
+>   retro asked for; kept, unlike S40's full revert). Increment = the **definitive answer** (no safe
+>   predicate) + the precise type/target-source scope + the diagnostic to drive it. PO away; pivoting to an
+>   unimpeded story (S42) rather than grinding the impeded source-dig — per the working agreement.
+
 > ## R4.5 / S40 (2026-06-25): SAG-LEVEL SKIP ATTEMPT — negative result (the `type` predicate is itself unsafe); reverted, next approach scoped
 > Sprint 40 (Release 4, post-mission funnel fix). Tried the S39-retro "fix-the-funnel" move — a SAG-level
 > skip in `MoveAllSAGs` so the broadly-corrupt post-mission SAG never reaches any of its crashing methods.
