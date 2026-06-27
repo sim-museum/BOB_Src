@@ -571,6 +571,46 @@ Listed by how much pain they cost. Grep for the named functions to pre-empt them
   layout change. BoB R5.3b instead used a *targeted* per-screen bridge (`SController::bob_combo_changed`
   + an X-macro list) to avoid touching shared `afxwin.h`; MA's general approach is the better long-term
   pattern and should be cross-adopted when BoB needs a second event-driven dialog (load/save, etc.).
+- **Cross-adopted (BoB S33, 2026-06-25):** BoB took MA's `ma_eventsink.cpp` verbatim (renamed `bob_*`)
+  and retired *both* its targeted bridges (R5.3b SController combo + R4.4 CLoad file-row). Two deltas to
+  fold back into MA's copy: **(1)** name the file-scope auto-registrar with `__COUNTER__`, not `__LINE__`
+  — BoB's unity build `#include`s several `.cpp` into one TU, so two `BEGIN_EVENTSINK_MAP` at the same
+  line number collide (`MaEvtAuto_120` redefinition). Capture the counter *once* via an indirection macro.
+  MA doesn't hit this today (one TU per `.cpp`) but will the moment any amalgam build lands. **(2)** A
+  `(LPCTSTR text, short index)` `evt_call` overload for combo `OnTextChanged*` handlers. MA's S28 fix
+  (route combo `TextChanged` through `evt_fire` like buttons) is the **same convergent finding** from the
+  other direction — both ports independently traced "combo cycles but doesn't apply" to the dead eventsink.
+
+### Garbage-index OOB: honor the engine's own declared bounds **[ENGINE]** (both ports, 2026-06-25)
+A whole crash family is shared: an index Windows let run out of bounds into *tolerable* memory faults on
+Linux. The fix is never to invent a sentinel — it's to **enforce the bound the engine already declares**
+(an `assert` range, an array size, a surface `PhysicalWidth/Height`) as a runtime guard, returning the
+same null/skip the engine gives for its own "invalid" case. Transparent for valid data (always in range),
+so zero normal-play change; it only fires on the garbage that would have SEGV'd. Instances both ways:
+- **BoB, deserialise/sim path.** `Persons2::ConvertPtrUID` indexes `pItem[]` on a garbage UID from an
+  incompletely-restored save → OOB. It *already* asserts `tmpUID ∈ [1, IllegalSepID]`; honor that on
+  Linux (return the `UID==0` null-ref when out of range) and the entire post-load fatal family retires in
+  one place (S37, `a872cd8`). Same shape: `info_grndgrp::GetCruiseAt` → `Plane_Type_Translate` OOB on a
+  corrupt SAG `type` post-mission, fixed by the array-size bound (S39, `35fa5c6`).
+- **MA, software-rasterizer path.** The image/poly span fillers (`XASM_ImageHoriLine1`) write
+  `word[edi]` per column with **no clip**, trusting frustum-clipping that doesn't bottom-clip extreme
+  polys. Two bounds restored the contract: span X to `[0, PhysicalWidth-1]` (`ASM_Call_clamp`, S23) and
+  scanline Y to `[0, PhysicalHeight)` in `drawpoly` (S24); `DoArtHoriz` ADI ball-image read wrapped into
+  `[0,h)` (S27). Bonus: ~1200 off-screen spans/frame were being written in *normal* flight too — a latent
+  intermittent corruptor of the shared ASan heap-bug family, not just the crash trigger.
+- **Caveat both ports log honestly:** the guard stops the *crash* but the underlying corruption (a stale
+  UID resolved to NULL; a poly clipped away) is still a minor fidelity loss — the faithful follow-up is
+  the per-reference deserialise restoration / the type-source fix. The guard is the floor, not the finish.
+
+### Pitfalls when honoring bounds — measure the coordinate space first
+- **MA's wrong first clamp (S23):** clamped span X to the *centered* space `[-320,319]` (the sphere/halo
+  converters' coords), not the image filler's *0-based* `[0,639]`. A frame dump caught it instantly — the
+  right third went black. The poly/image fillers are 0-based; only the sphere path is centered. Verify
+  which coordinate space a filler uses before bounding it.
+- **MA's negative result (S40, worth recording):** a coarser "skip the whole corrupt SAG" funnel used a
+  `type` predicate that is itself unsafe across SAG subtypes — reverted. The safe corruption invariant has
+  to be a simple field (`Status.deaded`/`movecode`), not a complex `Evaluate()`. Negative results save the
+  sister port a dead end.
 
 ---
 
@@ -613,6 +653,15 @@ This engine's rendering is **subtle**, and impressions lie. The BoB log has mult
 - **Keep default `./game` clean; commit small with evidence.** One reproducible finding per
   commit; a running log (our `PORT.md`, newest-on-top) so the next session (or instance) inherits
   context instead of re-deriving it.
+- **Make crashes self-diagnosing, then force the repro.** Two convergent tools across both ports:
+  **(1)** a `SA_SIGINFO` signal handler that dumps `fault_addr` + the full register file on any
+  signal (MA `bob_main.cpp`, S24) — for an OOB write, `fault_addr == edi` tells you it's the
+  *destination* not the read, and `(fault_addr − surface)/pitch` reverse-engineers the bad scanline
+  (~83000 → "projected far below screen, never bottom-clipped"). **(2)** env-gated *fast-forward
+  repro* toggles that drive the exact failing path headlessly when interactive geometry won't
+  reproduce: BoB `BOB_POSTLOAD_FF`/`BOB_POSTMISSION_FF` (drive the loaded/post-mission world under
+  ASan), MA `MA_FORCE_PADLOCK` + `BOB_AUTOFLY=sweep` (force the view + wild stick). A structural fix
+  you can't *reliably* trigger is still validated by the bound itself; the repro confirms it.
 
 ---
 
