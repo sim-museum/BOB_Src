@@ -395,6 +395,9 @@ void	PackageList::FixupAircraft(int packnum)
 			if (as->Status.size>=AIRSTRUCSIZE)
 				as->fly.leadflight=as->fly.nextflight=as->fly.expandedsag=NULL;
 		}
+		if (getenv("BOB_TRACE_SAG"))   /* R4.5 (S44): compare squadnum here vs LoadGame.decode */
+			fprintf(stderr,"[sag] FixupAircraft pack=%d squad=%d squadnum=%d\n",
+				packnum,i,(int)pack[packnum].squadlist[i].squadnum);
 #endif
 		if (a->wpref)
 		{
@@ -435,7 +438,19 @@ void	PackageList::LoadGame(BIStream& bis)
 	while (ind<last)
 	{	assert (packnum<Profile::MAX_PACKS);
 		pack[packnum].DecodePackage(ind,true);
-		while (*ind++)	
+#if BOB_LINUX
+		/* R4.5 (S44): trace each squad's squadnum right after deserialization, to localize where the
+		   engaged raid package's squadnums go out of range (SQ_MAX=148). If 210/160 appear HERE -> the
+		   saved Package.dat / DecodePackage is the source; if valid here -> a later pass corrupts them. */
+		if (getenv("BOB_TRACE_SAG")) {
+			int m=(int)pack[packnum].squadlist;
+			for (int si=0; si<m; si++)
+				fprintf(stderr,"[sag] LoadGame.decode pack=%d squad=%d squadnum=%d status=%d wpsused=%d\n",
+					packnum,si,(int)pack[packnum].squadlist[si].squadnum,
+					(int)pack[packnum].packagestatus,(int)pack[packnum].wpsused);
+		}
+#endif
+		while (*ind++)
 		{}
 		if (ind>buffer+SIZ && !fend)	   //more than half way through
 		{

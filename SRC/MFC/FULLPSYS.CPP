@@ -85,6 +85,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "package.h"   /* R4.3 (BOB_CAMPAIGN_FLY): Todays_Packages / Profile for the map->frag seam */
 #include "misssub.h"   /* R4.3 (BOB_CAMPAIGN_FLY): Directives / RAFDirectivesResults::RAFInterceptType */
 #include "filing.h"    /* R4.4 (BOB_CAMPAIGN_SAVE): CFiling::SaveGame */
+#include "bstream.h"   /* R4.5 (S44): BOStream for the pre-fly Package.dat write (mirrors OnClickedFrag2) */
 #include "winmove.h"
 #include "aggrgtor.h"
 #include "stub3d.h"
@@ -590,6 +591,20 @@ extern "C" void bob_frontend_tick(void)
 						if (getenv("BOB_CAMPFLY_NOFLY")) {
 							fprintf(stderr,"[campfly] NOFLY: intercepted pack=%d, staying in map sim (no bobfrag)\n", hipack);
 							return;
+						}
+						/* R4.5 (S44): write Package.dat with the LIVE campaign state before flying, exactly
+						   as the real CMainToolbar::OnClickedFrag2 does (MAINTBAR.CPP). This scaffold drives
+						   the map->mission seam directly (the mission-folder OCX isn't built), bypassing
+						   OnClickedFrag2's save -- so without this, the post-mission StartUpMapWorld(true)
+						   reloads a STALE shipped Package.dat (out-of-range squadnums -> the S38-S43 crash).
+						   Saving here makes the post-mission restore the just-flown state (the S43 funnel
+						   guard remains as defense against any mismatched file). */
+						{
+							char pdbuf[fileman::pathnamesize];
+							BOStream pdbos(File_Man.namenumberedfile(
+								File_Man.fakefile(FIL_SAVEGAMEDIR,"Package.dat"),pdbuf));
+							if (pdbos.is_open()) { Todays_Packages.SaveGame(pdbos);
+								fprintf(stderr,"[campfly] wrote live Package.dat (pre-fly, mirrors OnClickedFrag2)\n"); }
 						}
 						fprintf(stderr,"[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=%d hisquad=0\n", hipack);
 						g_bob_map_active = 0;                 /* leave map mode -> front-end paint path */

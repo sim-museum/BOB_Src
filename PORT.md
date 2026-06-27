@@ -1,5 +1,44 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S44 (2026-06-27): ★ POST-MISSION CRASH FIXED — it was a stale Package.dat (the scaffold bypassed OnClickedFrag2's save); the sim now advances past the whole squadnum family
+> Sprint 44 (Release 4, the post-mission grind's payoff). **Root-caused the post-mission squadnum
+> corruption to a repro/flow artifact and fixed it** — the post-mission sim no longer crashes (0 SEGV,
+> 0 clamps); it advances past the entire S38–S43 crash family. The deepest remaining campaign-continuity
+> gap is cleared.
+> - **The decisive trace.** Added a per-squad squadnum dump right after `DecodePackage` in `LoadGame`. The
+>   serialization is a **base-90 encoding of the raw struct** (each ULong → 5 chars `p%90+34`,
+>   `SAVEBIN.CPP`), and encode/decode are **symmetric** — so a valid squadnum round-trips. The decode was
+>   reading out-of-range squadnums (196/197/210/160) **straight out of the stream** → the *file* had bad
+>   data, not a decode bug.
+> - **The file was STALE.** `SAVEGAME/Package.dat` is dated **Apr 18** (the shipped template) — **never
+>   written by any run**. The post-mission `StartUpMapWorld(true, name=NULL)` reloads `Package.dat`; the
+>   live `Package.dat` write lives in **`CMainToolbar::OnClickedFrag2`** (the real "go to mission folder"
+>   handler, `MAINTBAR.CPP:681`). BoB's campaign-mission path uses the **`BOB_CAMPFLY_GO` scaffold** (the
+>   mission-folder OCX isn't built — a separate ~13pt subsystem), which `LaunchFullPane(&bobfrag)` **directly,
+>   bypassing `OnClickedFrag2`'s save**. So post-mission reloaded the shipped template (out-of-range
+>   squadnums for the current world) → the crash. **Not data corruption — a missing save in the scaffolded
+>   flow.**
+> - **Fix (`#if BOB_LINUX`, `FULLPSYS.CPP` campfly scaffold).** Write `Package.dat` with the **live**
+>   campaign state right before `LaunchFullPane(&bobfrag)`, mirroring `OnClickedFrag2` exactly
+>   (`BOStream … fakefile(FIL_SAVEGAMEDIR,"Package.dat"); Todays_Packages.SaveGame(bos)`). Now the
+>   post-mission reload restores the **just-flown** state. **Verified on `:0`:** post-fly decode squadnums
+>   are now **valid** (112/113/126/76, all < SQ_MAX=148) vs the stale 196/197/210/160; **0 clamps, 0 SEGV**
+>   — the post-mission sim advances past `GetCruiseAt` (S39) AND `SAGDecisionPreCombat` (the whole family).
+> - **The S43 `operator[]` funnel fix is now correctly framed.** It's **defense-in-depth** — the engine
+>   shouldn't SEGV on a stale/mismatched `Package.dat` (honoring `assert(sq<SQ_MAX)`), even though the
+>   primary fix is to feed it the right file. Both stay (belt and braces).
+> - **Newly-revealed next layer (S45, NOT a crash).** With the crash gone, the post-mission flow now
+>   advances to a **640-res debrief/review dialog (`dial640`)** that loads `artwork/DIAL640/title.bmp` — a
+>   **genuinely-missing asset** in this install (`DIAL640/` holds only `DIR.DIR`; the bitmaps are likely in
+>   the packed `.DIR` archive the loader isn't resolving). The game's missing-asset handler **loops** on it
+>   (a plain front-end boot hits it 0×, so it's post-mission-specific — proof the flow advanced there). S45:
+>   the post-mission dialog's artwork loading (archive/`fakefile` path), and a guard so a missing asset
+>   doesn't infinite-loop. **Repro caveat:** the campaign repro now floods stderr with this error — keep
+>   traces off and cap output.
+> - **No regression.** Scaffold-gated (`BOB_CAMPAIGN_FLY`/`BOB_CAMPFLY_GO`); bare `./bob` exits 0; the
+>   `BOB_TRACE_SAG` decode/fixup dumps are default-off diagnostics. **This is the milestone the R4.5
+>   post-mission grind (S35→S44) was driving at: the campaign mission loop no longer crashes on return.**
+
 > ## R4.5 / S43 CORRECTION (2026-06-27): it's the WHOLE intercepted raid package, not "3 phantom squads" — and that reframes the source fix
 > A compile-time reveal of the actual enum values (`template<int> struct R; R<(int)SQ_MAX> r;` →
 > `PT_BADMAX=18`, `SQ_LW_START=75`, **`SQ_MAX=148`**) corrects the S43 characterization below:
