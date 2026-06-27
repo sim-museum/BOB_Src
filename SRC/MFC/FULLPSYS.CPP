@@ -583,6 +583,14 @@ extern "C" void bob_frontend_tick(void)
 						cf_done = true;                       /* committed -- stop scanning */
 						Todays_Packages.hipack = (char)hipack;
 						Todays_Packages.hisquad = 0;
+						/* R4.5 (S42) diagnostic, default-off: intercept but DON'T fly -- stay in map mode so
+						   BOB_MAP_TIMER keeps ticking the freshly-scrambled interception SAGs. If the S39
+						   GetCruiseAt clamp (BOB_TRACE_SAG) fires on them PRE-flight, the garbage `type` is a
+						   CREATION bug (NewPackage); if it only fires post-mission, it's the rebuild. */
+						if (getenv("BOB_CAMPFLY_NOFLY")) {
+							fprintf(stderr,"[campfly] NOFLY: intercepted pack=%d, staying in map sim (no bobfrag)\n", hipack);
+							return;
+						}
 						fprintf(stderr,"[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=%d hisquad=0\n", hipack);
 						g_bob_map_active = 0;                 /* leave map mode -> front-end paint path */
 						RDialog::m_pView->LaunchFullPane(&RFullPanelDial::bobfrag, SaveData::UIR_FRAG);

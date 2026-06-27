@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S42 (2026-06-27): TYPE-SOURCE LOCALIZED — `type` is a squadnum set at `SetSquad`; the corruption is the post-mission rebuild (band-membership), not creation
+> Sprint 42 (Release 4, the type/target-source the S41 reframe scoped). Continued-characterization spike:
+> localized **where** the SAG `type` is set and gathered evidence on **when** it goes garbage. Confirms the
+> post-mission grind is the multi-session item the team has accepted (S35→S41) and narrows the next fix.
+> - **The type-set site.** `Profile::Squad::SetSquad(SquadNum)` (`PACKAGES.CPP:5159`) sets `a->type =
+>   squadnum` on the squadron's SAG (`info_airgrp`). So a SAG's `type` is a **SquadNum**, not a plane type;
+>   `GetCruiseAt` remaps it via `Node_Data[SquadNum(type)].AcType()`. The corrupt `type.Evaluate()==160` is
+>   therefore a **squadnum whose `Node_Data[160]` is invalid post-mission** → the remap yields a garbage
+>   plane type → the S39 clamp fires. (So "garbage `type`" is really "stale/invalid squadnum reference.")
+> - **When it corrupts — creation vs rebuild (`BOB_CAMPFLY_NOFLY`, new probe, default-off).** Added a
+>   scaffold toggle that intercepts but stays in the map sim (no flight), to see if the S39 clamp fires on
+>   the *freshly-scrambled* interception SAGs before any mission. Result: **the pre-takeoff map sim never
+>   ticks them** — the clock advances (33620→40020, re-intercepts) but `MoveAllSAGs` logs **0 SAG ticks**,
+>   because a `WAITTAKEOFF` squadron is **not in the `SagBAND` movement band until it takes off**. The
+>   corrupt post-mission SAGs (4612–4614) *are* `WAITTAKEOFF` yet *are* in the band being moved — so it's
+>   the **post-mission `StartUpMapWorld` rebuild that re-adds the just-flown player squadron to the SAG
+>   band carrying a stale `type` squadnum** (whose `Node_Data` entry is no longer valid), not a creation
+>   bug. Probe limitation noted for the next pass: NOFLY proves "fresh SAGs aren't ticked," which *implies*
+>   but doesn't *directly capture* the rebuild writing the stale type — a trace at the post-mission
+>   `StartUpMapWorld` SAG-band rebuild is the direct next probe.
+> - **Why no in-place fix shipped (honest).** The faithful fix is in the post-mission rebuild
+>   (`StartUpMapWorld`/`NextMission`) — either reinitialise the returning squadron's SAG `type` from its
+>   live squadnum (the S36 `FixupAircraft` shape) or don't re-add a consumed/returning squadron to the
+>   movement band. Both need the rebuild-path trace above to pin the exact write; that's the next focused
+>   pass, not an end-of-window edit (the S35/S40 discipline). Per the working agreement (PO away), banked
+>   the localization rather than grind the rebuild dig with the remaining budget.
+> - **No regression.** `BOB_CAMPFLY_NOFLY` + `BOB_TRACE_SAG` default-off; bare `./bob` exits 0; S39 clamp +
+>   post-load advance unchanged. Game-code change = the default-off NOFLY probe only. Increment = the
+>   type-set site + the creation-vs-rebuild localization (it's the rebuild) + the direct next probe.
+
 > ## R4.5 / S41 (2026-06-27): POST-MISSION SAG-STATE CAPTURE — the empirical invariant the S40 retro scoped; result: NO safe skip predicate, the fix is the type/target-source (reframe + reusable trace)
 > Sprint 41 (Release 4, post-mission funnel — the S40-retro's scoped next step). Built the empirical
 > SAG-state capture S40 asked for and ran the full post-mission repro on `:0`. **Definitive result that
