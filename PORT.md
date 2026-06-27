@@ -1,5 +1,44 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S45 (2026-06-27): ★ POST-MISSION DEBRIEF NO LONGER LOOPS — the missing-asset infinite loop was the live `__MSVC__` CD-retry path, not the `#else` the hand-off assumed; fixed + the debrief degrades gracefully
+> Sprint 45 (Release 4, the post-mission layer the S44 win revealed). **The S44-uncovered `dial640`
+> debrief flooded stderr forever on a genuinely-missing `artwork/dial640/title.bmp`; that infinite loop
+> is now gone (12.9M log lines → 51) and the debrief renders without its missing background.** The
+> headline here is *also a methodology win*: the prior session's hand-off (Bash tool was down, so S45 was
+> **designed but never built/run**) diagnosed the loop in `opennumberedfile`'s **`#else`** (non-MSVC)
+> branch. With Bash restored, the **first actual run disproved that** — a `.bmp`-caption backtrace showed
+> the loop is the **`#ifdef __MSVC__`** branch, which is *live on Linux*.
+> - **Why the live branch is the MSVC one.** `SRC/H/DOSDEFS.H:104-107` **defines `__MSVC__` for the GCC
+>   build** (the port reuses the MSVC, non-asm code paths). So in FILEMAN.CPP the `#ifdef __MSVC__` path
+>   (the Retry/Cancel "insert correct media" `MessageBox` loop) is active and the `#else` is dead code.
+>   The compat `MessageBox` (`compat_winuser.h`) **returns `IDOK`, never `IDCANCEL`**, so the
+>   `while(!retval)` loop never breaks → it re-prompts forever. (The hand-off's `#else` edit + the
+>   `makefileblock` NULL-guard couldn't have helped — `opennumberedfile` never returned. Verified empirically,
+>   per the "the engine lies; instrument and measure" methodology — a temporary `BOB_MB_BT` backtrace in the
+>   compat `MessageBox` gave the exact caller chain `opennumberedfile → makefileblock → RDialog::DoPaint`.)
+> - **Fix 1 (`#if BOB_LINUX`, `opennumberedfile`, FILEMAN.CPP).** At the top of the retry loop, on Linux
+>   **return NULL for a missing file** (emit one deduplicated `[fileman] missing file …` line, suppressing
+>   the repeated-FileNum flood) instead of entering the unbreakable CD-retry dialog loop. **Deliberately
+>   does NOT call `ReallyEmitSysErr`** — on Linux that routes to `SayAndQuit → _exit()` (WINERROR.CPP),
+>   which would abort the whole game; a missing *leaf* asset must degrade, not exit.
+> - **Fix 2 (`#if BOB_LINUX`, `makefileblock`, FILEMAN.CPP).** Now that `opennumberedfile` can return NULL,
+>   guard the NULL `filehandle` **before** `getfilesize()` (`ftell(NULL)` → crash) and skip the alloc +
+>   `readfileblock(NULL,…)`; leave the block empty so `getdata()` returns NULL. `RDialog::DoPaint`
+>   (RDIALOG.CPP:1331) already does `if (pData && pData[0]=='B' && pData[1]=='M')` → it **skips the missing
+>   background by the engine's own NULL-check** (graceful degradation, not a patch). This is the design the
+>   hand-off scoped; it was just guarding the wrong (dead) opener branch.
+> - **Verified on `:0` (the S44 post-mission repro).** The campaign mission loop returns to the **debrief
+>   and continues** — `LaunchMain painted artnum=27402 res=800` renders *after* the (single) missing-asset
+>   warning; **0 SEGV / 0 clamps / 0 FATAL**; clean `exit 0`. Log volume **12,972,192 → 51 lines.** Bare
+>   `./bob` exits 0 (no regression). The only other `opennumberedfile` caller (`MINFILE.CPP`, RBUTTON) is
+>   **not compiled into `bob`**, so the live consumer (`makefileblock`) is the one guarded.
+> - **Process note (honesty).** A cross-session hand-off *design* is a hypothesis until built+run. Restoring
+>   the impediment (Bash) and running it immediately falsified the assumed branch — the right outcome of the
+>   validation methodology, logged as a correction-in-spirit. Game-code change = the two `#if BOB_LINUX`
+>   guards only; the `BOB_MB_BT` instrumentation was temporary and removed. **This closes the post-mission
+>   campaign loop the S35→S44 arc opened: fly a campaign mission → return → debrief, with no crash and no
+>   flood.**
+
 > ## R4.5 / S44 (2026-06-27): ★ POST-MISSION CRASH FIXED — it was a stale Package.dat (the scaffold bypassed OnClickedFrag2's save); the sim now advances past the whole squadnum family
 > Sprint 44 (Release 4, the post-mission grind's payoff). **Root-caused the post-mission squadnum
 > corruption to a repro/flow artifact and fixed it** — the post-mission sim no longer crashes (0 SEGV,

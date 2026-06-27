@@ -995,6 +995,26 @@ FILE*	retval=easyopennumberedfile(MyFile);
     char* path=pathnameptr;
     if (dirnum(MyFile)==assumefakedir && ((int)MyFile&255)==fakefileindex)
     	path=namedirdir+fakefileoffset-filenameindex+(pathnameptr-pathname);
+    #if defined(BOB_LINUX)
+		// The Linux port defines __MSVC__ (DOSDEFS.H) to reuse the MSVC code paths, so the
+		// branch below shows a Retry/Cancel "insert correct media" dialog. Headless Linux has
+		// no removable media and the compat MessageBox can't prompt (it returns IDOK, never
+		// IDCANCEL), so this while(!retval) loop would spin forever on a genuinely-missing file
+		// (the S45 dial640/title.bmp post-mission flood). Emit once per file and return NULL;
+		// makefileblock() guards the NULL handle and degrades to an empty block. (Do NOT call
+		// ReallyEmitSysErr here -- on Linux it routes to SayAndQuit -> _exit(), aborting the
+		// whole game; a missing leaf asset must degrade, not exit.)
+		{
+			static FileNum lastwarned = (FileNum)-1;
+			if (MyFile != lastwarned)
+			{
+				lastwarned = MyFile;
+				fprintf(stderr, "[fileman] missing file %04x=%s -- returning NULL\n",
+						(unsigned)MyFile, path);
+			}
+			return(NULL);
+		}
+    #endif
     #ifdef __MSVC__
     	CString string;
 		char* n=pathnameptr;
@@ -1247,6 +1267,19 @@ FILE*	filehandle;
 						LockExchange(&interlocker,0);
 					}
 					FILEMAN.fileloadedthisframe=TRUE;
+#if defined(BOB_LINUX)
+					// opennumberedfile() now returns NULL for a genuinely-missing file (compat: no
+					// "insert CD" retry loop). getfilesize() would do ftell(NULL) and crash; the alloc
+					// + readfileblock(NULL,...) below would too. Degrade to an empty block so getdata()
+					// returns NULL and NULL-checking consumers (RDialog::DoPaint) skip the asset.
+					if (!filehandle)
+					{
+						link->datasize=0;
+						link->fileblockdata=NULL;
+						fileblockdata=NULL;
+						return;
+					}
+#endif
 					link->datasize=		FILEMAN.getfilesize(filehandle);
 					if (!link->datasize)
 						filehandle=filehandle;
