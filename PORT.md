@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S43 CORRECTION (2026-06-27): it's the WHOLE intercepted raid package, not "3 phantom squads" — and that reframes the source fix
+> A compile-time reveal of the actual enum values (`template<int> struct R; R<(int)SQ_MAX> r;` →
+> `PT_BADMAX=18`, `SQ_LW_START=75`, **`SQ_MAX=148`**) corrects the S43 characterization below:
+> - **Both squadnums are out of range, not just 160.** The "healthy" raid squads showed `squadnum=210` and
+>   the corrupt ones `squadnum=160` — but **both 210 and 160 are > SQ_MAX(148)**. In `operator[]`,
+>   `gruppe[210-75-1]=gruppe[134]` and `gruppe[160-75-1]=gruppe[84]` BOTH index past the 72-entry gruppe
+>   array → both are OOB reads. The S39 clamp fired only on 160 by **luck** (its OOB-garbage `AcType`
+>   happened to exceed `PT_BADMAX`; 210's OOB-garbage happened to be small → no clamp). So it was never "3
+>   phantom squads" — **the entire intercepted enemy raid package (pack 2) has out-of-range squadnums
+>   post-mission** (210×4 + 160×3), while every uninvolved package is fine (squadnums 90/68/83/74, all <148).
+> - **What this means.** The post-mission rebuild **corrupts the squadnums of the raid the player just
+>   intercepted** (they must have been valid during the mission for the raid to fly). It's a
+>   deserialization/rebuild defect localized to the engaged package — NOT stray phantom slots. The S44 fix
+>   is therefore "why does `StartUpMapWorld`/`LoadGame` bring pack 2 back with out-of-range squadnums"
+>   (a wrong field offset / stale value / a NewPackage-interception side effect on the raid it targets),
+>   NOT "delete the phantom squads" (that would delete the whole intercepted raid — wrong).
+> - **The S43 `operator[]` fix still stands, with a bigger-than-stated caveat.** Honoring `assert(sq<SQ_MAX)`
+>   correctly removes the OOB-read crash family (it's genuine UB regardless). But because the WHOLE raid
+>   package is out of range, the fix neutralizes **all** of pack 2's squadrons to the default-plane neutral
+>   squadron post-mission — the intercepted raid becomes "ghost" squadrons until the S44 source fix restores
+>   the real squadnums. Crash-removal floor, not the faithful finish (the S37/S39 tradeoff, here wider).
+> - **Honesty note (process).** S43's "3 phantom squads" read the symptom (one squadnum clamped) as the
+>   whole story; measuring the actual `SQ_MAX` and seeing 210 is *also* out of range corrected it. Logged
+>   as a CORRECTION per the validation methodology (the engine's renders/derefs "lie" — verify the number).
+
 > ## R4.5 / S43 (2026-06-27): ROOT-CAUSED — phantom out-of-range-squadnum raid squads; systemic squadnum-funnel fix (NodeData::operator[] honors its own assert)
 > Sprint 43 (Release 4, post-mission grind — the source the S42 trace scoped). **Root-caused the
 > post-mission corruption** and landed the systemic fix for its squadnum half. The sim still crashes one
