@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.6 / S46 spike (2026-06-27): "TURKEY SHOOT" QM FLIES — but combat exposes a render-thread double-free in the SUN LENS-FLARE path (ASan root-caused; fix scoped, not shipped)
+> Demo session + diagnosis. Flew the **"Turkey Shoot" Quick Mission** (`IDS_QUICK_11`, `QMISS.CPP:372`,
+> a Spit-vs-109 dogfight) by pointing the boot scaffold at it (`BOB_QM_INDEX=11` — the 0-based slot in
+> the live `quickmissions[]` table). It **boots to interactive flight cleanly**, but **crashes a few
+> seconds in** — non-deterministically `free(): double free … tcache 2` (SIGABRT) or SIGSEGV = classic
+> heap corruption; doesn't repro under gdb (perturbed timing hides the race — the R1.3d class).
+> - **ASan root-cause (`build-asan`, `-DBOB_ASAN=ON`, i386 `lib32asan8`; `halt_on_error=0`).** The
+>   crashing family is a **heap-use-after-free + double-free in `ThreeDee::AddLensObject`
+>   (`3dcode.cpp:1982-1988`)** on the **render thread T5**, reached via `shape::SunItemAnim`
+>   (`3dcom.cpp:7726`) → `animate_shape` → `GetVisibleObjects` → `render3d` → `View3d::drawloop`. It's
+>   the **sun lens-flare object lifecycle** (NOT gun-fire as first assumed): the lens `item` is read
+>   after free (1982-3) and freed again (1988, same 3-byte region) — double ownership of the lens `item`
+>   via the `item`/`animptr` chain (`worldinc.h:166/598/657/708`, `World.cpp:535`). Likely affects any
+>   mission/time-of-day that frames the sun lens-flare, not Turkey Shoot alone.
+> - **Also surfaced (latent, separate):** a startup **heap-buffer-overflow in `fileman::translatedirlist`
+>   (`FILEMAN.CPP:460`)** — 1-byte over-read parsing the root dir list in `InitFileSystem`; benign in the
+>   normal build but real UB.
+> - **No fix shipped (spike).** Scoped for **S46**: fix the `AddLensObject` sun-lens double-free/UAF
+>   (verify with ASan → the family goes to 0, Turkey Shoot flies a full sortie), then the translatedirlist
+>   over-read. Full ASan stacks + repro: `doc/STATUS-2026-06-27-S46-turkeyshoot.md`. Process win: **a real
+>   pilot flying combat is the best fuzzer** — this was latent until an actual dogfight framed the sun.
+
 > ## R4.5 / S45 (2026-06-27): ★ POST-MISSION DEBRIEF NO LONGER LOOPS — the missing-asset infinite loop was the live `__MSVC__` CD-retry path, not the `#else` the hand-off assumed; fixed + the debrief degrades gracefully
 > Sprint 45 (Release 4, the post-mission layer the S44 win revealed). **The S44-uncovered `dial640`
 > debrief flooded stderr forever on a genuinely-missing `artwork/dial640/title.bmp`; that infinite loop
