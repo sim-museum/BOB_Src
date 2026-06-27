@@ -6579,6 +6579,23 @@ Squadron&	NodeData::operator [](SquadNum sq)
 		}
 	}
 	assert(sq<SQ_MAX);
+#if BOB_LINUX
+	/* R4.5 (S43): honor this function's OWN assert(sq<SQ_MAX) on Linux -- asserts don't halt here
+	   (the R1.3b/4.3c/S37 "guard-doesn't-fire" class). A post-mission enemy-raid package can carry
+	   phantom squad entries with an out-of-range squadnum (measured: 160, with SQ_MAX~145), so
+	   `gruppe[sq-SQ_LW_START-1]` / `squadron[sq-SQ_BR_START-1]` indexes past the array -> a garbage
+	   Squadron& -> garbage AcType()/homeairfield -> SEGV deep in the SAG move/decision AI
+	   (GetCruiseAt -- S39 clamped one symptom; SAGDecisionPreCombat; ...). This is the FUNNEL: every
+	   squadnum->Squadron lookup goes through here, so honoring the bound in one place retires the whole
+	   family (the S37 ConvertPtrUID move). Return a static neutral Squadron (zero-init -> AcType 0 = a
+	   valid default plane, homeairfield UID_NULL) for an out-of-range squadnum -- exactly as S37 returns
+	   the engine's own null-ref for an out-of-range UID. Transparent for valid squadnums (always in
+	   range), so zero normal-play change; fires only on the phantom squads that would have SEGV'd. */
+	if ((unsigned)sq>=(unsigned)SQ_MAX || sq<SQ_BR_START) {
+		static Squadron bob_nullsquad;
+		return bob_nullsquad;
+	}
+#endif
 	if (sq>SQ_LW_START)
 		return	gruppe[sq-SQ_LW_START-1];				  //RDH 08/12/99
 	else

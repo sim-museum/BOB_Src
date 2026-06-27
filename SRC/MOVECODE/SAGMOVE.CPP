@@ -161,8 +161,11 @@ void	SAGAirstruc::MoveAllSAGs(WorldStuff& world)
 		{
 #if BOB_LINUX
 			/* R4.5 (S41) capture: SAFE base fields per SAG; correlate `as` ptr with the
-			   GetCruiseAt-clamp dump to read off the corrupt SAG's signature. */
-			if (bobTraceSag())
+			   GetCruiseAt-clamp dump to read off the corrupt SAG's signature. Behind a SEPARATE
+			   verbose flag (S43): this fires per-SAG per-frame incl. during flight (huge I/O that
+			   starves the post-mission phase) -- the post-mission CLAMP/FixupAircraft traces are the
+			   signal and stay on BOB_TRACE_SAG. */
+			if (getenv("BOB_TRACE_SAG_LOOP"))
 				fprintf(stderr,"[sag] i=%d as=%p mc=%d deaded=%d deadtime=%d size=%d uid=%d\n",
 					i,(void*)as,(int)as->movecode,(int)as->Status.deaded,
 					(int)as->Status.deadtime,(int)as->Status.size,(int)as->uniqueID.count);

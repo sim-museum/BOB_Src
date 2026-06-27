@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.5 / S43 (2026-06-27): ROOT-CAUSED — phantom out-of-range-squadnum raid squads; systemic squadnum-funnel fix (NodeData::operator[] honors its own assert)
+> Sprint 43 (Release 4, post-mission grind — the source the S42 trace scoped). **Root-caused the
+> post-mission corruption** and landed the systemic fix for its squadnum half. The sim still crashes one
+> field over (same phantom-squad root, `target` not `type`) → the source fix is scoped for S44.
+> - **The decisive measurement (`FixupAircraft` trace).** Captured every post-mission package squad's
+>   `instance / type / squadnum`. The corrupt SAGs (uid 4612–4614) are **pack 2** (an enemy LW raid),
+>   squads 4–6, with **`squadnum=160` AND `type=160` (they match)** — while the same package's squads 0–3
+>   are a valid squadron (`squadnum=210`) and every other package's squads are valid (90/68/83/74). So
+>   "garbage `type`" was a red herring (S42's `a->type=squadnum` reinit was a no-op, 160→160): the real
+>   defect is **3 phantom raid squads whose `squadnum` (160) is out of range** — `SQ_MAX≈145`, so 160 is
+>   past the squadron enum entirely.
+> - **The funnel (systemic fix, `#if BOB_LINUX`, `NODEBOB.CPP` `NodeData::operator[]`).** Every
+>   squadnum→Squadron lookup goes through `operator[]`, which has its OWN `assert(sq<SQ_MAX)` — that
+>   doesn't halt on Linux (the R1.3b/4.3c/S37 class), so `gruppe[sq-SQ_LW_START-1]` (=`gruppe[87]` for
+>   sq=160, past the ~72-entry array) reads OOB → a garbage `Squadron&` → garbage `AcType()` →
+>   `Plane_Type_Translate[]` OOB in `GetCruiseAt` (S39 clamped that one symptom). **Fix:** honor the
+>   assert — return a static neutral `Squadron` (zero-init → `AcType` 0 = a valid default plane) for an
+>   out-of-range squadnum, exactly as S37 returns the engine's own null-ref for an out-of-range UID. One
+>   change at the funnel retires the **whole squadnum-OOB family** (vs the S39 per-method clamp). Verified:
+>   the `GetCruiseAt` clamp goes **17→0** (the squadnum path is clean), flight is unregressed (0 clamps,
+>   no crash), bare `./bob` exits 0.
+> - **The next layer (banked for S44, same root).** With the squadnum funnel clean, the post-mission sim
+>   still SEGVs at **`SAGairgrp::SAGDecisionPreCombat` (0x081f8d2a, unchanged from S39)** — but this is a
+>   *different field of the same phantom squads*: `target` (the `if(target.Evaluate()<0||…>IllegalBAND)
+>   INT3` declared bound, line 2687, which also doesn't halt on Linux). So the phantom squads have garbage
+>   in **every** field (type, squadnum, target). Per-field honouring is whack-a-mole (S39-retro); the
+>   faithful fix is at the **source** — exclude the 3 phantom out-of-range-squadnum squads from being
+>   active band SAGs at the post-mission rebuild (`FixupAircraft` has the safe context: the squad + its
+>   squadnum), neutralising all their garbage fields at once. Why the rebuild emits 3 phantom squads in
+>   the enemy raid package is the S44 entry point.
+> - **Honest scope.** S43 ships the **root cause** (phantom out-of-range-squadnum squads — the defect
+>   S35–S42 were circling) + a **correct systemic squadnum-funnel fix** (defense-in-depth, cleaner than
+>   S39's symptom clamp; the S39-retro "a fix destined to be partly redundant can still be worth shipping"
+>   — it removes a latent OOB-read corruptor even where it doesn't immediately SEGV). It does **not** yet
+>   advance the observable sim past `SAGDecisionPreCombat` — the source fix (S44) does. Game-code change =
+>   the `#if BOB_LINUX` funnel guard only; `BOB_TRACE_SAG` loop-trace split to `BOB_TRACE_SAG_LOOP` so the
+>   post-mission signal isn't drowned by per-frame flight I/O. New probe `BOB_CAMPFLY_NOFLY` (S42) reused.
+
 > ## R4.5 / S42 (2026-06-27): TYPE-SOURCE LOCALIZED — `type` is a squadnum set at `SetSquad`; the corruption is the post-mission rebuild (band-membership), not creation
 > Sprint 42 (Release 4, the type/target-source the S41 reframe scoped). Continued-characterization spike:
 > localized **where** the SAG `type` is set and gathered evidence on **when** it goes garbage. Confirms the
