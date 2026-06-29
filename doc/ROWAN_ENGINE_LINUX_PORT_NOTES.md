@@ -612,6 +612,28 @@ so zero normal-play change; it only fires on the garbage that would have SEGV'd.
   to be a simple field (`Status.deaded`/`movecode`), not a complex `Evaluate()`. Negative results save the
   sister port a dead end.
 
+### The S46→S62 ASan hardening arc (BoB) — which findings are shared **[ENGINE]** (2026-06-29 sync)
+BoB ran an ~14-defect ASan sweep over its full gameplay loop (menu→fly→debrief→menu, 0 errors by S62)
+*after* the 06-27 doc sync, so none were promoted until now. Sorting them by whether the bug lives in
+**shared engine code** (MA inherits it) vs **BoB's renderer/shapes** (MA's differ) is the useful cut —
+MA verified each against its own tree on 2026-06-29:
+
+| BoB sprint | Bug | Shared? (MA verdict) |
+|---|---|---|
+| S55 `3d1824a` | `MathLib::rnd()` `rndlookup[]` over-read: the `>=MAX_RND` mixing branch computes `[bval+(rndcount&31)-16]`, max `40+31-16 = 55`, one past the 55-entry (0..54) table | **YES — identical** in MA `MATH.CPP:1722`/`:1730`, `rndlookup` is exactly 55 entries. Engine-wide PRNG. **MA fixed 2026-06-29** (`% table-size`). |
+| S59 `80c1ba5` | compat `BITSET/BITTEST/BITRESET/BITCOMP` were **dword-granular** (`(ULong*)p`, `a[bit>>5]`); a 4-byte access overruns a 2-byte `MakeField` `dataspace` → global-buffer-overflow. Byte-granular (`a[bit>>3]`, `bit&7`) hits the identical physical bit on little-endian x86, never past the field | **YES — identical** `SRC/H/mathasm_linux.h` (the file MA copied from BoB). Latent for every sub-4-byte bitfield. **MA fixed 2026-06-29.** |
+| S47 `d2d7c2a` | `FixLbmImageMap`/`lbmcpp.h` IFF/ILBM ByteRun1 unpack: the loops are driven by pixel position (`while(x<=maxx)`), not input size, so a row ending at the file-buffer edge reads one control byte past it. Fix = an `LBM_INBOUNDS` (`&& c < cend`) macro on the four unpack `while` conditions (empty on Windows) | **YES — `LBMCPP.H` CASE 3B is byte-identical** in MA, no guard. (Already in MA's S17 ASan backlog.) **Adopt BoB's macro next** — needs the consumer to define `cend = buffer + getsize()`. |
+| S49 `0970e41` / S53 `4b3e171` | `new[]`-freed-with-scalar-`delete` on shape opcodes `DrawSubShape` (`DoPointStruc[64]`) and `dodigitdial` (`UByte[nodigits]`) in `3DCOM.CPP` | **NO** — those opcodes are absent from MA's `3DCOM.CPP` (different aircraft-shape data). The operator-mismatch *class* is shared (MA worked it in S16) but not these sites. |
+| S58 `e95796b` | `CRListBoxCtrl` cell strings `new char[]` freed with scalar `delete` (OLE listbox) | **Likely** — MA hosts the same `RListBox` OCX; verify `AddString`/`ReplaceString`/clear-column frees. |
+| S54 `ced1efe` | `Persons2::FindNextBf` writes `GR_Scram_*[glind++]` but the arrays are `[8]`; a scramble with >8 groups overflows | **Candidate** — `GR_Scram_*`/`FindNextBf` exist in MA (`PERSONS2.CPP`/`GLOBREFS.*`); condition unverified. |
+| S57 `dc4f31e` | `RFullPanelDial::LaunchScreen` reads `resolutions[m_currentres]` with `m_currentres == -1` at startup | **Candidate** — `m_currentres`/`LaunchScreen` exist in MA, but MA populates `resolutions` its own way (F3); verify. |
+| S60 `d0558d3` / S61 `e34933f` | front-end→flight launch UAF: a freed `GLSurface7` stayed cached in `g_devTex[]`; and a racy `~View3d`/`WaitEndDraw` teardown freed `View_Point` while the draw thread rendered | **NO (mechanism)** — both are DX7/Lib3D-specific; MA's software rasterizer has neither `g_devTex` nor the `WaitEndDraw` handshake (MA fixed *its* View3d ctor race separately, Phase 5.1). The *class* (cross-thread surface lifetime at the launch transition) is the shared lesson. |
+| S48 `7162a6e` | `Sample::LoadBuffer` PCMWAVEFORMAT 20→18 stack over-write | Already in §6 (packed-struct ABI family). |
+
+Takeaway: **engine-wide primitives (RNG, bitfield ops) and the communal IFF unpack are the high-value
+shared finds**; renderer/shape-table bugs usually aren't (the two games ship different 3D/shape data). The
+fix shape is always the same bounds-honor / correct-`delete[]` discipline already documented above.
+
 ---
 
 ## 6. Audio (DirectSound / Miles → OpenAL + FluidSynth) **[ENGINE]** (both ports working, 2026-06)

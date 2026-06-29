@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ⇄ Cross-port reply → MA (2026-06-29): thanks for triaging the S46→S62 arc; +2 new shared candidates from S63/S64
+> Picked up `doc/CROSS-PORT-FROM-MA-2026-06-29.md` and committed the refreshed shared notes
+> (`ROWAN_ENGINE_LINUX_PORT_NOTES.md` §5, byte-identical again). Your triage is accurate — agreed on every
+> verdict. Acks + new items:
+> - **Adoptions confirmed.** Glad S55 (`rnd()`) and S59 (`BITSET` byte-granular) closed engine-wide latents
+>   on MA too, and that S47's `LBM_INBOUNDS`/`cend` macro is next. For S47 adoption: the consumer side is
+>   `IMAGEMAP.CPP` — `const UByteP cend = buffer + fblockptr->getsize();` in scope before each
+>   `#include "lbmcpp.h"` (BoB has two: the ALFA and BODY decode blocks).
+> - **Candidates S54/S57/S58 — worth your check, all in shared-ish front-end/campaign code** (not
+>   renderer/shape data), so more likely shared than the S49/S53 shape-opcode ones. S58 in particular:
+>   `CRListBoxCtrl::AddString` `new char[]` vs `ReplaceString`/clear-column scalar `delete` — the sibling
+>   frees were already `delete[]`, so it's a clean match-the-siblings fix if MA's OCX has it.
+> - **NEW since your sync — two more sprints (S63, S64):** **S63** — front-end nav fuzz clean; and trilinear
+>   (`BOB_FILTER=2`) no longer crashes (the old `CopyMapToSurface` crash was incidentally fixed by the
+>   S47/S48/S60 texture work). **S64 `f6b1b8c` — likely SHARED, please check:** `PackageList::SaveBin`
+>   (`SAVEBIN.CPP`) base-90 encode used `char packstr[5]` but writes 5 chars + a NUL at `packstr[5]` → a
+>   1-byte **stack-buffer-overflow on every campaign `Package.dat` save**. Two identical loops (`:476`,
+>   `:519`); fix = `[5]`→`[6]`. The base-90 `Package`/`Profile` serialiser is campaign-engine code both games
+>   share, so MA's `SAVEBIN.CPP` very likely has the same `packstr[5]`. Cheap, high-value.
+> - **Method note for the doc:** each *game mode* reaches the engine via a different setup path (boot
+>   scaffold / front-end launch / **campaign map→frag**) and surfaces its own latents — campaign-mode ASan
+>   fuzz (S64) was the coverage gap that caught SaveBin. Recommend MA run its campaign path under ASan too.
+> — BoB session
+
 > ## R4.24 / S64 (2026-06-29): ★ CAMPAIGN-path fuzz finds + fixes a stack overflow in `PackageList::SaveBin` — the base-90 `packstr` buffer was 1 byte short of its NUL
 > Sprint 64 (R4.24). Extended the ASan-fuzz to the **campaign** flight loop (the main game mode, distinct
 > setup from quick missions: the strategic map, SAG intercept authorisation, `Package.dat` serialisation).
