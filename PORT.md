@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.19 / S59 (2026-06-29): ★ compat `BITSET`/`BITTEST` were dword-granular — a 4-byte access on sub-4-byte `MakeField` bitfields; now byte-granular (engine-wide fix)
+> Sprint 59 (R4.19), the front-end config-bitfield overflow from S58. Root cause is a **compat-layer** bug
+> (not game code), and the fix benefits every `MakeField` bitfield in the engine.
+> - **Root.** The Linux reimpls of the MSVC inline-asm bit primitives (`mathasm_linux.h`: `BITSET`/`BITRESET`/
+>   `BITTEST`/`BITCOMP`) cast the bit-string pointer to `ULong*` and read/write `a[bit>>5]` — a **4-byte
+>   access**. But `MakeField<T,MIN,MAX>::dataspace[BYTES]` is sized to the field width (2 bytes for the 16-bit
+>   `MakeField<QFD,0,15>`), so the dword access **overruns the field** → ASan global-buffer-overflow (e.g.
+>   `MakeField<QFD,0,15>::operator|=`→`BITSET` on the 2-byte `nonplayer` global, `CSQuick1::CSQuick1`,
+>   Squick1.cpp:141). Latent for *every* sub-4-byte bitfield; the front-end quick-mission config just
+>   exercised it first.
+> - **Fix (compat, `mathasm_linux.h`).** Make the four pointer-based ops **byte-granular**: `a[bit>>3]`,
+>   `bit&7`, `unsigned char*`. On x86 (little-endian) this targets the **identical physical bit** the dword
+>   form did (`byte[bit>>3] bit (bit&7)` == that bit of the dword), so it's behaviour-identical AND never
+>   touches memory past the field. The value-only `*I` variants are unchanged (they don't dereference).
+> - **Verified.** Front-end ASan: `BITSET`/`MakeField` overflow **gone**. Regression — QM 11 combat (which
+>   leans on `Save_Data` bitfields) ASan **0 errors**, normal build 0 crashes; bare `./bob` exits 0. A
+>   header touched by many TUs, so the clean combat run is the key signal that the granularity change is
+>   transparent.
+> - **Remaining (S60) — front-end→flight launch path.** The last front-end fuzz errors are all the
+>   menu-launched flight's surface/draw path (`Lib3D::UploadTexture`→`DoLocks` surface `Lock` UAF/SEGV,
+>   `SURF_Release`/`make_surface`, `draw_fvf`, `DEV_DrawPrimitiveVB`) — a *different* launch path than the
+>   clean boot scaffold. Next sprint. Evidence: `/tmp/s59*`. Game-code touch = none (compat header only).
+
 > ## R4.18 / S58 (2026-06-29): 3rd new[]/delete mismatch fixed — `CRListBoxCtrl` cell strings (OLE listbox); maps the deeper front-end/launch seams
 > Sprint 58 (R4.18), continuing the front-end ASan fuzz from S57.
 > - **Fixed — `CRListBoxCtrl` new[]/delete mismatch (RLISTBXC.CPP:1931 & 2344).** The hosted RListBox cell
