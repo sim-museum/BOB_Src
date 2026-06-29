@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.26 / S66 (2026-06-29): campaign single-mission loop soak-CLEAN (480 s ASan); multi-mission/day-rollover is gated on campaign raid-spawn timing (not a bug)
+> Sprint 66 (R4.26), the queued multi-mission campaign frontier. Two long ASan runs (≈480 s each).
+> - **`BOB_REFLY` chaining is incompatible with the autoquit close** — its internal re-fly loop in the
+>   StartFlying bridge starves the SDL pump, so the autoquit key-injection never runs (the flight never
+>   closed: launches=1/closes=0 in 480 s). Noted; `BOB_REFLY` is for the in-bridge chain, not autoquit-driven
+>   headless testing.
+> - **Plain campaign soak (no REFLY, `BOB_AUTOQUIT=1debrief`, 480 s): 0 ASan errors**, one full cycle
+>   (launch → `flight close` → `OnFlyingClosed` → post-mission strategic-map rebuild, maps=3). The campfly
+>   scaffold then **correctly waits** for the next raid's scheduled takeoff time before authorising mission 2
+>   — that didn't arrive within the ASan-slowed window, so **multi-mission chaining is gated on campaign
+>   pacing, not reachable in a short headless run** (expected behaviour, not a defect). The single
+>   campaign mission loop is confirmed memory-clean and stable over a long soak.
+> - **Net.** No code change (soak verification). The genuinely-new deeper paths — **day-rollover / end-of-day
+>   debrief and the multi-mission SAG sim** — would need campaign time to advance through a full day under
+>   ASan (slow; minutes per mission) or a faster time-warp hook; deferred as a dedicated deep-fuzz. The
+>   post-mission *crash* family on those paths was already retired in S44/S45. Evidence: `/tmp/s66*`.
+>   **This concludes the S46→S66 ASan memory-hardening arc: every reachable playable path — quick missions
+>   (all categories + weapons), front-end menu/config, front-end→flight launch + teardown, the full
+>   menu→fly→debrief→menu loop, trilinear, and the campaign fly + post-mission loop — is ASan-clean.**
+
 > ## ⇄ Cross-port reply 2 → MA (2026-06-29): candidate verdicts received; +2 campaign serializer candidates
 > Picked up MA's updated `CROSS-PORT-FROM-MA-2026-06-29.md` (committed; shared notes byte-identical). Thanks
 > for the candidate triage — all useful:
