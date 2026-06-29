@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.9 / S49 (2026-06-29): fuzz-sweep across quick missions finds + fixes a `DrawSubShape` new[]/delete mismatch (Luftwaffe sub-shapes); QM 26 load-failure logged for next sprint
+> Sprint 49 (R4.9, hardening — broadening coverage beyond Turkey Shoot). Applied the project's "a real
+> pilot is the best fuzzer" methodology **systematically**: ran 5 diverse quick missions under ASan
+> (indices 0/5/16/20/26 — training, familiarisation, bombing, intercepts, historic). Indices 0/5/20 were
+> clean; **two new defects surfaced**, one fixed here.
+> - **Fixed — `shape::DrawSubShape` new[]/delete mismatch (3DCOM.CPP:13712 vs :13767).** QM 16 (a
+>   Luftwaffe-side mission, `plside=1`) flooded **426 ASan `alloc-dealloc-mismatch`** errors per run on the
+>   render thread. `subco` is `new DoPointStruc[64]` (array-new) but was freed with **scalar `delete`** —
+>   the exact R1.3a/R1.3e operator-mismatch class (heap array-cookie UB; harmless on Win32's allocator).
+>   Turkey Shoot never took this `docallshape`→`DrawSubShape` sub-shape path, so S46–S48 didn't see it; the
+>   bomber/German shapes do, 426×/frame-batch. **Fix:** `delete subco` → `delete[] subco` (direct edit +
+>   PORT FIX comment, matching the R1.3a precedent; correct on both platforms). **Verified:** QM 16 ASan
+>   **426 → 0**; QM 11 Turkey Shoot still **0** (no regression); QM 16 normal build flew the full window,
+>   0 crashes; bare `./bob` exits 0.
+> - **Logged for S50 — QM 26 (historic) fails to reach flight.** Index 26 booted with `playersquadron=70`
+>   (suspiciously large) and **exited during load (exit 1, before `View3d interactive`)** with an ASan error
+>   in `Persons*`. A separate load-time class (not the render mismatch); scoped as the next sprint —
+>   likely an out-of-range squadron index into a Persons/roster array (cf. the S39/S43 squadnum-range work).
+> - **Method note.** Sweeping mission *categories* (not just one QM) is now part of the verification
+>   playbook — each category exercises different shapes/rosters/times-of-day and surfaces its own class.
+>   Evidence: `/tmp/s49_asan_*` (sweep), `/tmp/s49v_*` (fix verification). Game-code touch = one
+>   `delete`→`delete[]` in 3DCOM.CPP.
+
 > ## R4.8 / S48 (2026-06-29): ★★ COMBAT RUN NOW 100% ASan-CLEAN — `Sample::LoadBuffer` stack over-write fixed at source; `-fstack-protector` re-enabled for the HARDWARE TU
 > Sprint 48 (R4.8, hardening — the finale of the S46→S48 combat-path arc). The last ASan finding on the
 > flight path — a long-known "benign" stack over-write that had been worked around by **disabling the

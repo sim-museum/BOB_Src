@@ -13763,8 +13763,14 @@ void	shape::dosetzbias(UByteP&	instr_ptr)
 //DEADCODE RJS 4/10/00 		*object_obj3d = backobj3d;
 
 //DeadCode DAW 07May99 		IsSubShape = oldsubstat;
- 
-		delete subco;												//RJS 02Dec97
+
+		/* PORT FIX S49 (Linux, 2026-06-29): subco is `new DoPointStruc[64]` (array-new,
+		   :13712), so freeing it with scalar `delete` is an operator mismatch (new[] vs
+		   delete) -- harmless on Win32's allocator, but real UB that corrupts the array
+		   cookie/heap metadata (ASan: alloc-dealloc-mismatch in shape::DrawSubShape, found
+		   fuzzing QM 16 / Luftwaffe sub-shapes; Turkey Shoot didn't take this path). Use the
+		   matching delete[]. Cf. the R1.3a oldanim fix (3DCOM.CPP:20891). See PORT.md (S49). */
+		delete[] subco;												//RJS 02Dec97
 	}
 	light_matrix=bupMatrix;						//PD 8May98
 }
