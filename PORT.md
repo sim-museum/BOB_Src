@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.12 / S52 (2026-06-29): ★ QM 26 (HISTORIC) NOW FLIES — `make_airgrp` skips an out-of-range-squadnum air group instead of cascading into sentinel-deref SEGVs
+> Sprint 52 (R4.12), closing the QM 26 load failure the S49 sweep found (S50/S51 fixed two layers; this
+> retires the family). **The historic mission now loads and flies, ASan-clean.**
+> - **Root.** QM 26's set-piece data has a 4th air group with an **out-of-range squadnum (v1=187, SQ_MAX=148)**
+>   — bogus (the real three are valid squads 70/72/68). Its squadron lookup, homebase, and route/waypoint
+>   UIDs are all invalid, so `make_airgrp` kept dereferencing unresolved-UID sentinels (0xFFFFFFFF) and
+>   SEGVing one layer at a time: S50 fixed the homebase deref, S51 the `AcType()` over-read, and it then hit
+>   `FixUpWaypointsToGroup` (PERSONS3.CPP:1826, another 0xFFFFFFFF deref). Chasing each deref is whack-a-mole.
+> - **Fix (`#if BOB_LINUX`, `make_airgrp`, PERSONS3.CPP).** Detect the unprocessable group at the top —
+>   right after the squadnum is evaluated, before any aircraft are created — and **skip it**:
+>   `if (v1!=ENABLE_COMPLEX_VAL && v1>=(int)SQ_MAX) return;`. An air group with a squadnum past `SQ_MAX` has
+>   no real squadron (S51's funnel already returns the neutral `bob_nullsquad`), so there's nothing to build;
+>   returning early (nothing allocated yet) retires the whole downstream sentinel-deref cascade in one place.
+>   Leaves `ENABLE_COMPLEX_VAL`, the `<SQ_BR_START` special QM codes, and valid German squads (75..147)
+>   untouched → zero normal-play change.
+> - **Verified.** QM 26: normal build flies the **full window, 0 crashes, interactive**; ASan **0 errors**
+>   (was: SEGV before reaching flight). Regressions QM 11 / QM 16: **0 ASan errors**, interactive. Bare
+>   `./bob` exits 0. Evidence: `/tmp/s52_*`. **The S50→S52 arc closes the QM 26 historic-mission load crash;
+>   combined with S46–S49, all sampled quick-mission categories (training/familiarisation/dogfight/bombing/
+>   intercept/historic) now load and fly memory-clean under ASan.** Game-code touch = one guarded early-return
+>   in PERSONS3.CPP.
+
 > ## R4.11 / S51 (2026-06-29): the S43 out-of-range-squadnum null-squad sentinel was UNDERSIZED — `bob_nullsquad` is now a `BritSquadron`, fixing the `AcType()` global-buffer-overflow
 > Sprint 51 (R4.11), next QM 26 (historic) layer. Root-caused via gdb + a temporary `BOB_TRACE_SQ` trace:
 > the historic mission carries a **4th air group with an out-of-range squadnum `v1=187`** (SQ_MAX=148; the

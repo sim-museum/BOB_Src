@@ -478,6 +478,20 @@ void	Persons3::make_airgrp(info_airgrp& I)
 //DEADCODE RJS 15/02/00 		if (v1>SQ_BR_START)
 			squadrec=Node_Data[SquadNum(v1)];
 
+#if defined(BOB_LINUX)
+	// S52: an air group whose squadnum is out of range (>= SQ_MAX) is unprocessable --
+	// it has no real squadron (S51's funnel returns the neutral bob_nullsquad) and its
+	// per-aircraft data (homebase, route/waypoint UIDs) is bogus, so downstream processing
+	// keeps dereferencing unresolved-UID sentinels (0xFFFFFFFF) and SEGVs (S50 homebase,
+	// S51 AcType, FixUpWaypointsToGroup:1826, ...). Skip the whole group here -- nothing is
+	// allocated yet -- rather than chase each deref. Found fuzzing QM 26 (historic), whose
+	// 4th air group carries squadnum 187 (SQ_MAX=148). ENABLE_COMPLEX_VAL (no concrete
+	// squadnum) and the <SQ_BR_START special QM codes / valid German squads (75..147) are
+	// left untouched, so zero normal-play change. See PORT.md (S52).
+	if (v1!=ENABLE_COMPLEX_VAL && v1>=(int)SQ_MAX)
+		return;
+#endif
+
 	FormationIndex estformpos=FormationIndexMIN;
 //DeadCode JIM 20Oct00 	int	wingcount=0;
 	int wingac=I.inwing.Evaluate();
