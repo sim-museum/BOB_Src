@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.14 / S54 (2026-06-29): `FindNextBf` scramble-table global-buffer-overflow fixed (>8 groups) — historic missions stop corrupting memory; they now bail cleanly on a setup FATAL
+> Sprint 54 (R4.14), chasing the S53 historic-mission cluster (QM 23–30). Fixed the one **shared memory
+> bug**; the rest turn out to be a clean engine-level bail, not UB.
+> - **Fixed — `Persons2::FindNextBf` `LOADSCRAMBF` overflow (TANK.CPP:531).** The scramble setup loop visits
+>   2×8×3 = 48 `quickdef.line[s][w][g]` slots and writes `GR_Scram_*[glind++]` per group with flights — but
+>   the four `GR_Scram_*` arrays are only **`[8]`** (GLOBREFS.CPP:124-127). A normal scramble has ≤8 groups;
+>   a historic quick mission's quickdef carries more, so `glind` runs off the end → ASan **global-buffer-
+>   overflow WRITE** (QM 27 & QM 29, identical site, via `LoadSetPiece`→`FindCommsNextBf`). **Fix
+>   (`#if BOB_LINUX`):** clamp `if (glind < 8)` around the per-group writes — store the first 8 groups, ignore
+>   the rest. Combat/training QMs (≤8 groups) unaffected.
+> - **Verified.** The `FindNextBf` overflow is **gone** for every historic index. QM 11 combat regression:
+>   **0 ASan errors**, interactive. Bare `./bob` exits 0.
+> - **What remains on the historic missions (NOT memory bugs).** With the overflow gone, QM 23/25/27/28/29
+>   now **exit cleanly on a `*** FATAL` at `Persons3.cpp:3284`** (the engine's own invalid-mission-data
+>   guard) — i.e. the `BOB_BOOT_FRONTEND` scaffold doesn't fully set these historic missions up (they
+>   normally come through the campaign/briefing flow). That's a **scaffold limitation, not a crash**; QM 24
+>   & 26 do fly. **Logged for S55:** QM 24 surfaces a *separate* shared bug — `MathLib::rnd()` global-buffer-
+>   overflow (RNG table over-read, MATH.CPP:1846) via `MoveAirStruc::AutoCrashTumble` on the move thread;
+>   worth fixing since `rnd()` is engine-wide. Evidence: `/tmp/s54_*`. Game-code touch = one guarded bound in TANK.CPP.
+
 > ## R4.13 / S53 (2026-06-29): broad ASan sweep of ALL quick missions — fixes a 2nd new[]/delete mismatch (`dodigitdial` cockpit dial); maps the remaining historic-mission cluster
 > Sprint 53 (R4.13). Extended the S49 fuzz methodology to the **whole quick-mission table** (indices 1–30,
 > ASan, ~10s each). Most fly clean; one new render-path defect fixed, and the historic cluster mapped.

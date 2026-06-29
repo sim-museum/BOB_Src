@@ -512,6 +512,16 @@ FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 			for(int s=0;s<2;s++)
 				for(int w=0;w<8;w++)
 					for(int g=0;g<3;g++)
+#if defined(BOB_LINUX)
+					/* S54: the GR_Scram_* arrays are all [8] (GLOBREFS.CPP:124-127), but this
+					   loop visits 2*8*3=48 quickdef slots and writes GR_Scram_*[glind] per group
+					   with flights. A normal scramble has <=8 groups; a historic quick mission's
+					   quickdef can carry more -> glind runs off the end (ASan global-buffer-overflow
+					   WRITE at TANK.CPP:531, in FindNextBf via LoadSetPiece, found fuzzing QM 27/29).
+					   Clamp to the array bound: store the first 8 groups, ignore the rest. Combat/
+					   training QMs (<=8 groups) are unaffected. See PORT.md (S54). */
+					if (glind < 8)
+#endif
 						if(CSQuick1::quickdef.line[s][w][g].flights || CSQuick1::quickdef.line[s][w][g].AllowZero())
 						{
 							GR_Scram_Alt[glind]=CSQuick1::quickdef.line[s][w][g].alt;
