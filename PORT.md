@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.17 / S57 (2026-06-29): new seam — ASan on the FRONT-END finds a startup overflow; `LaunchScreen` was indexing `resolutions[-1]` before `m_currentres` was set
+> Sprint 57 (R4.17). Extended the ASan-fuzz methodology from the flight path to the **front-end**
+> (`BOB_FRONTEND`+`BOB_OLE_DRAW`, menu→config navigation). It immediately surfaced latent global-buffer-
+> overflows (the front-end "works" but reads garbage past globals); fixed the primary startup one.
+> - **Fixed — `RFullPanelDial::LaunchScreen` resolution-index over-read (fullpsys.cpp:1222).** `m_currentres`
+>   starts **-1** (constructor) and `FullScreen::resolutions` is **[6]** (FULLPANE.H:35), but `LaunchScreen`
+>   reads `pfullscreen->resolutions[m_currentres].artwork` without first ensuring it's set — so the first
+>   (startup) call indexes out of range (ASan **global-buffer-overflow READ** at :1222, via
+>   `CMainFrame::Initialise`→`LaunchFullPane`→`LaunchMain`→`LaunchScreen`). The engine already has the right
+>   lazy-init guard at fullpsys.cpp:1442 (`if(m_currentres==-1) m_currentres=GetCurrentRes()`); it was just
+>   missing here. **Fix (`#if BOB_LINUX`):** apply the same guard + bound to [0,5] before the index.
+>   `GetCurrentRes()` returns [0,5], so valid; for the already-set common case the guard is a no-op.
+> - **Verified.** Front-end ASan: the `:1222` overflow is **gone**, total front-end errors **7 → 4**. Normal
+>   build front-end still paints the menu (`LaunchMain painted`), 0 crashes; bare `./bob` exits 0.
+> - **Logged for S58 — remaining front-end overflows.** The other 4 are in the **OLE config-control path**:
+>   `CRListBoxCtrl::AddString`/`ReplaceString` and `MakeField`/`BITSET` (the hosted RListBox/RCombo widgets
+>   and dialog-field layout). A separate seam; next sprint. Evidence: `/tmp/s57*`. Game-code touch = one
+>   guarded lazy-init in FULLPSYS.CPP.
+
 > ## R4.16 / S56 (2026-06-29): combat depth-fuzz comes back CLEAN; historic-mission cluster closed out as a scaffold-context limitation (not memory bugs)
 > Sprint 56 (R4.16), verification + investigation closure for the S46→S55 memory-hardening arc.
 > - **Combat depth-fuzz — clean.** Ran QM 0/11/16/18 with **`BOB_AUTOFLY=shoot`** (guns firing) ~22s each

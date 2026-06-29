@@ -1219,6 +1219,18 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 	pdial[0]=pdial[1]=pdial[2]=NULL;
 	Invalidate();
 	m_currentscreen=pfullscreen;
+#if defined(BOB_LINUX)
+	// S57: FullScreen::resolutions is [6] (FULLPANE.H:35) and m_currentres starts -1
+	// (constructor). LaunchScreen reads resolutions[m_currentres] but -- unlike the
+	// lazy-init guard the engine already has at fullpsys.cpp:1442 -- doesn't ensure it's
+	// set, so the first (startup) LaunchScreen indexes resolutions[-1]/out-of-range
+	// (ASan global-buffer-overflow READ at :1222, via Initialise->LaunchMain->LaunchScreen).
+	// Apply the same guard here, and bound it to [0,5] against any stale value. See PORT.md (S57).
+	if (m_currentres < 0 || m_currentres >= 6)
+		m_currentres = GetCurrentRes();
+	if (m_currentres < 0 || m_currentres >= 6)
+		m_currentres = 0;
+#endif
 	artnum=pfullscreen->resolutions[m_currentres].artwork;
 	PositionRListBox();
 	localnote=NULL;
