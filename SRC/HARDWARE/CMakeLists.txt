@@ -8,9 +8,6 @@ add_library(bob_hardware STATIC
     _HARD.CPP
 )
 target_include_directories(bob_hardware PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)
-# Sample::LoadBuffer does `*((PCMWAVEFORMAT*)&tmpwf) = wavformat` where tmpwf is a
-# WAVEFORMATEX (18 bytes, pack(1)) but PCMWAVEFORMAT is 20 bytes -> a benign 2-byte
-# stack overflow, harmless on Windows (no stack protector) but tripping -fstack-protector
-# here (__stack_chk_fail abort once sound plays). Game code stays pristine; disable the
-# protector for this TU to match the original behaviour.
-target_compile_options(bob_hardware PRIVATE -fno-stack-protector)
+# S48: the Sample::LoadBuffer 20-byte stack over-write (PCMWAVEFORMAT->WAVEFORMATEX
+# copy) is now fixed at source (SAMPLE.CPP, #if BOB_LINUX), so -fstack-protector is
+# safe again and re-enabled (default). Was: -fno-stack-protector to mask the overflow.

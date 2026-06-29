@@ -259,8 +259,21 @@ bool	Sample::LoadBuffer(PCMWAVEFORMAT& wavformat, void* dataptr, int datasize)
 	if (this)
 	{
 		WAVEFORMATEX	tmpwf;
-		
+
+#if defined(BOB_LINUX)
+		// S48: the original casts &tmpwf to PCMWAVEFORMAT* and copies the whole
+		// struct -- sizeof(PCMWAVEFORMAT)==20 in the compat headers (dsound.h's
+		// PCMWAVEFORMAT.wf is a full WAVEFORMATEX(18), not Win32's WAVEFORMAT(14)),
+		// so it writes 20 bytes into the 18-byte tmpwf -> a 2-byte stack over-write
+		// (ASan WRITE size 20, SAMPLE.CPP:263; previously masked by disabling
+		// -fstack-protector for this TU). Since wavformat.wf IS a WAVEFORMATEX here,
+		// copy it directly: an exact 18-byte copy with the identical result (the
+		// original's overflowing 2 bytes were the redundant PCMWAVEFORMAT::
+		// wBitsPerSample, discarded anyway). See PORT.md (S48).
+		tmpwf = wavformat.wf;
+#else
 		*((PCMWAVEFORMAT*)&tmpwf) = wavformat;
+#endif
 
 		tmpwf.cbSize = 0;
 		

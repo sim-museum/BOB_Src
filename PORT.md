@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.8 / S48 (2026-06-29): ★★ COMBAT RUN NOW 100% ASan-CLEAN — `Sample::LoadBuffer` stack over-write fixed at source; `-fstack-protector` re-enabled for the HARDWARE TU
+> Sprint 48 (R4.8, hardening — the finale of the S46→S48 combat-path arc). The last ASan finding on the
+> flight path — a long-known "benign" stack over-write that had been worked around by **disabling the
+> stack protector for the whole HARDWARE module** — is now fixed at source. **A full Turkey Shoot sortie
+> under ASan reports ZERO errors** (heap + stack), and the protector is back on.
+> - **Root cause (a compat-header layout bug, surfacing as a game-code over-write).** `Sample::LoadBuffer`
+>   (SAMPLE.CPP:263) does `*((PCMWAVEFORMAT*)&tmpwf) = wavformat;` — reinterpreting an 18-byte
+>   `WAVEFORMATEX tmpwf` as a `PCMWAVEFORMAT` and copying the whole struct. In the compat headers
+>   (`dsound.h`) **`PCMWAVEFORMAT.wf` is a full `WAVEFORMATEX` (18 bytes), not Win32's `WAVEFORMAT`
+>   (14 bytes)**, so `sizeof(PCMWAVEFORMAT)==20` (should be 16) and the copy writes **20 bytes into 18**
+>   → a 2-byte stack over-write (ASan `WRITE size 20`, on the move cycle: `SetInstruments`→`PlayOnce`→
+>   `SetUpSample`→`LoadBuffer`). Harmless on Win32 (PCMWAVEFORMAT is 16 there), but real UB that tripped
+>   `-fstack-protector` (`__stack_chk_fail` abort once sound played) — hence the old TU-wide workaround.
+> - **Fix (`#if defined(BOB_LINUX)`, SAMPLE.CPP).** Since the compat `wavformat.wf` *is* a `WAVEFORMATEX`,
+>   copy it directly: `tmpwf = wavformat.wf;` — an exact 18-byte copy with the **identical result** (the
+>   original's 2 overflowing bytes were the redundant `PCMWAVEFORMAT::wBitsPerSample`, immediately
+>   discarded; `tmpwf.cbSize` is zeroed next either way). No behaviour change, no over-write. Windows path
+>   preserved in the `#else`.
+> - **Workaround removed.** `SRC/HARDWARE/CMakeLists.txt` no longer forces `-fno-stack-protector` — the TU
+>   builds with the default protector again, restoring that safety net for the whole sound module.
+> - **Verified.** ASan Turkey Shoot (`BOB_QM_INDEX=11`, ~24s flight): **0 ASan errors of any kind** (no log
+>   emitted) — the `LoadBuffer` over-write is gone and nothing else remains (S46 lens double-free, S47 LBM
+>   + translatedirlist over-reads already fixed). Normal build, **stack-protector ON, audio ON**: flew the
+>   full window, **0 `__stack_chk_fail` / 0 aborts**, and `BOB_TRACE_SND` confirms the path runs (OpenAL up,
+>   `CreateSoundBuffer … 8bit @11025Hz` → `LoadBuffer`). Bare `./bob` exits 0. Evidence: `/tmp/s48_run.log`
+>   (clean ASan), `/tmp/s48_normal.log`, `/tmp/s48_snd.log`. **Net: the Turkey Shoot combat path is now
+>   memory-clean end to end under AddressSanitizer.**
+
 > ## R4.7 / S47 (2026-06-29): ★ LBM UNPACK HEAP-OVERFLOW FIXED — the last real (non-benign) ASan finding from the combat run; `FixLbmImageMap` no longer reads a control byte past the file buffer
 > Sprint 47 (R4.7, hardening). The S46 combat ASan run left one genuine UB open (logged then as a future
 > pass): a **heap-buffer-overflow in `ImageMap_Desc::FixLbmImageMap` (lbmcpp.h:206)** on the **normal flight
