@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.16 / S56 (2026-06-29): combat depth-fuzz comes back CLEAN; historic-mission cluster closed out as a scaffold-context limitation (not memory bugs)
+> Sprint 56 (R4.16), verification + investigation closure for the S46→S55 memory-hardening arc.
+> - **Combat depth-fuzz — clean.** Ran QM 0/11/16/18 with **`BOB_AUTOFLY=shoot`** (guns firing) ~22s each
+>   under ASan, exercising gun-fire / tracers / hits / explosions / deaths — the path that originally
+>   surfaced the R1.3e gun-fire double-free. **0 ASan errors** on all four; normal build QM 11+shoot 0
+>   crashes; bare `./bob` exits 0. The flight/combat memory-safety seam is now well-mined: across S46–S55
+>   the whole quick-mission path (load → fly → fire) is ASan-clean for every combat/training mission.
+> - **Historic-mission cluster (QM 23–30) — closed as a scaffold limitation.** S50–S55 fixed every *memory*
+>   defect these missions exposed (homebase sentinel, AcType/null-squad sizing, out-of-range air-group skip,
+>   FindNextBf scramble overflow, rnd over-read). What remains is **not a memory bug**: with the engine now
+>   robust, QM 23/25/27/28/29 exit cleanly on the engine's own **`*** FATAL: Unresolved UIDS!`**
+>   (Persons3.cpp:3284) — the `BOB_BOOT_FRONTEND` quick-boot scaffold doesn't load the squadron/airfield/
+>   target entities historic missions reference (that's the campaign/briefing-flow setup it bypasses). QM 30
+>   (the only `plgrp=1` entry) **hangs in LoadSetPiece** on the same incomplete data (a resolution loop).
+>   Making historic missions playable via the scaffold is **feature work** (port the full historic-mission
+>   setup), tracked as a future front — distinct from the memory-safety work this arc completed.
+> - **Net for the arc (S46–S56).** Turkey Shoot combat 100% ASan-clean (S46–S48); a systematic per-category
+>   fuzz-sweep found+fixed two render-path `new[]/delete` mismatches (S49 DrawSubShape, S53 dodigitdial) and
+>   the squadnum-range crash family (S50–S55); combat depth-fuzz confirms it holds. No code change this
+>   sprint (pure verification/closure). Evidence: `/tmp/s56*`.
+
 > ## R4.15 / S55 (2026-06-29): `MathLib::rnd()` lookup-table over-read fixed — an engine-wide RNG off-by-one (index 55 of a 55-entry table)
 > Sprint 55 (R4.15), the separate shared bug S54 surfaced on QM 24. `MathLib::rnd()` (MATH.CPP) is the
 > engine-wide PRNG; this fixes a 1-element over-read of its lookup table.
