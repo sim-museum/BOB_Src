@@ -609,7 +609,19 @@ void	Persons3::make_airgrp(info_airgrp& I)
 			else
 				setpointer((ItemBase**)&currac->ai.homebase,UniqueID(v1));
 
+#if defined(BOB_LINUX)
+			// S50: homebase may be the unresolved-UID sentinel (ItemBasePtr)-1 that
+			// setpointer/logpointercopy (PERSONS3.CPP:2802) writes when the home airfield
+			// isn't loaded yet (resolved later by the deferred fixup pass via adduidrequest).
+			// The original check only excludes NULL, so when an air group loads before its
+			// airfield the next line derefs 0xFFFFFFFF->World.Y (offset 8 wraps to 0x7) -> SEGV
+			// in make_airgrp (ASan, found fuzzing QM 26 historic; load-order dependent, not
+			// QM-26-specific). Skip the ground-altitude tweak for an unresolved homebase -- the
+			// real airfield gets its own World.Y when it loads. See PORT.md (S50).
+			if((currac->ai.homebase) && (currac->ai.homebase != (ItemBasePtr)-1) && (currac->ai.homebase->World.Y == 0))
+#else
 			if((currac->ai.homebase) && (currac->ai.homebase->World.Y == 0))								//CSB 5Oct00
+#endif
 			{																								//CSB 5Oct00
 				UByte areatype;																				//CSB 5Oct00
 				currac->ai.homebase->World.Y = _Collide.GroundAltitude(currac->ai.homebase->World, &areatype, true);	//CSB 5Oct00

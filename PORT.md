@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.10 / S50 (2026-06-29): `make_airgrp` unresolved-homebase SEGV fixed (load-order bug) — air groups loaded before their airfield no longer deref the UID fixup sentinel
+> Sprint 50 (R4.10), chasing the QM 26 (historic) load failure the S49 sweep found. Root-caused and fixed
+> the first crash; QM 26 advances past it (a deeper, separate squadnum-range layer remains, logged for S51).
+> - **Root cause.** In `Persons3::make_airgrp` (PERSONS3.CPP:612) the home-airfield altitude tweak does
+>   `if (homebase && homebase->World.Y==0) homebase->World.Y = GroundAltitude(...)`. But `homebase` is set
+>   by `setpointer`→`logpointercopy` (PERSONS3.CPP:2802), which — when the airfield item **isn't loaded
+>   yet** — writes the **unresolved-UID sentinel `(ItemBasePtr)-1` (0xFFFFFFFF)** and queues a deferred
+>   fixup (`adduidrequest`). The check only excludes NULL, so when an air group loads **before** its
+>   airfield, the next line derefs `0xFFFFFFFF->World.Y` — offset 8 wraps (32-bit) to **0x7**, the exact
+>   SEGV address ASan reported. **Load-order dependent, not QM-26-specific:** any set-piece whose aircraft
+>   precede their airfield hits it (Turkey Shoot et al. happened to resolve homebase immediately).
+> - **Fix (`#if defined(BOB_LINUX)`, PERSONS3.CPP).** Also exclude the `(ItemBasePtr)-1` sentinel before
+>   the deref: `if (homebase && homebase != (ItemBasePtr)-1 && homebase->World.Y==0)`. The deferred fixup
+>   pass patches `homebase` to the real airfield (with its own `World.Y`) once it loads, so skipping the
+>   tweak for an unresolved homebase is correct. Behaviour-identical when homebase is already resolved
+>   (the working case); Windows path kept in the `#else`.
+> - **Verified.** ASan QM 26: the line-612 `make_airgrp` SEGV is **gone** (load advances past it). QM 11
+>   Turkey Shoot regression: **0 ASan errors**, reaches interactive (the fix is in shared `make_airgrp`,
+>   so this matters). Bare `./bob` exits 0.
+> - **Logged for S51 — QM 26 next layer.** With the homebase deref fixed, QM 26 now crashes deeper:
+>   `make_airgrp:638` → `squadrec->AcType()` → `BritSquadron::AcType()` (NODEBOB.CPP:6658) → an `OnlyField`
+>   bitfield read = **global-buffer-overflow** (ASan READ size 1). That's the squadnum/plane-type **range**
+>   family (cf. S38–S43 squadnum work; the boot log shows this historic mission with `playersquadron=70`).
+>   Scoped as S51. Evidence: `/tmp/s50_*`. Game-code touch = one guarded condition in PERSONS3.CPP.
+
 > ## R4.9 / S49 (2026-06-29): fuzz-sweep across quick missions finds + fixes a `DrawSubShape` new[]/delete mismatch (Luftwaffe sub-shapes); QM 26 load-failure logged for next sprint
 > Sprint 49 (R4.9, hardening — broadening coverage beyond Turkey Shoot). Applied the project's "a real
 > pilot is the best fuzzer" methodology **systematically**: ran 5 diverse quick missions under ASan
