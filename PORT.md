@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.23 / S63 (2026-06-29): front-end navigation fuzz comes back CLEAN; and trilinear (`BOB_FILTER=2`) no longer crashes — the documented mip-upload crash is gone
+> Sprint 63 (R4.23), continuing the fuzz into unexercised front-end paths, plus retiring a stale open crash.
+> - **Front-end navigation fuzz — clean.** Beyond the fly path (S62), swept the other screens under ASan with
+>   varied `BOB_AUTOCLICK` sequences: PC Config and its tabs (`5`, `5,1`, `5,2`, `5,3` — the OLE
+>   RCombo/RListBox-hosted GFX/Sound config forms), Campaign side-select (`1`), and other top-level screens
+>   (`3`, `4`). **All 7 paths: 0 ASan errors.** The front-end (incl. the OLE config controls the S58 listbox
+>   fix touched) is clean across navigation.
+> - **Trilinear (`BOB_FILTER=2`) now works.** The long-documented open crash — "trilinear crashes in the
+>   game's mipmap upload (`CopyMapToSurface`)" — **no longer reproduces.** With `filtering=2` engaged
+>   (`[boot] BOB_FILTER: Save_Data.filtering=2`): 20s interactive, **0 ASan errors**, frame **97% non-black**,
+>   0 crashes. Incidentally fixed by the S47/S48/S60 texture/surface hardening (LBM upload bound, LoadBuffer,
+>   the `g_devTex`/surface-lifetime work). Stale CLAUDE.md note corrected; trilinear is available via
+>   `BOB_FILTER=2` (could be defaulted after a long soak).
+> - **Net.** No code change (both findings are verification/closure). Evidence: `/tmp/s63*`. The crash/memory
+>   seam across the playable game (flight, combat, front-end, launch, return loop, both filter modes) is now
+>   exhausted under ASan — fuzzing the playable paths finds nothing new. Remaining backlog is a **domain
+>   shift** (historic-mission scaffold *feature* setup; cosmetic fidelity like the rear-view mirror horizon
+>   UV), not memory-safety.
+
 > ## R4.22 / S62 (2026-06-29): ★★ FULL GAMEPLAY LOOP ASan-CLEAN — menu → quick mission → fly → debrief → back to menu, 0 errors
 > Sprint 62 (R4.22), capstone verification of the S46→S61 hardening arc. Ran the env-free Definition-of-Done
 > playthrough — `BOB_FRONTEND`+`BOB_OLE_DRAW`, `BOB_AUTOCLICK="0,1,2"` (Quick Mission → Fly → Fly),

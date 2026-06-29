@@ -107,8 +107,10 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    UV work (or a compat texcoord sanitiser) — deferred. **Land textures: now default FULL_RES** — the QM
    boot defaults `Save_Data.textureQuality=4`, so the land RT is **256×256** (4× the old 128 detail; sharp
    fields/runways), default flight + cockpit stable. `BOB_TEXQ`/`BOB_FILTER` override; `BOB_TEXQ=0` reverts.
-   Trilinear (`BOB_FILTER=2`) still crashes in the game's mipmap upload (`CopyMapToSurface`) — default is
-   BILINEAR FULL_RES; real trilinear is a deeper mip-upload workstream. Confirm long-session lifetime.
+   Trilinear (`BOB_FILTER=2`) **now works** (S63, 2026-06-29): the old `CopyMapToSurface` mip-upload crash
+   no longer reproduces — incidentally fixed by the S47/S48/S60 texture/surface hardening (renders 97%
+   non-black, 0 ASan errors, stable). Default is still BILINEAR FULL_RES; trilinear is available via
+   `BOB_FILTER=2` and could be defaulted after a long-session soak.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/
