@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.25 / S65 (2026-06-29): ★ CAMPAIGN POST-MISSION loop ASan-CLEAN — headless return-from-flight confirmed, then 3 distinct bugs fixed in the fly→close→map rebuild
+> Sprint 65 (R4.25). Goal (PO option 1): make the headless return-from-flight work so the campaign
+> **post-mission** transition can be ASan-fuzzed, then fix what it finds. Both done.
+> - **Headless return works — it was ASan-slow, not broken.** Traced the `BOB_AUTOQUIT` gates
+>   (`BOB_TRACE_AQ`, new default-off diag): in the campaign flight all three are met (`kbAcq=1`,
+>   `flight_active=1`, frame≥`t0f`); the normal build closes the flight at frame 120 → `OnFlyingClosed` →
+>   strategic-map rebuild. The ASan build is ~5× slower, so it just hadn't reached the close in the earlier
+>   70 s window — `BOB_AUTOQUIT=1debrief` (close at ~30 presented frames) + a long timeout reaches the
+>   post-mission map rebuild under ASan. (The campaign returns to the **strategic map**, not a debrief
+>   screen.)
+> - **Post-mission fuzz found 12 errors / 3 classes — all fixed:**
+>   1. **`PackageList::LoadGame` new[]/delete mismatch (MAPCODE.CPP:430 vs 503).** The Package.dat **reload**
+>      (`StartUpMapWorld`) `new char[64K]` freed with scalar `delete` → `delete[]`. **4th** instance of this
+>      class (after S49/S53/S58) — and the read-side twin of S64's `SaveBin` write-side fix.
+>   2. **`CDC::SelectObject(CPen*)` stack-use-after-return (compat `afxwin.h`).** The CDC cached the
+>      caller's **stack** `CPen*`; `CMIGView::Plot{Main,Target,TakeOff}Route` select a local pen then restore
+>      the returned "old" pen later — which was a dead stack temporary → UAR on the post-mission map redraw.
+>      Fix: keep only the pen **colour** on a small LIFO value-stack and return a fixed sentinel the caller
+>      passes back to restore (pop the saved colour; never deref a dead pen).
+>   3. **`shape::dorelpoly` heap-buffer-overflow (3DCOM.CPP:4761).** The relpoly opcode stores
+>      `numVertices-1` offset deltas (per its `instr_ptr` advance) but the loop read one per vertex →
+>      a `SWord` over-read of the shape buffer on the last vertex (and that delta is unused). Skip the final read.
+> - **Verified.** Campaign post-mission loop under ASan: **12 → 0 errors** (LoadGame/SelectObject/dorelpoly
+>   all gone), flight-close + map rebuild reached. Regression (afxwin.h is wide; 3dcom.cpp is the shared
+>   flight path): QM 11 flight 97% non-black, 0 crashes; front-end full loop 0 errors + returns to menu;
+>   bare `./bob` 0. **The campaign — the main game mode — now flies and returns memory-clean.** Evidence:
+>   `/tmp/s65*`. Touch: MAPCODE.CPP + 3DCOM.CPP (`#if BOB_LINUX`/PORT FIX) + compat afxwin.h + bob_video.cpp diag.
+
 > ## ⇄ Cross-port reply → MA (2026-06-29): thanks for triaging the S46→S62 arc; +2 new shared candidates from S63/S64
 > Picked up `doc/CROSS-PORT-FROM-MA-2026-06-29.md` and committed the refreshed shared notes
 > (`ROWAN_ENGINE_LINUX_PORT_NOTES.md` §5, byte-identical again). Your triage is accurate — agreed on every

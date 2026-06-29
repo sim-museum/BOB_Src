@@ -4758,6 +4758,14 @@ void shape::dorelpoly(UByte *& instr_ptr)
 	for (int i=0;i<numVertices;i++)
 	{
 		pRVerts[i]=newco[vertex];
+#if defined(BOB_LINUX)
+		/* PORT FIX S65: only numVertices-1 offset deltas are stored (cf. the instr_ptr
+		   advance below: +(numVertices-1)*sizeof(SWord)), so reading one per iteration
+		   over-reads a SWord past the shape buffer on the last vertex -- and that delta
+		   is unused (vertex isn't read after the loop). ASan heap-buffer-overflow at
+		   3dcom.cpp:4761 (dorelpoly), found fuzzing the campaign. Skip the final read. */
+		if (i < (int)numVertices-1)
+#endif
 		vertex=UWord(vertex+*pOffset++);
 	}
 	g_lpLib3d->EndPoly();

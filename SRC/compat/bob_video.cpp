@@ -274,6 +274,11 @@ static void pump_events(void)
 	/* BOB_AUTOQUIT=<sec>: R1.1b inc 4.3 headless test of the return path. After ~<sec> seconds
 	   of flight, hold F12 (DIK 0x58 = KEY_CONFIGMENU) for a few frames so the per-frame
 	   KeyPress3d poll fires View3d::CloseWindow(IDCANCEL) -> the close bridge -> back to menu. */
+	if (getenv("BOB_TRACE_AQ")) { static long lf=-1000;	/* S65 diag */
+		if ((long)g_frameNo-lf>=60) { lf=(long)g_frameNo;
+			fprintf(stderr,"[aq] autoquit=%s kbAcq=%d flight_active=%d frame=%ld\n",
+				getenv("BOB_AUTOQUIT")?getenv("BOB_AUTOQUIT"):"(unset)", g_diKbAcquired, g_bob_flight_active, (long)g_frameNo);
+			fflush(stderr); } }
 	if (getenv("BOB_AUTOQUIT") && g_diKbAcquired) {
 		const char* aq=getenv("BOB_AUTOQUIT");
 		bool toDebrief = strstr(aq,"debrief")!=NULL;      /* BOB_AUTOQUIT=debrief -> mission-end debrief */

@@ -519,9 +519,25 @@ public:
            matching DPI/scale pass on the layout -- deferred. */
         CFont* old = m_bobCurFont; m_bobCurFont = f;
         return old; }
-    CPen* m_bobCurPen = NULL;
-    CPen*  SelectObject(CPen* p)  { CPen* o = m_bobCurPen; m_bobCurPen = p;
-        if (p && p->m_hasColor) m_penColor = p->m_color; return o; }
+    /* S65: do NOT cache the caller's CPen*. The map route plotting
+       (CMIGView::Plot*Route) selects a STACK-local CPen then later restores the
+       returned "old" pen; that old pen was a stack temporary from a prior frame, so
+       caching/dereferencing it on restore was a stack-use-after-return (ASan, on the
+       post-mission map redraw). Keep only the pen COLOUR by value on a small LIFO
+       stack and hand back a fixed sentinel the caller passes back to restore -- on
+       restore we pop the saved colour and never dereference a (possibly dead) pen. */
+    bool m_penHasColor = false;
+    COLORREF m_penStk[16]; bool m_penHasStk[16]; int m_penSP = 0;
+    CPen*  SelectObject(CPen* p)  {
+        static CPen s_restoreTok;                       /* its address is the restore marker */
+        if (p == &s_restoreTok) {                       /* restore: pop the saved colour */
+            if (m_penSP > 0) { --m_penSP; m_penColor = m_penStk[m_penSP]; m_penHasColor = m_penHasStk[m_penSP]; }
+            return NULL;
+        }
+        if (m_penSP < 16) { m_penStk[m_penSP] = m_penColor; m_penHasStk[m_penSP] = m_penHasColor; ++m_penSP; }
+        if (p && p->m_hasColor) { m_penColor = p->m_color; m_penHasColor = true; }
+        return &s_restoreTok;                           /* non-null; caller passes back to restore */
+    }
     CPen*  SelectObject(CPen& p)  { return SelectObject(&p); }
     CBrush* SelectObject(CBrush*) { return NULL; }
     COLORREF SetTextColor(COLORREF c) { COLORREF o = m_textColor; m_textColor = c; return o; }

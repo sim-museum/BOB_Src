@@ -500,7 +500,10 @@ void	PackageList::LoadGame(BIStream& bis)
 			pack[packnum].RecostRaidList();
 #endif
 	Todays_Packages.SetVisibilityFlags();
-	delete buffer;
+	delete[] buffer;	/* PORT FIX S65: buffer is `new char[SIZ2]` (:430) -> needs delete[]; scalar
+						   delete is a new[]/delete mismatch (ASan alloc-dealloc-mismatch in
+						   PackageList::LoadGame, on the post-mission Package.dat reload). 4th of
+						   this class (cf. S49/S53/S58); benign on Win32, real UB. */
 }
 
 //������������������������������������������������������������������������������
