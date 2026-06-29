@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.7 / S47 (2026-06-29): ★ LBM UNPACK HEAP-OVERFLOW FIXED — the last real (non-benign) ASan finding from the combat run; `FixLbmImageMap` no longer reads a control byte past the file buffer
+> Sprint 47 (R4.7, hardening). The S46 combat ASan run left one genuine UB open (logged then as a future
+> pass): a **heap-buffer-overflow in `ImageMap_Desc::FixLbmImageMap` (lbmcpp.h:206)** on the **normal flight
+> path** (every QM/campaign load goes through it). Now fixed and ASan-verified to 0.
+> - **Root cause.** `FixLbmImageMap` (IMAGEMAP.CPP:933) decodes an IFF/ILBM image's BODY/ALFA hunks row by
+>   row by `#include "lbmcpp.h"` — the "communal" ByteRun1 (PackBits) RLE unpack. Its loops are driven by
+>   **pixel position** (`while(x<=maxx)`, `while(width)`, …), **not input size**: a row whose compressed data
+>   ends exactly at the file-buffer end makes the next `b=*(c++)` (lbmcpp.h:206, CASE 3B) read **one control
+>   byte past the buffer**. ASan: `READ size 1` at `buf+24636`, **0 bytes after** the 24636-byte fileblock
+>   (`makefileblock`→`new UByte[]`), reached `InitPalette`→`LandMapNum::GetLandMapPtr`→`LandMapNumRecord
+>   ::operator[]`→`FixLbmImageMap`. Benign on Windows (reads adjacent heap) but real UB. *(Diagnostic note:
+>   the body lives in `lbmcpp.h`, `#include`d into IMAGEMAP.CPP; greps kept missing it because these sources
+>   carry CP437 box-drawing bytes and plain `grep` treats them as binary — `grep -a` found the include site.)*
+> - **Fix (`#if defined(BOB_LINUX)`).** Bound every control-byte-read loop against the end of the file
+>   buffer. `IMAGEMAP.CPP` defines `cend = buffer + fblockptr->getsize()`; `lbmcpp.h` defines
+>   `LBM_INBOUNDS` = `&& (c < cend)` (no-op on Windows) and appends it to the four unpack `while`
+>   conditions (CASE 1 left-clip, 3A fast, 3B slow, 4 RHS). Behaviour-identical on well-formed data (the
+>   bound only trips at the buffer end, where the read was past-the-end garbage anyway); no engine logic
+>   change. Original conditions preserved on Windows via the empty macro.
+> - **Verified.** ASan Turkey Shoot (`BOB_QM_INDEX=11`): **`FixLbmImageMap` heap-buffer-overflow → 0** (it
+>   was the last `heap-buffer-overflow` in the run — none remain; only the long-documented benign 20-byte
+>   `Sample::LoadBuffer` `PCMWAVEFORMAT`→`WAVEFORMATEX` audio over-write is still reported, separate/known).
+>   Normal build flew the full window, **0 crash markers**, frame **97% non-black** (sky/terrain/cockpit
+>   render intact — LBM decode unaffected). Bare `./bob` exits 0. Evidence: `/tmp/s47_asan.*`,
+>   `/tmp/s47_normal.log`, `/tmp/s47_frame.ppm`. Game-code touch = LBMCPP.H + IMAGEMAP.CPP, all behind
+>   `#if defined(BOB_LINUX)`.
+
 > ## R4.6 / S46 follow-up (2026-06-29): boot-to-flight scaffold no longer FREEZES on flight-exit; + a `BOB_TRACE_DRAW` draw-thread diagnostic (came out of a live crash-test of the S46 fix)
 > A pilot stress-testing the S46 fix hit a repeatable **"hang"** a few seconds into Turkey Shoot. It was
 > **not a crash and not the S46 fix** — root-caused with a new env-gated trace, then fixed. The S46 lens
