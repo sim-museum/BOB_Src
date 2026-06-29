@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.15 / S55 (2026-06-29): `MathLib::rnd()` lookup-table over-read fixed — an engine-wide RNG off-by-one (index 55 of a 55-entry table)
+> Sprint 55 (R4.15), the separate shared bug S54 surfaced on QM 24. `MathLib::rnd()` (MATH.CPP) is the
+> engine-wide PRNG; this fixes a 1-element over-read of its lookup table.
+> - **Root.** `rndlookup[]` has **55 entries (indices 0..54)** and the state `bval`/`cval` is kept in [0,54]
+>   by the generator's wrap (`if(bval>54)bval=0`). But the high-quality mixing path (`rndcount>=MAX_RND`)
+>   has a `21..40` sub-branch computing `(b|c)val+(off&31)-16`, whose max is **40+31-16 = 55** — one past the
+>   table. ASan: **global-buffer-overflow READ size 2** at MATH.CPP:1846, reached via `MoveAirStruc::
+>   AutoCrashTumble`→`rnd()` on the move thread (a tumbling-aircraft path QM 24 happened to exercise; it's
+>   latent for *any* mission given the right `rndcount`/`bval` state). Harmless on Win32's allocator, real UB
+>   here on a function called all over the engine.
+> - **Fix (`#if BOB_LINUX`, MATH.CPP).** Fold the two overflow-capable indices by the real table size:
+>   `rndlookup[(... ) % RND_N]` with `RND_N = sizeof(rndlookup)/sizeof(rndlookup[0])` (55). In-range indices
+>   (≤54) are unchanged; only the lone overflow (55) wraps to 0. The other four index sites are provably in
+>   range and left as-is. Windows path kept in the `#else`.
+> - **Verified.** QM 24 (the AutoCrashTumble repro): **0 ASan errors** across 2 runs (was 1), flies. QM 11
+>   combat regression: **0 ASan errors**. Bare `./bob` exits 0. Game-code touch = two guarded `% RND_N` in MATH.CPP.
+
 > ## R4.14 / S54 (2026-06-29): `FindNextBf` scramble-table global-buffer-overflow fixed (>8 groups) — historic missions stop corrupting memory; they now bail cleanly on a setup FATAL
 > Sprint 54 (R4.14), chasing the S53 historic-mission cluster (QM 23–30). Fixed the one **shared memory
 > bug**; the rest turn out to be a clean engine-level bail, not UB.

@@ -1838,12 +1838,26 @@ RndVal	MathLib::rnd()
 
 	if (rndcount>=MAX_RND)
 	{	//54 == 00110110
+#if defined(BOB_LINUX)
+		// S55: rndlookup has 55 entries (0..54), and bval/cval are kept in [0,54] by the
+		// else-branch wrap below. But the 21..40 sub-branch computes `(b|c)val+(off&31)-16`,
+		// which reaches 40+31-16 = 55 -> a 1-element over-read of rndlookup (ASan global-
+		// buffer-overflow READ size 2 at MATH.CPP:1846, hit via MoveAirStruc::AutoCrashTumble
+		// -> rnd() on the move thread; harmless on Win32 but real UB on this RNG used engine-
+		// wide). Mod by the real table size to fold the lone overflow index (55 -> 0); the
+		// in-range indices (<=54) are unchanged. The other branches are provably in range. */
+		const int RND_N = (int)(sizeof(rndlookup)/sizeof(rndlookup[0]));
+#endif
 		UWord b;
 		if (bval>20)
 			if (bval>40)											  //JIM 26/03/99
 				b=rndlookup[bval-(rndcount&31)];
 			else
+#if defined(BOB_LINUX)
+				b=rndlookup[(bval+(rndcount&31)-16) % RND_N];	// S55: was OOB at 55
+#else
 				b=rndlookup[bval+(rndcount&31)-16];
+#endif
 		else
 			b=rndlookup[bval+(rndcount&31)];
 		UWord c;
@@ -1851,7 +1865,11 @@ RndVal	MathLib::rnd()
 			if (cval>40)											  //JIM 26/03/99
 				c=rndlookup[cval-((rndcount>>5)&31)];
 			else
+#if defined(BOB_LINUX)
+				c=rndlookup[(cval+((rndcount>>5)&31)-16) % RND_N];	// S55: was OOB at 55
+#else
 				c=rndlookup[cval+((rndcount>>5)&31)-16];
+#endif
 		else
 			c=rndlookup[cval+((rndcount>>5)&31)];
 
