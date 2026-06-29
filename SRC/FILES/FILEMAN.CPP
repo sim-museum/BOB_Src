@@ -457,7 +457,18 @@ int		pathstart=outind;
 			datalength--;
 		}
 		//skip to useful data on next line, assuming we haven't run out!
+#if defined(BOB_LINUX)
+		// R4.6/S46: test datalength FIRST so the && short-circuits before the
+		// deref. The original (*datascan<'0') && (datalength>0) reads *datascan
+		// before checking the count, so on the last pass (datalength just hit 0,
+		// datascan one past the dir-list buffer) it over-reads 1 byte -- ASan
+		// heap-buffer-overflow at FILEMAN.CPP:460 in InitFileSystem (same bug in
+		// the retranslatedirlist twin). Behaviour-identical on well-formed data;
+		// just no read past the end. See PORT.md (S46).
+		while (	(datalength>0) &&	(*datascan<'0'))
+#else
 		while (	(*datascan<'0') &&	(datalength>0))
+#endif
 		{
 			datascan++;
 			datalength--;
@@ -589,7 +600,18 @@ int		outind=0,
 			datalength--;
 		}
 		//skip to useful data on next line, assuming we haven't run out!
+#if defined(BOB_LINUX)
+		// R4.6/S46: test datalength FIRST so the && short-circuits before the
+		// deref. The original (*datascan<'0') && (datalength>0) reads *datascan
+		// before checking the count, so on the last pass (datalength just hit 0,
+		// datascan one past the dir-list buffer) it over-reads 1 byte -- ASan
+		// heap-buffer-overflow at FILEMAN.CPP:460 in InitFileSystem (same bug in
+		// the retranslatedirlist twin). Behaviour-identical on well-formed data;
+		// just no read past the end. See PORT.md (S46).
+		while (	(datalength>0) &&	(*datascan<'0'))
+#else
 		while (	(*datascan<'0') &&	(datalength>0))
+#endif
 		{
 			datascan++;
 			datalength--;

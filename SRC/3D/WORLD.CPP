@@ -92,7 +92,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 //DeadCode RDH 27Feb96 	WorldStuff	World_Stuff;
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		WorldStuff
 //Author		Paul.   
 //Date			Tue 19 Sep 1995
@@ -114,7 +114,7 @@ WorldStuff::WorldStuff()
 		sectorlist[counter]=(itemptr )NULL;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		WorldStuff
 //Author		Paul.   
 //Date			Tue 19 Sep 1995
@@ -131,7 +131,7 @@ WorldStuff::~WorldStuff()
 
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure	addtoworld
 //------------------------------------------------------------------------------
 //Author		Paul.   
@@ -176,7 +176,7 @@ void WorldStuff::AddToWorld(itemptr item)
 		}
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure	removefromworld
 //------------------------------------------------------------------------------
 //Author		Paul.   
@@ -199,7 +199,7 @@ void WorldStuff::RemoveFromWorld(itemptr item)
 	RemoveFromSector(item,GetSector(item));
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		RemoveFromSector
 //Author		Jim Taylor
 //Date			Thu 15 Feb 1996
@@ -272,7 +272,7 @@ void	WorldStuff::RemoveFromSector(itemptr	item,UWord	sector_number)
 		}
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		getsectorno
 //Author		Paul.   
 //Date			Mon 25 Sep 1995
@@ -295,7 +295,7 @@ void WorldStuff::getsectornos(itemptr item,UWord &sector_x, UWord &sector_y)
 	sector_y = temp & SECTOR_NUMBER_MASK;
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		makeindex
 //Author		Paul.   
 //Date			Mon 25 Sep 1995
@@ -312,7 +312,7 @@ UWord WorldStuff::makeindex(UWord sector_x, UWord sector_y)
 	return(((sector_y&SECTOR_NUMBER_MASK)<<5)+(sector_x&SECTOR_NUMBER_MASK));
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		getfirstitem
 //Author		Paul.   
 //Date			Mon 25 Sep 1995
@@ -329,7 +329,7 @@ itemptr WorldStuff::getfirstitem(UWord sector_index)
 	return(sectorlist[sector_index]);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SameSector
 //Author		Paul.   
 //Date			Fri 14 Jun 1996
@@ -364,7 +364,7 @@ Bool WorldStuff::SameSector(itemptr itemA, itemptr itemB)
 	return (TRUE);
 }
 
-//DeadCode PD 25Jun96 //дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//DeadCode PD 25Jun96 //О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //DeadCode PD 25Jun96 //Procedure		getsector
 //DeadCode PD 25Jun96 //Author		Martin Alderton
 //DeadCode PD 25Jun96 //Date			Wed 28 Feb 1996
@@ -383,7 +383,7 @@ Bool WorldStuff::SameSector(itemptr itemA, itemptr itemB)
 //DeadCode PD 25Jun96 	return(retval);
 //DeadCode PD 25Jun96 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure	getsector
 //LastModified:	PD 25Jun96
 //------------------------------------------------------------------------------
@@ -410,7 +410,7 @@ UWord WorldStuff::GetSector(itemptr item)
 	return(makeindex(sector_x,sector_y));
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SectorEmpty
 //Author		Paul.   
 //Date			Thu 20 Aug 1998
@@ -443,7 +443,7 @@ Bool WorldStuff::SectorEmpty(COORDS3D& pos)
 //DEADCODE DAW 07/04/99 		pItem[pi]=0;
 //DEADCODE DAW 07/04/99 }
 //DEADCODE DAW 07/04/99 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SetLaunchers
 //Author		Robert Slater
 //Date			Wed 21 Aug 1996
@@ -472,7 +472,7 @@ void	WorldStuff::SetLaunchers()
 	}
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SetLaunchers
 //Author		Robert Slater
 //Date			Wed 21 Aug 1996
@@ -492,7 +492,7 @@ ItemBasePtr		WorldStuff::ConvertPtrUID(UniqueID tmpUID)
 //DeadCode DAW 15Feb96  	return(NULL);
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		SetLaunchers
 //Author		Robert Slater
 //Date			Wed 21 Aug 1996
@@ -508,6 +508,26 @@ ItemBasePtr		WorldStuff::ConvertPtrUID(UniqueID tmpUID)
 void	ItemBase::operator delete(void* area)
 {
 	if (!area)	return;
+#if defined(BOB_LINUX)
+	// R4.6/S46 (sun lens-flare crash): an operator delete must only DEALLOCATE --
+	// running the destructor is the compiler's job, and it already ran via the
+	// delete-expression's static type. Every case in the original dispatch below
+	// is `::delete(T*)it`, a delete-*expression* that RE-RUNS the destructor. So
+	// `delete tempitemptr` in ThreeDee::AddLensObject (3dcode.cpp:1988 -- a plain
+	// `item`, which has no per-class operator delete and inherits THIS base
+	// dispatcher) destructed twice: ~ItemBase -> animptr::Delete freed the item's
+	// Anim buffer a second time (ASan on the render thread: heap-use-after-free +
+	// double-free, manifesting only once a mission frames the sun lens-flare).
+	// Exact R1.3d/R1.3e bug class -- those sprints fixed the per-class operator
+	// deletes in worldinc.h but missed plain `item`, which falls through here. The
+	// size/type casts existed solely to select a destructor; for pure deallocation
+	// the address is identical and every branch collapses to one ::operator delete.
+	// Nothing is lost: ~ItemBase already frees Anim via its ((ItemPtr)this)->Anim
+	// .Delete() reach-through, and every info_* / item destructor in the hierarchy
+	// is otherwise empty. See PORT.md (S46) and worldinc.h:894 (R1.3d rationale).
+	::operator delete(area);
+	return;
+#else
 	ItemBasePtr	it=(ItemBasePtr)area;
 	if (it->Status.size==ItemBaseSize)
 		::delete(ItemBasePtr)it;
@@ -544,10 +564,11 @@ void	ItemBase::operator delete(void* area)
 			case	AirStrucSize:	::delete(AirStrucPtr)it;	return;
 			case	ShipSize:		::delete(ShipItemPtr)it;	return;
 			}
-			
+#endif	// BOB_LINUX
+
 }
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		MakeSunPos
 //Author		Robert Slater
 //Date			Mon 23 Mar 1998
@@ -586,7 +607,7 @@ void	WorldStuff::MakeSunPos(ViewPoint*	View_Point)
 
 void	WorldStuff::SetViewpoint(ViewPoint* v) {vp=v;}
 
-//дддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддддд
+//О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫
 //Procedure		NextItem
 //Author		Robert Slater
 //Date			Tue 11 Jan 2000

@@ -1,5 +1,58 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.6 / S46 (2026-06-29): ★ SUN LENS-FLARE DOUBLE-FREE FIXED — Turkey Shoot now flies a full combat sortie; root cause was the size-dispatching `ItemBase::operator delete` re-running the destructor (the R1.3d/R1.3e bug class, in the one operator delete those sprints never touched)
+> Sprint 46 (R4.6, the combat-path crash the S46 spike root-caused). **The render-thread double-free /
+> use-after-free that crashed Turkey Shoot a few seconds into combat is fixed; the mission now flies the
+> full window with continuous gunfire and 0 crashes.** The S46-spike diagnosis (sun lens-flare lifecycle)
+> was right about the *symptom site* but the *root cause* was one level down — in `operator delete`, not
+> in `AddLensObject`'s own logic.
+> - **Root cause — `ItemBase::operator delete` (World.cpp:508 → real file `WORLD.CPP`, the MFC-twin
+>   symlink trap).** It's a hand-rolled "virtual destructor" dispatcher: it switches on `Status.size` and
+>   runs `::delete(T*)it` for each item type. Every one of those is a delete-**expression**, which **re-runs
+>   the destructor**. `ThreeDee::AddLensObject` (3dcode.cpp:1988) does `delete tempitemptr` on a **plain
+>   `item`** — and plain `item` has **no per-class operator delete**, so it inherits THIS base dispatcher.
+>   Result: `~item()` runs once via the delete-expression's static type, then **again** inside the operator
+>   delete's `::delete(ItemPtr)it` → `ItemBase::~ItemBase` → `animptr::Delete()` frees the item's `Anim`
+>   buffer **twice**. Non-deterministic `free(): double free … tcache` / SIGSEGV on render thread T5.
+> - **Why it's the exact R1.3d/R1.3e bug class.** R1.3d (TransientItem) and R1.3e (the 7 sibling item
+>   classes: WayPoint/hdgitem/hpitem/rotitem/mobileitem/formationitem/AirStruc) fixed `{::delete(T*)obj;}`
+>   → `{::operator delete(obj);}` in the **per-class** operator deletes (worldinc.h). But **plain `item`
+>   isn't one of those 7** — it falls through to `ItemBase::operator delete` (World.cpp), the size-dispatch
+>   version, which still had the buggy idiom on **every** case. The sun lens-flare is the path that
+>   allocates/frees plain `item`s, so it was the first to surface the missed dispatcher. (Gun-fire surfaced
+>   the `mobileitem` one in R1.3e; the sun surfaced the `item` one here — "a real pilot flying combat is the
+>   best fuzzer," continued.)
+> - **Fix (`#if defined(BOB_LINUX)`, `ItemBase::operator delete`, WORLD.CPP).** Deallocate **only** —
+>   `::operator delete(area)` — the destructor is the compiler's job and already ran via the delete-
+>   expression. **Nothing is lost:** `~ItemBase` already frees `Anim` via its `((ItemPtr)this)->Anim
+>   .Delete()` reach-through (worldinc.h:708), and every other destructor in the hierarchy is empty — all
+>   four `info_*` dtors (`info_itemS`/`info_waypoint`/`info_grndgrp`/`info_airgrp`, infoitem.h) are `{}`,
+>   and the item types own no heap beyond `Anim`. The size/type casts existed solely to pick a destructor,
+>   so for pure deallocation every branch collapses to one `::operator delete`. Original kept verbatim in
+>   the `#else` for Windows.
+> - **Also fixed (S46 scope item #2): the startup `translatedirlist` over-read.** `(*datascan<'0') &&
+>   (datalength>0)` dereferenced `datascan` **before** checking the count, so on the final pass (count just
+>   hit 0, pointer one past the dir-list buffer) it over-read 1 byte (ASan heap-buffer-overflow,
+>   FILEMAN.CPP:460, in `InitFileSystem`). Reordered to `(datalength>0) && (*datascan<'0')` so `&&` short-
+>   circuits before the deref — behaviour-identical on well-formed data. Same fix applied to the
+>   `retranslatedirlist` twin (FILEMAN.CPP:592). Both guarded `#if defined(BOB_LINUX)`.
+> - **Verified — ASan (`build-asan`, `-DBOB_ASAN=ON`, i386) Turkey Shoot, `BOB_QM_INDEX=11
+>   BOB_AUTOFLY=shoot`, `halt_on_error=0`):** the **`AddLensObject` heap-use-after-free + double-free family
+>   → 0** (was the crashing family); the **`translatedirlist` over-read → 0**. Evidence:
+>   `/tmp/s46_asan.log` (pre-fix-comparable, 5 errors incl. AddLensObject), `/tmp/s46_asan2.log` (post-fix,
+>   AddLensObject + translatedirlist both gone).
+> - **Verified — normal build (the real proof; ASan continues-on-error, the normal build aborts):** Turkey
+>   Shoot flew the **full 40s window of continuous gunfire, 0 crash markers** (no double-free / SIGABRT /
+>   SIGSEGV / tcache), reached `View3d interactive; draw thread running`. Was: abort a few seconds in.
+>   `/tmp/s46_normal.log`. **No regression:** bare `./bob` from the repo dir exits 0 (`/tmp/s46_bare.log`).
+> - **Newly-surfaced latent (NOT this sprint's scope; pre-existing, don't crash the normal build):** an LBM
+>   image-map 1-byte over-read in `ImageMap_Desc::FixLbmImageMap` (lbmcpp.h:206, via `InitPalette` LBM
+>   load), and the already-documented benign 20-byte `Sample::LoadBuffer` `PCMWAVEFORMAT`→`WAVEFORMATEX`
+>   over-write (CLAUDE.md). Logged for a future hardening pass. **Game-code change = three `#if
+>   defined(BOB_LINUX)` guards only (WORLD.CPP operator delete; two FILEMAN.CPP loops); the Windows paths
+>   stay pristine in the `#else`. This closes the combat-path crash the S46 spike opened: Turkey Shoot —
+>   and any mission that frames the sun lens-flare — now flies clean.**
+
 > ## R4.6 / S46 spike (2026-06-27): "TURKEY SHOOT" QM FLIES — but combat exposes a render-thread double-free in the SUN LENS-FLARE path (ASan root-caused; fix scoped, not shipped)
 > Demo session + diagnosis. Flew the **"Turkey Shoot" Quick Mission** (`IDS_QUICK_11`, `QMISS.CPP:372`,
 > a Spit-vs-109 dogfight) by pointing the boot scaffold at it (`BOB_QM_INDEX=11` — the 0-based slot in
