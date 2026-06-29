@@ -139,6 +139,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include "fastmath.h"
 #if defined(BOB_LINUX)
 #include "bob_mfc_post.h"	/* RFullPanelDial + dialog ecosystem (resource.h/rdialog/rlistbox/fullpane) */
+extern "C" void bob_trace_draw(const char*);	/* S46 hang diag: backtrace at D_CLOSE setters (bob_threads.cpp) */
 #endif
 enum	{BUFFERED_KEYS=100};
 
@@ -1143,6 +1144,9 @@ int	View3d::MakeResize(WinMode	v,const CRect& pos)
 		{	//delete windowing object
 			v=WinMode::NONE;
 			//WaitEndDraw(D_CLOSE);
+#if defined(BOB_LINUX)
+			bob_trace_draw("MakeResize: drawing=D_CLOSE (mode change)");	// S46 hang diag
+#endif
 			drawing=D_CLOSE;
 //DEAD			POLYGON.DeleteYList();
 //CRASHED CRAIGS M/C
@@ -1688,17 +1692,23 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 
 void	View3d::SetEndDraw(DrawState d)
 {
+#if defined(BOB_LINUX)
+	if (d==D_CLOSE) bob_trace_draw("SetEndDraw(D_CLOSE)");		// S46 hang diag
+#endif
 	if (drawing==D_YES)
 		if (!E)
 			E=new CEvent();
-	drawing=d;	
+	drawing=d;
 }
 int	View3d::WaitEndDraw(DrawState d,int timeoutmilisec)
 {
+#if defined(BOB_LINUX)
+	if (d==D_CLOSE) bob_trace_draw("WaitEndDraw(D_CLOSE)");		// S46 hang diag
+#endif
 	if (drawing==D_YES)
 		if (!E)
 			E=new CEvent();
-	drawing=d;	
+	drawing=d;
 	if (E)
 		if (!E->Lock(timeoutmilisec))
 			return false;

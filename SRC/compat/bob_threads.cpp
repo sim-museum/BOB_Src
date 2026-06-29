@@ -15,6 +15,25 @@
 #include <unistd.h>
 #include <cstdlib>
 #include <cstring>
+#include <cstdio>
+#include <execinfo.h>
+
+/* ---- S46 diagnostic: trace what drives a view's drawing state to D_CLOSE ---
+ * The per-view draw thread (View3d::drawloop) returns permanently when
+ * drawing==D_CLOSE; if nothing re-spawns it the window freezes ("hang"). This
+ * env-gated (BOB_TRACE_DRAW) helper prints a backtrace at each D_CLOSE setter
+ * site (STUB3D.CPP) plus draw-thread start/exit below, so a native repro names
+ * the exact culprit without gdb perturbing the race. Default-off, no-op unless
+ * BOB_TRACE_DRAW is set. */
+extern "C" void bob_trace_draw(const char* where)
+{
+	if (!getenv("BOB_TRACE_DRAW")) return;
+	fprintf(stderr, "[draw] %s (tid=%lu)\n", where, (unsigned long)pthread_self());
+	void* bt[32];
+	int n = backtrace(bt, 32);
+	backtrace_symbols_fd(bt, n, 2 /*stderr*/);
+	fflush(stderr);
+}
 
 /* ---- AfxBeginThread: run an MFC AFX_THREADPROC on a detached pthread ----- */
 typedef unsigned int (*bob_threadproc)(void*);
@@ -22,7 +41,24 @@ typedef unsigned int (*bob_threadproc)(void*);
 struct ThreadArg { bob_threadproc proc; void* arg; };
 static void* thread_trampoline(void* p) {
 	ThreadArg a = *(ThreadArg*)p; free(p);
+	bob_trace_draw("thread_trampoline: ENTER (draw/worker thread start)");
 	if (a.proc) a.proc(a.arg);
+	bob_trace_draw("thread_trampoline: EXIT (thread returned -- e.g. drawloop saw D_CLOSE)");
+	/* S46: AfxBeginThread's only caller is View3d::drawloop (the flight draw
+	 * thread), so reaching here means flight ended (View3d::drawloop saw
+	 * D_CLOSE -- e.g. the pilot pressed F12/KEY_CONFIGMENU or Alt+X/EXITKEY).
+	 * In the BOB_BOOT_FRONTEND boot-to-flight scaffold there is NO front-end
+	 * menu to return to, so the window would otherwise freeze on the last
+	 * frame (CMIGApp::Run keeps pumping with nothing to draw). Exit cleanly
+	 * instead -- mirrors the SDL_QUIT path (bob_video.cpp). NOT done for the
+	 * real front-end (BOB_FRONTEND), where closing flight returns to the menu
+	 * and a new view/draw thread is created for the next mission. */
+	if (getenv("BOB_BOOT_FRONTEND")) {
+		fprintf(stderr, "[draw] flight draw thread ended in boot-to-flight scaffold "
+		                "(no menu to return to) -> clean exit\n");
+		fflush(stderr);
+		_exit(0);
+	}
 	return NULL;
 }
 extern "C" void bob_begin_thread(bob_threadproc proc, void* arg)

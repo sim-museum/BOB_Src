@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.6 / S46 follow-up (2026-06-29): boot-to-flight scaffold no longer FREEZES on flight-exit; + a `BOB_TRACE_DRAW` draw-thread diagnostic (came out of a live crash-test of the S46 fix)
+> A pilot stress-testing the S46 fix hit a repeatable **"hang"** a few seconds into Turkey Shoot. It was
+> **not a crash and not the S46 fix** — root-caused with a new env-gated trace, then fixed. The S46 lens
+> double-free held through the entire session (gdb, ASan ×2, native ×2: **0 crashes, 0 lens double-frees**).
+> - **Root cause (the "hang").** Pressing an in-flight exit key — **F12** (`KEY_CONFIGMENU`, DIK 0x58) or
+>   **Alt+X** (`EXITKEY`) — makes `View3d::drawloop` call `MakeResize(WinMode::NONE)` (STUB3D.CPP:1656/1685),
+>   which sets `drawing=D_CLOSE`; the draw loop then returns (STUB3D.CPP:1639) and the **draw thread exits
+>   by design**. In the normal full-game flow that returns to the menu/debrief, but the **`BOB_BOOT_FRONTEND`
+>   boot-to-flight scaffold has no front-end behind it**, so `CMIGApp::Run` kept pumping with nothing to
+>   render → the window froze on the last frame. (gdb misled here: it perturbs the threads and sometimes
+>   killed the draw thread at startup, and froze the window when it did — confirming PORT.md's "doesn't repro
+>   under gdb" note. The decisive tool was the trace below, run natively.)
+> - **Diagnostic — `BOB_TRACE_DRAW` (default-off, env-gated like the other `BOB_TRACE_*`).** A compat helper
+>   `bob_trace_draw()` (`bob_threads.cpp`) prints a `backtrace()` at each `drawing→D_CLOSE` setter
+>   (`SetEndDraw`/`WaitEndDraw`/`MakeResize`, guarded `#if defined(BOB_LINUX)` in STUB3D.CPP) plus draw-thread
+>   start/exit in the `AfxBeginThread` trampoline. The native repro named the culprit in one shot:
+>   `MakeResize: drawing=D_CLOSE` called from `View3d::drawloop` on the draw thread's own tid (addr2line).
+> - **Fix (compat, scaffold-gated).** `AfxBeginThread`'s only caller is `View3d::drawloop`, so the
+>   trampoline reaching its end unambiguously means flight ended. Under `BOB_BOOT_FRONTEND` (only), the
+>   trampoline now `_exit(0)`s cleanly instead of leaving a frozen window — mirroring the existing
+>   `SDL_QUIT` path. The real front-end (`BOB_FRONTEND`) is untouched: there, closing flight returns to the
+>   menu and a fresh view/draw thread is made for the next mission. **Verified:** Alt+X in the scaffold now
+>   ends the session with `exit 0` + `[draw] flight draw thread ended … -> clean exit` (was: freeze).
+> - **Scope.** Pure diagnostic + dev-scaffold robustness; no engine-behaviour or game-logic change. Game-code
+>   touch = the three `#if defined(BOB_LINUX)` trace calls in STUB3D.CPP (the rest is compat). Separate from
+>   the S46 crash fix (commit b764bf1).
+
 > ## R4.6 / S46 (2026-06-29): ★ SUN LENS-FLARE DOUBLE-FREE FIXED — Turkey Shoot now flies a full combat sortie; root cause was the size-dispatching `ItemBase::operator delete` re-running the destructor (the R1.3d/R1.3e bug class, in the one operator delete those sprints never touched)
 > Sprint 46 (R4.6, the combat-path crash the S46 spike root-caused). **The render-thread double-free /
 > use-after-free that crashed Turkey Shoot a few seconds into combat is fixed; the mission now flies the
