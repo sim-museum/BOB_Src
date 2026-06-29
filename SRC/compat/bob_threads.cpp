@@ -17,6 +17,7 @@
 #include <cstring>
 #include <cstdio>
 #include <execinfo.h>
+#include <sched.h>
 
 /* ---- S46 diagnostic: trace what drives a view's drawing state to D_CLOSE ---
  * The per-view draw thread (View3d::drawloop) returns permanently when
@@ -35,15 +36,60 @@ extern "C" void bob_trace_draw(const char* where)
 	fflush(stderr);
 }
 
-/* ---- AfxBeginThread: run an MFC AFX_THREADPROC on a detached pthread ----- */
+/* ---- S61: draw-thread liveness registry -------------------------------------
+ * AfxBeginThread's only caller is View3d's draw thread (drawloop). It renders
+ * `View3d::View_Point`; View3d teardown (~View3d -> MakeResize) `delete`s View_Point.
+ * The old CEvent handshake (View3d::WaitEndDraw) is racy -- it only waits when
+ * drawing==D_YES at call time -- so the main thread could free View_Point while the
+ * draw thread was still in RenderLandscape (ASan heap-use-after-free on the render
+ * thread, S60/S61, in the front-end->flight launch where views are created/destroyed).
+ * This registry lets ~View3d block until the draw thread has actually LEFT drawloop
+ * (and the trampoline has returned -> no more rendering), keyed by the View3d* (arg).
+ * The draw thread clears `active` only AFTER a.proc returns, so once active==0 the
+ * render is provably finished. bob_wait_drawthread_exit() never waits when called ON
+ * that draw thread (it's exiting itself -- avoids a self-deadlock). */
 typedef unsigned int (*bob_threadproc)(void*);
 
+#define BOB_MAXDRAW 16
+struct DrawReg { void* arg; pthread_t tid; volatile int active; };
+static DrawReg g_draw[BOB_MAXDRAW];
+static pthread_mutex_t g_drawlock = PTHREAD_MUTEX_INITIALIZER;
+
+static int dt_register(void* arg, pthread_t tid) {
+	pthread_mutex_lock(&g_drawlock);
+	int slot = -1;
+	for (int i=0;i<BOB_MAXDRAW;i++) if (!g_draw[i].arg || !g_draw[i].active) { slot=i; break; }
+	if (slot < 0) slot = 0;	/* pool exhausted (never expected) -- clobber oldest */
+	g_draw[slot].arg=arg; g_draw[slot].tid=tid; g_draw[slot].active=1;
+	pthread_mutex_unlock(&g_drawlock);
+	return slot;
+}
+static void dt_done(int slot) {
+	if (slot>=0 && slot<BOB_MAXDRAW) g_draw[slot].active=0;	/* render finished */
+}
+extern "C" void bob_wait_drawthread_exit(void* arg) {
+	pthread_t self = pthread_self();
+	pthread_mutex_lock(&g_drawlock);
+	DrawReg* r = NULL;
+	for (int i=0;i<BOB_MAXDRAW;i++) if (g_draw[i].arg==arg && g_draw[i].active) { r=&g_draw[i]; break; }
+	bool isself = (r && pthread_equal(r->tid, self));
+	pthread_mutex_unlock(&g_drawlock);
+	if (!r || isself) return;	/* no live draw thread for this view, or we ARE it */
+	for (int guard=0; r->active; ++guard) {	/* r points into the static pool -> stays valid */
+		sched_yield();
+		if (guard > 2000000) { fprintf(stderr,"[draw] wait_drawthread_exit: timeout (%p)\n", arg); fflush(stderr); break; }
+	}
+}
+
+/* ---- AfxBeginThread: run an MFC AFX_THREADPROC on a detached pthread ----- */
 struct ThreadArg { bob_threadproc proc; void* arg; };
 static void* thread_trampoline(void* p) {
 	ThreadArg a = *(ThreadArg*)p; free(p);
+	int dtslot = dt_register(a.arg, pthread_self());	/* S61: mark this view's draw thread live */
 	bob_trace_draw("thread_trampoline: ENTER (draw/worker thread start)");
 	if (a.proc) a.proc(a.arg);
 	bob_trace_draw("thread_trampoline: EXIT (thread returned -- e.g. drawloop saw D_CLOSE)");
+	dt_done(dtslot);	/* S61: render finished; ~View3d may now free View_Point. Before any _exit. */
 	/* S46: AfxBeginThread's only caller is View3d::drawloop (the flight draw
 	 * thread), so reaching here means flight ended (View3d::drawloop saw
 	 * D_CLOSE -- e.g. the pilot pressed F12/KEY_CONFIGMENU or Alt+X/EXITKEY).

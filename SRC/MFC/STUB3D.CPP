@@ -140,6 +140,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #if defined(BOB_LINUX)
 #include "bob_mfc_post.h"	/* RFullPanelDial + dialog ecosystem (resource.h/rdialog/rlistbox/fullpane) */
 extern "C" void bob_trace_draw(const char*);	/* S46 hang diag: backtrace at D_CLOSE setters (bob_threads.cpp) */
+extern "C" void bob_wait_drawthread_exit(void*);	/* S61: block until this view's draw thread leaves drawloop (bob_threads.cpp) */
 #endif
 enum	{BUFFERED_KEYS=100};
 
@@ -946,7 +947,16 @@ View3d::~View3d()
 
 	if (drawing!=D_NO)
 	{
-		WaitEndDraw(D_CLOSE);
+		WaitEndDraw(D_CLOSE);	// sets drawing=D_CLOSE so the draw thread will leave drawloop
+#if defined(BOB_LINUX)
+		// S61: WaitEndDraw's CEvent handshake is racy (only waits when drawing==D_YES at
+		// entry), so the draw thread could still be in RenderLandscape when MakeResize
+		// (below, :976) does `delete View_Point` -> render-thread heap-use-after-free.
+		// Block here until the draw thread has actually left drawloop (trampoline returned,
+		// render provably finished). No-op if we're on the draw thread itself (deadlock guard;
+		// e.g. a drawloop-driven close), since it's exiting and is View_Point's only user then.
+		bob_wait_drawthread_exit(this);
+#endif
 	}
 	if (mode!=WinMode::NONE)
 	{	//screen is allocated - free resources

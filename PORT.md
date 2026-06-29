@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.21 / S61 (2026-06-29): ★ front-end→flight launch now ASan-CLEAN — careful View3d/draw-thread teardown synchronization (the racy CEvent handshake replaced)
+> Sprint 61 (R4.21), the hard one: the cross-thread `View3d`/draw-thread lifecycle race in the front-end→
+> flight launch (the launch path the boot scaffold bypasses). Designed the synchronization deliberately.
+> - **Root.** The draw thread renders `View3d::View_Point` (an 817-byte `ViewPoint`, `new` in `MakePassive`
+>   :1086). View teardown frees it: `~View3d` → `MakeResize(NONE)` → `delete View_Point` (:1156). `~View3d`
+>   *does* call `WaitEndDraw(D_CLOSE)` first (:949), but that handshake is **racy** — its `CEvent E` is
+>   created only `if(drawing==D_YES)` at entry, so when `drawing` was already `D_CLOSE` (or mid-transition)
+>   it returned **without waiting**, and the main thread freed `View_Point` while the draw thread was still
+>   in `RenderLandscape` → ASan heap-use-after-free on the render thread (S60/S61).
+> - **Design constraints worked out before coding.** (1) `MakeResize` is called from **both** the draw
+>   thread (drawloop exit-key path — safe: it sets `View_Point=NULL` and the render block is then skipped on
+>   `D_CLOSE`, single-threaded) and the **main thread** (`~View3d` — the racy free); so the wait must live in
+>   `~View3d`, not `MakeResize`. (2) The wait must be a **no-op when called on the draw thread** (else
+>   self-deadlock). (3) Waiting must guarantee rendering has *finished*, not just been signalled.
+> - **Fix.** A draw-thread **liveness registry** in the compat trampoline (its only user is the View3d draw
+>   thread), keyed by the `View3d*`: the trampoline marks the view's slot `active=1` on entry and `active=0`
+>   only **after `drawloop` returns** (render provably done). New `bob_wait_drawthread_exit(view)` blocks
+>   until `active==0` — but returns immediately if called on that very draw thread (`pthread_equal` guard),
+>   with a large spin timeout as a hang-backstop. `~View3d` calls it right after `WaitEndDraw(D_CLOSE)`
+>   (which sets `drawing=D_CLOSE` so the draw thread *will* leave drawloop), before `MakeResize` frees.
+>   Compat: `bob_threads.cpp`; game-code: one guarded call + a file-scope decl in STUB3D.CPP.
+> - **Verified.** Front-end→flight launch ASan: **0 errors** (was 7 across S57–S61; View_Point UAF gone) and
+>   it now runs the full window (was an exit-1 crash). **No deadlock** — boot scaffold reaches frame 300
+>   (97% non-black, live), front-end keeps painting. Regression (shared `~View3d` + trampoline): boot-scaffold
+>   QM 11 ASan **0 errors**; bare `./bob` exits 0. (`BOB_AUTOQUIT` in scaffold is gated on the front-end-only
+>   `g_bob_flight_active`, so it no-ops there — pre-existing, not an S61 change.) **The front-end frontier
+>   (S57–S61: LaunchScreen, CRListBoxCtrl, BITSET, g_devTex, View_Point) is now ASan-clean.** Evidence: `/tmp/s61*`.
+
 > ## R4.20 / S60 (2026-06-29): front-end→flight launch UAF fixed — a freed surface stayed cached in `g_devTex[]`; the draw thread read it
 > Sprint 60 (R4.20), the front-end→flight-launch surface UAF from S59. (This launch path — menu → fly —
 > is what the `BOB_BOOT_FRONTEND` boot scaffold bypasses, so it was never ASan-tested until S57's front-end
