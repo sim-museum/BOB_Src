@@ -473,7 +473,11 @@ void	PackageList::SaveBin(Profile* profile,BOStream&file)
 					p2=p1/90,
 					p3=p2/90,
 					p4=p3/90;
-			char packstr[5];
+			char packstr[6];	/* PORT FIX S64: 5 base-90 chars (packstr[0..4]) + the NUL at
+								   packstr[5] need 6 bytes; was [5] -> a 1-byte stack overflow on
+								   the terminator (ASan stack-buffer-overflow in PackageList::
+								   SaveBin, fires on every campaign Package.dat save). Benign on
+								   Win32, real UB. Two identical encode loops in this function. */
 			packstr[0]=p0%90+34;
 			packstr[1]=p1%90+34;
 			packstr[2]=p2%90+34;
@@ -516,7 +520,11 @@ void	PackageList::SaveBin(Profile* profile,BOStream&file)
 					p2=p1/90,
 					p3=p2/90,
 					p4=p3/90;
-			char packstr[5];
+			char packstr[6];	/* PORT FIX S64: 5 base-90 chars (packstr[0..4]) + the NUL at
+								   packstr[5] need 6 bytes; was [5] -> a 1-byte stack overflow on
+								   the terminator (ASan stack-buffer-overflow in PackageList::
+								   SaveBin, fires on every campaign Package.dat save). Benign on
+								   Win32, real UB. Two identical encode loops in this function. */
 			packstr[0]=p0%90+34;
 			packstr[1]=p1%90+34;
 			packstr[2]=p2%90+34;

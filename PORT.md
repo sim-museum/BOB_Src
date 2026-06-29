@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.24 / S64 (2026-06-29): ★ CAMPAIGN-path fuzz finds + fixes a stack overflow in `PackageList::SaveBin` — the base-90 `packstr` buffer was 1 byte short of its NUL
+> Sprint 64 (R4.24). Extended the ASan-fuzz to the **campaign** flight loop (the main game mode, distinct
+> setup from quick missions: the strategic map, SAG intercept authorisation, `Package.dat` serialisation).
+> It immediately caught a real bug the quick-mission/front-end fuzzing never reached.
+> - **Root.** `PackageList::SaveBin` (SAVEBIN.CPP) base-90-encodes each squad record: every 4-byte word →
+>   **5 chars** written to `char packstr[5]` (indices 0..4), then `packstr[5]=0` for the NUL terminator —
+>   but index 5 is **past the end of a 5-byte array** → 1-byte **stack-buffer-overflow** (ASan WRITE,
+>   SAVEBIN.CPP:482). It fires on **every campaign `Package.dat` save** (reached via the campfly scaffold's
+>   `Todays_Packages.SaveGame` before each mission, mirroring `OnClickedFrag2`). Two identical encode loops
+>   in the function had it (:476 and :519). Benign on Win32's stack layout, real UB.
+> - **Fix (direct + PORT FIX comment).** `char packstr[5]` → `char packstr[6]` at both loops — 5 base-90
+>   chars + the NUL need 6 bytes. Correct on both platforms; no behaviour change.
+> - **Verified.** Full campaign loop under ASan (`BOB_FRONTEND` + `BOB_AUTOCLICK="1,0,1,1"` → Campaigns/RAF,
+>   `BOB_CAMPAIGN_FLY=150 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=48`): the run drives menu → campaign map → scan →
+>   **authorise intercept → `NewPackage` → write `Package.dat` → briefing → Fly → `Launch3d` (InThe3D=1)**
+>   with **0 ASan errors** (was 2 in `SaveBin`/`SaveGame`). Regression: QM 11 ASan 0, bare `./bob` 0.
+> - **Method note.** Each *game mode* (boot scaffold, front-end launch, **campaign**) reaches the engine
+>   through a different setup path and surfaces its own latent bugs — campaign-mode fuzzing was the missing
+>   coverage; now the campaign reaches flight memory-clean. Evidence: `/tmp/s64*`. Game-code touch = the two
+>   `[5]`→`[6]` buffer sizes in SAVEBIN.CPP.
+
 > ## R4.23 / S63 (2026-06-29): front-end navigation fuzz comes back CLEAN; and trilinear (`BOB_FILTER=2`) no longer crashes — the documented mip-upload crash is gone
 > Sprint 63 (R4.23), continuing the fuzz into unexercised front-end paths, plus retiring a stale open crash.
 > - **Front-end navigation fuzz — clean.** Beyond the fly path (S62), swept the other screens under ASan with
