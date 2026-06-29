@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.18 / S58 (2026-06-29): 3rd new[]/delete mismatch fixed — `CRListBoxCtrl` cell strings (OLE listbox); maps the deeper front-end/launch seams
+> Sprint 58 (R4.18), continuing the front-end ASan fuzz from S57.
+> - **Fixed — `CRListBoxCtrl` new[]/delete mismatch (RLISTBXC.CPP:1931 & 2344).** The hosted RListBox cell
+>   strings are `new char[]` (AddString:1109), but `ReplaceString` and the clear-column path freed them with
+>   scalar `delete` (ASan alloc-dealloc-mismatch, via `HostRListBox::dispatch`→`InvokeHelper` when the config
+>   combos/lists populate). The sibling frees (:1161/1189/1196) already use `delete[]`; matched them. **Third
+>   instance of the S49/S53 class** (after DrawSubShape, dodigitdial) — a recurring Win32-tolerated idiom.
+> - **Verified.** Front-end ASan: `CRListBoxCtrl` errors **gone**. Normal build still paints the menu, 0
+>   crashes; bare `./bob` exits 0.
+> - **Front-end frontier mapped (future sprints).** With the listbox fix, the front-end fuzz advances further
+>   and exposes two remaining seams, both distinct from the now-clean `BOB_BOOT_FRONTEND` flight path:
+>   (1) **config bitfield** — `BITSET`/`MakeField<QFD,0,15>::operator|=` global-buffer-overflow in
+>   `CSQuick1::CSQuick1` (Squick1.cpp:141) — a quick-mission config flag write past its storage;
+>   (2) **front-end→flight launch** — surface-lifetime/draw errors in the menu-launched flight path
+>   (`Lib3D::UploadTexture`→`DoLocks`→surface `Lock` UAF/SEGV, `draw_fvf`, `DEV_DrawPrimitiveVB`), a
+>   *different* launch path than the boot scaffold. Scoped for S59+. Evidence: `/tmp/s58*`. Game-code touch =
+>   two `delete`→`delete[]` in RLISTBXC.CPP.
+
 > ## R4.17 / S57 (2026-06-29): new seam — ASan on the FRONT-END finds a startup overflow; `LaunchScreen` was indexing `resolutions[-1]` before `m_currentres` was set
 > Sprint 57 (R4.17). Extended the ASan-fuzz methodology from the flight path to the **front-end**
 > (`BOB_FRONTEND`+`BOB_OLE_DRAW`, menu→config navigation). It immediately surfaced latent global-buffer-

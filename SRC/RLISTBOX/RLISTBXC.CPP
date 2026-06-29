@@ -1928,7 +1928,11 @@ void CRListBoxCtrl::ReplaceString(LPCTSTR text, short row, short col)
 	CList<char*,char*>* list=m_list.GetAt(m_list.FindIndex(col));
 	POSITION position = list->FindIndex(row);
 	ASSERT(position != NULL); // the cell does not exist
-	delete list->GetAt(position);
+	/* PORT FIX S58 (Linux): the cell strings are `new char[]` (AddString:1109), so scalar
+	   `delete` is a new[]/delete mismatch (ASan alloc-dealloc-mismatch in CRListBoxCtrl::
+	   ReplaceString, found fuzzing the front-end OLE listbox). The sibling frees (:1161/1189/
+	   1196) already use delete[]; match them. Same class as S49/S53. See PORT.md (S58). */
+	delete[] list->GetAt(position);
 	char* buffer=new char[strlen(text)+1]; // include terminating null character
 	strcpy(buffer,text);
 	list->SetAt(position,buffer);
@@ -2337,7 +2341,7 @@ void CRListBoxCtrl::DeleteRow(long row)
 	{
 		list=m_list.GetNext(position1);
 		position2 = list->FindIndex(row);
-		delete list->GetAt(position2);
+		delete[] list->GetAt(position2);	// PORT FIX S58: cell strings are new char[] -- match delete[] (see :1931)
 		list->RemoveAt(position2);
 	}
 	UpdateScrollBar();
