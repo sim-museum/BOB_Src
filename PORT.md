@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.22 / S62 (2026-06-29): ★★ FULL GAMEPLAY LOOP ASan-CLEAN — menu → quick mission → fly → debrief → back to menu, 0 errors
+> Sprint 62 (R4.22), capstone verification of the S46→S61 hardening arc. Ran the env-free Definition-of-Done
+> playthrough — `BOB_FRONTEND`+`BOB_OLE_DRAW`, `BOB_AUTOCLICK="0,1,2"` (Quick Mission → Fly → Fly),
+> `BOB_AUTOQUIT=debrief` (Alt+X back) — under AddressSanitizer.
+> - **Result: 0 ASan errors across the complete loop.** The run drove the whole cycle: `LaunchMain` (menu)
+>   → `(bridge) StartFlying → Launch3d` (InThe3D=1, real flight) → `OnFlyingClosed` → **back in the
+>   front-end** (InThe3D=0) — every stage memory-clean. No code change this sprint (pure verification).
+> - **What this closes.** The full playable path is now ASan-clean end to end: front-end menu/config (S57–59),
+>   the front-end→flight **launch** transition and its cross-thread teardown (S60–61), flight for every
+>   combat/training quick-mission category (S46–55), combat with weapons firing (S56), and the
+>   **return-to-menu loop** (this sprint). Across S46–S62 the arc fixed ~14 distinct memory defects —
+>   double-frees, heap/stack/global overflows, new[]/delete mismatches (×3), out-of-range index families,
+>   two engine-wide compat primitives (BITSET, surface cache), and the View3d/draw-thread launch race.
+> - **Known residual (documented, not memory bugs):** historic quick-missions via the boot scaffold bail on
+>   the engine's "Unresolved UIDS" FATAL (they need campaign/briefing-flow entity setup the scaffold skips;
+>   QM 30 hangs on the same) — a scaffold *feature* gap, not a crash. Evidence: `/tmp/s62*`.
+
 > ## R4.21 / S61 (2026-06-29): ★ front-end→flight launch now ASan-CLEAN — careful View3d/draw-thread teardown synchronization (the racy CEvent handshake replaced)
 > Sprint 61 (R4.21), the hard one: the cross-thread `View3d`/draw-thread lifecycle race in the front-end→
 > flight launch (the launch path the boot scaffold bypasses). Designed the synchronization deliberately.
