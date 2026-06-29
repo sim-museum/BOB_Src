@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.11 / S51 (2026-06-29): the S43 out-of-range-squadnum null-squad sentinel was UNDERSIZED — `bob_nullsquad` is now a `BritSquadron`, fixing the `AcType()` global-buffer-overflow
+> Sprint 51 (R4.11), next QM 26 (historic) layer. Root-caused via gdb + a temporary `BOB_TRACE_SQ` trace:
+> the historic mission carries a **4th air group with an out-of-range squadnum `v1=187`** (SQ_MAX=148; the
+> first three are valid brit squads 70/72/68). The S43 funnel guard (`NodeData::operator[]`, NODEBOB.CPP)
+> correctly substitutes `bob_nullsquad` for it — but `bob_nullsquad` was declared **`static Squadron`** (the
+> base class). Every accessor immediately re-dispatches on the squadnum field (the `SUBCALL` macro,
+> :6611): a zero-init null squad has `squadron==0 < SQ_LW_START`, so callers cast it to **`BritSquadronPtr`**
+> and read `BritSquadron`-only fields (`AcType()`→`actype`) that live **past the base `Squadron` object** →
+> ASan **global-buffer-overflow** (and, without ASan redzones, a hard SEGV deeper in `FixUpWaypointsToGroup`).
+> - **Fix (`#if BOB_LINUX`, NODEBOB.CPP).** Declare the sentinel as **`static BritSquadron bob_nullsquad`** so
+>   the derived-field reads stay in bounds. Still zero-init (the S43 intent: `AcType` 0 = default plane,
+>   `homeairfield` UID_NULL); squadnum 0 always takes the brit dispatch branch, so a `BritSquadron` is the
+>   correct (and sufficient) shape. Broadly applicable — protects **any** caller that looks up an out-of-range
+>   squadnum, not just QM 26.
+> - **Verified.** ASan QM 26: the `AcType()` global-buffer-overflow is **gone (0)**. QM 11 Turkey Shoot
+>   regression (shared squadron funnel): **0 ASan errors**, interactive. Bare `./bob` exits 0. *(ASan aside:
+>   running without `detect_odr_violation=0` surfaces 14 pre-existing `odr-violation`s from the case-twin
+>   sources — `BOBFRAG.CPP`/`bobfrag.cpp` etc.; a known symlink-twin build artifact, not a runtime bug.)*
+> - **QM 26 still fails deeper (S52).** With `AcType` safe, the garbage air group (squadnum 187) now crashes
+>   in `Persons3::FixUpWaypointsToGroup` (PERSONS3.CPP:737/1756) → `FirstField`/`Persons`. Root is the bogus
+>   air group being processed at all; S52 will guard `make_airgrp` against an out-of-range-squadnum group
+>   (skip the unusable group rather than chase each downstream deref). Game-code touch = one line in NODEBOB.CPP.
+
 > ## R4.10 / S50 (2026-06-29): `make_airgrp` unresolved-homebase SEGV fixed (load-order bug) — air groups loaded before their airfield no longer deref the UID fixup sentinel
 > Sprint 50 (R4.10), chasing the QM 26 (historic) load failure the S49 sweep found. Root-caused and fixed
 > the first crash; QM 26 advances past it (a deeper, separate squadnum-range layer remains, logged for S51).

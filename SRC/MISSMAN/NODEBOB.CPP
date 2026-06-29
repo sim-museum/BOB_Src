@@ -6592,7 +6592,17 @@ Squadron&	NodeData::operator [](SquadNum sq)
 	   the engine's own null-ref for an out-of-range UID. Transparent for valid squadnums (always in
 	   range), so zero normal-play change; fires only on the phantom squads that would have SEGV'd. */
 	if ((unsigned)sq>=(unsigned)SQ_MAX || sq<SQ_BR_START) {
-		static Squadron bob_nullsquad;
+		/* S51: must be a BritSquadron, NOT the base Squadron. Callers immediately
+		   re-dispatch on the squadnum field (SUBCALL, NODEBOB.CPP:6611): a zero-init
+		   null squad has squadron==0 < SQ_LW_START, so every accessor casts back to
+		   BritSquadronPtr and reads BritSquadron fields (e.g. AcType()->actype) that
+		   live PAST the base Squadron object. A `static Squadron` made those reads run
+		   off the end of the object -> ASan global-buffer-overflow / hard SEGV deeper
+		   (FixUpWaypointsToGroup) on a historic mission carrying an out-of-range
+		   squadnum (measured: v1=187, SQ_MAX=148). Sizing it as a BritSquadron keeps
+		   the derived-field reads in bounds; still zero-init (AcType 0 = default plane,
+		   homeairfield UID_NULL), the S43 intent. */
+		static BritSquadron bob_nullsquad;
 		return bob_nullsquad;
 	}
 #endif
