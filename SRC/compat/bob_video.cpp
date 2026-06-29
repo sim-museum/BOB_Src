@@ -827,6 +827,15 @@ static HRESULT SURF_QueryInterface(IDirectDrawSurface7* This, REFIID riid, void*
 	if (ppv) *ppv = This; return DD_OK;
 }
 static ULONG   SURF_AddRef(IDirectDrawSurface7* This) { GLSurface7* s=(GLSurface7*)This; return (ULONG)++s->ref; }
+/* S60: g_devTex[] (defined further down) caches the per-stage BOUND texture as a
+   *borrowed* pointer (no AddRef). When a surface's refcount hits 0 and SURF_Release
+   frees it, any g_devTex slot still pointing at it dangles -> the draw thread's
+   draw_fvf reads the freed GLSurface7 (ASan heap-use-after-free, T5, during the
+   front-end->flight launch where the main thread tears down menu textures while the
+   draw thread renders). Clear those slots before the free so a stale bound texture
+   reads back as NULL (untextured) instead of freed memory. Helper is defined where
+   g_devTex is in scope; declared here. */
+static void bob_unbind_devtex(GLSurface7* s);
 /* Proper COM reference counting. The game AddRef/Releases texture surfaces in balanced
    pairs (e.g. UpdateMipMaps does AddRef()+Release() on every just-created texture). The
    old code freed on the FIRST Release regardless of refcount, so it freed live textures
@@ -836,6 +845,7 @@ static ULONG   SURF_AddRef(IDirectDrawSurface7* This) { GLSurface7* s=(GLSurface
 static ULONG   SURF_Release(IDirectDrawSurface7* This) {
 	GLSurface7* s=(GLSurface7*)This;
 	if (--s->ref > 0) return (ULONG)s->ref;
+	bob_unbind_devtex(s);	/* S60: drop borrowed bound-texture refs before freeing (UAF guard) */
 	for (int i=0;i<g_nSurf;i++) if (g_allSurf[i]==s) { g_allSurf[i]=NULL; break; }  /* keep canary registry clean */
 	g_surfFreed++;
 	/* Free the GL texture too, else every UnloadTexture (scene change) orphans one. Safe
@@ -1117,6 +1127,12 @@ static FvfLayout fvf_layout(DWORD fvf) {
 
 /* ---- device GL state ---- */
 static GLSurface7* g_devTex[8] = {0};   /* SetTexture per stage */
+/* S60: clear any bound-texture slot pointing at a surface about to be freed, so the
+   draw thread never reads a freed GLSurface7 via g_devTex (see SURF_Release). */
+static void bob_unbind_devtex(GLSurface7* s) {
+	if (!s) return;
+	for (int i=0;i<8;i++) if (g_devTex[i]==s) g_devTex[i]=NULL;
+}
 /* Per-stage texture addressing (D3DTSS_ADDRESS/U/V). The game sets MIRROR/CLAMP for the
    land texture (LIB3D.CPP:14010/14537) and WRAP for cockpit/detail; honouring it stops the
    terrain over-tiling that GL_REPEAT-everywhere produces. Default WRAP (D3DTADDRESS_WRAP=1). */

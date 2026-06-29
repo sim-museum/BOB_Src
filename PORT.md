@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.20 / S60 (2026-06-29): front-end→flight launch UAF fixed — a freed surface stayed cached in `g_devTex[]`; the draw thread read it
+> Sprint 60 (R4.20), the front-end→flight-launch surface UAF from S59. (This launch path — menu → fly —
+> is what the `BOB_BOOT_FRONTEND` boot scaffold bypasses, so it was never ASan-tested until S57's front-end
+> fuzz.)
+> - **Root.** `g_devTex[8]` (bob_video.cpp) caches the per-stage **bound** texture as a *borrowed* pointer
+>   (no AddRef). When a texture's refcount hits 0 and `SURF_Release` frees the `GLSurface7`, any `g_devTex`
+>   slot still pointing at it **dangles** — and `draw_fvf` on the **render thread (T5)** then reads the freed
+>   surface (`t->w` etc.), ASan **heap-use-after-free** (freed by `SURF_Release` on T0 during the launch
+>   transition, where the main thread tears down menu textures while the draw thread renders the new view).
+> - **Fix (compat, bob_video.cpp).** In `SURF_Release`, before `free(s)`, NULL any `g_devTex[i]==s`
+>   (`bob_unbind_devtex`). A stale bound-texture slot then reads back as NULL (untextured — the safe
+>   degradation `draw_fvf` already handles) instead of freed memory; the game rebinds a real texture before
+>   its next draw. Clearing before the free shrinks the cross-thread window to nil for the observed
+>   cross-frame dangling case.
+> - **Verified.** Front-end launch ASan: the `draw_fvf` UAF is **gone** (total 7→3; the run now advances
+>   further into the launched flight). Regression — `SURF_Release` is shared by all flights, so the key check:
+>   boot-scaffold QM 11 ASan **0 errors**, normal 0 crashes, frame **97% non-black**; bare `./bob` exits 0.
+> - **Remaining (S61) — launched-flight terrain path.** With the UAF gone the front-end-launched flight now
+>   reaches `LandScape::RenderLandscape`/`GeneratePointData`/`DistDrawClouds` and `Material::Material` with a
+>   few ASan hits — terrain/material setup specific to this launch path (the boot scaffold's landscape is
+>   clean). Next sprint. Evidence: `/tmp/s60*`. Game-code touch = none (compat only).
+
 > ## R4.19 / S59 (2026-06-29): ★ compat `BITSET`/`BITTEST` were dword-granular — a 4-byte access on sub-4-byte `MakeField` bitfields; now byte-granular (engine-wide fix)
 > Sprint 59 (R4.19), the front-end config-bitfield overflow from S58. Root cause is a **compat-layer** bug
 > (not game code), and the fix benefits every `MakeField` bitfield in the engine.
