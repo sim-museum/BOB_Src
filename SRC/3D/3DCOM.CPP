@@ -11059,7 +11059,12 @@ void shape::dodigitdial(UByte *& instr_ptr)
 #endif
 	}
 #endif
-	delete digits;
+	/* PORT FIX S53 (Linux, 2026-06-29): digits is `new UByte[nodigits]` (array-new,
+	   :10977), so scalar `delete` is an operator mismatch (new[] vs delete) -- harmless
+	   on Win32's allocator, real UB (array-cookie/heap corruption) elsewhere. ASan:
+	   alloc-dealloc-mismatch in shape::dodigitdial, found fuzzing QM 18 (bombing) whose
+	   cockpit frames a digital dial. Same class as S49 (DrawSubShape) / R1.3a. Use delete[]. */
+	delete[] digits;
 
 	instr_ptr += sizeof(DODIGITDIAL);
 }

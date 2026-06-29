@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.13 / S53 (2026-06-29): broad ASan sweep of ALL quick missions — fixes a 2nd new[]/delete mismatch (`dodigitdial` cockpit dial); maps the remaining historic-mission cluster
+> Sprint 53 (R4.13). Extended the S49 fuzz methodology to the **whole quick-mission table** (indices 1–30,
+> ASan, ~10s each). Most fly clean; one new render-path defect fixed, and the historic cluster mapped.
+> - **Fixed — `shape::dodigitdial` new[]/delete mismatch (3DCOM.CPP:10977 vs :11062).** QM 18 (bombing)
+>   flooded **401 ASan `alloc-dealloc-mismatch`** — its cockpit frames a **digital dial** (`add_cockpit`→
+>   `process_shape`→`draw_shape`→`donsubs`→`dodigitdial`); `digits` is `new UByte[nodigits]` but freed with
+>   scalar `delete`. The 2nd instance of the S49/R1.3a class on a distinct shape opcode. **Fix:** `delete
+>   digits` → `delete[] digits` (direct + PORT FIX comment). **Verified:** QM 18 ASan **401 → 0**; QM 16 / 11
+>   regressions **0**; bare `./bob` 0.
+> - **Sweep results.** Clean (fly, 0 ASan errors): indices **1–15, 17, 19, 21, 22** (all training/familiar/
+>   dogfight/intercept variants) plus 18 after the fix. So every **combat/training** quick mission is now
+>   memory-clean.
+> - **Logged for S54 — the historic-mission cluster (title 2240, indices 23–30).** Several **fail to reach
+>   flight** with out-of-range `playersquadron` (23→168, 25→208, 27→96, 28→73, 29→87; SQ_MAX=148), a couple
+>   throw 1–2 ASan errors, 30 just times out. These look like the **player-squadron** analogue of the S50–S52
+>   air-group squadnum family — likely the `BOB_BOOT_FRONTEND` scaffold not setting up historic missions'
+>   player squadron correctly (the combat QMs use `playersquadron` 0/2/6/8). S54: trace the scaffold's
+>   historic-mission player-squadron setup. Evidence: `/tmp/s53_*`. Game-code touch = one `delete`→`delete[]`
+>   in 3DCOM.CPP.
+
 > ## R4.12 / S52 (2026-06-29): ★ QM 26 (HISTORIC) NOW FLIES — `make_airgrp` skips an out-of-range-squadnum air group instead of cascading into sentinel-deref SEGVs
 > Sprint 52 (R4.12), closing the QM 26 load failure the S49 sweep found (S50/S51 fixed two layers; this
 > retires the family). **The historic mission now loads and flies, ASan-clean.**
