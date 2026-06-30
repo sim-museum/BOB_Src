@@ -296,6 +296,25 @@ inline ULong _eastBlock(SLong z)
 	return 0x7&(z>>(6+17));
 }
 
+// The north/east landscape index files (north.ind / east.ind) are each exactly
+// 0x1000 (4096) SInfo entries, and _northIndex/_eastIndex structurally produce a
+// wrapped index in [0,0xFFF]. The "two-strip" seek paths below read the next
+// index, pNorth/pEast[index+1], for the strip that continues into the adjacent
+// block; when index==0xFFF that runs one SInfo past the end of the buffer (a
+// benign garbage read on Windows, but a real heap-buffer-overflow under ASan and
+// latent UB on any host). Wrap the continuation index back into the toroidal
+// index grid -- identical to index+1 for every value except the 0xFFF edge,
+// where it reads entry 0 (the natural wrap of the masked z/x grid). See
+// Migland.cpp:5193/5275/5422/5581 (BuildNorth/EastRequests, StillGoingNorth/East).
+inline ULong _seekNextIndex(ULong index)
+{
+#if defined(BOB_LINUX)
+	return (index+1) & 0xFFF;
+#else
+	return index+1;
+#endif
+}
+
 //������������������������������������������������������������������������������
 //������������������������������������������������������������������������������
 
@@ -5190,7 +5209,7 @@ void CRectangularCache::BuildNorthRequests()
 			AddSeekRequest(&newSeek);
 
 			numBlocks=CENTER_WH-numBlocks;
-			info=pNorth[index+1];
+			info=pNorth[_seekNextIndex(index)];
 			newSeek.seekPos=info.offset;
 			newSeek.dataLen=info.length;
 			newSeek.firstSkipIndex=0;
@@ -5272,7 +5291,7 @@ void CRectangularCache::BuildEastRequests()
 				pLocalDest+=CENTER_WH;
 			}
 			numBlocks=CENTER_WH-numBlocks;
-			info=pEast[index+1];
+			info=pEast[_seekNextIndex(index)];
 			newSeek2.fileNum=FIL_AREAE_NUM;
 			newSeek2.seekPos=info.offset;
 			newSeek2.dataLen=info.length;
@@ -5419,7 +5438,7 @@ void CRectangularCache::StillGoingNorth()
 		AddSeekRequest(&newSeek);
 
 		numBlocks=CENTER_WH-numBlocks;
-		info=pNorth[index+1];
+		info=pNorth[_seekNextIndex(index)];
 		newSeek.seekPos=info.offset;
 		newSeek.dataLen=info.length;
 		newSeek.firstSkipIndex=0;
@@ -5578,7 +5597,7 @@ void CRectangularCache::StillGoingSouth()
 		AddSeekRequest(&newSeek);
 
 		numBlocks=CENTER_WH-numBlocks;
-		info=pNorth[index+1];
+		info=pNorth[_seekNextIndex(index)];
 		newSeek.seekPos=info.offset;
 		newSeek.dataLen=info.length;
 		newSeek.firstSkipIndex=0;

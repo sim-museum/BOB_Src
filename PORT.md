@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.29 / S71 (2026-06-29): historic-QM epic, fix 2/N — eliminated the `CRectangularCache::BuildNorthRequests` heap-buffer-overflow (the S70-named next layer); QM 28 now reaches `View3d interactive` under ASan
+> Sprint 71 (R4.29), second fix of the historic-QM epic — clears the terrain-cache heap-overflow S70
+> uncovered behind the `IllegalSepID` FATAL, then root-causes the *next* (deeper) layer.
+> - **Root (the S70 next-layer overflow).** ASan: `heap-buffer-overflow READ of size 8 at Migland.cpp:5193`
+>   = `info=pNorth[index+1]`. The north/east landscape **index files (`north.ind`/`east.ind`) are each
+>   exactly `0x1000` (4096) `SInfo` entries** (32768 bytes — verified on disk), and `_northIndex`/`_eastIndex`
+>   structurally produce a **wrapped** index in `[0,0xFFF]` (the `0x1FF&z`,`0x7&x` masks). The "two-strip"
+>   seek paths read the *continuation* index `pNorth/pEast[index+1]`; when `index==0xFFF` that runs one
+>   `SInfo` past the buffer end — **benign garbage read on Windows, but a real heap-overflow under ASan +
+>   latent UB on any host**. Four sites: `BuildNorthRequests` (5193), `BuildEastRequests` (5275),
+>   `StillGoingNorth` (5422), `StillGoingEast` (5581).
+> - **Fix (`#if BOB_LINUX`, file-local `_seekNextIndex`, MIGLAND.CPP).** Wrap the continuation index back
+>   into the toroidal grid: `(index+1) & 0xFFF`. **Identical to `index+1` for every value except the `0xFFF`
+>   edge**, where it reads entry `0` — the natural wrap of the masked z/x grid (faithful: the index space *is*
+>   a wrapped grid). Windows path stays byte-identical (`#else return index+1`). Game source otherwise pristine.
+> - **Verified.** QM 28 ASan now **passes terrain init clean** (was: heap-overflow in `BigInit`→
+>   `BuildNorthRequests`) and reaches **`View3d interactive`**. Regression (MIGLAND is core terrain — runs
+>   every mission): QM 11 combat 40 s ASan **0 errors**, QM 26 historic 40 s **0 errors**, bare `./bob` 20 s
+>   ASan **0 errors** — all reach interactive flight.
+> - **Next layer (mode 2 continues, fix 3/N).** Past terrain init, QM 28 now SEGVs in
+>   `ManualPilot::GetKeyCommon` (Keyfly.cpp:330) — `pEngine->pThrustPoint->Pos.x` on a **NULL thrust point**
+>   (ASan: `SEGV on 0x00000008`). Root-caused: QM 28's player aircraft (squadron 73) is built by
+>   **`DUMMY_Setup`** (DT_OTHER.CPP — an AI-grade flight model that `new`s an `ENGINE` but never a
+>   `THRUSTPOINT`; `Engine::NullThis` zeroes `pThrustPoint`), **not** by a detailed flyable
+>   `SPITFIRE_Setup`/etc. routed via `Model::SetupAircraft`→`classtype->pSetupFunction`. **Same upstream
+>   cause as S69:** the historic-QM scaffold selects a non-flyable/wrong aircraft as the player. The faithful
+>   fix remains the OOB / player-aircraft-build feature work (S69 option b) — the epic continues layer-by-layer.
+> - **Field observation (user, external view).** In a flying QM the external/chase view showed **two aircraft
+>   models nearly superimposed** (player + a second AC almost coincident). Noted for follow-up — likely a
+>   formation/spawn-position or external-camera-target matter, distinct from this sprint's terrain fix.
+
 > ## R4.28 / S70 (2026-06-29): historic-QM epic, fix 1/N — `IllegalSepID` (0x3fff) "no reference" sentinel was queued for UID resolution → "Unresolved UIDS" FATAL fixed
 > Sprint 70 (R4.28), first fix of the PO-chosen historic-QM epic (mode 2 of S69's two failure modes).
 > - **Root.** QM 28's "Unresolved UIDS!" FATAL named uid `0x3fff` = **`IllegalSepID`/`IllegalBAND`** — the
