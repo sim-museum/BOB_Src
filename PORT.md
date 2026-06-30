@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S69 spike (2026-06-29): root-caused why the bailing historic QMs fail — player squadron not instantiated in the scaffold's scramble world (PO-chosen epic; scope decision needed)
+> Sprint 69 (the PO-chosen "historic missions playable" epic). Root-caused; the fix is a real feature, so
+> surfacing a scope decision rather than guessing.
+> - **Symptom.** Historic QMs **23/25/27/28/29** bail on `*** FATAL: "No player A/C set up on entering 3d!"`
+>   (Persons3.cpp:3294) — `ExpandPilotedFlights` left `pilotedaircraft==NULL`. (24 & 26 fly.)
+> - **Root cause.** `pilotedaircraft` is set in `make_airgrp` **only when a created air group's squadnum
+>   `v1 == Pack_PlayerSquad`** (`= MMC.playersquadron`, PERSONS3.CPP:854/862/870). The scaffold (and the
+>   real `SetUpHotShot`, FULLPANE.CPP:1903 — *same* derivation) sets `playersquadron =
+>   quickdef.line[plside][plwave][plgrp].actype`. For the **bailing** historic QMs that value isn't a
+>   squadron the scaffold's **SCRAMBLE** world instantiates: 23/25 use **out-of-range** values (168/208 >
+>   SQ_MAX, which S52 also skips), and 27/28/29 use in-range values (96/73/87) that simply **aren't among
+>   the scramble OOB's squadrons** — whereas the flying ones (24/26 → 90/70) happen to be present. Combat QMs
+>   work because they use small `SQ_QM*` codes the S43 `NodeData::operator[]` switch maps to real squadrons.
+> - **So the fix is a feature, not a patch:** historic QMs need their own order-of-battle (the squadrons they
+>   reference) instantiated — the campaign/briefing path loads it; the quick-mission scramble world doesn't.
+>   No quick code change makes them faithfully playable.
+> - **Scope options surfaced to PO:** (a) **pragmatic** — when `pilotedaircraft` ends NULL, assign the player
+>   to a present combat squadron so the mission is *flyable* (not the exact historic squadron — playable but
+>   unfaithful); (b) **full** — load each historic QM's referenced squadrons/OOB (faithful, substantial RE of
+>   the historic-mission setup); (c) **accept** — document that historic QMs need the full campaign data path
+>   (the scaffold is a combat-QM shortcut). No code change this spike.
+
 > ## S68 spike (2026-06-29): rear-view-mirror UV re-investigated (deferred — deep game-side); remaining backlog is now all major efforts (PHASE BOUNDARY)
 > Sprint 68 was a spike to pick the next fidelity target after the memory-hardening arc (S46→S66) and the
 > trilinear-default validation (S67). Outcome: a phase boundary — the quick high-value wins are done.
