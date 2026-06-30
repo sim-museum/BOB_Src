@@ -2681,6 +2681,14 @@ Bool Persons3::setposition( ItemBase* it, EventVal& pos, Bool addtoworld)
 //------------------------------------------------------------------------------
 void		Persons3::setpointer(ItemBasePtr	*targitemptr,UniqueID	srcuid)
 {
+#if defined(BOB_LINUX)
+	// S69: IllegalSepID (0x3fff) and UID_NULL are "no reference" sentinels, not real UIDs.
+	// ConvertPtrUID can't resolve them, so the original then logpointercopy()'d them -- queuing
+	// a deferred fixup that never arrives -> anyoutstanding() stays true -> "Unresolved UIDS!"
+	// FATAL on entering 3D (historic QMs carry 0x3fff "no reference" pointer fields, e.g. QM 28).
+	// Treat as NULL (genuinely no reference); don't queue, and avoid the -1 placeholder (S50 class).
+	if (srcuid==IllegalSepID || srcuid==UID_NULL) { *targitemptr=NULL; return; }
+#endif
 	if ((*targitemptr=ConvertPtrUID(srcuid))==0)
 		logpointercopy(targitemptr,srcuid);
 }

@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.28 / S70 (2026-06-29): historic-QM epic, fix 1/N — `IllegalSepID` (0x3fff) "no reference" sentinel was queued for UID resolution → "Unresolved UIDS" FATAL fixed
+> Sprint 70 (R4.28), first fix of the PO-chosen historic-QM epic (mode 2 of S69's two failure modes).
+> - **Root.** QM 28's "Unresolved UIDS!" FATAL named uid `0x3fff` = **`IllegalSepID`/`IllegalBAND`** — the
+>   engine's "no reference / illegal" sentinel (uniqueID.h:115/128), **not a real entity**. A historic-QM
+>   pointer field holding `0x3fff` went through `setpointer`→`logpointercopy`→`adduidrequest`, queuing a
+>   deferred fixup that can never arrive (there's no entity 0x3fff) → `anyoutstanding()` stays true →
+>   `FinishSetPiece` FATAL before flight.
+> - **Fix (`#if BOB_LINUX`, `Persons3::setpointer`).** Treat `IllegalSepID`/`UID_NULL` as genuine
+>   no-reference: set `*targitemptr=NULL` and return — don't `ConvertPtrUID`/`logpointercopy` it (also
+>   avoids the `-1` placeholder, the S50 deref class). Correct semantics (those values *are* "no reference").
+> - **Verified.** QM 28 now **passes the Unresolved-UIDS FATAL and reaches `View3d interactive`** (was: FATAL
+>   at load). Regression (setpointer is core UID-resolution, all missions): QM 11 combat **0 ASan errors**,
+>   QM 26 historic **0**, bare `./bob` 0.
+> - **Next layer (mode 2 continues).** Past the FATAL, QM 28 now SEGVs deeper in terrain init —
+>   `CRectangularCache::BuildNorthRequests` (Migland.cpp:5193) heap-overflow, a *separate* QM-28-specific
+>   landscape-cache bug the FATAL previously masked. Epic continues layer-by-layer; this is fix 1 of several.
+
 > ## S69 (2026-06-29): historic-QM epic — full root-cause of BOTH failure modes (`BOB_TRACE_PLAYERSQ` diag added); PO chose the faithful OOB-load fix
 > Deepened the S69 spike per the PO's "full faithful fix" choice. Added `BOB_TRACE_PLAYERSQ` (default-off
 > diag) at the three decision points (make_airgrp player-match, `ExpandPilotedFlights` gate, `anyoutstanding`).
