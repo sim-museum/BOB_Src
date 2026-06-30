@@ -107,10 +107,12 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    UV work (or a compat texcoord sanitiser) — deferred. **Land textures: now default FULL_RES** — the QM
    boot defaults `Save_Data.textureQuality=4`, so the land RT is **256×256** (4× the old 128 detail; sharp
    fields/runways), default flight + cockpit stable. `BOB_TEXQ`/`BOB_FILTER` override; `BOB_TEXQ=0` reverts.
-   Trilinear (`BOB_FILTER=2`) **now works** (S63, 2026-06-29): the old `CopyMapToSurface` mip-upload crash
-   no longer reproduces — incidentally fixed by the S47/S48/S60 texture/surface hardening (renders 97%
-   non-black, 0 ASan errors, stable). Default is still BILINEAR FULL_RES; trilinear is available via
-   `BOB_FILTER=2` and could be defaulted after a long-session soak.
+   Trilinear is now the **default and faithful** filtering (S67, 2026-06-29): `InitPreferences` sets
+   `filtering=2` (TRILINEAR — the Windows default), and the R1.3c bilinear pin is gone (R3.5), so the
+   default boot runs trilinear. The old `CopyMapToSurface` mip-upload crash no longer reproduces
+   (incidentally fixed by the S47/S48/S60 texture/surface hardening). **Soak-validated S67:** 90 s ASan
+   flight + 60 s normal flight (with terrain streaming → mip re-uploads), **0 ASan errors, 0 crashes,
+   frame-300 97 % non-black**. `BOB_BILINEAR` reverts to bilinear for A/B; `BOB_TEXQ`/`BOB_FILTER` override.
 2. **Front-end fidelity polish** (cosmetic): widget box-art / dropdown arrows need the icon/
    bitmap **blit subsystem** (`MaskIcon`/`BitBlt` → framebuffer); faithful fonts need a coherent
    **DPI/scale pass** (the panels are scaled-up but the game fonts are native-DLU); minor combo/

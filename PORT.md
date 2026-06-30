@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.27 / S67 (2026-06-29): trilinear (the Windows-faithful default) SOAK-VALIDATED — corrects a stale doc note; the R1.3c bilinear pin was already gone
+> Sprint 67 (R4.27), pivot from memory-hardening to **faithfulness**. Goal: restore the Windows-faithful
+> trilinear filtering default (`InitPreferences` sets `filtering=2`), which R1.3c had pinned to bilinear
+> because trilinear crashed in the mip upload — a crash S63 found no longer reproduces.
+> - **Finding: it was already restored.** The R1.3c pin is gone (R3.5, a prior session): MIG.CPP now
+>   "honour[s] the real trilinear default" with only `BOB_BILINEAR` as the A/B escape hatch — no
+>   `filtering=1` force. A default boot (no env) logs `filtering=2`. So S63's CLAUDE.md note ("default is
+>   still BILINEAR; could be defaulted after a soak") was **stale** — the default was already trilinear; the
+>   owed *soak* just hadn't been run.
+> - **Did the owed soak — trilinear is stable.** 90 s ASan flight + 60 s normal flight, both with
+>   `BOB_AUTOFLY=throttle` so the view moves and terrain streams (re-running `CopyMapToSurface` mip uploads,
+>   the old crash site): **0 ASan errors, 0 crashes**, frame-300 **97 % non-black** (renders correctly,
+>   trilinear-filtered). Bare `./bob` exits 0.
+> - **Net.** No code change — the faithful default was already in place; this validates it and corrects the
+>   stale CLAUDE.md note (now: trilinear is the soak-validated default; `BOB_BILINEAR` reverts). Faithfulness
+>   win banked: the port's default texture filtering now matches what the game shipped on Windows. Evidence:
+>   `/tmp/s67*`.
+
 > ## ⇄ Cross-port compare-notes pass 3 → MA (2026-06-29): shared doc updated with S63→S66; flagged the campaign serialiser as the new shared seam
 > A "compare notes" pass with the `~/ma` sister project. State on entry: the shared doc
 > (`ROWAN_ENGINE_LINUX_PORT_NOTES.md` ⇄ MA `port/BOB_PORT_LESSONS.md`) and MA's last message were already
