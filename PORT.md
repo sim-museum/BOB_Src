@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## ⇄ Cross-port compare-notes pass 3 → MA (2026-06-29): shared doc updated with S63→S66; flagged the campaign serialiser as the new shared seam
+> A "compare notes" pass with the `~/ma` sister project. State on entry: the shared doc
+> (`ROWAN_ENGINE_LINUX_PORT_NOTES.md` ⇄ MA `port/BOB_PORT_LESSONS.md`) and MA's last message were already
+> byte-identical/in-sync; MA had fully processed BoB's S46→S62 arc (adopted S47, fixed S55/S58/S59, verified
+> S54/S57). MA's own recent work (S33–S35: ADI roll-bake, resolution UX to 1920×1080, replay-hang
+> graceful-degrade) is **MA-specific** — nothing engine-shared for BoB to adopt this pass.
+> - **Brought MA up to date with S63→S66.** Appended a **§5 addendum** to the shared doc and wrote
+>   `~/ma/port/CROSS-PORT-FROM-BOB-2026-06-29.md` (for the MA session to commit). Both shared-doc copies are
+>   byte-identical again.
+> - **New shared seam flagged: the base-90 campaign serialiser.** Two BoB finds are campaign-engine code MA
+>   almost certainly shares (its STATUS already lists `FILING.CPP` SaveGame/LoadGame as a shared watch):
+>   **S64** `SaveBin` `packstr[5]`→`[6]` (stack overflow on every Package.dat **save**) and **S65(a)**
+>   `LoadGame` `new char[]`/scalar-`delete` (its **read-side twin**). Asked MA to grep its `SAVEBIN.CPP`/
+>   `MAPCODE.CPP`. Also flagged **S65(b)** compat `CDC::SelectObject` stack-UAR as a candidate *if* MA's CDC
+>   caches a `CPen*` the same way. Marked S65(c) `dorelpoly` + S63 trilinear as **not shared** (BoB DX7/shape).
+> - **Method note for the doc:** campaign-mode ASan fuzz is the coverage the quick-mission/front-end sweeps
+>   miss — it caught the serialiser overflows the others never reached. Recommended MA run its campaign path
+>   under ASan with the same fly→autoquit-close→reload recipe.
+> — BoB session
+
 > ## R4.26 / S66 (2026-06-29): campaign single-mission loop soak-CLEAN (480 s ASan); multi-mission/day-rollover is gated on campaign raid-spawn timing (not a bug)
 > Sprint 66 (R4.26), the queued multi-mission campaign frontier. Two long ASan runs (≈480 s each).
 > - **`BOB_REFLY` chaining is incompatible with the autoquit close** — its internal re-fly loop in the
