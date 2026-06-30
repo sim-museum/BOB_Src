@@ -851,6 +851,11 @@ void	Persons3::make_airgrp(info_airgrp& I)
 			}
 
 			currac->classtype=Plane_Type_Translate[v2][0];
+#if defined(BOB_LINUX)
+			if (getenv("BOB_TRACE_PLAYERSQ"))	// S69 diag: why no player A/C on historic QMs
+				fprintf(stderr,"[psq] group v1=%d PackPlayerSquad=%d isSGT=%d realformac=%d PackPlayerPos=%d match=%d piloted=%p\n",
+					v1,(int)Pack_PlayerSquad,(int)isSGT,(int)realformac,(int)Pack_PlayerPos,(int)(v1==Pack_PlayerSquad),(void*)pilotedaircraft);
+#endif
 			if (v1==Pack_PlayerSquad)
 			{
 				if (isSGT)
@@ -3280,6 +3285,10 @@ void Persons3::FinishSetPiece()
 
 	if (!_Replay.Playback)
 		SENT_REQ=FALSE;
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_PLAYERSQ") && anyoutstanding())	// S69 diag: which UID is unresolved
+		fprintf(stderr,"[psq] UNRESOLVED root uid=%x\n",(unsigned)rootuidnode->uidattack);
+#endif
 	if (anyoutstanding())
 		_Error.EmitSysErr("Unresolved UIDS! One is: %x",rootuidnode->uidattack);
 
@@ -3844,6 +3853,12 @@ void	Persons3::ExpandPilotedFlights()
 	AirStrucPtr(MobileItem::ACList)->ClearUpAI();
 
 	//Now need to launch some for the player, and for any other 'interesting' squadrons:
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_PLAYERSQ"))	// S69 diag: the piloted-expansion gate
+		fprintf(stderr,"[psq] ExpandPilotedFlights: pilotedaircraft=%p uniqueID.count=%d SagBANDEND=%d gate=%d\n",
+			(void*)pilotedaircraft, pilotedaircraft?(int)pilotedaircraft->uniqueID.count:-1, (int)SagBANDEND,
+			(int)(pilotedaircraft && pilotedaircraft->uniqueID.count<SagBANDEND));
+#endif
 	if (pilotedaircraft && pilotedaircraft->uniqueID.count<SagBANDEND)
 	{
 		AirStrucPtr leader = pilotedaircraft->ExpandSag(true);

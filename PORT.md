@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S69 (2026-06-29): historic-QM epic — full root-cause of BOTH failure modes (`BOB_TRACE_PLAYERSQ` diag added); PO chose the faithful OOB-load fix
+> Deepened the S69 spike per the PO's "full faithful fix" choice. Added `BOB_TRACE_PLAYERSQ` (default-off
+> diag) at the three decision points (make_airgrp player-match, `ExpandPilotedFlights` gate, `anyoutstanding`).
+> Traced the two distinct failure modes precisely:
+> - **Mode 1 — "No player A/C set up" (QM 23/25).** Player squadron is **out of range** (168/208 > SQ_MAX);
+>   `make_airgrp`'s `v1==Pack_PlayerSquad` match never fires because S52 *skips* the OOR group, so
+>   `pilotedaircraft` stays NULL → `FinishSetPiece` FATAL. (Disproved a wrong hypothesis on the way: the
+>   `pilotedaircraft->uniqueID.count<SagBANDEND` gate in `ExpandPilotedFlights` is *expected* to be false for
+>   the player AC — QM 26, which flies, also has gate=0; the player isn't SAG-expanded.)
+> - **Mode 2 — "Unresolved UIDS" (QM 28).** Here `pilotedaircraft` IS set (player squadron 73 matches its
+>   own group, 179/180 groups), but `FinishSetPiece`'s `anyoutstanding()` fires first: the mission
+>   references **entity UID `0x3fff`** that the scramble world never loads → FATAL before flight.
+> - **So the faithful fix = load each historic QM's order-of-battle / referenced entities** (squadrons for
+>   mode 1's player, and the `0x3fff`-class targets/entities for mode 2) — the campaign/briefing data path
+>   does this; the quick-mission scramble world doesn't. Confirmed multi-sprint, in the SAG/campaign-setup
+>   subsystem. **Next concrete step:** decode what entity `0x3fff` is (target/airfield/squadron band) and
+>   where its data should come from. Foundation committed (diag toggle + precise root-cause); no game-logic
+>   change yet.
+
 > ## S69 spike (2026-06-29): root-caused why the bailing historic QMs fail — player squadron not instantiated in the scaffold's scramble world (PO-chosen epic; scope decision needed)
 > Sprint 69 (the PO-chosen "historic missions playable" epic). Root-caused; the fix is a real feature, so
 > surfacing a scope decision rather than guessing.
