@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S68 spike (2026-06-29): rear-view-mirror UV re-investigated (deferred — deep game-side); remaining backlog is now all major efforts (PHASE BOUNDARY)
+> Sprint 68 was a spike to pick the next fidelity target after the memory-hardening arc (S46→S66) and the
+> trilinear-default validation (S67). Outcome: a phase boundary — the quick high-value wins are done.
+> - **Mirror horizon garbage-v (re-investigated, still deferred).** Confirmed it's a **game-side
+>   `LandScape::InfiniteStrip`** issue (LANDSCAP.CPP:7427), not a compat one: the horizon strip's geometry
+>   uses `cloud_height_*` derived from `MissManCampSky().Layer[0].AltBase/AltTop` and double-precision sky
+>   math; in the **mirror** path (`RenderMirrorLandscape`→`InfiniteStrip(PlayerSeenAC->pitch,roll)`) that
+>   data/derivation yields the garbage v. No clean fix: `draw_fvf` hands texcoords to GL as a vertex array
+>   (no per-texel clamp point), and sanitising garbage-v to an arbitrary value wouldn't reconstruct the
+>   *correct* horizon UV anyway. It's a niche **dormant** feature (gated off; `BOB_MIRROR`), so deep
+>   game-side UV work here is poor ROI. Deferred (diagnosis sharpened).
+> - **Day-rollover ASan fuzz needs new harness.** There's no campaign clock-advance toggle
+>   (`BOB_POSTMISSION_FF`/`BOB_MAP_TIMER` drive the map tick, not the campaign clock), so reaching the
+>   end-of-day SAG sim / debrief under ASan needs a small time-warp hook first.
+> - **Phase boundary.** Every reachable playable path is ASan-clean (S46→S66) and the default filtering is
+>   Windows-faithful (S67). The remaining backlog is **major efforts**, not quick wins: (1) historic missions
+>   playable via the scaffold (campaign/briefing entity setup — a feature; engine already robust); (2)
+>   day-rollover memory fuzz (time-warp hook + long ASan run of the SAG sim); (3) mirror horizon UV (deep
+>   game-side `InfiniteStrip`); (4) intro Smacker / front-end DPI polish (cosmetic). These warrant PO
+>   direction on which to take as the next epic.
+
 > ## R4.27 / S67 (2026-06-29): trilinear (the Windows-faithful default) SOAK-VALIDATED — corrects a stale doc note; the R1.3c bilinear pin was already gone
 > Sprint 67 (R4.27), pivot from memory-hardening to **faithfulness**. Goal: restore the Windows-faithful
 > trilinear filtering default (`InitPreferences` sets `filtering=2`), which R1.3c had pinned to bilinear
