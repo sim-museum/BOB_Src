@@ -7,6 +7,10 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
+> **Latest session:** [`doc/STATUS-2026-07-01.md`](doc/STATUS-2026-07-01.md) (S72→S82) — all 7 historic
+> quick missions (23–29) now fly; **double-exposure aircraft** and **cockpit cloud z-fighting** both FIXED;
+> quick-mission fleet ASan-clean; **full-campaign epic** scoped + Phase-1 started.
+
 ---
 
 ## What works (verified)
