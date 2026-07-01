@@ -14,7 +14,10 @@
 >   **S72** `Grid_Base::getWorld` unclamped ground-grid index (fires when an aircraft is off the map); the
 >   rest of the epic is BoB-scaffold-specific. Theme: shared finds are **engine geometry with an unclamped
 >   index** that BoB's off-nominal scaffold inputs exercise first.
-> - **Session arc (S72→S79):** all 7 historic QMs (23–29) now fly (was 24/26); the double-exposure is fixed;
+> - **Fleet ASan pass (S80):** QM 24/27/29 (the remaining flyers, now using the S78 formation spread) each
+>   ~40 s ASan — **0 heap/global overflow, 0 SEGV, 0 non-odr**. Combined with S72/S74/S78's earlier passes,
+>   **all 7 historic QMs (23–29) are ASan-clean.**
+> - **Session arc (S72→S80):** all 7 historic QMs (23–29) now fly (was 24/26); the double-exposure is fixed;
 >   every reachable path stays ASan-clean; bare/plain `./bob` exit 0.
 
 > ## R4.32 / S78 (2026-06-30): FIXED the "double-exposure" aircraft — surplus scramble flights read a zero-padded formation slot → all stacked on the leader; synthesise a spread. Nearest AC 1 m → 19 m
