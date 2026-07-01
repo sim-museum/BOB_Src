@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S79 (2026-06-30): consolidation — 75 s ASan soak clean; formation spread validated across all historic QMs; cross-port notes updated (S72→S78 → MA)
+> Sprint 79 consolidates this session's engine changes (S72 player-reassignment + grid clamp, S74 NULL-player,
+> S78 formation spread).
+> - **75 s ASan soak, QM 26** (`BOB_AUTOFLY=throttle`, formation-fix + reassignment paths): **0 heap/global
+>   overflow, 0 SEGV, 0 use-after-free, 0 non-odr errors** — survived the full soak.
+> - **Formation spread validated across the historic QMs:** nearest-AC distance QM 24 ~18–19 m, QM 27 ~13–26 m,
+>   QM 28 ~46–209 m (the Bf109 raid), QM 29 ~18–19 m — all well beyond the ~12 m wingspan (was ~1 m). No more
+>   double-exposure on any historic mission.
+> - **Cross-port (→ MiG Alley):** appended a **S72→S78 addendum** to the shared engine notes
+>   (`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`) flagging the two ENGINE-shared finds for MA to verify — **S78**
+>   `Formation_xyz` unclamped `wingpos[formindex]` (fires when a squadron exceeds its formation table) and
+>   **S72** `Grid_Base::getWorld` unclamped ground-grid index (fires when an aircraft is off the map); the
+>   rest of the epic is BoB-scaffold-specific. Theme: shared finds are **engine geometry with an unclamped
+>   index** that BoB's off-nominal scaffold inputs exercise first.
+> - **Session arc (S72→S79):** all 7 historic QMs (23–29) now fly (was 24/26); the double-exposure is fixed;
+>   every reachable path stays ASan-clean; bare/plain `./bob` exit 0.
+
 > ## R4.32 / S78 (2026-06-30): FIXED the "double-exposure" aircraft — surplus scramble flights read a zero-padded formation slot → all stacked on the leader; synthesise a spread. Nearest AC 1 m → 19 m
 > Sprint 78 (R4.32) — the PO-approved fix for the user's repeatedly-reported double-exposure, landing the
 > S73→S77 root-cause. **Bounded, faithful, one-function change.**

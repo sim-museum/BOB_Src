@@ -644,6 +644,22 @@ serialiser are the high-value shared finds**; renderer/shape-table bugs usually 
 different 3D/shape data). The fix shape is always the same bounds-honor / correct-`delete[]` discipline
 already documented above.
 
+**BoB addendum S72→S78 (2026-06-30 — the "historic-QM playable" epic; MA: two ENGINE finds to verify):**
+
+Context: BoB's `BOB_BOOT_FRONTEND` scaffold builds a *minimal scramble world* (not the full campaign OOB),
+which surfaced a run of bugs when flying the historic quick missions. Most fixes are **scaffold-specific**
+(BoB's quickdef/scramble model — not shared), but two are pure Rowan-engine and worth an MA check:
+
+| BoB sprint | Bug | Shared? |
+|---|---|---|
+| **S78** `3d5a2d4` | **`Item::Formation_xyz` (`FORMATN.CPP`) reads `FormationType::wingpos[formindex]` with no bound.** The static formation tables define only a few positions (`wingpos[0..~3]`; a squadron is ~4 flights) but `wingpos[16]` is zero-padded; a squadron with **more flights than the table** (BoB's over-filled scramble squadron, ~15) makes surplus flight leaders read a `{0,0,0}` slot → they position **exactly on the squadron leader** → "double-exposure" aircraft. Fix: when the slot is undefined (all-zero) synthesise a spread offset. | **LIKELY SHARED — MA check `FORMATN.CPP` `Formation_xyz` + how many flights its scramble/QM squadrons hold.** Pure engine geometry; triggers only when a squadron exceeds its formation table (won't fire for correctly-sized squadrons, so campaign is inert). |
+| **S72** `3cfb85b` | **`Grid_Base::getWorld` (`GRID.H`) indexes the 80×80 ground grid (`header[]`/`data[]`) with no clamp.** An aircraft **off the playable map** (BoB: a Luftwaffe player forming up beyond the map edge) runs past the array → heap-overflow (Windows read adjacent heap). Fix: clamp the grid index to the edge cell. | **CHECK if MA can put the player/camera off its map.** The ground-height grid + `WORLDSPACEMOD` shift are engine code; MA (Korea map) shares the structure. Never fires while the player stays over the map. |
+| S70–S74 (various) | Historic-QM load/flight crashes: `IllegalSepID 0x3fff` sentinel queued for UID resolution; `north.ind`/`east.ind` two-strip `index+1` toroidal-wrap OOB (`MIGLAND.CPP`); non-flyable/NULL player-squadron → reassign player to a flyable AC the mission built. | **Mostly BoB-scaffold-specific** (historic-QM quickdef + scramble OOB). The `MIGLAND` index wrap (S71) is engine terrain-cache code — **MA could check** if it streams the same `.ind` two-strip continuation. |
+
+Takeaway (reaffirmed): the shared finds are **engine geometry/primitives with an unclamped index** (formation
+table, ground grid, terrain index) that BoB's off-nominal scaffold inputs happen to exercise first; the
+per-mission/scaffold logic around them is not shared.
+
 ---
 
 ## 6. Audio (DirectSound / Miles → OpenAL + FluidSynth) **[ENGINE]** (both ports working, 2026-06)
