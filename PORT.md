@@ -1,5 +1,21 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S82 Phase 1 start (2026-06-30): campaign flow is reachable from the real front-end; first campaign screen's ART renders, its MENU/controls don't — the next gap
+> First concrete step of the campaign epic (Phase 1: reach + render). Via the real front-end
+> (`BOB_FRONTEND=1 BOB_OLE_DRAW=1`, `BOB_AUTOCLICK=1` = "Campaigns"):
+> - **Main menu: fully working** — title art + aircraft-over-Tower-Bridge background + the yellow menu
+>   (Quick Shots / **Campaigns** / Multi-Player / Load Game / Replay / PC Config / Sim Config / Credits /
+>   Quit / Website) all render and the click navigates. (`/tmp/fe_menu.png`.)
+> - **Campaigns screen: background art renders, menu/controls do NOT.** Clicking "Campaigns" navigates to a
+>   new screen (art `27929` — the RAF/Luftwaffe pilots montage) and the log paints "dials + menu", but the
+>   **menu text/controls are not visible** in the capture (`/tmp/fe_campaigns.png`) — unlike the main menu's
+>   text. So the campaign screens drive their options through a **different control path** than the main
+>   `bob_draw_menu` list, and that path isn't rendering yet. **This is the concrete Phase-1 next task:** get
+>   the campaign screen's menu/buttons to render (likely the same OLE-control-hosting / icon-blit work the
+>   config screens use), then proceed to the `CMIGView` map itself.
+> - Net: campaign flow is **navigable and art-complete**; the gap is the on-screen **controls**, matching the
+>   PO's "all controls and icons" ask. No code this step — capture-based assessment that pinpoints the seam.
+
 > ## S82 scoping (2026-06-30): full-campaign epic — entry points mapped, phased plan (the campaign map code EXISTS and is partly ported)
 > Sprint 82 opens the PO's "full campaign implementation (map controls + icons)" backlog item with a scoping
 > pass (the right first sprint of a large epic — plan before building). **Key finding: this is not a blank
