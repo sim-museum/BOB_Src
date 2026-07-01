@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.31 / S74 (2026-06-30): historic-QM epic, fix 4/N — QM 23 & 25 FLY (out-of-range player squadron → NULL player). ALL 7 historic QMs (23–29) now flyable
+> Sprint 74 (R4.31), fourth fix of the historic-QM epic — closes **mode 1** (the S69 "No player A/C" FATAL),
+> completing the crash-fix arc for every reachable historic quick mission.
+> - **Root (mode 1).** QM **23/25** nominate an **out-of-range player squadron** (168/208 > `SQ_MAX`), which
+>   `make_airgrp`'s S52 guard skips, so **no player aircraft is ever built** → `Manual_Pilot.ControlledAC2`
+>   stays NULL → `FinishSetPiece` "No player A/C set up on entering 3d!" FATAL before flight. Same upstream
+>   cause as mode 2 (S72): the scaffold seeds an invalid player squadron the SCRAMBLE world doesn't
+>   instantiate as a flyable player.
+> - **Fix (`#if BOB_LINUX`, `Persons3::FinishSetPiece`).** **Extended the S72 reassignment to the
+>   NULL-player case:** the block now fires on `nonFlyable || noPlayer` and, when there's no player at all,
+>   assigns a flyable aircraft the mission actually built (same squadron/side preference collapses to
+>   "any flyable" when the intended side is unknown) + `SetPilotedAcAnim`. One faithful recovery covers both
+>   failure modes: put the player in a flyable aircraft the frag screen would have offered.
+> - **Verified.** QM **23 → Spitfire, 25 → Hurricane**, both now **fly** (was: FATAL) and **ASan-clean**
+>   (40 s each: 0 heap-overflow, 0 SEGV, 0 UAF). **No regression:** QM 24/26/27/28/29 + combat 11 still fly;
+>   plain `./bob` exits 0. **All 7 historic QMs 23–29 are now flyable** (was: only 24/26 at the start of the
+>   epic; S70/S71 added 27/29, S72 added 28, S74 adds 23/25).
+> - **Epic status.** The historic-QM **crash/bail arc is complete** — every historic QM reaches interactive
+>   flight. Remaining historic-QM polish is *fidelity*, not crashes: mode-1 missions fly a *side-inferred*
+>   flyable aircraft rather than the exact historic squadron (the scaffold can't map the out-of-range squadron
+>   to a real OOB slot — the full campaign/briefing data path would); and the **formation-spacing** issue
+>   (S73) affects all scramble-world flights. Both are follow-ups, not blockers.
+
 > ## S73 spike (2026-06-30): root-caused the "two aircraft superimposed" report — formation members fly at ~1 m separation (NOT the Ghost/Seen split); added `BOB_TRACE_PROX`
 > Sprint 73 spike, chasing the user's field observation (reproduced across many tests; carried from S71/S72):
 > the external/chase view shows **two (or more) aircraft nearly superimposed**. Root-caused with a new

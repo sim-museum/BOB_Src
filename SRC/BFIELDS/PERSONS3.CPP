@@ -3334,18 +3334,27 @@ void Persons3::FinishSetPiece()
 	// pEngine->pThrustPoint). When the player ended up in a non-flyable aircraft, reassociate to a
 	// flyable one of the same side already present in the world -- what the frag screen would have
 	// offered -- preferring the same squadron; the AI's non-flyable aircraft are left untouched.
-	if (Manual_Pilot.ControlledAC2
-		&& !bob_is_flyable_pt(Manual_Pilot.ControlledAC2->classtype->planetext))
+	// S74 (historic-QM epic, fix 4/N) extends the S72 reassignment to the NULL-player case:
+	// mode-1 historic QMs (23/25) nominate an OUT-OF-RANGE player squadron (168/208 > SQ_MAX), which
+	// make_airgrp's S52 guard skips, so no player aircraft is ever built (ControlledAC2 stays NULL) ->
+	// "No player A/C" FATAL before flight. Both modes share one root: the scaffold seeds an invalid
+	// player squadron the SCRAMBLE world doesn't instantiate as a flyable player. The faithful recovery
+	// is the same -- put the player in a flyable aircraft the mission actually built (what the frag
+	// screen would have offered), preferring the intended squadron/side when we still have it.
+	bool nonFlyable = Manual_Pilot.ControlledAC2
+		&& !bob_is_flyable_pt(Manual_Pilot.ControlledAC2->classtype->planetext);
+	bool noPlayer   = !Manual_Pilot.ControlledAC2;
+	if (nonFlyable || noPlayer)
 	{
-		AirStrucPtr orig = Manual_Pilot.ControlledAC2;
-		Nationality   plnat  = orig->nationality;
-		UWord         plsquad = orig->fly.callname;		// squadron number of the player's flight
+		AirStrucPtr orig = Manual_Pilot.ControlledAC2;			// NULL in the mode-1 (noPlayer) case
+		Nationality   plnat  = orig ? orig->nationality : (Nationality)0;
+		UWord         plsquad = orig ? orig->fly.callname : 0xffff;	// squadron number of the player's flight
 		AirStrucPtr sameSquad=NULL, sameSide=NULL, anyFly=NULL;
 		for (AirStrucPtr Me = *AirStruc::ACList; Me; Me = *Me->nextmobile)
 		{
 			if (Me==orig || !bob_is_flyable_pt(Me->classtype->planetext))	continue;
 			if (!anyFly)						anyFly=Me;
-			if (Me->nationality==plnat)
+			if (Me->nationality==plnat)				// plnat==0 (no orig) matches no aircraft
 			{
 				if (!sameSide)					sameSide=Me;
 				if (Me->fly.callname==plsquad && !sameSquad)	sameSquad=Me;
@@ -3353,8 +3362,9 @@ void Persons3::FinishSetPiece()
 		}
 		AirStrucPtr sub = sameSquad ? sameSquad : sameSide ? sameSide : anyFly;
 		if (getenv("BOB_TRACE_PLAYERSQ"))
-			fprintf(stderr,"[psq] non-flyable player pt=%d (squad %d nat %d); reassigning to %s AC pt=%d\n",
-				(int)orig->classtype->planetext,(int)plsquad,(int)plnat,
+			fprintf(stderr,"[psq] %s player (pt=%d squad %d nat %d); reassigning to %s AC pt=%d\n",
+				noPlayer?"NO":"non-flyable",
+				orig?(int)orig->classtype->planetext:-1,(int)plsquad,(int)plnat,
 				sub?(sub==sameSquad?"same-squad":sub==sameSide?"same-side":"any"):"NONE",
 				sub?(int)sub->classtype->planetext:-1);
 		if (sub)
