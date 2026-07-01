@@ -27,7 +27,24 @@ public:
 	#define	new DEBUG_NEW
 #endif
 	inline long getMod( const int &x, const int &y ) { return get( x+64, y+64 ); }
+#if defined(BOB_LINUX)
+	// S72 (historic-QM epic): an aircraft off the playable map indexes this ground grid out of
+	// bounds -- header[] is 80x80, i.e. grid coords 0..639. This never triggered while the player
+	// was always RAF (defending over England), but a Luftwaffe-side quick mission (e.g. QM 28)
+	// forms the player's raid up beyond the English map edge, so getWorld() ran past header[]/data[]
+	// -> ASan heap-buffer-overflow (latent UB on any host; Windows read adjacent heap). Clamp to
+	// the nearest edge cell: the value is only a coarse ground-height estimate, discarded when the
+	// aircraft is >1000ft up, so edge-clamping is faithful. #else keeps the Windows path byte-identical.
+	inline long getWorld( ULong x, ULong y )
+	{
+		long gx=(long)(x>>WORLDSPACEMOD)+64, gy=(long)(y>>WORLDSPACEMOD)+64;
+		if(gx<0)gx=0; else if(gx>639)gx=639;
+		if(gy<0)gy=0; else if(gy>639)gy=639;
+		return get( gx, gy );
+	}
+#else
 	inline long getWorld( ULong x, ULong y ) { return get( (x>>WORLDSPACEMOD)+64, (y>>WORLDSPACEMOD)+64 ); }
+#endif
 	virtual long get( int x, int y ) = 0;		// pure virtual
 	inline long getFlip( int x, int y ) { return get( x, 639 - y ); } // get the upside down version...
 	virtual bool save( char* filename ) = 0;	// pure virtual

@@ -1,5 +1,52 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.30 / S72 (2026-06-30): historic-QM epic, fix 3/N — QM 28 FLIES (non-flyable Defiant player → flyable Bf109 reassignment; +2 ASan overflows fixed). 5 of 7 historic QMs now flyable
+> Sprint 72 (R4.30), third fix of the historic-QM epic — clears the S71-named `ManualPilot`/
+> `ProcessPistonEngine` NULL-`pThrustPoint` SEGV, then two ASan heap-overflows the fix newly exposed by
+> letting QM 28 actually fly. **Net: QM 28 is now flyable; 24/26/27/28/29 all fly (was: only 24/26).**
+> - **Root cause (the S71 next-layer SEGV).** QM 28's player is squadron **73 = SQ_BR_DEFIENT** — the
+>   **Defiant**, whose flight model is `DUMMY_Setup` (an AI-grade model that `new`s an `ENGINE` but **no
+>   `THRUSTPOINT`**; `Engine::NullThis` zeroes `pThrustPoint`). The manual flight model derefs
+>   `pEngine->pThrustPoint->Pos.x` every tick (`Engine::ProcessPistonEngine` via `Model::RealBase`;
+>   also `ManualPilot::GetKeyCommon`) → SEGV on a NULL thrust point. **The real game never allows this:**
+>   `BoBFrag::SetPlayersPositionQM` (BOBFRAG.CPP:504) filters the player's squadron pick to an *allowed*
+>   set — **fighters + Stuka only** (`PT_SPIT_A/B`,`PT_HURR_A/B`,`PT_ME109`,`PT_ME110`,`PT_JU87`),
+>   **excluding `PT_DEFIANT`** (the Defiant was never finished as flyable — the `DUMMY_Setup` planes carry
+>   "NOT SET YET" comments in FLYINIT.CPP). The `BOB_BOOT_FRONTEND` scaffold seeds `MMC.playersquadron`
+>   straight from the QM's nominal player line (`FULLPSYS.CPP` / `SetUpHotShot`), **bypassing that filter**.
+>   Discovered: QM 28's world holds **60 flyable Bf109s (squadron 81) and 0 other flyable types** — it's a
+>   **Luftwaffe mission**; the "Defiant squadron 73" is a scaffold artifact (historic QMs have empty QM
+>   line tables — `flights=0` everywhere — and store only `line[0][0][0].actype`).
+> - **Fix (`#if BOB_LINUX`, `Persons3::FinishSetPiece`, PERSONS3.CPP).** After `ExpandPilotedFlights`, if
+>   the resolved player aircraft is **non-flyable** (`!bob_is_flyable_pt(classtype->planetext)`),
+>   **reassociate the player to a flyable aircraft already present in the world** (prefer same squadron →
+>   same nationality → any), then `SHAPE.SetPilotedAcAnim(sub)` — exactly what the real player-setup paths
+>   do (ColourRulePlayerSquadron:3637 / the SAG path). This mirrors the frag screen: the player flies the
+>   mission's actual flyable squadron (QM 28 → a Bf109), AI keeps its non-flyable aircraft. QM 28 now flies.
+> - **Two ASan overflows the fix exposed (QM 28 flew far enough to hit them; both real latent bugs).**
+>   (1) **`Grid_Base::getWorld` heap-overflow** (GRID.H) — the ground grid is **80×80 (coords 0..639)**,
+>   covering only the playable map; a **Luftwaffe player forms up beyond the English map edge**, so the
+>   lookup ran past `header[]/data[]`. Never triggered while the player was always RAF (over England).
+>   **Fix:** clamp the grid index to the nearest edge cell (`#if BOB_LINUX`; the value is a coarse
+>   ground-height estimate, discarded above 1000 ft — edge-clamp is faithful; Windows read adjacent heap).
+>   (2) **`Model::Instruments` heap-overflow** (READ `actotalammoleft`) — reads the player's `Anim` as a
+>   full `PolyPitAnimData`, but the ex-AI substitute had a smaller AI-sized anim. **Fix:** the
+>   `SetPilotedAcAnim(sub)` added above upgrades it (the missing half of the normal player setup).
+> - **Verified.** QM 28 **ASan: 0 heap-buffer-overflow, 0 SEGV, 0 use-after-free** (40 s flight; a lone
+>   *intermittent* teardown-race UAF at the timeout-kill in `DrawHorizon`/`DEV_Clear` on the draw thread —
+>   pre-existing, compat-layer, absent on rerun and on QM 11/26; not this sprint's). **Release regression:**
+>   QM 24/26/27/28/29 + combat 11 all **fly**; QM 23/25 unchanged (still the separate **out-of-range player
+>   squadron** FATAL — 168/208 > SQ_MAX, S69 mode-1, the next layer); bare `./bob` and plain `./bob` clean
+>   (exit 0). QM 11/26 ASan still 0 heap-overflow (grid clamp + reassignment are inert on normal play).
+> - **Field observation carried over (user):** external/chase view shows **two aircraft nearly
+>   superimposed** — reproduced on RAF quick missions too (so pre-existing/general, not QM-28-specific).
+>   Strong lead: the player's **Ghost (predictor) / Seen** aircraft split (PERSONS3.CPP:3379-3406) — both
+>   may reach the external-view render, drawing the predictor over the player-moved copy. **Next sprint.**
+> - **Next layer (mode 1, fix 4/N).** QM 23/25 bail before flight: player squadron **168/208 out of range**
+>   (> SQ_MAX), so no player AC is built (`make_airgrp`'s S52 skip) → "No player A/C" FATAL. The S72
+>   reassignment infrastructure can be extended to the **`ControlledAC2==NULL`** case (assign any flyable
+>   AC) to make these flyable too — deferred to keep this sprint's FATAL-path change minimal.
+
 > ## R4.29 / S71 (2026-06-29): historic-QM epic, fix 2/N — eliminated the `CRectangularCache::BuildNorthRequests` heap-buffer-overflow (the S70-named next layer); QM 28 now reaches `View3d interactive` under ASan
 > Sprint 71 (R4.29), second fix of the historic-QM epic — clears the terrain-cache heap-overflow S70
 > uncovered behind the `IllegalSepID` FATAL, then root-causes the *next* (deeper) layer.

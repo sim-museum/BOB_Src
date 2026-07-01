@@ -874,7 +874,11 @@ void	Persons3::make_airgrp(info_airgrp& I)
 					if ((int)Pack_PlayerPos==-1)
 						pilotedaircraft=currac;
 				}
-
+#if defined(BOB_LINUX)
+				if (getenv("BOB_TRACE_PLAYERSQ") && pilotedaircraft==currac)
+					fprintf(stderr,"[psq] PILOTED assigned: v1(squad)=%d v2(actype)=%d classtype->planetext=%d visible=%d\n",
+						v1,(int)v2,(int)currac->classtype->planetext,(int)currac->classtype->visible);
+#endif
 			}
 			currac->fly.expandedsag=NULL;
 
@@ -3245,6 +3249,20 @@ void Persons3::EndSubPiece()
 	}
 }
   
+#if defined(BOB_LINUX)
+// S72 (historic-QM epic, fix 3/N): true iff a PlaneTypeSelect is a player-flyable aircraft --
+// the fighters + Stuka the game finished as detailed flight models (each of whose *_Setup builds
+// a THRUSTPOINT). The non-fly types (DEFIANT/BLEN and the German bombers DO17/JU88/HE111/HE59)
+// use DUMMY_Setup, which news an ENGINE but no THRUSTPOINT (Engine::NullThis zeroes pThrustPoint).
+// This is exactly the "allowed" set BoBFrag::SetPlayersPositionQM (BOBFRAG.CPP) filters the
+// player's squadron selection to, so it mirrors what the real frag/briefing screen permits.
+static bool bob_is_flyable_pt(int pt)
+{
+	return (pt >= PT_BRIT_FLYABLE && pt <= PT_HURR_B)		// Spitfire I/II, Hurricane I/II
+		|| (pt >= PT_GER_FLYABLE  && pt <= PT_JU87);		// Bf109, Bf110, Ju87
+}
+#endif
+
 void Persons3::FinishSetPiece()
 {
 	_Replay.DumpData("finish.txt");
@@ -3305,6 +3323,51 @@ void Persons3::FinishSetPiece()
 	SagExpansionCounter::totalexpanded=0;
 	SagExpansionCounter::highdemandrange=METRES2000;					//DAW 15/02/00
 	ExpandPilotedFlights();
+#if defined(BOB_LINUX)
+	// S72 (historic-QM epic, fix 3/N): some historic quick missions nominate a NON-FLYABLE
+	// squadron as the player's -- e.g. QM 28 -> squadron 73 (the Defiant, PT_DEFIANT), whose
+	// DUMMY_Setup flight model has no THRUSTPOINT. The real briefing/frag screen never lets the
+	// player pick such a type (BoBFrag::SetPlayersPositionQM's allowed list is fighters + Stuka
+	// only), but the BOB_BOOT_FRONTEND scaffold seeds MMC.playersquadron straight from the QM's
+	// nominal player line, bypassing that filter. Flying a THRUSTPOINT-less aircraft then SEGVs in
+	// the manual flight model (Engine::ProcessPistonEngine / ManualPilot::GetKeyCommon deref
+	// pEngine->pThrustPoint). When the player ended up in a non-flyable aircraft, reassociate to a
+	// flyable one of the same side already present in the world -- what the frag screen would have
+	// offered -- preferring the same squadron; the AI's non-flyable aircraft are left untouched.
+	if (Manual_Pilot.ControlledAC2
+		&& !bob_is_flyable_pt(Manual_Pilot.ControlledAC2->classtype->planetext))
+	{
+		AirStrucPtr orig = Manual_Pilot.ControlledAC2;
+		Nationality   plnat  = orig->nationality;
+		UWord         plsquad = orig->fly.callname;		// squadron number of the player's flight
+		AirStrucPtr sameSquad=NULL, sameSide=NULL, anyFly=NULL;
+		for (AirStrucPtr Me = *AirStruc::ACList; Me; Me = *Me->nextmobile)
+		{
+			if (Me==orig || !bob_is_flyable_pt(Me->classtype->planetext))	continue;
+			if (!anyFly)						anyFly=Me;
+			if (Me->nationality==plnat)
+			{
+				if (!sameSide)					sameSide=Me;
+				if (Me->fly.callname==plsquad && !sameSquad)	sameSquad=Me;
+			}
+		}
+		AirStrucPtr sub = sameSquad ? sameSquad : sameSide ? sameSide : anyFly;
+		if (getenv("BOB_TRACE_PLAYERSQ"))
+			fprintf(stderr,"[psq] non-flyable player pt=%d (squad %d nat %d); reassigning to %s AC pt=%d\n",
+				(int)orig->classtype->planetext,(int)plsquad,(int)plnat,
+				sub?(sub==sameSquad?"same-squad":sub==sameSide?"same-side":"any"):"NONE",
+				sub?(int)sub->classtype->planetext:-1);
+		if (sub)
+		{
+			Manual_Pilot.Associate(sub,ManualPilot::MANUAL);
+			// Upgrade the substitute's anim to the full player PolyPitAnimData -- exactly what the
+			// normal player-setup paths do right after Associate (ColourRulePlayerSquadron:3637 and
+			// the SAG path). Without it, Model::Instruments reads the pit fields (actotalammoleft)
+			// past the ex-AI aircraft's smaller anim buffer -> heap-buffer-overflow.
+			SHAPE.SetPilotedAcAnim(sub);
+		}
+	}
+#endif
 //	if(Miss_Man.camp.playerbfield!=FIL_NULL)
 //	{
 		if (!Manual_Pilot.ControlledAC2)							//JIM 04Sep97
