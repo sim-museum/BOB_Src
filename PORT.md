@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S82 scoping (2026-06-30): full-campaign epic — entry points mapped, phased plan (the campaign map code EXISTS and is partly ported)
+> Sprint 82 opens the PO's "full campaign implementation (map controls + icons)" backlog item with a scoping
+> pass (the right first sprint of a large epic — plan before building). **Key finding: this is not a blank
+> slate** — the campaign subsystem is real game code with Linux-port work already begun:
+> - **Entry points.** Strategic map view **`CMIGView` (MIGVIEW.CPP, 4020 lines, 17 `BOB_LINUX` sites)**;
+>   map dialog **`MAPDLG.CPP` (1728)**; mission-control toolbar **`MSCTLBR.CPP` (448)**; frame **`MAINFRM.CPP`
+>   (1314)**; OOB/packages **`Todays_Packages`** + `Campaign::InitIcons` (FULLPANE.CPP); campaign setup
+>   `Miss_Man.camp`/`campaigntable[SCRAMBLECAMPAIGN]` (MIG.CPP boot probe already stands up a scramble campaign
+>   world). Reference captures (map icons/toolbars, R4.2) on the USB `/run/media/m/BEA6-BBCE/bob`.
+> - **Phased plan (each phase its own sprint-arc):**
+>   1. **Reach + render the campaign map** from the real front-end (`BOB_FRONTEND`): navigate menu → new
+>      campaign → the `CMIGView`/`MAPDLG` map draws (terrain/regions background). Assess what the 17 existing
+>      `BOB_LINUX` sites already cover vs what's stubbed.
+>   2. **Map icons + toolbars** — `Campaign::InitIcons`, unit/target/airfield icons via the `MaskIcon`/`BitBlt`
+>      blit subsystem (the same icon/bitmap gap noted for front-end widget box-art); `MSCTLBR` toolbar buttons.
+>   3. **Interaction** — map controls (select squadron/target, plan a raid), package/mission editing.
+>   4. **Campaign loop** — day advance, the SAG strategic sim, debrief, save/load (the base-90 serialiser is
+>      already hardened, S64/S65; single-mission post loop is soak-clean, S62/S66).
+> - **Scale.** Multi-session; phases 1–2 are the visible "map controls + icons" the PO asked for and are the
+>   natural next concrete deliverables. No code this scoping sprint — plan committed to drive it.
+
 > ## R4.33 / S81 (2026-06-30): FIXED cockpit z-fighting — clouds no longer bleed over the cockpit (compat reports 32-bit Z → game skipped its cockpit depth-flush)
 > Sprint 81 (R4.33) — the PO-reported "clouds in the cockpit". Also validated the whole combat/training QM
 > fleet (0–22 sampled) still flies after this session's core-path changes.
