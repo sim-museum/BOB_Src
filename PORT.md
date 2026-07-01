@@ -13,8 +13,14 @@
 >   `bob_draw_menu` list, and that path isn't rendering yet. **This is the concrete Phase-1 next task:** get
 >   the campaign screen's menu/buttons to render (likely the same OLE-control-hosting / icon-blit work the
 >   config screens use), then proceed to the `CMIGView` map itself.
+> - **Sharp root (traced):** `bob_draw_menu` (FULLPSYS.CPP:238) renders the main menu by iterating
+>   `scr->textlists[i].text`; the campaign screen's `textlists[0]` is NULL, so the loop breaks immediately and
+>   nothing is drawn. So the campaign screens **don't drive their options through `textlists`** — they use a
+>   different control model (hosted OLE controls / clickable art regions / a submenu the real game builds in
+>   the screen's `InitProc`). **Phase-1 next task = identify that campaign screen's control source and render
+>   it** (extend `bob_draw_menu`/the panel path, or host the screen's real controls).
 > - Net: campaign flow is **navigable and art-complete**; the gap is the on-screen **controls**, matching the
->   PO's "all controls and icons" ask. No code this step — capture-based assessment that pinpoints the seam.
+>   PO's "all controls and icons" ask. Capture-based assessment that pinpoints the seam to `textlists`-vs-other.
 
 > ## S82 scoping (2026-06-30): full-campaign epic — entry points mapped, phased plan (the campaign map code EXISTS and is partly ported)
 > Sprint 82 opens the PO's "full campaign implementation (map controls + icons)" backlog item with a scoping
