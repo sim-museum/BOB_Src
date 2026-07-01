@@ -1869,6 +1869,26 @@ void	Inst3d::DoMoveCycle()
 			fprintf(stderr,"[fly] tick=%d paused=%d ac.World=(%ld,%ld,%ld)\n", tc, (int)paused,
 				(long)Manual_Pilot.ControlledAC2->World.X,(long)Manual_Pilot.ControlledAC2->World.Y,
 				(long)Manual_Pilot.ControlledAC2->World.Z); }
+	// S73 diag: find the aircraft nearest the player (the reported "two superimposed AC").
+	if (getenv("BOB_TRACE_PROX") && Manual_Pilot.ControlledAC2) { static int pc=0;
+		if ((pc++ % 30)==0) {
+			AirStrucPtr pl = Manual_Pilot.ControlledAC2;
+			AirStrucPtr nearest=NULL; double nd=1e30; int nAC=0;
+			for (AirStrucPtr Me = (AirStrucPtr)mobileitem::GetACList(); Me; Me = (AirStrucPtr)Me->nextmobile) {
+				nAC++;
+				if (Me==pl || Me==Persons2::PlayerGhostAC) continue;
+				double dx=(double)Me->World.X-pl->World.X, dy=(double)Me->World.Y-pl->World.Y, dz=(double)Me->World.Z-pl->World.Z;
+				double d=dx*dx+dy*dy+dz*dz;
+				if (d<nd){nd=d;nearest=Me;}
+			}
+			if (nearest)
+				fprintf(stderr,"[prox] tick=%d nAC=%d PLAYER uid=%d formpos=%d movecode=%d | nearest uid=%d dist=%.0f pt=%d formpos=%d movecode=%d leader=%p follower=%p plLeader=%p\n",
+					pc,nAC,(int)pl->uniqueID.count,(int)pl->formpos,(int)pl->movecode,
+					(int)nearest->uniqueID.count,nd>0?__builtin_sqrt(nd):0.0,
+					(int)nearest->classtype->planetext,(int)nearest->formpos,(int)nearest->movecode,
+					(void*)nearest->Leader(),(void*)nearest->follower,(void*)pl->Leader());
+		}
+	}
 #endif
 #ifdef	_FRAMESHITE_
 	fprintf(Three_Dee.framefp,"-\n");

@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S73 spike (2026-06-30): root-caused the "two aircraft superimposed" report — formation members fly at ~1 m separation (NOT the Ghost/Seen split); added `BOB_TRACE_PROX`
+> Sprint 73 spike, chasing the user's field observation (reproduced across many tests; carried from S71/S72):
+> the external/chase view shows **two (or more) aircraft nearly superimposed**. Root-caused with a new
+> env-gated proximity diagnostic (`BOB_TRACE_PROX`, STUB3D.CPP — logs, per tick, the aircraft nearest the
+> player + the player's/nearest's uid/formpos/leader linkage).
+> - **It is a formation-spacing issue, not the player Ghost/Seen split.** First hypothesis (the predictor
+>   `PlayerGhostAC` rendering over the player-moved `PlayerSeenAC`) was **disproved**: PERSONS3.CPP:3428
+>   `RemoveFromWorld(PlayerGhostAC)` takes the ghost out of the render sector list (and ACList), so it never
+>   draws. Confirmed by the trace excluding the ghost by pointer and still finding a *third* AC coincident.
+> - **What's actually coincident.** In scramble-world QMs (e.g. QM 26, RAF Hurricanes) the player (uid 4864,
+>   `formpos=0`, a flight leader) has **other real aircraft sitting at dist ≈ 0–150 units for the whole
+>   flight** (uid 4882/4876/4879, same type, their own flight leaders/followers). **Scale: `METRES30=3000`,
+>   so 100 units = 1 m** — the neighbours orbit the player at **~1 m**, far inside the ~12 m (1200-unit)
+>   wingspan → visually superimposed. dist **starts at exactly 0** (identical spawn coords) and never opens
+>   out to proper (tens-of-metres) spacing.
+> - **Not universal — needs a formation.** Combat QM 11 (Turkey Shoot, 1v1: only 2 AC, ~300 m apart) shows
+>   **no** superimposition. The effect is specific to the multi-flight **scramble OOB** the historic/QM
+>   scaffold builds, where flights spawn stacked at the airfield and the in-flight formation-keeping holds
+>   them ~coincident.
+> - **Where the fix lives (deferred — focused follow-up).** The in-flight desired-position is
+>   `AirStruc::PositionWRTLeader` → `GetEscort_xyz`/`GetFollower_xyz`/`GetFlightLeader_xyz` (AUTOMOVE.CPP:229),
+>   which set `despos` relative to the leader; the *takeoff* variant `PositionTakeOffWRTLeader` uses
+>   `Formation_xyz` with real offsets (e.g. `despos.X += 1000 //10m`). The near-zero live spacing points at
+>   either a broken formation linkage (leadflight/leader/follower) for the scaffold's scramble flights so
+>   `despos` collapses to the leader's exact position, or the flights never leaving their stacked airfield
+>   spawn. Root-cause is a **formation-geometry sprint**, distinct from the crash-fix epic; the `BOB_TRACE_PROX`
+>   diagnostic is committed to drive it. No game-logic change this spike.
+
 > ## R4.30 / S72 (2026-06-30): historic-QM epic, fix 3/N — QM 28 FLIES (non-flyable Defiant player → flyable Bf109 reassignment; +2 ASan overflows fixed). 5 of 7 historic QMs now flyable
 > Sprint 72 (R4.30), third fix of the historic-QM epic — clears the S71-named `ManualPilot`/
 > `ProcessPistonEngine` NULL-`pThrustPoint` SEGV, then two ASan heap-overflows the fix newly exposed by
