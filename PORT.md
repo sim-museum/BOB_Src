@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S76 (2026-06-30): tried the bounded superimposition fix (per-flight `COURSEPOS`) — insufficient (the scramble waypoints are degenerate too); reverted, deep raid-planning confirmed
+> Sprint 76 tested the S75-scoped fix: in `FinishSetPiece`, give each scramble flight a distinct
+> `COURSEPOS` (= `formpos & InFormMAX`, its flight number) so distinct flights select distinct
+> `WPO_MAINFL` members (staggered altitude/along-track) instead of all taking `members[0]`.
+> - **The assignment worked but the aircraft did NOT spread.** Verified via `BOB_TRACE_PROX`: the neighbour
+>   flight's `formation` went `0x0 → 0x6000` (COURSEPOS 6, exactly as intended), yet it stayed **dist ≈ 30–490
+>   units (≤5 m)** from the player with **no altitude separation** — even though `WPO_MAINFL[6]` carries a
+>   large `deltavert`. So the course-position offset was computed but **not applied to the aircraft's
+>   position**.
+> - **Why: the waypoint offset needs real waypoints, and the scramble world's are degenerate.**
+>   `GenWaypointOffsetSub` produces a `{deltatime,deltahori,deltavert}` that modifies a flight's arrival
+>   **relative to its course waypoints**; the scaffold's minimal scramble world gives the flights shared/
+>   degenerate waypoints (they all launch from and orbit the one airfield), so there's nothing for the
+>   offset to spread them along. Setting `COURSEPOS` is necessary but **not sufficient** — the flights also
+>   need distinct **course legs / waypoints**, which only the campaign **raid-planning** builds.
+> - **Reverted** the code (no game-state change ships); kept the finding. This nails the fix's true size: it
+>   is the **raid-planning / mission-OOB completeness** work (assign course lanes AND lay real per-flight
+>   waypoints), i.e. the same "scaffold builds a minimal scramble world" root as the whole historic-QM epic —
+>   a large, own-epic effort, not a `FinishSetPiece` patch. `BOB_TRACE_PROX` remains for it.
+
 > ## S75 spike (2026-06-30): "superimposed aircraft" root-caused to the exact field — every scramble-world flight has `formation == 0` → identical waypoint course-offset → coincident paths
 > Sprint 75 spike, deepening S73 to the precise cause (enhanced `BOB_TRACE_PROX` to log `formation` +
 > `fly.leadflight`; located the formation code in `SRC/MISSMAN/FORMATN.CPP` via the binary's debug info —
