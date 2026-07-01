@@ -1,5 +1,20 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## BACKLOG (PO-added 2026-06-30) — new items from the product owner
+> Recorded from PO messages during the S72→S80 session (newest work continues below/above):
+> 1. **Z-fighting: clouds bleeding into the cockpit (and external F6 view).** In flight the fluffy clouds
+>    (default-on `HW_FLUFFYCLOUDS`) render *over/through* the cockpit interior, washing the whole view out
+>    (PO capture: Spitfire pit hazed grey, instruments barely visible). Also visible in the external **F6**
+>    view. Almost certainly a **depth-buffer / render-order** issue in the compat GL layer — the cockpit
+>    (and near geometry) should occlude the distant cloud sprites but doesn't, or the depth range/clear
+>    between the 3D scene and the cockpit pass is wrong. **High impact (affects all flight); actionable.**
+>    (Note: **F6 = external view** — useful for validating the S78 formation-spread visually.)
+> 2. **Full campaign implementation — including all map controls and icons.** Stand up the real campaign
+>    layer end-to-end: the strategic **map** with its **toolbars/controls and unit/target icons**, mission
+>    planning, day/night advance, debrief, save/load. Large multi-epic effort (the game-shaped subsystem the
+>    scaffold has only stubbed/shortcut so far). Reference captures for map icons/toolbars are on the USB
+>    (`/run/media/m/BEA6-BBCE/bob`, R4.2 reference).
+
 > ## S79 (2026-06-30): consolidation — 75 s ASan soak clean; formation spread validated across all historic QMs; cross-port notes updated (S72→S78 → MA)
 > Sprint 79 consolidates this session's engine changes (S72 player-reassignment + grid clamp, S74 NULL-player,
 > S78 formation spread).
