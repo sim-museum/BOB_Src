@@ -1882,11 +1882,10 @@ void	Inst3d::DoMoveCycle()
 				if (d<nd){nd=d;nearest=Me;}
 			}
 			if (nearest)
-				fprintf(stderr,"[prox] tick=%d nAC=%d PLAYER uid=%d formpos=%d movecode=%d | nearest uid=%d dist=%.0f pt=%d formpos=%d movecode=%d leader=%p follower=%p plLeader=%p\n",
-					pc,nAC,(int)pl->uniqueID.count,(int)pl->formpos,(int)pl->movecode,
+				fprintf(stderr,"[prox] tick=%d nAC=%d PLAYER uid=%d formpos=%d mc=%d form=0x%x leadfl=%p | nearest uid=%d dist=%.0f pt=%d formpos=%d mc=%d form=0x%x leadfl=%p\n",
+					pc,nAC,(int)pl->uniqueID.count,(int)pl->formpos,(int)pl->movecode,(unsigned)pl->formation,(void*)pl->fly.leadflight,
 					(int)nearest->uniqueID.count,nd>0?__builtin_sqrt(nd):0.0,
-					(int)nearest->classtype->planetext,(int)nearest->formpos,(int)nearest->movecode,
-					(void*)nearest->Leader(),(void*)nearest->follower,(void*)pl->Leader());
+					(int)nearest->classtype->planetext,(int)nearest->formpos,(int)nearest->movecode,(unsigned)nearest->formation,(void*)nearest->fly.leadflight);
 		}
 	}
 #endif

@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S75 spike (2026-06-30): "superimposed aircraft" root-caused to the exact field — every scramble-world flight has `formation == 0` → identical waypoint course-offset → coincident paths
+> Sprint 75 spike, deepening S73 to the precise cause (enhanced `BOB_TRACE_PROX` to log `formation` +
+> `fly.leadflight`; located the formation code in `SRC/MISSMAN/FORMATN.CPP` via the binary's debug info —
+> see [[bob-find-macro-generated-defs]]).
+> - **The aircraft are following waypoints, not formation-keeping.** `movecode == 0 == AUTO_FOLLOWWP` for the
+>   player and every coincident neighbour. So station-keeping (`GetFollower_xyz`/`GetFlightLeader_xyz`) isn't
+>   what positions them — the **per-flight waypoint offset** is (`AirStruc::GenWaypointOffsetSub`,
+>   FORMATN.CPP:2164): `wos = WayPointOffsets_CourseSel[(formation&FORMTYPE_COURSESEL)>>9]->members[(formation
+>   &FORMTYPE_COURSEPOS)>>12]`.
+> - **Precise cause: `formation == 0x0` for ALL scramble-world aircraft** (confirmed in the trace — player
+>   uid 4864 and neighbour uid 4882 both `form=0x0`). With every course bit zero, every flight selects the
+>   **same zeroth** `WayPointOffsets_CourseSel[0]->members[0]` offset → they all fly the **identical path**
+>   from the shared airfield spawn → permanently coincident (dist 0→~500→~30 units = ≤5 m, never opening out).
+>   In real play the campaign **raid-planning** assigns each flight distinct `COURSESEL`/`COURSEPOS` bits
+>   (spread-out lanes); the `BOB_BOOT_FRONTEND` **scaffold builds a minimal scramble world and skips that
+>   planning**, leaving `formation=0` everywhere.
+> - **Same root theme as the whole historic-QM epic.** The superimposition is the *visual* face of "the
+>   scaffold's scramble world is a shortcut, not the full campaign OOB" — the crash arc (S70–S74) was the
+>   *stability* face of the same gap. Fix = assign per-flight course positions (run/emulate the raid-planning,
+>   or hand-seed distinct `formation` course bits for scramble flights). Deep OOB-completeness work touching
+>   the 16-bit `formation` bitfield (WING/SQUAD/COURSESEL/COURSEPOS/escort) + the `WayPointOffsets_*` tables;
+>   regression surface is every mission's formation/escort geometry, so it warrants its own careful sprint.
+>   No game-logic change this spike; the enhanced `BOB_TRACE_PROX` is committed to drive it.
+
 > ## R4.31 / S74 (2026-06-30): historic-QM epic, fix 4/N — QM 23 & 25 FLY (out-of-range player squadron → NULL player). ALL 7 historic QMs (23–29) now flyable
 > Sprint 74 (R4.31), fourth fix of the historic-QM epic — closes **mode 1** (the S69 "No player A/C" FATAL),
 > completing the crash-fix arc for every reachable historic quick mission.
