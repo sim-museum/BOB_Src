@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.32 / S78 (2026-06-30): FIXED the "double-exposure" aircraft — surplus scramble flights read a zero-padded formation slot → all stacked on the leader; synthesise a spread. Nearest AC 1 m → 19 m
+> Sprint 78 (R4.32) — the PO-approved fix for the user's repeatedly-reported double-exposure, landing the
+> S73→S77 root-cause. **Bounded, faithful, one-function change.**
+> - **Exact bug.** `FormationType::wingpos[16]` but the static tables define only a few positions
+>   (`VForm_RAFVIC_VIC` etc. fill ~`wingpos[0..3]` — a real squadron is ~4 flights). The `BOB_BOOT_FRONTEND`
+>   scaffold over-fills **one** scramble squadron with ~15 flights, so a flight past the table
+>   (`GetFlightLeader_xyz` → `Formation_xyz`, `formindex = (formpos&InFormMAX)-1`, e.g. flight 6 → index 5)
+>   reads an **undefined, zero-padded** `wingpos[]` slot → offset `{0,0,0}` → it positions *exactly on the
+>   squadron leader* (the player). Traced end-to-end: the surplus flight leaders **do** formate
+>   (`FlyEscortTo`/`AutoFollowWpWing`, sameWP/sameMC), just onto a zero offset — that's the ~1 m coincidence.
+> - **Fix (`#if BOB_LINUX`, `Item::Formation_xyz`, FORMATN.CPP).** When the requested slot is undefined
+>   (all-zero — never a real non-leader position, which is always offset from its leader) and `formindex>0`,
+>   synthesise a distinct **altitude-staggered echelon** (`range=FT_200*(k+1)`, bearing alternating L/R,
+>   `delta_alt=±FT_50*…`) so the surplus flights fan out ~60 m per flight instead of piling up. Defined slots
+>   are byte-untouched; **campaign squadrons never exceed their table**, so it is inert for normal play.
+> - **Verified.** QM 26 `BOB_TRACE_PROX`: nearest aircraft **~1 m (dist ~0–100) → ~19 m (dist ~1900)** — the
+>   coincident flight leaders now spread; the nearest is the player's own vic wingman at proper spacing.
+>   `wingpos[16]` safely holds the max index (14) — QM 26 **ASan-clean** (0 heap/global-overflow, 0 SEGV).
+>   No regression: combat QM 11 + historic QM 24/28 fly; plain `./bob` exits 0. (Encoding note: the initial
+>   edit re-encoded two CP437 box-comment lines to U+FFFD; re-applied via latin1-preserving write so the diff
+>   is only the fix.)
+> - **Net.** The double-exposure is resolved: your squadron now flies as a spread formation, not a stack.
+
 > ## S77 spike (2026-06-30): superimposition is specifically FLIGHT LEADERS converging (wingmen already formate) — confirmed persists at cruise; the fix is deep scramble-AI/raid-planning
 > Sprint 77 pinned the last layer, with a fresh user capture confirming the double-exposure **at cruise
 > (HUD: Alt 17486 ft, 222 kts)** — so it is not a transient takeoff-stacking artifact.

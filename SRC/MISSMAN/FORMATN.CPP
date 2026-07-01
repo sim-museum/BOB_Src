@@ -2096,16 +2096,36 @@ void	AirStruc::GetFollower_xyz (FormationTypeIndex	formationtype, AirStrucPtr le
 //DEADCODE JIM 11/02/00 #define SIZEDIV32K(who)	((ANGLES_FRACT/5)+(ANGLES_FRACT*4*52/5)/SHAPESTUFF.GetShapePtr( who )->Size)
 COORDS3D*	Item::Formation_xyz(ANGLES hdg,FormationType* formtype,int formindex)
 {
-	ANGLES	brg=hdg+formtype->wingpos [formindex].bearing;
+	FormationPos	fp = formtype->wingpos [formindex];
+#if defined(BOB_LINUX)
+	// S78 (historic-QM epic): de-superimpose the "double-exposure" aircraft. A FormationType defines
+	// only a few positions (a real squadron is ~4 flights; VForm_RAFVIC_VIC etc. fill wingpos[0..~3]),
+	// but the BOB_BOOT_FRONTEND scaffold over-fills one scramble squadron with ~15 flights. Flights
+	// past the table read an undefined, zero-padded wingpos[] slot -> a {0,0,0} offset -> every extra
+	// flight leader stacks on the squadron leader (the player), rendering nearly coincident (root-caused
+	// S73-S77: the flights DO formate, just onto a zero offset). When the requested slot is undefined
+	// (all-zero -- never a real non-leader formation position, which is always offset from its leader),
+	// synthesise a distinct spread: an altitude-staggered echelon fanning out ~60 m per extra flight, so
+	// the surplus flights spread instead of piling up. Campaign squadrons never exceed their table, so
+	// defined slots are untouched and this is inert for normal play (#else keeps the Windows path exact).
+	if (fp.range==0 && fp.bearing.a==0 && fp.delta_alt==0 && formindex>0)
+	{
+		int k = formindex;
+		fp.range     = (SLong)(FT_200 * (k + 1));					// fan outward, ~60 m per flight
+		fp.bearing   = (k & 1) ? ANGLES_110Deg : ANGLES_250Deg;			// alternate right/left
+		fp.delta_alt = (SLong)(FT_50 * ((k + 1) / 2) * ((k & 1) ? 1 : -1));	// stagger altitude up/down
+	}
+#endif
+	ANGLES	brg=hdg+fp.bearing;
 
 	Float	sinbearing,cosbearing;
 	Math_Lib.high_sin_cos(brg,sinbearing,cosbearing);
 	SLong	range;
-	range = formtype->wingpos [formindex].range;
+	range = fp.range;
 	{
 		despos.X = sinbearing*range;
 		despos.Z = cosbearing*range;
-		despos.Y = formtype->wingpos [formindex].delta_alt;
+		despos.Y = fp.delta_alt;
 	}
 
 	return &despos;
