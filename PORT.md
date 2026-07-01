@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S77 spike (2026-06-30): superimposition is specifically FLIGHT LEADERS converging (wingmen already formate) — confirmed persists at cruise; the fix is deep scramble-AI/raid-planning
+> Sprint 77 pinned the last layer, with a fresh user capture confirming the double-exposure **at cruise
+> (HUD: Alt 17486 ft, 222 kts)** — so it is not a transient takeoff-stacking artifact.
+> - **Wingmen are fine; flight leaders are the problem.** In `AUTO_FOLLOWWP` (movecode 0, what every
+>   scramble aircraft is in), a *wingman* (formpos wing-slot ≠ 0) station-keeps on its leader —
+>   `MoveAirStruc::AutoFollowWpWing` → `CopyLeader` → `PositionWRTLeader` snaps it to its `GetFollower_xyz`
+>   slot (~tens of m). But a *flight leader* (formpos wing-slot 0, e.g. the coincident uid 4882 = flight 6
+>   lead) has no wing-leader to formate on, so it **navigates the waypoints independently**. With the whole
+>   squadron's flights sharing the scaffold's degenerate scramble waypoints and `formation==0` (S75/S76),
+>   every flight leader flies the *same* path → they pile onto the squadron leader (the player). That's the
+>   "double exposure": the player + another flight's leader ~1–5 m apart.
+> - **Faithful fix = flight leaders must formate on the squadron leader** (`GetFlightLeader_xyz` /
+>   `Squadron_Formations`), OR the scramble must lay distinct per-flight course waypoints (raid-planning).
+>   Both are substantial, carefully-tested changes in the AI movement dispatch / mission-OOB setup with real
+>   regression surface (every mission's combat formation). Not a `FinishSetPiece` or bitfield patch — the
+>   two bounded attempts (S76 `COURSEPOS`; forcing course tables) are confirmed insufficient. **Recommended
+>   as its own dedicated epic**; `BOB_TRACE_PROX` (logs uid/formpos/formation/leadflight/dist) is in place to
+>   drive and validate it. No game-logic change this spike.
+
 > ## S76 (2026-06-30): tried the bounded superimposition fix (per-flight `COURSEPOS`) — insufficient (the scramble waypoints are degenerate too); reverted, deep raid-planning confirmed
 > Sprint 76 tested the S75-scoped fix: in `FinishSetPiece`, give each scramble flight a distinct
 > `COURSEPOS` (= `formpos & InFormMAX`, its flight number) so distinct flights select distinct
