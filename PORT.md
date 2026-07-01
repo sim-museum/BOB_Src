@@ -42,14 +42,16 @@
 >   **no** superimposition. The effect is specific to the multi-flight **scramble OOB** the historic/QM
 >   scaffold builds, where flights spawn stacked at the airfield and the in-flight formation-keeping holds
 >   them ~coincident.
-> - **Where the fix lives (deferred — focused follow-up).** The in-flight desired-position is
->   `AirStruc::PositionWRTLeader` → `GetEscort_xyz`/`GetFollower_xyz`/`GetFlightLeader_xyz` (AUTOMOVE.CPP:229),
->   which set `despos` relative to the leader; the *takeoff* variant `PositionTakeOffWRTLeader` uses
->   `Formation_xyz` with real offsets (e.g. `despos.X += 1000 //10m`). The near-zero live spacing points at
->   either a broken formation linkage (leadflight/leader/follower) for the scaffold's scramble flights so
->   `despos` collapses to the leader's exact position, or the flights never leaving their stacked airfield
->   spawn. Root-cause is a **formation-geometry sprint**, distinct from the crash-fix epic; the `BOB_TRACE_PROX`
->   diagnostic is committed to drive it. No game-logic change this spike.
+> - **Where the fix lives (deferred — focused follow-up).** The desired-position dispatch is
+>   `AirStruc::PositionWRTLeader` (AUTOMOVE.CPP:229) → the offset bodies live in **`SRC/MISSMAN/FORMATN.CPP`**
+>   (`AirStruc::GetFollower_xyz`:2076, `GetFlightLeader_xyz`:2126, and `Item::Formation_xyz`:2097, which sets
+>   `despos.{X,Z} = {sin,cos}bearing * formtype->wingpos[formindex].range`). *Grep for these names finds only
+>   call sites — the bodies are effectively invisible to a name search (macro/odd file); use the binary's
+>   debug info to locate them: `nm -C --line-numbers build-asan/bob | grep GetFollower_xyz`.* The near-zero
+>   live spacing points at either the `wingpos[].range` table / its size-scaling collapsing, or a broken
+>   formation linkage (leadflight/leader/follower) for the scaffold's scramble flights so `despos` reduces to
+>   `leader->World`. Root-cause is a **formation-geometry sprint**; the `BOB_TRACE_PROX` diagnostic is
+>   committed to drive it. No game-logic change this spike.
 
 > ## R4.30 / S72 (2026-06-30): historic-QM epic, fix 3/N — QM 28 FLIES (non-flyable Defiant player → flyable Bf109 reassignment; +2 ASan overflows fixed). 5 of 7 historic QMs now flyable
 > Sprint 72 (R4.30), third fix of the historic-QM epic — clears the S71-named `ManualPilot`/
