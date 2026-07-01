@@ -1,14 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## R4.33 / S81 (2026-06-30): FIXED cockpit z-fighting — clouds no longer bleed over the cockpit (compat reports 32-bit Z → game skipped its cockpit depth-flush)
+> Sprint 81 (R4.33) — the PO-reported "clouds in the cockpit". Also validated the whole combat/training QM
+> fleet (0–22 sampled) still flies after this session's core-path changes.
+> - **Root.** The game draws the cockpit into the shared depth buffer unless `theZBufferDepth < 24`, in which
+>   case it flushes the 3D scene to a 2D background and draws the cockpit into a **fresh** depth buffer
+>   (3DCODE.CPP:1361 → `Lib3D::FlushAsBackground`). Our compat's `D3D_EnumZBufferFormats` offers 16- and
+>   32-bit and the game takes **32-bit** (traced: `theZBufferDepth=32`), so that fudge is skipped — but the
+>   GL depth still **z-fights the near cockpit against the far cloud layer**, bleeding cloud haze over the
+>   pit (PO capture: instruments washed out grey).
+> - **Fix (`#if BOB_LINUX`, `ThreeDee::render3d`).** Always take the flush path before the cockpit on Linux.
+>   `Lib3D::_BeginScene` clears **only Z** (`D3DCLEAR_ZBUFFER`, LIB3D.CPP:4463) — the flushed scene colour is
+>   preserved — so the cockpit renders on top of the intact 3D scene, cloud haze gone. Deliberately **not**
+>   setting `ZBufferFudge=true` avoids the coupled `SetFogBand()` horizon fog, keeping the far 32-bit horizon.
+> - **Verified.** Before/after frame capture: cockpit frame + instruments + gunsight now **solid and crisp**,
+>   clouds correctly **behind the glass** (was: whole pit hazed). ASan QM 11 (cockpit-flush path) **0 errors**;
+>   QM 0/26 fly; combat/training QM 0–22 sampled all fly. `BOB_TRACE_ZDEPTH` diag added (env-gated).
+> - **Still open (backlog #1):** the external **F6** view z-fighting — no cockpit there, so it's the *scene*
+>   depth-precision issue (clouds vs terrain/aircraft), a separate near/far-plane fix.
+
 > ## BACKLOG (PO-added 2026-06-30) — new items from the product owner
 > Recorded from PO messages during the S72→S80 session (newest work continues below/above):
-> 1. **Z-fighting: clouds bleeding into the cockpit (and external F6 view).** In flight the fluffy clouds
->    (default-on `HW_FLUFFYCLOUDS`) render *over/through* the cockpit interior, washing the whole view out
->    (PO capture: Spitfire pit hazed grey, instruments barely visible). Also visible in the external **F6**
->    view. Almost certainly a **depth-buffer / render-order** issue in the compat GL layer — the cockpit
->    (and near geometry) should occlude the distant cloud sprites but doesn't, or the depth range/clear
->    between the 3D scene and the cockpit pass is wrong. **High impact (affects all flight); actionable.**
->    (Note: **F6 = external view** — useful for validating the S78 formation-spread visually.)
+> 1. **Z-fighting: clouds bleeding into the cockpit** — **FIXED S81 (cockpit).** ✅ Root: compat reports a
+>    32-bit Z-buffer so the game skips its native <24-bit cockpit fudge, but the GL depth still z-fights the
+>    near cockpit against the far cloud layer. Fix: force `FlushAsBackground` before the cockpit on Linux.
+>    Verified visually (solid pit, clouds behind the glass) + ASan-clean. **STILL OPEN: the external F6 view**
+>    — no cockpit there, so it's the *scene* depth-precision issue (clouds vs terrain/aircraft), a separate
+>    near/far-plane / depth-range fix. (Note: **F6 = external view** — useful for validating S78's spread.)
 > 2. **Full campaign implementation — including all map controls and icons.** Stand up the real campaign
 >    layer end-to-end: the strategic **map** with its **toolbars/controls and unit/target icons**, mission
 >    planning, day/night advance, debrief, save/load. Large multi-epic effort (the game-shaped subsystem the

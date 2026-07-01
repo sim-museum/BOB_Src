@@ -684,6 +684,11 @@ void ThreeDee::Init3D(CLib3D *lib3d,ViewPoint*	vp)
 // Force near horizon if Z-Buffer depth is crap
 //DEADCODE RJS 5/8/00 	ULong	theZBufferDepth;
 	g_lpLib3d->GetZDepth(theZBufferDepth);
+#if defined(BOB_LINUX)
+	{ static bool once=false; if (!once && getenv("BOB_TRACE_ZDEPTH")) { once=true;
+		fprintf(stderr,"[zdepth] theZBufferDepth=%lu (fudge/FlushAsBackground path %s)\n",
+			(unsigned long)theZBufferDepth, theZBufferDepth<24?"ACTIVE":"SKIPPED"); } }
+#endif
 
 	if (theZBufferDepth < 24)									//RJS 03May00
 		Save_Data.detail_3d %= DETAIL3D_HORIZONDIST;			//RJS 03May00
@@ -1353,11 +1358,22 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
 	{
 		//RenderMirror();
 
+#if defined(BOB_LINUX)
+		// S81 (cloud/cockpit z-fighting): our compat reports a 32-bit Z-buffer, so the game skips its
+		// native <24-bit "flush the scene as a 2D background then draw the cockpit into a fresh depth
+		// buffer" path -- but the GL depth still z-fights the near cockpit against the far cloud layer,
+		// bleeding clouds over the pit (and the external F6 view). Always take that flush path on Linux:
+		// _BeginScene clears ONLY Z (color/scene preserved, LIB3D.CPP:4463) so the cockpit renders on top
+		// of the intact 3D scene, cloud haze gone. We deliberately do NOT set ZBufferFudge=true (that
+		// would also trigger the coupled SetFogBand horizon fog) -- we keep the far 32-bit horizon.
+		g_lpLib3d->FlushAsBackground();
+#else
 		if (theZBufferDepth < 24)							//RJS 08May00
 		{
 			ZBufferFudge = true;
  			g_lpLib3d->FlushAsBackground();					//RJS 08May00
 		}
+#endif
 
 //	7.	Draws the cockpit
 //TEMPCODE JIM 07/06/00 	if (ProbeTime  a36(36,"Cockpit"))
