@@ -1,5 +1,49 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S83 (2026-07-05): campaign Phase 1 is DONE (strategic MAP + icons render + navigable + ASan-clean) — RE-BASELINED; Phase 2 STARTED: the right-edge scale/ruler bar renders
+> Sprint 83 opened by re-establishing ground truth on the campaign epic, and the map is **far
+> further along than the top-of-log S82 note claimed.** Driving the real front-end end-to-end
+> (`BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_AUTOCLICK=1,0,1,1` = Campaigns → RAF → Begin → Begin):
+> - **Phase 1 COMPLETE — the strategic map reaches + renders faithfully.** The nav chain works
+>   (title art 28937 → side-select montage 27929, RAF/LW **polygon** hit-areas → campaignselect
+>   27922 BACK/BEGIN textlist → campaignentername → `LaunchMapFirstTime`), and the map paints:
+>   `[map] LaunchMap done` then `paint# … worlditems=1052`. Capture (`/tmp/map_now.png`) shows the
+>   full **`CMIGView::UpdateBitmaps`** render — SE-England/Channel/France terrain, the red sector
+>   boundaries, city labels (LONDON/Southampton/Bournemouth/Brighton/Dover), the No.11 Group /
+>   SECTOR A–Z labels, and the **coloured unit icons** (green RAF airfields/squadrons, blue radar,
+>   yellow LW) each with its inner glyph. This **matches the wine reference** (`doc/reference/
+>   wine-strategic-map-icons-2026-06-24.png`) tile-for-tile. So the S82 "campaign screen controls
+>   don't render" note was mid-investigation/over-pessimistic: the side-select uses invisible
+>   **polygon** regions (faithful — you click the RAF/LW art), and campaignselect renders its
+>   BACK/BEGIN textlist. **Phase 1 (reach + render map) and the Phase-2 ICONS are DONE.**
+> - **Map path is robust.** 55–70 s ASan soak of the nav→map path (`build-asan`, 600+ paints):
+>   **0 non-odr errors** (only the known duplicate-source `odr-violation` noise; suppressed with
+>   `detect_odr_violation=0` → **0 errors logged**), 0 SEGV, map stable paint#1→#601.
+> - **Phase 2 STARTED — the right-edge scale/ruler bar (`CScaleBar`) now renders.** The remaining
+>   Phase-2 gap is the docking-frame **chrome** (the wooden bottom toolbar + right ruler in the
+>   reference). Feasibility found: the frame's toolbars exist as **`CMainFrame` `CRToolBar`
+>   CDialogs** (LaunchMap calls `ShowToolbars`/`Refresh`/`Redraw` without crashing) but never
+>   paint into our framebuffer — MFC WM_PAINT doesn't run headlessly. Pattern set this sprint on
+>   the cleanest bar (the ruler is pure CDC line/text):
+>   - **`SCALEBAR.CPP`:** extracted `CScaleBar::OnPaint`'s body into a file-static
+>     `bob_scalebar_draw(CDC*, CScaleBar*, CRect)` (pure extraction — Windows `OnPaint` still calls
+>     it verbatim, no behaviour change) + an `extern "C" bob_map_paint_scalebar(CMIGView*,sw,sh)`
+>     that drives it with a **screen `CDC` whose viewport origin is the right strip** (the docking
+>     geometry the frame would have supplied). Faithful: the scale math + the `RPointRight`
+>     transform are the game's own; the ruler backdrop approximates `FIL_TOOL_SIDERULE` (orange
+>     body + gold inner bevel + dark outer edge, colours sampled from the wine reference).
+>   - **`FULLPSYS.CPP`** map tick: call `bob_map_paint_scalebar` **between `UpdateBitmaps` and
+>     `bob_map_paint_end`** (inside the paint-active window — `bob_gdi_fillrect` is gated on
+>     `g_mapPaintActive`, the first-pass bug where the backdrop silently no-op'd).
+>   - **Verified** (`/tmp/map_sb3.png`, right-edge crop `/tmp/sb3_edge.png`): the orange ruler runs
+>     the full right height with the 10-mile tick ladder + `Nm` unit label + `0/50/100…` numbers at
+>     `zoom=2.0`, matching the reference's right strip. ASan-clean (above). `BOB_NO_SCALEBAR` reverts
+>     to the bare full-bleed map; `BOB_TRACE_MAP` prints a one-shot `[scalebar] v=… sb=…` probe.
+> - **Next (Phase 2 continued):** the **bottom** wooden toolbar strip — date/time + accel state,
+>   the event-log (`CTitleBar`/`m_reportbar`/teletype) pane, the map-tool + mission-folder button
+>   rows (`CMainToolbar`/`CMiscToolbar`, bitmap buttons via the `MaskIcon`/`BitBlt` blit path that
+>   the map icons already use). Same drive-the-real-OnPaint-into-a-positioned-screen-DC pattern.
+
 > ## S82 Phase 1 start (2026-06-30): campaign flow is reachable from the real front-end; first campaign screen's ART renders, its MENU/controls don't — the next gap
 > First concrete step of the campaign epic (Phase 1: reach + render). Via the real front-end
 > (`BOB_FRONTEND=1 BOB_OLE_DRAW=1`, `BOB_AUTOCLICK=1` = "Campaigns"):

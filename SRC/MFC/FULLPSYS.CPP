@@ -423,6 +423,7 @@ extern "C" void bob_map_paint_begin(void);
 extern "C" void bob_map_paint_end(void);
 extern "C" void bob_gdi_present(void);
 extern "C" void bob_gdi_screen_size(int*, int*);
+extern "C" void bob_map_paint_scalebar(CMIGView*, int, int);  /* right-edge ruler (SCALEBAR.CPP) */
 
 extern "C" void bob_frontend_tick(void)
 {
@@ -620,6 +621,12 @@ extern "C" void bob_frontend_tick(void)
 		}
 		bob_map_paint_begin();
 		RDialog::m_pView->UpdateBitmaps(&dc, rc);
+		/* S83 (Phase 2): overlay the right-edge scale/ruler bar (the docking frame's
+		   CScaleBar) -- its OnPaint doesn't run headlessly, so drive its real tick-drawing
+		   into the right strip. Inside the paint-active window so its backdrop FillRect lands
+		   (bob_gdi_fillrect is gated on g_mapPaintActive). BOB_NO_SCALEBAR reverts to bare map. */
+		if (!getenv("BOB_NO_SCALEBAR"))
+			bob_map_paint_scalebar(RDialog::m_pView, sw, sh);
 		bob_map_paint_end();
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;

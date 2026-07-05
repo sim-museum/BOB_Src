@@ -199,31 +199,26 @@ void	PointTextOut(CDC* pDC,CPoint p,CString s)
 	pDC->TextOut(p.x,p.y,s);
 }
 
-void CScaleBar::OnPaint() 
+/* Linux port: the scale-bar tick drawing, extracted from OnPaint so the strategic-map tick
+   can drive it with a screen DC positioned at the docked strip (bob_map_paint_scalebar below).
+   Windows OnPaint still calls it verbatim -- a pure extraction, no behaviour change; member
+   state is reached through `self` and the map zoom through self->m_pView->m_zoom. */
+static void bob_scalebar_draw(CDC* pDC, CScaleBar* self, CRect rect)
 {
-	if (m_init) return;
-	PAINTSTRUCT paintstruct;
-	CDC* pDC;
-	pDC=this->BeginPaint(&paintstruct);
     pDC->SetBkMode(TRANSPARENT);
 //DEADCODE RDH 13/04/00     pDC->SetTextColor(RGB(255,255,255));
     pDC->SetTextColor(RGB(0,0,0));
 	CPen* originalpen=(CPen*)pDC->SelectStockObject(BLACK_PEN);
-	CRect rect;
-	this->GetClientRect(rect);
-//TEMPCODE JIM 06/12/99 	if (m_bHorzAlign) rect.left+=SCALESTARTPIX;
-//TEMPCODE JIM 06/12/99 	else rect.top+=SCALESTARTPIX;
-//	m_pView->m_pDialogBar = this;
 	int counter;
-	char string[10];
-	#define zoom m_pView->m_zoom
+	char string[10]; (void)string;
+	#define zoom self->m_pView->m_zoom
 	// a nice black background
 //DEADCODE JIM 28/01/00 	pDC->FillRect(rect, CBrush::FromHandle((HBRUSH)GetStockObject(BLACK_BRUSH)));
 	float grad_10 = zoom * (Save_Data.dist.longcm/MAPSCALE) * 10 /65536;
 	float grad_1 = grad_10/10;
 	float grad_tenth = grad_10/ 100;
 	RPoint*	CP;
-	switch (m_align)
+	switch (self->m_align)
 	{
 	default_neverreferenced;
 	case	1:	CP=&R_PointBot;		CP->maxalong=rect.right-5;	break;
@@ -268,7 +263,7 @@ void CScaleBar::OnPaint()
 	
 
 	// now 1 mile seperators
-	if (m_pView->m_zoom>=3)	//4)
+	if (self->m_pView->m_zoom>=3)	//4)
 	{
 		counter=0;
 		for (float x=DRAWSTARTPIX;x<CPoint.maxalong;x+=grad_1)
@@ -290,7 +285,7 @@ void CScaleBar::OnPaint()
 		}
 	}
 	// now 1/10 mile seperators
-	if (m_pView->m_zoom>=25)	//32)
+	if (self->m_pView->m_zoom>=25)	//32)
 	{
 		counter=0;
 		for (float x=DRAWSTARTPIX;x<CPoint.maxalong;x+=grad_tenth)
@@ -307,7 +302,7 @@ void CScaleBar::OnPaint()
 			counter++;
 		}
 	}
-	if (m_RButtonDown)
+	if (self->m_RButtonDown)
 	{
 		CPen green (PS_SOLID,4,RGB(100,255,100));
 		CPen red	(PS_SOLID,4,RGB(255,100,100));
@@ -319,10 +314,10 @@ void CScaleBar::OnPaint()
 		// (m_zoom<ZOOMTHRESHOLD3)
 		// so
 		//	ZOOMTHRESHOLD3*(m_oldPoint.x-DRAWSTARTPIX)/m_oldzoom+DRAWSTARTPIX=X
-		int	oldpointx=m_oldPoint.x;
-		if (!(m_align&1))
-			oldpointx=m_oldPoint.y;
-		x=ZOOMTHRESHOLD3*(oldpointx-DRAWSTARTPIX)/m_oldzoom+DRAWSTARTPIX;
+		int	oldpointx=self->m_oldPoint.x;
+		if (!(self->m_align&1))
+			oldpointx=self->m_oldPoint.y;
+		x=ZOOMTHRESHOLD3*(oldpointx-DRAWSTARTPIX)/self->m_oldzoom+DRAWSTARTPIX;
 		if (x<CPoint.maxalong)
 		{
 			pDC->MoveTo(CPoint(CPoint.maxalong,RP_SCALEEDGE));
@@ -332,7 +327,7 @@ void CScaleBar::OnPaint()
 		pDC->SelectObject(red);
 		for (float scale=0.5;;scale*=2)
 		{
-			x=scale*(oldpointx-DRAWSTARTPIX)/m_oldzoom+DRAWSTARTPIX;
+			x=scale*(oldpointx-DRAWSTARTPIX)/self->m_oldzoom+DRAWSTARTPIX;
 			breakif(x>CPoint.maxalong|| scale>ZOOMTHRESHOLD3);
 			pDC->MoveTo(CPoint(x,RP_SCALEEDGE));
 			pDC->LineTo(CPoint(x,RP_SMALLSCALE));
@@ -340,8 +335,49 @@ void CScaleBar::OnPaint()
 	}
 	if (originalpen)
 		pDC->SelectObject(originalpen);
+}
+#undef zoom
+
+void CScaleBar::OnPaint()
+{
+	if (m_init) return;
+	PAINTSTRUCT paintstruct;
+	CDC* pDC;
+	pDC=this->BeginPaint(&paintstruct);
+	CRect rect;
+	this->GetClientRect(rect);
+	bob_scalebar_draw(pDC, this, rect);
 	this->EndPaint(&paintstruct);
 }
+
+#if BOB_LINUX
+/* Linux port: paint the right-edge scale/ruler bar onto the strategic-map framebuffer. The
+   MFC docking frame's OnEraseBkgnd/OnPaint don't run on Linux, so drive the bar's real tick
+   drawing (bob_scalebar_draw) with a screen DC whose viewport origin is the right strip.
+   Mirrors the config-panel approach (a configured screen CDC + viewport origin). Faithful:
+   the scale math + RPoint transform are the game's own; only the docking geometry (the strip
+   rect the frame would have supplied) is provided here. `v` is CMIGView* (RDialog::m_pView). */
+extern "C" void bob_map_paint_scalebar(CMIGView* v, int sw, int sh)
+{
+	CScaleBar* sb = v ? v->m_pScaleBar : (CScaleBar*)0;
+	static int once=0; if(getenv("BOB_TRACE_MAP")&&!once){once=1;
+		fprintf(stderr,"[scalebar] v=%p sb=%p sw=%d sh=%d\n",(void*)v,(void*)sb,sw,sh);}
+	if (!sb) return;
+	const int barW = M_WIDTH;                              /* 48 -- strip the ruler draws within */
+	int bx = sw - barW;
+	/* the wooden side-rule backdrop (FIL_TOOL_SIDERULE), approximated from the wine reference:
+	   warm orange body, gold inner bevel (toward the map), dark-brown outer edge. */
+	bob_gdi_fillrect(bx, 0, barW, sh, 0xFFBE6E);           /* orange rule body   */
+	bob_gdi_fillrect(bx, 0, 2, sh, 0xE8C746);              /* gold inner bevel   */
+	bob_gdi_fillrect(sw - 2, 0, 2, sh, 0x963C00);          /* dark outer edge    */
+	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+	dc.m_bobVpX = sw - barW; dc.m_bobVpY = 0; dc.m_bobTextH = 12;
+	sb->m_align  = 4;                                      /* right-docked vertical ruler */
+	sb->m_pView  = v;
+	CRect rect(0, 0, barW, sh);
+	bob_scalebar_draw(&dc, sb, rect);
+}
+#endif
 
 void CScaleBar::OnRButtonDown(UINT nFlags, CPoint point) 
 {
