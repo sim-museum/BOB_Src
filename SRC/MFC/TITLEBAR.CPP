@@ -459,12 +459,12 @@ extern "C" void bob_map_paint_titlebar(int sw, int sh)
 {
 	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
 	dc.m_bobVpX = 0; dc.m_bobVpY = 0; dc.m_bobTextH = 16;
-	const int bandH = 40, by = sh - bandH;
+	const int bandH = 96, by = sh - bandH;   /* == TELETYPE.CPP FOOTER_BAND_H */
 	dc.FillSolidRect(0, by,     sw, bandH, RGB(90, 66, 28));   /* dark wooden band */
 	dc.FillSolidRect(0, by,     sw, 2,     RGB(150,110, 50));  /* top bevel highlight */
 	dc.FillSolidRect(0, sh - 2, sw, 2,     RGB(40, 28, 12));   /* bottom shadow */
 	/* the parchment date box, bottom-left (matches the wine reference) */
-	const int boxX = 6, boxY = by + 6, boxW = 224, boxH = bandH - 12;
+	const int boxX = 6, boxW = 224, boxH = 28, boxY = sh - boxH - 5;
 	dc.FillSolidRect(boxX, boxY, boxW, boxH, RGB(222,220,206));
 	dc.m_penColor = RGB(40,28,12); dc.m_penHasColor = true;    /* sunken border */
 	dc.MoveTo(boxX, boxY); dc.LineTo(boxX+boxW, boxY); dc.LineTo(boxX+boxW, boxY+boxH);

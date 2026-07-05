@@ -425,6 +425,7 @@ extern "C" void bob_gdi_present(void);
 extern "C" void bob_gdi_screen_size(int*, int*);
 extern "C" void bob_map_paint_scalebar(CMIGView*, int, int);  /* right-edge ruler (SCALEBAR.CPP) */
 extern "C" void bob_map_paint_titlebar(int, int);             /* footer date/time band (TITLEBAR.CPP) */
+extern "C" void bob_map_paint_teletype(int, int);             /* footer event-log pane (TELETYPE.CPP) */
 
 extern "C" void bob_frontend_tick(void)
 {
@@ -630,8 +631,10 @@ extern "C" void bob_frontend_tick(void)
 			bob_map_paint_scalebar(RDialog::m_pView, sw, sh);
 		/* S84 (Phase 2): the map footer band + date/time/accel readout (the docking frame's
 		   TitleBar). BOB_NO_TITLEBAR reverts. */
-		if (!getenv("BOB_NO_TITLEBAR"))
+		if (!getenv("BOB_NO_TITLEBAR")) {
 			bob_map_paint_titlebar(sw, sh);
+			bob_map_paint_teletype(sw, sh);   /* event-log pane on the same footer band */
+		}
 		bob_map_paint_end();
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;

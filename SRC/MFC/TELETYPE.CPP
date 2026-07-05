@@ -237,3 +237,41 @@ void TeleType::FillTextLines( int line,CString str1,CString str2)
 	text->SetString(str1);
 	name->SetString(str2);
 }
+
+#if BOB_LINUX
+/* Linux port (S85, Phase 2): paint the strategic-map event-log (teletype) pane onto the
+   framebuffer. The docking frame's TeleType hosts CRButton lines (IDC_LINE1..3/IDC_ITEM1..3)
+   filled from Node_Data.intel; those controls' OnDraw doesn't run headlessly, so render the
+   same faithful 3 latest-message strings (MessageTitleToText + GetTargName place) that
+   TeleType::Refresh pushes, into a dark inset panel on the footer band. FOOTER_BAND_H must
+   match TITLEBAR.CPP's band. Driven from the map tick inside the paint-active window. */
+enum { FOOTER_BAND_H = 96 };
+extern "C" void bob_map_paint_teletype(int sw, int sh)
+{
+	const int by = sh - FOOTER_BAND_H;
+	/* dark inset log panel, upper-left of the band (above the date box) */
+	const int px = 6, py = by + 5, pw = 452, ph = FOOTER_BAND_H - 44;
+	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+	dc.m_bobVpX = 0; dc.m_bobVpY = 0; dc.m_bobTextH = 15;
+	dc.FillSolidRect(px, py, pw, ph, RGB(24,20,12));      /* sunken black-brown log inset */
+	/* the same 3-line walk TeleType::Refresh does (latest, back to Bwrap) */
+	static int traced = 0;
+	int shown = 0, i = 3, msg = Node_Data.intel.latest;
+	int rowH = ph / 3;
+	while (i && msg != Node_Data.intel.B[IntelBuffer::Bwrap]) {
+		UniqueID uid = Node_Data.intel.messages[msg].what;
+		CString place = uid ? GetTargName(uid) : CString("");
+		CString msgstr = Node_Data.intel.MessageTitleToText(msg);
+		int y = py + 3 + (3 - i) * rowH;
+		dc.SetTextColor(RGB(210,200,140));                /* amber log text  */
+		dc.TextOut(px + 6, y, msgstr);
+		if (uid) { dc.SetTextColor(RGB(150,180,255));     /* place, right column */
+			dc.TextOut(px + pw - 150, y, place); }
+		shown++;
+		i--; msg--; if (msg < 0) msg = IntelBuffer::BUFFERSIZE - 1;
+	}
+	if (getenv("BOB_TRACE_MAP") && !traced) { traced = 1;
+		fprintf(stderr, "[teletype] intel.latest=%d wrap=%d shown=%d\n",
+			Node_Data.intel.latest, Node_Data.intel.B[IntelBuffer::Bwrap], shown); }
+}
+#endif

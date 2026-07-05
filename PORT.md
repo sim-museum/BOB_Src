@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S85 (2026-07-05): Phase 2 continued — the strategic-map EVENT-LOG (teletype) pane renders live intel
+> Sprint 85 adds the footer's event-log pane (the docking frame's **TeleType** report bar), the piece
+> that in the reference shows the scrolling "…Quota Allocated" campaign messages. TeleType hosts
+> `CRButton` lines (`IDC_LINE1..3`/`IDC_ITEM1..3`) filled from `Node_Data.intel`; headlessly those
+> controls don't OnDraw, so render the same faithful strings.
+> - **`TELETYPE.CPP`:** added `extern "C" bob_map_paint_teletype(sw,sh)` — a dark sunken log inset on the
+>   footer band, filled by the **same 3-latest-message walk `TeleType::Refresh` does** (from
+>   `intel.latest` back to `Bwrap`): `MessageTitleToText(msg)` (amber) + `GetTargName(messages[msg].what)`
+>   place (blue, right column). Footer band grown to `FOOTER_BAND_H=96` (matched in `TITLEBAR.CPP`; the
+>   date box moved to the band's bottom-left).
+> - **`FULLPSYS.CPP`** map tick: paint teletype right after the titlebar (shares `BOB_NO_TITLEBAR`).
+> - **Verified.** At the paused day-start the intel buffer is empty (`intel.latest=0` → empty inset,
+>   faithful — no events yet). Advancing the sim (`BOB_MAP_TIMER`) generates intel and the pane renders
+>   it live: **"Fighter Quota Allocated" / "Biggin Hill AF"** (`/tmp/ttf_crop.png`), matching the
+>   reference's log style; the date box tracks the clock + `TimeColour` ("10 July 06:42 x1", blue while
+>   running). ASan-clean over 400+ paints with the sim advancing (currtime 23460→35860, messages
+>   generating each frame; `detect_odr_violation=0` → 0 errors).
+> - **Map now mirrors the reference layout** (`/tmp/map_ttf.png`): right-edge ruler + bottom wooden
+>   footer (event log + date/time). **Remaining Phase-2 gap: the footer's right half — the map-tool +
+>   accel + mission-folder BUTTON rows** (bitmap buttons; needs driving each toolbar's `CRButton`
+>   art through the `MaskIcon`/`BitBlt` blit path the map icons already use). That's the next sprint.
+
 > ## S84 (2026-07-05): Phase 2 continued — the strategic-map FOOTER band + date/time/accel readout renders
 > Sprint 84 extends the map chrome (S83's scale bar) downward with the docking frame's **TitleBar**
 > footer. Same faithful pattern: the frame's `TitleBar` hosts a `CRButton` (`IDC_DATETIME`) whose
