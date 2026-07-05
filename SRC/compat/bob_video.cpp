@@ -205,6 +205,15 @@ static void kb_push(unsigned dik, int down) {
 
 /* Pump the SDL event queue: window close + keyboard -> DIK queue. */
 static int g_clickX = 0, g_clickY = 0, g_clickPending = 0;   /* last left-click (framebuffer coords) */
+/* S96: strategic-map navigation, driven from the SDL pump (the never-delivered WM_*SCROLL/arrow
+   messages don't reach the map, so capture here and let the map tick drain it). pan dx/dy accumulate
+   arrow-key presses; zoom accumulates wheel/+/- steps. Drained by bob_gdi_get_mapnav. */
+static int g_mapPanX = 0, g_mapPanY = 0, g_mapZoomSteps = 0;
+extern "C" int bob_gdi_get_mapnav(int* panx, int* pany, int* zoomsteps) {
+	if (!g_mapPanX && !g_mapPanY && !g_mapZoomSteps) return 0;
+	if (panx) *panx = g_mapPanX; if (pany) *pany = g_mapPanY; if (zoomsteps) *zoomsteps = g_mapZoomSteps;
+	g_mapPanX = g_mapPanY = g_mapZoomSteps = 0; return 1;
+}
 /* The front-end (bob_frontend_tick) polls this for menu clicks. */
 extern "C" int bob_gdi_get_click(int* x, int* y) {
 	/* BOB_CLICKXY="tick,x,y;tick,x,y;..." injects clicks at arbitrary framebuffer coords on the
@@ -315,9 +324,26 @@ static void pump_events(void)
 				g_clickY = lh ? e.button.y * g_scrH / lh : e.button.y;
 				g_clickPending = 1;
 			}
+		else if (e.type == SDL_MOUSEWHEEL) {   /* S96: wheel = map zoom in/out */
+			g_mapZoomSteps += e.wheel.y;
+		}
 		else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
 			int dik = sdl_to_dik(e.key.keysym.scancode);
 			if (dik && g_diKbAcquired && !e.key.repeat) kb_push(dik, e.type==SDL_KEYDOWN);
+			/* S96: strategic-map pan (arrows) + zoom (+/-) -- captured for the map tick. Harmless in
+			   flight (those keys also go to DInput above; the map tick only drains this when map-active). */
+			if (e.type==SDL_KEYDOWN) {
+				const int STEP = 48;
+				switch (e.key.keysym.sym) {
+				case SDLK_LEFT:  g_mapPanX -= STEP; break;
+				case SDLK_RIGHT: g_mapPanX += STEP; break;
+				case SDLK_UP:    g_mapPanY -= STEP; break;
+				case SDLK_DOWN:  g_mapPanY += STEP; break;
+				case SDLK_KP_PLUS:  case SDLK_EQUALS: g_mapZoomSteps += 1; break;
+				case SDLK_KP_MINUS: case SDLK_MINUS:  g_mapZoomSteps -= 1; break;
+				default: break;
+				}
+			}
 			/* a hard exit hatch while the UI loop isn't wired: Ctrl+ESC quits */
 			if (e.type==SDL_KEYDOWN && e.key.keysym.sym==SDLK_ESCAPE && (e.key.keysym.mod & KMOD_CTRL)) {
 				SDL_Quit(); _exit(0);

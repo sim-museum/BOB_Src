@@ -429,6 +429,8 @@ extern "C" void bob_map_paint_teletype(int, int);             /* footer event-lo
 extern "C" void bob_map_paint_toolbars(int, int);             /* footer button rows (MAINFRM.CPP, S89) */
 extern "C" int  bob_map_click_toolbars(int, int);             /* S92: map click -> button handler */
 extern "C" int  bob_gdi_get_click(int*, int*);
+extern "C" int  bob_gdi_get_mapnav(int*, int*, int*);         /* S96: pan/zoom from the SDL layer */
+extern "C" void bob_map_nav(int, int, int);                   /* S96: apply pan/zoom (MIGVIEW.CPP) */
 
 extern "C" void bob_frontend_tick(void)
 {
@@ -452,6 +454,14 @@ extern "C" void bob_frontend_tick(void)
 			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
 		  if (haveClick && bob_map_click_toolbars(cx, cy) && !g_bob_map_active) return;
+		}
+		/* S96: strategic-map pan (arrows) + zoom (wheel / +/-), from the SDL layer. BOB_MAP_NAV="dx,dy,z"
+		   injects one nav step (once settled) for deterministic testing. */
+		{ int px, py, zs; int haveNav = bob_gdi_get_mapnav(&px, &py, &zs);
+		  static int nv_paints = 0, nv_done = 0; const char* nvv = getenv("BOB_MAP_NAV");
+		  if (nvv && !nv_done && ++nv_paints > 6) { if (sscanf(nvv, "%d,%d,%d", &px, &py, &zs) == 3) {
+			haveNav = 1; nv_done = 1; fprintf(stderr,"[mapnav] injecting pan=(%d,%d) zoom=%d\n", px, py, zs); } }
+		  if (haveNav) bob_map_nav(px, py, zs);
 		}
 		/* R4.5 (BOB_MAP_TIMER): drive the campaign clock -- the MFC WM_TIMER doesn't fire on Linux,
 		   so the day never starts. CMapDlg::OnTimer advances the clock + runs the sim. (The

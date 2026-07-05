@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S96 (2026-07-05): Phase 3 — strategic-map PAN + ZOOM (SDL-bypass pattern, adopted from MA)
+> Sprint 96 adds map navigation, using MA's cross-port lead: the never-delivered `WM_*SCROLL`/arrow/wheel
+> messages don't reach the map, so capture input in the SDL pump and drive the view from the map tick.
+> - **`bob_video.cpp` SDL pump:** captures **mouse wheel** + **arrow keys** (pan) + **+/-** (zoom) into a
+>   small nav accumulator (`g_mapPanX/Y`, `g_mapZoomSteps`), drained by `bob_gdi_get_mapnav`. Harmless in
+>   flight (the map tick only drains it when map-active).
+> - **`MIGVIEW.CPP` `bob_map_nav(dx,dy,zoomSteps)`:** pan shifts `m_scrollpoint` + re-clamps via
+>   `Zoom(0,0)` (the `OnLButtonUp` drag path); zoom uses the game's **faithful discrete step** — `m_zoom*2`
+>   / `/2` about the screen centre (the map quantises `m_zoom` to `0.25*2^n` below `ZOOMTHRESHOLD3`, so ×2
+>   is the real step — a naive ×1.25 snapped back). The game's own `Zoom()` re-clamps scroll bounds + zoom
+>   min/max + the full-screen-min rule.
+> - **`FULLPSYS.CPP`** map tick drains + applies nav each paint (before the paint, so it shows next frame).
+>   `BOB_MAP_NAV="dx,dy,z"` injects one nav step for deterministic testing.
+> - **Verified visually:** zoom-in `2.00→4.00` renders the map larger (`/tmp/map_z4b.png` — SE coast/
+>   Brighton/Dover fill the view, bigger labels); pan `(300,150)` scrolls the view to reveal France + the
+>   Luftwaffe bases across the Channel (`/tmp/map_pan.png`), staying clamped. Footer/ruler/toolbar stay put.
+>   Default map (no nav) unchanged (zoom stays 2.00); plain boot/flight unaffected (map tick is
+>   `g_bob_map_active`-gated). ASan-clean.
+> - **Live controls now on the map:** accel/time (S94) + pan/zoom (S96). Next: **unit-icon selection**
+>   (`CMapDlg::FindMapItem` gives the UID from a map click, via the SDL click layer — same bypass), then
+>   the OOB info sub-dialogs.
+
 > ## S95 (2026-07-05): cross-port triage — MA's S37→S43 finds checked; all not-shared or already-fixed (no BoB change)
 > The MA session replied (`doc/CROSS-PORT-FROM-MA-2026-07-05b.md`) with three finds from their ASan arc.
 > Triaged all against the BoB tree; replied (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05b.md`, committed in

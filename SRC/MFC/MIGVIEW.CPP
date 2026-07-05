@@ -4018,3 +4018,29 @@ LRESULT CMIGView::DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 //deadcode JIM 18/06/01		}
 	return rv;
 }
+
+#if BOB_LINUX
+/* S96: strategic-map pan/zoom, driven from the SDL layer (the never-delivered WM_*SCROLL/arrow/wheel
+   messages don't reach the map). pan (dx,dy) shifts m_scrollpoint; zoomSteps scales m_zoom; then the
+   game's own Zoom() re-clamps (scroll bounds + zoom min/max + the full-screen-min rule), exactly as
+   the drag-pan (OnLButtonUp) and OnZoom paths do. Redraw happens on the next map-tick UpdateBitmaps. */
+extern "C" void bob_map_nav(int dx, int dy, int zoomSteps)
+{
+	CMIGView* v = RDialog::m_pView;
+	if (!v) return;
+	if (dx || dy) {
+		/* drag-pan: shift scroll, re-clamp via Zoom(0,0) (the OnLButtonUp path) */
+		v->m_scrollpoint.x += dx;
+		v->m_scrollpoint.y += dy;
+		v->Zoom(CPoint(0,0), true);
+	}
+	if (zoomSteps) {
+		/* faithful discrete zoom: OnZoomIn/Out do m_zoom*2 / m_zoom/2 about the screen centre
+		   (the map quantises m_zoom to 0.25*2^n below ZOOMTHRESHOLD3, so *2 / /2 are the real steps). */
+		CRect rect; v->GetClientRect(rect);
+		CPoint centre(rect.right/2, rect.bottom/2);
+		for (int i = 0; i < zoomSteps; i++) { v->m_oldzoom = v->m_zoom; v->m_zoom *= 2; v->Zoom(centre, true); }
+		for (int i = 0; i > zoomSteps; i--) { v->m_oldzoom = v->m_zoom; v->m_zoom /= 2; v->Zoom(centre, true); }
+	}
+}
+#endif
