@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S87 (2026-07-05): spike — the footer-button plan refined (data is present; no reusable sprite-blit; the art path is the real work)
+> A de-risking spike ahead of the button-row sprint. Findings:
+> - **Positions ARE available.** The toolbar templates are in `ENGLISH/BOB.RC` — `IDDT_MAINTOOLBAR`
+>   (450×50, with `IDC_MISSIONFOLDER` etc.), `IDDT_MISCTOOLBAR` (287×50), `IDDT_TITLEBAR` (209×56, the
+>   `IDC_DATETIME`/accel controls), `IDDT_TELETYPE`, `IDDT_SCALE` — so the existing `.rc` parser
+>   (`bob_dlgtemplate.cpp`) can yield each button's rect by control ID, exactly as it does for the config
+>   combos.
+> - **The art path is the actual work.** Each button's face is a per-state **FileNum**
+>   (`SetNormalFileNum`/`SetPressedFileNum`), and there is **no reusable "blit FileNum sprite to a screen
+>   DC" primitive** to lean on: the map icons blit via the game's `IconDescUI(ICON_*)` descriptor system
+>   (a *different* art path), and the button OCX (`CRButtonCtrl`) that would load+blit a FileNum is not
+>   compiled/hosted. So the button sprint must first stand up a **FileNum→pixels decode + masked screen
+>   blit** (or host `CRButtonCtrl` and drive its OnDraw) — then it can place buttons at the parsed rects.
+> - **Plan for the button sprint:** (1) add a FileNum-sprite decode+blit compat primitive (reuse the DIB
+>   decode already in `bob_gdi_setdibits` + the `MaskIcon`/`BitBlt` screen-blit already in
+>   `bob_gdi_blit.cpp`); (2) extend the `.rc` parser to expose toolbar control rects + their NormalFileNum
+>   DLGINIT property by ID; (3) blit each button (Normal/Pressed by state, e.g. `MMC.curracceltype` for the
+>   accel row) into the footer's right half. Self-contained, verifiable against the wine reference.
+> - **Route (a) has a clear precedent.** The RButton OCX control source is present —
+>   `SRC/RBUTTON/RBUTTONP.CPP` (+ `RBUTTONC`/`.ODL`), the same structure as `SRC/RLISTBOX`/`RCOMBO`/
+>   `RSTATIC` that were already compiled + hosted (`CWnd::CreateControl` → `bob_ole_*`). So hosting
+>   `CRButtonCtrl` as the **4th** OCX and driving its OnDraw (which blits `NormalFileNum`/`PressedFileNum`)
+>   follows a 3×-proven path — likely the surest route to *faithful* button art (vs. reimplementing a
+>   FileNum sprite blit). The button sprint = bring up `RBUTTON` like `RLISTBOX`, ensure each toolbar's
+>   `DoDataExchange` hosts its buttons, then drive their OnDraw at the parsed template rects.
+> - **Route (a) is feasible on EXISTING infra (the key de-risk).** `CRButtonCtrl::OnDraw`
+>   (`SRC/RBUTTON/RBUTTONC.CPP:1274`) draws its face via `DrawBitmap(filenum)` =
+>   `GetParent()->SendMessage(WM_GETFILE, filenum)` → raw **"BM" bitmap bytes** → **`SetDIBitsToDevice`**.
+>   Our compat **already backs `SetDIBitsToDevice`** (`bob_gdi_setdibits`, incl. RLE8), so the only new
+>   glue is a `WM_GETFILE` handler returning the FileNum's `.BMP` bytes via `File_Man` (+
+>   `WM_RELEASELASTFILE`). So the button sprint = (1) add `RBUTTONC.CPP` + a `bob_ole_rbutton.cpp` host to
+>   the `bob_rlistbox` lib (mirror RCOMBO); (2) host `CRButtonCtrl` + route its dispids; (3) implement
+>   `WM_GETFILE`→`File_Man`; (4) drive each toolbar's hosted buttons' OnDraw at the parsed rects. No new
+>   sprite-decoder needed.
+> - No code this spike — a scoping refinement so the button sprint starts with a concrete, de-risked plan.
+>   The map + its icons + the ruler/footer/log/date chrome (S83–S85) remain the session's shipped Phase-2
+>   deliverables (all verified + ASan-clean); the buttons are the last Phase-2 piece.
+
 > ## S86 (2026-07-05): consolidation — campaign-map chrome validated (RAF+LW, no regression); the footer BUTTON rows scoped as the next epic step
 > Sprint 86 locks in the S83–S85 map-chrome gains and scopes the remaining Phase-2 work.
 > - **Validated.** RAF **and** Luftwaffe campaign navs (`BOB_AUTOCLICK=1,0,1,1` / `1,1,1,1`) both reach
