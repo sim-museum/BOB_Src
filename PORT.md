@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S93 (2026-07-05): consolidation — interactive map soak-validated; RButton/sheet-icon pattern shared to the cross-port notes
+> Sprint 93 locks in the S83–S92 campaign-map arc (chrome + clickable toolbar) after the large new
+> surface (RButton OCX, sheet-icon resolution, click dispatch).
+> - **Soak.** 75 s ASan run of the interactive map with the sim advancing (`BOB_MAP_TIMER=8`) **and** a
+>   live button click (`BOB_MAP_CLICK` → `OnClickedBases` opens its sub-dialog): **0 ASan errors, no
+>   crash**, map keeps painting the whole time. Plain `./bob` + flight paths unaffected (all new surface
+>   is `g_bob_map_active`-gated).
+> - **Cross-port.** Added §8b to `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` — the **`CRButtonCtrl` OCX
+>   host + `WM_GETFILE` art + ICON_PAGE sheet-icon resolution + eventsink clicks** pattern, for the MiG
+>   Alley port (its map toolbars use the same R* controls).
+> - **Session arc S83→S93:** the campaign strategic map now renders like the wine reference end-to-end
+>   (terrain + unit icons + labels + Nm ruler + footer with live event log + date/time + both toolbar
+>   rows of distinct sheet icons) **and is interactive** (buttons fire their genuine handlers). The
+>   PO's "map controls and icons" ask is met; the PO-directed sheet-icon impediment is resolved.
+> - **Next arc (Phase 3 continued):** drive the opened OOB sub-dialogs to paint (Bases/Squadrons/Mission
+>   Folder — the config-panel host+paint pattern), map unit-icon selection, accel time controls.
+
 > ## S92 (2026-07-05): Phase 3 START — the map toolbar buttons are CLICKABLE; clicks fire the genuine handlers (OnClickedBases/Missionfolder/…)
 > Sprint 92 opens the interaction phase: the rendered footer buttons now respond to clicks, firing the
 > real game handlers via the OCX eventsink.

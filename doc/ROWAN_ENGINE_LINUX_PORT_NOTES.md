@@ -785,6 +785,30 @@ is the *easy* half; the game-shaped subsystems are the long tail.
 
 ---
 
+## 8b. R* ActiveX toolbar buttons + sprite-sheet icons (BoB S88–S92) **[ENGINE]**
+
+The strategic-map toolbars are docking `CRToolBar` (CDialog) bars that host **`CRButtonCtrl`**
+ActiveX buttons — the same R* OCX family as RListBox/RCombo/RStatic. To render + click them on
+Linux (MiG Alley's map toolbars are almost certainly the same):
+- **Host the OCX like the others** (compile `RBUTTONC.CPP` into the R* lib + a small host that
+  routes the button dispids 0x1–0x15 + stock fore/back/caption). Compile shims needed:
+  `CDC::DrawIcon`, `COleControl::OnKeyDownEvent`, `ID_HELP`, and a named-temp for a `MaskIcon`
+  `CPoint&`-rvalue bind.
+- **Button art is a FileNum via `WM_GETFILE`.** `CRButtonCtrl::OnDraw`→`DrawBitmap` does
+  `GetParent()->SendMessage(WM_GETFILE, filenum)` → "BM" bytes → `SetDIBitsToDevice`. Back
+  `WM_GETFILE` for the file range with `fileblock`/`getdata`, and give `SetDIBitsToDevice` a
+  settable viewport origin (the HDC is a sentinel, so it otherwise blits to (0,0)).
+- **Most toolbar icons are SHEET regions, not files.** They resolve through the `IconsUI`
+  page/entry enum (`ICON_PAGE_1=0x10000 + iconnum.g index`) and draw via the *map-icon* path
+  (`OnDraw` transparent branch → `WM_GETFILE` returns an `IconDescUI` → `MaskIcon`). Set the
+  button's `NormalFileNum` to the ICON_PAGE value, not the (often renamed/absent) per-file art.
+- **The `.rc` DLGINIT often defaults many buttons to one shared art string**; the shipped game
+  differentiates each at runtime. If that runtime assignment is missing in your source drop,
+  reconstruct a control-id→icon map (1:1 by function, matching `iconnum.g`).
+- **Clicks** fire via the S33 eventsink: hit-test the button's drawn rect, then
+  `bob_evt_fire(toolbar, &typeid(*toolbar), ctrlId, /*Clicked*/1)` → the registered `ON_EVENT`
+  thunk (`OnClickedBases`/…). Handlers open logged-child sub-dialogs (`LogChild(::Make())`).
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),
