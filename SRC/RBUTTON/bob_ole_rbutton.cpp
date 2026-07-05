@@ -65,6 +65,9 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
         m_bDrawing = FALSE;
         OnDraw(pdc, rc, rc);
     }
+    /* S92: a click on this button signals bob_ole_click to fire its Clicked event (dispid 1) on the
+       owning toolbar -> the genuine ON_EVENT handler (OnClickedBases/Missionfolder/...). */
+    int onClick() override { return 1; }
     void dispatch(DISPID id, VARTYPE, void*, va_list) override {
         if (bob_ole_trace()) fprintf(stderr, "[ole] RButton: unhandled method dispid %ld\n", (long)id);
     }

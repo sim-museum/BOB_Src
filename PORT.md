@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S92 (2026-07-05): Phase 3 START — the map toolbar buttons are CLICKABLE; clicks fire the genuine handlers (OnClickedBases/Missionfolder/…)
+> Sprint 92 opens the interaction phase: the rendered footer buttons now respond to clicks, firing the
+> real game handlers via the OCX eventsink.
+> - **`HostRButton::onClick()`** now signals a click; **`bob_ole_click(toolbar, x, y)`** (the S33 pattern)
+>   hit-tests the button's last-drawn rect and fires its **Clicked event (dispid 1)** on the toolbar's
+>   runtime type via `bob_evt_fire` -> the registered `ON_EVENT` thunk.
+> - **`MAINFRM::bob_map_click_toolbars(cx,cy)`** dispatches a map click to the misc + main toolbars; the
+>   **map tick** (FULLPSYS) captures the click (`bob_gdi_get_click`) before painting and bails to the
+>   front-end path if a handler left map mode. `BOB_MAP_CLICK="x,y"` injects one click deterministically
+>   for testing.
+> - **Verified.** Clicking each button fires its genuine handler — `[evt_fire] id=1827 dispid=1
+>   type=CMainToolbar -> HANDLER CALLED` = **`OnClickedBases`** ran; likewise Squadrons (1829), Weather
+>   (1807), Mission Folder (1841) — **all fire, none crash** (each `CloseAllDialogsBut` + `LogChild(...
+>   ::Make())` opens its sub-dialog). Map stays live. ASan-clean.
+> - **Next:** the handlers open **logged-child sub-dialogs** (Bases/Squadrons/MissionFolder OOB lists)
+>   that aren't driven to paint yet — bringing those up (the same host+paint pattern as the config
+>   screens) is the next step, then map unit-icon clicks (select squadron/target) + the accel controls.
+
 > ## S91 (2026-07-05): Phase 2 — footer toolbar laid out (two rows) + DEFAULT-ON; the campaign map now mirrors the wine reference end-to-end
 > Sprint 91 tunes the S90 button render into a clean two-row footer and makes the whole toolbar strip a
 > default feature.

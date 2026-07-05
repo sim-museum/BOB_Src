@@ -1332,4 +1332,16 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 	if (CMainFrame::toolbars[TB_MAIN])
 		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MAIN], 468, by + 72, 100);
 }
+
+/* S92: a click at (cx,cy) on the map -> hit-test the footer toolbar buttons (their last-drawn rects)
+   and fire the hit button's Clicked event (OnClickedBases/Missionfolder/...) via the OCX eventsink.
+   Returns 1 if a button consumed the click. */
+extern "C" int bob_ole_click(CWnd*, int, int);
+extern "C" int bob_map_click_toolbars(int cx, int cy)
+{
+	if (!AfxGetMainWnd()) return 0;
+	if (CMainFrame::toolbars[TB_MISC] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MISC], cx, cy)) return 1;
+	if (CMainFrame::toolbars[TB_MAIN] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MAIN], cx, cy)) return 1;
+	return 0;
+}
 #endif

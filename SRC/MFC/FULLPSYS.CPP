@@ -427,6 +427,8 @@ extern "C" void bob_map_paint_scalebar(CMIGView*, int, int);  /* right-edge rule
 extern "C" void bob_map_paint_titlebar(int, int);             /* footer date/time band (TITLEBAR.CPP) */
 extern "C" void bob_map_paint_teletype(int, int);             /* footer event-log pane (TELETYPE.CPP) */
 extern "C" void bob_map_paint_toolbars(int, int);             /* footer button rows (MAINFRM.CPP, S89) */
+extern "C" int  bob_map_click_toolbars(int, int);             /* S92: map click -> button handler */
+extern "C" int  bob_gdi_get_click(int*, int*);
 
 extern "C" void bob_frontend_tick(void)
 {
@@ -438,6 +440,19 @@ extern "C" void bob_frontend_tick(void)
 		int sw = 1024, sh = 768; bob_gdi_screen_size(&sw, &sh);
 		CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1; dc.m_bobVpX = 0; dc.m_bobVpY = 0;
 		CRect rc(0, 0, sw, sh);
+		/* S92: a click on the map -> fire the hit footer-toolbar button's handler. Done before the
+		   paint so a handler that changes mode (e.g. mission folder -> LaunchFullPane) takes effect;
+		   if it left map mode, bail to the front-end paint path next tick. */
+		{ int cx, cy; int haveClick = 0;
+		  if (!getenv("BOB_NO_BUTTONS") && bob_gdi_get_click(&cx, &cy)) haveClick = 1;
+		  /* BOB_MAP_CLICK="x,y" (diag): inject one click at (x,y) once the map has settled, to test
+		     the button-click -> handler path deterministically (no tick-counting). */
+		  static int mc_paints = 0, mc_done = 0; const char* mcxy = getenv("BOB_MAP_CLICK");
+		  if (mcxy && !mc_done && ++mc_paints > 20) { int mx, my;
+			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
+				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
+		  if (haveClick && bob_map_click_toolbars(cx, cy) && !g_bob_map_active) return;
+		}
 		/* R4.5 (BOB_MAP_TIMER): drive the campaign clock -- the MFC WM_TIMER doesn't fire on Linux,
 		   so the day never starts. CMapDlg::OnTimer advances the clock + runs the sim. (The
 		   raid-generator heap bugs that used to SIGSEGV the first PerformMoveCycle are fixed --
