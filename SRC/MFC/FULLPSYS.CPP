@@ -636,7 +636,7 @@ extern "C" void bob_frontend_tick(void)
 			bob_map_paint_titlebar(sw, sh);
 			bob_map_paint_teletype(sw, sh);   /* event-log pane on the same footer band */
 		}
-		if (getenv("BOB_MAP_BUTTONS"))        /* S89: footer button rows (art-render bring-up) */
+		if (!getenv("BOB_NO_BUTTONS"))        /* S89-91: footer toolbar button rows (now default-on) */
 			bob_map_paint_toolbars(sw, sh);
 		bob_map_paint_end();
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {

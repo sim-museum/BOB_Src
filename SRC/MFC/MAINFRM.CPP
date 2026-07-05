@@ -1323,12 +1323,13 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 {
 	CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
 	if (!mf) return;
-	const int band = 96, by = sh - band;
-	/* main tool row (mission folder / bases / squadrons / ...) -- right of the log/date column */
-	if (CMainFrame::toolbars[TB_MAIN])
-		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MAIN], 468, by + 4, 100);
-	/* misc tool row (thumbnail / files / replay / readyroom) -- second row */
+	const int band = 128, by = sh - band;   /* == TELETYPE.CPP FOOTER_BAND_H */
+	/* misc map-tool row (thumbnail / files / zoom / mapfilters / replay) -- upper row, right of the log */
 	if (CMainFrame::toolbars[TB_MISC])
-		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MISC], 468, by + 50, 100);
+		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MISC], 468, by + 8, 100);
+	/* main OOB/mission row (bases / squadrons / pilots / mission folder / ...) -- lower row (the wide
+	   mission-folder strip in the wine reference) */
+	if (CMainFrame::toolbars[TB_MAIN])
+		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MAIN], 468, by + 72, 100);
 }
 #endif

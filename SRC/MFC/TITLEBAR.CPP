@@ -459,7 +459,7 @@ extern "C" void bob_map_paint_titlebar(int sw, int sh)
 {
 	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
 	dc.m_bobVpX = 0; dc.m_bobVpY = 0; dc.m_bobTextH = 16;
-	const int bandH = 96, by = sh - bandH;   /* == TELETYPE.CPP FOOTER_BAND_H */
+	const int bandH = 128, by = sh - bandH;   /* == TELETYPE.CPP FOOTER_BAND_H */
 	dc.FillSolidRect(0, by,     sw, bandH, RGB(90, 66, 28));   /* dark wooden band */
 	dc.FillSolidRect(0, by,     sw, 2,     RGB(150,110, 50));  /* top bevel highlight */
 	dc.FillSolidRect(0, sh - 2, sw, 2,     RGB(40, 28, 12));   /* bottom shadow */

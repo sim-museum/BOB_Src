@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S91 (2026-07-05): Phase 2 — footer toolbar laid out (two rows) + DEFAULT-ON; the campaign map now mirrors the wine reference end-to-end
+> Sprint 91 tunes the S90 button render into a clean two-row footer and makes the whole toolbar strip a
+> default feature.
+> - **Layout.** Footer band grown to **128 px** (shared `FOOTER_BAND_H` across TELETYPE/TITLEBAR/MAINFRM):
+>   left column = event-log inset + parchment date box; **upper-right row = misc map-tools** (CMiscToolbar
+>   — thumbnail/files/zoom/mapfilters/replay), **lower row = the wide OOB/mission-folder strip** (CMainToolbar
+>   — bases/squadrons/weather/review/pilot/assets/mission/aircraft/hostiles). Matches the reference's
+>   two-row footer; the rows no longer overlap.
+> - **Default-on.** The button rows now paint by default on the campaign map (was `BOB_MAP_BUTTONS`);
+>   **`BOB_NO_BUTTONS`** reverts to the bare footer. Verified: default boot renders the buttons; the escape
+>   hatch clears them; plain `./bob` (menu/flight) unaffected (button paint is `g_bob_map_active`-gated);
+>   ASan-clean.
+> - **Net (S83→S91): the campaign strategic map now mirrors the wine reference end-to-end** — terrain +
+>   unit icons + sector/city labels + right-edge Nm ruler + wooden footer (live event log + date/time +
+>   both toolbar button rows with correct distinct sheet icons). Phase-2 chrome complete. Remaining
+>   Phase-2/3: **interaction** (click a rendered button/unit icon → its action/info), accel time controls,
+>   and the campaign loop (day advance / debrief / save-load, largely already hardened).
+
 > ## S90 (2026-07-05): Phase 2 — IMPEDIMENT RESOLVED: the toolbar buttons render distinct, faithful sheet icons (sheet-region resolution, PO-directed)
 > Sprint 90 clears the S89 art-data impediment the PO chose to solve via **sheet-region resolution**.
 > The map-tool / mission-folder button faces are sprite-sheet icons (`iconset1.bmp`), addressed by the

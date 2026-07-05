@@ -245,12 +245,12 @@ void TeleType::FillTextLines( int line,CString str1,CString str2)
    same faithful 3 latest-message strings (MessageTitleToText + GetTargName place) that
    TeleType::Refresh pushes, into a dark inset panel on the footer band. FOOTER_BAND_H must
    match TITLEBAR.CPP's band. Driven from the map tick inside the paint-active window. */
-enum { FOOTER_BAND_H = 96 };
+enum { FOOTER_BAND_H = 128 };   /* taller band: log + date column at left, two button rows at right */
 extern "C" void bob_map_paint_teletype(int sw, int sh)
 {
 	const int by = sh - FOOTER_BAND_H;
 	/* dark inset log panel, upper-left of the band (above the date box) */
-	const int px = 6, py = by + 5, pw = 452, ph = FOOTER_BAND_H - 44;
+	const int px = 6, py = by + 5, pw = 452, ph = 78;
 	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
 	dc.m_bobVpX = 0; dc.m_bobVpY = 0; dc.m_bobTextH = 15;
 	dc.FillSolidRect(px, py, pw, ph, RGB(24,20,12));      /* sunken black-brown log inset */
