@@ -177,6 +177,37 @@ static void extractCaption(const unsigned char* b, int n, int dlgId, int ctrlId)
     if (best[0]) storeCaption(dlgId, ctrlId, best);
 }
 
+/* ---- button art (S89): the R* buttons' NormalFileNumString is a "FIL_..." equate stored
+   in the same DLGINIT property bag; capture it per (dlg,ctrl) so HostRButton can resolve it
+   to a FileNum via GetFileNum. Distinct from the caption (which is the hint text). ---- */
+struct Art { int dlgId, ctrlId; char s[48]; };
+static Art g_arts[MAX_CAPS]; static int g_narts = 0;
+static void storeArt(int dlgId, int ctrlId, const char* s) {
+    for (int j = 0; j < g_narts; j++) if (g_arts[j].dlgId==dlgId && g_arts[j].ctrlId==ctrlId) {
+        strncpy(g_arts[j].s, s, 47); g_arts[j].s[47]=0; return; }
+    if (g_narts >= MAX_CAPS) return;
+    g_arts[g_narts].dlgId=dlgId; g_arts[g_narts].ctrlId=ctrlId;
+    strncpy(g_arts[g_narts].s, s, 47); g_arts[g_narts].s[47]=0; g_narts++;
+}
+static void extractArtName(const unsigned char* b, int n, int dlgId, int ctrlId) {
+    for (int i = 0; i < n; i++) {              /* first length-prefixed "FIL_..." string */
+        int len = b[i];
+        if (len < 5 || len > 46 || i + 1 + len > n) continue;
+        if (memcmp(b + i + 1, "FIL_", 4) != 0) continue;
+        int ok = 1; for (int k = 0; k < len; k++) { unsigned char c = b[i+1+k]; if (c < 32 || c > 126) { ok = 0; break; } }
+        if (!ok) continue;
+        char t[48]; memcpy(t, b + i + 1, len); t[len] = 0;
+        storeArt(dlgId, ctrlId, t); return;
+    }
+}
+static void load(void);
+extern "C" int bob_dlg_artname(int dlgId, int ctrlId, char* out, int outsz) {
+    load();
+    for (int j = 0; j < g_narts; j++) if (g_arts[j].dlgId==dlgId && g_arts[j].ctrlId==ctrlId) {
+        strncpy(out, g_arts[j].s, outsz-1); out[outsz-1]=0; return 1; }
+    return 0;
+}
+
 static void parseDlgInit(const char* path) {
     FILE* f = fopen(path, "r");
     if (!f) return;
@@ -186,21 +217,21 @@ static void parseDlgInit(const char* path) {
     while (fgets(line, sizeof line, f)) {
         char* dl = strstr(line, " DLGINIT");
         if (dl) {                                   /* "<SYM> DLGINIT" */
-            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl);
+            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);
             char sym[256]; curDlg = (sscanf(line, " %255[A-Za-z0-9_]", sym) == 1) ? symLookup(sym) : -1;
             curCtrl = -1; blen = 0;
             continue;
         }
         char cs[256];
         if (curDlg >= 0 && sscanf(line, " %255[A-Za-z0-9_] ,", cs) == 1 && strstr(line, "0x376")) {
-            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl);   /* flush previous */
+            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);   /* flush previous */
             curCtrl = symLookup(cs); blen = 0;
             continue;
         }
         {   /* trimmed "END" closes the block */
             const char* p = line; while (*p && isspace((unsigned char)*p)) p++;
             if (strncmp(p, "END", 3) == 0 && (p[3] == 0 || isspace((unsigned char)p[3]))) {
-                if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl);
+                if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);
                 curDlg = curCtrl = -1; blen = 0; continue;
             }
         }
@@ -213,7 +244,7 @@ static void parseDlgInit(const char* path) {
             }
         }
     }
-    if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl);
+    if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);
     fclose(f);
 }
 
@@ -230,8 +261,8 @@ static void load(void) {
     snprintf(path, sizeof path, "%s/ENGLISH/BOB.RC", base); parseDlgInit(path);
     snprintf(path, sizeof path, "%s/ENGLISH/MIG.RC", base); parseDlgInit(path);
     if (getenv("BOB_TRACE_OLE"))
-        fprintf(stderr, "[ole] dialog templates: %d symbols, %d rects, %d captions from %s\n",
-                g_nsyms, g_nrects, g_ncaps, base);
+        fprintf(stderr, "[ole] dialog templates: %d symbols, %d rects, %d captions, %d arts from %s\n",
+                g_nsyms, g_nrects, g_ncaps, g_narts, base);
 }
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz) {

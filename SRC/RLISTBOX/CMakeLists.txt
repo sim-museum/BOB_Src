@@ -20,3 +20,6 @@ add_library(bob_rlistbox STATIC
 )
 target_include_directories(bob_rlistbox PUBLIC
     ${BOB_SRC}/compat ${BOB_SRC}/H ${BOB_SRC}/MFC ${BOB_SRC}/RLISTBOX ${BOB_SRC}/RCOMBO ${BOB_SRC}/RSTATIC ${BOB_SRC}/RBUTTON)
+# GETFILE.CPP reads h/F_GRAFIX.G (button-art FileNum resolution) from the repo source tree.
+set_source_files_properties(${BOB_SRC}/RBUTTON/GETFILE.CPP PROPERTIES
+    COMPILE_DEFINITIONS "BOB_SRC_DIR=\"${BOB_SRC}\"")

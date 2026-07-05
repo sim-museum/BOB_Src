@@ -1,5 +1,33 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S89 (2026-07-05): Phase 2 — the RButton render pipeline works end-to-end (real button art blits on the map footer); most icons blocked by a source-drop F_GRAFIX.G version skew
+> Sprint 89 drives the hosted `CRButtonCtrl`s' real `OnDraw` onto the map footer — the full art path
+> now works (**a genuine button face renders**), gated behind `BOB_MAP_BUTTONS` while the layout + the
+> art-data skew are worked. The chain built this sprint:
+> - **String→FileNum.** Parser extracts each button's `NormalFileNumString` (`FIL_*`) from its DLGINIT
+>   bag (`extractArtName`/`bob_dlg_artname`, alongside the caption); `HostRButton::applyDesignProps`
+>   feeds it to the OCX's `SetNormalFileNumString` → `GetFileNum`. Fixed `GetFileNum` for Linux
+>   (`RBUTTON/GETFILE.CPP`): read the repo `h/F_GRAFIX.G` (`BOB_SRC_DIR`), `#undef fopen` to bypass the
+>   drive_c redirect (it's a source file, not game data).
+> - **FileNum→pixels.** `bob_dlg_getfile` (WM_GETFILE) now loads the art-file range (0x6600–0x7200) via
+>   `fileblock`/`getdata` → the raw "BM" bytes; `CRButtonCtrl::DrawBitmap` → `SetDIBitsToDevice`.
+> - **Positioning.** Added `bob_ole_draw_toolbar` (a toolbar-scaled sibling of `bob_ole_draw_panel`) +
+>   `bob_map_paint_toolbars` (MAINFRM, driven from the map tick) to draw each footer toolbar's buttons at
+>   their template rects. Fixed the blit origin: `SetDIBitsToDevice` lost the CDC viewport (HDC is a
+>   sentinel) so art landed at (0,0); added `bob_gdi_setdibits_origin`, set around each `host->draw()`.
+> - **Verified.** `BOB_TRACE_OLE`: 39 buttons host, arts resolve (`FIL_ICON_THUMBNAIL`→0x6601 loads "BM",
+>   etc.), and a **real button face blits at its footer position** (`/tmp/footer_full.png`). Default map
+>   (buttons gated off) unchanged; no crash.
+> - **IMPEDIMENT (game-data skew, characterised):** most toolbar icons don't render because this open-
+>   source drop's `h/F_GRAFIX.G` **renamed `FIL_ICON_*` → `FIL_xICON_*`** (an inserted 'x') and the art at
+>   those FileNums (e.g. `FIL_xICON_BASES`=0x6a63) is **absent** — `getdata` returns NULL. The shipped
+>   `.rc`/DLGINIT still reference `FIL_ICON_*`, so the `.rc` and `F_GRAFIX.G` are from different builds.
+>   Buttons whose names survived un-renamed (misc toolbar: THUMBNAIL/FILES) load + render; the renamed
+>   ones (main toolbar: BASES/WEATHER/…) are blank (not wrong — the `x`-fallback lookup resolves the
+>   name but the file is missing). Resolving the rest needs the matching `F_GRAFIX.G`↔art, or a
+>   name→FileNum remap for the renamed icons (next sprint's task). The **pipeline is complete**; this is
+>   a pure data-versioning gap.
+
 > ## S88 (2026-07-05): Phase 2 — the RButton OCX is brought up + hosted (4th control); 39 toolbar buttons host, ASan-clean
 > Sprint 88 executes the button-sprint's foundational step (per S87's plan): stand up `CRButtonCtrl` as
 > the **4th hosted ActiveX control** (after RListBox/RCombo/RStatic), so the strategic-map toolbars'

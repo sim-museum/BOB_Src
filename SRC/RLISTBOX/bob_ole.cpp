@@ -129,6 +129,32 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     return n;
 }
 
+/* S89: draw a docked TOOLBAR's hosted buttons at their template rects, scaled px-per-100-DLU
+   (the config-panel dluX/dluY 1.5x is too big for the 50-DLU toolbar buttons). Each CRButtonCtrl
+   OnDraw blits its NormalFileNum art (SetDIBitsToDevice) at the button's screen origin -- the art
+   is native-BMP-sized, so scale here just sets the button spacing/layout. */
+extern "C" void bob_gdi_setdibits_origin(int, int);
+extern "C" int bob_ole_draw_toolbar(CWnd* dialog, int ox, int oy, int pxPer100) {
+    int n = 0;
+    for (auto& kv : hosts()) {
+        OleHost* host = kv.second;
+        if (host->parentDlg != dialog) continue;
+        DluRect r;
+        if (!lookupDlu(host->ctrlId, r)) continue;
+        int sx = ox + r.x * pxPer100 / 100, sy = oy + r.y * pxPer100 / 100;
+        int w = r.w * pxPer100 / 100,       h = r.h * pxPer100 / 100;
+        CDC dc; dc.m_hDC = (HDC)1; dc.m_bobScreen = true;
+        dc.m_bobVpX = sx; dc.m_bobVpY = sy; dc.m_bobTextH = 12;
+        bob_gdi_setdibits_origin(sx, sy);      /* button art (SetDIBitsToDevice) -> screen pos */
+        host->draw(&dc, w, h);
+        bob_gdi_setdibits_origin(0, 0);
+        host->sx = sx; host->sy = sy; host->sw = w; host->sh = h;
+        n++;
+    }
+    if (bob_ole_trace()) fprintf(stderr, "[ole] draw_toolbar dialog=%p off=(%d,%d) drew=%d\n", (void*)dialog, ox, oy, n);
+    return n;
+}
+
 /* A click landed at screen (x,y) over `dialog`'s panel: hit-test its hosted controls' last-drawn
    rects; an interactive control (RCombo) cycles its value (onClick). Returns 1 if a control
    consumed the click (the caller then repaints). Mirrors the MiG Alley port's ma_ole_click. */

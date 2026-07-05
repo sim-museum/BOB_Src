@@ -1312,3 +1312,23 @@ LRESULT CMainFrame::DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 //DeadCode JIM 11Oct00 	}
 	return rv;
 }
+
+#if BOB_LINUX
+/* S89 (campaign Phase 2): paint the strategic-map footer toolbars' hosted CRButton faces onto
+   the framebuffer. The MFC docking frame doesn't run WM_PAINT headlessly, so drive each toolbar's
+   buttons via bob_ole_draw_toolbar (their OnDraw blits NormalFileNum art). Positions are laid out
+   on the footer band; env-gated (BOB_MAP_BUTTONS) while the layout is tuned. */
+extern "C" int bob_ole_draw_toolbar(CWnd*, int, int, int);
+extern "C" void bob_map_paint_toolbars(int sw, int sh)
+{
+	CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
+	if (!mf) return;
+	const int band = 96, by = sh - band;
+	/* main tool row (mission folder / bases / squadrons / ...) -- right of the log/date column */
+	if (CMainFrame::toolbars[TB_MAIN])
+		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MAIN], 468, by + 4, 100);
+	/* misc tool row (thumbnail / files / replay / readyroom) -- second row */
+	if (CMainFrame::toolbars[TB_MISC])
+		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MISC], 468, by + 50, 100);
+}
+#endif

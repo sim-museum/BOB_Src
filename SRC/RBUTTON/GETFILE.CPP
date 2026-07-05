@@ -67,6 +67,54 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 // this global function searches F_GRAFIX.G and returns the file
 // number of a given file equate
 
+#if BOB_LINUX
+/* Linux port: the original opens a hardcoded Windows source path (\bob\src\h\F_GRAFIX.G),
+   which the fopen redirect maps under drive_c and never finds. Read the repo's F_GRAFIX.G
+   (BOB_SRC_DIR from CMake, or $BOB_RC_DIR) and parse "NAME =0xHHHH,". Skew fallback: this
+   source drop's F_GRAFIX.G renamed the icon equates FIL_ICON_* -> FIL_xICON_* (an 'x' after
+   FIL_), but the shipped .rc/DLGINIT still say FIL_ICON_*; so if an exact match fails, retry
+   with the 'x' inserted. Returns the FileNum, or 0 if unknown. */
+#ifndef BOB_SRC_DIR
+#define BOB_SRC_DIR "."
+#endif
+#undef fopen   /* bypass the game's fopen->fopen_nocase drive_c redirect: F_GRAFIX.G is a repo
+                  source file (absolute BOB_SRC_DIR path), not a drive_c game-data path. */
+static int bob_grafix_lookup(FILE* fp, const char* name) {
+    rewind(fp);
+    char line[512];
+    size_t nl = strlen(name);
+    while (fgets(line, sizeof line, fp)) {
+        const char* p = line;
+        while (*p==' '||*p=='\t') p++;
+        if (strncmp(p, name, nl) != 0) continue;
+        const char* q = p + nl;                       /* must be a full token, then '=' */
+        while (*q==' '||*q=='\t') q++;
+        if (*q != '=') continue;
+        if (!(p[nl]==' '||p[nl]=='\t'||p[nl]=='=')) continue;
+        return (int)strtol(q+1, NULL, 16);
+    }
+    return -1;
+}
+extern "C" int bob_getfilenum(const char* text) {
+    if (!text || !text[0]) return 0;
+    char path[1024];
+    const char* base = getenv("BOB_RC_DIR"); if (!base || !base[0]) base = BOB_SRC_DIR;
+    snprintf(path, sizeof path, "%s/h/F_GRAFIX.G", base);
+    FILE* fp = fopen(path, "rb");
+    if (!fp) { snprintf(path,sizeof path,"%s/H/F_GRAFIX.G",base); fp=fopen(path,"rb"); }
+    static int traced=0; if(getenv("BOB_TRACE_OLE")&&!traced){traced=1;
+        fprintf(stderr,"[ole] GetFileNum F_GRAFIX.G path=%s open=%s\n", path, fp?"OK":"FAIL");}
+    if (!fp) return 0;
+    int v = bob_grafix_lookup(fp, text);
+    if (v < 0 && strncmp(text, "FIL_", 4) == 0) {     /* skew fallback: FIL_ -> FIL_x */
+        char alt[128]; snprintf(alt, sizeof alt, "FIL_x%s", text + 4);
+        v = bob_grafix_lookup(fp, alt);
+    }
+    fclose(fp);
+    return v < 0 ? 0 : v;
+}
+int GetFileNum(const char* text) { return bob_getfilenum(text); }
+#else
 int GetFileNum(const char* text)
 {
 	// ok first open F_GRAFIX.G which we'll assume is in
@@ -128,4 +176,5 @@ int GetFileNum(const char* text)
 	fclose(fp);
 	return strtol(buffer,NULL,16); // success!!!!;
 }
+#endif /* BOB_LINUX */
 

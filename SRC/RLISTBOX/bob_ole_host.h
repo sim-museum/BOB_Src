@@ -23,6 +23,7 @@ struct OleHost {
 };
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT caption (bob_dlgtemplate.cpp) */
+extern "C" int bob_dlg_artname(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT "FIL_*" NormalFileNumString (buttons) */
 
 /* per-control factories (one per TU) */
 OleHost* bob_make_rlistbox(class CWnd* parent);

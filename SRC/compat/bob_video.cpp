@@ -646,8 +646,15 @@ extern "C" void bob_gdi_present(void) {
 }
 /* Decode a DIB (BITMAPINFO `bmi` + `bits`) into the GDI framebuffer at (xDest,yDest).
    Handles 8-bit palettized and 24/32-bit; honours bottom-up (biHeight>0) vs top-down. */
+/* S89: viewport origin for SetDIBitsToDevice. The global GDI SetDIBitsToDevice loses the CDC's
+   viewport (the HDC is a sentinel), so the R* button OnDraw's DrawBitmap(0,0) would land at the
+   framebuffer corner. The OCX-draw drivers (bob_ole_draw_toolbar) set this to the control's screen
+   origin around host->draw() and reset it after. */
+static int g_sdibOrgX = 0, g_sdibOrgY = 0;
+extern "C" void bob_gdi_setdibits_origin(int x, int y) { g_sdibOrgX = x; g_sdibOrgY = y; }
 extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, unsigned numScan,
                                  const void* bits, const void* bmi) {
+	xDest += g_sdibOrgX; yDest += g_sdibOrgY;
 	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
 	if (!fb || !bits || !bmi) return 0;
 	const unsigned char* hdr = (const unsigned char*)bmi;

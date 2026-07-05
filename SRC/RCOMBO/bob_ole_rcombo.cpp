@@ -5,6 +5,7 @@
 #include "RCombo.h"             /* RCombo module header (RCOMBO/resource.h: IDD_LISTBOX) */
 #include "uiicons.h"            /* IconsUI (RComboC.h DrawTransparentBitmap param) */
 #include "RComboC.h"            /* the genuine CRComboCtrl */
+#include "fileman.h"            /* fileblock/getdata: S89 button-art BMP load (WM_GETFILE) */
 #include "../RLISTBOX/bob_ole_host.h"
 #include <cstdarg>
 #include <cstdio>
@@ -107,14 +108,26 @@ OleHost* bob_make_rcombo(CWnd* parent) { HostRCombo* h = new HostRCombo(); h->bo
    OnDraw fetch their icons/art this way. Icons (filenum>=0x10000) -> a live IconDescUI
    (the dropdown arrow etc.); MaskIcon then draws it. File/art (0x6600-0x7200) loading is
    not wired here yet (returns NULL -> those controls skip their art for now). */
+static fileblock* s_lastfb = NULL;
 extern "C" void* bob_dlg_getfile(int filenum) {
     if (filenum >= 0x10000) {
         static IconDescUI s_axicon;
         s_axicon = IconsUI(filenum);
         return (void*)&s_axicon;
     }
+    /* S89: art files (0x6600-0x7200, per OnGetFile) -> the raw "BM" bytes the button OCX's
+       DrawBitmap feeds to SetDIBitsToDevice. The block persists until the next call /
+       WM_RELEASELASTFILE (the OCX reads it synchronously in the same OnDraw). */
+    if (filenum > 0x6600 && filenum < 0x7200) {
+        delete s_lastfb; s_lastfb = new fileblock((FileNum)filenum);
+        void* d = getdata(*s_lastfb);
+        static int t=0; if(bob_ole_trace()&&t<40){t++; unsigned char* b=(unsigned char*)d;
+            fprintf(stderr,"[ole] getfile 0x%x -> %p %s\n",filenum,d, (d&&b[0]=='B'&&b[1]=='M')?"BM":"(notBM)");}
+        return d;
+    }
     return NULL;
 }
+extern "C" void bob_dlg_releasefile(void) { delete s_lastfb; s_lastfb = NULL; }
 
 /* WM_GETGLOBALFONT handler (replicates OnGetGlobalFont): the R* controls' OnDraw
    selects this font, and (via CFont::m_height -> CDC::SelectObject) it sets the real

@@ -426,6 +426,7 @@ extern "C" void bob_gdi_screen_size(int*, int*);
 extern "C" void bob_map_paint_scalebar(CMIGView*, int, int);  /* right-edge ruler (SCALEBAR.CPP) */
 extern "C" void bob_map_paint_titlebar(int, int);             /* footer date/time band (TITLEBAR.CPP) */
 extern "C" void bob_map_paint_teletype(int, int);             /* footer event-log pane (TELETYPE.CPP) */
+extern "C" void bob_map_paint_toolbars(int, int);             /* footer button rows (MAINFRM.CPP, S89) */
 
 extern "C" void bob_frontend_tick(void)
 {
@@ -635,6 +636,8 @@ extern "C" void bob_frontend_tick(void)
 			bob_map_paint_titlebar(sw, sh);
 			bob_map_paint_teletype(sw, sh);   /* event-log pane on the same footer band */
 		}
+		if (getenv("BOB_MAP_BUTTONS"))        /* S89: footer button rows (art-render bring-up) */
+			bob_map_paint_toolbars(sw, sh);
 		bob_map_paint_end();
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;

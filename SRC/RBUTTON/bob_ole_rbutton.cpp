@@ -23,6 +23,14 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
         OnResetState();
         CPropExchange px; DoPropExchange(&px);
     }
+    void applyDesignProps() override {
+        /* the button face art: NormalFileNumString ("FIL_...") from the DLGINIT bag ->
+           SetNormalFileNumString resolves it to m_NormalFileNum via GetFileNum. */
+        char art[48]; int got = bob_dlg_artname(dlgId, ctrlId, art, sizeof art);
+        if (got && art[0]) SetNormalFileNumString(art);
+        if (bob_ole_trace()) fprintf(stderr, "[ole] RButton dlg=%d id=%d art=%s -> NormalFileNum=0x%lx\n",
+            dlgId, ctrlId, got?art:"(none)", (long)GetNormalFileNum());
+    }
     void draw(CDC* pdc, int w, int h) override {
         g_bobListFontH = pdc->m_bobTextH;
         CRect rc(0, 0, w, h);
