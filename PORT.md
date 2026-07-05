@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S86 (2026-07-05): consolidation — campaign-map chrome validated (RAF+LW, no regression); the footer BUTTON rows scoped as the next epic step
+> Sprint 86 locks in the S83–S85 map-chrome gains and scopes the remaining Phase-2 work.
+> - **Validated.** RAF **and** Luftwaffe campaign navs (`BOB_AUTOCLICK=1,0,1,1` / `1,1,1,1`) both reach
+>   the map and render the full chrome identically (ruler + footer band + event log + date/time box) —
+>   `/tmp/map_ttf.png` (RAF) / `/tmp/map_lw.png` (LW). Plain `./bob` (no toggles) still boots the
+>   front-end menu and runs to window-close with **no crash** — the S83–S85 changes are all gated on
+>   `g_bob_map_active`, so the menu/flight paths are untouched. ASan-clean across S83–S85 (map + sim
+>   advancing, `detect_odr_violation=0` → 0 errors).
+> - **Remaining Phase-2 gap = the footer's right half: the map-tool / accel / mission-folder BUTTON
+>   rows.** Scoped: these are hosted **`CRButton`** OCX controls (`CMainToolbar`/`CMiscToolbar`/
+>   `TitleBar`, IDs `IDC_MISSIONFOLDER`/`IDC_AIRCRAFTALLOC`/`IDC_PAUSE`/…) with per-state art
+>   (`SetNormalFileNum`/`SetPressedFileNum`). Unlike the map ICONS (which blit via `MaskIcon`), the
+>   button OCX (`CRButtonCtrl`) is **not compiled/hosted** — only RCombo/RListBox/RStatic are (the
+>   RButton path PORT.md earlier marked "N/A for the front-end dialogs" **is** needed here for the
+>   toolbars). Two routes for the next sprint: (a) bring up + host `CRButtonCtrl` (4th OCX, like
+>   RLISTBOX) and drive its OnDraw; or (b) **direct-blit** each button's `NormalFileNum` art at its
+>   template rect — rects from the existing `.rc`/DLGINIT parser (`bob_dlgtemplate.cpp`, already used
+>   for config screens), art via the decode/blit path the map icons use. Route (b) is likely the
+>   smaller lift (no OCX dispatch), and is the recommended start. This is a self-contained sprint arc.
+
 > ## S85 (2026-07-05): Phase 2 continued — the strategic-map EVENT-LOG (teletype) pane renders live intel
 > Sprint 85 adds the footer's event-log pane (the docking frame's **TeleType** report bar), the piece
 > that in the reference shows the scrolling "…Quota Allocated" campaign messages. TeleType hosts
