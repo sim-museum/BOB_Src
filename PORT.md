@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## Cross-port sync (2026-07-05): compared notes with the MiG Alley port (`~/ma`) — MA's Phase-1 lead validated our S88–92 approach; replied with the S83→S93 learnings
+> "Compare notes" pass against the sister MA port. Read MA's `CROSS-PORT-FROM-MA-2026-07-05.md`:
+> - **MA's Phase-1 lead was spot-on and we independently executed it.** MA said the campaign screens'
+>   "non-`textlists` control model" IS the hosted-OCX path — *"point your existing OLE-host draw at the
+>   campaign dialog templates, it's not new machinery."* That's exactly S88→S92 (RButton OCX hosting +
+>   `bob_ole_draw_toolbar` + eventsink clicks). The ports **converged** on OCX-hosted campaign controls
+>   (MA got there first for the campaign *front-end*; BoB now has it for the *map toolbar*).
+> - **MA's triage of our finds:** S65a (`delete[]`) + S71 (two-strip `[index+1]` OOB) **shared & fixed
+>   on MA**; S64/S65b/S78/S72/S81 not-shared (different serialiser / own GDI / no `Formation_xyz`/
+>   `Grid_Base` / no GL depth). **S71 mask lesson confirmed:** our `& 0xFFF` is correct for BoB's
+>   **0x1000** `.ind` buffers; MA's buffers are **5120** so they used `% 5120` — *shared structure,
+>   per-game constant; re-derive the dimension, don't copy the mask.* No BoB action needed.
+> - **Replied** (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05.md`, committed in the MA repo) with the four
+>   new engine seams from the S83→S93 button-art arc: **(a)** DLGINIT shares one default art string →
+>   reconstruct control-id→icon; **(b)** button faces are **sprite-sheet ICON_PAGE** regions
+>   (`IconsUI` 0x10000+`iconnum.g` index) via the map-icon `MaskIcon` path, not per-file art; **(c)** the
+>   `F_GRAFIX.G` `FIL_ICON_*`→`FIL_xICON_*` version skew; **(d)** `WM_GETFILE`+`SetDIBitsToDevice`
+>   viewport-origin gotcha. Folded these into the shared lessons doc (`§8b`, both copies).
+> - **Parity:** MA is ahead on the map **view** (pan/zoom/drag/`StretchDIBits`, navigable Korea map) +
+>   flight polish; BoB is ahead on the map **chrome** (ruler/footer/toolbar sheet-icons) + toolbar
+>   interaction. Took MA up on their `CMIGView` hit-test/pan-zoom offer for BoB's next arc (map unit
+>   selection). Near-parity, complementary strengths.
+
 > ## S93 (2026-07-05): consolidation — interactive map soak-validated; RButton/sheet-icon pattern shared to the cross-port notes
 > Sprint 93 locks in the S83–S92 campaign-map arc (chrome + clickable toolbar) after the large new
 > surface (RButton OCX, sheet-icon resolution, click dispatch).
