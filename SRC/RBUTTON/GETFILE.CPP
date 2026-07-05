@@ -114,6 +114,42 @@ extern "C" int bob_getfilenum(const char* text) {
     return v < 0 ? 0 : v;
 }
 int GetFileNum(const char* text) { return bob_getfilenum(text); }
+
+/* S90: resolve an "ICON_*" name to its ICON_PAGE value. The strategic-map toolbar buttons'
+   faces are sprite-sheet icons (iconset1.bmp), addressed by IconsUI page/entry, NOT standalone
+   art files -- the per-file FileNum (F_GRAFIX.G) for these is renamed/absent in this drop. The
+   entry names + order live in h/iconnum.g (+ iconnum2.g), which the IconsUI enum #includes after
+   ICON_PAGE_1_BEFORE (=ICON_PAGE_1-1); so entry k = ICON_PAGE_1 (0x10000) + k. Build that map once
+   and look names up -> the value OnDraw's transparent/IconDescUI path (the map-icon renderer) draws. */
+struct IconEnt { char name[48]; int val; };
+static IconEnt s_icons[512]; static int s_nicons = 0; static int s_iconsLoaded = 0;
+static void bob_icons_loadfile(const char* path, int* idx) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return;
+    char line[256];
+    while (fgets(line, sizeof line, f)) {
+        const char* p = line; while (*p==' '||*p=='\t') p++;
+        if (strncmp(p, "ICON_", 5) != 0) continue;
+        int n = 0; char nm[48];
+        while ((isalnum((unsigned char)p[n]) || p[n]=='_') && n < 47) { nm[n]=p[n]; n++; }
+        nm[n] = 0;
+        if (n < 5) continue;
+        if (s_nicons < 512) { strncpy(s_icons[s_nicons].name, nm, 47); s_icons[s_nicons].name[47]=0;
+            s_icons[s_nicons].val = 0x10000 + (*idx); s_nicons++; }
+        (*idx)++;
+    }
+    fclose(f);
+}
+extern "C" int bob_icon_pagenum(const char* name) {
+    if (!name || !name[0]) return 0;
+    if (!s_iconsLoaded) { s_iconsLoaded = 1; int idx = 0; char path[1024];
+        const char* base = getenv("BOB_RC_DIR"); if (!base || !base[0]) base = BOB_SRC_DIR;
+        snprintf(path, sizeof path, "%s/h/iconnum.g",  base); bob_icons_loadfile(path, &idx);
+        snprintf(path, sizeof path, "%s/h/iconnum2.g", base); bob_icons_loadfile(path, &idx);
+    }
+    for (int i = 0; i < s_nicons; i++) if (strcmp(s_icons[i].name, name) == 0) return s_icons[i].val;
+    return 0;
+}
 #else
 int GetFileNum(const char* text)
 {

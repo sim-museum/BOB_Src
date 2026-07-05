@@ -11,6 +11,7 @@
 #include <cstdio>
 
 extern int g_bobListFontH;
+extern "C" int bob_icon_pagenum(const char* name);   /* ICON_* name -> ICON_PAGE value (GETFILE.CPP) */
 
 /* RButton dispatch/event IIDs (values from RButton.odl; used by-address only). */
 extern const GUID IID_DRButton       = { 0x78918644, 0xa917, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
@@ -26,8 +27,30 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
     void applyDesignProps() override {
         /* the button face art: NormalFileNumString ("FIL_...") from the DLGINIT bag ->
            SetNormalFileNumString resolves it to m_NormalFileNum via GetFileNum. */
+        /* S90: the strategic-map toolbars default MOST buttons' NormalFileNumString to a shared
+           "FIL_ICON_BASES" in the .rc; the shipped game differentiates each by function at runtime,
+           but that assignment isn't in this source drop's toolbar code. Reconstruct it -- map each
+           toolbar control id to its matching iconnum.g sheet icon (1:1 by function), so the row
+           shows the correct distinct faces (bases/weather/squadrons/... per the wine reference). */
+        static const struct { int id; const char* icon; } kBtnIcon[] = {
+            {1807,"ICON_WEATHER"},{1827,"ICON_BASES"},{1829,"ICON_SQUADRONS"},{1832,"ICON_PILOTS"},
+            {1835,"ICON_ASSETS"},{1837,"ICON_REVIEW"},{1841,"ICON_MISSIONS"},{1844,"ICON_AIRCRAFT"},
+            {1848,"ICON_HOSTILES"},{1001,"ICON_THUMB"},{1003,"ICON_SAVE"},{1004,"ICON_ZOOM"},
+            {1005,"ICON_ZOOM"},{1006,"ICON_MAPFILTERS"},{1007,"ICON_DIRECTIVES"},{1055,"ICON_REPLAY"},
+        };
+        int forced = 0;
+        for (unsigned k = 0; k < sizeof kBtnIcon/sizeof kBtnIcon[0]; k++)
+            if (kBtnIcon[k].id == ctrlId) { int pv = bob_icon_pagenum(kBtnIcon[k].icon);
+                if (pv) { SetNormalFileNum(pv); forced = 1; } break; }
         char art[48]; int got = bob_dlg_artname(dlgId, ctrlId, art, sizeof art);
-        if (got && art[0]) SetNormalFileNumString(art);
+        if (!forced && got && art[0]) {
+            /* FIL_ICON_* faces are sprite-sheet icons -> resolve to their ICON_PAGE value (the
+               map-icon/IconDescUI renderer draws it), not the renamed/absent per-file art. */
+            const char* icn = strncmp(art, "FIL_", 4) == 0 ? art + 4 : art;
+            int pv = (strncmp(icn, "ICON_", 5) == 0) ? bob_icon_pagenum(icn) : 0;
+            if (pv) SetNormalFileNum(pv);
+            else    SetNormalFileNumString(art);   /* standalone-BMP faces (teleback, thumbnail, ...) */
+        }
         if (bob_ole_trace()) fprintf(stderr, "[ole] RButton dlg=%d id=%d art=%s -> NormalFileNum=0x%lx\n",
             dlgId, ctrlId, got?art:"(none)", (long)GetNormalFileNum());
     }

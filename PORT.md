@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S90 (2026-07-05): Phase 2 — IMPEDIMENT RESOLVED: the toolbar buttons render distinct, faithful sheet icons (sheet-region resolution, PO-directed)
+> Sprint 90 clears the S89 art-data impediment the PO chose to solve via **sheet-region resolution**.
+> The map-tool / mission-folder button faces are sprite-sheet icons (`iconset1.bmp`), addressed by the
+> `IconsUI` page/entry system — the same art path the map's unit icons already use — NOT the
+> renamed/absent per-file art.
+> - **Name→sheet value.** The `IconsUI` enum `#include`s `h/iconnum.g`(+`iconnum2.g`) right after
+>   `ICON_PAGE_1_BEFORE`, so entry *k* = `ICON_PAGE_1`(0x10000)+*k*. Added `bob_icon_pagenum`
+>   (`RBUTTON/GETFILE.CPP`) — reads those files, maps `ICON_BASES`→0x10007, `ICON_WEATHER`→0x1000a, ….
+>   `HostRButton::applyDesignProps` sets the button's `NormalFileNum` to that value, so `OnDraw`'s
+>   transparent path → `WM_GETFILE`→`IconsUI(v)`→`DrawBitmapWithTransparencies`→`MaskIcon` (the S88 fix)
+>   blits the sheet region. (Standalone-BMP faces — `FIL_TELEBACK` etc. — still take the S89 per-file
+>   path.)
+> - **Per-button differentiation (reconstruction).** The `.rc` defaults MOST buttons'
+>   `NormalFileNumString` to a shared `"FIL_ICON_BASES"`; the shipped game differentiates each by
+>   function at runtime, but that assignment is **absent from this source drop's toolbar code**
+>   (`MAINTBAR`/`MSCTLBR` never `SetNormalFileNum`). Reconstructed it: a control-id→`iconnum.g` icon table
+>   (1:1 by function — `IDC_SQUARONLIST`→`ICON_SQUADRONS`, `IDC_WEATHER`→`ICON_WEATHER`, …) so the row
+>   shows the correct **distinct** faces.
+> - **Verified** (`/tmp/map_s90.png`): the footer now renders the real toolbar — blue mission-folder
+>   buttons with distinct icons (bases-flag / squadrons / windsock-weather / newspaper-review / pilot /
+>   assets / mission "19" / aircraft / hostiles) + the red/grey map-tool row. Matches the wine
+>   reference's variety. `BOB_MAP_BUTTONS`-gated; default map unchanged.
+> - **The campaign map now mirrors the reference end-to-end:** terrain + unit icons + sector/city labels
+>   + right-edge ruler + footer (event log + date/time + **toolbar button faces**). Remaining: button
+>   **layout** tuning (the two rows overlap slightly) + interaction (clicks) — cosmetic/next-phase.
+
 > ## S89 (2026-07-05): Phase 2 — the RButton render pipeline works end-to-end (real button art blits on the map footer); most icons blocked by a source-drop F_GRAFIX.G version skew
 > Sprint 89 drives the hosted `CRButtonCtrl`s' real `OnDraw` onto the map footer — the full art path
 > now works (**a genuine button face renders**), gated behind `BOB_MAP_BUTTONS` while the layout + the
