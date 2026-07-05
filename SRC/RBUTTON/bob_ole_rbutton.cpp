@@ -37,6 +37,8 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
             {1835,"ICON_ASSETS"},{1837,"ICON_REVIEW"},{1841,"ICON_MISSIONS"},{1844,"ICON_AIRCRAFT"},
             {1848,"ICON_HOSTILES"},{1001,"ICON_THUMB"},{1003,"ICON_SAVE"},{1004,"ICON_ZOOM"},
             {1005,"ICON_ZOOM"},{1006,"ICON_MAPFILTERS"},{1007,"ICON_DIRECTIVES"},{1055,"ICON_REPLAY"},
+            /* TitleBar accel/time controls (S94) */
+            {1838,"ICON_PAUSE"},{1842,"ICON_PLAY"},{1845,"ICON_FFORWARD"},
         };
         int forced = 0;
         for (unsigned k = 0; k < sizeof kBtnIcon/sizeof kBtnIcon[0]; k++)

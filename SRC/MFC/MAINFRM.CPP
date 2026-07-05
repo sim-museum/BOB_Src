@@ -1319,6 +1319,7 @@ LRESULT CMainFrame::DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam)
    buttons via bob_ole_draw_toolbar (their OnDraw blits NormalFileNum art). Positions are laid out
    on the footer band; env-gated (BOB_MAP_BUTTONS) while the layout is tuned. */
 extern "C" int bob_ole_draw_toolbar(CWnd*, int, int, int);
+extern "C" int bob_ole_draw_toolbar_ids(CWnd*, int, int, int, const int*, int);
 extern "C" void bob_map_paint_toolbars(int sw, int sh)
 {
 	CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
@@ -1331,6 +1332,14 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 	   mission-folder strip in the wine reference) */
 	if (CMainFrame::toolbars[TB_MAIN])
 		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MAIN], 468, by + 72, 100);
+	/* S94: the accel/time controls (Pause/Play/Fastforward) from the TitleBar, drawn just above the
+	   parchment date box (left column). Their template rects are at DLU x 68/105/142 y30; place the
+	   toolbar origin so they land as a compact row at ~x240, above the date box. Draw ONLY those three
+	   (the TitleBar also hosts DATETIME/DATE, which bob_map_paint_titlebar renders separately). */
+	if (CMainFrame::toolbars[TB_TITLE]) {
+		static const int accel[] = { 1838 /*PAUSE*/, 1842 /*PLAY*/, 1845 /*FASTFORWARD*/ };
+		bob_ole_draw_toolbar_ids((CWnd*)CMainFrame::toolbars[TB_TITLE], 172, sh - 88, 100, accel, 3);
+	}
 }
 
 /* S92: a click at (cx,cy) on the map -> hit-test the footer toolbar buttons (their last-drawn rects)
@@ -1340,6 +1349,7 @@ extern "C" int bob_ole_click(CWnd*, int, int);
 extern "C" int bob_map_click_toolbars(int cx, int cy)
 {
 	if (!AfxGetMainWnd()) return 0;
+	if (CMainFrame::toolbars[TB_TITLE] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_TITLE], cx, cy)) return 1;  /* accel row */
 	if (CMainFrame::toolbars[TB_MISC] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MISC], cx, cy)) return 1;
 	if (CMainFrame::toolbars[TB_MAIN] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MAIN], cx, cy)) return 1;
 	return 0;

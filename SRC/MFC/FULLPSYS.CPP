@@ -480,6 +480,18 @@ extern "C" void bob_frontend_tick(void)
 			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
 		}
+		/* S94: live accel controls -- when the player has clicked Play/Fastforward (so the campaign
+		   is not ACCEL_PAUSED), drive the clock each paint at the chosen rate, exactly as the map's
+		   WM_TIMER would. This is the faithful map behaviour (the day starts running on Play). Same
+		   post-mission safety guard as BOB_MAP_TIMER (the post-fly SAG grind is the R4.5 layer).
+		   BOB_MAP_TIMER (headless) takes precedence; skip if it already ran this paint. */
+		else if (MMC.curracceltype != MMC.ACCEL_PAUSED && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))) {
+			int reps = MMC.curracceltype >= MMC.ACCEL_RAIDSPD ? 8 : 1;   /* fast-forward vs normal */
+			static int liveOnce = 0; if (getenv("BOB_TRACE_MAP") && !liveOnce) { liveOnce = 1;
+				fprintf(stderr,"[accel] live clock drive ON (curracceltype=%d rate=%d currtime=%d)\n",
+					(int)MMC.curracceltype, (int)MMC.curraccelrate, (int)MMC.currtime); }
+			for (int z = 0; z < reps; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+		}
 		/* R4.4 (BOB_CAMPAIGN_SAVE, default-off): produce a campaign save from the running map.
 		   CFiling::SaveGame serialises Miss_Man (the campaign state) -- the same call the autosave
 		   + OnClickedFrag2 make. The fakefile savegame path was corrupted on Linux (fixed here +
@@ -1467,7 +1479,12 @@ Bool RFullPanelDial::LaunchMap(FullScreen*&fs, bool firsttime)
 	m_pView->LaunchMap(firsttime);
 #if BOB_LINUX
 	g_bob_map_active = 1;   /* the map tick (bob_frontend_tick) now paints CMIGView::UpdateBitmaps */
-	fprintf(stderr,"[map] LaunchMap done -> strategic map active (firsttime=%d)\n", (int)firsttime);
+	/* S94: the map should start PAUSED (faithful — the real game freezes until the player clicks an
+	   accel button; the boot scaffold otherwise leaves curracceltype at RAIDSPD, auto-running the
+	   sim). Start paused so the default map is frozen + safe; the accel buttons (Play/FF) run it. */
+	MMC.curracceltype = MMC.ACCEL_PAUSED;
+	MMC.curraccelrate = MMC.accelrates[MMC.ACCEL_PAUSED];
+	fprintf(stderr,"[map] LaunchMap done -> strategic map active (firsttime=%d, paused)\n", (int)firsttime);
 #endif
 	return FALSE;
 }

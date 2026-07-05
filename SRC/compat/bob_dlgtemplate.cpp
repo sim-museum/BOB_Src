@@ -27,7 +27,7 @@
 #define SYM_LEN       48
 
 struct Sym  { char name[SYM_LEN]; int id; };
-struct CR   { int id, x, y, w, h; };
+struct CR   { int id, dlgId, x, y, w, h; };
 
 static Sym  g_syms[MAX_SYMS];   static int g_nsyms  = 0;
 static CR   g_rects[MAX_RECTS]; static int g_nrects = 0;
@@ -75,6 +75,8 @@ static int isBoundary(const char* p) {
     return 0;
 }
 
+static int g_curDlgId = -1;   /* the dialog whose CONTROL statements we're currently parsing */
+
 /* Parse one accumulated CONTROL statement: pull the id (token after the caption)
    and the last four integers outside quotes (x,y,w,h). */
 static void parseControl(const char* s) {
@@ -111,12 +113,15 @@ static void parseControl(const char* s) {
     }
     int id = symLookup(idsym);
     if (id >= 0 && nn >= 4 && g_nrects < MAX_RECTS) {
-        /* last definition wins for the (rare) duplicate ids */
-        for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == id) {
+        /* Keep a per-(dialog,control) entry so shared control ids (e.g. IDC_PAUSE reused across
+           dialogs) don't collide — a plain by-id lookup returned the last-parsed dialog's rect,
+           putting the map's accel buttons at the wrong place (S94). Update in place if this exact
+           (dlgId,id) was already seen; else append. */
+        for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == id && g_rects[i].dlgId == g_curDlgId) {
             g_rects[i].x = nums[nn-4]; g_rects[i].y = nums[nn-3];
             g_rects[i].w = nums[nn-2]; g_rects[i].h = nums[nn-1]; return;
         }
-        g_rects[g_nrects].id = id;
+        g_rects[g_nrects].id = id; g_rects[g_nrects].dlgId = g_curDlgId;
         g_rects[g_nrects].x = nums[nn-4]; g_rects[g_nrects].y = nums[nn-3];
         g_rects[g_nrects].w = nums[nn-2]; g_rects[g_nrects].h = nums[nn-1];
         g_nrects++;
@@ -133,6 +138,9 @@ static void parseRc(const char* path) {
             if (inControl) { parseControl(stmt); }
             slen = 0; stmt[0] = 0;
             const char* p = line; while (*p && isspace((unsigned char)*p)) p++;
+            /* "<SYM> DIALOG[EX] ..." starts a new dialog -> remember its id for the CONTROLs within */
+            const char* dp = strstr(p, " DIALOG");
+            if (dp) { char dsym[SYM_LEN]; if (sscanf(p, " %47[A-Za-z0-9_]", dsym) == 1) g_curDlgId = symLookup(dsym); }
             inControl = (strncmp(p, "CONTROL", 7) == 0 &&
                          (isspace((unsigned char)p[7]) || p[7] == 0));
         }
@@ -282,4 +290,15 @@ extern "C" int bob_dlg_lookup(int ctrlId, int* x, int* y, int* w, int* h) {
         return 1;
     }
     return 0;
+}
+/* Dialog-scoped rect: prefer the (dlgId,ctrlId) entry (disambiguates shared control ids across
+   dialogs, e.g. the toolbars' IDC_PAUSE), falling back to any-dialog by-id. */
+extern "C" int bob_dlg_lookup_in(int dlgId, int ctrlId, int* x, int* y, int* w, int* h) {
+    load();
+    for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == ctrlId && g_rects[i].dlgId == dlgId) {
+        if (x) *x = g_rects[i].x; if (y) *y = g_rects[i].y;
+        if (w) *w = g_rects[i].w; if (h) *h = g_rects[i].h;
+        return 1;
+    }
+    return bob_dlg_lookup(ctrlId, x, y, w, h);
 }

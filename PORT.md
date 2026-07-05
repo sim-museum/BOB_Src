@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S94 (2026-07-05): Phase 3 — the map ACCEL/TIME controls work: map starts paused, Play runs the campaign clock live, Pause stops it
+> Sprint 94 wires the first campaign-map interaction with a **visible, faithful effect**: the accel/time
+> buttons control the campaign clock.
+> - **Map starts PAUSED (faithful + safe).** `LaunchMap` now sets `curracceltype=ACCEL_PAUSED` — the boot
+>   scaffold otherwise left it at RAIDSPD, silently auto-running the sim. The default map is now frozen
+>   (currtime stays put), matching the real game (the player un-pauses).
+> - **Live clock drive.** A new map-tick block drives `bob_drive_timer()` each paint **when not paused**
+>   (rate per the accel state; same post-mission `g_campfly_flown` safety guard as `BOB_MAP_TIMER`). So
+>   clicking Play/Fastforward runs the day live — verified: frozen 23400 → **Play → clock advances**
+>   (23400→23800 at NORMAL). Pause → `ACCEL_PAUSED` → the block skips → clock stops.
+> - **3 accel buttons rendered + clickable** (Pause/Play/Fastforward from the TitleBar), drawn as a
+>   compact row above the date box via a new **id-filtered** `bob_ole_draw_toolbar_ids` (the TitleBar also
+>   hosts DATETIME/DATE, rendered separately). Clicks fire the genuine handlers — `OnClickedPlay` /
+>   `OnClickedPause` both **`HANDLER CALLED`**, verified.
+> - **Fixed a shared-control-id bug (benefits all toolbar work):** the `.rc` rect table was keyed by
+>   control id alone, so `IDC_PAUSE` (reused across dialogs) resolved to the *wrong* dialog's rect →
+>   PAUSE drew at (180,760) and its click missed. Made the parser + lookup **dialog-aware**
+>   (`bob_dlg_lookup_in(dlgId,ctrlId)`, `g_rects[].dlgId`, `lookupDluIn`); PAUSE now resolves to its
+>   TitleBar rect (240,710) and hits. Falls back to by-id, so the config screens are unaffected.
+> - **Validated:** 70 s ASan soak of the Play→live-sim path (clock advancing the whole time) **0 errors,
+>   no crash**; default map frozen; `BOB_NO_BUTTONS` still reverts; plain boot/flight unaffected.
+> - **Known limitation (art-skew):** the accel buttons' *icons* are wrong (anchor/radar instead of
+>   play/pause) — `ICON_PAUSE/PLAY/FFORWARD` resolve to the correct `iconnum.g` indices but those
+>   `iconset1.bmp` cells hold other art in this drop (the same higher-index sheet-skew class as S89/S90).
+>   The buttons *work*; only their faces are off. Deferred with the other art-data-versioning items.
+
 > ## Cross-port sync (2026-07-05): compared notes with the MiG Alley port (`~/ma`) — MA's Phase-1 lead validated our S88–92 approach; replied with the S83→S93 learnings
 > "Compare notes" pass against the sister MA port. Read MA's `CROSS-PORT-FROM-MA-2026-07-05.md`:
 > - **MA's Phase-1 lead was spot-on and we independently executed it.** MA said the campaign screens'

@@ -82,12 +82,18 @@ static const DluRect SDETAIL_LAYOUT[] = {
     { 2002, 164,279,  90, 16 },  /* IDC_CBO_WEATHER         */
 };
 extern "C" int bob_dlg_lookup(int ctrlId, int* x, int* y, int* w, int* h);
+extern "C" int bob_dlg_lookup_in(int dlgId, int ctrlId, int* x, int* y, int* w, int* h);
 static bool lookupDlu(int id, DluRect& out) {
     /* prefer the runtime .rc parser (covers every screen); fall back to the small
        hardcoded SDETAIL table if the source .rc isn't reachable. */
     if (bob_dlg_lookup(id, &out.x, &out.y, &out.w, &out.h)) { out.id = id; return true; }
     for (const DluRect& r : SDETAIL_LAYOUT) if (r.id == id) { out = r; return true; }
     return false;
+}
+/* dialog-scoped rect (disambiguates shared control ids like the toolbars' IDC_PAUSE) */
+static bool lookupDluIn(int dlgId, int id, DluRect& out) {
+    if (dlgId > 0 && bob_dlg_lookup_in(dlgId, id, &out.x, &out.y, &out.w, &out.h)) { out.id = id; return true; }
+    return lookupDlu(id, out);
 }
 /* MS Sans Serif 8pt dialog base units ~ (6,13): px = DLU*base/(4 horiz, 8 vert). */
 static int dluX(int d) { return d * 6 / 4; }
@@ -134,13 +140,16 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
    OnDraw blits its NormalFileNum art (SetDIBitsToDevice) at the button's screen origin -- the art
    is native-BMP-sized, so scale here just sets the button spacing/layout. */
 extern "C" void bob_gdi_setdibits_origin(int, int);
-extern "C" int bob_ole_draw_toolbar(CWnd* dialog, int ox, int oy, int pxPer100) {
+/* ids/nids: if nids>0, draw only controls whose id is in ids[] (used to draw just the accel
+   buttons off the TitleBar, whose DATETIME/DATE we render separately). nids==0 -> draw all. */
+extern "C" int bob_ole_draw_toolbar_ids(CWnd* dialog, int ox, int oy, int pxPer100, const int* ids, int nids) {
     int n = 0;
     for (auto& kv : hosts()) {
         OleHost* host = kv.second;
         if (host->parentDlg != dialog) continue;
+        if (nids > 0) { int hit = 0; for (int k = 0; k < nids; k++) if (ids[k] == host->ctrlId) { hit = 1; break; } if (!hit) continue; }
         DluRect r;
-        if (!lookupDlu(host->ctrlId, r)) continue;
+        if (!lookupDluIn(host->dlgId, host->ctrlId, r)) continue;
         int sx = ox + r.x * pxPer100 / 100, sy = oy + r.y * pxPer100 / 100;
         int w = r.w * pxPer100 / 100,       h = r.h * pxPer100 / 100;
         CDC dc; dc.m_hDC = (HDC)1; dc.m_bobScreen = true;
@@ -153,6 +162,9 @@ extern "C" int bob_ole_draw_toolbar(CWnd* dialog, int ox, int oy, int pxPer100) 
     }
     if (bob_ole_trace()) fprintf(stderr, "[ole] draw_toolbar dialog=%p off=(%d,%d) drew=%d\n", (void*)dialog, ox, oy, n);
     return n;
+}
+extern "C" int bob_ole_draw_toolbar(CWnd* dialog, int ox, int oy, int pxPer100) {
+    return bob_ole_draw_toolbar_ids(dialog, ox, oy, pxPer100, 0, 0);
 }
 
 /* A click landed at screen (x,y) over `dialog`'s panel: hit-test its hosted controls' last-drawn
@@ -169,7 +181,9 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     }
     for (auto& kv : hosts()) {
         OleHost* h = kv.second;
-        if (h->parentDlg != dialog || h->sw <= 0 || h->sh <= 0) continue;
+        if (h->parentDlg != dialog) continue;
+        if (bob_ole_trace()) fprintf(stderr, "[ole]   hit? id=%d rect=(%d,%d,%d,%d) click=(%d,%d)\n", h->ctrlId, h->sx, h->sy, h->sw, h->sh, x, y);
+        if (h->sw <= 0 || h->sh <= 0) continue;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
             if (h->onClick()) {
                 /* S33: the value already cycled (onClick); now fire the combo's TextChanged event
