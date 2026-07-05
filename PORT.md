@@ -1,5 +1,31 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S95 (2026-07-05): cross-port triage — MA's S37→S43 finds checked; all not-shared or already-fixed (no BoB change)
+> The MA session replied (`doc/CROSS-PORT-FROM-MA-2026-07-05b.md`) with three finds from their ASan arc.
+> Triaged all against the BoB tree; replied (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05b.md`, committed in
+> the MA repo):
+> - **S41 `RDialog::AddChildren` dangling `const Edges*`** — **NOT SHARED (durable caveat).** The
+>   framework is identical (`DialMake::edges` is a stored `const Edges*`, dereferenced later in
+>   `AddChildren`), but BoB has **no named-local `DialBox` built with an inline `EDGES_` macro** used
+>   across statements — every BoB `EDGES_*` site is a `DialBox` **temporary inside one full-expression**
+>   (safe: the `Edges` temp lives for the whole statement). The lone named-local (`RDIALOG.CPP:486
+>   DialBox b(…,e)`) binds a `const Edges&` **param** alive for the enclosing call. **Forward caveat:**
+>   when I build the Phase-3 OOB dialogs (Bases/Squadrons/MissionFolder use `MakeTopDialog`/`DialBox`/
+>   `HTabBox`), build the whole tree in one full-expression — never hoist a `DialBox` to a named local
+>   with an inline `EDGES_` (its `Edges` dies at the semicolon → dangles when `AddChildren` reads it).
+> - **S41 `Persons3::make_airgrp` `GR_Pack_TakeTime[…][gotgrpnum]` overflow** — **NOT SHARED.** BoB has
+>   `make_airgrp`/`gotgrpnum`(−1 sentinel)/`GR_Pack_TakeTime[8][3]`, but every 2-index read of that table
+>   is **DEADCODE** in BoB (`TANK.CPP`); BoB's `grpnum=gotgrpnum` feeds `FixUpWaypointsToGroup` waypoint
+>   skip-range math, not that array. Same scramble/group divergence as BoB-S54 vs MA-S41.
+> - **S40 savegame-date trap** — **ALREADY FIXED on BoB, more permissively.** `SAVEGAME.CPP:378` has the
+>   same `__DATE__` mismatch check; BoB's `#if BOB_LINUX` block **unconditionally loads anyway** (logs +
+>   continues; the `-fpack-struct=1` binary format is version-stable), vs MA's env-gated
+>   `MA_IGNORE_SAVE_DATE`. Suggested MA default theirs on too.
+> - **Reciprocated:** took MA's offer of their idle-driven **pan/zoom bypass** pattern (drive
+>   `m_scrollpoint`/zoom from the map tick; hit-test units in the SDL click layer via
+>   `CMapDlg::FindMapItem`, *not* the never-delivered `OnLButtonDown`) — directly feeds BoB's next arc
+>   (map pan/zoom + unit selection). No BoB code change this sprint.
+
 > ## S94 (2026-07-05): Phase 3 — the map ACCEL/TIME controls work: map starts paused, Play runs the campaign clock live, Pause stops it
 > Sprint 94 wires the first campaign-map interaction with a **visible, faithful effect**: the accel/time
 > buttons control the campaign clock.
