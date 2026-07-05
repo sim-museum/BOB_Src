@@ -24,9 +24,19 @@
 >   `.rc`/DLGINIT still reference `FIL_ICON_*`, so the `.rc` and `F_GRAFIX.G` are from different builds.
 >   Buttons whose names survived un-renamed (misc toolbar: THUMBNAIL/FILES) load + render; the renamed
 >   ones (main toolbar: BASES/WEATHER/…) are blank (not wrong — the `x`-fallback lookup resolves the
->   name but the file is missing). Resolving the rest needs the matching `F_GRAFIX.G`↔art, or a
->   name→FileNum remap for the renamed icons (next sprint's task). The **pipeline is complete**; this is
->   a pure data-versioning gap.
+>   name but the file is missing). The **pipeline is complete**; this is a pure data-versioning gap.
+> - **Root of the gap (traced S89):** the game data's `artwork/AXART2/` holds only **8 files** —
+>   `iconset1.bmp` / `iconslw1.bmp` (sprite **sheets**), `teleback/siderule/toprule/lwtltop.bmp`,
+>   `i_ready1.bmp`, `DIR.DIR`. So the standalone-file buttons (`FIL_TELEBACK`→teleback.bmp,
+>   THUMBNAIL/FILES) load + render via the per-file path, but the **map-tool/mission icons live inside
+>   `iconset1.bmp`** (a sheet) and are addressed by sub-region, not a standalone FileNum — and this drop's
+>   `F_GRAFIX.G` maps their `FIL_xICON_*` names to per-file FileNums whose `DIR.DIR` entries are
+>   **missing/garbage** (`0x6617`→`lwtlside.bmp` absent; `0x661b`→corrupt name; `fileblock` FATALs on bad
+>   entries). Finishing the icon faces therefore needs **sheet-region art resolution** (map each
+>   `FIL_ICON_*` to its rect in `iconset1.bmp`, like the map-icon `IconDescUI`/`ICON_PAGE` path does),
+>   not the per-file loader — a deeper mechanism, and one obscured by the `.rc`↔`F_GRAFIX.G` skew.
+>   **This is the impediment surfaced to the PO** (S89): the per-file button pipeline is done + proven;
+>   the sheet-based icon faces are a distinct sub-system (or need the matching shipped equates/art).
 
 > ## S88 (2026-07-05): Phase 2 — the RButton OCX is brought up + hosted (4th control); 39 toolbar buttons host, ASan-clean
 > Sprint 88 executes the button-sprint's foundational step (per S87's plan): stand up `CRButtonCtrl` as
