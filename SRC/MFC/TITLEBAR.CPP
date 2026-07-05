@@ -446,3 +446,40 @@ void IntelBuffer::ClickPlay()
 {
 	TitleBarPtr().ClickPlay();
 }
+
+#if BOB_LINUX
+/* Linux port (S84, Phase 2): paint the strategic-map footer band + the date/time/accel
+   readout onto the framebuffer. The docking frame's TitleBar hosts a CRButton (IDC_DATETIME)
+   whose string it sets from the campaign clock; that control's OnDraw doesn't run headlessly,
+   so render the same faithful string (GetDateName/GetTimeName/curraccelrate + the TimeColour
+   mapping) into a parchment date box on a wooden footer band. Text/geometry only -- the
+   accel/mission-folder buttons are a later sprint. Driven from the map tick (FULLPSYS.CPP)
+   inside the paint-active window so FillSolidRect lands (bob_gdi_fillrect gate). */
+extern "C" void bob_map_paint_titlebar(int sw, int sh)
+{
+	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+	dc.m_bobVpX = 0; dc.m_bobVpY = 0; dc.m_bobTextH = 16;
+	const int bandH = 40, by = sh - bandH;
+	dc.FillSolidRect(0, by,     sw, bandH, RGB(90, 66, 28));   /* dark wooden band */
+	dc.FillSolidRect(0, by,     sw, 2,     RGB(150,110, 50));  /* top bevel highlight */
+	dc.FillSolidRect(0, sh - 2, sw, 2,     RGB(40, 28, 12));   /* bottom shadow */
+	/* the parchment date box, bottom-left (matches the wine reference) */
+	const int boxX = 6, boxY = by + 6, boxW = 224, boxH = bandH - 12;
+	dc.FillSolidRect(boxX, boxY, boxW, boxH, RGB(222,220,206));
+	dc.m_penColor = RGB(40,28,12); dc.m_penHasColor = true;    /* sunken border */
+	dc.MoveTo(boxX, boxY); dc.LineTo(boxX+boxW, boxY); dc.LineTo(boxX+boxW, boxY+boxH);
+	dc.LineTo(boxX, boxY+boxH); dc.LineTo(boxX, boxY);
+	/* the faithful clock string + its TimeColour (the same the TitleBar pushes to IDC_DATETIME) */
+	CString s = CSprintf("%s %s x%i",
+		GetDateName(MMC.currdate, DATE_LONG), GetTimeName(MMC.currtime), MMC.curraccelrate);
+	COLORREF col = RGB(60,60,60);
+	switch (MMC.TimeColour()) {
+	case Campaign::TC_RED:    col = RGB(200,0,0);   break;
+	case Campaign::TC_YELLOW: col = RGB(150,150,0); break;
+	case Campaign::TC_BLUE:   col = RGB(0,0,200);   break;
+	default: break;
+	}
+	dc.SetTextColor(col);
+	dc.TextOut(boxX + 8, boxY + (boxH - dc.m_bobTextH)/2, s);
+}
+#endif

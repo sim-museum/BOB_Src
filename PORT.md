@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S84 (2026-07-05): Phase 2 continued — the strategic-map FOOTER band + date/time/accel readout renders
+> Sprint 84 extends the map chrome (S83's scale bar) downward with the docking frame's **TitleBar**
+> footer. Same faithful pattern: the frame's `TitleBar` hosts a `CRButton` (`IDC_DATETIME`) whose
+> string it sets each tick from the campaign clock, but that control's OnDraw doesn't run headlessly.
+> - **`TITLEBAR.CPP`:** added `extern "C" bob_map_paint_titlebar(sw,sh)` — draws a wooden footer band
+>   + a parchment date box (bottom-left, matching the wine reference) and renders the **same faithful
+>   string the TitleBar pushes**: `CSprintf("%s %s x%i", GetDateName(MMC.currdate,DATE_LONG),
+>   GetTimeName(MMC.currtime), MMC.curraccelrate)`, coloured by `MMC.TimeColour()` (red/yellow/blue).
+> - **`FULLPSYS.CPP`** map tick: call it after the scale bar, inside the paint-active window.
+> - **Verified** (`/tmp/map_tb.png`, crop `/tmp/tb_crop.png`): the footer reads **"10 July 06:30 x0"**
+>   in red on parchment (the campaign start date; x0 = paused at day-start — faithful, the map starts
+>   `ACCEL_PAUSED`). ASan-clean (400+ paints, `detect_odr_violation=0` → 0 errors). `BOB_NO_TITLEBAR`
+>   reverts.
+> - **Next:** grow the footer band upward — the event-log (teletype `Node_Data.intel` messages) pane,
+>   then the map-tool + mission-folder **button** rows (bitmap buttons via the `MaskIcon`/`BitBlt` blit
+>   path the map icons already use) + the accel buttons.
+
 > ## S83 (2026-07-05): campaign Phase 1 is DONE (strategic MAP + icons render + navigable + ASan-clean) — RE-BASELINED; Phase 2 STARTED: the right-edge scale/ruler bar renders
 > Sprint 83 opened by re-establishing ground truth on the campaign epic, and the map is **far
 > further along than the top-of-log S82 note claimed.** Driving the real front-end end-to-end
