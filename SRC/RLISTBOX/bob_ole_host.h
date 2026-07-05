@@ -28,6 +28,7 @@ extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /
 OleHost* bob_make_rlistbox(class CWnd* parent);
 OleHost* bob_make_rcombo(class CWnd* parent);
 OleHost* bob_make_rstatic(class CWnd* parent);
+OleHost* bob_make_rbutton(class CWnd* parent);
 
 bool bob_ole_trace();   /* BOB_TRACE_OLE gate, shared */
 

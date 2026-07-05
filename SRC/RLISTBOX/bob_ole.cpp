@@ -31,6 +31,7 @@ bool bob_ole_trace() { if (g_traceOle < 0) g_traceOle = getenv("BOB_TRACE_OLE") 
 static const CLSID CLSID_RListBox = { 0x48814009, 0x65ae, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 static const CLSID CLSID_RCombo   = { 0x737cb0c9, 0xb42b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 static const CLSID CLSID_RStatic  = { 0xc42bac3d, 0xca3c, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
+static const CLSID CLSID_RButton  = { 0x78918646, 0xa917, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 
 /* wrapper CWnd*  ->  hosted control (type-agnostic via OleHost). */
 static std::unordered_map<CWnd*, OleHost*>& hosts() {
@@ -55,6 +56,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
     if      (memcmp(clsid, &CLSID_RListBox, sizeof(CLSID)) == 0) { h = bob_make_rlistbox(parent); what = "CRListBoxCtrl"; }
     else if (memcmp(clsid, &CLSID_RCombo,   sizeof(CLSID)) == 0) { h = bob_make_rcombo(parent);   what = "CRComboCtrl"; }
     else if (memcmp(clsid, &CLSID_RStatic,  sizeof(CLSID)) == 0) { h = bob_make_rstatic(parent);  what = "CRStaticCtrl"; }
+    else if (memcmp(clsid, &CLSID_RButton,  sizeof(CLSID)) == 0) { h = bob_make_rbutton(parent);  what = "CRButtonCtrl"; }
     if (!h) return FALSE;              /* other R* controls not hosted yet -> wrapper no-ops */
     h->ctrlId = (int)id; h->parentDlg = parent; h->dlgId = g_bobDlgIDD;
     h->applyDesignProps();

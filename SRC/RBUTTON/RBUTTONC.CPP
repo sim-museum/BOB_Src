@@ -1362,7 +1362,8 @@ int CRButtonCtrl::DrawBitmapWithTransparencies(FileNum filenum,CDC* pDC)
 		if (filenum>=0x10000)
 		{
 			IconDescUI* icondesc=(IconDescUI*)pData;
-			icondesc->MaskIcon(pDC,CPoint(0,0));
+			CPoint _mip00(0,0);   /* BOB_LINUX: MaskIcon takes CPoint& (no temp bind on GCC) */
+			icondesc->MaskIcon(pDC,_mip00);
 			rv= icondesc->WH().x;
 		}
 		else

@@ -612,6 +612,7 @@ public:
             m_bobVpX+x, m_bobVpY+y, w, h, bobColor(c)); }
     void Draw3dRect(LPCRECT, COLORREF, COLORREF) {}
     void Draw3dRect(int, int, int, int, COLORREF, COLORREF) {}
+    BOOL DrawIcon(int, int, HICON) { return TRUE; }   /* R* close/tick/help button glyphs (no-op) */
     BOOL StretchBlt(int dx, int dy, int dw, int dh, CDC* src, int sx, int sy, int sw, int sh, DWORD rop) {
         if (!src) return FALSE;
         bob_stretchblit(m_bobScreen?1:0, m_bobBmp, m_bobVpX, m_bobVpY, dx, dy, dw, dh,
@@ -1010,6 +1011,7 @@ public:
     void    InternalSetText(LPCTSTR s) { m_bobText = s ? s : ""; }
     BOOL    GetEnabled() { return TRUE; }
     void    SetEnabled(BOOL) {}
+    virtual void OnKeyDownEvent(unsigned short, unsigned short) {}   /* CRButtonCtrl base key event (no-op) */
     virtual void OnDrawMetafile(CDC*, const CRect&) {}
     void InvalidateControl(LPCRECT = NULL) {}
     void SetModifiedFlag(BOOL = TRUE) {}

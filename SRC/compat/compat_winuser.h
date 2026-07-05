@@ -409,6 +409,9 @@ static inline DWORD GetQueueStatus(UINT) { return 0; }
 #define IDNO        7
 #define IDCLOSE     8
 #define IDHELP      9
+#ifndef ID_HELP
+#define ID_HELP     9         /* afxres.h command id (CRButtonCtrl help-button path) */
+#endif
 
 /* ============================================================
  * Class Styles

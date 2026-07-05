@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S88 (2026-07-05): Phase 2 — the RButton OCX is brought up + hosted (4th control); 39 toolbar buttons host, ASan-clean
+> Sprint 88 executes the button-sprint's foundational step (per S87's plan): stand up `CRButtonCtrl` as
+> the **4th hosted ActiveX control** (after RListBox/RCombo/RStatic), so the strategic-map toolbars'
+> buttons instantiate the real control (whose OnDraw blits the per-state art FileNum).
+> - **Built + hosted.** Added `RBUTTON/RBUTTONC.CPP` (the genuine `CRButtonCtrl`) + `RBUTTON/GETFILE.CPP`
+>   (`GetFileNum`) + a new `RBUTTON/bob_ole_rbutton.cpp` host (mirrors `HostRCombo`/`HostRStatic`:
+>   boot→`DoPropExchange`, `draw`→`OnDraw` with `m_FirstSweep=TRUE`, and `setprop`/`getprop` routing the
+>   button dispids 0x1–0x15 + stock fore/back/caption) to the `bob_rlistbox` lib; registered
+>   `CLSID_RButton {78918646-…}` in `bob_ole.cpp`. `CWnd::CreateControl` (driven by each toolbar's
+>   `DDX_Control`) now makes a real `CRButtonCtrl`.
+> - **Compile shims (all no-op/minimal, Linux-gated where in game source):** `CDC::DrawIcon` stub
+>   (close/tick/help glyphs), `COleControl::OnKeyDownEvent` stub, `ID_HELP` define, and a named-temp for a
+>   `CPoint&`-to-rvalue bind in `RBUTTONC.CPP:1365` (`MaskIcon` — same GCC fix as MIGVIEW).
+> - **Verified.** `BOB_TRACE_OLE` on the campaign map shows **39 `CRButtonCtrl` hosted** across the
+>   toolbars (distinct parent dialogs = CMainToolbar/CMiscToolbar/TitleBar), map reached, no crash; the
+>   visible map is unchanged (render not wired yet). Release build clean; **ASan-clean** (map path,
+>   `detect_odr_violation=0` → 0 errors); plain `./bob` + the S83–S85 chrome unaffected.
+> - **Next (S89):** drive each toolbar's hosted buttons' OnDraw at their parsed template rects via
+>   `bob_ole_draw_panel(toolbar, ox, oy)` (the config-panel pattern — rects from `lookupDlu`), positioned on
+>   the footer band; and wire the button **art**: feed each button's `NormalFileNum` from its DLGINIT bag
+>   + extend `bob_dlg_getfile` to load the BMP file range (0x6600–0x7200) via `File_Man`
+>   (`fileblock`/`getdata`), so `DrawBitmap`→`SetDIBitsToDevice` renders the face.
+
 > ## S87 (2026-07-05): spike — the footer-button plan refined (data is present; no reusable sprite-blit; the art path is the real work)
 > A de-risking spike ahead of the button-row sprint. Findings:
 > - **Positions ARE available.** The toolbar templates are in `ENGLISH/BOB.RC` — `IDDT_MAINTOOLBAR`
