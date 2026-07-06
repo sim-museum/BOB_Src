@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S105 (2026-07-05): cross-port — the campaign day-advance DIVERGED between BoB and MA (BoB deadcoded NextMission; uses the EndDayReview-screen path)
+> Comparing the day-advance work (MA's S40–S42 "day-advance strategic-sim ASan sweep" vs BoB S103–S104)
+> surfaced a clean divergence — recorded to MA (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05c.md`, committed
+> in the MA repo):
+> - **MA drives day-advance via `OnClickedFrag2` → `MMC.NextMission()` → NextDay** (live code; their
+>   `MA_CAMP_NEXTDAY` harness). **BoB DEADCODED that path** — `CMainToolbar::OnClickedFrag2`'s NextMission
+>   branch is behind `if(false)` (MAINTBAR.CPP:628) and `Campaign::NextMission()` is gutted (MISSINIT.CPP:1536
+>   — only `SetMissionConditions`; every inner `NextDay()` is `//DEADCODE`). So MA's driver **does not port**.
+> - **BoB's actual day-advance = dusk → `OnTimer`/`PerformNextPeriod(3)` → `EndOfDay()` (WipeAll + currdate++
+>   + currtime=MORNINGPERIODSTART + `GoToEndDayReview()` **front-end screen**) → routing → `LaunchMapFirstTime`
+>   → `Persons4::StartUpMapWorld()` + `StartOfDay()`** (FULLPANE.CPP:2152, the world rebuild). So multi-day
+>   continuity is a **front-end-nav loop** (navigate the `enddayreview` screen back to the map-rebuild),
+>   which is why the S104 `StartOfDay`-shortcut failed and MA's `NextMission` call is inapplicable.
+> - **Independent confirmation:** BoB's full-day SAG sim being ASan-clean (S103) matches MA's S42 result —
+>   the *shared sim core* is solid on both ports even though the *drivers* diverged. This is the same "shared
+>   structure, per-port specifics" theme as the S71 mask.
+> - Net: the campaign day-advance loop is a bounded but BoB-specific front-end-nav arc (like the OOB
+>   dialogs) — deferred to a focused session. The sim it drives is proven robust.
+
 > ## S103 (2026-07-05): campaign day-advance — the full-day SAG sim is ASan-clean; the day rolls over but the next-day world regen is gated behind the end-of-day review screen (pinpointed)
 > Sprint 103 pivoted to the campaign **day-advance loop** (epic Phase 4) — testable headlessly via
 > `BOB_MAP_TIMER`. Two concrete results:
