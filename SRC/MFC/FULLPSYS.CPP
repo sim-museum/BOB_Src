@@ -493,40 +493,6 @@ extern "C" void bob_frontend_tick(void)
 			   day reaches raid-launch times quickly headlessly. */
 			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
-			/* S107 (BOB_DAYLOOP): headless multi-day continuity. At dusk the sim's EndOfDay rolls the
-			   date/clock (currdate++, currtime=MORNINGPERIODSTART) + WipeAll's the raids, then goes to
-			   the EndDayReview *front-end screen* -- the next day's world rebuild (BuildTargetTable +
-			   StartUpMapWorld + SkipToDate + StartOfDay) happens only on the way back via
-			   LaunchMapFirstTime (FULLPANE.CPP:2151), which the headless map scaffold doesn't navigate.
-			   So when the day has just rolled (currtime at MORNINGPERIODSTART, world wiped), run that
-			   exact rebuild sequence directly, skipping the review UI, so the new day repopulates. Once
-			   per date. (S104 called StartOfDay alone -- insufficient; StartUpMapWorld rebuilds the raid
-			   world StartOfDay doesn't.) */
-			/* WIP: rebuilds the next day's world correctly (world repopulates, vs S104's empty), but the
-			   day-2 clock stays frozen at MORNINGPERIODSTART -- OnTimer's morning accumulator-advance
-			   isn't firing even though both its guards are clear (messageboxopen=0, Master_3d.currinst=nil).
-			   That accumulator freeze is the next layer to crack. See PORT.md S107. */
-			if (getenv("BOB_DAYLOOP")) {
-				static long lastDay = -1;
-				if (MMC.currtime <= MORNINGPERIODSTART + 40 && (long)MMC.currdate != lastDay) {
-					lastDay = (long)MMC.currdate;
-					fprintf(stderr,"[dayloop] new day (date=%ld) -> full rebuild (StartUpMapWorld)\n", (long)MMC.currdate);
-					long ct0 = (long)MMC.currtime;
-					Node_Data.BuildTargetTable();
-					Persons4::StartUpMapWorld();   /* rebuilds the raid world (StartOfDay alone doesn't -- S104) */
-					Node_Data.StartOfDay();
-					/* EndOfDay already rolled the date + currtime; SkipToDate is only for loading a save
-					   mid-campaign (fast-forwards by the date delta), which would wrongly re-skip a day
-					   here -- deliberately NOT called. Restore currtime in case the rebuild perturbed it. */
-					if ((long)MMC.currtime != ct0) MMC.currtime = ct0;
-					/* OnTimer only advances the sim while m_currentpage==0 (on the map). The rebuild
-					   (StartUpMapWorld/LaunchMapFirstTime path) leaves m_currentpage=1, freezing the clock
-					   while the map still paints -- restore it to the map page so day N+1's clock runs.
-					   (This was the S107 day-2-freeze blocker: the accumulator/guards were fine; the whole
-					   OnTimer body is gated on m_currentpage==0.) */
-					RDialog::m_pView->m_currentpage = 0;
-				}
-			}
 		}
 		/* S94: live accel controls -- when the player has clicked Play/Fastforward (so the campaign
 		   is not ACCEL_PAUSED), drive the clock each paint at the chosen rate, exactly as the map's
@@ -539,6 +505,29 @@ extern "C" void bob_frontend_tick(void)
 				fprintf(stderr,"[accel] live clock drive ON (curracceltype=%d rate=%d currtime=%d)\n",
 					(int)MMC.curracceltype, (int)MMC.curraccelrate, (int)MMC.currtime); }
 			for (int z = 0; z < reps; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+		}
+		/* S107/S108/S110 (BOB_DAYLOOP): headless multi-day continuity, after EITHER clock-drive path
+		   (BOB_MAP_TIMER or the live accel controls). At dusk the sim's EndOfDay rolls the date/clock
+		   (currdate++, currtime=MORNINGPERIODSTART) + WipeAll's the raids, then goes to the EndDayReview
+		   front-end screen -- the next day's world rebuild happens only on the way back via
+		   LaunchMapFirstTime, which the headless map scaffold doesn't navigate. So when the day has just
+		   rolled, run the rebuild directly. The three cracked layers (see PORT.md S104-S109): StartOfDay
+		   alone leaves the world empty -> need BuildTargetTable + StartUpMapWorld (S107); the rebuild
+		   leaves m_currentpage=1 which freezes OnTimer's whole sim-advance -> restore it (S108); the
+		   production-overflow + directive-recursion fixes (S108/S109) are unconditional in their sources.
+		   Validated: 9 days cycle ASan-clean. Fires once per date. */
+		if (getenv("BOB_DAYLOOP")) {
+			static long lastDay = -1;
+			if (MMC.currtime <= MORNINGPERIODSTART + 40 && (long)MMC.currdate != lastDay) {
+				lastDay = (long)MMC.currdate;
+				fprintf(stderr,"[dayloop] new day (date=%ld) -> full rebuild (StartUpMapWorld)\n", (long)MMC.currdate);
+				long ct0 = (long)MMC.currtime;
+				Node_Data.BuildTargetTable();
+				Persons4::StartUpMapWorld();          /* rebuilds the raid world (StartOfDay alone doesn't) */
+				Node_Data.StartOfDay();
+				if ((long)MMC.currtime != ct0) MMC.currtime = ct0;   /* restore morning currtime */
+				RDialog::m_pView->m_currentpage = 0;  /* un-freeze OnTimer (S108) */
+			}
 		}
 		/* R4.4 (BOB_CAMPAIGN_SAVE, default-off): produce a campaign save from the running map.
 		   CFiling::SaveGame serialises Miss_Man (the campaign state) -- the same call the autosave

@@ -1,5 +1,14 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S111 (2026-07-05): multi-day loop works via BOTH clock-drive paths (refactor) + stale-comment cleanup
+> Small consolidation: the `BOB_DAYLOOP` rollover-rebuild was nested inside the `BOB_MAP_TIMER` block, so it
+> only fired on the headless fast-forward path. Moved it **after both** clock-drive branches
+> (`BOB_MAP_TIMER` *and* the S94 live accel controls), so the multi-day loop now cycles regardless of how the
+> clock advances. Verified: rolls over via `BOB_MAP_TIMER` (2 rollovers) **and** via the live accel drive
+> with no `BOB_MAP_TIMER` set (1 rollover, clock 26580→34580) — the latter was impossible before. Also
+> stripped the now-stale S107 "day-2 freeze WIP" comment (S108 fixed it) and condensed the block to the
+> final S104–S109 layers. `BOB_DAYLOOP`-gated (default-off), no regression.
+>
 > ## S110 (2026-07-05): cross-port — flagged the S109 `CloseLoggedChild` recursion to MA as a SHARED-FRAMEWORK bug (adopt the guard defensively)
 > The S109 fix is in the shared RDialog framework — checked MA: their `CRToolBar::CloseLoggedChild` is
 > **byte-identical** (calls `OnCancel()` without clearing `loggedchild[i]`, no re-entrancy guard). So the
