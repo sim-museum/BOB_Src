@@ -17,6 +17,9 @@
 >   F6 now fixed S119**) and **#2 full campaign** (map + multi-day loop + OOB dialogs, S83–S117) — are **both
 >   addressed.** Escape hatches (`BOB_NO_ZDEPTH`, `BOB_NO_OOB`, `BOB_NO_FBO_RTT`, …) keep every default
 >   reversible.
+> - **Cross-port:** sent MA note 8 (committed in their repo) — the depth-sort fix is likely theirs too (shared
+>   `bob_video.cpp` screen-space `XYZRHW`/`is2D` path + they have flight); handed them the exact z-mapping +
+>   translucent-split + depth-clear recipe and the propeller caveat.
 >
 > ## S118 (2026-07-05): F6 external-view depth artifact REPRODUCED on real GL — `BOB_ZDEPTH` fixes it (aircraft self-occlusion); propeller regression is the one remaining sign-off
 > Backlog #1 (external **F6** view z-fighting) — reopened now that this box turns out to have a **real GPU**
