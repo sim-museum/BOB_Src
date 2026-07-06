@@ -1,5 +1,18 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S110 (2026-07-05): cross-port — flagged the S109 `CloseLoggedChild` recursion to MA as a SHARED-FRAMEWORK bug (adopt the guard defensively)
+> The S109 fix is in the shared RDialog framework — checked MA: their `CRToolBar::CloseLoggedChild` is
+> **byte-identical** (calls `OnCancel()` without clearing `loggedchild[i]`, no re-entrancy guard). So the
+> stack-overflow vulnerability is **shared-framework**, even though MA's *specific* trigger differs — MA has
+> no `RAFDirectives`/`DirectivesNoResults`/`OpenEmptyDirectiveResults` (MiG's directives are `directs2.cpp`/
+> `DIS.cpp`), but it has **many logged-child dialogs** (ArmyDetl/Bases/Flt_Task/DIS/MResult/…) any of which,
+> if its `OnCancel` re-closes a toggling slot, hits the same infinite recursion on Linux. Sent MA
+> (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05e.md`, committed in the MA repo) the exact per-slot re-entrancy
+> guard to adopt defensively — **with the warning not to "fix" it by clearing the slot before `OnCancel`**
+> (that broke BoB's normal directive flow — `OnCancel` reads the slot). Also flagged the engine-general
+> **`m_currentpage`-gates-OnTimer** freeze (S108) for MA's day-advance. Same "shared engine seam, per-game
+> trigger" theme as the S71 mask + the DialBox/`Edges` triage.
+>
 > ## S109 (2026-07-05): multi-day loop cycles PAST day 3 — fixed a directive-dialog infinite-recursion stack overflow (real game-code bug); also A/B-confirmed StartUpMapWorld is needed
 > Sprint 109 pushed the multi-day loop past the day-3 crash a longer soak exposed after S108.
 > - **The day-3 crash: a directive-dialog infinite recursion (stack overflow).** ASan pinned a mutual
