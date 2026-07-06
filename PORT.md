@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S100 (2026-07-05): OOB dialog render — first attempt, reverted; two concrete blockers found + a clear path for the next arc
+> Sprint 100 attempted the actual OOB-dialog render (walk the logged-child tree, `DoPaint` each node at a
+> positioned base offset, `bob_ole_draw_panel` its controls). **Reverted** — it doesn't render yet and hit
+> a crash — but pinned two concrete blockers, which is the sprint's value:
+> 1. **fileblock is single-open (crash found).** `RDialog::DoPaint` opens its *own* `fileblock(artnum)`
+>    (and closes it). The game's `fileblock` FATALs (`FILEMAN.CPP:1562`, *"Opened file block (682a) again
+>    without closing!"*) if the **same** FileNum is opened while already open. The S99 probe's art-load
+>    check (`bob_dlg_getfile`, which holds `s_lastfb` open) collided with `DoPaint`'s open of the same
+>    26666 → FATAL. **Lesson for S101: let `DoPaint` manage its own fileblock; don't pre-open the art.**
+> 2. **Positioning unresolved.** Even with an explicit centred base offset, the `DoPaint` art didn't
+>    appear — the tree nodes report `OnGetXYOffset()=(0,0)` (the `AddChildren` Edges layout doesn't spread
+>    them without a real window), and the art didn't land visibly at the base offset either (needs a look
+>    at the `m_bDrawBackground` guard + whether the FATAL aborted mid-draw).
+> - **Reverted to the clean S99 probe** (tree-walk + offsets, env-gated `BOB_PROBE_OOB`); default map +
+>   plain boot verified unaffected, no crash. The render functions (`bob_map_paint_oob`) + the
+>   `BOB_MAP_OOB` hook are removed — not committing crashing/non-rendering code.
+> - **The path for S101 is now concrete:** (a) render each tab node's art via `DoPaint` **without**
+>   pre-opening its fileblock; (b) render **only the selected tab page** (the `HTabBox` tracks it), not all
+>   4 stacked; (c) fix positioning — assign the dialog a real screen rect (the layout math needs the
+>   client rect, or bypass it with an explicit per-node placement, honouring S95's dangling-`Edges` rule);
+>   (d) then `bob_ole_draw_panel` the hosted OOB list controls. The mechanism is proven feasible (S99); the
+>   work is bounded to these four.
+
 > ## S99 (2026-07-05): scoping spike — the OOB info sub-dialog (Bases) render is FEASIBLE via the existing DoPaint/OLE path; positioning is the remaining work
 > Sprint 99 opens the last big Phase-3 arc (the OOB info sub-dialogs the toolbar buttons open) with a
 > de-risking spike (`BOB_PROBE_OOB`/`BOB_PAINT_OOB`, default-off, in `MAINFRM.CPP`). Findings after

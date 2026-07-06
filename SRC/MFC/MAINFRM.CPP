@@ -1366,10 +1366,6 @@ static void bob_probe_walk(RDialog* d, int depth) {
 		long off = n->OnGetXYOffset();
 		fprintf(stderr, "[oob] %*snode=%p artnum=%d off=(%d,%d) fchild=%p\n", depth*2, "", (void*)n,
 			(int)n->artnum, (short)(off&0xFFFF), (short)((off>>16)&0xFFFF), (void*)n->fchild);
-		if (getenv("BOB_PAINT_OOB")) {   /* attempt the real DoPaint (art -> SetDIBitsToDevice) */
-			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
-			n->DoPaint(&dc);
-		}
 		if (n->fchild) bob_probe_walk(n->fchild, depth+1);
 	}
 }
