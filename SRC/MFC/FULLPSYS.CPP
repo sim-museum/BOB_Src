@@ -493,6 +493,34 @@ extern "C" void bob_frontend_tick(void)
 			   day reaches raid-launch times quickly headlessly. */
 			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+			/* S107 (BOB_DAYLOOP): headless multi-day continuity. At dusk the sim's EndOfDay rolls the
+			   date/clock (currdate++, currtime=MORNINGPERIODSTART) + WipeAll's the raids, then goes to
+			   the EndDayReview *front-end screen* -- the next day's world rebuild (BuildTargetTable +
+			   StartUpMapWorld + SkipToDate + StartOfDay) happens only on the way back via
+			   LaunchMapFirstTime (FULLPANE.CPP:2151), which the headless map scaffold doesn't navigate.
+			   So when the day has just rolled (currtime at MORNINGPERIODSTART, world wiped), run that
+			   exact rebuild sequence directly, skipping the review UI, so the new day repopulates. Once
+			   per date. (S104 called StartOfDay alone -- insufficient; StartUpMapWorld rebuilds the raid
+			   world StartOfDay doesn't.) */
+			/* WIP: rebuilds the next day's world correctly (world repopulates, vs S104's empty), but the
+			   day-2 clock stays frozen at MORNINGPERIODSTART -- OnTimer's morning accumulator-advance
+			   isn't firing even though both its guards are clear (messageboxopen=0, Master_3d.currinst=nil).
+			   That accumulator freeze is the next layer to crack. See PORT.md S107. */
+			if (getenv("BOB_DAYLOOP")) {
+				static long lastDay = -1;
+				if (MMC.currtime <= MORNINGPERIODSTART + 40 && (long)MMC.currdate != lastDay) {
+					lastDay = (long)MMC.currdate;
+					fprintf(stderr,"[dayloop] new day (date=%ld) -> full rebuild (StartUpMapWorld)\n", (long)MMC.currdate);
+					long ct0 = (long)MMC.currtime;
+					Node_Data.BuildTargetTable();
+					Persons4::StartUpMapWorld();   /* rebuilds the raid world (StartOfDay alone doesn't -- S104) */
+					Node_Data.StartOfDay();
+					/* EndOfDay already rolled the date + currtime; SkipToDate is only for loading a save
+					   mid-campaign (fast-forwards by the date delta), which would wrongly re-skip a day
+					   here -- deliberately NOT called. Restore currtime in case the rebuild perturbed it. */
+					if ((long)MMC.currtime != ct0) MMC.currtime = ct0;
+				}
+			}
 		}
 		/* S94: live accel controls -- when the player has clicked Play/Fastforward (so the campaign
 		   is not ACCEL_PAUSED), drive the clock each paint at the chosen rate, exactly as the map's

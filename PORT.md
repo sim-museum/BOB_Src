@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S107 (2026-07-05): campaign multi-day loop — the next day's world now REBUILDS on rollover (past the S104 blocker); day-2 clock-freeze is the next layer
+> Sprint 107 pushed the multi-day day-advance (`BOB_DAYLOOP`, default-off) meaningfully past S104:
+> - **The next day's world now rebuilds correctly.** On rollover (`EndOfDay` set `currdate++`,
+>   `currtime=MORNINGPERIODSTART`, `WipeAll`'d the raids), the hook runs the **`LaunchMapFirstTime` rebuild
+>   sequence** — `BuildTargetTable()` + **`Persons4::StartUpMapWorld()`** + `StartOfDay()` — so day 2
+>   **repopulates (worlditems 0 → 1110)**, no crash. This solves the S104 gap (where `StartOfDay` alone
+>   left the world empty — `StartUpMapWorld` is the piece that rebuilds the raid world). Also learned:
+>   **don't call `SkipToDate`** on a fresh rollover (it's for loading a save mid-campaign — fast-forwards by
+>   the date delta and wrongly re-skips a day; the v1 attempt stuck the clock at 39640 doing this).
+> - **Remaining blocker (pinpointed): the day-2 clock freezes at `MORNINGPERIODSTART` (23400).** Verified
+>   over a 240 s soak — day 1 advances 06:30→20:22 to dusk and rolls, day 2 rebuilds + starts at 06:30, but
+>   then currtime is **stuck at 23400** for 2000+ paints. OnTimer's morning path
+>   (`if(currtime==MORNINGPERIODSTART){ if(accumulator++){ currtime+=20; StartOfDay(); } }`) should advance
+>   it, and **both its guards are clear** (`messageboxopen=0`, `Master_3d.currinst=nil` — traced), yet it
+>   doesn't. So the freeze is inside the accumulator/period logic, not the obvious guards — the next layer.
+>   (`StartOfDay` only sets `currperiodtime`, not `currtime`, so it isn't undoing the advance either.)
+> - **Kept as env-gated WIP** (`BOB_DAYLOOP`, default-off; correct rebuild, no regression to the default
+>   map / plain boot) rather than reverted — the world-rebuild is genuine correct progress the next session
+>   extends by cracking the accumulator freeze. Net: multi-day continuity is one layer from working — the
+>   world regenerates; only the new day's clock won't start.
+
 > ## S106 (2026-07-05): cross-port — adopted MA's glReadPixels fix; handed MA the concrete toolbar recipe (they're re-treading BoB's S88–92)
 > A "compare notes" pass found MA has caught up to the campaign-map chrome BoB just finished — they did
 > Sprint 45 (map colour fix), 46 (unit icons), 47 (date/period readout), and mapped the CRToolBar epic.
