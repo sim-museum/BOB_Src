@@ -16,6 +16,13 @@
 > - The interactive campaign map is now materially more complete: the toolbar buttons don't just fire
 >   handlers (S92) — they **show their OOB dialogs**. Remaining OOB polish (selected-tab-only, faithful
 >   placement, tab-click) is cosmetic.
+> - **Robustness validated:** clicked through **all 8 main OOB buttons** (Bases → Hostiles) — **every one
+>   exits cleanly, no SEGV** (BoB's OOB dialog trees all build + open safely, unlike MA's port where
+>   `OnClickedSquads`/`Authorise`/`Directives` NULL-`fchild`-crash — see S115). The **Bases-family** dialogs
+>   (`GroupGeschwader`/`HTabBox` structure) render their full content; other dialog *structures* open + host
+>   their controls safely but may render partially (e.g. Squadrons hosts its own controls but its tree
+>   shape differs, so the fixed-offset background walk doesn't cover it) — structure-specific render is the
+>   remaining polish, but nothing crashes. The generalisation is **safe across every dialog**.
 >
 > ## S115 (2026-07-05): cross-port — MA hit the OOB dialog from the *open* side (NULL `fchild` crash); told them BoB's OOB tree BUILDS + renders (S113/S114), which unblocks them
 > MA (working in parallel) committed inbound note 6 to the BoB repo: they finished their CRToolBar epic
