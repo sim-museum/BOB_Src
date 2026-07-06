@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S106 (2026-07-05): cross-port — adopted MA's glReadPixels fix; handed MA the concrete toolbar recipe (they're re-treading BoB's S88–92)
+> A "compare notes" pass found MA has caught up to the campaign-map chrome BoB just finished — they did
+> Sprint 45 (map colour fix), 46 (unit icons), 47 (date/period readout), and mapped the CRToolBar epic.
+> Two-way sync:
+> - **Adopted (MA S45): the `glReadPixels`/`GL_PACK_ALIGNMENT` fix.** BoB's `present_dbg` (`BOB_DUMP_FRAME`)
+>   had the identical latent bug — full-frame `glReadPixels(GL_RGB)` with no `glPixelStorei(GL_PACK_ALIGNMENT,
+>   1)`, then a `w*3`-byte/row PPM writer. Latent on BoB (usual widths 1024/800/640 are 4-divisible → clean)
+>   but real for any non-4-divisible capture (RGB channel-shift "speckle"). Fixed (1 line + note). No
+>   regression.
+> - **Handed MA the toolbar recipe.** MA's "CRToolBar Phase-1 fully mapped" doc describes **exactly BoB's
+>   S88–S92 epic** (their plan cites BoB §8b). Replied (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05d.md`,
+>   committed in the MA repo) with drop-in answers to both blockers they found: the **per-`parentDlg`
+>   targeted draw** (`bob_ole_draw_toolbar` + id-filtered `_ids`) for their stale-control bleed; the
+>   **`SetDIBitsToDevice` viewport-origin** gotcha; the **`ICON_PAGE_1`+`iconnum.g` sheet-icon** resolution +
+>   the **control-id→icon reconstruction** (the `.rc` shares one default art string); plus S92 clicks→ON_EVENT
+>   and S94 dialog-aware rect lookup. BoB is ~4 sprints ahead on this exact epic — the reply should let MA
+>   skip most of the exploration.
+> - **Ports at complementary parity:** MA just reached BoB's map-icon/date-readout state and is starting the
+>   toolbar epic BoB finished; BoB is behind MA on the multi-day day-advance loop (MA drives it via
+>   `NextMission`, live on their side) and flight polish. Knowledge flowing both ways, actively.
+
 > ## S105 (2026-07-05): cross-port — the campaign day-advance DIVERGED between BoB and MA (BoB deadcoded NextMission; uses the EndDayReview-screen path)
 > Comparing the day-advance work (MA's S40–S42 "day-advance strategic-sim ASan sweep" vs BoB S103–S104)
 > surfaced a clean divergence — recorded to MA (`~/ma/port/CROSS-PORT-FROM-BOB-2026-07-05c.md`, committed

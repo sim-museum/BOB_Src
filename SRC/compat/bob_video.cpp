@@ -541,6 +541,11 @@ static void present_dbg(const char* path)
 	const char* df = getenv("BOB_DUMP_FRAME");
 	if (df && frames == atoi(df)) {
 		int w=g_scrW,h=g_scrH; unsigned char* buf=(unsigned char*)malloc(w*h*3);
+		/* Cross-port (adopted from MiG Alley S45): the PPM writer emits w*3 bytes/row, but the default
+		   GL_PACK_ALIGNMENT=4 pads glReadPixels rows to a 4-byte multiple. For a non-4-divisible width
+		   (e.g. a 1021-wide capture) GL emits a longer row than the writer reads -> 1-byte/row drift ->
+		   R/G/B channel-shift "grey speckle". Latent here (1024/800/640 are 4-divisible) but real. */
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
 		glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
 		/* raw POSIX open() to bypass the game's redirected fopen. BOB_DUMP_PATH overrides the
 		   default target -- the sibling MiG Alley port shares /tmp and also writes
