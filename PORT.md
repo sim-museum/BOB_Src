@@ -1,5 +1,29 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S109 (2026-07-05): multi-day loop cycles PAST day 3 — fixed a directive-dialog infinite-recursion stack overflow (real game-code bug); also A/B-confirmed StartUpMapWorld is needed
+> Sprint 109 pushed the multi-day loop past the day-3 crash a longer soak exposed after S108.
+> - **The day-3 crash: a directive-dialog infinite recursion (stack overflow).** ASan pinned a mutual
+>   recursion in the **directives** UI: `CloseLoggedChild(i)` calls the child's `OnCancel()` **without
+>   clearing `loggedchild[i]` first**, and the directive handlers form a toggle loop —
+>   `RAFDirectives::OnCancel` → `OpenEmptyDirectiveResults` → `CloseLoggedChild(DIRECTIVERESULTS)` →
+>   `DirectivesNoResults::OnCancel` → `OpenRAFDirectivetoggle` → `CloseLoggedChild(DIRECTIVES)` →
+>   `RAFDirectives::OnCancel` → … On Windows this terminates because `CDialog::OnCancel` destroys the
+>   window (clearing the slot); our Linux `CDialog::OnCancel` is a no-op, so it recurses forever. Fires at
+>   a directive event (hit in day 3 of a multi-day campaign). **Fix (`RDIALLOG.CPP`, `#if BOB_LINUX`,
+>   unconditional): a per-slot re-entrancy guard** in `CRToolBar::CloseLoggedChild` — block a re-entrant
+>   close of a slot already being closed, breaking the loop while leaving the slot state (which `OnCancel`
+>   reads) untouched. First attempt (clear the slot before `OnCancel`) broke the *normal* directive flow
+>   (crashed day 1) — the state is needed; the guard is the right shape.
+> - **A/B confirmed `StartUpMapWorld` is required.** Tested `BOB_DAYLOOP=2` (StartOfDay-only): the clock
+>   cycles (S108 `m_currentpage` fix) but the world stays **empty** (worlditems=0) — so the S107
+>   `StartUpMapWorld` rebuild is the right approach. Also confirmed the day-3 crash was **independent of
+>   world content** (StartOfDay-only, empty world, crashed at the same directive event) — i.e. a UI bug,
+>   not a SAG/world bug.
+> - **Verified:** the loop now cycles **past day 3** — release run, 2 rollovers, currtime advancing through
+>   day 3 (past the old 44180 crash), **exit 124 (no crash)**. Regression-clean: plain boot, single-day
+>   campaign sim (directives fire normally, no crash), toolbar-button opens/closes (exercise
+>   `CloseLoggedChild`) — all clean. ASan multi-day soak validating (result appended).
+>
 > ## S108 (2026-07-05): campaign MULTI-DAY LOOP WORKS end-to-end + ASan-clean — cracked the day-2 freeze (`m_currentpage`) AND fixed the post-rebuild production-array overflow (a real game-code bug)
 > Sprint 108 turned the multi-day loop into a **working, ASan-clean cycle** — two distinct fixes:
 > - **The day-2 freeze root: `CMIGView::m_currentpage`.** `CMapDlg::OnTimer`'s *entire* sim-advance body is

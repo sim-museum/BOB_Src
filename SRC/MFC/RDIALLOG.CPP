@@ -279,7 +279,7 @@ bool	RDialog::CloseLoggedChild(int i)
 	return (top->dialoglinks.loggedchild[i]!=NULL);
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		CloseLoggedChildren
 //Author		Jim Taylor
 //Date			Fri 19 Feb 1999
@@ -314,7 +314,7 @@ void	CRToolBar::CloseLoggedChildren(RDialog* skipthis)
 			dialoglinks.loggedchild[i]->dialoglinks.loggedparentlauncher->OnCancel();
 }
 
-//ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 //Procedure		CloseLoggedChild
 //Author		Jim Taylor
 //Date			Fri 19 Feb 1999
@@ -330,8 +330,23 @@ bool	CRToolBar::CloseLoggedChild(int i)
 {	//returns true if child still there!
 	if (!dialoglinks.loggedchild)
 		return false;
+#if BOB_LINUX
+	/* S108: per-slot re-entrancy guard. The directive dialogs' OnCancel handlers form a toggle loop
+	   that re-enters CloseLoggedChild for the SAME slot -- RAFDirectives::OnCancel -> OpenEmptyDirective
+	   Results -> CloseLoggedChild(DIRECTIVERESULTS) -> DirectivesNoResults::OnCancel ->
+	   OpenRAFDirectivetoggle -> CloseLoggedChild(DIRECTIVES) -> RAFDirectives::OnCancel -> ... On Windows
+	   this terminates because CDialog::OnCancel destroys the window (clearing the slot); our Linux
+	   CDialog::OnCancel is a no-op, so the loop recurses forever -> stack overflow (a day-3 directive
+	   event in a multi-day campaign, msctlbr.cpp:390). Block a re-entrant close of a slot already being
+	   closed -- breaks the loop while leaving the slot state (which OnCancel reads) untouched. */
+	static unsigned char s_closing[256] = {0};
+	if (i >= 0 && i < 256) { if (s_closing[i]) return (dialoglinks.loggedchild[i] != NULL); s_closing[i] = 1; }
+#endif
 	if (dialoglinks.loggedchild[i])
 		dialoglinks.loggedchild[i]->dialoglinks.loggedparentlauncher->OnCancel();
+#if BOB_LINUX
+	if (i >= 0 && i < 256) s_closing[i] = 0;
+#endif
 	return (dialoglinks.loggedchild[i]!=NULL);
 }
 
