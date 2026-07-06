@@ -1,5 +1,27 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S97 (2026-07-05): Phase 3 — strategic-map unit SELECTION (click a unit → its route highlights), via the SDL click layer
+> Sprint 97 wires map unit selection through the SDL click layer (the never-delivered `OnLButtonDown`
+> never runs), completing the map's live interaction set alongside accel (S94) and pan/zoom (S96).
+> - **`MAPDLG.CPP` `bob_map_select(cx,cy)`:** calls the game's own **`CMapDlg::FindMapItem(point)`** to get
+>   the UID under the click, then band-dispatches: an **airborne raid squadron** (`SagBAND`) →
+>   `GetACSquadEntry` → **`SetHiLightInfo(pack,sq,…)`** (its route draws white next paint); a **waypoint**
+>   (`WayPointBAND`) → `GetPackageFromWP` → `SetHiLightInfo(pack,sq,uid)`; an airfield/target → no route.
+>   This is the **same selection feedback `OnClickItem` produces**, minus the OOB info sub-dialogs (the
+>   `MakeTopDialog`/`DialBox` framework isn't driven yet — deferred, and per S95's caveat).
+> - **`FULLPSYS.CPP`** map tick: a non-toolbar map click (missed the footer buttons) routes to
+>   `bob_map_select`.
+> - **Verified:** clicking an airfield returns **`uid=13299`** correctly classified (`[mapsel] airfield/
+>   target — no route hilite`) — `FindMapItem`'s hit-test + world-coord transform work. **ASan-clean** over
+>   a 55 s soak with the sim advancing (currtime 23400→37460, raids launching as worlditems 1111→1085,
+>   400+ paints, select firing) — **0 errors**. Default map + plain boot/flight unaffected. The
+>   squadron-route-highlight branch is a faithful line-for-line mirror of `OnClickItem` (MAPDLG.CPP:232);
+>   a live raid-highlight *screen capture* needs an airborne raid at a known coordinate (a harness timing
+>   detail), so the visible-highlight demo is pending, but the mechanism is verified + safe.
+> - **The map is now fully live:** pan/zoom (S96), accel/time clock (S94), toolbar buttons fire handlers
+>   (S92), unit selection (S97). Next: drive the OOB info sub-dialogs to paint (the `DialBox`/`HTabBox`
+>   framework), the last big Phase-3 piece.
+
 > ## S96 (2026-07-05): Phase 3 — strategic-map PAN + ZOOM (SDL-bypass pattern, adopted from MA)
 > Sprint 96 adds map navigation, using MA's cross-port lead: the never-delivered `WM_*SCROLL`/arrow/wheel
 > messages don't reach the map, so capture input in the SDL pump and drive the view from the map tick.

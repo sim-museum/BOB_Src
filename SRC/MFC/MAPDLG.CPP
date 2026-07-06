@@ -1726,3 +1726,33 @@ LRESULT CMapDlg::DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	return rv;
 }
+
+#if BOB_LINUX
+/* S97: strategic-map unit selection from an SDL click (the never-delivered OnLButtonDown never runs).
+   FindMapItem gives the UID under the point; for a raid squadron / waypoint we highlight its package
+   (SetHiLightInfo) so its route draws in white on the next paint -- the same selection feedback
+   OnClickItem produces, but WITHOUT opening the OOB info sub-dialogs (the DialBox framework isn't
+   driven yet). Returns the selected UID (0 = empty map). */
+extern "C" int bob_map_select(int cx, int cy)
+{
+	int uid = RDialog::m_pView->m_mapdlg.FindMapItem(CPoint(cx, cy));
+	if (!uid) { return 0; }
+	if (uid >= SagBAND && uid < SagBANDEND) {          /* an airborne raid squadron */
+		int packnum, sqline;
+		if (Todays_Packages.GetACSquadEntry((UniqueID)uid, packnum, sqline)) {
+			RDialog::m_pView->SetHiLightInfo(packnum, sqline, UID_Null);
+			if (getenv("BOB_TRACE_MAP")) fprintf(stderr,"[mapsel] squadron uid=%d -> pack=%d sq=%d (route hilit)\n", uid, packnum, sqline);
+		}
+	} else if (uid >= WayPointBAND && uid < WayPointBANDEND) {   /* a route waypoint */
+		int pack, squad, target;
+		if (Profile::GetPackageFromWP((UniqueID)uid, pack, squad, target)) {
+			if (squad < 0) squad = 0;
+			RDialog::m_pView->SetHiLightInfo(pack, squad, (UniqueID)uid);
+			if (getenv("BOB_TRACE_MAP")) fprintf(stderr,"[mapsel] waypoint uid=%d -> pack=%d sq=%d (route hilit)\n", uid, pack, squad);
+		}
+	} else if (getenv("BOB_TRACE_MAP")) {
+		fprintf(stderr,"[mapsel] uid=%d (airfield/target -- no route hilite)\n", uid);
+	}
+	return uid;
+}
+#endif

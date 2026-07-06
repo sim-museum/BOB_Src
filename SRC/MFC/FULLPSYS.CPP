@@ -431,6 +431,7 @@ extern "C" int  bob_map_click_toolbars(int, int);             /* S92: map click 
 extern "C" int  bob_gdi_get_click(int*, int*);
 extern "C" int  bob_gdi_get_mapnav(int*, int*, int*);         /* S96: pan/zoom from the SDL layer */
 extern "C" void bob_map_nav(int, int, int);                   /* S96: apply pan/zoom (MIGVIEW.CPP) */
+extern "C" int  bob_map_select(int, int);                     /* S97: click -> unit select (MAPDLG.CPP) */
 
 extern "C" void bob_frontend_tick(void)
 {
@@ -453,7 +454,10 @@ extern "C" void bob_frontend_tick(void)
 		  if (mcxy && !mc_done && ++mc_paints > 20) { int mx, my;
 			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
-		  if (haveClick && bob_map_click_toolbars(cx, cy) && !g_bob_map_active) return;
+		  if (haveClick) {
+			if (bob_map_click_toolbars(cx, cy)) { if (!g_bob_map_active) return; }
+			else bob_map_select(cx, cy);   /* S97: missed the toolbars -> select the unit under the click */
+		  }
 		}
 		/* S96: strategic-map pan (arrows) + zoom (wheel / +/-), from the SDL layer. BOB_MAP_NAV="dx,dy,z"
 		   injects one nav step (once settled) for deterministic testing. */
