@@ -18,10 +18,16 @@
 >   *"Want to go to fullpane at this point. Then, on way back, do StartOfDay"*). The headless map scaffold
 >   reaches `EndOfDay` (clock/date roll + world wipe confirmed) but **doesn't drive the review→`StartOfDay`
 >   hop**, so the next day stays empty.
-> - **S104 path (bounded):** drive the end-of-day seam headlessly — either navigate the `enddayreview`
->   front-end screen (the `EndDayReviewInit` flow) back to the map, or, for a headless campaign-loop soak,
->   call `Node_Data.StartOfDay()` directly after `EndOfDay()` to regenerate the next day (skipping the
->   review UI) and validate multi-day continuity. The sim itself is proven robust; this is a UI-seam wiring.
+> - **S104 attempt (reverted):** tried the direct `Node_Data.StartOfDay()`-on-rollover hook
+>   (`BOB_DAYLOOP`) to continue the loop headlessly. **Insufficient** — after the roll the world stayed
+>   empty (worlditems=0) and the clock stuck (~39640), because `StartOfDay()` inits **squadrons /
+>   production / mission conditions** but does **not rebuild the SAG raid world** (`Todays_Packages` was
+>   `WipeAll`'d by `EndOfDay`). The raid world is rebuilt by **`Persons4::StartUpMapWorld()`**
+>   (FULLPANE.CPP:665) — part of the full end-of-day transition (`EndDayReview` screen → `EndDayRouting`
+>   → `StartUpMapWorld` → `StartOfDay`), not a single call. So multi-day continuity needs that whole
+>   sequence driven, not a `StartOfDay` shortcut. Reverted; the **full-day-sim ASan-clean validation (the
+>   real S103 result) stands**. The multi-day transition is a focused front-end-nav + world-rebuild arc,
+>   like the OOB dialogs — bounded but not a scrum-cadence quick fix.
 
 > ## S102 (2026-07-05): capstone validation — the whole S83→S100 campaign-map arc regression-clean + ASan-clean; session summary
 > Sprint 102 validates the full session arc after the OOB detour, and summarises where the campaign epic
