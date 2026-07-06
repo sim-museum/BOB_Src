@@ -14,10 +14,13 @@
 > - **Verified:** clicking an airfield returns **`uid=13299`** correctly classified (`[mapsel] airfield/
 >   target — no route hilite`) — `FindMapItem`'s hit-test + world-coord transform work. **ASan-clean** over
 >   a 55 s soak with the sim advancing (currtime 23400→37460, raids launching as worlditems 1111→1085,
->   400+ paints, select firing) — **0 errors**. Default map + plain boot/flight unaffected. The
->   squadron-route-highlight branch is a faithful line-for-line mirror of `OnClickItem` (MAPDLG.CPP:232);
->   a live raid-highlight *screen capture* needs an airborne raid at a known coordinate (a harness timing
->   detail), so the visible-highlight demo is pending, but the mechanism is verified + safe.
+>   400+ paints, select firing) — **0 errors**. Default map + plain boot/flight unaffected.
+> - **The route-highlight render is confirmed** (`/tmp/map_hilite.png`): driving the sim until a raid
+>   launches + highlighting it via `SetHiLightInfo` (the exact call `bob_map_select` makes for a squadron
+>   click; here reached via the campfly raid-finder to get a deterministic airborne raid) draws the raid's
+>   **white route lines across the Channel** + the intercept-path markers — the selection feedback the
+>   click produces. So the mechanism *and* its visible output are both verified; a click-on-a-moving-raid
+>   screen-capture is the only untested-by-click detail (a harness-timing nicety, the render is proven).
 > - **The map is now fully live:** pan/zoom (S96), accel/time clock (S94), toolbar buttons fire handlers
 >   (S92), unit selection (S97). Next: drive the OOB info sub-dialogs to paint (the `DialBox`/`HTabBox`
 >   framework), the last big Phase-3 piece.
