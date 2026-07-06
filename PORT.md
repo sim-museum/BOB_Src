@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S101 (2026-07-05): OOB dialog render — deep investigation, still blocked; characterised precisely (write reaches the framebuffer but doesn't survive to present)
+> Sprint 101 pushed the OOB render further with a deterministic harness (fire `OnClickedBases` via the
+> eventsink once the map settles — removes the click-throttle variable) + `setdibits` tracing. Cleared the
+> S100 blockers but hit a deeper one; **reverted** to the clean S100 state. Precise findings (the value —
+> the next attempt starts here):
+> - **The game AUTO-paints the OOB dialog on open** (its own Invalidate→`DoPaint` path), so no external
+>   render call is even needed for the art — *but at partly off-screen offsets*: the tree's real
+>   `OnGetXYOffset()` values are a 2-col × 4-row spread at `x∈{-244,12}, y∈{-32,224,480,736}` (the
+>   `x=-244` column + `y=-32` row are off-screen). So the S99/S100 "(0,0)" reading was a pre-layout
+>   snapshot; the layout DOES compute, just to a base that lands mostly off-screen headlessly.
+> - **My positioned `DoPaint` reaches the pixel write with VALID data.** With `setdibits_origin(342,40)`,
+>   the trace confirms `bob_gdi_setdibits` is called at `dest=(342,40)` with a real **648×302, 24-bit**
+>   bitmap (`FIL_D_GROUPS`) — a genuine panel, correct dims, non-null bits/bmi, writing to `g_gdiFB` (the
+>   exact buffer the dump + GL present read).
+> - **Yet the panel never appears** — the pixels at (342,40) stay map-coloured. So a valid 648×302 write
+>   to the presented framebuffer, via the *same* `bob_gdi_setdibits` path the toolbar buttons use
+>   successfully, is somehow not surviving to the dump. **Unresolved:** a subtle draw-order / buffer /
+>   game-repaint-cycle interaction (candidates: the game re-paints the dialog off-screen after mine on a
+>   later idle; a second composite pass; or a 24-bit-specific path difference vs the 8-bit button faces).
+>   This needs a focused GDI-plumbing debug session, not more scrum-cadence drilling.
+> - **Reverted clean** (S100 state: builds, default map + plain boot unaffected). **Impediment logged:**
+>   the OOB-dialog *art* is one focused GDI-buffer fix away (the write already reaches `g_gdiFB`); the
+>   *layout* needs the off-screen-negative base corrected. Both are bounded but need dedicated debugging.
+>   **Pivoting** to a different backlog item rather than continue an unproductive drill.
+
 > ## S100 (2026-07-05): OOB dialog render — first attempt, reverted; two concrete blockers found + a clear path for the next arc
 > Sprint 100 attempted the actual OOB-dialog render (walk the logged-child tree, `DoPaint` each node at a
 > positioned base offset, `bob_ole_draw_panel` its controls). **Reverted** — it doesn't render yet and hit
