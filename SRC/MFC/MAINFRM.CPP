@@ -1399,12 +1399,17 @@ static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
 	}
 }
 extern "C" int bob_map_paint_oob(int sw, int sh) {
-	if (!CMainFrame::toolbars[TB_MAIN]) return 0;
-	RDialog* child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::BASES);
-	if (!child) child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::SQUADRONLIST);
-	if (!child) return 0;
-	bob_oob_paint_tree(child, (sw - 340) / 2, 40);   /* fixed panel origin over the map */
-	return 1;
+	/* S116: render whichever OOB info dialog is open (any main-toolbar logged child), so a real
+	   toolbar-button click (S92) that opened one actually shows it. Renders each open child's tree
+	   (background art via DoPaint + hosted controls via bob_ole_draw_panel) at a fixed panel origin. */
+	CRToolBar* tb = CMainFrame::toolbars[TB_MAIN];
+	if (!tb) return 0;
+	int n = 0;
+	for (int slot = 0; slot < CMainToolbar::MAX_ID; slot++) {
+		RDialog* child = tb->LoggedChild(slot);
+		if (child) { bob_oob_paint_tree(child, (sw - 340) / 2, 40); n++; }
+	}
+	return n;
 }
 /* deterministically open Bases (fire OnClickedBases) once the map has settled -- removes the
    click-coordinate/paint-throttle variable from OOB render testing (BOB_MAP_OOB). */

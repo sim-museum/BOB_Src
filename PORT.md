@@ -1,5 +1,22 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S116 (2026-07-05): OOB dialogs render on the REAL toolbar click — default-on, generalised to any open dialog
+> Sprint 116 ties the S92 toolbar clicks to the S113/S114 render into a complete feature: **clicking a map
+> toolbar button now opens AND shows its OOB dialog**, no env var.
+> - **Generalised** `bob_map_paint_oob` to iterate all `CMainToolbar` logged-child slots (`BASES`,
+>   `SQUADRONLIST`, `PILOTDATA`, … `MAX_ID`) and render **whichever dialog is open** (its tree: background
+>   `DoPaint` + hosted `bob_ole_draw_panel` controls) — not just Bases.
+> - **Default-on** in the map tick (renders nothing when no dialog is open; `BOB_NO_OOB` reverts;
+>   `BOB_MAP_OOB` still auto-opens Bases for headless testing). So the S92 click → dialog-open → S113/S114
+>   render is now one continuous interaction: **click Bases on the map → the RAF Order-of-Battle panel
+>   appears over the map.**
+> - **Verified robust:** clicking Bases renders the panel (pixel `0x464680`) with no env var; the default
+>   map (nothing open) stays clean (no panel); clicking Squadrons doesn't crash; **ASan-clean**. Plain
+>   boot/flight unaffected.
+> - The interactive campaign map is now materially more complete: the toolbar buttons don't just fire
+>   handlers (S92) — they **show their OOB dialogs**. Remaining OOB polish (selected-tab-only, faithful
+>   placement, tab-click) is cosmetic.
+>
 > ## S115 (2026-07-05): cross-port — MA hit the OOB dialog from the *open* side (NULL `fchild` crash); told them BoB's OOB tree BUILDS + renders (S113/S114), which unblocks them
 > MA (working in parallel) committed inbound note 6 to the BoB repo: they finished their CRToolBar epic
 > (S48–50, using BoB's S88–92 recipe), adopted BoB's `CloseLoggedChild` guard (S51, ASan-gate PASS), and hit
