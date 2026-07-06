@@ -1,5 +1,17 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S112 (2026-07-05): campaign SAVE/LOAD round-trips the multi-day state — the loop integrates with the serializer
+> Validation tying the new multi-day loop to the existing (S64/S65-hardened) campaign save/load: a save
+> taken **on day 2** of a running multi-day campaign and reloaded restores correctly.
+> - **Save (day 2):** running the loop into day 2, `CFiling::SaveGame("MultiDayTest.BSR") -> OK
+>   (currtime=41860)` after the rollover (`currdate` past day 1) — the advanced multi-day `Miss_Man` state
+>   serialises.
+> - **Load (fresh process):** `CFiling::LoadGame -> OK (currtime 23400 -> 41860)` — the fresh 06:30 clock
+>   jumps to the saved day-2 value (41860 = 11:37), world repopulates (worlditems 1170), no crash. The
+>   `-fpack-struct=1` byte-stable serialiser (S64/S65) restores the multi-day `currdate`/`currtime`/world.
+> - **Net:** the multi-day campaign state is fully serialisable + restorable — the S104–S111 loop integrates
+>   cleanly with the save system. Campaign persistence works across days.
+>
 > ## S111 (2026-07-05): multi-day loop works via BOTH clock-drive paths (refactor) + stale-comment cleanup
 > Small consolidation: the `BOB_DAYLOOP` rollover-rebuild was nested inside the `BOB_MAP_TIMER` block, so it
 > only fired on the headless fast-forward path. Moved it **after both** clock-drive branches
