@@ -1,5 +1,30 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S108 (2026-07-05): campaign MULTI-DAY LOOP WORKS end-to-end + ASan-clean — cracked the day-2 freeze (`m_currentpage`) AND fixed the post-rebuild production-array overflow (a real game-code bug)
+> Sprint 108 turned the multi-day loop into a **working, ASan-clean cycle** — two distinct fixes:
+> - **The day-2 freeze root: `CMIGView::m_currentpage`.** `CMapDlg::OnTimer`'s *entire* sim-advance body is
+>   gated on `if (m_view->m_currentpage==0)` (on the map). The rollover rebuild (`StartUpMapWorld` /
+>   `LaunchMapFirstTime` path) **leaves `m_currentpage=1`** (traced), so the map kept painting but OnTimer
+>   silently skipped the advance → clock frozen. The accumulator + both guards (`messageboxopen`,
+>   `Master_3d.currinst`) were red herrings. **Fix: restore `m_currentpage=0` after the rebuild.**
+> - **The multi-day crash: a real production-array overflow (fixed, NOT env-gated).** ASan pinned it to
+>   `NodeData::WhereToReassignProduction` (`NODEBOB.CPP:7136`) via `DeliverProductionRates`→
+>   `AutoReassignProduction`: `bestsq` is a **gruppe[] loop index** but line 7136 uses it to read the
+>   **plane-type `production[PT_BADMAX]`** array. The prior R4.5 guard only caught `bestsq==-1`; running the
+>   campaign day-after-day (more gruppen than plane types) makes `bestsq >= PT_BADMAX`, reading past
+>   `production[]` into `germwaderinst` (global-buffer-overflow). Fix: bound the read to
+>   `bestsq∈[0,PT_BADMAX)` (same spirit as the R4.5 guard; no gameplay change for in-range indices). This
+>   is a genuine game-code bug that also hardens normal campaign play — **applied unconditionally**, S72/S78
+>   family.
+> - **Verified WORKING + clean.** `BOB_DAYLOOP` cycles day after day: day 1 06:30→dusk → rollover →
+>   **day 2 rebuilds + clock advances** (50240→66840) → dusk → **rollover** (`currdate` +1) → **day 3
+>   advances**. Release run: **2 rollovers / 3 days, exit 124 (no crash)** — was SIGSEGV before. ASan soak:
+>   **2 rollovers, 0 ASan errors, no crash.** End-to-end headless multi-day continuity: the world
+>   repopulates each day (S107) AND the clock runs each day (S108-`m_currentpage`) AND the production sim no
+>   longer overflows (S108-`production` fix).
+> - The loop-driver is `BOB_DAYLOOP`-gated (default-off, no regression); the **production overflow fix is
+>   unconditional** (it was a latent crash in the game's own campaign production sim, now exercised).
+>
 > ## S107 (2026-07-05): campaign multi-day loop — the next day's world now REBUILDS on rollover (past the S104 blocker); day-2 clock-freeze is the next layer
 > Sprint 107 pushed the multi-day day-advance (`BOB_DAYLOOP`, default-off) meaningfully past S104:
 > - **The next day's world now rebuilds correctly.** On rollover (`EndOfDay` set `currdate++`,

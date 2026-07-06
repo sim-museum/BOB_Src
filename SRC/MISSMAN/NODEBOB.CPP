@@ -7133,7 +7133,14 @@ SquadNum	NodeData::WhereToReassignProduction(PlaneTypeSelect planetype,bool forc
 			if (gruppe[bestsq].ACTotal()-gruppe[bestsq].acavail+reqstr>Gruppen::MAX_AC)
 				reqstr=Gruppen::MAX_AC-(gruppe[bestsq].ACTotal()-gruppe[bestsq].acavail);
 		}
-		dosay=(bestsq!=-1) && (newsq!=production[bestsq].recipient);  /* R4.5: bestsq==-1 -> don't read production[-1] (ASan global-buffer-overflow, campaign production reassignment) */
+		/* R4.5 + S108: bestsq is a gruppe[] loop index, but it's used here to read the plane-type
+		   production[PT_BADMAX] array. The R4.5 guard caught bestsq==-1; the multi-day campaign
+		   (BOB_DAYLOOP: sim runs day after day, StartUpMapWorld rebuilds each day) exposes bestsq>=
+		   PT_BADMAX (more gruppen than plane types) -> reads past production[] into germwaderinst
+		   (ASan global-buffer-overflow, NODEBOB.CPP:7136). Bound the read to production's valid range;
+		   an out-of-range bestsq just skips the recipient-changed check (dosay stays false), which only
+		   gates a reassignment announcement -- no gameplay change for in-range indices. */
+		dosay=(bestsq>=0) && (bestsq<PT_BADMAX) && (newsq!=production[bestsq].recipient);
 	}
 	return	newsq;
 }

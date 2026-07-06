@@ -519,6 +519,12 @@ extern "C" void bob_frontend_tick(void)
 					   mid-campaign (fast-forwards by the date delta), which would wrongly re-skip a day
 					   here -- deliberately NOT called. Restore currtime in case the rebuild perturbed it. */
 					if ((long)MMC.currtime != ct0) MMC.currtime = ct0;
+					/* OnTimer only advances the sim while m_currentpage==0 (on the map). The rebuild
+					   (StartUpMapWorld/LaunchMapFirstTime path) leaves m_currentpage=1, freezing the clock
+					   while the map still paints -- restore it to the map page so day N+1's clock runs.
+					   (This was the S107 day-2-freeze blocker: the accumulator/guards were fine; the whole
+					   OnTimer body is gated on m_currentpage==0.) */
+					RDialog::m_pView->m_currentpage = 0;
 				}
 			}
 		}
