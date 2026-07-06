@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S103 (2026-07-05): campaign day-advance — the full-day SAG sim is ASan-clean; the day rolls over but the next-day world regen is gated behind the end-of-day review screen (pinpointed)
+> Sprint 103 pivoted to the campaign **day-advance loop** (epic Phase 4) — testable headlessly via
+> `BOB_MAP_TIMER`. Two concrete results:
+> - **The full-day SAG sim is ASan-clean.** A 200 s ASan soak drove the campaign clock a **full day** —
+>   06:30 → **20:22 (past dusk, `dusktime=HR20=72000`s)** with the world populated the whole time
+>   (worlditems 1111→1052), then into the next day: **0 ASan errors, no crash** over ~2000 paints. So
+>   `Profile::MoveSAGs()` + the raid/production/readiness sim (`CMapDlg::OnTimer` → `PerformMoveCycle`)
+>   are robust across an entire day — a strong hardening validation of the campaign sim path.
+> - **The day rolls over, but the next day's world is empty (gap pinpointed).** At dusk,
+>   `PerformMoveCycle` returns period 3 → `PerformNextPeriod(3)` → **`NodeData::EndOfDay()`**
+>   (`NODEBOB.CPP:7455`): it revives/checks the world, advances `currdate`, resets
+>   `currtime=MORNINGPERIODSTART` (23400 = next-day 06:30), **`Todays_Packages.WipeAll()`s the raids**
+>   (→ observed worlditems=0), and calls **`GoToEndDayReview()`** (the end-of-day review *front-end
+>   screen*). The next day's world regen — **`Node_Data.StartOfDay()`** (`MAPDLG.CPP:1525`, run when
+>   `currtime==MORNINGPERIODSTART`) — is designed to fire *after* the review screen returns (in-code note:
+>   *"Want to go to fullpane at this point. Then, on way back, do StartOfDay"*). The headless map scaffold
+>   reaches `EndOfDay` (clock/date roll + world wipe confirmed) but **doesn't drive the review→`StartOfDay`
+>   hop**, so the next day stays empty.
+> - **S104 path (bounded):** drive the end-of-day seam headlessly — either navigate the `enddayreview`
+>   front-end screen (the `EndDayReviewInit` flow) back to the map, or, for a headless campaign-loop soak,
+>   call `Node_Data.StartOfDay()` directly after `EndOfDay()` to regenerate the next day (skipping the
+>   review UI) and validate multi-day continuity. The sim itself is proven robust; this is a UI-seam wiring.
+
 > ## S102 (2026-07-05): capstone validation — the whole S83→S100 campaign-map arc regression-clean + ASan-clean; session summary
 > Sprint 102 validates the full session arc after the OOB detour, and summarises where the campaign epic
 > stands.
