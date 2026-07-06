@@ -703,6 +703,11 @@ extern "C" void bob_frontend_tick(void)
 		if (!getenv("BOB_NO_BUTTONS"))        /* S89-91: footer toolbar button rows (now default-on) */
 			bob_map_paint_toolbars(sw, sh);
 		if (getenv("BOB_PROBE_OOB")) { extern void bob_probe_oob(void); bob_probe_oob(); }  /* S99 spike */
+		if (getenv("BOB_MAP_OOB")) {   /* S113: OOB info dialog render (Bases) */
+			extern void bob_oob_open_bases(void); extern int bob_map_paint_oob(int,int);
+			static int t=0; if (++t > 3) bob_oob_open_bases();
+			bob_map_paint_oob(sw, sh);
+		}
 		bob_map_paint_end();
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;

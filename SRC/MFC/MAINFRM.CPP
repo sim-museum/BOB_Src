@@ -1377,4 +1377,39 @@ extern "C" void bob_probe_oob(void) {
 	if (!child) { child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::SQUADRONLIST); }
 	if (child) { done = 1; fprintf(stderr, "[oob] BASES/SQUADRON logged child open:\n"); bob_probe_walk(child, 0); }
 }
+
+/* S113: render an open OOB info dialog (Bases/Squadrons/…) onto the map. **The S101 "doesn't render"
+   conclusion was a mis-diagnosis** (MA note-4 lead): the S101 pixel check sampled the panel's dark
+   corner / a closed-dialog tick and read it as "map colours". The DoPaint->SetDIBitsToDevice write DOES
+   land in g_gdiFB and survive to present -- proven by an immediate-after-write pixel probe matching the
+   post-present dump (0x464680, the dialog art). So the OOB dialogs render via the same DoPaint path as
+   the config panels; the tree's own OnGetXYOffset lays the dialog off-screen headlessly, so position it
+   at a fixed base offset here. First increment: the panel background (its FIL_D_GROUPS art). */
+extern "C" void bob_gdi_setdibits_origin(int, int);
+static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
+	for (; n; n = n->fchild) {   /* descend containers to the art leaf (the selected tab page) */
+		if (n->artnum) {
+			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+			bob_gdi_setdibits_origin(ox, oy);
+			n->DoPaint(&dc);
+			bob_gdi_setdibits_origin(0, 0);
+		}
+	}
+}
+extern "C" int bob_map_paint_oob(int sw, int sh) {
+	if (!CMainFrame::toolbars[TB_MAIN]) return 0;
+	RDialog* child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::BASES);
+	if (!child) child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::SQUADRONLIST);
+	if (!child) return 0;
+	bob_oob_paint_tree(child, (sw - 340) / 2, 40);   /* fixed panel origin over the map */
+	return 1;
+}
+/* deterministically open Bases (fire OnClickedBases) once the map has settled -- removes the
+   click-coordinate/paint-throttle variable from OOB render testing (BOB_MAP_OOB). */
+extern "C" int bob_evt_fire(void*, const void*, int, int);
+extern "C" void bob_oob_open_bases(void) {
+	static int done = 0; if (done) return; done = 1;
+	CRToolBar* tb = CMainFrame::toolbars[TB_MAIN];
+	if (tb) { fprintf(stderr,"[oob] firing OnClickedBases\n"); bob_evt_fire((void*)tb, &typeid(*tb), 1827, 1); }
+}
 #endif

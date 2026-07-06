@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S113 (2026-07-05): OOB info dialog RENDERS — the S101 "doesn't render" blocker was a MIS-DIAGNOSIS (cracked by MA's note-4 lead)
+> Sprint 113 unblocks one of the two "deep remainders": **the OOB info sub-dialogs render.** Clicking a
+> map toolbar button (Bases/Squadrons) opens its logged-child dialog, and its **real artwork now draws over
+> the map** — the Bases/Groups panel shows the **Spitfire-on-airfield photo** (`FIL_D_GROUPS`) via the same
+> `DoPaint`→`SetDIBitsToDevice` path the config panels use.
+> - **S101 was wrong — a testing artifact, not a render failure.** S99–S101 concluded "the 648×302 write
+>   reaches `g_gdiFB` but the pixels stay map-coloured / doesn't survive present," and I filed it as a deep
+>   GDI-buffer mystery. **MA's note-4 reframed it as "does the write survive?"** — so I added an
+>   immediate-after-write pixel probe: `g_gdiFB` at the panel origin reads **`0x464680` (the dialog art)
+>   both right after the `DoPaint` write AND in the post-present dump — they match.** The write always
+>   survived; the panel always rendered. S101's pixel check had sampled the panel's **dark photo corner**
+>   (misread as "map colour") and/or a tick where the dialog was momentarily closed. **Lesson: sample a
+>   pixel deep inside the region, not its corner, and confirm the dialog is open on the sampled tick.**
+> - **Render (`MAINFRM.CPP`, `BOB_MAP_OOB`):** `bob_map_paint_oob` walks the logged-child tree to the art
+>   leaf and `DoPaint`s it at a fixed base offset (the tree's own `OnGetXYOffset` lays it off-screen
+>   headlessly — the positioning point from S100). `bob_oob_open_bases` fires `OnClickedBases` deterministically.
+> - **Verified:** the Bases panel renders reliably over the map (`/tmp/oob_r3.png`), no crash (release exit
+>   124). Default map (no `BOB_MAP_OOB`) unaffected. ASan confirming.
+> - **Remaining OOB work (now on solid ground — the render mechanism is proven):** faithful positioning
+>   (vs the fixed offset), render only the selected `HTabBox` tab page, and the hosted OOB **list controls**
+>   (squadron data via `bob_ole_draw_panel`) on top of the background. Credit to MA — their glReadPixels
+>   ghost hunt reframed the blocker and unstuck a 3-sprint dead end.
+>
 > ## S112 (2026-07-05): campaign SAVE/LOAD round-trips the multi-day state — the loop integrates with the serializer
 > Validation tying the new multi-day loop to the existing (S64/S65-hardened) campaign save/load: a save
 > taken **on day 2** of a running multi-day campaign and reloaded restores correctly.
