@@ -1417,6 +1417,11 @@ extern "C" int bob_evt_fire(void*, const void*, int, int);
 extern "C" void bob_oob_open_bases(void) {
 	static int done = 0; if (done) return; done = 1;
 	CRToolBar* tb = CMainFrame::toolbars[TB_MAIN];
-	if (tb) { fprintf(stderr,"[oob] firing OnClickedBases\n"); bob_evt_fire((void*)tb, &typeid(*tb), 1827, 1); }
+	if (!tb) return;
+	/* BOB_MAP_OOB=2 opens Squadrons (id 1829) instead of Bases (1827), to test the render across
+	   dialog structures deterministically (headless clicks are nondeterministic). */
+	int id = (getenv("BOB_MAP_OOB") && atoi(getenv("BOB_MAP_OOB")) == 2) ? 1829 : 1827;
+	fprintf(stderr,"[oob] firing OnClicked id=%d\n", id);
+	bob_evt_fire((void*)tb, &typeid(*tb), id, 1);
 }
 #endif

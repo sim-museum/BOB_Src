@@ -1,5 +1,21 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S117 (2026-07-05): OOB render confirmed across dialog STRUCTURES — Squadrons also renders full content (S116 "partial" caveat was a click-miss artifact)
+> Followed up the S116 caveat ("other dialog structures may render partially"). **It was wrong — an
+> artifact of nondeterministic headless clicks missing the button, not a render limitation.** Added a
+> deterministic open (`BOB_MAP_OOB=2` fires `OnClickedSquadronlist` id 1829 directly) and the **Squadrons
+> dialog renders its full content**: a squadron table — header `Squad. Type Base … Cat Ready…`, rows
+> `609 Spitfire Middle Wallop AF … Ready`, `152 Spitfire Warmwell AF …`, `254 Spitfire Exeter AF …`,
+> `92 Spitfire Pembrey AF …` — over the Squadrons background art (`FIL_D_SQUADRONLIST`=0x6853), from its
+> hosted `RListBox`. ASan-clean.
+> - **So the S116 generalisation handles multiple OOB dialog *structures*:** the Bases 4-tab `HTabBox`
+>   (`GroupGeschwader`, art 26666) **and** the Squadrons single-art-leaf (art 26707) both render their full
+>   content via the same `bob_map_paint_oob` (walk tree → `DoPaint` art leaves + `bob_ole_draw_panel`
+>   controls). The tree-shape difference doesn't matter — the `fchild`-descending walk reaches the art leaf
+>   either way. Corrects the S116 note: it's not "Bases-family only," it's general.
+> - The nondeterministic-headless-click caveat stands only for *testing* (real interactive clicks hit
+>   reliably); `BOB_MAP_OOB=1`/`=2` give deterministic Bases/Squadrons opens for headless capture.
+>
 > ## S116 (2026-07-05): OOB dialogs render on the REAL toolbar click — default-on, generalised to any open dialog
 > Sprint 116 ties the S92 toolbar clicks to the S113/S114 render into a complete feature: **clicking a map
 > toolbar button now opens AND shows its OOB dialog**, no env var.
