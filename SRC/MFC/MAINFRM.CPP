@@ -1355,3 +1355,30 @@ extern "C" int bob_map_click_toolbars(int cx, int cy)
 	return 0;
 }
 #endif
+
+#if BOB_LINUX
+/* S99 (scoping spike): probe an open OOB info dialog (Bases/Squadrons/...) -- walk the logged-child
+   RDialog tree and report each node's artwork + child structure, to de-risk headless rendering
+   (the same DoPaint + bob_ole_draw_panel path the config panels use). Env-gated BOB_PROBE_OOB. */
+extern "C" int g_mapPaintActive;
+static void bob_probe_walk(RDialog* d, int depth) {
+	for (RDialog* n = d; n; n = n->sibling) {
+		long off = n->OnGetXYOffset();
+		fprintf(stderr, "[oob] %*snode=%p artnum=%d off=(%d,%d) fchild=%p\n", depth*2, "", (void*)n,
+			(int)n->artnum, (short)(off&0xFFFF), (short)((off>>16)&0xFFFF), (void*)n->fchild);
+		if (getenv("BOB_PAINT_OOB")) {   /* attempt the real DoPaint (art -> SetDIBitsToDevice) */
+			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+			n->DoPaint(&dc);
+		}
+		if (n->fchild) bob_probe_walk(n->fchild, depth+1);
+	}
+}
+extern "C" void bob_probe_oob(void) {
+	CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
+	if (!mf || !CMainFrame::toolbars[TB_MAIN]) return;
+	static int done = 0; if (done) return;
+	RDialog* child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::BASES);
+	if (!child) { child = CMainFrame::toolbars[TB_MAIN]->LoggedChild(CMainToolbar::SQUADRONLIST); }
+	if (child) { done = 1; fprintf(stderr, "[oob] BASES/SQUADRON logged child open:\n"); bob_probe_walk(child, 0); }
+}
+#endif

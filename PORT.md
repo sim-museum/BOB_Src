@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S99 (2026-07-05): scoping spike — the OOB info sub-dialog (Bases) render is FEASIBLE via the existing DoPaint/OLE path; positioning is the remaining work
+> Sprint 99 opens the last big Phase-3 arc (the OOB info sub-dialogs the toolbar buttons open) with a
+> de-risking spike (`BOB_PROBE_OOB`/`BOB_PAINT_OOB`, default-off, in `MAINFRM.CPP`). Findings after
+> clicking **Bases** (→ `OnClickedBases` → `LogChild(BASES, BasesLuftflotte::Make())`):
+> - **The dialog tree builds + walks cleanly headlessly.** `LoggedChild(BASES)` returns a real `RDialog`
+>   tree; a `fchild`/`sibling` walk descends 3 container levels to **4 sibling tab nodes each with
+>   `artnum=26666` (`FIL_D_GROUPS`)** — the Group 10/11/12/13 OOB tabs. So `MakeTopDialog(DialList(DialBox(…),
+>   HTabBox(…, GroupGeschwader×4)))` constructs correctly on Linux.
+> - **Same render mechanism as the (working) config panels.** `RDialog::DoPaint` draws a node's `artnum`
+>   via `SetDIBitsToDevice` at `OnGetXYOffset()` — exactly the path the config screens + button faces use.
+>   `DoPaint` on the tree **runs without crashing**; offsets compute (root `(-4,-5)`).
+> - **The gap = POSITIONING.** All 4 tab nodes report offset `(0,0)`, so the layout math (`AddChildren`
+>   Edges → screen rects) isn't spreading them headlessly — likely because `GetClientRect` returns the full
+>   window / the `MakeTopDialog` placement isn't applied without a real window. So the S100 render sprint's
+>   core task is **making the dialog-tree layout compute real per-node rects** (then `DoPaint` +
+>   `bob_ole_draw_panel` per node, positioned, is the proven mechanism). Heed S95's dangling-`Edges` caveat
+>   throughout (whole tree in one full-expression).
+> - No production code this spike — a diagnostic probe (env-gated) + a scoping conclusion. **The OOB
+>   dialogs are feasible on existing infra;** the remaining work is bounded to the layout/positioning.
+
 > ## S98 (2026-07-05): consolidation — full interactive map soak-validated; map-interaction SDL-bypass pattern documented to the shared notes
 > Sprint 98 locks in the S94→S97 interaction arc.
 > - **Comprehensive soak.** 80 s ASan run exercising **all** map interactions together — pan+zoom

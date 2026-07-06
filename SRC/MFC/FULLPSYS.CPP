@@ -451,7 +451,7 @@ extern "C" void bob_frontend_tick(void)
 		  /* BOB_MAP_CLICK="x,y" (diag): inject one click at (x,y) once the map has settled, to test
 		     the button-click -> handler path deterministically (no tick-counting). */
 		  static int mc_paints = 0, mc_done = 0; const char* mcxy = getenv("BOB_MAP_CLICK");
-		  if (mcxy && !mc_done && ++mc_paints > 20) { int mx, my;
+		  if (mcxy && !mc_done && ++mc_paints > 6) { int mx, my;
 			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
 		  if (haveClick) {
@@ -679,6 +679,7 @@ extern "C" void bob_frontend_tick(void)
 		}
 		if (!getenv("BOB_NO_BUTTONS"))        /* S89-91: footer toolbar button rows (now default-on) */
 			bob_map_paint_toolbars(sw, sh);
+		if (getenv("BOB_PROBE_OOB")) { extern void bob_probe_oob(void); bob_probe_oob(); }  /* S99 spike */
 		bob_map_paint_end();
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;
