@@ -32,13 +32,23 @@ BOB_RUN_INIT=1 BOB_DRIVE_C="/home/m/sgl/TUE/BattleOfBritain/WP/drive_c" /home/m/
 Many `BOB_*` env toggles gate diagnostics/captures (frame/texture dumps, traces) — see
 `getenv("BOB_` sites and PORT.md. Frame/texture dumps land in `/tmp/*.ppm` (convert via PIL).
 
-## Status (2026-06-16)
-Playable/working paths, all behind env toggles (default `./bob` exits 0):
+## Status (2026-07-05)
+Playable/working paths, all behind env toggles (default `./bob` exits 0). **See `PORT.md` (newest
+first) for the authoritative running log — the below is a snapshot.**
 - **`BOB_BOOT_FRONTEND=1`** — boots a Quick-Mission **3D flight** on real GL: daylit sky/
   terrain/scenery/aircraft and a **cockpit matching the Windows reference**.
 - **`BOB_FRONTEND=1`** (+ **`BOB_OLE_DRAW=1`**) — the **real front-end**: navigable main menu,
-  and the **config screens are working forms** — genuine ActiveX controls hosted, positioned
-  from the real `.rc`/DLGINIT, populated, and rendered (labels + dropdown values + borders).
+  config screens as working forms, and the **CAMPAIGN strategic map** — matches the wine reference
+  (terrain + unit icons + labels + Nm ruler + footer with live event log/date-time + two toolbar rows
+  of sheet icons) and is **fully interactive**: toolbar-button handlers, pan/zoom, accel/time clock,
+  unit selection (S83–S98).
+- **Campaign MULTI-DAY LOOP works** (`BOB_DAYLOOP`, S104–S112): the campaign runs day after day
+  headlessly — each day rebuilds its world (`StartUpMapWorld`), the clock advances, the sim is
+  ASan-clean (9 days validated), and save/load round-trips the multi-day state. Fixed 3 real game-code
+  bugs en route (`m_currentpage`-gates-OnTimer, production-array overflow, `CloseLoggedChild` recursion).
+- **Deep remainders (documented in PORT.md):** the OOB info sub-dialogs (Bases/Squadrons — GDI-buffer
+  plumbing), F6 external-view z-fighting (needs interactive flight), and a faithful `EndDayReview`-screen
+  day-advance (front-end nav).
 
 Run: `BOB_RUN_INIT=1 BOB_DRIVE_C=<wine drive_c> BOB_FRONTEND=1 BOB_OLE_DRAW=1 ./build/bob`
 (or `BOB_BOOT_FRONTEND=1` for flight — needs a real GL display, not dummy SDL). Windows
