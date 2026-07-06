@@ -24,6 +24,11 @@
 >   longer overflows (S108-`production` fix).
 > - The loop-driver is `BOB_DAYLOOP`-gated (default-off, no regression); the **production overflow fix is
 >   unconditional** (it was a latent crash in the game's own campaign production sim, now exercised).
+>   Regression-checked: plain `./bob` + the default single-day map sim (no `BOB_DAYLOOP`) unaffected.
+> - **Cross-port:** the production overflow is **BoB-specific** — MA has no
+>   `WhereToReassignProduction`/`DeliverProductionRates` (MiG Alley's Korea campaign models production
+>   differently). The `m_currentpage`-gates-OnTimer insight is engine-general (both ports' `CMapDlg::OnTimer`
+>   is `m_currentpage==0`-gated) but only bites BoB's `EndDayReview`-screen day-advance path; noted for MA.
 >
 > ## S107 (2026-07-05): campaign multi-day loop — the next day's world now REBUILDS on rollover (past the S104 blocker); day-2 clock-freeze is the next layer
 > Sprint 107 pushed the multi-day day-advance (`BOB_DAYLOOP`, default-off) meaningfully past S104:
