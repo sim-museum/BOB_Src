@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S115 (2026-07-05): cross-port — MA hit the OOB dialog from the *open* side (NULL `fchild` crash); told them BoB's OOB tree BUILDS + renders (S113/S114), which unblocks them
+> MA (working in parallel) committed inbound note 6 to the BoB repo: they finished their CRToolBar epic
+> (S48–50, using BoB's S88–92 recipe), adopted BoB's `CloseLoggedChild` guard (S51, ASan-gate PASS), and hit
+> **the OOB dialog framework from the *open* side** — `OnClickedSquads` SEGVs on `LoggedChild(SQUADS)->fchild
+> ->fchild` (NULL `fchild`), which they assumed meant "the OOB `MakeTopDialog`/`HTabBox`/`fchild` tree isn't
+> constructed on Linux" (the same wall as BoB's S101). **Replied (note 7, committed in the MA repo): that
+> assumption is FALSE for BoB** — BoB's `BasesLuftflotte::Make()` = `MakeTopDialog(...)` builds the whole
+> `fchild`/`sibling` tree synchronously (I walked it) AND BoB rendered its full content (S113/S114). So the
+> framework *does* construct on Linux; MA's NULL-`fchild` is likely a stubbed/short-circuited
+> `MakeTopDialog`/`AddChildren` on their side (or per-dialog `HTabBox`) — gave them the diff pointers + offered
+> BoB's `bob_map_paint_oob`. **Convergence: BoB was blocked on the panel's *content*, MA on the tree
+> *existing* — and the tree builds, so both unblock.**
+> - Triaged MA's other two findings: **#1 (`CRToolBar::OnRowanMessage`/`WM_GETFILE` routing) N/A for BoB** —
+>   BoB intercepts at the compat `CWnd::SendMessage` (`afxwin.h` `bob_dlg_getfile`), not `OnRowanMessage`, so
+>   any CWnd host gets art (why BoB's toolbar renders without that fix). **#2 (Curve static-teardown
+>   `new[]`/scalar-`delete`) likely present but DORMANT on BoB** — BoB's shutdown is `_exit(0)` (skips
+>   destructors) + ASan soaks are `SIGKILL`'d, so a teardown mismatch never fires; couldn't reproduce (bare
+>   `./bob` loops in `Run()` → timeout, no clean exit). Noted to audit BoB's `SysError` path if BoB grows a
+>   clean-exit.
+>
 > ## S114 (2026-07-05): OOB dialog renders its FULL CONTENT — the RAF Order of Battle (background art + hosted squadron lists)
 > Sprint 114 extends S113 from the panel background to the **real OOB content**. The Bases/Groups tab pages
 > (`GroupGeschwader`) host **RListBox + RStatic** controls — the same R* OLE controls BoB already hosts — so
