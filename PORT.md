@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S114 (2026-07-05): OOB dialog renders its FULL CONTENT — the RAF Order of Battle (background art + hosted squadron lists)
+> Sprint 114 extends S113 from the panel background to the **real OOB content**. The Bases/Groups tab pages
+> (`GroupGeschwader`) host **RListBox + RStatic** controls — the same R* OLE controls BoB already hosts — so
+> adding a `bob_ole_draw_panel((CWnd*)tabPage, ox, oy)` call after the background `DoPaint` draws them.
+> - **Result** (`/tmp/oob_panel_crop.png`): the Bases panel now shows the genuine **RAF squadron Order of
+>   Battle** over the Spitfire-airfield photo — an "Airfields" label, a **Hurricanes** column (87 / 249 /
+>   605 / 607 / 73 / 504 / 79 / 302 / 5 / 252 Squadron) and a **Spitfires** column (72 / 605 / 41 / 602 /
+>   616 Squadron), all real campaign data from the hosted `RListBox`es. **20 controls host** across the 4
+>   group tab pages (verified).
+> - **The OOB info dialog is now a working feature** — background + hosted list controls with live data,
+>   rendering over the map. ASan-clean, no crash (release/ASan exit 124), default map unaffected
+>   (`BOB_MAP_OOB`-gated). This completes the core of the OOB arc (the S99–S101 "deep remainder"): from
+>   "can't render" (a mis-diagnosis) → background renders (S113) → full content renders (S114), in three
+>   sprints once MA's reframe unstuck it.
+> - **Remaining polish (ordinary now):** render only the *selected* `HTabBox` tab (currently the first
+>   group), a faithful placement/size (vs the fixed offset), and wire tab-click to switch groups. The hard
+>   part — does the dialog + its OLE controls render at all — is done.
+>
 > ## S113 (2026-07-05): OOB info dialog RENDERS — the S101 "doesn't render" blocker was a MIS-DIAGNOSIS (cracked by MA's note-4 lead)
 > Sprint 113 unblocks one of the two "deep remainders": **the OOB info sub-dialogs render.** Clicking a
 > map toolbar button (Bases/Squadrons) opens its logged-child dialog, and its **real artwork now draws over

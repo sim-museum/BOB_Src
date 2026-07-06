@@ -1386,13 +1386,15 @@ extern "C" void bob_probe_oob(void) {
    the config panels; the tree's own OnGetXYOffset lays the dialog off-screen headlessly, so position it
    at a fixed base offset here. First increment: the panel background (its FIL_D_GROUPS art). */
 extern "C" void bob_gdi_setdibits_origin(int, int);
+extern "C" int  bob_ole_draw_panel(CWnd*, int, int);
 static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
 	for (; n; n = n->fchild) {   /* descend containers to the art leaf (the selected tab page) */
 		if (n->artnum) {
 			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
 			bob_gdi_setdibits_origin(ox, oy);
-			n->DoPaint(&dc);
+			n->DoPaint(&dc);                       /* the tab-page background art */
 			bob_gdi_setdibits_origin(0, 0);
+			bob_ole_draw_panel((CWnd*)n, ox, oy);  /* S113b: its hosted OOB controls (squadron RListBox/RStatic) */
 		}
 	}
 }
