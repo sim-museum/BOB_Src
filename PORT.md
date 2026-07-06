@@ -1,5 +1,23 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S119 (2026-07-05): backlog #1 FIXED — 3D scene depth-sorting (`BOB_ZDEPTH`) is now DEFAULT; the F6 external view renders correctly (PO-approved ship)
+> Following S118 (F6 artifact reproduced + `BOB_ZDEPTH` identified as the fix) and a PO decision to **ship it
+> default with an escape hatch**, the compat's screen-space depth-sort is now **on by default** for the 3D
+> flight scene: `int zdepth = is2D && !getenv("BOB_NO_ZDEPTH")` + the matching default depth-buffer clear
+> (`bob_video.cpp`). `BOB_NO_ZDEPTH` reverts to the old painter's order.
+> - **The fix, by default (no env):** the F6 external view renders the Spitfire with **proper camouflage, RAF
+>   roundels, and rudder stripes** (`/tmp/dv_full.png`) instead of the washed-out painter's-order self-occlusion
+>   (`BOB_NO_ZDEPTH` still shows the old pale aircraft — `/tmp/nozd.png`, escape hatch verified). The cockpit
+>   view is unchanged; the horizon/terrain are clean (no z-fighting introduced).
+> - **Verified:** default flight boots + renders on real GL (GTX 1660), **ASan-clean** over a 40 s flight, no
+>   crash. Escape hatch (`BOB_NO_ZDEPTH`) reverts cleanly. The R3.2 propeller-blade regression did not
+>   reproduce across the 6 rotations captured (S118); per the PO, ship it and field-verify the propeller in
+>   live flight, reverting via `BOB_NO_ZDEPTH` if the lower blade glitches.
+> - **Backlog status:** the PO's two original backlog items — **#1 z-fighting** (cockpit fixed S81; **external
+>   F6 now fixed S119**) and **#2 full campaign** (map + multi-day loop + OOB dialogs, S83–S117) — are **both
+>   addressed.** Escape hatches (`BOB_NO_ZDEPTH`, `BOB_NO_OOB`, `BOB_NO_FBO_RTT`, …) keep every default
+>   reversible.
+>
 > ## S118 (2026-07-05): F6 external-view depth artifact REPRODUCED on real GL — `BOB_ZDEPTH` fixes it (aircraft self-occlusion); propeller regression is the one remaining sign-off
 > Backlog #1 (external **F6** view z-fighting) — reopened now that this box turns out to have a **real GPU**
 > (`DISPLAY=:0`, GTX 1660 SUPER, GL 4.6; flight renders — the earlier "needs a real display" deferral was

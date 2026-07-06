@@ -46,9 +46,14 @@ first) for the authoritative running log — the below is a snapshot.**
   headlessly — each day rebuilds its world (`StartUpMapWorld`), the clock advances, the sim is
   ASan-clean (9 days validated), and save/load round-trips the multi-day state. Fixed 3 real game-code
   bugs en route (`m_currentpage`-gates-OnTimer, production-array overflow, `CloseLoggedChild` recursion).
-- **Deep remainders (documented in PORT.md):** the OOB info sub-dialogs (Bases/Squadrons — GDI-buffer
-  plumbing), F6 external-view z-fighting (needs interactive flight), and a faithful `EndDayReview`-screen
-  day-advance (front-end nav).
+- **OOB info sub-dialogs render** (S113–S117): clicking a map toolbar button opens + shows its dialog over
+  the map — e.g. the Bases panel shows the RAF Order of Battle (squadron lists) via hosted controls; renders
+  across dialog structures, ASan-clean (`BOB_NO_OOB` reverts).
+- **F6 external-view z-fighting FIXED** (S118–S119): 3D scene depth-sorting is now default (`BOB_NO_ZDEPTH`
+  reverts) — the external Spitfire renders with proper camo/roundels instead of washed-out painter's-order
+  self-occlusion. Both PO backlog items (#1 z-fighting, #2 full campaign) are now addressed.
+- **Remaining (documented in PORT.md):** a faithful `EndDayReview`-screen day-advance (the multi-day loop
+  currently uses the `BOB_DAYLOOP` scaffold hook), and OOB polish (selected-tab, faithful placement).
 
 Run: `BOB_RUN_INIT=1 BOB_DRIVE_C=<wine drive_c> BOB_FRONTEND=1 BOB_OLE_DRAW=1 ./build/bob`
 (or `BOB_BOOT_FRONTEND=1` for flight — needs a real GL display, not dummy SDL). Windows

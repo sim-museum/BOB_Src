@@ -1351,10 +1351,11 @@ static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCO
 		m|=GL_COLOR_BUFFER_BIT;
 	}
 	if (flags & 0x2 /*D3DCLEAR_ZBUFFER*/) { glClearDepth(z); m|=GL_DEPTH_BUFFER_BIT; }
-	/* BOB_ZTEST: the game only z-clears the FBO render targets (painter's order on the back
-	   buffer), so the back-buffer depth is never cleared -> depth-test reads garbage. When a
-	   colour clear happens without a z-clear, clear depth too (to far) so the scene sorts. */
-	if ((getenv("BOB_ZTEST")||getenv("BOB_ZDEPTH")) && (flags & 0x1) && !(flags & 0x2)) { glClearDepth(1.0); m|=GL_DEPTH_BUFFER_BIT; }
+	/* Depth-sort the 3D scene (S119, DEFAULT since backlog #1 F6 fix; BOB_NO_ZDEPTH reverts to the old
+	   painter's order). The game only z-clears the FBO render targets (painter's order on the back
+	   buffer), so the back-buffer depth is never cleared -> depth-test reads garbage. When a colour
+	   clear happens without a z-clear, clear depth too (to far) so the scene sorts. */
+	if (!getenv("BOB_NO_ZDEPTH") && (flags & 0x1) && !(flags & 0x2)) { glClearDepth(1.0); m|=GL_DEPTH_BUFFER_BIT; }
 	if (m & GL_DEPTH_BUFFER_BIT) glDepthMask(GL_TRUE);   /* a masked-off write would skip the clear */
 	if (m) glClear(m);
 	return D3D_OK;
@@ -1633,8 +1634,9 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   modelview the passed z IS eye-z, so we need glOrtho(.., near=0, far=-1):
 	     z_ndc = -2/(f-n)*z - (f+n)/(f-n) = 2z-1  ->  z=0->ndc -1->win 0 ; z=1->ndc +1->win 1.
 	   (The earlier attempt used (-1,1), i.e. z_ndc=-z, which INVERTED it -- far won, the near
-	   cockpit was depth-rejected and the scene blanked.) Gated on BOB_ZDEPTH while A/B'd. */
-	int zdepth = is2D && getenv("BOB_ZDEPTH");
+	   cockpit was depth-rejected and the scene blanked.) S119: DEFAULT since the backlog #1 F6 fix
+	   (fixes the external aircraft self-occlusion washout); BOB_NO_ZDEPTH reverts to painter's order. */
+	int zdepth = is2D && !getenv("BOB_NO_ZDEPTH");
 	/* Translucent (smooth-alpha) geometry -- 4444 clouds/smoke, 32-bit alpha sprites -- must NOT
 	   write depth: depth-testing blended sprites rejects the ones behind and breaks the blend (a
 	   dark cut-out). Opaque/keyed geometry (cockpit structure, terrain) DOES write, so it sorts.
