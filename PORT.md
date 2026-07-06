@@ -1,5 +1,25 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S102 (2026-07-05): capstone validation — the whole S83→S100 campaign-map arc regression-clean + ASan-clean; session summary
+> Sprint 102 validates the full session arc after the OOB detour, and summarises where the campaign epic
+> stands.
+> - **Regression suite (release):** plain `./bob` (menu boot, no crash); RAF campaign nav → map + full
+>   chrome; LW campaign nav → map — all pass, no crash.
+> - **Capstone ASan soak (60 s):** the interactive map exercising **everything at once** — pan+zoom
+>   (2→4), unit-select, accel, and the sim advancing (`BOB_MAP_TIMER`, currtime 23400→30460, 200+ paints):
+>   **0 ASan errors**. The entire S83→S100 arc is solid.
+> - **Session state (S83→S102): the campaign strategic map is rendered like the wine reference AND fully
+>   interactive** — terrain + unit icons + labels + Nm ruler + footer (live event log, date/time, two
+>   toolbar rows of sheet icons) + toolbar-button handlers + pan/zoom + accel/time clock + unit selection.
+>   All default-on, ASan-clean, no regression to plain boot/flight. The PO's *"full campaign map — all
+>   controls and icons"* ask is **substantially met**.
+> - **Two items remain, both bounded but needing focused deep sessions (documented above):**
+>   1. **OOB info sub-dialogs** (Bases/Squadrons/MissionFolder) — S99–S101: mechanism proven, blocker
+>      characterised precisely (the 648×302 panel write reaches `g_gdiFB` but doesn't survive present; the
+>      layout base is off-screen-negative). One focused GDI-plumbing session away.
+>   2. **F6 external-view z-fighting** (original PO backlog #1, still open) — the *scene* depth-precision
+>      issue (clouds vs terrain/aircraft), distinct from the S81 cockpit fix.
+
 > ## S101 (2026-07-05): OOB dialog render — deep investigation, still blocked; characterised precisely (write reaches the framebuffer but doesn't survive to present)
 > Sprint 101 pushed the OOB render further with a deterministic harness (fire `OnClickedBases` via the
 > eventsink once the map settles — removes the click-throttle variable) + `setdibits` tracing. Cleared the
