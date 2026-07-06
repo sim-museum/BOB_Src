@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S118 (2026-07-05): F6 external-view depth artifact REPRODUCED on real GL — `BOB_ZDEPTH` fixes it (aircraft self-occlusion); propeller regression is the one remaining sign-off
+> Backlog #1 (external **F6** view z-fighting) — reopened now that this box turns out to have a **real GPU**
+> (`DISPLAY=:0`, GTX 1660 SUPER, GL 4.6; flight renders — the earlier "needs a real display" deferral was
+> against the *dummy* SDL driver). Findings:
+> - **Reproduced the external view headlessly.** Added `BOB_AUTOFLY=view<hex>` (inject a DIK once flight
+>   renders; F6=0x40 toggles cockpit↔external) + `BOB_AUTOFLY=toext` (throttle/climb then F6). F6 switches to
+>   the external chase view — the Spitfire from behind on the airfield.
+> - **The artifact: the external aircraft renders WASHED-OUT under the default painter's order** — the light
+>   underside polygons paint over the dark camo top (self-occlusion), so the Spitfire looks pale/flat.
+>   `BOB_ZDEPTH=1` (honour the game's ZWRITE, depth-sort the screen-space RHW world by screen-z) **fixes it**:
+>   proper dark camouflage, RAF roundels, and rudder stripes render correctly (`/tmp/ac_default.png` vs
+>   `/tmp/ac_zdepth.png`). The horizon/terrain stays clean (no z-fighting introduced), and the **cockpit view
+>   is unchanged** under `BOB_ZDEPTH` (`/tmp/cock_zdepth.png`). So `BOB_ZDEPTH` is the external-view fix.
+> - **Why it's not yet default — the known R3.2 blocker:** forced depth-write **culls the lower propeller
+>   blade** (R3.2, 2026-06-21). I could not cleanly A/B the propeller headlessly: the propeller spins and the
+>   clouds drift, and boot timing isn't frame-reproducible between runs (a frame-120-vs-120 diff is global,
+>   not localised to the prop), so a static two-dump comparison can't isolate a spinning blade. This is
+>   genuinely the "awaiting a pilot" case R3.2 already flagged.
+> - **Net:** the external-view depth fix is *identified and demonstrated* (`BOB_ZDEPTH`); the single gate to
+>   defaulting it is confirming the propeller renders correctly (or exempting the prop disc from depth-write).
+>   Diagnostic tooling committed (env-gated, default-off): `BOB_AUTOFLY=view<hex>` / `toext`. `BOB_ZDEPTH`
+>   stays gated pending the propeller sign-off (an interactive/pilot check, or a prop-specific depth-exempt).
+>
 > ## S117 (2026-07-05): OOB render confirmed across dialog STRUCTURES — Squadrons also renders full content (S116 "partial" caveat was a click-miss artifact)
 > Followed up the S116 caveat ("other dialog structures may render partially"). **It was wrong — an
 > artifact of nondeterministic headless clicks missing the button, not a render limitation.** Added a

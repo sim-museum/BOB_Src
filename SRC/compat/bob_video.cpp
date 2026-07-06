@@ -276,6 +276,23 @@ static void pump_events(void)
 				else if (pc>30 && (pc%3)==0) { kb_push(0xCF,1); kb_push(0xCF,0); }  /* End = nose-DOWN trim */
 			}
 		}
+		else if (mode && strcmp(mode,"toext")==0) {  /* takeoff + climb, then switch to F6 external view,
+			   so the aircraft is airborne against terrain/clouds -- to see the external-view scene
+			   z-fighting / draw-order artifact (backlog #1). */
+			static int tc=0; tc++;
+			if (tc==20) { kb_push(0x0B,1); kb_push(0x0B,0); }         /* full throttle */
+			else if (tc==40) kb_push(0x1D,1);                        /* Ctrl held: ELEVTRIM shift */
+			else if (tc>40 && tc<400 && (tc%3)==0) { kb_push(0xC7,1); kb_push(0xC7,0); } /* Home: nose-UP trim -> climb */
+			else if (tc==430) { kb_push(0x40,1); kb_push(0x40,0); fprintf(stderr,"[view] F6 (external) at tc=%d\n",tc); }
+			else if (tc==470) { kb_push(0x40,1); kb_push(0x40,0); } }
+		else if (mode && strncmp(mode,"view",4)==0) {  /* BOB_AUTOFLY=view<hex> : once flight is active,
+			   tap DIK <hex> (default F6=0x40) a few times to switch to the external view -- for repro'ing
+			   the F6 external-view scene z-fighting (backlog #1). e.g. BOB_AUTOFLY=view40. */
+			int dik = (int)strtol(mode+4, 0, 16); if (dik<=0) dik=0x40;
+			/* boot-frontend path doesn't set g_bob_flight_active; gate on pump count. Single tap
+			   (F6 toggles cockpit<->external, so tap ONCE) at cnt=150. */
+			if (cnt==150) { fprintf(stderr,"[view] tap DIK 0x%02x (cnt=%d kbAcq=%d)\n",
+				dik, cnt, g_diKbAcquired); fflush(stderr); kb_push(dik,1); kb_push(dik,0); } }
 		else if (mode && mode[0]=='s') { static int sweep=1;
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
 		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
