@@ -1,5 +1,24 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S98 (2026-07-05): consolidation — full interactive map soak-validated; map-interaction SDL-bypass pattern documented to the shared notes
+> Sprint 98 locks in the S94→S97 interaction arc.
+> - **Comprehensive soak.** 80 s ASan run exercising **all** map interactions together — pan+zoom
+>   (`m_zoom` 2→4), the accel Play click, unit-select firing, **and** the sim advancing
+>   (`BOB_MAP_TIMER=16`, currtime 23460→30460, 200+ paints): **0 ASan errors, no crash**. The full live
+>   map (pan/zoom + accel clock + toolbar handlers + unit selection) is robust under load.
+> - **Cross-port.** Added **§8c** to `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` — the **strategic-map
+>   interaction SDL-bypass** pattern (capture input in SDL, drive the map's own state from the tick, not
+>   the never-delivered MFC messages), with the three BoB specifics MA will want: the **zoom-quantization**
+>   gotcha (`0.25*2^n` below `ZOOMTHRESHOLD3` → use `m_zoom*2`/`/2`), the **paused-start + accel-driven
+>   clock**, and **unit-select via `FindMapItem`→`SetHiLightInfo`**. This is the reciprocal of MA's
+>   pan/zoom lead — the pattern now flows both ways.
+> - **Session arc (S83→S98): the campaign strategic map is rendered like the wine reference AND fully
+>   interactive** — terrain + unit icons + labels + ruler + footer (live event log, date/time, toolbar
+>   buttons) + pan/zoom + accel/time clock + toolbar-button handlers + unit selection. The PO's "full
+>   campaign map, all controls and icons" ask is substantially met. Remaining Phase-3: the OOB info
+>   sub-dialogs (the `DialBox`/`HTabBox` framework — the last big piece), then the campaign loop
+>   (day-advance/debrief/save-load, largely already hardened).
+
 > ## S97 (2026-07-05): Phase 3 — strategic-map unit SELECTION (click a unit → its route highlights), via the SDL click layer
 > Sprint 97 wires map unit selection through the SDL click layer (the never-delivered `OnLButtonDown`
 > never runs), completing the map's live interaction set alongside accel (S94) and pan/zoom (S96).

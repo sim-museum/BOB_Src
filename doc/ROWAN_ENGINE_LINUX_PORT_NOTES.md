@@ -809,6 +809,27 @@ Linux (MiG Alley's map toolbars are almost certainly the same):
   `bob_evt_fire(toolbar, &typeid(*toolbar), ctrlId, /*Clicked*/1)` → the registered `ON_EVENT`
   thunk (`OnClickedBases`/…). Handlers open logged-child sub-dialogs (`LogChild(::Make())`).
 
+## 8c. Strategic-map interaction: bypass the never-delivered window messages (BoB S94–S97, MA-originated) **[ENGINE]**
+
+The map's `WM_*SCROLL` / `WM_LBUTTON*` / arrow / wheel messages **never reach `CMIGView`/`CMapDlg`** on
+either port (no real message pump). **MA's pattern (adopted by BoB): capture input in the SDL layer and
+drive the map's own state from the map idle/tick**, not the MFC handlers. What BoB wired this way:
+- **Pan/zoom (S96).** SDL pump accumulates wheel/arrows/`+`/`-`; the map tick calls a helper that shifts
+  `m_scrollpoint` (pan) / scales `m_zoom` (zoom) then calls the game's **`Zoom()`** to re-clamp (scroll
+  bounds + zoom min/max + full-screen-min). **BoB gotcha worth copying:** below `ZOOMTHRESHOLD3` the map
+  **quantises `m_zoom` to `0.25*2^n`**, so a fractional zoom step (×1.25) snaps back — use the game's own
+  discrete step (`m_zoom*2` / `/2`, as `OnZoomIn/Out` do) about the screen centre.
+- **Accel/time clock (S94).** The map starts (should start) **paused**; if your boot scaffold leaves
+  `curracceltype` at a running value, force `ACCEL_PAUSED` at `LaunchMap`. Drive `CMapDlg::OnTimer`
+  (`bob_drive_timer`) each tick **only when not paused**; the accel OCX buttons (Play/Pause/FF) set
+  `curracceltype` via the eventsink (§8b clicks). Guard the post-mission SAG grind.
+- **Unit selection (S97).** A map click → the game's own **`CMapDlg::FindMapItem(point)`** returns the UID
+  under the cursor (does the world-coord transform + icon hit-test for you). Band-dispatch it
+  (`SagBAND` squadron / `WayPointBAND` waypoint / airfield) and call **`SetHiLightInfo(pack,sq,…)`** to
+  highlight its route — the same feedback `OnClickItem` gives, minus the OOB info sub-dialogs (the
+  `MakeTopDialog`/`DialBox`/`HTabBox` framework — defer, and heed §8's dangling-`Edges` caveat when you
+  build it: whole tree in one full-expression, never a named-local `DialBox` + inline `EDGES_`).
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),
