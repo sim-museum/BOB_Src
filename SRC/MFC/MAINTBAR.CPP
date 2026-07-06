@@ -617,6 +617,7 @@ void CMainToolbar::EndDayRouting()
 		RDialog::m_pView->LaunchFullPane(&RFullPanelDial::endwarreview,SaveData::UIR_FRAG);	//AMM 27Nov98
 	else
 	{
+		if (getenv("BOB_TRACE_DAYEND")) fprintf(stderr,"[dayend] EndDayRouting -> LaunchFullPane(enddayreview) currpage=%d\n", (int)RDialog::m_pView->m_currentpage);
 		RDialog::m_pView->LaunchFullPane(&RFullPanelDial::enddayreview,SaveData::UIR_FRAG);	//AMM 27Nov98
 	}
 }

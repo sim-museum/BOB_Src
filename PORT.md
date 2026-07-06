@@ -1,5 +1,26 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S120 (2026-07-05): FAITHFUL day-advance (`BOB_DAYADV`) — drives the game's own `ReturnToMapAfterReview`, replacing the `BOB_DAYLOOP` scaffold hack
+> The remaining documented campaign item: replace the `BOB_DAYLOOP` scaffold hook (which detected the
+> rollover by a currtime heuristic + did a manual `StartUpMapWorld`/`m_currentpage=0`) with the **real game
+> flow**. Traced the natural dusk path precisely (`BOB_TRACE_DAYEND` + an `m_currentpage`/`curracceltype`
+> map-drive trace):
+> - **Day 1 runs naturally** (`m_currentpage=0`, clock advances 23400→dusk ~73220). At dusk `EndOfDay` →
+>   `GoToEndDayRouting` → **`LaunchFullPane(enddayreview)`** fires (confirmed via trace) and sets
+>   `m_currentpage=1` (the day-review FullScreen). The scaffold keeps painting the now-frozen map, so day 2
+>   never starts — *that* was the gap `BOB_DAYLOOP` papered over.
+> - **The faithful continue:** the enddayreview FullScreen's CONTINUE button is
+>   `&RFullPanelDial::ReturnToMapAfterReview` (FPLAYOUT.CPP:1146), whose body is exactly
+>   `Persons4::StartUpMapWorld(); LaunchMap(fs,false)` (rebuild + return to map → `m_currentpage=0`). It does
+>   **not** call `BuildTargetTable`/`StartOfDay` — so `BOB_DAYLOOP`'s extra calls were unnecessary.
+> - **`BOB_DAYADV` (new, S120):** when the map was running and `m_currentpage` flips 0→1 (the enddayreview
+>   launch), the scaffold drives `g_bobActiveFP->ReturnToMapAfterReview(fs)` — the game's own review→map
+>   return. **Verified:** the campaign cycles day after day off the *actual dusk event* — 5 day-advances in
+>   one run (currdate 1247270400→1247616000), world repopulated each day (worlditems ~1080–1136), clock
+>   cycling. `BOB_DAYADV` takes precedence over `BOB_DAYLOOP` (kept as the fallback/A-B).
+> - This is the faithful multi-day loop: real trigger (the enddayreview launch), real rebuild path (the
+>   game's `ReturnToMapAfterReview`), no scaffold heuristic. [exit-code / ASan validation appended.]
+>
 > ## S119 (2026-07-05): backlog #1 FIXED — 3D scene depth-sorting (`BOB_ZDEPTH`) is now DEFAULT; the F6 external view renders correctly (PO-approved ship)
 > Following S118 (F6 artifact reproduced + `BOB_ZDEPTH` identified as the fix) and a PO decision to **ship it
 > default with an escape hatch**, the compat's screen-space depth-sort is now **on by default** for the 3D

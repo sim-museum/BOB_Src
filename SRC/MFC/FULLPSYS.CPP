@@ -492,6 +492,9 @@ extern "C" void bob_frontend_tick(void)
 			/* fast-forward factor: BOB_MAP_TIMER=N drives the campaign clock N times per paint so the
 			   day reaches raid-launch times quickly headlessly. */
 			int ff = atoi(getenv("BOB_MAP_TIMER")); if (ff < 1) ff = 1; if (ff > 64) ff = 64;
+			if (getenv("BOB_TRACE_DAYEND")) { static int tp=0; if ((tp++%200)==0)
+				fprintf(stderr,"[mapdrive] m_currentpage=%d curracceltype=%d currtime=%d\n",
+					(int)RDialog::m_pView->m_currentpage, (int)MMC.curracceltype, (int)MMC.currtime); }
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
 		}
 		/* S94: live accel controls -- when the player has clicked Play/Fastforward (so the campaign
@@ -516,7 +519,7 @@ extern "C" void bob_frontend_tick(void)
 		   leaves m_currentpage=1 which freezes OnTimer's whole sim-advance -> restore it (S108); the
 		   production-overflow + directive-recursion fixes (S108/S109) are unconditional in their sources.
 		   Validated: 9 days cycle ASan-clean. Fires once per date. */
-		if (getenv("BOB_DAYLOOP")) {
+		if (getenv("BOB_DAYLOOP") && !getenv("BOB_DAYADV")) {
 			static long lastDay = -1;
 			if (MMC.currtime <= MORNINGPERIODSTART + 40 && (long)MMC.currdate != lastDay) {
 				lastDay = (long)MMC.currdate;
@@ -528,6 +531,22 @@ extern "C" void bob_frontend_tick(void)
 				if ((long)MMC.currtime != ct0) MMC.currtime = ct0;   /* restore morning currtime */
 				RDialog::m_pView->m_currentpage = 0;  /* un-freeze OnTimer (S108) */
 			}
+		}
+		/* S120 (BOB_DAYADV): the FAITHFUL day-advance. At dusk, EndOfDay -> GoToEndDayRouting ->
+		   LaunchFullPane(enddayreview) sets m_currentpage=1 (the day-review FullScreen). The scaffold
+		   doesn't navigate that screen, so instead of BOB_DAYLOOP's manual rebuild, drive the game's OWN
+		   review->map return -- RFullPanelDial::ReturnToMapAfterReview (StartUpMapWorld + LaunchMap, which
+		   sets m_currentpage=0). This uses the exact path the CONTINUE button would, not a scaffold hack.
+		   Trigger: the map was running (m_currentpage flipped 0->1 by the enddayreview launch). */
+		if (getenv("BOB_DAYADV") && g_bob_map_active && g_bobActiveFP) {
+			static int wasPage = 0;
+			int pg = (int)RDialog::m_pView->m_currentpage;
+			if (pg == 1 && wasPage == 0) {   /* enddayreview just launched */
+				fprintf(stderr,"[dayadv] enddayreview launched (currdate=%ld) -> ReturnToMapAfterReview\n", (long)MMC.currdate);
+				FullScreen* fs = NULL;
+				g_bobActiveFP->ReturnToMapAfterReview(fs);   /* the game's faithful review->map return */
+			}
+			wasPage = (int)RDialog::m_pView->m_currentpage;
 		}
 		/* R4.4 (BOB_CAMPAIGN_SAVE, default-off): produce a campaign save from the running map.
 		   CFiling::SaveGame serialises Miss_Man (the campaign state) -- the same call the autosave
