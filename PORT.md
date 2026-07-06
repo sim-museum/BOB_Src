@@ -19,10 +19,12 @@
 >   `StartUpMapWorld` rebuild is the right approach. Also confirmed the day-3 crash was **independent of
 >   world content** (StartOfDay-only, empty world, crashed at the same directive event) — i.e. a UI bug,
 >   not a SAG/world bug.
-> - **Verified:** the loop now cycles **past day 3** — release run, 2 rollovers, currtime advancing through
->   day 3 (past the old 44180 crash), **exit 124 (no crash)**. Regression-clean: plain boot, single-day
->   campaign sim (directives fire normally, no crash), toolbar-button opens/closes (exercise
->   `CloseLoggedChild`) — all clean. ASan multi-day soak validating (result appended).
+> - **Verified — the multi-day loop is now ROBUST.** ASan multi-day soak: **8 rollovers (9 days cycled),
+>   exit 124 (no crash), 0 ASan errors** — well past the old day-3 (44180) crash. Regression-clean: plain
+>   boot, single-day campaign sim (directives fire normally, no crash), toolbar-button opens/closes
+>   (exercise `CloseLoggedChild`) — all clean. **The campaign now runs day after day headlessly** (9 days
+>   validated): each day rebuilds its world (S107), the clock advances (S108 `m_currentpage`), the
+>   production sim doesn't overflow (S108 `production` bound), and the directive UI doesn't recurse (S109).
 >
 > ## S108 (2026-07-05): campaign MULTI-DAY LOOP WORKS end-to-end + ASan-clean — cracked the day-2 freeze (`m_currentpage`) AND fixed the post-rebuild production-array overflow (a real game-code bug)
 > Sprint 108 turned the multi-day loop into a **working, ASan-clean cycle** — two distinct fixes:
