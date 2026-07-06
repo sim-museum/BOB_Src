@@ -17,7 +17,7 @@
 >   leaf and `DoPaint`s it at a fixed base offset (the tree's own `OnGetXYOffset` lays it off-screen
 >   headlessly — the positioning point from S100). `bob_oob_open_bases` fires `OnClickedBases` deterministically.
 > - **Verified:** the Bases panel renders reliably over the map (`/tmp/oob_r3.png`), no crash (release exit
->   124). Default map (no `BOB_MAP_OOB`) unaffected. ASan confirming.
+>   124), **ASan-clean**. Default map (no `BOB_MAP_OOB`) unaffected.
 > - **Remaining OOB work (now on solid ground — the render mechanism is proven):** faithful positioning
 >   (vs the fixed offset), render only the selected `HTabBox` tab page, and the hosted OOB **list controls**
 >   (squadron data via `bob_ole_draw_panel`) on top of the background. Credit to MA — their glReadPixels
