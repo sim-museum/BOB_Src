@@ -2288,6 +2288,14 @@ static HRESULT DI_EnumDevices(IDirectInputA*, DWORD devtype, LPDIENUMDEVICESCALL
 }
 static ULONG   DI_addref(IDirectInputA*) { return 1; }
 static ULONG   DI_release(IDirectInputA*) { return 0; }
+/* Analogue::LoadGame (ANALOGUE.CPP:688) calls GetDeviceStatus on every configured device with
+   devid.Data1>2 (i.e. a real stick, not the keyboard/mouse) to warn if it got unplugged. The
+   slot was never assigned in g_diVtbl below, so the static vtable held NULL and the call jumped
+   to 0x0 -- a SIGSEGV in InitPreferences, but ONLY on runs where the prefs file actually parsed
+   (when it's rejected as out-of-date, LoadGame never runs). Report every device as attached:
+   the SDL joystick backend enumerates what's really there, and DI_NOTATTACHED would instead pop
+   the "reconnect your joystick" MessageBox. */
+static HRESULT DI_GetDeviceStatus(IDirectInputA*, REFGUID) { return DI_OK; }
 
 static IDirectInputA g_theDI;
 
@@ -2305,6 +2313,7 @@ static void init_dinput_once(void) {
 
 	g_diVtbl.AddRef=DI_addref; g_diVtbl.Release=DI_release;
 	g_diVtbl.CreateDevice=DI_CreateDevice; g_diVtbl.EnumDevices=DI_EnumDevices;
+	g_diVtbl.GetDeviceStatus=DI_GetDeviceStatus;
 	g_theDI.lpVtbl=&g_diVtbl;
 }
 
