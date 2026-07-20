@@ -191,7 +191,7 @@ The DoD increment shipped (bare `./bob` boots + plays, no env vars) and a human 
 ### Icebox (environment-blocked — not schedulable until the environment changes)
 | ID | Story | Why parked |
 |---|---|---|
-| ICE.1 | **MIDI music** (`midiOut*` → soft-synth) | No 32-bit fluidsynth / system soft-synth + proprietary `.DIR` music archive. Needs a 32-bit ALSA-seq synth installed first; sound effects + engine already work. |
+| ICE.1 | **Music assets** (`MUSIC/*.xmi` absent from the install) | **RE-SCOPED 2026-07-19 — the code path is DONE, the *assets* are missing.** Both original premises were false (see `doc/CROSS-PORT-FROM-REVIEW-2026-07-19.md`): (a) 32-bit FluidSynth **is** installed (`libfluidsynth3:i386` 2.4.8, plus `libfluidsynth-dev:i386`) and needs no ALSA-seq/system soft-synth — it renders in-process; (b) `.DIR` is **not** a proprietary archive but a 640-byte plain filename index (BoB's `MUSIC/DIR.DIR` is byte-identical to MiG Alley's, md5 `d27ecb89639958b6b3576a5646856924`) that `SRC/FILES/FILEMAN.CPP`'s `namenumberedfile`/`opennumberedfile` layer already reads. Also note BoB's music is **DirectMusic**, not `midiOut*` (`SRC/HARDWARE/MUSIC.CPP`; `midiOut*` only appears in the dead Miles/SoundFont code). The synth path is now implemented and proven (`SRC/compat/bob_music.cpp`, S121). **What remains is an asset condition:** `MUSIC/`, `MUSICMED/` and `MUSICLOW/` each contain only `DIR.DIR` — 0 `.xmi` on disk (likely CD-resident, as with MiG Alley). The engine degrades silently, as designed. Re-open as a normal story once the `.xmi` payload is located. |
 
 ---
 

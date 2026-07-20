@@ -6,11 +6,18 @@
  * For now this provides the ELF entry so a `bob` binary links and starts. */
 #ifdef FF_LINUX
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE   /* expose REG_* register indices in <ucontext.h> */
+#endif
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>    /* getenv/setenv */
-#include <cstring>    /* strstr */
+#include <cstring>    /* strstr, memset */
 #include <unistd.h>   /* _exit, getcwd */
+#include <execinfo.h> /* backtrace, backtrace_symbols_fd */
+#include <signal.h>
+#include <ucontext.h>
+#include <sys/syscall.h>
 
 /* Static-init-order fix: some game globals (e.g. the Lib3D object created via
    Inst3d::commonkeymaps' TU init) construct a std:: stream in their ctor, which
@@ -27,9 +34,64 @@ extern "C" int bob_run(void);
 extern "C" int bob_video_smoketest(void);
 extern "C" int bob_render_smoketest(void);
 extern "C" int bob_input_smoketest(void);
+extern "C" void bob_music_selftest(const char* path);   /* bob_music.cpp (DirectMusic->FluidSynth) */
+
+/* --- crash handler (adopted from the sister MiG Alley port, 2026-07-19) -------------
+   Same engine, same arch (i386), same compat lineage, so the register extraction from
+   the ucontext transfers directly. Prints signal/tid/fault_addr, the full i386 register
+   file, then a backtrace, then re-raises with SIG_DFL so the process still dies (and
+   still drops a core) exactly as it would have.
+
+   Why the registers matter here: most of this port's crash archaeology is vtable-slot
+   and rasterizer-OOB work — comparing fault_addr against edi (span-filler destination
+   write) vs esi+ebx (texture read) localises it immediately, and eip=0 pins a called
+   NULL/garbage function pointer.
+
+   BOB_NO_CRASH_BT disables installation entirely (escape hatch: gdb/ASan/valgrind runs,
+   or anything that wants the pristine default disposition). */
+static void bob_crash_handler(int sig, siginfo_t* si, void* ucv)
+{
+	void* bt[48]; int n = backtrace(bt, 48);
+	fprintf(stderr, "\n=== CRASH: signal %d (tid %ld) fault_addr=%p ===\n",
+		sig, (long)syscall(SYS_gettid), si ? si->si_addr : (void*)0);
+#if defined(__i386__)
+	if (ucv) {
+		greg_t* r = ((ucontext_t*)ucv)->uc_mcontext.gregs;
+		fprintf(stderr, "  eip=%08x eax=%08x ebx=%08x ecx=%08x edx=%08x esi=%08x edi=%08x ebp=%08x esp=%08x\n",
+			(unsigned)r[REG_EIP],(unsigned)r[REG_EAX],(unsigned)r[REG_EBX],(unsigned)r[REG_ECX],
+			(unsigned)r[REG_EDX],(unsigned)r[REG_ESI],(unsigned)r[REG_EDI],(unsigned)r[REG_EBP],(unsigned)r[REG_ESP]);
+	}
+#endif
+	backtrace_symbols_fd(bt, n, 2);
+	signal(sig, SIG_DFL); raise(sig);
+}
+
+static void bob_install_crash_handler(int sig)
+{
+	struct sigaction sa; memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = bob_crash_handler;
+	sa.sa_flags = SA_SIGINFO | SA_RESTART;
+	sigemptyset(&sa.sa_mask);
+	sigaction(sig, &sa, 0);
+}
+
+static void bob_install_crash_handlers(void)
+{
+	if (getenv("BOB_NO_CRASH_BT")) return;
+	/* Prime backtrace() before any signal can arrive (refinement adopted from the
+	   FreeFalcon port): its FIRST call lazily dlopen()s the unwinder, which allocates.
+	   If that first call happens inside the handler while the crashing thread already
+	   holds the malloc lock, the handler deadlocks after printing the CRASH header and
+	   emits no frames at all. Calling it once here makes the in-handler call reentrant. */
+	{ void* prime[4]; (void)backtrace(prime, 4); }
+	bob_install_crash_handler(SIGSEGV);
+	bob_install_crash_handler(SIGABRT);
+	bob_install_crash_handler(SIGBUS);
+}
 
 int main(int argc, char** argv)
 {
+	bob_install_crash_handlers();
 	(void)argc; (void)argv;
 	fprintf(stderr,
 		"Rowan's Battle of Britain - Linux native port\n"
@@ -40,6 +102,13 @@ int main(int argc, char** argv)
 	   currently stops at the first main-window use -- no CMainFrame is created yet
 	   (the doc/view framework + window backend is the next subsystem). Opt in with
 	   BOB_RUN_INIT=1 to drive it; the default run stays clean. */
+	/* Music path self-test (diagnostic, default-off): drive the game's own DirectMusic
+	   call sequence over the FluidSynth backend with a music file read from disk.
+	   BOB_MUSIC_SELFTEST=<file.xmi|.mid>. */
+	if (const char* mst = getenv("BOB_MUSIC_SELFTEST")) {
+		bob_music_selftest(mst);
+		_exit(0);
+	}
 	if (getenv("BOB_VID_SMOKETEST")) {
 		fprintf(stderr, "  Video smoke test (SDL2 window + GL present)...\n");
 		bob_video_smoketest();

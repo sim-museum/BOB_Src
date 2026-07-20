@@ -205,6 +205,12 @@ BOBGUID(IID_IDirectMusicObject);
 BOBGUID(IID_IDirectMusicSegment);
 BOBGUID(GUID_StandardMIDIFile);
 BOBGUID(GUID_PerfMasterVolume);
+/* DirectPlay creation GUIDs: referenced by DPlay::CreateDPlayInterface's CoCreateInstance.
+   They only became link-visible once CoCreateInstance stopped ignoring its arguments (it
+   now routes to bob_com_create_instance for the DirectMusic music path); DirectPlay itself
+   is still unimplemented, so the call keeps returning E_NOINTERFACE. Real values. */
+extern const GUID CLSID_DirectPlay;  extern const GUID CLSID_DirectPlay  = {0xd1eb6d20,0x8923,0x11d0,{0x9d,0x97,0x00,0xa0,0xc9,0x0a,0x43,0xcb}};
+extern const GUID IID_IDirectPlay4A; extern const GUID IID_IDirectPlay4A = {0x9d460580,0xa822,0x11cf,{0x96,0x0c,0x00,0x80,0xc7,0x53,0x4e,0x82}};
 BOBGUID(DPSPGUID_IPX);
 BOBGUID(DPSPGUID_TCPIP);
 BOBGUID(DPSPGUID_SERIAL);

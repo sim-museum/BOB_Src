@@ -16,9 +16,12 @@ TAG="${1:-shot}"
 LANDFIX="${2:-0}"
 FRAME="${3:-120}"
 
-GAME_DIR="/home/m/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain"
-DRIVE_C="/home/m/sgl/TUE/BattleOfBritain/WP/drive_c"
-BOB="/home/m/bob/build/bob"
+# Paths derive from this script's location / $HOME so the repo works from any
+# checkout; override with BOB_DRIVE_C / BOB_BIN.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DRIVE_C="${BOB_DRIVE_C:-$HOME/sgl/TUE/BattleOfBritain/WP/drive_c}"
+GAME_DIR="$DRIVE_C/Program Files/Rowan Software/Battle Of Britain"
+BOB="${BOB_BIN:-$SCRIPT_DIR/../build/bob}"
 OUT=/tmp/bobval
 mkdir -p "$OUT"
 

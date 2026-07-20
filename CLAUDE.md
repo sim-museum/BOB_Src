@@ -25,8 +25,8 @@ You are porting a Windows codebase to Linux. Work autonomously until the task is
 ```
 cd build && ninja bob
 # run against a real game-data install:
-cd "/home/m/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain"
-BOB_RUN_INIT=1 BOB_DRIVE_C="/home/m/sgl/TUE/BattleOfBritain/WP/drive_c" /home/m/bob/build/bob
+cd "/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain"
+BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" /home/admin/bob/build/bob
 ```
 `BOB_BOOT_FRONTEND=1` boots straight into a flying Quick-Mission cockpit (3D bring-up).
 Many `BOB_*` env toggles gate diagnostics/captures (frame/texture dumps, traces) — see

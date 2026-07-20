@@ -762,6 +762,58 @@ This engine's rendering is **subtle**, and impressions lie. The BoB log has mult
 
 ---
 
+## 7b. Bug-class taxonomy — check every new symptom against this list **[PROCESS]**
+
+_(Imported 2026-07-19 from the **FreeFalcon 6** Linux port at `~/free-falcon`
+(`docs/COMPLETION_PLAN.md`), which is an unrelated codebase — Falcon 4 lineage, 64-bit, no MFC,
+its own UI toolkit — but hit the same Windows→Linux classes we do. It maintains a fixed, numbered
+list that every new symptom is triaged against before anyone starts guessing, and it runs a whole
+sprint sweeping each class to exhaustion. That habit is the transferable part; the per-class notes
+below are marked for how much each one actually bites a 32-bit Rowan port.)_
+
+1. **32-bit `long`/`ulong` in Windows binary file formats** → use `int32_t`/`uint32_t`.
+   *Bites us less* — we build `-m32`, so `long` is already 4 bytes. Still relevant if either port
+   ever goes 64-bit, and the underlying discipline (fixed-width types at every file boundary)
+   is right regardless. FreeFalcon found it on the **write/Encode** side long after the read side
+   was fixed — audit both directions.
+2. **64-bit pointer truncation via `(int)`/`(DWORD)`/`(GLint)` casts** → use `intptr_t`/`uintptr_t`.
+   *Does not bite us at `-m32`* (this is the mirror image of our own #1 recurring bug, the
+   pack-struct ABI boundary in §2). Listed so nobody re-derives it if a 64-bit build is ever attempted.
+3. **`sizeof(DDSURFACEDESC2)` read from a 124-byte on-disk DDS header.** *Applies directly* to any
+   DDS loading. FreeFalcon fixed this in three separate files months apart — grep for
+   `sizeof(DDSURFACEDESC2)` used as a **file read length** and fix them all at once.
+4. **MSVC `RAND_MAX`==32767 assumed against glibc `rand()`.** *Applies directly, and is nasty
+   because it degrades silently rather than crashing.* In FreeFalcon this made radar detect ~0.03%
+   of beam crossings and flak ~65,000× too weak — it read as "the AI is broken", not as a port bug.
+   Grep for literal `32767`/`16000` in probability or scaling expressions.
+5. **CRLF left on the last token after text-mode `fgets`.** *Applies directly* — Windows strips
+   `\r`, Linux keeps it, so every trailing token silently fails to match a name table. FreeFalcon's
+   instance made **all** particle effects invisible.
+6. **Silently default-returning compat stubs.** *Applies directly and is the highest-value entry
+   for us.* A stub that returns 0/TRUE instead of failing loudly degrades behaviour invisibly:
+   FreeFalcon's `GetPrivateProfileInt` stub zeroed every `.ini` tuning value in the game, which
+   caused a campaign aggregation-flap storm (48,843 messages/35s → 37 after the fix). **We have
+   live instances of exactly this shape:** both ports' registry functions are failure stubs and
+   `WritePrivateProfileString` is a no-op returning TRUE (§below and the compat headers). Those are
+   deliberate — but they should be *audited and listed*, not merely assumed harmless.
+7. **Signal-less infinite waits / lock-order inversions.** *Applies directly.* Any
+   `WaitForSingleObject(INFINITE)` whose signaller only runs in a mode you are not currently in
+   will hang; FreeFalcon hit this twice (campaign thread parked forever in UI mode; an AB-BA
+   deadlock at shutdown). Related discipline worth stealing: they keep `[CLEANUP]` markers
+   **always on in release**, so the last line printed localises any shutdown hang.
+8. **OpenGL state-at-call-time vs D3D state-at-draw-time.** *Applies directly and repeatedly* —
+   this is the same family as our own clear-mask and clear-region findings. `glClear` honours
+   `glDepthMask`/`glStencilMask`/scissor where D3D's `Clear` does not, and D3D `Clear(0,NULL,…)`
+   clears only the **current viewport** while `glClear` takes the whole framebuffer. Also in this
+   class: `glLightfv(GL_POSITION)` bakes the modelview current *at call time*, and DXT1 must be
+   uploaded as the RGBA variant to keep punch-through alpha.
+
+**The practice, not just the list:** when a symptom appears, walk these eight before forming a new
+theory. When one is confirmed, sweep every other site of that class in the tree in the same pass —
+all three ports have repeatedly found that a class fixed in one file is still live in two others.
+
+---
+
 ## 8. Rough completion map (where the effort is) **[ENGINE]**
 
 The order BoB found least-painful, de-risking early:
@@ -787,6 +839,9 @@ is the *easy* half; the game-shaped subsystems are the long tail.
 
 ## 8b. R* ActiveX toolbar buttons + sprite-sheet icons (BoB S88–S92) **[ENGINE]**
 
+_(Added by the BoB session 2026-07-05. MA already hosts RButton (`ma_olebutton.cpp`); the new
+part is the button-**art** resolution.)_
+
 The strategic-map toolbars are docking `CRToolBar` (CDialog) bars that host **`CRButtonCtrl`**
 ActiveX buttons — the same R* OCX family as RListBox/RCombo/RStatic. To render + click them on
 Linux (MiG Alley's map toolbars are almost certainly the same):
@@ -802,9 +857,13 @@ Linux (MiG Alley's map toolbars are almost certainly the same):
   page/entry enum (`ICON_PAGE_1=0x10000 + iconnum.g index`) and draw via the *map-icon* path
   (`OnDraw` transparent branch → `WM_GETFILE` returns an `IconDescUI` → `MaskIcon`). Set the
   button's `NormalFileNum` to the ICON_PAGE value, not the (often renamed/absent) per-file art.
-- **The `.rc` DLGINIT often defaults many buttons to one shared art string**; the shipped game
-  differentiates each at runtime. If that runtime assignment is missing in your source drop,
-  reconstruct a control-id→icon map (1:1 by function, matching `iconnum.g`).
+- **The `.rc` DLGINIT often defaults many buttons to one shared art string** (BoB: all →
+  `FIL_ICON_BASES`); the shipped game differentiates each at runtime. If that runtime assignment
+  is missing in your source drop, reconstruct a control-id→icon map (1:1 by function, matching
+  `iconnum.g`). — **NB (BoB-drop-specific):** BoB's `F_GRAFIX.G` had `FIL_ICON_* → FIL_xICON_*`
+  renamed with the art at those FileNums absent (`.rc` and `F_GRAFIX.G` came from different
+  builds). Check your own `F_GRAFIX.G` against your `.rc` before trusting the per-file FileNum;
+  the ICON_PAGE/sheet route sidesteps the problem entirely.
 - **Clicks** fire via the S33 eventsink: hit-test the button's drawn rect, then
   `bob_evt_fire(toolbar, &typeid(*toolbar), ctrlId, /*Clicked*/1)` → the registered `ON_EVENT`
   thunk (`OnClickedBases`/…). Handlers open logged-child sub-dialogs (`LogChild(::Make())`).
@@ -827,8 +886,40 @@ drive the map's own state from the map idle/tick**, not the MFC handlers. What B
   under the cursor (does the world-coord transform + icon hit-test for you). Band-dispatch it
   (`SagBAND` squadron / `WayPointBAND` waypoint / airfield) and call **`SetHiLightInfo(pack,sq,…)`** to
   highlight its route — the same feedback `OnClickItem` gives, minus the OOB info sub-dialogs (the
-  `MakeTopDialog`/`DialBox`/`HTabBox` framework — defer, and heed §8's dangling-`Edges` caveat when you
+  `MakeTopDialog`/`DialBox`/`HTabBox` framework — defer, and heed §8d's dangling-`Edges` caveat when you
   build it: whole tree in one full-expression, never a named-local `DialBox` + inline `EDGES_`).
+
+---
+
+## 8d. `DialBox` stores `&edges` → dangling `Edges` on named-local DialBoxes (MA S41) **[ENGINE]**
+
+_(Added by the MA session 2026-07-05. Shared **dialog-framework** bug — both ports use `RDIALOG.H`
+`DialBox`/`Edges` + the `EDGES_*` macros.)_
+
+`RDIALOG.H`: `DialBox::edges` is a `const Edges*`, and the ctor does `edges = &e` (stores the address of a
+caller-supplied `Edges`). The `EDGES_*` macros (`EDGES_NOSCROLLBARS_NODRAGGING`, …) expand to an
+`Edges(...)` **temporary**. So:
+- **Named-local DialBox** — e.g. `DialBox topbit(FIL_NULL, …, EDGES_NOSCROLLBARS_NODRAGGING);` on its own
+  statement — the macro temporary dies at the **end of that declaration statement**, leaving `topbit.edges`
+  dangling. When the panel builder later reads `*diallist[i]->edges` (`AddChildren`, `RDIALOG.CPP:537`) it's
+  a **stack-use-after-scope** (ASan; UB but usually intact bytes on Windows). MA hit this in `FragInit`.
+- **DialBox temporaries inside a single full-expression** (`LaunchDial(0, DialList(DialBox(…EDGES…), …))`)
+  are **fine** — all temporaries live to the end of that full-expression, which spans the `AddChildren` call.
+
+**Fix (MA):** give the `Edges` function-scope lifetime — a named `const Edges` local declared before the
+DialBox (localised; no change to `RDIALOG.H`). A general fix would be to store `Edges` **by value** in
+`DialBox`, or make the `EDGES_*` macros program-lifetime `static const` objects. **Where to look:** any
+`MakeTopDialog`/panel builder with a *named-local* `DialBox` built from an inline `EDGES_` macro.
+
+**Safe idiom (BoB, forward-looking for the OOB/dossier dialogs):** build the whole dialog tree in **one
+full-expression** — `MakeTopDialog(DialList(DialBox(…EDGES_…), …))` — so every `Edges` temporary lives for
+that entire statement. The moment you hoist any `DialBox` to a **named local** with an inline `EDGES_`, its
+`Edges` dies at the semicolon. (BoB has zero live sites today — every `EDGES_*` use is a temporary in a
+full-expression or an `AddPanel(dial,…,const Edges& e)` param whose temp spans the call — but the
+`Bases`/`Squadrons`/`MissionFolder` OOB dialogs use `MakeTopDialog`/`DialBox`/`HTabBox`, so this idiom is
+the rule to build them by.)
+
+---
 
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 

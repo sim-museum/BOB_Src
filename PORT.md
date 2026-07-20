@@ -1,5 +1,124 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S122 (2026-07-19): cross-port — inbound notes 11 & 12; shared lessons doc merged (drift resolved) + new §7b taxonomy
+>
+> **Two inbound notes filed.**
+> - **Note 11**, `doc/CROSS-PORT-FROM-REVIEW-2026-07-19.md` — from a third-party review that profiled
+>   all three Linux ports side by side. It is what drove S121: it demolished both stated premises of
+>   `ICE.1` with filesystem evidence (32-bit FluidSynth installed; `.DIR` is a plain filename index,
+>   our `MUSIC/DIR.DIR` byte-identical to MA's) and identified the real gap as a **missing `.xmi`
+>   payload**. It got one thing wrong, corrected in S121: our music is **DirectMusic**, not `midiOut*`.
+> - **Note 12**, `doc/CROSS-PORT-FROM-FF-2026-07-19.md` — the **FreeFalcon 6** port (`~/free-falcon`)
+>   joining the exchange. Not a Rowan port (Falcon 4 lineage, 64-bit, no MFC/OCX), so it is a
+>   **class-level-only** correspondent: nothing `[ENGINE]`-tagged transfers either way, and it is
+>   deliberately *not* on the shared lessons doc. It contributed the taxonomy below and its packaging
+>   scripts (the model for our new `packaging/`); it took our frame-capture methodology, which
+>   promptly showed its months-old "cannot capture 3D frames" impediment was **stale**.
+>
+> **Shared lessons doc: drift resolved by MERGE, not overwrite.** `tools/check_notes_sync.sh` had been
+> warning that `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` (849 lines) and `~/ma/port/BOB_PORT_LESSONS.md`
+> (862) had diverged. This was **not** a stale copy: on 2026-07-05 both sides independently added a
+> *different* **§8c** — ours "Strategic-map interaction: bypass the never-delivered window messages",
+> MA's "`DialBox` stores `&edges` → dangling `Edges`". The guard's own resync hint (`cp` the newer over
+> the older) would have silently destroyed one of them. Resolved as a union: §8b merged (our dispid /
+> `LogChild` detail + MA's `F_GRAFIX.G`-vs-`.rc` NB), §8c kept, **MA's section restored as §8d**, and
+> our §8c's cross-reference to "§8's dangling-`Edges` caveat" — which never existed in §8 — repointed
+> to §8d. Both copies now 940 lines, byte-identical, strict-mode guard passing.
+>
+> **New §7b — bug-class taxonomy** (from FreeFalcon): a fixed, numbered list of eight Windows→Linux
+> bug classes that every new symptom is triaged against *before* forming a theory, annotated for how
+> much each bites a `-m32` Rowan port. Two do not apply to us (64-bit pointer truncation;
+> `long`-in-binary-formats) — they are the mirror image of our own #1 recurring bug, the pack-struct
+> ABI boundary, which FreeFalcon does not have. Two it flags hard for us: **`RAND_MAX`==32767
+> assumptions** (silent degradation — cost them months of misdiagnosed "broken AI") and **silently
+> default-returning compat stubs**, of which we have live deliberate instances (registry stubs, no-op
+> `WritePrivateProfileString`) that should be listed as known-degenerate rather than assumed harmless.
+>
+> **Also:** stale `/home/m/` paths fixed in `CLAUDE.md` and `tools/bob_validate.sh` (the validator now
+> derives `DRIVE_C`/`BOB` from `$SCRIPT_DIR`/`$HOME` with `BOB_DRIVE_C`/`BOB_BIN` overrides, and
+> composes `GAME_DIR` from `DRIVE_C` instead of keeping a second independent hardcode that could
+> drift). Dated history (`PORT.md` body, `doc/STATUS-2026-06-*`) and correspondence left untouched.
+
+> ## S121 (2026-07-19): crash handler adopted from MiG Alley; MIDI music implemented on FluidSynth (DirectMusic → FluidSynth); ICE.1 re-scoped; packaging added
+> Four cross-port items, driven by the third-party review note `doc/CROSS-PORT-FROM-REVIEW-2026-07-19.md`.
+>
+> **1. Signal/crash handler (`SRC/compat/bob_main.cpp`) — BoB had none.** Ported MA's
+> (`~/ma/SRC/compat/bob_main.cpp:39`, read-only reference): `SA_SIGINFO|SA_RESTART` on
+> **SIGSEGV/SIGABRT/SIGBUS**, printing signal / tid / `fault_addr`, the **full i386 register file**
+> from the `ucontext` (`eip eax ebx ecx edx esi edi ebp esp`), then `backtrace_symbols_fd`, then
+> re-raising with `SIG_DFL` (so the process still dies/cores normally). Same arch, so the register
+> extraction transferred unchanged. Renamed to BoB conventions: `bob_crash_handler`, escape hatch
+> **`BOB_NO_CRASH_BT`**. **Adopted FreeFalcon's refinement** (`~/free-falcon/src/ffviper/
+> main_linux.cpp:1178`): `backtrace()` is **primed once at startup**, because its first call lazily
+> `dlopen`s the unwinder and allocates — if that first call lands inside the handler while the
+> crashing thread holds the malloc lock, the handler deadlocks after the CRASH header with zero
+> frames. **Verified:** a temporary env-gated null-write produced
+> `=== CRASH: signal 11 (tid …) fault_addr=0x10 ===` + `eip=08071727 eax=… edi=…` + a 6-frame
+> backtrace, then died on the re-raise; hook removed afterwards. Why it matters here: the register
+> file is exactly what distinguishes a rasterizer OOB *write* (`edi`) from a texture *read*
+> (`esi+ebx`), and `eip=0` pins the vtable-slot/NULL-fn-pointer class of bug this port keeps hitting.
+> *(Backtrace frames are addresses + exported names; `-rdynamic` was deliberately NOT added —
+> exporting every symbol of a `--whole-archive`/`-fcommon` link risks interposition changes. Resolve
+> with `addr2line -e build/bob <addr>`.)*
+>
+> **2. MIDI music — implemented, not iced (`SRC/compat/bob_music.cpp`, NEW).** The review note was
+> right that the ICE.1 premises were false, and the *engine* premise in it was wrong too: **BoB's
+> music is DirectMusic, not `midiOut*`** — `SRC/HARDWARE/MUSIC.CPP`'s `Music` class does
+> `CoCreateInstance(CLSID_DirectMusicPerformance/Loader)` → `Init` → `EnumPort`/`GetDefaultPort`/
+> `CreatePort`/`AddPort`/`AssignPChannelBlock` → `IDirectMusicLoader::GetObject(DMUS_OBJ_MEMORY)` →
+> `PlaySegment`/`IsPlaying`/`Stop`/`SetGlobalParam(GUID_PerfMasterVolume)`, with the payload handed
+> over **in memory** by `SOUND.CPP::LoadTune` (numbered file out of `MUSIC/`, via `DIR.DIR`). So the
+> adoption from MA is *not* verbatim — what transferred is the hard part: MA's in-memory
+> **`parse_xmi`/XMI→SMF converter** and its **SoundFont fallback chain** (`ma_music.cpp:196-202`).
+> What is new is a BoB-side implementation of **five DirectMusic COM interfaces** (Performance,
+> DMusic, Port, Loader, Segment) over FluidSynth, so the game code stays unedited.
+> - Wiring: compat `CoCreateInstance` (`objbase.h`) previously ignored its arguments and always
+>   returned `E_NOINTERFACE`; it now routes to `bob_com_create_instance` and falls back to the old
+>   behaviour. Side effect worth knowing: because the old inline *ignored* its GUID args, the
+>   compiler elided every reference to them — making it read them turned `CLSID_DirectMusicPerformance`,
+>   `IID_IDirectMusicPerformance`, `IID_IDirectMusicLoader` (now defined in `bob_music.cpp`) and
+>   `CLSID_DirectPlay`, `IID_IDirectPlay4A` (now in `bob_stubs.cpp`, real values, still unimplemented)
+>   into **link-visible** symbols.
+> - Fatality guard: `MUSIC.CPP` `SayAndQuit()`s on a failed `GetObject`/`SetParam`/`PlaySegment`/port
+>   call, so every one of those returns `S_OK` — an unparseable blob yields a *silent segment*, never
+>   a quit. Only `Performance::Init` (and the performance `CoCreateInstance`) fail, which the game
+>   handles by zeroing `Save_Data.vol.music`.
+> - Env: **`BOB_NOMUSIC`** (revert), **`BOB_SOUNDFONT`** (bank override), **`BOB_TRACE_MUSIC`**
+>   (`[music]` traces), plus `BOB_FLUID_DRIVER` / `BOB_FLUID_FILE` / `BOB_MUSIC_PPQN` /
+>   `BOB_MUSIC_SELFTEST[_SECS]`. Link now has `-lfluidsynth` (`libfluidsynth3:i386` +
+>   `libfluidsynth-dev:i386` were already installed — no vendoring needed).
+> - **PROVEN end-to-end** (`BOB_MUSIC_SELFTEST=<file>` drives the *same* COM sequence MUSIC.CPP
+>   drives): MA's `combat.xmi` (94 734 B, read in place at
+>   `/home/admin/sgl/TUE/MigAlley/WP/drive_c/rowan/mig/MUSIC/`, **not copied into this repo or the
+>   BoB install**) → `GetObject` → **166 865 B SMF** → `PlaySegment` → `IsPlaying=S_OK` for the whole
+>   3 s window. Rendered with `BOB_FLUID_DRIVER=file` to a wav: 44.1 kHz stereo 16-bit, **peak 28006,
+>   75 % of samples > 200** — real audio, not silence. Degradation verified too: `BOB_NOMUSIC=1` and
+>   a bogus soundfont/driver both give `no synth -> DirectMusic unavailable` and exit 0.
+> - **NOT proven:** in-game music. BoB's install ships **no `.xmi` at all** (`MUSIC/`, `MUSICMED/`,
+>   `MUSICLOW/` contain only `DIR.DIR`), so `LoadTune` has nothing to load; and in the
+>   `BOB_BOOT_FRONTEND` QM scaffold no `CoCreateInstance` for DirectMusic was observed even with
+>   `BOB_TRACE_MUSIC=1` (`[snd]` shows DirectSound/OpenAL coming up, so `Sound::StartUpSound` runs —
+>   where `Music::Init` is missed in that path is unresolved and is the next thing to chase).
+>
+> **3. ICE.1 re-scoped (`scrum.md`).** Both parked premises were false — `libfluidsynth3:i386` 2.4.8
+> is installed (and needs no ALSA-seq/system synth: FluidSynth renders in-process), and `.DIR` is a
+> 640-byte plain filename index, byte-identical to MA's (md5 `d27ecb89639958b6b3576a5646856924`),
+> already read by `FILEMAN.CPP`'s numbered-file layer. The row now records the real gap: **the `.xmi`
+> payload is absent from the install** (likely CD-resident) — an asset condition, not an engineering
+> blocker.
+>
+> **4. Packaging (`packaging/`, NEW).** Adapted from the FreeFalcon port's `install.sh` /
+> `build-appdir.sh` / `README.md` (read-only references) for BoB's realities: **i386** dependency
+> checks and library bundling (`/usr/lib/i386-linux-gnu`; multiarch host required), and a **Wine
+> `drive_c`** data layout (`--drive-c` or `--data`, launcher pins cwd + `BOB_DRIVE_C`). Verified: the
+> AppDir assembles with **30 bundled i386 libraries**, `ldd` resolves every one against the bundle,
+> and `AppRun` with no game data exits 0. **Flagged as an unresolved blocker in the README, not
+> papered over:** the port still reads `*.RC`/`RESOURCE.H`/`F_GRAFIX.G` **from the source checkout at
+> runtime** (compile-time `BOB_SRC_DIR`, runtime override `BOB_RC_DIR`; `bob_dlgtemplate.cpp`,
+> `RBUTTON/getfile.cpp`), so true relocatability is *structurally* false today — the scripts work
+> around it (pin `BOB_RC_DIR`, or copy those files into the AppDir), and the real fix is an install-time
+> resource root.
+>
 > ## S120 (2026-07-05): FAITHFUL day-advance (`BOB_DAYADV`) — drives the game's own `ReturnToMapAfterReview`, replacing the `BOB_DAYLOOP` scaffold hack
 > The remaining documented campaign item: replace the `BOB_DAYLOOP` scaffold hook (which detected the
 > rollover by a currtime heuristic + did a manual `StartUpMapWorld`/`m_currentpage=0`) with the **real game

@@ -180,9 +180,24 @@ typedef struct _MULTI_QI {
 static inline HRESULT CoInitialize(LPVOID pvReserved) { (void)pvReserved; return S_OK; }
 static inline HRESULT CoInitializeEx(LPVOID pvReserved, DWORD dwCoInit) { (void)pvReserved; (void)dwCoInit; return S_OK; }
 static inline void CoUninitialize(void) {}
+/* Real COM objects the compat layer provides (currently the DirectMusic music path in
+ * bob_music.cpp, backed by FluidSynth). Returns E_NOINTERFACE for anything it doesn't
+ * implement, so every other CoCreateInstance site behaves exactly as the old stub did. */
+#ifdef __cplusplus
+extern "C" HRESULT bob_com_create_instance(REFCLSID rclsid, REFIID riid, LPVOID *ppv);
+#endif
 static inline HRESULT CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID *ppv) {
-    (void)rclsid; (void)pUnkOuter; (void)dwClsContext; (void)riid;
+    (void)pUnkOuter; (void)dwClsContext;
     if (ppv) *ppv = NULL;
+#ifdef __cplusplus
+    if (ppv) {
+        HRESULT hr = bob_com_create_instance(rclsid, riid, ppv);
+        if (hr == S_OK) return hr;
+        if (ppv) *ppv = NULL;
+    }
+#else
+    (void)rclsid; (void)riid;
+#endif
     return E_NOINTERFACE;
 }
 static inline LPVOID CoTaskMemAlloc(SIZE_T cb) { return malloc(cb); }
