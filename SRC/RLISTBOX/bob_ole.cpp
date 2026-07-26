@@ -111,8 +111,18 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     for (auto& kv : hosts()) {
         OleHost* host = kv.second;
         if (host->parentDlg != dialog) continue;
+        /* SP.2 (S123): honor the game's runtime ShowWindow state -- a hidden control isn't
+           drawn and can't be clicked (zeroed hit rect). E.g. CSQuick1 hides IDC_DISABLEDEMO
+           ("This is disabled in the demo") on the full game. */
+        if (!host->visible) { host->sw = host->sh = 0; continue; }
         DluRect r;
-        if (!lookupDlu(host->ctrlId, r)) continue;
+        /* SP.2 (S123): look the rect up SCOPED to the control's own dialog template first.
+           The unscoped by-id lookup returned the first id match across ALL parsed dialogs;
+           combo ids are unique, but STATIC-label ids repeat across dialog templates, so config
+           labels took rects from other screens' templates -- scrambled/overlapping label
+           layout on the GFX/Sound/Controls/Views forms (vs the Wine gold shots). lookupDluIn
+           falls back to the unscoped search when the (dlg,id) pair isn't found. */
+        if (!lookupDluIn(host->dlgId, host->ctrlId, r)) continue;
         int sx = ox + dluX(r.x), sy = oy + dluY(r.y);
         int hpx = dluY(r.h);
         CDC dc; dc.m_hDC = (HDC)1; dc.m_bobScreen = true;
@@ -234,4 +244,15 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
     host->draw(&dc, w, h);
     if (bob_ole_trace()) fprintf(stderr, "[ole] OnDraw %p at (%d,%d) %dx%d h=%d\n", (void*)wrapper, x, y, w, h, textH);
     return 1;
+}
+
+/* SP.2 (S123): runtime visibility from CWnd::ShowWindow (afxwin.h forwards here).
+   Only hosted OLE controls track state; other CWnds no-op as before. SW_HIDE==0. */
+extern "C++" void bob_ole_show_window(CWnd* w, int nCmdShow) {
+    OleHost* h = findHost(w);
+    if (!h) return;
+    int vis = (nCmdShow != 0);
+    if (h->visible != vis && bob_ole_trace())
+        fprintf(stderr, "[ole] ShowWindow id=%d -> %s\n", h->ctrlId, vis ? "SHOW" : "HIDE");
+    h->visible = vis;
 }

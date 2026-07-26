@@ -195,9 +195,9 @@ match its gold shot. Formalizes R3.8's "A/B vs Wine" into a PO-curated, full-pro
 screen sweep with the gold shots as the fixed oracle.*
 | ID | Story | Pts | Status |
 |---|---|---|---|
-| SP.1 | **Gold-shot inventory** — map each of the 17 shots to its screen (menu/config/campaign map/briefing/flight view/debrief…) + the native repro recipe (env vars/clicks); parity table in `doc/screen-parity.md` with native captures alongside. | 3 | ☐ |
-| SP.2 | **Front-end parity** — every 2D screen in the gold set matches (layout, fonts, art, colours) within stated tolerance; each deviation fixed or explicitly PO-waived in the parity table. | 13 | ☐ |
-| SP.3 | **Flight / map parity** — the in-flight and strategic-map gold shots match; reuses the frame-dump harness (`BOB_DUMP_FRAME`, `GL_PACK_ALIGNMENT=1` lesson). | 13 | ☐ |
+| SP.1 | **Gold-shot inventory** — ☑ **DONE (S123, 2026-07-25).** All shots mapped (NB: the folder holds **19** PNGs, not 17 — two near-dupe side-selects, flagged for PO) with scripted repro recipes; `doc/screen-parity.md` verdict table (MATCH/CLOSE/PARTIAL/GAP + named deviations) + 15 native captures in `doc/parity/` (3 BEFORE/after pairs). New deterministic capture harness `BOB_SHOT`/`BOB_SHOT_PATH` (headless, private path); `BOB_CONFIGSCREEN` gained game/mission/views/flight/quick. | 3 | ☑ |
+| SP.2 | **Front-end parity** — ◐ **3 SYSTEMIC FIXES LANDED (S123).** (1) dialog-SCOPED control-rect lookup (label ids repeat across templates; unscoped lookup scrambled the GFX/Sound/Controls/Views forms — now every label pairs with its row); (2) menu lists anchored at the game's own per-res `FullScreen::ListX/ListY` (Back/Begin/Fly rows now bottom-left as in gold; `BOB_NO_LISTXY` reverts); (3) runtime `ShowWindow` honored on hosted controls (demo/off-page ghost statics gone). Remaining: **PO oracle decision** — gold = BDG 0.99 patched resources vs our source-checkout .rc (label/row deltas are data-level; faithful fix = PE `.rsrc` parser, also closes the packaging blocker, ~8-13 pts); word-wrap (R6.2), tab-row spread, `MoveWindow` page tracking, edit-control hosting, font face. | 13 | ◐ |
+| SP.3 | **Flight / map parity** — ◐ **BOTH CAPTURED + VERDICTED (S123).** Cockpit vs gold: CLOSE (structure/instruments/HUD readout match; prop-blur + HUD style deviations named). Strategic map vs gold: CLOSE (terrain/sectors/icons/footer/toolbars/clock match; raid-stacks/routes absent in the fresh-day capture, ruler art plain, Directives dialog = GAP). Remaining: LW Directives dialog reachability, raid-day capture, deviation fixes. | 13 | ◐ |
 
 ### Icebox (environment-blocked — not schedulable until the environment changes)
 | ID | Story | Why parked |
@@ -369,6 +369,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **123** | ~20 | 11 | ★ **Release SP opened — SP.1 done + 3 systemic parity fixes** | **Gold-standard screen sweep (2026-07-25).** ☑ SP.1 (3): all 19 gold shots (not 17 — flagged) mapped + scripted repro + 15 native captures + `doc/screen-parity.md` verdicts; `BOB_SHOT` one-shot capture harness; `BOB_CONFIGSCREEN` +game/mission/views/flight/quick. ◐ SP.2 (~8): dialog-scoped rect lookup (unscrambled the config forms), menu lists at the authored `ListX/ListY` (Back/Begin/Fly bottom-left per gold), `ShowWindow` visibility (ghost statics gone). ◐ SP.3: cockpit + strategic map captured, both CLOSE. Headline: gold = **BDG 0.99 patched resources** vs our source-checkout .rc — label deltas are data-level, PE-`.rsrc`-parser story scoped, PO oracle question posed. No regression (bare 0; flight frame-150 on `:0`; campaign map clean). Cross-port: shared doc §8e (sync ✓) + note 13 delivered (MA/FF/Julia Racer). |
 | 0 (pre-Scrum) | — | ~76 | ✅ baseline | Calibration baseline. |
 | 1 | 21 | 16 | ✅ accepted | PO-accepted as Done (Sprint Review, 2026-06-17). R1.2 (13) done; R1.1 split → R1.1a (3) done, R1.1b (8, re-est.) blocked-by R1.3, carried. Tooling: `BOB_ASAN` build + valgrind memcheck (cross-validated R1.2) added. |
 | 2 | 16 | 7 | ⚠️ partial | Shipped R1.3a/b/c (setup corruption fixed; InitPreferences reaches flight). R1.3d (transient double-free, NEW) gates init-as-default → R1.4/R1.5 + R1.3d split to Sprint 3. **Release 1 slips to Sprint 3.** PO-accepted the corruption-fix increment. |
@@ -426,6 +427,24 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 123 (Release SP opened — gold-shot inventory + 3 systemic parity fixes):_ **Build the
+  oracle-driven capture loop FIRST; the fixes then pick themselves.** The sprint's leverage came from
+  spending the first hours on a deterministic one-command capture per screen (`BOB_SHOT`) and viewing
+  every gold shot before touching code — the three fixes that followed (scoped rect lookup, `ListX/ListY`
+  anchors, `ShowWindow`) were each visible as a *pattern across many screens*, not a single-screen bug.
+  Lessons: (1) **when a reference and the port disagree on CONTENT, check data provenance before
+  render code** — the gold build runs BDG-0.99-patched resources; half the label "bugs" were
+  resource-version deltas (the S44 provenance lesson, now on the render side). (2) **the engine often
+  ships the layout data you're synthesizing** — `FullScreen::ListX/ListY` was authored per-resolution
+  placement sitting unread while we hand-centred menus; grep for the data before writing a heuristic.
+  (3) **an infrastructure asymmetry is a bug magnet**: the scoped rect table existed since S94 but only
+  the toolbar path used it — when a fix lands, sweep the OTHER call sites of the thing it replaced.
+  (4) **don't widen hit-rects past what's drawn** (declined the tab-row spread): the first-pilot
+  hit-box lesson held firm against a cosmetic win. (5) **verdict tables with named deviations beat
+  prose** — MATCH/CLOSE/PARTIAL/GAP per shot made the remaining SP.2/SP.3 backlog self-evident and
+  PO-reviewable. (6) Honest count: ~11 of ~20 pts — the BDG-resource question gates the rest; posing
+  it crisply to the PO IS the deliverable, not grinding label-by-label against the wrong oracle.
 
 - _Sprint 44 (R4.5 post-mission crash FIXED — stale Package.dat):_ **Five sprints of "fix the garbage
   field" were treating the symptom; the actual bug was that the data was garbage because we were reading

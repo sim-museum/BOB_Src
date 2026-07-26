@@ -184,6 +184,7 @@ static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_D
 static RFullPanelDial* g_bobActiveFP = NULL;
 static struct { int x,y,w,h; } g_bobMenuRect[10];
 static int g_bobMenuN = 0;
+long g_bob_shot_t = 0;   /* SP.1 (BOB_SHOT): one-shot parity-capture tick counter (map + front-end) */
 
 /* R4.1: the Campaigns side-select screen (RFullPanelDial::singleplayer -> SinglePlayerInit ->
    SideSelect dialog). Its choices are not text menu items but POLYGON hit-areas over the
@@ -241,30 +242,44 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 	if (!scr) return;
 	bool horiz = (scr->listalign & FullScreen::HORIZ) != 0;
 	int fh = resW * 36 / 1000; if (fh < 16) fh = 16;        /* ~37px at 1024 wide (matches wine) */
+	/* SP.2 (S123): anchor the menu list at the screen's own per-resolution ListX/ListY --
+	   the layout data the Windows build positions its RListBox with (FullScreen::Resolutions).
+	   E.g. campaignselect@1024 = (35,710): Back/Begin bottom-left (matches the gold shots,
+	   which the old synthetic top-centre/left-column-quarter anchors did not); title = (210,220);
+	   config tab rows = (10,10). Degenerate values fall back to the old synthetic anchors;
+	   BOB_NO_LISTXY reverts wholesale. */
+	int lx = scr->resolutions[self->m_currentres].ListX;
+	int ly = scr->resolutions[self->m_currentres].ListY;
+	bool useXY = !getenv("BOB_NO_LISTXY")
+	             && (lx > 0 || ly > 0) && lx >= 0 && ly >= 0 && lx < resW && ly < resW * 3 / 4;
 	if (horiz) {
-		/* horizontal tab row across the top (e.g. config: GFX / More GFX / ... / Continue) */
-		int gap = resW * 14 / 1000, y = resW * 6 / 1000;
+		/* horizontal row (config tab rows at the top; Back/Begin/Fly rows at the bottom) */
+		int gap = resW * 14 / 1000, y = useXY ? ly : resW * 6 / 1000;
 		/* The OLE listbox draws the row at oleH (the list font), so measure widths/centring/
 		   hit-rects at oleH too -- NOT fh. (First-pilot bug: rects measured at fh, ~38% wider
 		   than the drawn text, drifted each item right -> the last item ("Fly") landed ~1cm
 		   right of its text, so clicks missed. Use one font height for draw + hit-test.) */
 		int oleH = resW * 26 / 1000; if (oleH < 16) oleH = 16;   /* resolution-scaled list font height */
-		/* measure total to centre the row */
-		int total = 0, n = 0;
+		/* measure the items */
+		int wids[10]; int sumw = 0, n = 0;
 		for (; n < 10 && scr->textlists[n].text; n++) {
 			CString s; s.LoadString(scr->textlists[n].text);
-			total += bob_gdi_text_width((const char*)(LPCSTR)s, oleH) + gap;
+			wids[n] = bob_gdi_text_width((const char*)(LPCSTR)s, oleH);
+			sumw += wids[n];
 		}
-		int x = (resW - total) / 2; if (x < 8) x = 8;
+		/* NB: the gold shots' config tab bars are additionally SPREAD across the full width
+		   (PositionRListBox column spacing); not reproduced here because the hosted control
+		   draws its own tight-packed columns -- widening only the hit-rects would desync them
+		   from the drawn text (the first-pilot hit-box bug class). Documented deviation. */
+		int total = sumw + gap * n;   /* keep old width semantics for the OLE box */
+		int x = useXY ? lx : (resW - total) / 2; if (x < 8) x = 8;
 		/* Real ActiveX control render: draw the hosted CRListBoxCtrl (multi-column
 		   tab row) and keep click rects from the same oleH-measured widths. */
 		if (bobOleDraw() && bob_ole_draw_listbox((CWnd*)&self->m_IDC_RLISTBOX, x, y, total, fh + fh/2, oleH)) {
 			int rx = x;
 			for (int i = 0; i < n; i++) {
-				CString s; s.LoadString(scr->textlists[i].text);
-				int w = bob_gdi_text_width((const char*)(LPCSTR)s, oleH);
-				g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=w; g_bobMenuRect[i].h=fh+fh/2;
-				rx += w + gap;
+				g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=wids[i]; g_bobMenuRect[i].h=fh+fh/2;
+				rx += wids[i] + gap;
 			}
 			g_bobMenuN = n;
 			return;
@@ -281,8 +296,9 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		g_bobMenuN = n;
 		return;
 	}
-	int cx = resW / 4;                                      /* left-column centre (~256) */
-	int my = resW * 23 / 100, step = resW * 35 / 1000;      /* ~235 top, ~36px pitch */
+	int cx = useXY ? lx : resW / 4;                         /* column centre (title: 210 @1024) */
+	int my = useXY ? ly : resW * 23 / 100;
+	int step = resW * 35 / 1000;                            /* ~36px pitch */
 	for (int i = 0; i < 10; i++) {
 		if (scr->textlists[i].text == NULL) break;
 		CString s; s.LoadString(scr->textlists[i].text);
@@ -729,6 +745,21 @@ extern "C" void bob_frontend_tick(void)
 			static int t=0; if (++t > 3) bob_oob_open_bases(); }
 		if (!getenv("BOB_NO_OOB")) { extern int bob_map_paint_oob(int,int); bob_map_paint_oob(sw, sh); }
 		bob_map_paint_end();
+		/* SP.1 (BOB_SHOT, default-off): deterministic one-shot screen capture for the parity
+		   sweep -- after N map paints dump the GDI framebuffer to BOB_SHOT_PATH (private target;
+		   /tmp is shared with the sibling ports) and exit. Same counter serves the front-end
+		   branch below; whichever paint path is active when the count is reached dumps. */
+		if (getenv("BOB_SHOT")) {
+			extern long g_bob_shot_t;
+			if (++g_bob_shot_t >= atol(getenv("BOB_SHOT"))) {
+				const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
+				bob_gdi_present();
+				int nz = bob_gdi_dump_to(sp);
+				fprintf(stderr, "[shot] map paint %ld -> %s (nonblack=%d) -- exiting\n",
+					g_bob_shot_t, sp, nz); fflush(stderr);
+				_exit(0);
+			}
+		}
 		static int mp = 0; if (getenv("BOB_TRACE_MAP") && (mp++ % 200) == 0) {
 			int nItems=0; for (int k=0;k<WorldStuff::PITEMTABLESIZE;k++) if (WorldStuff::pItem[k]) nItems++;
 			fprintf(stderr, "[map] paint#%d zoom=%.2f currtime=%d worlditems=%d\n",
@@ -739,6 +770,19 @@ extern "C" void bob_frontend_tick(void)
 	}
 
 	if (!g_bobActiveFP) return;
+
+	/* SP.1 (BOB_SHOT, default-off): front-end half of the one-shot parity capture (see the map
+	   branch above). Counts front-end ticks; dumps the settled screen then exits. */
+	if (getenv("BOB_SHOT")) {
+		extern long g_bob_shot_t;
+		if (++g_bob_shot_t >= atol(getenv("BOB_SHOT"))) {
+			const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
+			int nz = bob_gdi_dump_to(sp);
+			fprintf(stderr, "[shot] frontend tick %ld -> %s (nonblack=%d) -- exiting\n",
+				g_bob_shot_t, sp, nz); fflush(stderr);
+			_exit(0);
+		}
+	}
 
 	/* R4.3 (BOB_CAMPFLY_SHOT): deterministic one-shot capture of the campaign briefing. After
 	   BOB_CAMPAIGN_FLY launches bobfrag, wait a few front-end paints for it to populate, then dump
@@ -795,7 +839,11 @@ extern "C" void bob_frontend_tick(void)
 			if      (strstr(w,"control")) scr=&RFullPanelDial::controloptions;
 			else if (strstr(w,"sound"))   scr=&RFullPanelDial::soundoptions;
 			else if (strstr(w,"2d"))      scr=&RFullPanelDial::twodoptions;
-			else if (strstr(w,"sim"))     scr=&RFullPanelDial::flightoptions;
+			else if (strstr(w,"sim")||strstr(w,"flight")) scr=&RFullPanelDial::flightoptions;
+			else if (strstr(w,"game"))    scr=&RFullPanelDial::gameoptions;    /* SP.1: Sim Config "Game" tab */
+			else if (strstr(w,"mission")) scr=&RFullPanelDial::missionoptions; /* SP.1: Sim Config "Mission" tab */
+			else if (strstr(w,"view"))    scr=&RFullPanelDial::vieweroptions;  /* SP.1: Sim Config "Views" tab */
+			else if (strstr(w,"quick"))   scr=&RFullPanelDial::quickview;      /* SP.1: Quick Shots select screen */
 			else if (strstr(w,"gfx2"))    scr=&RFullPanelDial::options3d2;
 			else if (strstr(w,"load"))    scr=&RFullPanelDial::loadgame;   /* R6.5: CLoad save-file screen */
 			/* R4.4 (BOB_LOAD_GO): pre-seed the selected save BEFORE the load screen launches, so

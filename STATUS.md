@@ -7,7 +7,16 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session:** [`doc/STATUS-2026-07-01.md`](doc/STATUS-2026-07-01.md) (S72→S82) — all 7 historic
+> **Latest session (S123, 2026-07-25):** **Release SP (screen parity vs the Windows gold standard)
+> opened** — all 19 gold shots inventoried with scripted repros + native captures
+> ([`doc/screen-parity.md`](doc/screen-parity.md), captures in `doc/parity/`); three systemic
+> front-end parity fixes landed (dialog-scoped label rects — config forms un-scrambled; menu lists at
+> the game's authored `ListX/ListY` — Back/Begin/Fly rows placed as on Windows; runtime `ShowWindow`
+> honored — ghost statics gone). New deterministic capture harness `BOB_SHOT`/`BOB_SHOT_PATH`.
+> Open PO question: the gold build runs **BDG 0.99 patched resources** vs our source-checkout `.rc`
+> (label/row deltas are data-level; PE-`.rsrc` parser scoped as the faithful fix).
+>
+> Prior: [`doc/STATUS-2026-07-01.md`](doc/STATUS-2026-07-01.md) (S72→S82) — all 7 historic
 > quick missions (23–29) now fly; **double-exposure aircraft** and **cockpit cloud z-fighting** both FIXED;
 > quick-mission fleet ASan-clean; **full-campaign epic** scoped + Phase-1 started.
 

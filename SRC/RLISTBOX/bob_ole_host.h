@@ -12,6 +12,9 @@ struct OleHost {
     int         dlgId  = 0;      /* the owning dialog's IDD -> (dialog,control) DLGINIT caption */
     class CWnd* parentDlg = NULL;/* owning dialog (for per-panel draw) */
     int         sx=0, sy=0, sw=0, sh=0;  /* last-drawn screen rect, for click hit-testing */
+    int         visible = 1;     /* SP.2 (S123): runtime ShowWindow state -- the game hides
+                                    off-page/disabled controls (e.g. CSQuick1's IDC_DISABLEDEMO)
+                                    via CWnd::ShowWindow(SW_HIDE); hidden hosts aren't drawn. */
     virtual ~OleHost() {}
     virtual void dispatch(DISPID id, VARTYPE vtRet, void* pvRet, va_list ap) = 0;
     virtual void setprop(DISPID id, va_list ap) = 0;

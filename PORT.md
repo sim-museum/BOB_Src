@@ -1,5 +1,71 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S123 (2026-07-25, Sprint 123): Release SP opened — gold-shot inventory DONE (SP.1) + three systemic front-end parity fixes (SP.2 partial)
+>
+> The PO's new **Release SP** ("screen parity vs the Windows gold standard",
+> `/run/media/admin/BEA6-BBCE/bob/`) opened this sprint. **NB: the gold folder holds 19 PNGs, not the
+> 17 the backlog row says** — two are near-duplicate campaign side-select shots; flagged for the PO.
+>
+> **SP.1 (3 pts) — DONE.** All 19 shots identified (main menu · Quick Shots select ×2 pages ·
+> Initialising-3D · cockpit · 4 PC-Config tabs · 4 Sim-Config tabs · side-select ×2 · phase-select ·
+> enter-name · strategic map ×2), each with a scripted native repro + capture. Deliverables:
+> - **`doc/screen-parity.md`** — per-shot verdict table (MATCH/CLOSE/PARTIAL/GAP + named deviations),
+>   ranked systemic root causes, PO questions. **15 native captures** in `doc/parity/` (incl. 3
+>   BEFORE/after pairs).
+> - **Capture harness:** `BOB_SHOT=<n>` + `BOB_SHOT_PATH=<file>` (FULLPSYS.CPP scaffold, default-off) —
+>   deterministic one-shot GDI-framebuffer dump after n front-end ticks/map paints, then exit; works
+>   headless (`SDL_VIDEODRIVER=dummy`), private dump path (shared /tmp). `BOB_CONFIGSCREEN` gained
+>   `game`/`mission`/`views`/`flight`/`quick` targets (the three Sim-Config tabs the gold set has were
+>   previously unreachable headlessly). Flight shot via the existing `BOB_DUMP_FRAME` path on `:0`.
+> - Repro sweep (from the game install dir, `E` = `BOB_RUN_INIT=1 BOB_DRIVE_C=<drive_c> BOB_FRONTEND=1
+>   BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy`): menu `E BOB_SHOT=40`; config tabs `E BOB_CONFIGSCREEN=<t>
+>   BOB_SHOT=70`; Quick Shots `E BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_SHOT=220`; campaign screens
+>   `E BOB_AUTOCLICK=1[,1[,1]] BOB_SHOT=250..520`; strategic map `E BOB_AUTOCLICK=1,1,1,1
+>   BOB_MAP_TIMER=8 BOB_SHOT=700`; cockpit `BOB_BOOT_FRONTEND=1 BOB_DUMP_FRAME=150 BOB_DUMP_PATH=<p>
+>   BOB_EXIT_AFTER_DUMP=1` under the display lock.
+>
+> **SP.2 (partial, ~8 of 13 pts) — three systemic fixes, each moving multiple screens at once:**
+> 1. **Dialog-scoped control-rect lookup** (`bob_ole.cpp::bob_ole_draw_panel` → `lookupDluIn`): the
+>    unscoped by-id lookup returned the first match across ALL parsed dialog templates; combo ids are
+>    unique but STATIC-label ids repeat, so config labels took other screens' rects — the GFX/Sound/
+>    Controls/Views forms were scrambled/overlapping (see `doc/parity/BEFORE-config-gfx-*.png`). Every
+>    label now pairs with its row (`native-config-gfx-*.png`); the scoped table + host->dlgId already
+>    existed (S94 toolbars), the panel draw just never used it.
+> 2. **Menu lists anchored at the game's own `FullScreen::Resolutions::ListX/ListY`**
+>    (`FULLPSYS.CPP::bob_draw_menu`; `BOB_NO_LISTXY` reverts): the synthetic top-centre/left-column
+>    anchors put Back/Begin/Fly rows at the TOP of screens; the authored per-resolution data places
+>    them exactly where the Windows build draws them (campaignselect@1024 = (35,710) bottom-left —
+>    matches the gold shot; title = (210,220); config tab rows = (10,10)). Hit-rects follow the drawn
+>    positions (no hit-box drift; the gold tab-row full-width SPREAD is deliberately not reproduced —
+>    the hosted listbox draws its own tight columns and widening only hit-rects would desync them).
+> 3. **Runtime `ShowWindow` visibility honored on hosted controls** (`afxwin.h` forwards to
+>    `bob_ole_show_window`; `OleHost::visible`; hidden hosts skipped in draw + click): the game hides
+>    off-page/demo controls at runtime — CSQuick1's IDC_DISABLEDEMO ("This is disabled in the demo")
+>    ghost is gone from the Quick Shots screen. Same class remains for `MoveWindow` (page-switch
+>    repositioning) — that's why the QM pages still overlap (documented).
+>
+> **Headline systemic finding (PO question):** the gold captures are the **BDG 0.99 patched build**,
+> whose dialog layouts/labels/string table differ from the 2000 source checkout's `MIG.RC` that
+> `bob_dlgtemplate.cpp` parses at runtime ("BDG 0.99" vs "Website" title item; extra GFX rows; renamed
+> labels). A large share of remaining label deviations are **resource-version deltas, not render bugs**.
+> The faithful fix — parse the installed exe's PE `.rsrc` DIALOG/DLGINIT — would also close the
+> packaging blocker (resources read from the source checkout). Needs a PO oracle decision; scoped as
+> its own ~8-13 pt story.
+>
+> **Also fixed en route:** direct `BOB_CONFIGSCREEN=quick` jump SIGSEGVs (CSQuick1 needs the QM
+> pre-flight world-init — documented; the `BOB_STARTFLYING=click` route is the working repro).
+> **No regression:** `ninja bob` clean; bare `./bob` exits 0 (re-verified after each fix); flight
+> reaches frame 150 on `:0` (cockpit capture); campaign nav → strategic map clean post-fix.
+> **Cross-port:** shared lessons doc **§8e** added (both copies byte-identical, sync guard ✓);
+> **note 13** (`doc/CROSS-PORT-FROM-BOB-2026-07-25.md`) delivered to `~/ma/port/`,
+> `~/free-falcon/docs/`, and `~/sgl-julia-racer/DOC/` (QA-methodology section).
+> **Inbound note 14** landed mid-sprint: `doc/QA_METHOD_GOLD_PARITY_from-julia-racer.md` (Julia
+> Racer E59, same-day convergent gold-parity methodology). Adopted its pt 6 immediately —
+> **side-by-side composites committed next to the verdict table** (`doc/parity/sbs-*.jpg`, 7 key
+> screens, gold|native). Its "four deviation classes" routing (renderer bug / authentic-asset
+> surprise / asset-capability gap / prior-owner decision) matches our resource-delta finding —
+> our BDG-0.99 headline is its "oracle drift" class; folded into the parity doc's PO questions.
+
 > ## S122 (2026-07-19): cross-port — inbound notes 11 & 12; shared lessons doc merged (drift resolved) + new §7b taxonomy
 >
 > **Two inbound notes filed.**

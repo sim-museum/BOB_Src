@@ -153,6 +153,9 @@ in-flight HUD info bar), `BOB_GROUNDSHADE`
 (ground-shading vertex lighting), `BOB_TRACE_TSS`, `BOB_TRACE_RTT`,
 `BOB_DUMP_RTT` (dump each RTT FBO → `/tmp/rtt_<ptr>.ppm`), `BOB_DUMP_FRAME=<n>`/`BOB_DUMP_GDI`,
 `BOB_DUMP_PATH=<file>` (private frame-dump target — `/tmp` is shared with the MiG Alley port),
+`BOB_SHOT=<n>`/`BOB_SHOT_PATH=<file>` (S123: deterministic one-shot GDI screen capture after n
+front-end ticks/map paints, then exit — the screen-parity harness; see `doc/screen-parity.md`),
+`BOB_NO_LISTXY` (revert menu lists to the pre-S123 synthetic anchors),
 `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.
 
 ## Conventions

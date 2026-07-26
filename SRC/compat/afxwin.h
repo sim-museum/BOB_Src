@@ -714,7 +714,14 @@ public:
     BOOL SetWindowTextA(LPCSTR s) { m_bobText = s ? s : ""; return TRUE; }
     int GetWindowTextA(LPSTR, int) { return 0; }
     template<class S> int GetWindowTextA(S& s) { (void)s; return 0; }
-    BOOL ShowWindow(int) { return TRUE; }
+    /* SP.2 (S123): track runtime visibility for hosted OLE controls -- the game hides
+       off-page/demo controls with ShowWindow(SW_HIDE) (SW_HIDE==0); the OLE panel draw
+       skips hidden hosts. Non-hosted CWnds keep the old no-op semantics. */
+    BOOL ShowWindow(int nCmdShow) {
+        extern void bob_ole_show_window(CWnd*, int);
+        bob_ole_show_window(this, nCmdShow);
+        return TRUE;
+    }
     BOOL UpdateWindow() { return TRUE; }
     BOOL DestroyWindow() { return TRUE; }
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
