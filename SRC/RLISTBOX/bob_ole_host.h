@@ -33,6 +33,7 @@ OleHost* bob_make_rlistbox(class CWnd* parent);
 OleHost* bob_make_rcombo(class CWnd* parent);
 OleHost* bob_make_rstatic(class CWnd* parent);
 OleHost* bob_make_rbutton(class CWnd* parent);
+OleHost* bob_make_redit(class CWnd* parent);
 
 bool bob_ole_trace();   /* BOB_TRACE_OLE gate, shared */
 

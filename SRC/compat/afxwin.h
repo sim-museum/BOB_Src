@@ -268,6 +268,7 @@ public: \
 #define ON_WM_VSCROLL()
 #define ON_WM_MOVE()
 #define ON_WM_SETCURSOR()
+#define ON_WM_GETDLGCODE()   /* S125: CREditCtrl (REDIT) message map */
 #define ON_WM_GETMINMAXINFO()
 #define ON_WM_SHOWWINDOW()
 #define ON_WM_ENABLE()
@@ -1355,6 +1356,12 @@ public:
     void  RemoveAt(POSITION p) { Node* n=(Node*)p; if(n->prev)n->prev->next=n->next; else m_head=n->next; if(n->next)n->next->prev=n->prev; else m_tail=n->prev; delete n; m_count--; }
     POSITION InsertBefore(POSITION p, ARG_TYPE x) { Node* at=(Node*)p; Node* n=new Node; n->data=x; n->next=at; n->prev=at->prev; if(at->prev)at->prev->next=n; else m_head=n; at->prev=n; m_count++; return (POSITION)n; }
     POSITION InsertAfter(POSITION p, ARG_TYPE x) { Node* at=(Node*)p; Node* n=new Node; n->data=x; n->prev=at; n->next=at->next; if(at->next)at->next->prev=n; else m_tail=n; at->next=n; m_count++; return (POSITION)n; }
+    /* S125: rvalue catch-all -- MFC's CList<T,T&> accepts temporaries
+       (REDIT: wordlist.InsertAfter(pos, OneWord(...))); the ARG_TYPE=T&
+       overload can't bind an rvalue under C++17. Non-template overload
+       still wins for lvalues, so by-value instantiations are unaffected. */
+    template <class U>
+    POSITION InsertAfter(POSITION p, U&& x) { Node* at=(Node*)p; Node* n=new Node; n->data=x; n->prev=at; n->next=at->next; if(at->next)at->next->prev=n; else m_tail=n; at->next=n; m_count++; return (POSITION)n; }
 };
 
 class CCommandLineInfo {

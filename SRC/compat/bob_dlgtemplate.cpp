@@ -29,7 +29,7 @@
 
 /* control-class kind (S124): known only for PE-sourced entries (the .rc text parse
    doesn't capture the class); drives template-driven static hosting. */
-enum { K_UNKNOWN = 0, K_RSTATIC, K_RCOMBO, K_RLISTBOX, K_RBUTTON };
+enum { K_UNKNOWN = 0, K_RSTATIC, K_RCOMBO, K_RLISTBOX, K_RBUTTON, K_REDIT };
 
 struct Sym  { char name[SYM_LEN]; int id; };
 struct CR   { int id, dlgId, x, y, w, h; unsigned char pe, kind; };
@@ -301,6 +301,7 @@ static int classifyClass(const char* cls) {
     if (!strncasecmp(cls+1, "737CB0C9", 8)) return K_RCOMBO;
     if (!strncasecmp(cls+1, "48814009", 8)) return K_RLISTBOX;
     if (!strncasecmp(cls+1, "78918646", 8)) return K_RBUTTON;
+    if (!strncasecmp(cls+1, "499E2BE6", 8)) return K_REDIT;
     return K_UNKNOWN;
 }
 static void peItemCb(void*, int dlgId, int ctrlId, int x, int y, int w, int h, const char* cls) {
