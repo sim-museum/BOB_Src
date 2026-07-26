@@ -1,10 +1,18 @@
 # Screen parity vs the Windows gold standard (Release SP)
 
-Sprint 123 (2026-07-25). Gold standard: the PO-supplied Wine captures of the Windows
-build (BDG 0.99 patched), `/run/media/admin/BEA6-BBCE/bob/` — **19 PNGs** dated
-2026-06-24 (the backlog says 17; two are near-duplicate side-select shots — flagged
-for the PO below). Native captures land in `doc/parity/` (1024x768 GDI framebuffer /
-800x600 GL dumps, this repo).
+Sprint 123 (2026-07-25), updated Sprint 124 (2026-07-26). Gold standard: the PO-supplied
+Wine captures of the Windows build (BDG 0.99 patched), `/run/media/admin/BEA6-BBCE/bob/`
+— **19 PNGs** dated 2026-06-24 (the backlog says 17; two are near-duplicate side-select
+shots — flagged for the PO below). Native captures land in `doc/parity/` (1024x768 GDI
+framebuffer / 800x600 GL dumps, this repo).
+
+**S124 (2026-07-26): the S123 root-cause 1 (resource-version delta) is CLOSED.** The
+native build now reads the INSTALLED build's PE resources (`English/TEXT/boblang.dll`
+= the BDG 0.99 data, per the SM oracle ruling): DIALOG rects, DLGINIT captions with
+faithful IDS→string-table resolution, template-driven label-static hosting, and a
+template-membership draw filter. Every config screen's label set/rows/order now comes
+from the BDG oracle. `BOB_NO_PE_RSRC` reverts to the S123 source-.rc behaviour.
+Fresh captures: `native-*-2026-07-26.png` (verdicts updated below).
 
 **Capture harness (SP.1, this sprint):** `BOB_SHOT=<n>` + `BOB_SHOT_PATH=<file>` —
 deterministic one-shot capture: after n front-end ticks (or map paints) the GDI
@@ -33,18 +41,18 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
 | # | Gold shot (16-xx-xx) | Screen | Native recipe (env beyond E) | Native capture | Verdict |
 |---|---|---|---|---|---|
 | 1 | 47-32 | Main menu (`title`) | `BOB_SHOT=40` | `native-mainmenu-2026-07-25.png` | **CLOSE** — art + menu placement match (menu now anchored at the game's own ListX/ListY=210,220). Deviations: last item "Website" vs gold "BDG 0.99" (BDG-patched string table); our stencil font vs gold's rounded gold face (R6.2 font pass). |
-| 2 | 47-38 | Quick Shots select (`quickview`/CSQuick1, Scenario page) | `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_SHOT=220` | `native-quickshots-2026-07-25.png` | **PARTIAL** — background montage, the 2 mission combos, description text, Back/Fly (now bottom-left, matches gold) all present; black montage frame matches gold (Wine shows it black too). Deviations: page-2/3 combos drawn empty over page 1 (page-switch hides not tracked — only runtime `ShowWindow` is, and CSQuick1 positions pages by `MoveWindow`, not tracked), Scenario/Parameters/Luftwaffe tab captions not drawn, description not word-wrapped (R6.2), label set differs (source .rc vs BDG resources). "This is disabled in the demo" ghost FIXED this sprint (ShowWindow honored). |
+| 2 | 47-38 | Quick Shots select (`quickview`/CSQuick1, Scenario page) | `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_SHOT=220` | `native-quickshots-2026-07-26.png` | **PARTIAL → improved (S124)** — background montage, mission combos, description, Back/Fly present; the page-2/3 ghost combos over page 1 are GONE (template-membership filter — BDG's template drops the source-only controls). Remaining: page-tab captions not drawn, description not word-wrapped (R6.2). |
 | 3 | 47-45 | Quick Shots — Parameters/player page (Squadron/Aircraft/Duty/Callsign, name box) | page tab click — no scripted recipe yet | — | **GAP** — the page tabs are dialog controls, not menu items; needs a `BOB_CLICKXY` recipe once the tab captions render (deviation above). |
 | 4 | 47-57 | "Initialising 3D" loading screen (Dover art + red progress) | transient (drawn inside `StartFlying`→`Launch3d`) | — | **GAP (by design)** — our Launch3d bridge feeds the `Start3d` paint bits directly, so the progress screen never paints headlessly. Low value: transient screen. |
 | 5 | 48-09 | In-flight cockpit (Spitfire Mk I, on runway) | `BOB_BOOT_FRONTEND=1 BOB_DUMP_FRAME=150 BOB_DUMP_PATH=<p> BOB_EXIT_AFTER_DUMP=1` on `:0` under the display lock | `native-cockpit-2026-07-25.png` | **CLOSE** — cockpit frame, gunsight, instrument panel, HUD info line ("4ft Hdg 242 Speed 0Kts" matches gold's readout), mirror, clouds. Deviations: prop rendered as a static dark blade vs gold's blur disc; our white HUD bar + Tower ATC line vs gold's red-only info line; 800x600 vs gold ~1830x1080. |
-| 6 | 55-25 | PC Config — More GFX (`options3d2`) | `BOB_CONFIGSCREEN=gfx2 BOB_SHOT=70` | `native-config-moregfx-2026-07-25.png` | **PARTIAL** — rows+combos+red arrows right; label pairing fixed this sprint (dialog-scoped rect lookup). Deviations: label TEXT set differs from gold (BDG resources: "Town and forest raises"/"Routes"/"Detail Level" vs source-.rc "Trees etc"/"Contour Detail"/"TextureQuality"), some rows unlabeled, tab row tight-packed at ListX vs gold's spread. |
-| 7 | 55-41 | PC Config — GFX (`options3d`) | `BOB_CONFIGSCREEN=gfx BOB_SHOT=70` | `native-config-gfx-2026-07-25.png` (before: `BEFORE-config-gfx-2026-07-25.png`) | **CLOSE** — every label now pairs with its combo (was fully scrambled — see BEFORE). Deviations: gold (BDG) adds 3D+Campaign Resolution rows and renames rows ("Gamma Level"); our "BoB Linux OpenGL backend" as Display Driver (faithful for the port); tab-row spread. |
-| 8 | 55-52 | PC Config — Controls (`controloptions`/SController) | `BOB_CONFIGSCREEN=control BOB_SHOT=70` | `native-config-controls-2026-07-25.png` | **PARTIAL** — device line ("First Joystick: Logitech Extreme 3D", axes/buttons count), assignment combo grid + dead-zone/mode columns render and are interactive (R5.3). Deviations: several row labels missing/overlapped (label statics differ between source .rc and BDG dialog), Calibrate/checkbox art not drawn. |
-| 9 | 55-59 | PC Config — Sound (`soundoptions`) | `BOB_CONFIGSCREEN=sound BOB_SHOT=70` | `native-config-sound-2026-07-25.png` | **PARTIAL** — driver combo ("Default") + volume rows render, 4 labels place correctly. Deviations: ~half the labels missing (not in source-.rc DLGINIT), one stray empty combo pair (top/bottom; hidden-in-gold controls), tab-row spread. |
-| 10 | 56-15 | Sim Config — Flight (`flightoptions`) | `BOB_CONFIGSCREEN=flight BOB_SHOT=70` (`sim` also works) | `native-sim-flight-2026-07-25.png` | **CLOSE** — full form, labels on rows. Deviations: 2 unlabeled rows (Engine Management/Prop Pitch), last row "Spool Up" vs gold "109 Fuel Capacity" (BDG), values differ (settings state, not render). |
-| 11 | 56-21 | Sim Config — Game (`gameoptions`) | `BOB_CONFIGSCREEN=game BOB_SHOT=70` | `native-sim-game-2026-07-25.png` | **PARTIAL** — form + combos right; several labels missing/overlapping (same resource-delta class). |
-| 12 | 56-30 | Sim Config — Mission (`missionoptions`) | `BOB_CONFIGSCREEN=mission BOB_SHOT=70` | `native-sim-mission-2026-07-25.png` | **PARTIAL** — all 6 combos render with correct values (Medium/Medium/Historic/Historic/Off/On matches gold's row order); NO labels (the mission panel's labels aren't CRStatic-hosted or absent from source .rc — root-cause next). |
-| 13 | 56-45 | Sim Config — Views (`vieweroptions`) | `BOB_CONFIGSCREEN=views BOB_SHOT=70` | `native-sim-views-2026-07-25.png` | **CLOSE** — 9 rows, labels aligned (was shifted/overlapped). Deviations: one overlapped label pair (Info Line/Camera Colour), "Auto Padlock" vs gold "Auto External" etc. (resource delta). |
+| 6 | 55-25 | PC Config — More GFX (`options3d2`) | `BOB_CONFIGSCREEN=gfx2 BOB_SHOT=70` | `native-config-moregfx-2026-07-26.png` (sbs: `sbs-config-moregfx.jpg`) | **CLOSE (S124: label-for-label gold)** — all 12 rows labeled exactly as gold: Filtering/Smoke Effects/Texture Quality/**Town and forest raises**/Routes/A-C Shadows/Item Shadows/Horizon Distance/**Detail Level**/G Effects/Injury Effects/White Outs (BDG captions via PE DLGINIT + IDS string-table resolution). Deviations: combo values (settings state), one stray box artifact at G Effects, tab-row spread, font face. |
+| 7 | 55-41 | PC Config — GFX (`options3d`) | `BOB_CONFIGSCREEN=gfx BOB_SHOT=70` | `native-config-gfx-2026-07-26.png` | **CLOSE (S124: BDG row set + captions)** — gold's row set incl. the BDG-added **3D Resolution / Campaign Resolution / Map Screen** rows, captions exact (**Gamma Level**, **Weather Detail**). Deviations: Campaign Resolution / Map Screen rows are label-only (the 2000 game code has no combo member to bind — BDG-code delta, unfixable data-side), our "BoB Linux OpenGL backend" driver string (faithful for the port), tab-row spread, font. |
+| 8 | 55-52 | PC Config — Controls (`controloptions`/SController) | `BOB_CONFIGSCREEN=control BOB_SHOT=70` | `native-config-controls-2026-07-26.png` | **CLOSE (S124)** — device line, axes/buttons count, Use For FF / Gun Fire / Buffet / Aerodynamic / Airframe rows, Dead Zone / Mode / Flip headers, and the Stick/Rudder/Throttle/Prop Pitch/View Pan/Zoom/Cockpit & UI/Gunner row labels all render (were missing/overlapped). Deviations: a few mid-grid rows unlabeled, "&&" drawn literally (no accelerator-escape processing), Calibrate/checkbox art not drawn. |
+| 9 | 55-59 | PC Config — Sound (`soundoptions`) | `BOB_CONFIGSCREEN=sound BOB_SHOT=70` | `native-config-sound-2026-07-26.png` | **CLOSE (S124: structurally 1:1 with gold)** — Sound Driver header + wide driver combo + all 7 labeled rows in gold order (3d SFX Volume/SFX Processing/UI SFX Vol/Ambient SFX Vol/Radio Chatter Volume/Engine Volume/SFX Quality). The overlapped top label + stray top/bottom combos are GONE (template filter: BDG dropped the source's music combos). Deviations: combo values (settings state), "Default" vs gold "Primary Sound Driver" (faithful port string), font. |
+| 10 | 56-15 | Sim Config — Flight (`flightoptions`) | `BOB_CONFIGSCREEN=flight BOB_SHOT=70` (`sim` also works) | `native-sim-flight-2026-07-26.png` | **CLOSE (S124: row-for-row gold)** — FLIGHT OPTIONS header row + all 10 rows labeled incl. the previously-missing Engine Management / Prop Pitch Control and gold's **109 Fuel Capacity** (BDG). Deviations: combo values (settings state), font. |
+| 11 | 56-21 | Sim Config — Game (`gameoptions`) | `BOB_CONFIGSCREEN=game BOB_SHOT=70` | `native-sim-game-2026-07-26.png` | **CLOSE (S124)** — all 10 rows labeled+paired (Weapons/Vulnerable To Fire/Ground Collisions/Midair Collisions/Complex A.I. Pilots/Accel Off/Target Size/Auto Canopy/Text Info/**Aircraft Names**). Deviations: combo values (settings state), font. |
+| 12 | 56-30 | Sim Config — Mission (`missionoptions`) | `BOB_CONFIGSCREEN=mission BOB_SHOT=70` | `native-sim-mission-2026-07-26.png` (sbs: `sbs-sim-mission.jpg`) | **CLOSE (S124 proof screen — labels/rows match gold)** — all 6 label+combo rows exactly as gold (LW Skill Modifier/RAF Skill Modifier/Luftwaffe Tactics/Luftwaffe Intell/Map Plotting/Auto Vectoring; values match bar RAF Skill = settings state). Root cause was NOT a resource delta alone: SMissionConfigure DDX-binds no statics — the S124 template-driven static hosting creates them from the PE DIALOG template. Deviations: tab-row spread, font. |
+| 13 | 56-45 | Sim Config — Views (`vieweroptions`) | `BOB_CONFIGSCREEN=views BOB_SHOT=70` | `native-sim-views-2026-07-26.png` | **CLOSE (S124)** — 9 rows labeled+paired with gold captions (Auto External, View Mode Select, Padlock When Visible, Info Line, Head Up Display …); the S123 overlapped Info Line/Camera Colour pair is gone (template filter). Deviations: combo values, font. |
 | 14 | 56-53 | Campaign side-select (RAF/Luftwaffe) | `BOB_AUTOCLICK=1 BOB_SHOT=250` | `native-campaign-sideselect-2026-07-25.png` | **CLOSE** — art identical, RAF/Luftwaffe/Back hit-polygons live. Deviation: captions tiny vs gold's large gold face (the screen has no textlist coords; captions are art-adjacent). |
 | 15 | 57-36 | Campaign side-select (near-duplicate of #14) | same | same | same — **flag for PO: #14/#15 duplicates** (19 vs "17" count). |
 | 16 | 57-47 | Campaign phase select (`campaignselect`) | `BOB_AUTOCLICK=1,1 BOB_SHOT=380` | `native-campaign-phaseselect-2026-07-25.png` (before: `BEFORE-campaign-phaseselect-2026-07-25.png`) | **PARTIAL** — Back/Begin now bottom-left at the game's ListX/ListY (was top, overlapped); phase description + date + black montage frame (gold black too) render. Deviations: phase tabs tight-packed top-left (hosted listbox draws its own columns), duplicated date heading top-left, description unwrapped (R6.2). |
@@ -54,28 +62,35 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
 
 ## Systemic root causes (ranked, for SP.2/SP.3 continuation)
 
-1. **Resource-version delta (largest class, needs PO guidance):** the gold Wine build runs
-   the **BDG 0.99 patched resources** (BATTLE.DIR/exe .rsrc); the native port parses the
-   **original source checkout's** `MIG.RC`/`RESOURCE.H`/DLGINIT at runtime
-   (`bob_dlgtemplate.cpp`). Label texts, extra rows (3D/Campaign Resolution), tab captions
-   ("BDG"), and the title item ("BDG 0.99" vs "Website") all differ at the *data* level —
-   no amount of compat rendering fixes that. Faithful fix = read the installed build's
-   resources (PE .rsrc DIALOG/DLGINIT parser), which also closes the packaging blocker
-   ("resources from the source checkout"). ~8-13 pts, flagged as its own story.
-2. **Fixed this sprint:** unscoped control-rect lookup (labels took rects from other
+1. **Resource-version delta — ☑ CLOSED S124 (2026-07-26).** SM oracle ruling (PO can
+   overturn): parity is judged against the gold shots as-is = the **BDG 0.99 patched
+   build**. The native build now reads the installed build's PE resources at runtime
+   (`bob_resources.cpp` DIALOG/DLGINIT enumerators + `bob_dlgtemplate.cpp` PE-first
+   load): BDG rects/rows, DLGINIT captions with the genuine control's IDS→string-table
+   resolution (`WM_GETSTRING` equivalent), template-driven hosting of non-DDX label
+   statics, and a template-membership draw filter (source-only controls that BDG's
+   templates drop are not drawn — the Windows dialog manager would never create them).
+   `BOB_NO_PE_RSRC` reverts. Also closes the packaging resource-root blocker for
+   dialogs (the .rc text parse remains only as fallback). Residual BDG-**code** deltas
+   (not fixable from data): title item "BDG 0.99" vs "Website" (FULLPSYS string list),
+   "BDG" config tab, combo members the 2000 source never binds (Campaign Resolution /
+   Map Screen rows are label-only).
+2. **Fixed S123:** unscoped control-rect lookup (labels took rects from other
    dialogs' templates — scrambled forms); menu lists ignoring the game's per-resolution
    `ListX/ListY` anchor (Back/Begin/Fly rows drawn top instead of bottom); runtime
    `ShowWindow` visibility ignored (demo/disabled ghost statics drawn).
 3. **Remaining render classes:** multi-line word-wrap for description statics (R6.2);
    tab-row column spread (hosted listbox column widths vs gold's PositionRListBox
-   spacing); page-switching dialogs (`MoveWindow` offsets not tracked — Quick Shots
-   pages overlap); native-DLU font face/size pass (R6.2); edit-control hosting
-   (enter-name box).
+   spacing); page-switching dialogs (`MoveWindow` offsets not tracked); native-DLU
+   font face/size pass (R6.2); edit-control hosting (enter-name box, #17);
+   accelerator-escape "&&"→"&" in label draw (#8); QS page-tab captions/recipe (#3);
+   LW Directives dialog wiring (#18).
 
 ## PO questions
 
 - Gold folder holds **19** shots, not 17; #14/#15 are near-duplicates of the same screen.
   Confirm the canonical set (inventory above covers all 19).
-- Resource-version delta (root cause 1): should parity be judged against the BDG 0.99
-  resources (then: approve the PE-resource-parser story) or against the original 2000
-  resources the source tree ships (then: several "deviations" above become MATCHes)?
+- ~~Resource-version delta (root cause 1): which oracle?~~ **Resolved by SM ruling S124
+  (standing approval): oracle = the BDG 0.99 build (the gold shots as-is); implemented.**
+  PO can overturn cheaply: `BOB_NO_PE_RSRC=1` reverts the whole PE layer to the 2000
+  source-.rc data, and every BDG-vs-source delta above is tagged per-deviation.

@@ -7,14 +7,18 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session (S123, 2026-07-25):** **Release SP (screen parity vs the Windows gold standard)
-> opened** — all 19 gold shots inventoried with scripted repros + native captures
-> ([`doc/screen-parity.md`](doc/screen-parity.md), captures in `doc/parity/`); three systemic
-> front-end parity fixes landed (dialog-scoped label rects — config forms un-scrambled; menu lists at
-> the game's authored `ListX/ListY` — Back/Begin/Fly rows placed as on Windows; runtime `ShowWindow`
-> honored — ghost statics gone). New deterministic capture harness `BOB_SHOT`/`BOB_SHOT_PATH`.
-> Open PO question: the gold build runs **BDG 0.99 patched resources** vs our source-checkout `.rc`
-> (label/row deltas are data-level; PE-`.rsrc` parser scoped as the faithful fix).
+> **Latest session (S124, 2026-07-26):** **BDG-oracle PE resources** — the port now reads the
+> installed build's PE `.rsrc` DIALOG/DLGINIT (`English/TEXT/boblang.dll` = BDG 0.99, the parity
+> oracle per SM ruling) instead of the source checkout's `.rc`: BDG rects/rows, faithful
+> IDS→string-table captions, template-driven hosting of non-DDX label statics, and a
+> template-membership draw filter. **All 8 config tabs are now CLOSE vs the gold shots** (More GFX
+> label-for-label; Mission tab fully labeled — was label-less). `BOB_NO_PE_RSRC` reverts.
+> Also closes the packaging resource-root blocker for dialog data.
+>
+> Prior (S123, 2026-07-25): **Release SP opened** — all 19 gold shots inventoried with scripted
+> repros + native captures ([`doc/screen-parity.md`](doc/screen-parity.md), captures in
+> `doc/parity/`); three systemic parity fixes (dialog-scoped label rects; menu lists at the game's
+> `ListX/ListY`; runtime `ShowWindow`). Capture harness `BOB_SHOT`/`BOB_SHOT_PATH`.
 >
 > Prior: [`doc/STATUS-2026-07-01.md`](doc/STATUS-2026-07-01.md) (S72→S82) — all 7 historic
 > quick missions (23–29) now fly; **double-exposure aircraft** and **cockpit cloud z-fighting** both FIXED;

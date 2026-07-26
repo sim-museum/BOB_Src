@@ -65,6 +65,29 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
     return TRUE;
 }
 
+/* S124: host the dialog TEMPLATE's label statics that no DDX_Control bound.
+   On Windows the dialog manager creates EVERY template item; our DDX-driven
+   creation only instantiates the members a dialog binds — e.g. SMissionConfigure
+   binds its 8 combos but none of its 6 RStatic labels, so the Sim-Config Mission
+   tab rendered label-less. The ids come from the installed build's PE DIALOG
+   templates (bob_dlg_enum_statics; empty under BOB_NO_PE_RSRC → feature off).
+   Called from CDialog::Create between DoDataExchange and OnInitDialog, so
+   g_bobDlgIDD is the owning dialog and OnInitDialog can already GetDlgItem them.
+   The synthetic wrapper CWnds follow the existing host-lifetime pattern (hosts
+   are never erased; draw/click filter by parentDlg). */
+extern "C" int bob_dlg_enum_statics(int dlgId, int* ids, int maxn);
+void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
+    if (!dlg || dlgId <= 0) return;
+    int ids[96];
+    int n = bob_dlg_enum_statics(dlgId, ids, 96);
+    for (int i = 0; i < n; i++) {
+        if (bob_ole_find_wrapper(dlg, ids[i])) continue;     /* DDX-bound already */
+        CWnd* w = new CWnd;                                   /* synthetic wrapper (GetDlgItem/ShowWindow reach it via hosts()) */
+        if (!bob_ole_create_control(w, (const GUID*)&CLSID_RStatic, dlg, (UINT)ids[i])) { delete w; continue; }
+        if (bob_ole_trace()) fprintf(stderr, "[ole] template static id=%d hosted for dlg IDD=%d\n", ids[i], dlgId);
+    }
+}
+
 /* ---- dialog-template positioning ------------------------------------------
    The R* controls' on-screen rects come from the dialog resource template (DLU).
    Stage 1: a table for IDD_SDETAIL (the GFX-config sub-panel) from ENGLISH/MIG.RC;
@@ -83,6 +106,7 @@ static const DluRect SDETAIL_LAYOUT[] = {
 };
 extern "C" int bob_dlg_lookup(int ctrlId, int* x, int* y, int* w, int* h);
 extern "C" int bob_dlg_lookup_in(int dlgId, int ctrlId, int* x, int* y, int* w, int* h);
+extern "C" int bob_dlg_in_template(int dlgId, int ctrlId);   /* S124: 1 in / 0 absent / -1 unknown dialog */
 static bool lookupDlu(int id, DluRect& out) {
     /* prefer the runtime .rc parser (covers every screen); fall back to the small
        hardcoded SDETAIL table if the source .rc isn't reachable. */
@@ -115,6 +139,11 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            drawn and can't be clicked (zeroed hit rect). E.g. CSQuick1 hides IDC_DISABLEDEMO
            ("This is disabled in the demo") on the full game. */
         if (!host->visible) { host->sw = host->sh = 0; continue; }
+        /* S124: a control absent from the installed build's template for this dialog would
+           never be created by the Windows dialog manager -- don't draw it (e.g. CSSound's
+           source-only music combos over the BDG IDD_SSOUND layout). Dialogs the PE doesn't
+           cover return -1 (no filtering). Zeroed hit rect keeps clicks consistent. */
+        if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; continue; }
         DluRect r;
         /* SP.2 (S123): look the rect up SCOPED to the control's own dialog template first.
            The unscoped by-id lookup returned the first id match across ALL parsed dialogs;

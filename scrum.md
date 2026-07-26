@@ -196,7 +196,7 @@ screen sweep with the gold shots as the fixed oracle.*
 | ID | Story | Pts | Status |
 |---|---|---|---|
 | SP.1 | **Gold-shot inventory** — ☑ **DONE (S123, 2026-07-25).** All shots mapped (NB: the folder holds **19** PNGs, not 17 — two near-dupe side-selects, flagged for PO) with scripted repro recipes; `doc/screen-parity.md` verdict table (MATCH/CLOSE/PARTIAL/GAP + named deviations) + 15 native captures in `doc/parity/` (3 BEFORE/after pairs). New deterministic capture harness `BOB_SHOT`/`BOB_SHOT_PATH` (headless, private path); `BOB_CONFIGSCREEN` gained game/mission/views/flight/quick. | 3 | ☑ |
-| SP.2 | **Front-end parity** — ◐ **3 SYSTEMIC FIXES LANDED (S123).** (1) dialog-SCOPED control-rect lookup (label ids repeat across templates; unscoped lookup scrambled the GFX/Sound/Controls/Views forms — now every label pairs with its row); (2) menu lists anchored at the game's own per-res `FullScreen::ListX/ListY` (Back/Begin/Fly rows now bottom-left as in gold; `BOB_NO_LISTXY` reverts); (3) runtime `ShowWindow` honored on hosted controls (demo/off-page ghost statics gone). Remaining: **PO oracle decision** — gold = BDG 0.99 patched resources vs our source-checkout .rc (label/row deltas are data-level; faithful fix = PE `.rsrc` parser, also closes the packaging blocker, ~8-13 pts); word-wrap (R6.2), tab-row spread, `MoveWindow` page tracking, edit-control hosting, font face. | 13 | ◐ |
+| SP.2 | **Front-end parity** — ◐ **BDG-ORACLE PE RESOURCES LANDED (S124)** after S123's 3 systemic fixes. S124: the port reads the INSTALLED build's PE resources (`boblang.dll` = BDG 0.99) at runtime — DIALOG rects/rows, DLGINIT captions with the genuine IDS→string-table resolution, template-driven hosting of non-DDX label statics (the Mission-tab root cause), template-membership draw filter (source-only controls BDG dropped aren't drawn). Every config tab now CLOSE with gold label sets ("Town and forest raises", "109 Fuel Capacity", "Gamma Level", BDG's extra GFX rows). `BOB_NO_PE_RSRC` reverts. _S123: (1) dialog-SCOPED control-rect lookup; (2) menu lists at the game's `ListX/ListY` (`BOB_NO_LISTXY` reverts); (3) runtime `ShowWindow` honored._ Remaining: word-wrap (R6.2), tab-row spread, `MoveWindow` page tracking, edit-control hosting (#17), font face, "&&" escape, QS tab captions/recipe (#3), Directives dialog (#18). | 13 | ◐ |
 | SP.3 | **Flight / map parity** — ◐ **BOTH CAPTURED + VERDICTED (S123).** Cockpit vs gold: CLOSE (structure/instruments/HUD readout match; prop-blur + HUD style deviations named). Strategic map vs gold: CLOSE (terrain/sectors/icons/footer/toolbars/clock match; raid-stacks/routes absent in the fresh-day capture, ruler art plain, Directives dialog = GAP). Remaining: LW Directives dialog reachability, raid-day capture, deviation fixes. | 13 | ◐ |
 
 ### Icebox (environment-blocked — not schedulable until the environment changes)
@@ -369,6 +369,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **124** | ~8 | 8 | ★ **BDG-oracle PE resources land — the S123 resource-delta root cause CLOSED; every config tab now CLOSE vs gold** | **PE `.rsrc` DIALOG+DLGINIT thin slice (2026-07-26; PO re-scope: finish well before the session limit).** Planning notes / SM rulings (standing approval, PO can overturn): **(a) oracle = the gold shots as-is = the BDG 0.99 patched build** — parity judged against BDG data, not the 2000 checkout's .rc; BDG-vs-source deltas tagged per-deviation so the ruling flips cheaply (`BOB_NO_PE_RSRC=1` reverts wholesale); **(b) sprint scoped to ~8 pts**: minimal PE extraction + ONE proof screen (Sim-Config Mission — doubling as the SP.2 missing-labels root-cause), then close. Delivered on the existing `bob_resources.cpp` loader (found: boblang.dll already parsed for LoadString!): (1) DIALOG (RT5) + DLGINIT (RT240) enumerators (offset-based, packing-safe); (2) `bob_dlgtemplate.cpp` PE-FIRST load feeding the same rect/caption tables (.rc = fallback only, never overwrites PE); (3) **template-driven static hosting** — the real Mission-tab root cause: `SMissionConfigure` DDX-binds 0 statics, and on Windows the dialog manager creates EVERY template item (`bob_ole_host_template_statics` in `CDialog::Create`); (4) **template-membership draw filter** (source-only controls BDG dropped aren't drawn — killed Sound's overlapped label + stray combos, QS page-ghost combos); (5) **faithful IDS→string-table caption resolution** (the genuine `CRStaticCtrl` `WM_GETSTRING` path → "Town and forest raises"/"Gamma Level"/"109 Fuel Capacity" exact). Verdicts: #6-#13 all **CLOSE** (were PARTIAL x5), #2 improved. No regression: bare 0; all 11 headless screens exit 0; strategic map clean. **Deferred to S125:** parser generalization + MA handoff design doc + outbound note 14 (PO session-budget constraint); enter-name edit hosting; tab wrap; Directives; QS tab recipe. |
 | **123** | ~20 | 11 | ★ **Release SP opened — SP.1 done + 3 systemic parity fixes** | **Gold-standard screen sweep (2026-07-25).** ☑ SP.1 (3): all 19 gold shots (not 17 — flagged) mapped + scripted repro + 15 native captures + `doc/screen-parity.md` verdicts; `BOB_SHOT` one-shot capture harness; `BOB_CONFIGSCREEN` +game/mission/views/flight/quick. ◐ SP.2 (~8): dialog-scoped rect lookup (unscrambled the config forms), menu lists at the authored `ListX/ListY` (Back/Begin/Fly bottom-left per gold), `ShowWindow` visibility (ghost statics gone). ◐ SP.3: cockpit + strategic map captured, both CLOSE. Headline: gold = **BDG 0.99 patched resources** vs our source-checkout .rc — label deltas are data-level, PE-`.rsrc`-parser story scoped, PO oracle question posed. No regression (bare 0; flight frame-150 on `:0`; campaign map clean). Cross-port: shared doc §8e (sync ✓) + note 13 delivered (MA/FF/Julia Racer). |
 | 0 (pre-Scrum) | — | ~76 | ✅ baseline | Calibration baseline. |
 | 1 | 21 | 16 | ✅ accepted | PO-accepted as Done (Sprint Review, 2026-06-17). R1.2 (13) done; R1.1 split → R1.1a (3) done, R1.1b (8, re-est.) blocked-by R1.3, carried. Tooling: `BOB_ASAN` build + valgrind memcheck (cross-validated R1.2) added. |
@@ -427,6 +428,23 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 124 (BDG-oracle PE resources):_ **Look for the loader you already have before designing the
+  one you think you need.** The story was scoped ~8-13 pts as "write a PE `.rsrc` parser"; the first
+  hour found `bob_resources.cpp` already parsing the PE resource tree of the exact BDG module
+  (boblang.dll, loaded for LoadString since the earliest sessions) — the delivered slice was two
+  enumerators on top of it, and the sprint's real work turned out to be the CONSUMER side. Lessons:
+  (1) **the "missing labels" had two independent causes** (no DDX binding → control never created;
+  AND caption data) — fixing only the planned one (data) would have shipped zero visible labels on
+  the proof screen; walking the runtime path end-to-end (DDX → create → applyDesignProps → draw)
+  before coding found the second. (2) **fidelity comes from mimicking the platform's mechanism, not
+  the artifact**: "create every template item" and "resolve captions via WM_GETSTRING/LoadString"
+  each replaced a would-be heuristic with what Windows actually does, and gold text snapped into
+  place ("Town and forest raises"). (3) **a thin sprint under a hard session budget works**: one
+  proof screen, verdict-table updates as the demo, everything else explicitly deferred with names.
+  (4) **headless runs don't need the display lock** — queueing on a sibling's flock for a
+  SDL-dummy capture wasted the first attempt; the protocol's intent is the GL display, match the
+  intent not the letter (real-GL runs still lock).
 
 - _Sprint 123 (Release SP opened — gold-shot inventory + 3 systemic parity fixes):_ **Build the
   oracle-driven capture loop FIRST; the fixes then pick themselves.** The sprint's leverage came from

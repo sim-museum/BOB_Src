@@ -181,4 +181,164 @@ extern "C" const void* bob_res_get(HMODULE_T h, unsigned type, unsigned id, unsi
 	return p;
 }
 
+/* ==========================================================================
+ * S124: DIALOG (RT=5) + DLGINIT (RT=240) extraction from the installed build's
+ * resources (boblang.dll = the BDG 0.99 patched data — the PO's parity oracle).
+ * bob_dlgtemplate.cpp consumes these via the two enumerators below, replacing
+ * its source-checkout .rc text parse as the primary layout/caption source.
+ * All parsing stays offset-based (this TU is built with -fpack-struct=1).
+ * ======================================================================== */
+
+/* enumerate the id-entries (skip named) one level below dirOff */
+static int res_enum_ids(BobResModule* m, uint32_t dirOff,
+                        int (*cb)(void* ctx, uint32_t id, uint32_t off, int isDir), void* ctx){
+	const uint8_t* dir = m->buf + m->resBaseOff + dirOff;
+	uint16_t nNamed = rd16(dir+12), nId = rd16(dir+14);
+	const uint8_t* e = dir + 16 + (size_t)nNamed*8;
+	int n = 0;
+	for (int i=0;i<nId;i++,e+=8){
+		uint32_t nameId = rd32(e);
+		if (nameId & 0x80000000) continue;
+		uint32_t off = rd32(e+4);
+		if (!cb(ctx, nameId, off & 0x7fffffff, (off & 0x80000000)?1:0)) return n;
+		n++;
+	}
+	return n;
+}
+/* leaf data of the first language under a name-level directory */
+static const uint8_t* res_leaf(BobResModule* m, uint32_t nameDirOff, uint32_t* outSize){
+	uint32_t off; int isDir;
+	if (!res_first_child(m, nameDirOff, &off, &isDir) || isDir) return NULL;
+	const uint8_t* leaf = m->buf + m->resBaseOff + off;
+	uint32_t dataRva = rd32(leaf), sz = rd32(leaf+4);
+	uint32_t doff = rva2off(m, dataRva);
+	if (!doff || doff + sz > m->size) return NULL;
+	if (outSize) *outSize = sz;
+	return m->buf + doff;
+}
+
+/* DLGTEMPLATE sz_Or_Ord: 0x0000 none / 0xFFFF+WORD ordinal / UTF-16LE string.
+ * Narrows the string into out (Latin-1-ish); ordinal formats as "#%u".
+ * Returns the new offset, or -1 on overrun. */
+static int sz_or_ord(const uint8_t* b, uint32_t n, uint32_t o, char* out, int outsz){
+	if (out && outsz>0) out[0]=0;
+	if (o+2 > n) return -1;
+	uint16_t w = rd16(b+o);
+	if (w == 0x0000) return (int)(o+2);
+	if (w == 0xFFFF){
+		if (o+4 > n) return -1;
+		if (out) snprintf(out, outsz, "#%u", rd16(b+o+2));
+		return (int)(o+4);
+	}
+	int k = 0;
+	while (o+2 <= n){
+		uint16_t c = rd16(b+o); o += 2;
+		if (c == 0) return (int)o;
+		if (out && k < outsz-1) out[k++] = (c < 256) ? (char)c : '?';
+		if (out) out[k] = 0;
+	}
+	return -1;
+}
+
+struct DlgEnumCtx {
+	BobResModule* m;
+	void (*itemcb)(void* ctx, int dlgId, int ctrlId, int x, int y, int w, int h, const char* cls);
+	void* ctx;
+	int count;
+};
+
+/* parse one DLGTEMPLATE / DLGTEMPLATEEX resource, firing itemcb per control */
+static int dlg_enum_one(void* vc, uint32_t dlgId, uint32_t off, int isDir){
+	DlgEnumCtx* c = (DlgEnumCtx*)vc;
+	if (!isDir) return 1;
+	uint32_t n=0; const uint8_t* b = res_leaf(c->m, off, &n);
+	if (!b || n < 18) return 1;
+	int ex = (rd16(b) == 1 && rd16(b+2) == 0xFFFF);
+	uint32_t style, o; uint16_t cdit;
+	if (ex){ style = rd32(b+12); cdit = rd16(b+16); o = 26; }
+	else   { style = rd32(b);    cdit = rd16(b+8);  o = 18; }
+	char tmp[128];
+	int r = sz_or_ord(b, n, o, NULL, 0); if (r < 0) return 1; o = r;      /* menu  */
+	r = sz_or_ord(b, n, o, NULL, 0);     if (r < 0) return 1; o = r;      /* class */
+	r = sz_or_ord(b, n, o, NULL, 0);     if (r < 0) return 1; o = r;      /* title */
+	if (style & 0x40){                                                    /* DS_SETFONT */
+		o += 2;                                                           /* point size */
+		if (ex) o += 4;                                                   /* weight+italic+charset */
+		r = sz_or_ord(b, n, o, NULL, 0); if (r < 0) return 1; o = r;      /* face */
+	}
+	for (uint16_t i=0;i<cdit;i++){
+		o = (o+3) & ~3u;                                                  /* DWORD align */
+		int32_t x,y,w,h; uint32_t cid;
+		if (ex){
+			if (o+24 > n) return 1;
+			x=(int16_t)rd16(b+o+12); y=(int16_t)rd16(b+o+14);
+			w=(int16_t)rd16(b+o+16); h=(int16_t)rd16(b+o+18);
+			cid = rd32(b+o+20); o += 24;
+		} else {
+			if (o+18 > n) return 1;
+			x=(int16_t)rd16(b+o+8);  y=(int16_t)rd16(b+o+10);
+			w=(int16_t)rd16(b+o+12); h=(int16_t)rd16(b+o+14);
+			cid = rd16(b+o+16); o += 18;
+		}
+		r = sz_or_ord(b, n, o, tmp, sizeof tmp); if (r < 0) return 1; o = r;   /* class */
+		c->itemcb(c->ctx, (int)dlgId, (int)cid, x, y, w, h, tmp);
+		c->count++;
+		r = sz_or_ord(b, n, o, NULL, 0);         if (r < 0) return 1; o = r;   /* text  */
+		if (o+2 > n) return 1;
+		/* creation data: classic nonzero count INCLUDES the size WORD; EX count excludes it */
+		{ uint16_t cx = rd16(b+o); o += cx ? (ex ? 2u+cx : (uint32_t)cx) : 2u; }
+	}
+	return 1;
+}
+
+/* Enumerate every control of every DIALOG template in the resource module.
+ * Returns the item count (0 when no module / no dialogs). */
+extern "C" int bob_res_enum_dialog_items(
+		void (*itemcb)(void* ctx, int dlgId, int ctrlId, int x, int y, int w, int h, const char* cls),
+		void* ctx){
+	BobResModule* m = g_resModule;
+	if (!m) return 0;
+	uint32_t off; int isDir;
+	if (!res_find_entry(m, 0, 5 /*RT_DIALOG*/, &off, &isDir) || !isDir) return 0;
+	DlgEnumCtx c = { m, itemcb, ctx, 0 };
+	res_enum_ids(m, off, dlg_enum_one, &c);
+	return c.count;
+}
+
+/* DLGINIT (type 240): per-dialog stream of {WORD ctrlId, WORD msg, DWORD len, bytes}. */
+struct InitEnumCtx {
+	BobResModule* m;
+	void (*initcb)(void* ctx, int dlgId, int ctrlId, const unsigned char* data, int len);
+	void* ctx;
+	int count;
+};
+static int init_enum_one(void* vc, uint32_t dlgId, uint32_t off, int isDir){
+	InitEnumCtx* c = (InitEnumCtx*)vc;
+	if (!isDir) return 1;
+	uint32_t n=0; const uint8_t* b = res_leaf(c->m, off, &n);
+	if (!b) return 1;
+	uint32_t o = 0;
+	while (o+8 <= n){
+		uint16_t cid = rd16(b+o);
+		if (cid == 0) break;
+		uint32_t len = rd32(b+o+4);
+		if (o+8+len > n) break;
+		c->initcb(c->ctx, (int)dlgId, (int)cid, b+o+8, (int)len);
+		c->count++;
+		o += 8 + len;
+	}
+	return 1;
+}
+extern "C" int bob_res_enum_dlginit(
+		void (*initcb)(void* ctx, int dlgId, int ctrlId, const unsigned char* data, int len),
+		void* ctx){
+	BobResModule* m = g_resModule;
+	if (!m) return 0;
+	uint32_t off; int isDir;
+	if (!res_find_entry(m, 0, 240 /*DLGINIT*/, &off, &isDir) || !isDir) return 0;
+	InitEnumCtx c = { m, initcb, ctx, 0 };
+	res_enum_ids(m, off, init_enum_one, &c);
+	return c.count;
+}
+
 #endif /* FF_LINUX */

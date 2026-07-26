@@ -156,6 +156,8 @@ in-flight HUD info bar), `BOB_GROUNDSHADE`
 `BOB_SHOT=<n>`/`BOB_SHOT_PATH=<file>` (S123: deterministic one-shot GDI screen capture after n
 front-end ticks/map paints, then exit — the screen-parity harness; see `doc/screen-parity.md`),
 `BOB_NO_LISTXY` (revert menu lists to the pre-S123 synthetic anchors),
+`BOB_NO_PE_RSRC` (S124: revert dialog layout/caption data to the source-checkout .rc parse —
+default is the INSTALLED build's PE resources, boblang.dll = BDG 0.99, the parity oracle),
 `BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.
 
 ## Conventions

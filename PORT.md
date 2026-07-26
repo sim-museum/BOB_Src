@@ -1,5 +1,65 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S124 (2026-07-26, Sprint 124): BDG-oracle PE resources — DIALOG/DLGINIT read from the installed build; the S123 resource-delta root cause CLOSED; all 8 config tabs now CLOSE vs gold
+>
+> **SM rulings recorded (standing PO approval; PO can overturn):** (a) **the parity oracle is the
+> gold screenshots as-is = the BDG 0.99 patched build** — deltas vs the 2000 source checkout are
+> judged against BDG data, with each provable BDG-vs-source deviation tagged in
+> `doc/screen-parity.md` so the ruling can be flipped cheaply (`BOB_NO_PE_RSRC=1` reverts the whole
+> layer); (b) sprint re-scoped to a **~8-pt thin increment** (PO session-budget constraint): minimal
+> PE extraction + one proof screen (Sim-Config **Mission** tab), generalization + MA handoff → S125.
+>
+> **The find that shrank the story:** `SRC/compat/bob_resources.cpp` has parsed the PE `.rsrc` tree
+> of **exactly the right module** since the earliest sessions — `MIG.CPP:511
+> LoadLibrary(FIL_LANGRESOURCEDLL)` → `English/TEXT/boblang.dll`, which IS the BDG 0.99 resource
+> DLL (verified: 150 DIALOGs, 135 DLGINITs, BDG-only content like the GFX "Map Screen" row and
+> "109 Fuel Capacity"). The planned "PE parser story" reduced to two enumerators on the existing
+> loader + consumer-side work:
+> - **`bob_resources.cpp`** — `bob_res_enum_dialog_items` (DLGTEMPLATE + DLGTEMPLATEEX, offset-based
+>   reads, packing-safe; classic-vs-EX creation-data WORD semantics handled) and
+>   `bob_res_enum_dlginit` (RT240 `{id,msg,len,bytes}` records).
+> - **`bob_dlgtemplate.cpp`** — PE-FIRST `load()`: BDG rects/captions/art fill the same tables the
+>   .rc text parse fed; the .rc runs after as **fallback only** (PE entries are never overwritten;
+>   `pe` flag per entry). Control-class kind captured from the template class GUID (RStatic/RCombo/
+>   RListBox/RButton). `BOB_NO_PE_RSRC` reverts to the S123 behaviour.
+> - **Template-driven static hosting — the real Mission-tab root cause.** The missing labels were
+>   NOT purely a resource delta: `SMissionConfigure` DDX-binds its 8 combos and **zero statics**, and
+>   our control creation was DDX-driven — on Windows the dialog manager creates **every template
+>   item**. `bob_ole_host_template_statics` (called in `CDialog::Create` between `DoDataExchange`
+>   and `OnInitDialog`) hosts each PE-template RStatic no DDX bound, on a synthetic wrapper CWnd
+>   (reachable via GetDlgItem/ShowWindow; follows the existing host-lifetime pattern).
+> - **Template-membership draw filter** (`bob_dlg_in_template`, applied in `bob_ole_draw_panel`
+>   only — toolbar path untouched): a control absent from the installed build's template for its
+>   dialog is not drawn — the Windows dialog manager would never create it. Killed the Sound tab's
+>   overlapped top label + stray top/bottom combos (BDG dropped the source's music combos) and the
+>   Quick-Shots page-2/3 ghost combos (S123 named deviation).
+> - **Faithful caption text — IDS→string-table resolution.** The genuine `CRStaticCtrl` resolves its
+>   runtime caption via `WM_GETSTRING(ResourceNumber)` → LoadString from the language DLL
+>   (RSTATICC.CPP `GetParentWndInfo`; the DLGINIT literal is design-time only). `bob_dlg_caption`
+>   now resolves the bag's persisted `IDS_*` name through RESOURCE.H → `bob_load_string` (BDG string
+>   table), falling back to the literal. This snapped the last caption deltas to gold: "Town and
+>   forest raises" (was "Trees etc"), "Detail Level" (was "Contour Detail"), "Gamma Level",
+>   "Smoke Effects", "Aircraft Names", "109 Fuel Capacity".
+>
+> **Evidence (all headless `BOB_SHOT` captures, dated `doc/parity/native-*-2026-07-26.png`; verdict
+> table updated in `doc/screen-parity.md`):** proof screen Sim-Config **Mission**: all 6 label+combo
+> rows exactly match gold #12 (`sbs-sim-mission.jpg`) — was "combos render, NO labels". **More GFX:
+> label-for-label identical to gold** (`sbs-config-moregfx.jpg`). GFX: BDG row set incl. 3D/Campaign
+> Resolution + Map Screen rows. Sound: structurally 1:1 (8 rows, gold order). Flight: row-for-row
+> incl. FLIGHT OPTIONS header. Game/Views/Controls: fully labeled. Verdicts #6–#13: **five
+> PARTIAL→CLOSE, three CLOSE improved**; #2 improved. Trace: `[ole] PE resources (BDG oracle): 1490
+> dialog items, 1422 DLGINIT records`.
+> **No regression:** `ninja bob` clean; bare `./bob` exits 0; 11 headless screen recipes all exit 0
+> (menu/QS/4 PC-config/4 Sim-config/side/phase/enter-name); strategic map + toolbars + icons + footer
+> clean (toolbar draw path deliberately unfiltered). Flight untouched (no video-path changes).
+> **Residual BDG-code deltas (not fixable from data, tagged per-deviation):** "BDG 0.99" title item +
+> "BDG" tab (patched game code), Campaign Resolution/Map Screen combos label-only (the 2000 source
+> has no member to bind), driver strings.
+> **Deferred to S125 (PO session-budget re-scope):** parser generalization + the MA-adoptable design
+> § in the shared lessons doc + outbound cross-port note 14 (MA wants the PE-parser design);
+> enter-name edit-control hosting (#17); phase-select tab wrap (#16); QS page-tab recipe (#3);
+> Directives dialog (#18); "&&" accelerator escape (#8).
+
 > ## S123 (2026-07-25, Sprint 123): Release SP opened — gold-shot inventory DONE (SP.1) + three systemic front-end parity fixes (SP.2 partial)
 >
 > The PO's new **Release SP** ("screen parity vs the Windows gold standard",

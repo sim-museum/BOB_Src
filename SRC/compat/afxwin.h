@@ -53,6 +53,8 @@ extern int g_bobListFontH;   /* live R* list font pixel height (bob_ole.cpp); sh
                                 Shrink/GetTextExtent and OnDraw/ExtTextOut agree on size */
 extern int g_bobDlgIDD;      /* IDD of the dialog currently being created (CDialog::Create), so each
                                 hosted control knows its dialog -> (dialog,control) DLGINIT caption */
+void bob_ole_host_template_statics(class CWnd* dlg, int dlgId);  /* S124: create the template's
+                                non-DDX label statics (PE DIALOG data) — bob_ole.cpp */
 class CDataExchange; class CPrintInfo; class CCreateContext_;
 struct AFX_CMDHANDLERINFO; class CPropExchange; class CFile; class CWinApp;
 struct tagHELPINFO; struct COleControlSite;
@@ -1412,6 +1414,10 @@ inline BOOL CDialog::Create(UINT nID, CWnd* parent) {
         int savedIDD = g_bobDlgIDD; g_bobDlgIDD = (int)nID;   /* controls created below belong to this dialog */
         CDataExchange dx; dx.m_bSaveAndValidate = FALSE; dx.m_pDlgWnd = this;
         DoDataExchange(&dx);     /* bind/create the R* ActiveX controls (DDX_Control) */
+        /* S124: on Windows the dialog manager creates EVERY template item; DDX only binds
+           members. Host the template's label statics no DDX_Control bound (e.g. the
+           Sim-Config Mission tab's 6 labels) from the installed build's PE resources. */
+        bob_ole_host_template_statics(this, (int)nID);
         OnInitDialog();          /* run the dialog's init -> populates the controls
                                     (e.g. CSDetail fills its driver/resolution combos) */
         g_bobDlgIDD = savedIDD;

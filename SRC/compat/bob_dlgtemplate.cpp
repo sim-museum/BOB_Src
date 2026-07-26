@@ -17,21 +17,27 @@
 #include <cstdlib>
 #include <cstring>
 #include <cctype>
+#include <strings.h>   /* strncasecmp (S124 PE class GUIDs vary in case) */
 
 #ifndef BOB_SRC_DIR
 #define BOB_SRC_DIR "."
 #endif
 
 #define MAX_SYMS   20000
-#define MAX_RECTS   4096
+#define MAX_RECTS   6144
 #define SYM_LEN       48
 
+/* control-class kind (S124): known only for PE-sourced entries (the .rc text parse
+   doesn't capture the class); drives template-driven static hosting. */
+enum { K_UNKNOWN = 0, K_RSTATIC, K_RCOMBO, K_RLISTBOX, K_RBUTTON };
+
 struct Sym  { char name[SYM_LEN]; int id; };
-struct CR   { int id, dlgId, x, y, w, h; };
+struct CR   { int id, dlgId, x, y, w, h; unsigned char pe, kind; };
 
 static Sym  g_syms[MAX_SYMS];   static int g_nsyms  = 0;
 static CR   g_rects[MAX_RECTS]; static int g_nrects = 0;
 static int  g_loaded = 0;
+static int  g_pe     = 0;       /* S124: PE (BDG-oracle) resources loaded */
 
 static int symLookup(const char* name) {
     for (int i = 0; i < g_nsyms; i++) if (strcmp(g_syms[i].name, name) == 0) return g_syms[i].id;
@@ -116,14 +122,18 @@ static void parseControl(const char* s) {
         /* Keep a per-(dialog,control) entry so shared control ids (e.g. IDC_PAUSE reused across
            dialogs) don't collide — a plain by-id lookup returned the last-parsed dialog's rect,
            putting the map's accel buttons at the wrong place (S94). Update in place if this exact
-           (dlgId,id) was already seen; else append. */
+           (dlgId,id) was already seen; else append.
+           S124: a PE (BDG-oracle) entry is never overwritten by the .rc text parse — the .rc runs
+           after loadFromPE() purely as a fallback for pairs the installed resources lack. */
         for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == id && g_rects[i].dlgId == g_curDlgId) {
+            if (g_rects[i].pe) return;
             g_rects[i].x = nums[nn-4]; g_rects[i].y = nums[nn-3];
             g_rects[i].w = nums[nn-2]; g_rects[i].h = nums[nn-1]; return;
         }
         g_rects[g_nrects].id = id; g_rects[g_nrects].dlgId = g_curDlgId;
         g_rects[g_nrects].x = nums[nn-4]; g_rects[g_nrects].y = nums[nn-3];
         g_rects[g_nrects].w = nums[nn-2]; g_rects[g_nrects].h = nums[nn-1];
+        g_rects[g_nrects].pe = 0; g_rects[g_nrects].kind = K_UNKNOWN;
         g_nrects++;
     }
 }
@@ -158,43 +168,57 @@ static void parseRc(const char* path) {
    blob is its label ("Display Driver:", ...). Keyed by (dialogId, controlId)
    because static-control ids repeat across dialogs. ---- */
 #define MAX_CAPS 6144
-struct Cap { int dlgId, ctrlId; char s[64]; };
+struct Cap { int dlgId, ctrlId; unsigned char pe; char s[64]; char ids[40]; };
 static Cap g_caps[MAX_CAPS]; static int g_ncaps = 0;
+static int g_loadingPE = 0;   /* S124: inside loadFromPE() — entries stored now are oracle data */
 
-static void storeCaption(int dlgId, int ctrlId, const char* s) {
-    if (!s[0]) return;
+static void storeCaption(int dlgId, int ctrlId, const char* s, const char* idsName) {
+    if (!s[0] && !idsName[0]) return;
     for (int j = 0; j < g_ncaps; j++) if (g_caps[j].dlgId == dlgId && g_caps[j].ctrlId == ctrlId) {
-        strncpy(g_caps[j].s, s, 63); g_caps[j].s[63] = 0; return; }
+        if (g_caps[j].pe && !g_loadingPE) return;   /* .rc never overwrites a PE caption (S124) */
+        strncpy(g_caps[j].s, s, 63); g_caps[j].s[63] = 0;
+        strncpy(g_caps[j].ids, idsName, 39); g_caps[j].ids[39] = 0; return; }
     if (g_ncaps >= MAX_CAPS) return;
     g_caps[g_ncaps].dlgId = dlgId; g_caps[g_ncaps].ctrlId = ctrlId;
-    strncpy(g_caps[g_ncaps].s, s, 63); g_caps[g_ncaps].s[63] = 0; g_ncaps++;
+    g_caps[g_ncaps].pe = (unsigned char)g_loadingPE;
+    strncpy(g_caps[g_ncaps].s, s, 63); g_caps[g_ncaps].s[63] = 0;
+    strncpy(g_caps[g_ncaps].ids, idsName, 39); g_caps[g_ncaps].ids[39] = 0;
+    g_ncaps++;
 }
 /* the caption = the last length-prefixed printable string that isn't a resource id
-   (ID*) or the licence ("Copyright ..."). */
+   (ID*) or the licence ("Copyright ...").
+   S124: ALSO capture the last "IDS_*" name — the genuine CRStaticCtrl resolves its
+   runtime caption via WM_GETSTRING(ResourceNumber) -> LoadString from the language
+   DLL's string table (RSTATICC.CPP GetParentWndInfo; the literal is design-time
+   only). bob_dlg_caption prefers the string-table text when the name resolves. */
 static void extractCaption(const unsigned char* b, int n, int dlgId, int ctrlId) {
     char best[64]; best[0] = 0;
+    char ids[40];  ids[0]  = 0;
     for (int i = 0; i < n; i++) {
         int len = b[i];
         if (len < 2 || len > 62 || i + 1 + len > n) continue;
         int ok = 1; for (int k = 0; k < len; k++) { unsigned char c = b[i+1+k]; if (c < 32 || c > 126) { ok = 0; break; } }
         if (!ok) continue;
         char t[64]; memcpy(t, b + i + 1, len); t[len] = 0;
+        if (strncmp(t, "IDS_", 4) == 0 && len < 40) { strcpy(ids, t); continue; }
         if (strncmp(t, "ID", 2) == 0 || strncmp(t, "Copyright", 9) == 0) continue;
         strcpy(best, t);   /* keep the last qualifying string */
     }
-    if (best[0]) storeCaption(dlgId, ctrlId, best);
+    if (best[0] || ids[0]) storeCaption(dlgId, ctrlId, best, ids);
 }
 
 /* ---- button art (S89): the R* buttons' NormalFileNumString is a "FIL_..." equate stored
    in the same DLGINIT property bag; capture it per (dlg,ctrl) so HostRButton can resolve it
    to a FileNum via GetFileNum. Distinct from the caption (which is the hint text). ---- */
-struct Art { int dlgId, ctrlId; char s[48]; };
+struct Art { int dlgId, ctrlId; unsigned char pe; char s[48]; };
 static Art g_arts[MAX_CAPS]; static int g_narts = 0;
 static void storeArt(int dlgId, int ctrlId, const char* s) {
     for (int j = 0; j < g_narts; j++) if (g_arts[j].dlgId==dlgId && g_arts[j].ctrlId==ctrlId) {
+        if (g_arts[j].pe && !g_loadingPE) return;   /* .rc never overwrites a PE art name (S124) */
         strncpy(g_arts[j].s, s, 47); g_arts[j].s[47]=0; return; }
     if (g_narts >= MAX_CAPS) return;
     g_arts[g_narts].dlgId=dlgId; g_arts[g_narts].ctrlId=ctrlId;
+    g_arts[g_narts].pe = (unsigned char)g_loadingPE;
     strncpy(g_arts[g_narts].s, s, 47); g_arts[g_narts].s[47]=0; g_narts++;
 }
 static void extractArtName(const unsigned char* b, int n, int dlgId, int ctrlId) {
@@ -256,27 +280,126 @@ static void parseDlgInit(const char* path) {
     fclose(f);
 }
 
+/* ==========================================================================
+ * S124: primary source = the INSTALLED build's PE resources (boblang.dll, i.e.
+ * the BDG 0.99 patched data the gold parity shots run — the PO's oracle),
+ * via the bob_resources.cpp enumerators. The source-checkout .rc text parse
+ * stays as the fallback for anything the PE lacks. `BOB_NO_PE_RSRC` reverts
+ * to the pre-S124 .rc-only behaviour.
+ * ======================================================================== */
+extern "C" int bob_res_enum_dialog_items(
+        void (*itemcb)(void* ctx, int dlgId, int ctrlId, int x, int y, int w, int h, const char* cls),
+        void* ctx);
+extern "C" int bob_res_enum_dlginit(
+        void (*initcb)(void* ctx, int dlgId, int ctrlId, const unsigned char* data, int len),
+        void* ctx);
+
+/* R* coclass CLSID strings as they appear in dialog templates (case varies) */
+static int classifyClass(const char* cls) {
+    if (!cls || cls[0] != '{') return K_UNKNOWN;
+    if (!strncasecmp(cls+1, "C42BAC3D", 8)) return K_RSTATIC;
+    if (!strncasecmp(cls+1, "737CB0C9", 8)) return K_RCOMBO;
+    if (!strncasecmp(cls+1, "48814009", 8)) return K_RLISTBOX;
+    if (!strncasecmp(cls+1, "78918646", 8)) return K_RBUTTON;
+    return K_UNKNOWN;
+}
+static void peItemCb(void*, int dlgId, int ctrlId, int x, int y, int w, int h, const char* cls) {
+    if (ctrlId <= 0) return;
+    int kind = classifyClass(cls);
+    for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == ctrlId && g_rects[i].dlgId == dlgId) {
+        g_rects[i].x = x; g_rects[i].y = y; g_rects[i].w = w; g_rects[i].h = h;
+        g_rects[i].pe = 1; g_rects[i].kind = (unsigned char)kind; return;
+    }
+    if (g_nrects >= MAX_RECTS) return;
+    g_rects[g_nrects].id = ctrlId; g_rects[g_nrects].dlgId = dlgId;
+    g_rects[g_nrects].x = x; g_rects[g_nrects].y = y;
+    g_rects[g_nrects].w = w; g_rects[g_nrects].h = h;
+    g_rects[g_nrects].pe = 1; g_rects[g_nrects].kind = (unsigned char)kind;
+    g_nrects++;
+}
+static void peInitCb(void*, int dlgId, int ctrlId, const unsigned char* data, int len) {
+    /* same byte format as the .rc DLGINIT hex dump — reuse the proven extractors */
+    extractCaption(data, len, dlgId, ctrlId);
+    extractArtName(data, len, dlgId, ctrlId);
+}
+static int loadFromPE(void) {
+    g_loadingPE = 1;
+    int items = bob_res_enum_dialog_items(peItemCb, NULL);
+    int inits = bob_res_enum_dlginit(peInitCb, NULL);
+    g_loadingPE = 0;
+    if (getenv("BOB_TRACE_OLE"))
+        fprintf(stderr, "[ole] PE resources (BDG oracle): %d dialog items, %d DLGINIT records\n",
+                items, inits);
+    return items > 0;
+}
+
 static void load(void) {
     if (g_loaded) return;
     g_loaded = 1;
     const char* base = getenv("BOB_RC_DIR"); if (!base) base = BOB_SRC_DIR;
     char path[1024];
     snprintf(path, sizeof path, "%s/MFC/RESOURCE.H", base); parseResourceH(path);
-    /* positions: MIG.RC then BOB.RC (BOB.RC's IDD_3DI is the real config dialog -> last wins) */
+    /* S124: installed-build PE resources first (the BDG 0.99 parity oracle; also the
+       packaging story — no source checkout needed when the PE covers a dialog). */
+    if (!getenv("BOB_NO_PE_RSRC")) g_pe = loadFromPE();
+    /* positions: MIG.RC then BOB.RC (BOB.RC's IDD_3DI is the real config dialog -> last wins).
+       With PE data loaded these fill only the pairs the installed resources lack. */
     snprintf(path, sizeof path, "%s/ENGLISH/MIG.RC", base); parseRc(path);
     snprintf(path, sizeof path, "%s/ENGLISH/BOB.RC", base); parseRc(path);
     /* design-time captions (labels) from the DLGINIT property bags */
     snprintf(path, sizeof path, "%s/ENGLISH/BOB.RC", base); parseDlgInit(path);
     snprintf(path, sizeof path, "%s/ENGLISH/MIG.RC", base); parseDlgInit(path);
     if (getenv("BOB_TRACE_OLE"))
-        fprintf(stderr, "[ole] dialog templates: %d symbols, %d rects, %d captions, %d arts from %s\n",
-                g_nsyms, g_nrects, g_ncaps, g_narts, base);
+        fprintf(stderr, "[ole] dialog templates: %d symbols, %d rects, %d captions, %d arts from %s%s\n",
+                g_nsyms, g_nrects, g_ncaps, g_narts, base, g_pe ? " (+PE oracle)" : "");
 }
+
+/* S124: is (dlgId, ctrlId) part of the installed build's template for dlgId?
+   1 = yes; 0 = the PE covers this dialog but the control is NOT in its template
+   (a source-only control — on Windows the dialog manager would never create it,
+   e.g. CSSound's IDC_CBO_MUSIC/SFX2/SFX3 which BDG 0.99 dropped from IDD_SSOUND);
+   -1 = the PE doesn't cover this dialog (no filtering possible). */
+extern "C" int bob_dlg_in_template(int dlgId, int ctrlId) {
+    load();
+    if (!g_pe || dlgId <= 0) return -1;
+    int seen = 0;
+    for (int i = 0; i < g_nrects; i++) if (g_rects[i].dlgId == dlgId && g_rects[i].pe) {
+        if (g_rects[i].id == ctrlId) return 1;
+        seen = 1;
+    }
+    return seen ? 0 : -1;
+}
+
+/* S124: the PE template's RStatic control ids for a dialog — the labels the game
+   never DDX_Control-binds (on Windows the dialog manager creates EVERY template
+   item; our DDX-driven creation missed them, e.g. the whole Sim-Config Mission
+   tab label column). Returns the count written to ids[]. */
+extern "C" int bob_dlg_enum_statics(int dlgId, int* ids, int maxn) {
+    load();
+    int n = 0;
+    for (int i = 0; i < g_nrects && n < maxn; i++)
+        if (g_rects[i].dlgId == dlgId && g_rects[i].pe && g_rects[i].kind == K_RSTATIC)
+            ids[n++] = g_rects[i].id;
+    return n;
+}
+
+extern "C" int bob_load_string(void* h, unsigned id, char* buf, int maxlen);   /* bob_resources.cpp */
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz) {
     load();
     for (int i = 0; i < g_ncaps; i++) if (g_caps[i].dlgId == dlgId && g_caps[i].ctrlId == ctrlId) {
-        if (out && outsz > 0) { strncpy(out, g_caps[i].s, outsz - 1); out[outsz - 1] = 0; }
+        if (out && outsz > 0) {
+            out[0] = 0;
+            /* S124: faithful runtime path first — resolve the persisted IDS_* name via
+               RESOURCE.H and read the language DLL's (BDG-patched) string table, exactly
+               what CRStaticCtrl's WM_GETSTRING does on Windows ("Gamma Level" vs the
+               design-time literal "Gamma Correction"). Fall back to the literal. */
+            if (g_caps[i].ids[0]) {
+                int sid = symLookup(g_caps[i].ids);
+                if (sid > 0) bob_load_string(NULL, (unsigned)sid, out, outsz);
+            }
+            if (!out[0]) { strncpy(out, g_caps[i].s, outsz - 1); out[outsz - 1] = 0; }
+        }
         return 1;
     }
     return 0;
