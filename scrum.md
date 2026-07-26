@@ -188,6 +188,17 @@ The DoD increment shipped (bare `./bob` boots + plays, no env vars) and a human 
 | R7.1 | **DirectPlay → sockets** — session create/join, lobby/readyroom, state sync. (Large; slice into sub-stories at planning.) | 21 | ☐ |
 | R7.2 | **H2H + co-op missions** — play a multiplayer mission end-to-end over the socket transport. | 13 | ☐ |
 
+### Release SP — "Screen parity vs the Windows gold standard" *(PO-added 2026-07-25)*
+*Gold standard: PO-supplied captures of the Windows build running under Wine —
+`/run/media/admin/BEA6-BBCE/bob/` (17 PNGs, taken 2026-06-24). Every native screen must
+match its gold shot. Formalizes R3.8's "A/B vs Wine" into a PO-curated, full-product
+screen sweep with the gold shots as the fixed oracle.*
+| ID | Story | Pts | Status |
+|---|---|---|---|
+| SP.1 | **Gold-shot inventory** — map each of the 17 shots to its screen (menu/config/campaign map/briefing/flight view/debrief…) + the native repro recipe (env vars/clicks); parity table in `doc/screen-parity.md` with native captures alongside. | 3 | ☐ |
+| SP.2 | **Front-end parity** — every 2D screen in the gold set matches (layout, fonts, art, colours) within stated tolerance; each deviation fixed or explicitly PO-waived in the parity table. | 13 | ☐ |
+| SP.3 | **Flight / map parity** — the in-flight and strategic-map gold shots match; reuses the frame-dump harness (`BOB_DUMP_FRAME`, `GL_PACK_ALIGNMENT=1` lesson). | 13 | ☐ |
+
 ### Icebox (environment-blocked — not schedulable until the environment changes)
 | ID | Story | Why parked |
 |---|---|---|
