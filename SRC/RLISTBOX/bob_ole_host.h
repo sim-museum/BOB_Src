@@ -29,6 +29,8 @@ extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /
 extern "C" int bob_dlg_artname(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT "FIL_*" NormalFileNumString (buttons) */
 extern "C" int bob_dlg_resnum(int dlgId, int ctrlId, unsigned* rn);            /* S125: persisted ResourceNumber (RButton alignment in bits 24..31) */
 extern "C" int bob_dlg_columns(int dlgId, int ctrlId, short w[9], int a[9]);   /* S125: persisted RListBox column widths + align/icon codes */
+extern "C" int bob_dlg_propbag(int dlgId, int ctrlId, const unsigned char** p, int* n);  /* S126: raw persisted property stream (0 under BOB_NO_PROP_STREAM) */
+extern "C" int bob_dlg_kind(int dlgId, int ctrlId);                            /* S126: template control class (1=RStatic 3=RListBox ...) */
 
 /* per-control factories (one per TU) */
 OleHost* bob_make_rlistbox(class CWnd* parent);

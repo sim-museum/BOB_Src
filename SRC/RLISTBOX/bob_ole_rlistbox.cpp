@@ -35,6 +35,28 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
        all columns). Widths are applied unscaled (m_hWnd=0), as on Windows where
        DoPropExchange runs before window creation. */
     void applyDesignProps() override {
+        /* S126: replay the genuine persisted property stream through the control's own
+           DoPropExchange — stripe/select/lock/header colors, separations, FontNums,
+           AND the authored A0..A8/C0..C8 columns, which RLISTBXC.CPP:447 creates
+           itself when version&4. The empty-boot default column is dropped first;
+           m_hWnd=0 keeps AddColumn unscaled (pre-window-creation, as on Windows). */
+        const unsigned char* bp; int bn;
+        if (bob_dlg_propbag(dlgId, ctrlId, &bp, &bn)) {
+            CPropExchange px;
+            if (px.Attach(bp, bn)) {
+                HWND save = m_hWnd; m_hWnd = 0;
+                Clear();
+                DoPropExchange(&px);
+                m_hWnd = save;
+                bagCols = bob_dlg_columns(dlgId, ctrlId, NULL, NULL);  /* authored columns -> suppress per-draw Shrink */
+                if (bob_ole_trace()) fprintf(stderr,
+                    "[ole] RListBox dlg=%d id=%d stream: cols=%d fore=%06lx back=%06lx FontNum=%ld\n",
+                    dlgId, ctrlId, bagCols, (unsigned long)GetForeColor(),
+                    (unsigned long)GetBackColor(), (long)m_FontNum);
+                return;
+            }
+        }
+        /* BOB_NO_PROP_STREAM fallback: the S125 column recreation from the decoded bag */
         short w[9]; int a[9];
         int n = bob_dlg_columns(dlgId, ctrlId, w, a);
         if (n <= 0) return;

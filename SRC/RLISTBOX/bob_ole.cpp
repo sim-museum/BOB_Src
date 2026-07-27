@@ -154,6 +154,40 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            layout on the GFX/Sound/Controls/Views forms (vs the Wine gold shots). lookupDluIn
            falls back to the unscoped search when the (dlg,id) pair isn't found. */
         if (!lookupDluIn(host->dlgId, host->ctrlId, r)) continue;
+        /* S126 (#16): settled-state emulation of the Windows dirty-region repaint.
+           On Windows a WS_VISIBLE static under an interactive listbox paints once;
+           the listbox's next repaint re-blits the panel background over it, and the
+           static is never re-invalidated — so it is absent from the settled screen
+           (gold #16: the date heading RStatic 1227 under CSCampaign's tab-row
+           listbox). Our panel model redraws every control every frame; emulate the
+           settled state by skipping a static whose template rect is >=90% covered
+           by a sibling hosted listbox's rect. BOB_NO_COVER_ERASE reverts. */
+        static int noCover = -1;
+        if (noCover < 0) noCover = getenv("BOB_NO_COVER_ERASE") ? 1 : 0;
+        if (!noCover && bob_dlg_kind(host->dlgId, host->ctrlId) == 1 /*K_RSTATIC*/) {
+            int covered = 0;
+            for (auto& kv2 : hosts()) {
+                OleHost* lb = kv2.second;
+                if (lb == host || lb->parentDlg != dialog || !lb->visible) continue;
+                if (bob_dlg_kind(lb->dlgId, lb->ctrlId) != 3 /*K_RLISTBOX*/) continue;
+                DluRect lr;
+                if (!lookupDluIn(lb->dlgId, lb->ctrlId, lr)) continue;
+                int ix = r.x > lr.x ? r.x : lr.x;
+                int iy = r.y > lr.y ? r.y : lr.y;
+                int ix2 = (r.x + r.w) < (lr.x + lr.w) ? (r.x + r.w) : (lr.x + lr.w);
+                int iy2 = (r.y + r.h) < (lr.y + lr.h) ? (r.y + r.h) : (lr.y + lr.h);
+                if (ix2 <= ix || iy2 <= iy) continue;
+                long inter = (long)(ix2 - ix) * (iy2 - iy), area = (long)r.w * r.h;
+                if (area > 0 && inter * 10 >= area * 9) { covered = 1; break; }
+            }
+            if (covered) {
+                host->sw = host->sh = 0;
+                if (bob_ole_trace()) fprintf(stderr,
+                    "[ole] static id=%d covered by listbox re-blit -> erased (settled state)\n",
+                    host->ctrlId);
+                continue;
+            }
+        }
         int sx = ox + dluX(r.x), sy = oy + dluY(r.y);
         int hpx = dluY(r.h);
         CDC dc; dc.m_hDC = (HDC)1; dc.m_bobScreen = true;

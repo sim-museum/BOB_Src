@@ -244,7 +244,10 @@ static void extractArtName(const unsigned char* b, int n, int dlgId, int ctrlId)
      1=left 2=right). In the bag stream it is the DWORD immediately after the
      persisted design caption (the same "best" string extractCaption keeps):
      verified IDC_ROLE/IDC_SIDE=2(right), IDC_PERIOD=1(left), dates=0(centre) —
-     the gold campaignentername layout. `BOB_NO_DLGINIT_PROPS` reverts. ---- */
+     the gold campaignentername layout. `BOB_NO_DLGINIT_PROPS` reverts.
+   S126: when the control CLASS is known (PE templates), the S125 offset-anchor
+   decode is replaced by an EXACT sequential stream walk (see the layout note at
+   bagWalk below); the anchors remain the fallback for kind-less .rc data. ---- */
 struct Props { int dlgId, ctrlId; unsigned char pe, hasRes, ncols; unsigned resnum; short colw[9]; int cola[9]; };
 static Props g_props[MAX_CAPS]; static int g_nprops = 0;
 static Props* propSlot(int dlgId, int ctrlId) {
@@ -259,10 +262,173 @@ static Props* propSlot(int dlgId, int ctrlId) {
     p->dlgId = dlgId; p->ctrlId = ctrlId; p->pe = (unsigned char)g_loadingPE;
     return p;
 }
+/* ---- S126: raw property-stream storage + exact sequential walk. --------------
+   The full persisted-property-stream layout (reverse-engineered from boblang.dll,
+   validated offline against ALL 1280 R*-class RT240 bags — zero parse failures):
+
+     [DWORD licence-wchar-count][UTF-16 licence string]
+     [DWORD version]                  (ExchangeVersion; LOWORD=verMinor)
+     [DWORD extentX][DWORD extentY]   (COleControl::ExchangeExtent, HIMETRIC)
+     [DWORD stockPropMask]            (COleControl::ExchangeStockProps)
+       mask&0x02 Caption   = CString  (MFC archive: BYTE len; 0xFF -> WORD; ...)
+       mask&0x08 ForeColor = DWORD
+       mask&0x01 BackColor = DWORD
+       mask&0x40 Enabled   = BYTE
+       (no other bits occur in the shipped data; unknown bits abort the walk)
+     [control's own DoPropExchange fields, in source order:
+       PX_Bool=BYTE, PX_Short=WORD, PX_Long/PX_Color=DWORD, PX_String=CString]
+
+   Trailing bytes beyond what DoPropExchange reads are editor slop (verified:
+   heap garbage/old-string remnants) — unread, exactly as on Windows.
+   The raw bags are kept (bob_dlg_propbag) so the hosts can feed each genuine
+   control's DoPropExchange through the CPropExchange stream reader (afxwin.h);
+   the walk below only fills the Props table (columns/resnum) exactly, replacing
+   the S125 offset anchors whenever the control class is known. ---- */
+#define BAG_ARENA (512*1024)
+struct BagRef { int dlgId, ctrlId, off, len; unsigned char pe; };
+static unsigned char g_bagArena[BAG_ARENA]; static int g_bagUsed = 0;
+static BagRef g_bags[MAX_CAPS]; static int g_nbags = 0;
+
+static void storeBag(int dlgId, int ctrlId, const unsigned char* b, int n) {
+    if (n <= 0) return;
+    for (int j = 0; j < g_nbags; j++) if (g_bags[j].dlgId == dlgId && g_bags[j].ctrlId == ctrlId) {
+        if (g_bags[j].pe && !g_loadingPE) return;   /* .rc never overwrites a PE bag */
+        if (n <= g_bags[j].len) { memcpy(g_bagArena + g_bags[j].off, b, n); g_bags[j].len = n; return; }
+        break;  /* need a fresh slot-size; fall through to append + retarget */
+    }
+    if (g_nbags >= MAX_CAPS || g_bagUsed + n > BAG_ARENA) return;
+    for (int j = 0; j < g_nbags; j++) if (g_bags[j].dlgId == dlgId && g_bags[j].ctrlId == ctrlId) {
+        g_bags[j].off = g_bagUsed; g_bags[j].len = n; g_bags[j].pe = (unsigned char)g_loadingPE;
+        memcpy(g_bagArena + g_bagUsed, b, n); g_bagUsed += n; return;
+    }
+    g_bags[g_nbags].dlgId = dlgId; g_bags[g_nbags].ctrlId = ctrlId;
+    g_bags[g_nbags].off = g_bagUsed; g_bags[g_nbags].len = n;
+    g_bags[g_nbags].pe = (unsigned char)g_loadingPE; g_nbags++;
+    memcpy(g_bagArena + g_bagUsed, b, n); g_bagUsed += n;
+}
+
+static int bagKindOf(int dlgId, int ctrlId) {           /* K_* from the PE template class GUID */
+    for (int i = 0; i < g_nrects; i++)
+        if (g_rects[i].id == ctrlId && g_rects[i].dlgId == dlgId) return g_rects[i].kind;
+    return K_UNKNOWN;
+}
+
+struct BagWalk { const unsigned char* b; int n, p, ok; };
+static int bwNeed(BagWalk* w, int k) { if (!w->ok || w->p + k > w->n) { w->ok = 0; return 0; } return 1; }
+static unsigned bwU32(BagWalk* w) {
+    if (!bwNeed(w, 4)) return 0;
+    unsigned v = (unsigned)w->b[w->p] | ((unsigned)w->b[w->p+1] << 8)
+               | ((unsigned)w->b[w->p+2] << 16) | ((unsigned)w->b[w->p+3] << 24);
+    w->p += 4; return v;
+}
+static unsigned bwU16(BagWalk* w) {
+    if (!bwNeed(w, 2)) return 0;
+    unsigned v = (unsigned)w->b[w->p] | ((unsigned)w->b[w->p+1] << 8);
+    w->p += 2; return v;
+}
+static unsigned bwU8(BagWalk* w) { if (!bwNeed(w, 1)) return 0; return w->b[w->p++]; }
+/* MFC CString archive: BYTE len, 0xFF -> WORD len, 0xFF/0xFFFF -> DWORD len
+   (0xFFFE unicode marker never occurs in the shipped bags -> treated as bad). */
+static int bwStr(BagWalk* w, char* out, int outsz) {
+    unsigned n = bwU8(w);
+    if (n == 0xFF) {
+        n = bwU16(w);
+        if (n == 0xFFFE) { w->ok = 0; return 0; }
+        if (n == 0xFFFF) n = bwU32(w);
+    }
+    if (!bwNeed(w, (int)n)) return 0;
+    if (out) {
+        int c = (int)n < outsz - 1 ? (int)n : outsz - 1;
+        if (c > 0) memcpy(out, w->b + w->p, c);
+        if (outsz > 0) out[c < 0 ? 0 : c] = 0;
+    }
+    w->p += (int)n; return 1;
+}
+/* licence + version + extent + stock props; returns the version DWORD (0 = bad). */
+static unsigned bwHeader(BagWalk* w) {
+    unsigned lic = bwU32(w);
+    if (lic < 8 || lic > 128) { w->ok = 0; return 0; }
+    if (!bwNeed(w, 2 * (int)lic)) return 0;
+    w->p += 2 * (int)lic;
+    unsigned ver = bwU32(w);
+    bwU32(w); bwU32(w);                       /* extent */
+    unsigned mask = bwU32(w);
+    if (mask & ~0x4Bu) { w->ok = 0; return 0; }
+    if (mask & 0x02) bwStr(w, NULL, 0);       /* Caption */
+    if (mask & 0x08) bwU32(w);                /* ForeColor */
+    if (mask & 0x01) bwU32(w);                /* BackColor */
+    if (mask & 0x40) bwU8(w);                 /* Enabled */
+    return w->ok ? ver : 0;
+}
+/* Exact per-class walk to the two Props fields (resnum / listbox columns).
+   Returns 1 when the walk covered the class (even if the ver-gated tail is absent). */
+static int seqProps(const unsigned char* b, int n, int kind,
+                    int* hasRes, unsigned* resnum, int* ncols, short colw[9], int cola[9]) {
+    BagWalk w = { b, n, 0, 1 };
+    unsigned ver = bwHeader(&w);
+    if (!w.ok) return 0;
+    switch (kind) {
+    case K_RSTATIC:
+        bwU32(&w);                            /* FontNum */
+        bwStr(&w, NULL, 0);                   /* String */
+        *resnum = bwU32(&w); *hasRes = w.ok;  /* ResourceNumber */
+        return w.ok;
+    case K_RBUTTON:
+        bwU8(&w); bwU32(&w);                  /* MovesParent, FontNum */
+        bwU8(&w); bwU8(&w); bwU8(&w);         /* CloseButton, TickButton, ShowShadow */
+        bwU32(&w);                            /* ShadowColor */
+        bwStr(&w, NULL, 0);                   /* String */
+        *resnum = bwU32(&w); *hasRes = w.ok;  /* ResourceNumber (alignment in bits 24..31) */
+        return w.ok;
+    case K_RLISTBOX: {
+        for (int i = 0; i < 6; i++) bwU8(&w); /* IsStripey..DragAndDrop */
+        for (int i = 0; i < 7; i++) bwU32(&w);/* StripeColor..HeaderColor */
+        bwU32(&w); bwU32(&w);                 /* FontNum, FontNum2 */
+        bwU8(&w); bwU8(&w);                   /* Blackboard, SelectWholeRows */
+        if (ver & 1) { bwU8(&w); bwU32(&w); bwU32(&w); bwU8(&w); }
+        if (ver & 2) { bwU32(&w); bwU32(&w); }
+        if (!(ver & 4) || !w.ok) return w.ok;
+        short cw[9]; int ca[9]; int sane = 1;
+        for (int c = 0; c < 9; c++) cw[c] = (short)bwU16(&w);
+        for (int c = 0; c < 9; c++) ca[c] = (int)bwU32(&w);
+        if (!w.ok) return 0;
+        for (int c = 0; c < 9; c++)
+            if (cw[c] < 0 || cw[c] > 2000 || ca[c] < 0 || ca[c] > 15) { sane = 0; break; }
+        if (sane) {
+            int nc = 0; for (int c = 0; c < 9 && cw[c]; c++) nc = c + 1;
+            *ncols = nc; memcpy(colw, cw, sizeof cw); memcpy(cola, ca, sizeof ca);
+        }
+        return 1;
+    }
+    case K_RCOMBO: case K_REDIT:
+        return 1;                             /* no Props-table fields */
+    }
+    return 0;
+}
+
 static void extractProps(const unsigned char* b, int n, int dlgId, int ctrlId) {
     /* bag header: DWORD unicode-char count + UTF-16 licence string, then
        WORD verMinor, WORD verMajor (ExchangeVersion). */
     if (n < 12) return;
+    storeBag(dlgId, ctrlId, b, n);            /* S126: keep the raw stream for the hosts */
+    /* S126: exact sequential walk when the control class is known (PE templates). */
+    {
+        int kind = bagKindOf(dlgId, ctrlId);
+        if (kind != K_UNKNOWN) {
+            int hasRes = 0, ncols = 0; unsigned resnum = 0; short colw[9]; int cola[9];
+            if (seqProps(b, n, kind, &hasRes, &resnum, &ncols, colw, cola)) {
+                if (hasRes || ncols) {
+                    Props* p = propSlot(dlgId, ctrlId);
+                    if (p) {
+                        p->hasRes = (unsigned char)hasRes; p->resnum = resnum;
+                        p->ncols = (unsigned char)ncols;
+                        if (ncols) { memcpy(p->colw, colw, sizeof p->colw); memcpy(p->cola, cola, sizeof p->cola); }
+                    }
+                }
+                return;                       /* exact — skip the S125 anchor heuristics */
+            }
+        }
+    }
     unsigned nch = (unsigned)b[0] | ((unsigned)b[1] << 8) | ((unsigned)b[2] << 16) | ((unsigned)b[3] << 24);
     int verOff = 4 + 2 * (int)nch;
     if (nch < 8 || nch > 128 || verOff + 4 > n) return;
@@ -325,6 +491,28 @@ extern "C" int bob_dlg_columns(int dlgId, int ctrlId, short w[9], int a[9]) {
         }
     return 0;
 }
+/* S126: the raw persisted property stream for (dlg,ctrl) — fed to the genuine
+   control's DoPropExchange via the CPropExchange stream reader (afxwin.h).
+   BOB_NO_PROP_STREAM reverts to the S125 spot-fix behaviour (columns/resnum
+   above); BOB_NO_DLGINIT_PROPS reverts the whole design-prop layer. */
+extern "C" int bob_dlg_propbag(int dlgId, int ctrlId, const unsigned char** p, int* n) {
+    load();
+    if (getenv("BOB_NO_DLGINIT_PROPS") || getenv("BOB_NO_PROP_STREAM")) return 0;
+    for (int j = 0; j < g_nbags; j++) if (g_bags[j].dlgId == dlgId && g_bags[j].ctrlId == ctrlId) {
+        if (p) *p = g_bagArena + g_bags[j].off;
+        if (n) *n = g_bags[j].len;
+        return 1;
+    }
+    return 0;
+}
+/* S126: control-class kind from the PE template (0 unknown, 1 RStatic, 2 RCombo,
+   3 RListBox, 4 RButton, 5 REdit — the K_* enum). Drives the covered-static
+   erase emulation in bob_ole_draw_panel. */
+extern "C" int bob_dlg_kind(int dlgId, int ctrlId) {
+    load();
+    return bagKindOf(dlgId, ctrlId);
+}
+
 extern "C" int bob_dlg_artname(int dlgId, int ctrlId, char* out, int outsz) {
     load();
     for (int j = 0; j < g_narts; j++) if (g_arts[j].dlgId==dlgId && g_arts[j].ctrlId==ctrlId) {

@@ -672,6 +672,7 @@ extern "C" {
     BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* parent, UINT id);
     void* bob_dlg_getfile(int filenum);   /* WM_GETFILE: icon/art data (bob_ole_rcombo.cpp) */
     void* bob_dlg_getfont(int fontnum);   /* WM_GETGLOBALFONT: CFont* from g_AllFonts */
+    int bob_load_string(void* h, unsigned id, char* buf, int maxlen);  /* WM_GETSTRING: BDG string table (bob_resources.cpp) */
     void bob_ole_invoke(CWnd* self, DISPID id, WORD flags, VARTYPE vtRet, void* pvRet, const BYTE* pInfo, va_list ap);
     void bob_ole_setprop(CWnd* self, DISPID id, VARTYPE vt, va_list ap);
     void bob_ole_getprop(CWnd* self, DISPID id, VARTYPE vt, void* pvRet);
@@ -784,12 +785,22 @@ public:
     BOOL EnableWindow(BOOL = TRUE) { return TRUE; }
     CWnd* SetFocus() { return NULL; }
     int MessageBoxA(LPCSTR, LPCSTR = NULL, UINT = 0) { return 0; }
-    LRESULT SendMessageA(UINT m, WPARAM w = 0, LPARAM = 0) {
+    LRESULT SendMessageA(UINT m, WPARAM w = 0, LPARAM l = 0) {
         /* The R* controls fetch icon/art via the parent's WM_GETFILE handler
            (OnGetFile). Route it to the compat impl so OnDraw's icon draw doesn't
            NULL-deref. WM_GETFILE == WM_USER+4 == 0x404. */
         if (m == 0x404) return (LRESULT)bob_dlg_getfile((int)w);   /* WM_GETFILE  = WM_USER+4 */
         if (m == 0x403) return (LRESULT)bob_dlg_getfont((int)w);   /* WM_GETGLOBALFONT = +3 */
+        /* S126: WM_GETSTRING = WM_USER+16 — the genuine caption-resolution path.
+           CRStaticCtrl::GetParentWndInfo sends it with the persisted ResourceNumber
+           (now loaded from the property stream); every RDialog answers it with
+           AfxLoadString(id, buffer, buffer[0]) (RDIALMSG.CPP OnGetString). Serve it
+           from the language DLL's (BDG) string table. */
+        if (m == 0x410 && l) {
+            char* buf = (char*)l;
+            int mx = (unsigned char)buf[0]; if (mx <= 0 || mx > 99) mx = 99;
+            return (LRESULT)bob_load_string(NULL, (unsigned)w, buf, mx);
+        }
         return 0;
     }
     LRESULT SendMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageA(m, w, l); }
@@ -1008,19 +1019,119 @@ public:
     BOOL DoPreparePrinting(CPrintInfo*) { return TRUE; }
 };
 
+/* ============================================================
+ * CPropExchange — S126: a real persisted-property-stream READER.
+ * On Windows the dialog editor saves each hosted OCX's state (IPersistStreamInit)
+ * into the DLGINIT resource; at dialog creation MFC replays it into the control's
+ * DoPropExchange through a CArchivePropExchange. Our hosts used to boot from an
+ * EMPTY exchange (every PX_* fell back to its default), losing all design-time
+ * properties. This reader replays the genuine stream (bob_dlg_propbag) instead.
+ *
+ * Stream layout (reverse-engineered from boblang.dll; validated offline against
+ * all 1280 R*-class RT240 bags, zero failures — see bob_dlgtemplate.cpp):
+ *   [DWORD licence-wchar-count][UTF-16 licence]  (COccManager licence prefix)
+ *   [DWORD version]                              (ExchangeVersion)
+ *   [DWORD extentX][DWORD extentY]               (ExchangeExtent, HIMETRIC)
+ *   [DWORD stockPropMask] + stock props:         (ExchangeStockProps)
+ *       0x02 Caption=CString  0x08 ForeColor=DWORD
+ *       0x01 BackColor=DWORD  0x40 Enabled=BYTE   (other bits: abort -> defaults)
+ *   [control props in DoPropExchange source order:
+ *       PX_Bool=BYTE  PX_Short=WORD  PX_Long/PX_Color=DWORD  PX_String=CString]
+ * Trailing bytes are editor slop — unread, exactly as on Windows.
+ * A default-constructed (unattached) CPropExchange behaves as before: every
+ * PX_* loads its default. On any mid-stream error m_bOk drops and the REMAINING
+ * PX_* calls load defaults (fail-safe).
+ * ============================================================ */
+class CPropExchange {
+public:
+    const unsigned char* m_pData = NULL;
+    int   m_nLen = 0, m_nPos = 0;
+    BOOL  m_bOk = FALSE;          /* attached and healthy */
+    DWORD m_dwVersion = 0;
+    BOOL IsLoading() const { return TRUE; }
+    DWORD GetVersion() const { return m_dwVersion; }
+    /* Attach a raw DLGINIT bag: skip the licence prefix; leave m_nPos at the
+       version DWORD (the control's ExchangeVersion call consumes it). */
+    BOOL Attach(const unsigned char* p, int n) {
+        if (!p || n < 16) return FALSE;
+        DWORD lic = (DWORD)p[0] | ((DWORD)p[1] << 8) | ((DWORD)p[2] << 16) | ((DWORD)p[3] << 24);
+        if (lic < 8 || lic > 128 || 4 + 2 * (int)lic + 4 > n) return FALSE;
+        m_pData = p; m_nLen = n; m_nPos = 4 + 2 * (int)lic; m_bOk = TRUE;
+        return TRUE;
+    }
+    BOOL Need(int k) { if (!m_bOk || m_nPos + k > m_nLen) { m_bOk = FALSE; return FALSE; } return TRUE; }
+    BOOL ReadU8(BYTE& v) { if (!Need(1)) return FALSE; v = m_pData[m_nPos++]; return TRUE; }
+    BOOL ReadU16(WORD& v) {
+        if (!Need(2)) return FALSE;
+        v = (WORD)(m_pData[m_nPos] | (m_pData[m_nPos+1] << 8)); m_nPos += 2; return TRUE;
+    }
+    BOOL ReadU32(DWORD& v) {
+        if (!Need(4)) return FALSE;
+        v = (DWORD)m_pData[m_nPos] | ((DWORD)m_pData[m_nPos+1] << 8)
+          | ((DWORD)m_pData[m_nPos+2] << 16) | ((DWORD)m_pData[m_nPos+3] << 24);
+        m_nPos += 4; return TRUE;
+    }
+    /* MFC CString archive: BYTE len; 0xFF -> WORD len; 0xFF/0xFFFF -> DWORD len.
+       (The 0xFFFE unicode marker never occurs in the shipped bags -> bad.) */
+    BOOL ReadStr(CString& s) {
+        BYTE b; if (!ReadU8(b)) return FALSE;
+        DWORD n = b;
+        if (b == 0xFF) {
+            WORD w; if (!ReadU16(w)) return FALSE;
+            if (w == 0xFFFE) { m_bOk = FALSE; return FALSE; }
+            n = w;
+            if (w == 0xFFFF) { if (!ReadU32(n)) return FALSE; }
+        }
+        if (!Need((int)n)) return FALSE;
+        char tmp[1024];
+        DWORD c = n < sizeof(tmp) - 1 ? n : (DWORD)sizeof(tmp) - 1;
+        if (c) memcpy(tmp, m_pData + m_nPos, c);
+        tmp[c] = 0;
+        s = tmp;
+        m_nPos += (int)n;
+        return TRUE;
+    }
+    BOOL ExchangeProp(LPCSTR, VARTYPE, void*, const void* = NULL) { return TRUE; }
+    BOOL ExchangeVersion(DWORD&, DWORD, BOOL = TRUE) { return TRUE; }
+};
+/* Free-function form the R* controls call first: ExchangeVersion(pPX, MAKELONG(...)).
+   With a stream attached this READS the persisted version (gates the controls'
+   `GetVersion()&x` branches); unattached it records the control's own default. */
+inline DWORD ExchangeVersion(CPropExchange* pPX, DWORD v, BOOL = TRUE) {
+    if (!pPX) return v;
+    DWORD sv;
+    if (pPX->m_bOk && pPX->ReadU32(sv)) pPX->m_dwVersion = sv;
+    else                                pPX->m_dwVersion = v;
+    return pPX->m_dwVersion;
+}
+
 /* COleControl — MFC ActiveX control base (bob's CR* control impls derive from it) */
 class COleControl : public CWnd {
 public:
     BOOL m_bAutoSize;
+    BOOL m_bobEnabled = TRUE;     /* stock Enabled (persisted via the property stream) */
     virtual void OnDraw(CDC*, const CRect&, const CRect&) {}
-    virtual void DoPropExchange(CPropExchange*) {}
+    /* S126: consume the stock-property block exactly as MFC's
+       COleControl::DoPropExchange (ExchangeExtent + ExchangeStockProps) — the
+       R* DoPropExchange overrides call this before their own PX_* fields. */
+    virtual void DoPropExchange(CPropExchange* pPX) {
+        if (!pPX || !pPX->m_bOk) return;
+        DWORD cx, cy, mask;
+        if (!pPX->ReadU32(cx) || !pPX->ReadU32(cy)) return;      /* extent (HIMETRIC) */
+        if (!pPX->ReadU32(mask)) return;
+        if (mask & ~0x4Bu) { pPX->m_bOk = FALSE; return; }       /* unknown layout -> defaults */
+        if (mask & 0x02) { CString cap; if (pPX->ReadStr(cap)) m_bobText = cap; }
+        if (mask & 0x08) { DWORD c; if (pPX->ReadU32(c)) SetForeColor((OLE_COLOR)c); }
+        if (mask & 0x01) { DWORD c; if (pPX->ReadU32(c)) SetBackColor((OLE_COLOR)c); }
+        if (mask & 0x40) { BYTE e; if (pPX->ReadU8(e)) m_bobEnabled = e ? TRUE : FALSE; }
+    }
     virtual void OnResetState() {}
     virtual void OnTextChanged() {}
     /* stock text/enabled the R* controls read in OnDraw */
     CString InternalGetText() { return m_bobText; }
     void    InternalSetText(LPCTSTR s) { m_bobText = s ? s : ""; }
-    BOOL    GetEnabled() { return TRUE; }
-    void    SetEnabled(BOOL) {}
+    BOOL    GetEnabled() { return m_bobEnabled; }
+    void    SetEnabled(BOOL e) { m_bobEnabled = e; }
     virtual void OnKeyDownEvent(unsigned short, unsigned short) {}   /* CRButtonCtrl base key event (no-op) */
     virtual void OnDrawMetafile(CDC*, const CRect&) {}
     void InvalidateControl(LPCRECT = NULL) {}
@@ -1065,16 +1176,29 @@ public:
     void SetPropText(LPCSTR) {}
 };
 
-/* ---- DoPropExchange PX_* persistence helpers (load defaults at runtime) ---- */
-inline BOOL PX_Bool (CPropExchange*, LPCSTR, BOOL&  v, BOOL  d = FALSE) { v = d; return TRUE; }
-inline BOOL PX_Bool (CPropExchange*, LPCSTR, short& v, BOOL  d = FALSE) { v = (short)d; return TRUE; }
-inline BOOL PX_Short(CPropExchange*, LPCSTR, short& v, short d = 0)     { v = d; return TRUE; }
-inline BOOL PX_Long (CPropExchange*, LPCSTR, long&  v, long  d = 0)     { v = d; return TRUE; }
-inline BOOL PX_Color(CPropExchange*, LPCSTR, OLE_COLOR& v, OLE_COLOR d = 0) { v = d; return TRUE; }
-inline BOOL PX_ULong(CPropExchange*, LPCSTR, ULONG& v, ULONG d = 0)     { v = d; return TRUE; }
+/* ---- DoPropExchange PX_* persistence helpers. S126: with a stream attached
+   (CPropExchange::Attach, fed from the DLGINIT property bag) each PX_* READS its
+   persisted value — the genuine control's DoPropExchange source order IS the
+   stream order. Unattached (or after a stream error) they load defaults, the
+   pre-S126 behaviour. Binary encodings per the MFC archive exchange:
+   Bool=BYTE, Short=WORD, Long/Color/ULong=DWORD, String=CString archive. ---- */
+inline BOOL PX_Bool (CPropExchange* px, LPCSTR, BOOL&  v, BOOL  d = FALSE) {
+    BYTE b; if (px && px->m_bOk && px->ReadU8(b)) v = b ? TRUE : FALSE; else v = d; return TRUE; }
+inline BOOL PX_Bool (CPropExchange* px, LPCSTR, short& v, BOOL  d = FALSE) {
+    BYTE b; if (px && px->m_bOk && px->ReadU8(b)) v = (short)(b ? 1 : 0); else v = (short)d; return TRUE; }
+inline BOOL PX_Short(CPropExchange* px, LPCSTR, short& v, short d = 0) {
+    WORD w; if (px && px->m_bOk && px->ReadU16(w)) v = (short)w; else v = d; return TRUE; }
+inline BOOL PX_Long (CPropExchange* px, LPCSTR, long&  v, long  d = 0) {
+    DWORD u; if (px && px->m_bOk && px->ReadU32(u)) v = (long)(int)u; else v = d; return TRUE; }
+inline BOOL PX_Color(CPropExchange* px, LPCSTR, OLE_COLOR& v, OLE_COLOR d = 0) {
+    DWORD u; if (px && px->m_bOk && px->ReadU32(u)) v = (OLE_COLOR)u; else v = d; return TRUE; }
+inline BOOL PX_ULong(CPropExchange* px, LPCSTR, ULONG& v, ULONG d = 0) {
+    DWORD u; if (px && px->m_bOk && px->ReadU32(u)) v = (ULONG)u; else v = d; return TRUE; }
 inline BOOL PX_Font (CPropExchange*, LPCSTR, void*, void* = NULL)       { return TRUE; }
 inline BOOL PX_Picture(CPropExchange*, LPCSTR, void*, void* = NULL)     { return TRUE; }
-inline BOOL PX_String(CPropExchange*, LPCSTR, CString& v, LPCSTR d = "") { v = d ? d : ""; return TRUE; }
+inline BOOL PX_String(CPropExchange* px, LPCSTR, CString& v, LPCSTR d = "") {
+    if (px && px->m_bOk && px->ReadStr(v)) return TRUE;
+    v = d ? d : ""; return TRUE; }
 
 /* ---- OLE control class factory + registration shims (DllRegisterServer path;
         dead at runtime but the control sources define these members). ---- */
@@ -1372,17 +1496,6 @@ public:
     CCommandLineInfo() : m_bShowSplash(TRUE), m_bRunEmbedded(FALSE), m_bRunAutomated(FALSE) {}
     void ParseParam(LPCSTR, BOOL, BOOL) {}
 };
-
-class CPropExchange {
-public:
-    DWORD m_dwVersion = 0;
-    BOOL IsLoading() const { return TRUE; }
-    DWORD GetVersion() const { return m_dwVersion; }
-    BOOL ExchangeProp(LPCSTR, VARTYPE, void*, const void* = NULL) { return TRUE; }
-    BOOL ExchangeVersion(DWORD&, DWORD, BOOL = TRUE) { return TRUE; }
-};
-/* Free-function form the R* controls call: ExchangeVersion(pPX, MAKELONG(...)) */
-inline DWORD ExchangeVersion(CPropExchange* pPX, DWORD v, BOOL = TRUE) { if (pPX) pPX->m_dwVersion = v; return v; }
 
 /* MFC OLE-control event descriptor (used in CCmdTarget::OnCmdMsg event sinks) */
 class AFX_EVENT {

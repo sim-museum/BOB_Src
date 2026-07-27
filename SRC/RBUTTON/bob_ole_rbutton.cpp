@@ -25,6 +25,30 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
         CPropExchange px; DoPropExchange(&px);
     }
     void applyDesignProps() override {
+        /* S126: replay the genuine persisted property stream through the control's own
+           DoPropExchange — m_alignment (ResourceNumber bits 24..31, extracted by the
+           genuine code at RBUTTONC.CPP:339), design caption String, ShadowColor/
+           ShowShadow, FontNum, Hint strings, and the 24-bit ResourceNumber (whose
+           caption resolves genuinely via GetParentWndInfo -> WM_GETSTRING -> BDG
+           string table). The persisted Normal/PressedFileNum are design-time file-
+           table indices from the AUTHORING install — meaningless against this
+           runtime's file table, so they are restored to their boot defaults; the
+           art path below resolves faces by NAME instead (S89/S90). */
+        const unsigned char* bp; int bn; int streamed = 0;
+        if (bob_dlg_propbag(dlgId, ctrlId, &bp, &bn)) {
+            CPropExchange px;
+            if (px.Attach(bp, bn)) {
+                long saveN = m_NormalFileNum, saveP = m_PressedFileNum;
+                HWND save = m_hWnd; m_hWnd = 0;
+                DoPropExchange(&px);
+                m_hWnd = save;
+                m_NormalFileNum = saveN; m_PressedFileNum = saveP;
+                streamed = 1;
+                if (bob_ole_trace()) fprintf(stderr,
+                    "[ole] RButton dlg=%d id=%d stream: align=%d ResNum=%ld FontNum=%ld\n",
+                    dlgId, ctrlId, m_alignment, (long)GetResourceNumber(), (long)GetFontNum());
+            }
+        }
         /* the button face art: NormalFileNumString ("FIL_...") from the DLGINIT bag ->
            SetNormalFileNumString resolves it to m_NormalFileNum via GetFileNum. */
         /* S90: the strategic-map toolbars default MOST buttons' NormalFileNumString to a shared
@@ -66,7 +90,7 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
            the icon draw path consumes it (first-cut regression: side-select stray glyph,
            strat-map accel icons). Sanity-gate: alignment <= 3, plausible string-table id. */
         unsigned rn;
-        if (GetNormalFileNum() == 0 && bob_dlg_resnum(dlgId, ctrlId, &rn)
+        if (!streamed && GetNormalFileNum() == 0 && bob_dlg_resnum(dlgId, ctrlId, &rn)
             && (rn >> 24) <= 3 && (rn & 0xffffff) < 0x10000) {
             m_alignment = (int)(rn >> 24);
             if (bob_ole_trace()) fprintf(stderr, "[ole] RButton dlg=%d id=%d bag alignment=%d\n",

@@ -21,7 +21,29 @@ struct HostRStatic : public CRStaticCtrl, public OleHost {
         CPropExchange px; DoPropExchange(&px);
     }
     void applyDesignProps() override {
-        /* the label text is the design-time caption from the dialog's DLGINIT bag */
+        /* S126: replay the genuine persisted property stream (stock Caption/ForeColor,
+           FontNum, design String, ResourceNumber, ShadowColor) through the control's
+           own DoPropExchange — the full CPropExchange surrogate. m_hWnd=0 during the
+           replay: on Windows loading precedes window creation. */
+        const unsigned char* p; int n; int streamed = 0;
+        if (bob_dlg_propbag(dlgId, ctrlId, &p, &n)) {
+            CPropExchange px;
+            if (px.Attach(p, n)) {
+                HWND save = m_hWnd; m_hWnd = 0;
+                DoPropExchange(&px);
+                m_hWnd = save;
+                streamed = 1;
+                if (bob_ole_trace()) fprintf(stderr,
+                    "[ole] RStatic dlg=%d id=%d stream: FontNum=%ld ResNum=%ld fore=%06lx \"%s\"\n",
+                    dlgId, ctrlId, (long)GetFontNum(), (long)GetResourceNumber(),
+                    (unsigned long)GetForeColor(), (const char*)m_string);
+            }
+        }
+        if (streamed && GetResourceNumber()) return;
+        /* runtime caption resolves genuinely: GetParentWndInfo -> WM_GETSTRING
+           (ResourceNumber) -> BDG string table, at first draw. Without a stream
+           (BOB_NO_PROP_STREAM) or without a ResourceNumber, keep the S124 caption
+           path (IDS-name -> string table, falling back to the design literal). */
         char cap[64];
         if (bob_dlg_caption(dlgId, ctrlId, cap, sizeof cap) && cap[0]) SetString(cap);
     }

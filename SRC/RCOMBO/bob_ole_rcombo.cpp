@@ -24,6 +24,20 @@ struct HostRCombo : public CRComboCtrl, public OleHost {
         OnResetState();
         CPropExchange px; DoPropExchange(&px);
     }
+    /* S126: replay the genuine persisted property stream (stock ForeColor/Enabled,
+       FontNum, ListboxLength, Style) through the control's own DoPropExchange. */
+    void applyDesignProps() override {
+        const unsigned char* bp; int bn;
+        if (!bob_dlg_propbag(dlgId, ctrlId, &bp, &bn)) return;
+        CPropExchange px;
+        if (!px.Attach(bp, bn)) return;
+        HWND save = m_hWnd; m_hWnd = 0;
+        DoPropExchange(&px);
+        m_hWnd = save;
+        if (bob_ole_trace()) fprintf(stderr,
+            "[ole] RCombo dlg=%d id=%d stream: FontNum=%ld ListboxLength=%ld Style=%ld\n",
+            dlgId, ctrlId, (long)m_FontNum, (long)m_ListboxLength, (long)m_Style);
+    }
     void draw(CDC* pdc, int w, int h) override {
         g_bobListFontH = pdc->m_bobTextH;
         CRect rc(0, 0, w, h);

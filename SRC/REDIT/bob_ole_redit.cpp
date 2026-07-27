@@ -27,6 +27,20 @@ struct HostREdit : public CREditCtrl, public OleHost {
         OnResetState();
         CPropExchange px; DoPropExchange(&px);
     }
+    /* S126: replay the genuine persisted property stream (stock Caption/ForeColor/
+       Enabled + FontNum) through the control's own DoPropExchange. */
+    void applyDesignProps() override {
+        const unsigned char* bp; int bn;
+        if (!bob_dlg_propbag(dlgId, ctrlId, &bp, &bn)) return;
+        CPropExchange px;
+        if (!px.Attach(bp, bn)) return;
+        HWND save = m_hWnd; m_hWnd = 0;
+        DoPropExchange(&px);
+        m_hWnd = save;
+        if (bob_ole_trace()) fprintf(stderr,
+            "[ole] REdit dlg=%d id=%d stream: FontNum=%ld enabled=%d\n",
+            dlgId, ctrlId, (long)m_FontNum, (int)GetEnabled());
+    }
     void draw(CDC* pdc, int w, int h) override {
         g_bobListFontH = pdc->m_bobTextH;
         CRect rc(0, 0, w, h);
