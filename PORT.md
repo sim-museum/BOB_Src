@@ -1,5 +1,61 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S126 (2026-07-27, Sprint 126): property-stream reader LANDED + capture-proven; GLX HEALED — real-GL DoD gates pass; dummy==GL byte-identical bar adopted (passes first try)
+>
+> **The S126 WIP (salvage `9105e25`) is verified and closed.** The persisted property-stream
+> reader — a real `CPropExchange` (`afxwin.h`) that replays each hosted R\* control's DLGINIT
+> property bag through its genuine `DoPropExchange` — now provably works across all 5 hosted
+> control types (RStatic/RCombo/RListBox/RButton/REdit). Stream layout (licence prefix →
+> version DWORD → HIMETRIC extent → stock-prop mask 0x02 Caption/0x08 Fore/0x01 Back/0x40
+> Enabled → the control's own PX_\* fields in source order, MFC CString-archive strings)
+> validated against all 1280 R\*-class RT240 bags; `seqProps` replaces the S125 offset anchors
+> with an exact walk when the PE template gives the control class.
+>
+> **Verification (the piece the session-limit interruption cut off):**
+> - **14-recipe headless sweep: all exit 0**, every diff vs the S125 references inspected and
+>   explained. mainmenu pixel-identical; the 13 changed screens changed *toward gold*: screens
+>   picked up their AUTHORED design colors — the phase-select date renders `(183,250,255)`, a
+>   **pixel-exact color match with the full-res gold shot** (bag `ForeColor=0x00FFFAB7`
+>   COLORREF → `bobColor` → exactly gold; the sbs JPEG had previously suggested "cream" —
+>   sampling the original gold PNG settled it); Controls' light-cyan row labels + gold
+>   "Use For FF" match gold 16-55-52; QS yellow combos + cyan description; strategic-map footer
+>   event-log colors; side-select clean (the S125 art-button protection — restore persisted
+>   Normal/PressedFileNum to boot defaults, design-time file-table indices are meaningless at
+>   runtime — holds, no stray glyphs).
+> - **#16's duplicate date heading: GONE.** New settled-state emulation of Windows'
+>   dirty-region repaint (`bob_ole_draw_panel`): an RStatic whose template rect is ≥90% covered
+>   by a sibling hosted listbox is skipped — on Windows the listbox's first repaint re-blits
+>   panel art over it and the static is never re-invalidated. `BOB_NO_COVER_ERASE` reverts.
+>   Verdict #16 **PARTIAL → CLOSE**; #17 improved (gold large gold-faced date).
+> - **Revert gates verified by capture-diff:** `BOB_NO_PROP_STREAM` reproduces the S125
+>   reference exactly except the (independently-gated) cover-erase region — 3338 differing px
+>   all inside bbox (165,22,455,50); `BOB_NO_DLGINIT_PROPS` kills the whole layer (S123-shape
+>   top band back); `BOB_NO_COVER_ERASE` restores only the covered-static region (4156 px).
+> - **GLX HEALED (MA's report confirmed): the real-GL DoD gates ran and PASS** — (1) default
+>   `./bob` safe path exits 0 on `:0`; (2) front-end boot on real GL exits 0; (3) flight reach:
+>   `BOB_BOOT_FRONTEND` frame-150 dump on `:0`, 800×600 **96.6% non-black**, exit 0 (the gate
+>   S125 had to skip).
+> - **New acceptance bar adopted (MA note 16 §1): headless SDL-dummy capture must be
+>   byte-identical (`cmp`) to the real-GL capture of the same recipe — PASSES first try**
+>   (mainmenu, `BOB_SHOT=40`). This catches the environment-dependent uninitialized-PX-garbage
+>   class (MA S58) with no display dependency.
+> - **MA note 16 §2 residual checks applied, both pass:** (a) every control-creation path —
+>   DDX-driven AND `bob_ole_host_template_statics` — funnels through the host ctors, and all 5
+>   run `OnResetState(); CPropExchange px; DoPropExchange(&px)` unattached → every
+>   DoPropExchange-persisted member gets its PX default written; (b) stock members
+>   (`m_foreColor`/`m_backColor`/`m_bobText`/`m_bobEnabled`) are member-initialized, and on any
+>   mid-stream error `m_bOk` drops so every remaining PX_\* loads its default. The garbage
+>   class MA hit cannot occur here; the dummy==GL `cmp` is the standing regression net for it.
+>
+> **Trace addition:** `WM_GETSTRING` (0x410) served from the BDG string table in the compat
+> `SendMessageA` — the genuine `GetParentWndInfo` caption-resolution path for stream-loaded
+> ResourceNumbers. **Evidence:** `doc/parity/native-*-2026-07-27.png` (13 captures);
+> `doc/screen-parity.md` updated (S126 header block + #16/#17 rows). **Cross-port:** MA note 16
+> processed; outbound **BoB note 17** (stream layout + colors-are-COLORREF-convert-once +
+> art-FileNum trap + cover-erase emulation + the cmp-bar first-try pass) in both copies of the
+> shared lessons doc. Files: `SRC/compat/afxwin.h`, `SRC/compat/bob_dlgtemplate.cpp`,
+> `SRC/R{STATIC,COMBO,LISTBOX,BUTTON,EDIT}/bob_ole*.cpp` (all from the salvage, now verified).
+
 > ## S125 close (2026-07-26, Sprint 125 session 2): #17 enter-name CLOSE + #16 tab-row spread fixed (DLGINIT design-prop slices); DoD default-run gate still GLX-BLOCKED
 >
 > Closing the S125 sprint that the session limit interrupted (salvage `ac873f6`). **Environment
