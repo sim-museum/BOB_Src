@@ -1,5 +1,64 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S125 close (2026-07-26, Sprint 125 session 2): #17 enter-name CLOSE + #16 tab-row spread fixed (DLGINIT design-prop slices); DoD default-run gate still GLX-BLOCKED
+>
+> Closing the S125 sprint that the session limit interrupted (salvage `ac873f6`). **Environment
+> gate:** the X session's GLX is still wedged machine-wide — `DISPLAY=:0 glxinfo -B` fails with
+> `X_GLXCreateNewContext` BadValue — so every real-GL item (the no-env-var default-run DoD gate on
+> `:0`, flight reach) stays **blocked**; no launch crash-loops attempted. Headless proxy for the
+> gate: bare `./bob` from the install dir under `SDL_VIDEODRIVER=dummy` boots clean through
+> `InitInstance()` (returns 1) into `CMIGApp::Run()` and keeps painting the front-end — the
+> salvaged REdit/afxwin/compat_winuser/bob_dlgtemplate changes carry **no startup regression**;
+> exit-0-on-`:0` must still be re-verified when GLX heals.
+>
+> **#17 verified:** fresh headless `BOB_SHOT` capture of campaignentername from the salvaged build
+> is **pixel-identical** to the salvage commit's `native-campaign-entername-2026-07-26.png` (the
+> pre-interruption evidence is the build's true state). Then improved to gold layout (below);
+> verdict **PARTIAL → CLOSE** in `doc/screen-parity.md`.
+>
+> **#16 re-investigated → root cause + fix (the lost in-flight investigation, redone):** the
+> genuine R* controls load their DESIGN-TIME layout properties in `DoPropExchange` from the
+> DLGINIT property stream; our OLE hosts boot from an EMPTY `CPropExchange`, so those props were
+> silently lost. Decoded from the installed `boblang.dll` RT240 records (offset-anchored, no full
+> stream reader yet):
+> - **RListBox columns** (`A0..A8` PX_Shorts + `C0..C8` PX_Longs — the LAST 54 bytes of a
+>   version&0x4 bag, per RLISTBXC.CPP): CSCampaign's phase-tab listbox (dlg 289 ctrl 1000)
+>   persists **4x180px columns, cols 2-3 right-aligned** — arithmetic reproduces gold's tab
+>   positions exactly (Convoys/Eagle Attack left at 0/180, Critical Period/Blitz right-aligned to
+>   540/720). The host also `Shrink()`ed every draw (the old workaround), tight-packing whatever
+>   columns existed. Fix: `bob_dlg_columns()` + `HostRListBox::applyDesignProps` recreates the
+>   authored columns (unscaled, as Windows does pre-window-creation) and suppresses the per-draw
+>   Shrink for bag-column controls (game-driven `Clear()` reverts to the old behaviour).
+> - **RButton alignment** (`m_alignment` = persisted ResourceNumber bits 24..31, per RBUTTONC.CPP
+>   `DoPropExchange`; bag position = the DWORD after the design caption): campaignentername's
+>   IDC_ROLE/IDC_SIDE = 2 (right), IDC_PERIOD = 1 (left), dates = 0 (centre) — exactly gold's
+>   "Commander Bob|" / "Luftwaffe  Eagle Attack" adjacency. Fix: `bob_dlg_resnum()` +
+>   `HostRButton::applyDesignProps` sets `m_alignment` — **artless caption buttons only** (first
+>   cut also touched art/hint toolbar buttons whose last bag string is the hint: stray glyph on
+>   side-select, corrupted strat-map accel icons; `m_ResourceNumber` itself is left untouched —
+>   the icon draw consumes it).
+> - **#16's duplicated date heading** precisely documented + deferred: BDG's template has RStatic
+>   `IDC_RSTATICDATE` (1227) WS_VISIBLE at top-left under the tab row, its bag resolving to the
+>   phase date; game code never touches it. On Windows its text disappears after the first
+>   tab-row repaint (the covering listbox re-blits the panel art over it; statics are never
+>   re-invalidated) — our panel model redraws every control every frame, so it stays. Faithful
+>   fix = dirty-region repaint model (S126 candidate), or the full property-stream reader
+>   (numeric RStatic ResourceNumber caption path).
+> `BOB_NO_DLGINIT_PROPS` reverts the whole slice (verified: revert capture == pre-fix capture
+> modulo the pre-existing tab-highlight run-to-run variance band).
+>
+> **Evidence:** `doc/parity/native-campaign-phaseselect-2026-07-26.png` (tab row spread full-width
+> per gold) + `native-campaign-entername-2026-07-26.png` (gold line layout). **Regression:** all
+> 14 headless recipes exit 0 (menu/QS/8 config/side/phase/entername/strategic map); capture diffs
+> are surgical — 8 config tabs + menu + QS **pixel-identical** pre/post, side-select restored
+> identical after the art-button gate, residual strat-map/controls diffs 68px/4px caption-shadow
+> shifts. Files: `SRC/compat/bob_dlgtemplate.cpp` (extractProps + `bob_dlg_columns`/
+> `bob_dlg_resnum`), `SRC/RLISTBOX/bob_ole_rlistbox.cpp`, `SRC/RBUTTON/bob_ole_rbutton.cpp`,
+> `SRC/RLISTBOX/bob_ole_host.h`. **Deferred (S126 candidates):** sequential property-stream
+> reader feeding each host's genuine `DoPropExchange` (fonts/colors/RStatic-resnum — settles the
+> duplicate date + gold's large tab faces), key-injection harness for #17 typed input + caret,
+> word-wrap/`MoveWindow`/QS-tabs/Directives (unchanged), GLX-blocked default-run gate + flight.
+
 > ## S124 (2026-07-26, Sprint 124): BDG-oracle PE resources — DIALOG/DLGINIT read from the installed build; the S123 resource-delta root cause CLOSED; all 8 config tabs now CLOSE vs gold
 >
 > **SM rulings recorded (standing PO approval; PO can overturn):** (a) **the parity oracle is the

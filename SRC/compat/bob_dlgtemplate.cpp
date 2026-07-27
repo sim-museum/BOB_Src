@@ -232,7 +232,99 @@ static void extractArtName(const unsigned char* b, int n, int dlgId, int ctrlId)
         storeArt(dlgId, ctrlId, t); return;
     }
 }
+/* ---- S125 (#16/#17): design-time layout props from the DLGINIT bag.
+   The genuine controls load these in DoPropExchange from the persisted property
+   stream; our hosts boot from an EMPTY CPropExchange, so they were lost:
+   - RListBox column widths/aligns (`A0..A8` PX_Shorts + `C0..C8` PX_Longs, the
+     LAST 54 bytes of a version&0x4 bag — RLISTBXC.CPP DoPropExchange writes them
+     last). CSCampaign's tab row (dlg 289 ctrl 1000) persists 4x180px columns
+     with C2=C3=1 (right-aligned) — exactly the gold full-width spread.
+   - RButton `ResourceNumber` with m_alignment packed in bits 24..31
+     (RBUTTONC.CPP DoPropExchange: m_alignment=m_ResourceNumber>>24; 0=centre
+     1=left 2=right). In the bag stream it is the DWORD immediately after the
+     persisted design caption (the same "best" string extractCaption keeps):
+     verified IDC_ROLE/IDC_SIDE=2(right), IDC_PERIOD=1(left), dates=0(centre) —
+     the gold campaignentername layout. `BOB_NO_DLGINIT_PROPS` reverts. ---- */
+struct Props { int dlgId, ctrlId; unsigned char pe, hasRes, ncols; unsigned resnum; short colw[9]; int cola[9]; };
+static Props g_props[MAX_CAPS]; static int g_nprops = 0;
+static Props* propSlot(int dlgId, int ctrlId) {
+    for (int j = 0; j < g_nprops; j++)
+        if (g_props[j].dlgId == dlgId && g_props[j].ctrlId == ctrlId) {
+            if (g_props[j].pe && !g_loadingPE) return NULL;   /* .rc never overwrites PE */
+            return &g_props[j];
+        }
+    if (g_nprops >= MAX_CAPS) return NULL;
+    Props* p = &g_props[g_nprops++];
+    memset(p, 0, sizeof *p);
+    p->dlgId = dlgId; p->ctrlId = ctrlId; p->pe = (unsigned char)g_loadingPE;
+    return p;
+}
+static void extractProps(const unsigned char* b, int n, int dlgId, int ctrlId) {
+    /* bag header: DWORD unicode-char count + UTF-16 licence string, then
+       WORD verMinor, WORD verMajor (ExchangeVersion). */
+    if (n < 12) return;
+    unsigned nch = (unsigned)b[0] | ((unsigned)b[1] << 8) | ((unsigned)b[2] << 16) | ((unsigned)b[3] << 24);
+    int verOff = 4 + 2 * (int)nch;
+    if (nch < 8 || nch > 128 || verOff + 4 > n) return;
+    int verMinor = b[verOff] | (b[verOff + 1] << 8);
+    unsigned resnum = 0; int hasRes = 0;
+    /* ResourceNumber: the DWORD right after the last caption-qualifying string
+       (same qualification rule as extractCaption). */
+    int bestEnd = -1;
+    for (int i = 0; i < n; i++) {
+        int len = b[i];
+        if (len < 2 || len > 62 || i + 1 + len > n) continue;
+        int ok = 1; for (int k = 0; k < len; k++) { unsigned char c = b[i+1+k]; if (c < 32 || c > 126) { ok = 0; break; } }
+        if (!ok) continue;
+        if (b[i+1] == 'I' && b[i+2] == 'D') continue;                 /* ID*/
+        if (len >= 9 && memcmp(b + i + 1, "Copyright", 9) == 0) continue;
+        if (len >= 4 && memcmp(b + i + 1, "FIL_", 4) == 0) continue;
+        bestEnd = i + 1 + len;
+    }
+    if (bestEnd > 0 && bestEnd + 4 <= n) {
+        resnum = (unsigned)b[bestEnd] | ((unsigned)b[bestEnd+1] << 8)
+               | ((unsigned)b[bestEnd+2] << 16) | ((unsigned)b[bestEnd+3] << 24);
+        hasRes = 1;
+    }
+    short colw[9]; int cola[9]; int ncols = 0;
+    if ((verMinor & 0x4) && n >= verOff + 4 + 54) {   /* A0..A8 + C0..C8 close the bag */
+        const unsigned char* t = b + n - 54;
+        int sane = 1;
+        for (int c = 0; c < 9; c++) {
+            colw[c] = (short)(t[2*c] | (t[2*c+1] << 8));
+            const unsigned char* cc = t + 18 + 4*c;
+            cola[c] = (int)(cc[0] | (cc[1] << 8) | (cc[2] << 16) | ((unsigned)cc[3] << 24));
+            if (colw[c] < 0 || colw[c] > 2000 || cola[c] < 0 || cola[c] > 15) { sane = 0; break; }
+        }
+        if (sane) for (int c = 0; c < 9 && colw[c]; c++) ncols = c + 1;
+    }
+    if (!hasRes && !ncols) return;
+    Props* p = propSlot(dlgId, ctrlId);
+    if (!p) return;
+    p->hasRes = (unsigned char)hasRes; p->resnum = resnum;
+    p->ncols = (unsigned char)ncols;
+    if (ncols) { memcpy(p->colw, colw, sizeof colw); memcpy(p->cola, cola, sizeof cola); }
+}
 static void load(void);
+extern "C" int bob_dlg_resnum(int dlgId, int ctrlId, unsigned* rn) {
+    load();
+    if (getenv("BOB_NO_DLGINIT_PROPS")) return 0;
+    for (int j = 0; j < g_nprops; j++)
+        if (g_props[j].dlgId == dlgId && g_props[j].ctrlId == ctrlId && g_props[j].hasRes) {
+            if (rn) *rn = g_props[j].resnum; return 1; }
+    return 0;
+}
+extern "C" int bob_dlg_columns(int dlgId, int ctrlId, short w[9], int a[9]) {
+    load();
+    if (getenv("BOB_NO_DLGINIT_PROPS")) return 0;
+    for (int j = 0; j < g_nprops; j++)
+        if (g_props[j].dlgId == dlgId && g_props[j].ctrlId == ctrlId && g_props[j].ncols) {
+            if (w) memcpy(w, g_props[j].colw, 9 * sizeof(short));
+            if (a) memcpy(a, g_props[j].cola, 9 * sizeof(int));
+            return g_props[j].ncols;
+        }
+    return 0;
+}
 extern "C" int bob_dlg_artname(int dlgId, int ctrlId, char* out, int outsz) {
     load();
     for (int j = 0; j < g_narts; j++) if (g_arts[j].dlgId==dlgId && g_arts[j].ctrlId==ctrlId) {
@@ -249,21 +341,21 @@ static void parseDlgInit(const char* path) {
     while (fgets(line, sizeof line, f)) {
         char* dl = strstr(line, " DLGINIT");
         if (dl) {                                   /* "<SYM> DLGINIT" */
-            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);
+            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl); extractProps(buf, blen, curDlg, curCtrl);
             char sym[256]; curDlg = (sscanf(line, " %255[A-Za-z0-9_]", sym) == 1) ? symLookup(sym) : -1;
             curCtrl = -1; blen = 0;
             continue;
         }
         char cs[256];
         if (curDlg >= 0 && sscanf(line, " %255[A-Za-z0-9_] ,", cs) == 1 && strstr(line, "0x376")) {
-            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);   /* flush previous */
+            if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl); extractProps(buf, blen, curDlg, curCtrl);   /* flush previous */
             curCtrl = symLookup(cs); blen = 0;
             continue;
         }
         {   /* trimmed "END" closes the block */
             const char* p = line; while (*p && isspace((unsigned char)*p)) p++;
             if (strncmp(p, "END", 3) == 0 && (p[3] == 0 || isspace((unsigned char)p[3]))) {
-                if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);
+                if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl); extractProps(buf, blen, curDlg, curCtrl);
                 curDlg = curCtrl = -1; blen = 0; continue;
             }
         }
@@ -276,7 +368,7 @@ static void parseDlgInit(const char* path) {
             }
         }
     }
-    if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl);
+    if (curCtrl >= 0) extractCaption(buf, blen, curDlg, curCtrl); extractArtName(buf, blen, curDlg, curCtrl); extractProps(buf, blen, curDlg, curCtrl);
     fclose(f);
 }
 
@@ -322,6 +414,7 @@ static void peInitCb(void*, int dlgId, int ctrlId, const unsigned char* data, in
     /* same byte format as the .rc DLGINIT hex dump — reuse the proven extractors */
     extractCaption(data, len, dlgId, ctrlId);
     extractArtName(data, len, dlgId, ctrlId);
+    extractProps(data, len, dlgId, ctrlId);
 }
 static int loadFromPE(void) {
     g_loadingPE = 1;

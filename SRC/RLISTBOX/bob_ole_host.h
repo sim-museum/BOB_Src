@@ -27,6 +27,8 @@ struct OleHost {
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT caption (bob_dlgtemplate.cpp) */
 extern "C" int bob_dlg_artname(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT "FIL_*" NormalFileNumString (buttons) */
+extern "C" int bob_dlg_resnum(int dlgId, int ctrlId, unsigned* rn);            /* S125: persisted ResourceNumber (RButton alignment in bits 24..31) */
+extern "C" int bob_dlg_columns(int dlgId, int ctrlId, short w[9], int a[9]);   /* S125: persisted RListBox column widths + align/icon codes */
 
 /* per-control factories (one per TU) */
 OleHost* bob_make_rlistbox(class CWnd* parent);

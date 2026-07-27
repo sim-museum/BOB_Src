@@ -55,6 +55,23 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
         }
         if (bob_ole_trace()) fprintf(stderr, "[ole] RButton dlg=%d id=%d art=%s -> NormalFileNum=0x%lx\n",
             dlgId, ctrlId, got?art:"(none)", (long)GetNormalFileNum());
+        /* S125 (#16/#17): the persisted ResourceNumber packs m_alignment in bits 24..31
+           (RBUTTONC.CPP DoPropExchange: m_alignment=m_ResourceNumber>>24; 0=centre 1=left
+           2=right) — lost with the empty-bag boot, so every label-style RButton drew
+           centred. Gold campaignentername: IDC_ROLE/IDC_SIDE right-aligned (-> "Commander"
+           +name-edit adjacent, as gold), IDC_PERIOD left, dates centred.
+           Applied ONLY to artless caption buttons: the bag-position anchor (DWORD after
+           the design caption) is unreliable for art/hint-bearing toolbar buttons (their
+           last bag string is the hint), and m_ResourceNumber itself is left untouched —
+           the icon draw path consumes it (first-cut regression: side-select stray glyph,
+           strat-map accel icons). Sanity-gate: alignment <= 3, plausible string-table id. */
+        unsigned rn;
+        if (GetNormalFileNum() == 0 && bob_dlg_resnum(dlgId, ctrlId, &rn)
+            && (rn >> 24) <= 3 && (rn & 0xffffff) < 0x10000) {
+            m_alignment = (int)(rn >> 24);
+            if (bob_ole_trace()) fprintf(stderr, "[ole] RButton dlg=%d id=%d bag alignment=%d\n",
+                dlgId, ctrlId, m_alignment);
+        }
     }
     void draw(CDC* pdc, int w, int h) override {
         g_bobListFontH = pdc->m_bobTextH;

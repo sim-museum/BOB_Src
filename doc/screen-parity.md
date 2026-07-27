@@ -55,8 +55,8 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
 | 13 | 56-45 | Sim Config — Views (`vieweroptions`) | `BOB_CONFIGSCREEN=views BOB_SHOT=70` | `native-sim-views-2026-07-26.png` | **CLOSE (S124)** — 9 rows labeled+paired with gold captions (Auto External, View Mode Select, Padlock When Visible, Info Line, Head Up Display …); the S123 overlapped Info Line/Camera Colour pair is gone (template filter). Deviations: combo values, font. |
 | 14 | 56-53 | Campaign side-select (RAF/Luftwaffe) | `BOB_AUTOCLICK=1 BOB_SHOT=250` | `native-campaign-sideselect-2026-07-25.png` | **CLOSE** — art identical, RAF/Luftwaffe/Back hit-polygons live. Deviation: captions tiny vs gold's large gold face (the screen has no textlist coords; captions are art-adjacent). |
 | 15 | 57-36 | Campaign side-select (near-duplicate of #14) | same | same | same — **flag for PO: #14/#15 duplicates** (19 vs "17" count). |
-| 16 | 57-47 | Campaign phase select (`campaignselect`) | `BOB_AUTOCLICK=1,1 BOB_SHOT=380` | `native-campaign-phaseselect-2026-07-25.png` (before: `BEFORE-campaign-phaseselect-2026-07-25.png`) | **PARTIAL** — Back/Begin now bottom-left at the game's ListX/ListY (was top, overlapped); phase description + date + black montage frame (gold black too) render. Deviations: phase tabs tight-packed top-left (hosted listbox draws its own columns), duplicated date heading top-left, description unwrapped (R6.2). |
-| 17 | 57-55 | Campaign enter-name (`campaignentername`) | `BOB_AUTOCLICK=1,1,1 BOB_SHOT=520` | `native-campaign-entername-2026-07-25.png` | **PARTIAL** — Back/Begin placed, montage frame + Luftwaffe/Commander texts present. Deviations: name-edit line not rendered as gold's "Commander Bob|" block; side/phase/date lines scattered (label rects + edit control not hosted). |
+| 16 | 57-47 | Campaign phase select (`campaignselect`) | `BOB_AUTOCLICK=1,1 BOB_SHOT=380` | `native-campaign-phaseselect-2026-07-26.png` (before: `BEFORE-campaign-phaseselect-2026-07-25.png`) | **PARTIAL → improved (S125: tab row spreads as gold)** — the phase tabs now spread across the full row with gold's exact column layout: the DLGINIT bag persists the listbox's authored columns (`A0..A3`=180px, `C2/C3`=right-aligned) which the empty-bag host boot had lost; Convoys/Eagle Attack left-aligned, Critical Period/Blitz right-aligned to their column ends, matching gold's spacing (`BOB_NO_DLGINIT_PROPS` reverts). Remaining deviations: duplicated date heading top-left (RStatic `IDC_RSTATICDATE` 1227 — in BDG's template WS_VISIBLE with a design caption resolving to the date; on Windows it is covered by the tab-row listbox's background re-blit after the first repaint and never invalidated, while our panel redraws every control every frame — paint-model story, deferred), description unwrapped (R6.2), tab font small vs gold's large face (R6.2). |
+| 17 | 57-55 | Campaign enter-name (`campaignentername`) | `BOB_AUTOCLICK=1,1,1 BOB_SHOT=520` | `native-campaign-entername-2026-07-26.png` | **CLOSE (S125: REdit hosted + gold line layout)** — the name edit is the genuine hosted `CREditCtrl` (S125 REdit host: caption/word-list machinery live, blocking-keys + `CommsPlayerName` reach it), and the line layout now matches gold structurally: "Commander Bob" adjacent (IDC_ROLE right-aligned per its persisted alignment byte), "Luftwaffe <phase>" adjacent (IDC_SIDE right / IDC_PERIOD left), date centred. Phase/date strings differ only by selected phase (state). Deviations: caret line not drawn in the capture (flash-timer state), font face (R6.2), typed-input not yet harness-verified headlessly (no key-injection harness; deferred with the caret check). |
 | 18 | 58-08 | Strategic map + LW Directives dialog | directives dialog not natively reachable yet | — | **GAP** — the OOB info-dialog subsystem renders Bases etc. (S113-S117); the LW Directives dialog is a toolbar dialog not yet wired. Map behind it: see #19. |
 | 19 | 58-19 | Strategic map (LW campaign, raids/routes) | `BOB_AUTOCLICK=1,1,1,1 BOB_MAP_TIMER=8 BOB_SHOT=700..1200` | `native-strategic-map-2026-07-25.png` | **CLOSE** — terrain, sectors A–E/Y/Z, city labels, No.11 Group, full unit-icon layer (green RAF / blue / yellow), footer event log + date-clock ("10 July 11:54 x1"), both LW toolbar rows, right ruler. Deviations: no raid stacks/route lines in the capture (fresh Convoys day, paused-start; gold is 12 August Eagle Attack at x300 with live raids), ruler band plain vs gold's wooden art, accel transport buttons not in shot. |
 
@@ -79,12 +79,25 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
    dialogs' templates — scrambled forms); menu lists ignoring the game's per-resolution
    `ListX/ListY` anchor (Back/Begin/Fly rows drawn top instead of bottom); runtime
    `ShowWindow` visibility ignored (demo/disabled ghost statics drawn).
-3. **Remaining render classes:** multi-line word-wrap for description statics (R6.2);
-   tab-row column spread (hosted listbox column widths vs gold's PositionRListBox
-   spacing); page-switching dialogs (`MoveWindow` offsets not tracked); native-DLU
-   font face/size pass (R6.2); edit-control hosting (enter-name box, #17);
+3. **DLGINIT design-prop loss — ◐ two slices closed S125 (2026-07-26).** The genuine
+   controls load design-time layout props in `DoPropExchange` from the persisted DLGINIT
+   property stream; our hosts boot from an EMPTY `CPropExchange`, losing them. Landed
+   (`BOB_NO_DLGINIT_PROPS` reverts): **(a)** RListBox column widths/aligns (`A0..A8`
+   shorts + `C0..C8` longs, the last 54 bytes of a version&4 bag) — fixed #16's tab-row
+   spread; **(b)** RButton `m_alignment` (packed in the persisted ResourceNumber's bits
+   24..31, anchored after the design caption; applied to artless caption buttons only)
+   — fixed #17's scattered lines. Remaining in this class (S126 candidate: a real
+   sequential property-stream reader feeding each host's genuine `DoPropExchange`):
+   FontNum/FontNum2 (gold's large tab/heading faces), fore/shadow colors, RStatic
+   numeric ResourceNumber (the faithful caption-resolution path — would settle #16's
+   duplicate date), REdit props.
+4. **Remaining render classes:** multi-line word-wrap for description statics (R6.2);
+   page-switching dialogs (`MoveWindow` offsets not tracked); native-DLU
+   font face/size pass (R6.2); dirty-region repaint model (covered-control text is
+   erased on Windows after the first overlapping repaint — #16's duplicate date);
    accelerator-escape "&&"→"&" in label draw (#8); QS page-tab captions/recipe (#3);
-   LW Directives dialog wiring (#18).
+   LW Directives dialog wiring (#18); headless key-injection harness (#17 typed-input
+   + caret verification).
 
 ## PO questions
 

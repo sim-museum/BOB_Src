@@ -19,17 +19,44 @@ extern const GUID IID_DRListBox       = { 0x90b5eda6, 0x666f, 0x11d6, { 0xa1,0xf
 extern const GUID IID_DRListBoxEvents = { 0x90b5eda7, 0x666f, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 
 struct HostRListBox : public CRListBoxCtrl, public OleHost {
+    int bagCols = 0;                 /* S125: columns came from the DLGINIT bag */
     void boot(CWnd* parent) {
         m_pBobParent = parent;       /* GetParent() -> dialog, for OnDraw/ResizeToFit */
         m_hWnd = (HWND)1;            /* sentinel: OnDraw is a no-op unless m_hWnd != 0 */
         OnResetState();
         CPropExchange px; DoPropExchange(&px);
     }
+    /* S125 (#16): the genuine DoPropExchange creates this control's columns from the
+       persisted `A0..A8` widths + `C0..C8` align/icon codes (0=left 1=right >=8 icon);
+       our empty-bag boot lost them, so e.g. CSCampaign's phase-tab row (4x180px,
+       cols 2-3 right-aligned = the gold full-width spread) collapsed to Shrink()'d
+       tight columns. Recreate them exactly as RLISTBXC.CPP:470 does. The boot-time
+       default AddColumn(50) is released first (Clear() with colwidths[0]==0 drops
+       all columns). Widths are applied unscaled (m_hWnd=0), as on Windows where
+       DoPropExchange runs before window creation. */
+    void applyDesignProps() override {
+        short w[9]; int a[9];
+        int n = bob_dlg_columns(dlgId, ctrlId, w, a);
+        if (n <= 0) return;
+        Clear();
+        for (int c = 0; c < n; c++) {
+            HWND save = m_hWnd; m_hWnd = 0;
+            if (a[c] >= 8) AddIconColumn(w[c]); else AddColumn(w[c]);
+            m_hWnd = save;
+            if (a[c] == 1) SetColumnRightAligned(c, TRUE);
+        }
+        bagCols = n;
+        if (bob_ole_trace()) fprintf(stderr, "[ole] RListBox dlg=%d id=%d: %d bag columns (w0=%d)\n",
+            dlgId, ctrlId, n, (int)w[0]);
+    }
     void draw(CDC* pdc, int w, int h) override {
         /* recompute column widths at the *draw* height so the control's own layout
-           matches the rendered glyphs (population may have used a different one). */
+           matches the rendered glyphs (population may have used a different one).
+           S125: NOT when the columns are the authored bag layout — Windows only
+           Shrink()s when the game asks (PositionRListBox); shrinking the authored
+           columns is what tight-packed the phase-tab row (#16). */
         g_bobListFontH = pdc->m_bobTextH;
-        Shrink();
+        if (!bagCols) Shrink();
         CRect rc(0, 0, w, h);
         OnDraw(pdc, rc, rc);
     }
@@ -54,7 +81,9 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
         case 56: { const char* t = va_arg(ap, const char*); int i = va_arg(ap, int); ensureColumns(i); AddString(t ? t : "", (short)i);
                    if (bob_ole_trace()) fprintf(stderr, "[ole]   AddString[col %d] \"%s\"  (cols=%d, rows=%d)\n", i, t?t:"", m_list.GetCount(), (int)GetCount()); } break;
         case 57: { int r = va_arg(ap, int); int c = va_arg(ap, int); DeleteString((short)r, (short)c); } break;
-        case 58: Clear(); break;
+        case 58: Clear(); bagCols = 0; break;   /* S125: our Clear() drops the bag columns
+                    (private colwidths[] stays 0) and the caller rebuilds its own —
+                    resume the pre-bag Shrink()-at-draw behaviour for those */
         case 59: { long w = va_arg(ap, long); AddColumn(w); } break;
         case 60: { int i = va_arg(ap, int); long w = va_arg(ap, long); SetColumnWidth((short)i, w); } break;
         case 61: { long p = va_arg(ap, long); AddPlayerNum(p); } break;
