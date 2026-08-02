@@ -634,16 +634,97 @@ public:
     }
     CSize GetOutputTextExtent(LPCSTR s, int len) const { return GetTextExtent(s, len); }
     int  DrawText(LPCSTR s, int len, LPRECT r, UINT format) {
-        /* R* static labels draw via DrawText (DT_LEFT/DT_CENTER). Render a single
-           line into the framebuffer at the rect, honouring left/centre alignment. */
-        if (m_bobScreen && s && r) {
-            char buf[256]; int n = len < 0 ? (int)strlen(s) : len; if (n > 255) n = 255;
-            memcpy(buf, s, n); buf[n] = 0;
-            int x = r->left, y = r->top;
-            if (format & DT_CENTER) { int tw = bob_gdi_text_width(buf, m_bobTextH); x = r->left + ((r->right - r->left) - tw) / 2; }
-            bob_gdi_text(m_bobVpX + x, m_bobVpY + y, buf, m_bobTextH, bobColor(m_textColor));
+        /* S127: real DrawText for R* STATIC labels (CRStaticCtrl::OnDraw is the only
+           caller — combos/buttons/listboxes draw via ExtTextOut). Honours
+           DT_WORDBREAK multi-line word-wrap (long prose was drawing one clipped line
+           running off the panel edge — the phase-select/QS descriptions; MA note 17
+           shared find) and Windows '&' accelerator-prefix processing ("&&"->"&", a
+           lone '&' removed — BDG's "Cockpit && UI" -> "Cockpit & UI", gold #8).
+           BOB_NO_WORDWRAP / BOB_NO_AMP_ESCAPE revert each. */
+        if (!s || !r) return m_bobTextH;
+        char raw[512]; int n = len < 0 ? (int)strlen(s) : len; if (n < 0) n = 0; if (n > 511) n = 511;
+        memcpy(raw, s, n); raw[n] = 0;
+
+        static int noAmp = -1; if (noAmp < 0) noAmp = getenv("BOB_NO_AMP_ESCAPE") ? 1 : 0;
+        char buf[512];
+        if (!noAmp && !(format & DT_NOPREFIX)) {
+            int j = 0;
+            for (int i = 0; raw[i] && j < 511; i++) {
+                if (raw[i] == '&') { if (raw[i+1] == '&') { buf[j++] = '&'; i++; } /* lone '&': prefix marker, dropped */ }
+                else buf[j++] = raw[i];
+            }
+            buf[j] = 0;
+        } else { memcpy(buf, raw, (size_t)n + 1); }
+
+        int boxw = r->right - r->left;
+        int pitch = (m_bobTextH > 0 ? m_bobTextH : 16) + 2;
+
+        static int noWrap = -1; if (noWrap < 0) noWrap = getenv("BOB_NO_WORDWRAP") ? 1 : 0;
+        /* Only wrap boxes tall enough to be a genuine multi-line area (>=2 lines):
+           config LABELS also pass DT_WORDBREAK but sit in single-line boxes — keep
+           their one-line render (our font may be wider than gold's, so wrapping a
+           label that fits on Windows would spill into the row below). Descriptions
+           (the tall PhaseDescription/QS statics) are the real wrap targets. */
+        bool wrap = (format & DT_WORDBREAK) && !(format & DT_SINGLELINE) && !noWrap
+                    && boxw > 8 && (r->bottom - r->top) >= 2 * pitch;
+
+        /* helper: place one line honouring DT_CENTER/DT_RIGHT within [left,right] */
+        if (!wrap) {
+            int tw = bob_gdi_text_width(buf, m_bobTextH);
+            int x = r->left;
+            if (format & DT_CENTER) x = r->left + (boxw - tw) / 2;
+            else if (format & DT_RIGHT) x = r->right - tw;
+            if (!(format & DT_CALCRECT) && m_bobScreen)
+                bob_gdi_text(m_bobVpX + x, m_bobVpY + r->top, buf, m_bobTextH, bobColor(m_textColor));
+            return m_bobTextH;
         }
-        return m_bobTextH;
+
+        /* greedy word-wrap; honour explicit '\n'. Clip vertically to the box for a
+           genuine multi-line area; a single-line box (h < 2*pitch) draws its one line. */
+        int y = r->top;
+        int clipBottom = (r->bottom - r->top) >= 2 * pitch ? r->bottom : 0x7fffffff;
+        char line[512]; int ll = 0;
+        int i = 0;
+        while (buf[i] || ll) {
+            char c = buf[i];
+            bool forceBreak = (c == '\n') || (c == 0);
+            if (c == '\n') i++;
+            if (!forceBreak) {
+                /* accumulate one word (up to the next space/newline/end) */
+                int ws = i; while (buf[i] && buf[i] != ' ' && buf[i] != '\n') i++;
+                int wl = i - ws;
+                /* build candidate line = current + optional space + word */
+                char cand[512]; int cl = 0;
+                memcpy(cand, line, ll); cl = ll;
+                if (cl && cl < 511) cand[cl++] = ' ';
+                for (int k = 0; k < wl && cl < 511; k++) cand[cl++] = buf[ws + k];
+                cand[cl] = 0;
+                if (ll == 0 || bob_gdi_text_width(cand, m_bobTextH) <= boxw) {
+                    memcpy(line, cand, cl + 1); ll = cl;
+                    while (buf[i] == ' ') i++;   /* swallow trailing spaces */
+                    if (buf[i]) continue;        /* more text -> keep packing */
+                    forceBreak = true;           /* end of string -> flush last line */
+                } else {
+                    /* word doesn't fit: flush current line, retry word on a fresh line */
+                    forceBreak = true;
+                    i = ws;                      /* re-process this word next iteration */
+                }
+            }
+            if (forceBreak) {
+                if (y + m_bobTextH > clipBottom) break;
+                line[ll] = 0;
+                int tw = bob_gdi_text_width(line, m_bobTextH);
+                int x = r->left;
+                if (format & DT_CENTER) x = r->left + (boxw - tw) / 2;
+                else if (format & DT_RIGHT) x = r->right - tw;
+                if (!(format & DT_CALCRECT) && m_bobScreen && ll)
+                    bob_gdi_text(m_bobVpX + x, m_bobVpY + y, line, m_bobTextH, bobColor(m_textColor));
+                y += pitch; ll = 0;
+                if (buf[i] == 0) break;
+            }
+        }
+        if (format & DT_CALCRECT) r->bottom = y;
+        return y - r->top;
     }
     UINT SetTextAlign(UINT) { return 0; }
     int  SetMapMode(int) { return 0; }

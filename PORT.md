@@ -1,5 +1,47 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S127 (2026-08-02, Sprint 127): label-render fidelity — DT_WORDBREAK word-wrap + '&' accelerator escape in `CDC::DrawText`; #16 PARTIAL→CLOSE, #2/#8 improved; all DoD gates pass
+>
+> **Two contained, verified wins in the one compat method that renders every R\* STATIC
+> label — `CDC::DrawText` (`afxwin.h`).** Discovery: the genuine `CRStaticCtrl::OnDraw`
+> (RSTATICC.CPP) draws all prose through `pdc->DrawText(m_string, rc, DT_LEFT+DT_WORDBREAK
+> +DT_TABSTOP)`, but our compat `DrawText` ignored `DT_WORDBREAK` and did no '&' processing;
+> combos/buttons/listboxes draw via `ExtTextOut`/`TextOut` (confirmed by grep), so both fixes
+> are scoped to the static path only and cannot touch combo/button text.
+>
+> - **DT_WORDBREAK word-wrap (R6.2; MA note 17 shared find).** Real greedy word-wrap: packs
+>   words into lines that fit the box width (`bob_gdi_text_width`), honours explicit `\n`
+>   (paragraph breaks), and DT_CENTER/DT_RIGHT per line; vertically clips to the box.
+>   **Guard against label regressions:** only boxes tall enough for ≥2 lines wrap — config
+>   LABELS also pass DT_WORDBREAK but sit in single-line boxes, and our stencil font is wider
+>   than gold's, so wrapping a label that fits on Windows would spill into the row below;
+>   single-line boxes keep their one-line render. The tall PhaseDescription / QS-training
+>   statics are the real targets. **Result:** #16 phase-select and #2 QS descriptions now wrap
+>   fully within their boxes (multi-paragraph, blank-line breaks preserved) instead of one
+>   clipped line running off the right edge. `BOB_NO_WORDWRAP` reverts.
+> - **'&' accelerator-prefix escape (#8).** Windows `DrawText` (no DT_NOPREFIX) treats '&' as
+>   an accelerator prefix: "&&"→literal '&', a lone '&' marks/removes. BDG's Controls label
+>   "Cockpit && UI" now renders "Cockpit & UI". DT_NOPREFIX-aware; combo device names keep
+>   their literal '&' ("...Axis 0 & Axis 1") since they draw via ExtTextOut. `BOB_NO_AMP_ESCAPE`
+>   reverts.
+>
+> **Verification.** Build clean; **14-recipe headless sweep all exit 0**; surgical diffs vs
+> the pre-S127 build — controls bbox (224,552,260,568) 447px (just the removed '&'), phase
+> bbox (250,504,1024,640) 21946px (the wrap), QS bbox (25,249,1024,582) 35113px (the wrap);
+> **Sound config's long labels ("Radio Chatter Volume") stay single-line — no wrap
+> regression** (the ≥2-line guard). Real-GL DoD gates (gl-lock, shared display with the Julia
+> Racer session): safe default `./bob` exits 0 (headless, BOB_NO_RUN); flight `BOB_BOOT_FRONTEND`
+> frame-150 on `:0` **95.2% non-black, exit 0**; **dummy==GL `cmp` BYTE-IDENTICAL** on mainmenu
+> AND on the changed phaseselect screen (the word-wrap renders identically on both backends —
+> no uninit-PX garbage). **Verdicts:** #16 **PARTIAL→CLOSE**, #8 CLOSE ('&&' deviation retired),
+> #2 improved (description wraps; still PARTIAL on page-tab captions #3). Parity now
+> **16 CLOSE / 1 PARTIAL / 3 GAP** of 19. **Cross-port:** MA note 17's `CDC::DrawText
+> DT_WORDBREAK` shared find is now implemented on the BoB side (outbound BoB note appended to
+> the shared lessons doc); MA note 17 mechanism #2 (parent-rect clipping) assessed **N/A** for
+> BoB (S124 membership filter already removes BoB's dead controls; no out-of-bounds stray in
+> the 14-screen sweep). Files: `SRC/compat/afxwin.h` (`CDC::DrawText`). Evidence:
+> `doc/parity/native-{quickshots,config-controls,campaign-phaseselect}-2026-07-27*.png`.
+
 > ## S126 (2026-07-27, Sprint 126): property-stream reader LANDED + capture-proven; GLX HEALED — real-GL DoD gates pass; dummy==GL byte-identical bar adopted (passes first try)
 >
 > **The S126 WIP (salvage `9105e25`) is verified and closed.** The persisted property-stream

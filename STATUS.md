@@ -7,7 +7,16 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session (S124, 2026-07-26):** **BDG-oracle PE resources** — the port now reads the
+> **Latest session (S127, 2026-08-02):** **Label-render fidelity** — compat `CDC::DrawText` now
+> implements real DT_WORDBREAK word-wrap (the phase-select and Quick-Shots descriptions wrap
+> inside their boxes, paragraph breaks preserved, instead of one clipped line off the panel edge)
+> and Windows '&' accelerator escape ("Cockpit && UI" → "Cockpit & UI"). A ≥2-line-box guard keeps
+> single-line config labels untouched (no regression). Parity now **16 CLOSE / 1 PARTIAL / 3 GAP**
+> of 19 gold shots (#16 PARTIAL→CLOSE, #8 CLOSE, #2 improved). `BOB_NO_WORDWRAP` / `BOB_NO_AMP_ESCAPE`
+> revert. dummy==GL `cmp` byte-identical on the changed screens. Implements MA note 17's shared
+> `DrawText DT_WORDBREAK` find (outbound BoB note = shared-doc §8o).
+>
+> Prior (S124, 2026-07-26): **BDG-oracle PE resources** — the port now reads the
 > installed build's PE `.rsrc` DIALOG/DLGINIT (`English/TEXT/boblang.dll` = BDG 0.99, the parity
 > oracle per SM ruling) instead of the source checkout's `.rc`: BDG rects/rows, faithful
 > IDS→string-table captions, template-driven hosting of non-DDX label statics, and a

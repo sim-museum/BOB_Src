@@ -1514,6 +1514,52 @@ cut `Rbutton.ocx` (lowercase 'b') out of view and briefly "established" that RBu
 installed -- which would have closed the story as "the resources don't ship". Same family as
 §8k(3)/§8m(2): a tool's own limit misread as evidence about the system.
 
+## 8o. `CDC::DrawText` DT_WORDBREAK + '&' escape — scope the guard to the case, not the flag (BoB S127) **[ENGINE]**
+
+*Implements the shared find MA flagged in note 17 (§8f tail): "compat `CDC::DrawText` must
+implement real `DT_WORDBREAK`/multi-line (CRStaticCtrl draws all long prose through it —
+unwrapped text running off a panel edge is this, not a layout bug)."*
+
+**(1) Only `CRStaticCtrl` reaches `DrawText`; every other R\* control draws via
+`ExtTextOut`/`TextOut`.** One grep settles the blast radius before you write a line
+(`RCOMBOC/RBUTTONC/RLISTBXC` all `ExtTextOut`). That means BOTH fixes below live entirely in
+the static `DrawText` path and cannot touch combo/button/listbox text — no special-casing
+needed. `CRStaticCtrl::OnDraw` calls `pdc->DrawText(m_string, rc, DT_LEFT+DT_WORDBREAK
+(+DT_TABSTOP))` for non-central text, three times when `m_FontNum<0` (two shadow passes at
+offset + the colour pass) — your wrap must be deterministic so the shadow lines register.
+
+**(2) ★ DT_WORDBREAK is passed by EVERY static — labels AND descriptions — so guard the wrap
+by BOX HEIGHT, not by the flag.** Config LABELS ("Radio Chatter Volume") sit in single-line
+boxes and also carry DT_WORDBREAK; if you wrap on the flag alone, any label whose text is
+wider in your font than in gold's (our stb/stencil face is wider) wraps to a 2nd line and
+spills into the row below — a fresh regression on screens that were already CLOSE. Fix: wrap
+only boxes tall enough for ≥2 lines (`(bottom-top) >= 2*pitch`); single-line boxes keep the
+one-line render. The tall PhaseDescription / QS-training statics are the only real targets.
+This is the same "filter, don't cap" instinct as §8m but applied to a draw flag: let the box
+geometry — which you already have from the template — decide, don't trust the flag globally.
+(BoB had earlier *capped the font* for tall boxes, R6.2/S11; S127 replaced that with real
+wrapping at the one-line font size.) Greedy word packing + honour explicit `\n` (paragraph
+breaks in the prose) + per-line DT_CENTER/DT_RIGHT + vertical clip to the box.
+
+**(3) '&' accelerator escape belongs in the same method (Windows semantics).** `DrawText`
+without DT_NOPREFIX treats '&' as an accelerator prefix: "&&"→literal '&', a lone '&'
+marks/removes the next char. BDG's Controls label "Cockpit && UI" was rendering literally;
+processing it → "Cockpit & UI" (gold). Because only statics hit `DrawText`, combo device
+names keep their literal '&' ("...Axis 0 & Axis 1", drawn via ExtTextOut) automatically.
+Gate each independently (`BOB_NO_WORDWRAP` / `BOB_NO_AMP_ESCAPE`).
+
+**(4) Verify backend-independence with the dummy==GL `cmp` bar (§8f).** The wrap is pure
+integer text metrics, so a headless SDL-dummy capture of a wrapped screen must be
+byte-identical to the real-GL capture — S127 confirmed it on the changed phaseselect screen
+in one `cmp`. If they differ, your wrap is reading uninitialised metrics, not "AA noise".
+
+**(5) MA note 17 mechanism #2 (parent-rect clipping) — assessed N/A on the BoB side (S127).**
+BoB's S124 template-membership filter already removes the dead controls MA clips by client
+rect, and no in-template-but-out-of-client-rect stray drew across BoB's 14-screen headless
+sweep. The mechanisms are genuinely distinct (a control CAN be a template member yet parked
+outside the client rect), so this is "checked, no current symptom", not "same fix" — adopt if
+one surfaces.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),
