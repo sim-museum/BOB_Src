@@ -23,6 +23,7 @@ struct OleHost {
     virtual void applyDesignProps() {}   /* set design-time props (e.g. RStatic label caption) once ids are known */
     virtual int  onClick() { return 0; } /* interactive controls (RCombo) cycle on click; return 1 if state changed */
     virtual int  rowAtY(int /*localY*/) { return -1; } /* list controls: the row under a click (local Y), or -1 */
+    virtual int  onButtonClick(int /*localX*/) { return -1; } /* multi-button controls (RRadio tabs): select the button at local X + return its index, or -1 */
 };
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz);   /* DLGINIT caption (bob_dlgtemplate.cpp) */

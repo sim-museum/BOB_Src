@@ -42,8 +42,16 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 - **S128 closed: hosted the `CRRadioCtrl`** (6th R\* control type) → the
   Quick-Shots page-tab row (Scenario/Parameters/Luftwaffe/RAF, `IDC_RRADIO`)
   now renders each caption + its selection-tick icon. **#2 PARTIAL→CLOSE**
-  (parity **16 CLOSE / 0 PARTIAL / 3 GAP** of 19). #3 (Parameters page)
-  prerequisite met; remaining half = tab-click page-switch + `MoveWindow`.
+  (parity **16 CLOSE / 0 PARTIAL / 3 GAP** of 19).
+- **S129 closed: QS tab navigation works** — a click on a tab fires the genuine
+  `Selected` event (`OleHost::onButtonClick` → `bob_ole_click` → S33 eventsink →
+  `CSQuick1::OnSelectedRradio` → `LaunchDial`), switching the panel page. Clicking
+  Parameters renders the mission-params page; Scenario switches back (bidirectional).
+  **Gold #3 mapping corrected:** `16-47-45` is the player-flight editor
+  (Squadron/Aircraft/Duty/Callsign, `CSQuickLine`), not the Parameters tab — so #3
+  stays GAP with its true path (a flight-line click) now known. Parity unchanged.
+  **All `bob` runs now go through `gl-lock`** (incl. headless captures) per the
+  shared-display protocol.
 - GL gates PASS (S127 + S128): safe default `./bob` exit 0; flight frame-150
   95.2% non-black on `:0`; dummy==GL `cmp` byte-identical on mainmenu,
   phaseselect (S127) and quickshots (S128).

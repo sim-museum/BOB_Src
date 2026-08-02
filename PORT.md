@@ -1,5 +1,46 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S129 (2026-08-02, Sprint 129): Quick-Shots tab navigation works — RRadio click → page switch; the Parameters tab renders; gold #3 mapping corrected
+>
+> **Building on S128's hosted `CRRadioCtrl`, the QS page tabs are now interactive.** A click on
+> the tab row selects the button under the cursor and drives the genuine page switch:
+> - **`OleHost::onButtonClick(localX)`** (new virtual, default −1) overridden by `HostRRadio`:
+>   maps the local click X across the drawn width to the tab index (buttons are equal columns),
+>   `SetCurrentSelection(idx)` (moves the tick), returns the index.
+> - **`bob_ole_click`** gains a multi-button branch: `onButtonClick` ≥ 0 → set `bob_evtA0=idx`
+>   and fire the genuine `Selected` event (dispid 1, VTS_I4) via the S33 general eventsink →
+>   `CSQuick1::OnSelectedRradio(idx)` → `FullPanel()->QuickMissionParameters()` /
+>   `QuickMissionDesc()` → **`LaunchDial(new QuickParameters()/CCampBack)`** — the same panel-nav
+>   mechanism the whole front-end already uses (NOT a `MoveWindow` page-switch, which is why this
+>   was tractable). The eventsink for `IDC_RRADIO` dispid 1 is already registered
+>   (`[evt_register] id=1057 dispid=1 type=CSQuick1`); the `bob_evt_call(…(long))` overload
+>   delivers the I4 index to `OnSelectedRradio(long)`.
+>
+> **Result:** clicking **Parameters** switches to the mission-parameters page — **Target Area**
+> (Group II Airfields) / **T.D.** (Tangmere AF) / **Weather** (Patchy Cloud) / **Time** (Morning)
+> / **Name** (Bob) — a real, previously-unreachable QS page; clicking **Scenario** switches back
+> to the training description. Bidirectional, verified by genuine clicks
+> (`[ole] click … button=1/0 (Selected fired)`).
+>
+> **Gold #3 mapping CORRECTED.** Sampling the gold shot (`16-47-45`) showed #3 is **not** the
+> Parameters tab: it has no tab row and a "Return to Player" button — it is the per-flight
+> **player editor** (Squadron / Aircraft `Spitfire1A` / Duty `Patrol` / Callsign `Trumpet` +
+> name box), the `CSQuickLine`/`QuickParameters` player view (SQUICKUN.CPP), reached by a click
+> on the player's flight line, not by a page tab. So S129 built the tab-navigation #3 was
+> *assumed* to need and rendered the Parameters tab, but gold #3's specific screen stays a GAP
+> with its true path now identified (a further flight-line click). Parity unchanged at
+> **16 CLOSE / 0 PARTIAL / 3 GAP** — this sprint is interactive-UI + mapping progress, not a
+> verdict flip.
+>
+> **Gates (all under `gl-lock`, shared display with the Julia Racer session):** build clean;
+> 7-recipe regression sweep 7/7 exit 0; bidirectional tab nav both render correctly; safe
+> default `./bob` exit 0; flight frame-150 on `:0` 95.2% non-black exit 0; **dummy==GL `cmp`
+> BYTE-IDENTICAL on the changed QS Parameters page** (the click→page-switch→render is
+> backend-independent). Evidence: `doc/parity/native-quickshots-parameters-2026-08-02.png`,
+> `native-quickshots-scenario-back-2026-08-02.png`. Files: `SRC/RRADIO/bob_ole_rradio.cpp`,
+> `SRC/RLISTBOX/{bob_ole.cpp,bob_ole_host.h}`. (Note: after the S128 direct-launch reminder,
+> every `bob` invocation — including headless SDL-dummy captures — now goes through `gl-lock`.)
+
 > ## S128 (2026-08-02, Sprint 128): host the `CRRadioCtrl` — Quick-Shots page tabs render (#2 PARTIAL→CLOSE); a 6th hosted R\* control type
 >
 > **The Quick-Shots page-tab row now draws.** `CSQuick1::OnInitDialog` binds `IDC_RRADIO`

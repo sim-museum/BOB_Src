@@ -46,6 +46,20 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
         m_FirstSweep = TRUE;
         OnDraw(pdc, rc, rc);
     }
+    /* S129: a click on the tab row selects the button under the cursor. The buttons are
+       laid out left-to-right in equal columns (OnDraw: x += m_ColumnWidth*avgCharWidth,
+       m_Cols columns), so map local X across the drawn width to the button index; set the
+       selection (updates m_CurSel + the tick) and return the index so bob_ole_click can
+       fire the genuine Selected(index) event -> CSQuick1::OnSelectedRradio -> page switch. */
+    int onButtonClick(int localX) override {
+        int n = (int)m_list.GetCount();
+        if (n <= 0 || sw <= 0) return -1;
+        int idx = localX * n / sw;
+        if (idx < 0) idx = 0; if (idx >= n) idx = n - 1;
+        SetCurrentSelection(idx);
+        if (bob_ole_trace()) fprintf(stderr, "[ole]   RRadio button click localX=%d/%d -> idx=%d\n", localX, sw, idx);
+        return idx;
+    }
     void dispatch(DISPID id, VARTYPE, void* /*pvRet*/, va_list ap) override {
         switch (id) {
         case 5: { const char* t = va_arg(ap, const char*); AddButton(t ? t : "");

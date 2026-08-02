@@ -373,6 +373,20 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
 - **Increment demo:** `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_SHOT=220` shows the QS page-tab
   row (✓Scenario / Parameters / Luftwaffe / RAF with selection ticks).
 
+### Sprint 129 — "Quick-Shots tab navigation" → *Increment: click a tab, switch the page* — **✅ CLOSED 2026-08-02 (4/4 pts; see §9 row 129 + PORT.md S129)**
+- **Sprint Goal:** make the S128 QS page tabs interactive — a click switches the panel page —
+  and reach the gold #3 Parameters/player screen.
+- **Committed (~4 pts):** S129.1 RRadio click hit-test (`OleHost::onButtonClick`) + eventsink
+  wiring in `bob_ole_click` → `OnSelectedRradio` → `LaunchDial`; verify the page renders.
+- **Delivered:** bidirectional tab nav works (Parameters ↔ Scenario, both render); the
+  Parameters _tab_ (mission params) renders on a genuine click — a real new reachable QS page.
+  **Scope correction:** gold #3 (`16-47-45`) turned out to be the player-flight editor
+  (`CSQuickLine`), a different screen than the Parameters tab — #3 stays GAP with its true path
+  identified; parity unchanged 16 CLOSE / 0 PARTIAL / 3 GAP. All gates pass (7/7 regression,
+  dummy==GL `cmp` byte-identical, flight + safe-default).
+- **Increment demo:** navigate to QS, click the Parameters tab (`BOB_CLICKXY="215,214,191"`) →
+  the mission-parameters form (Target Area/T.D./Weather/Time/Name) renders.
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -420,6 +434,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **129** | ~4 | 4 | ★ **QS tab navigation works — RRadio click → page switch; Parameters tab renders; gold #3 mapping corrected** | **(2026-08-02)** Built on S128's hosted CRRadio: the QS page tabs are now interactive. New `OleHost::onButtonClick(localX)` (HostRRadio maps click X → tab index, `SetCurrentSelection`) + a multi-button branch in `bob_ole_click` that fires the genuine `Selected(idx)` event (dispid 1, VTS_I4) via the S33 eventsink → `CSQuick1::OnSelectedRradio` → `QuickMissionParameters/Desc` → `LaunchDial` (the standard panel-nav, not MoveWindow — why it was tractable). **Result:** clicking Parameters switches to the mission-params page (Target Area/T.D./Weather/Time/Name — a real previously-unreachable QS page); clicking Scenario switches back; bidirectional, verified by genuine clicks. **Gold #3 mapping corrected:** the `16-47-45` gold shot is the per-flight PLAYER editor (Squadron/Aircraft/Duty/Callsign, "Return to Player"; `CSQuickLine`), not the Parameters tab — so #3 stays GAP with its true path (a flight-line click) identified, and the nav machinery it needed is built. Parity unchanged 16 CLOSE / 0 PARTIAL / 3 GAP (interactive-UI + mapping progress, not a verdict flip). **Gates (all under gl-lock):** build clean; 7/7 regression; both nav directions render; safe default exit 0; flight frame-150 95.2% non-black on `:0`; **dummy==GL `cmp` BYTE-IDENTICAL on the QS Parameters page**. |
 | **128** | ~6 | 6 | ★ **Host `CRRadioCtrl` — Quick-Shots page tabs render (#2 PARTIAL→CLOSE); 6th hosted R\* control type; parity 16 CLOSE / 0 PARTIAL / 3 GAP** | **(2026-08-02)** `CSQuick1` binds `IDC_RRADIO` as a `CRRadio` and `AddButton()`s the page tabs (Scenario/Parameters/Luftwaffe/RAF), but that control had no host → blank tab row (#2's last deviation, #3's prerequisite). Hosted the genuine `CRRadioCtrl` (`SRC/RRADIO/bob_ole_rradio.cpp`, `HostRRadio : CRRadioCtrl, OleHost`) mirroring the REdit/RButton pattern: boot + `applyDesignProps` (persisted DLGINIT bag → FontNum/Cols/ColW) + `draw` (`m_FirstSweep=TRUE` skips artwork+black-fill → genuine OnDraw) + dispid routing (5 AddButton BSTR, 6 Clear, 1-4 props, stock ForeColor). Registered `CLSID_RRadio` in the factory + `bob_make_rradio` + build integration (RRADIOC.CPP + host TU + include dir). One compile-compat fix in the genuine RRADIOC.CPP (MaskIcon temp-`CPoint&` bind → named local, mirrors RBUTTONC.CPP `_mip00`). **Result:** the tab row renders each caption + its selection-tick/radio icon (MaskIcon art path works, no crash); `[ole] created CRRadioCtrl … AddButton "Scenario"/…`. **Gates:** build clean; 9-recipe sweep 9/9; safe default exit 0; flight frame-150 95.2% non-black on `:0`; **dummy==GL `cmp` BYTE-IDENTICAL on the changed QS screen**. **#2 PARTIAL→CLOSE.** #3 (Parameters page) prerequisite met — remaining half is the tab-click page-switch (`OnSelectedRradio`→`QuickMissionParameters`) + page-visibility (`MoveWindow`), a distinct open item. |
 | **127** | ~8 | 8 | ★ **Label-render fidelity: DT_WORDBREAK word-wrap + '&' accelerator escape in `CDC::DrawText` — #8/#16 deviations retired, #2 improved; parity 15 CLOSE / 1 PARTIAL / 3 GAP** | **(2026-08-02)** Two contained wins in the single compat method rendering every R\* STATIC label (`afxwin.h CDC::DrawText`). ☑ **S127.1 (5) word-wrap:** the genuine `CRStaticCtrl::OnDraw` draws prose via `DrawText(..., DT_LEFT+DT_WORDBREAK)` but compat ignored it → the phase-select/QS training descriptions ran off the right edge as one clipped line. Real greedy word-wrap (fits box width via `bob_gdi_text_width`, honours explicit `\n`, DT_CENTER/RIGHT per line, clips to box); **≥2-line-box guard** so single-line config labels never wrap (our stencil font is wider than gold's — wrapping a fitting label would spill into the next row). #16 phase (already CLOSE since S126) + #2 QS descriptions now wrap fully (paragraph breaks preserved). `BOB_NO_WORDWRAP` reverts. ☑ **S127.2 (2) '&' escape:** Windows accelerator-prefix processing ("&&"→"&", DT_NOPREFIX-aware) → BDG "Cockpit && UI" renders "Cockpit & UI" (#8); combos keep literal '&' (they draw via ExtTextOut, not DrawText). `BOB_NO_AMP_ESCAPE` reverts. ☑ **S127.3 (1) cross-port + gates:** MA note 17's `CDC::DrawText DT_WORDBREAK` shared find now implemented BoB-side (outbound note appended, shared doc synced); MA note 17 mechanism #2 (parent-rect clipping) assessed **N/A** (S124 membership filter covers BoB's dead controls; no out-of-bounds stray in the 14-screen sweep). **Gates:** build clean; 14-recipe headless sweep 14/14 exit 0; surgical diffs (controls 447px = just the removed '&'; Sound long labels stay single-line — no wrap regression); safe default `./bob` exit 0; flight frame-150 on `:0` 95.2% non-black exit 0; **dummy==GL `cmp` BYTE-IDENTICAL on mainmenu AND the changed phaseselect** (word-wrap is backend-independent). |
 | **126** | ~8 | 8 | ★ **Property-stream reader landed + capture-proven; GLX healed — all real-GL DoD gates PASS; dummy==GL byte-identical bar adopted (first-try pass)** | **(2026-07-27)** ☑ S126.1 (5): the salvaged reader (`9105e25` — real `CPropExchange` replaying each hosted R\*'s DLGINIT bag through its genuine `DoPropExchange`, all 5 control types) verified: 14-recipe headless sweep all exit 0; mainmenu pixel-identical; 13 screens changed *toward gold* — authored design colors land exactly (phase-date `(183,250,255)` = pixel-exact vs the full-res gold PNG; Controls cyan labels; QS yellow combos); #16 duplicate date GONE via the new covered-static settled-state emulation (`BOB_NO_COVER_ERASE` reverts) → #16 **PARTIAL→CLOSE**, #17 improved. Revert gates capture-verified (`BOB_NO_PROP_STREAM` == S125 modulo the independently-gated erase, 3338px in one bbox; `BOB_NO_DLGINIT_PROPS` whole-layer). ☑ S126.2 (2): GLX **HEALED** (probe first, per MA) — default `./bob` exit 0 on `:0`; flight frame-150 96.6% non-black exit 0 (the S125-blocked gate); **new bar: SDL-dummy capture `cmp`-identical to the real-GL capture — PASSES first try** (catches the uninit-PX class headlessly). ☑ S126.3 (1): MA note 16 §2 residual checks applied — both PASS (all 5 host ctors run unattached `DoPropExchange` → PX defaults written on every creation path incl. template statics; stock members member-initialized); **BoB note 17** written (stream layout + COLORREF-convert-once + art-FileNum trap + settled-state emulation + cmp-bar result), shared doc synced byte-identical (md5 `68e921a8…`), message file delivered to `~/ma/port/`. No regression: bare `./bob` 0; sweep 14/14. |
@@ -483,6 +498,21 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 129 (QS tab navigation):_ **Sample the gold shot before assuming what a story is —
+  a backlog label can mis-map the target.** #3 was logged as the "Parameters/player page,"
+  reachable "once the tab captions render"; wiring the tab-click and rendering the Parameters
+  tab was the whole assumed fix — but sampling gold `16-47-45` showed it is a *different* screen
+  (the player-flight editor with "Return to Player," no tab row), reached by a flight-line click.
+  The sprint still delivered real value (bidirectional tab navigation + a new reachable page),
+  and the honest move was to correct the mapping and keep #3 GAP rather than claim a match that
+  the pixels don't support. Lessons: (1) the de-risking find came early — reading
+  `QuickMissionParameters()` showed it uses `LaunchDial` (the standard panel-nav), not the hard
+  `MoveWindow` page-switch I'd feared, which turned a scary story into a small one; (2) reuse the
+  existing seam — the click→`bob_evt_fire`→eventsink path was already there for combos/lists, so
+  RRadio needed only one new virtual (`onButtonClick`) and one branch; (3) a sprint that advances
+  interactivity + corrects a mapping is a legitimate increment even when it moves no verdict —
+  name it as such rather than inflate the count.
 
 - _Sprint 128 (host CRRadioCtrl):_ **A "missing caption" can be a whole un-hosted control
   type — check what the wrapper binds before assuming a data/font gap.** #2's blank tab row

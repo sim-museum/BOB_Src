@@ -262,6 +262,17 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (bob_ole_trace()) fprintf(stderr, "[ole]   hit? id=%d rect=(%d,%d,%d,%d) click=(%d,%d)\n", h->ctrlId, h->sx, h->sy, h->sw, h->sh, x, y);
         if (h->sw <= 0 || h->sh <= 0) continue;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
+            /* S129: a multi-button control (RRadio tab row) -- select the button under the
+               cursor and fire its genuine Selected(index) event (dispid 1, VTS_I4) via the
+               general eventsink so the dialog's handler runs (e.g. CSQuick1::OnSelectedRradio
+               -> QuickMissionParameters -> LaunchDial(QuickParameters), the QS page switch). */
+            int bn = h->onButtonClick(x - h->sx);
+            if (bn >= 0 && h->ctrlId) {
+                bob_evtA0 = bn; bob_evtA1 = 0;
+                bob_evt_fire((void*)dialog, &typeid(*dialog), h->ctrlId, 1);
+                if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> radio id=%d button=%d (Selected fired)\n", x, y, h->ctrlId, bn);
+                return 1;
+            }
             if (h->onClick()) {
                 /* S33: the value already cycled (onClick); now fire the combo's TextChanged event
                    (dispid 1) on the dialog's RUNTIME type via the general eventsink so the genuine

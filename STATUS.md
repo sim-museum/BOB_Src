@@ -7,13 +7,21 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session (S128, 2026-08-02):** **Hosted the `CRRadioCtrl`** — the 6th (and last
+> **Latest session (S129, 2026-08-02):** **Quick-Shots tab navigation** — building on S128's
+> hosted `CRRadioCtrl`, a click on a page tab now fires the genuine `Selected` event
+> (`OleHost::onButtonClick` → `bob_ole_click` → the S33 eventsink → `CSQuick1::OnSelectedRradio`
+> → `LaunchDial`), switching the panel page. Clicking Parameters renders the mission-parameters
+> form (Target Area / T.D. / Weather / Time / Name); Scenario switches back — bidirectional,
+> verified. Gold #3 (`16-47-45`) turned out to be the *player-flight editor* (Squadron/Aircraft/
+> Duty/Callsign, `CSQuickLine`), a different screen than the Parameters tab, so #3 stays GAP with
+> its true path identified; parity unchanged **16 CLOSE / 0 PARTIAL / 3 GAP**. dummy==GL `cmp`
+> byte-identical. (All `bob` runs now go through `gl-lock`, incl. headless captures.)
+>
+> Prior (S128, 2026-08-02): **Hosted the `CRRadioCtrl`** — the 6th (and last
 > front-end) R\* control type. The Quick-Shots page-tab row (Scenario / Parameters / Luftwaffe /
 > RAF, `IDC_RRADIO`), previously blank because that control had no host, now renders each caption
-> with its selection-tick / radio icon (genuine `CRRadioCtrl::OnDraw` on the panel framebuffer).
-> New host `SRC/RRADIO/bob_ole_rradio.cpp` + factory CLSID + build integration, mirroring the
-> REdit/RButton pattern. Parity now **16 CLOSE / 0 PARTIAL / 3 GAP** of 19 (#2 PARTIAL→CLOSE);
-> dummy==GL `cmp` byte-identical on the QS screen. #3 (Parameters page) prerequisite met.
+> with its selection-tick / radio icon. New host `SRC/RRADIO/bob_ole_rradio.cpp` + factory CLSID
+> + build integration, mirroring the REdit/RButton pattern. #2 PARTIAL→CLOSE.
 >
 > Prior (S127, 2026-08-02): **Label-render fidelity** — compat `CDC::DrawText` now
 > implements real DT_WORDBREAK word-wrap (the phase-select and Quick-Shots descriptions wrap
