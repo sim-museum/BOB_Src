@@ -18,7 +18,7 @@ Rebuild: `cd /home/admin/bob/build && ninja bob`.
 | What | Where |
 |---|---|
 | Backlog (Releases R1–R7 + SP) + burndown | `scrum.md` — Release SP is the screen-parity epic; §9 burndown |
-| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 1 PARTIAL / 3 GAP of 19 |
+| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 0 PARTIAL / 3 GAP of 19 |
 | Side-by-side captures | `doc/parity/` |
 | Engineering evidence log (newest first) | `PORT.md` |
 | Live product snapshot | `STATUS.md` |
@@ -39,9 +39,15 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
   '&' accelerator escape ("Cockpit && UI"→"Cockpit & UI", #8). `BOB_NO_WORDWRAP`
   / `BOB_NO_AMP_ESCAPE` revert. → **#16 PARTIAL→CLOSE, #8 CLOSE, #2 improved**
   (parity 16 CLOSE / 1 PARTIAL / 3 GAP of 19).
-- GL gates PASS: safe default `./bob` exit 0; flight frame-150 95.2% non-black on
-  `:0`; dummy==GL `cmp` byte-identical on mainmenu + the changed phaseselect.
-- Cross-port: MA note 17's `DrawText DT_WORDBREAK` shared find now implemented
-  BoB-side (S127) — outbound BoB note = shared-doc §8o, MA copy synced
-  byte-identical. MA note 17 mechanism #2 (parent-rect clip) assessed N/A for BoB.
-  Inbound MA notes 18–25 (§8g–8n) logged; not yet each mapped to a BoB sprint.
+- **S128 closed: hosted the `CRRadioCtrl`** (6th R\* control type) → the
+  Quick-Shots page-tab row (Scenario/Parameters/Luftwaffe/RAF, `IDC_RRADIO`)
+  now renders each caption + its selection-tick icon. **#2 PARTIAL→CLOSE**
+  (parity **16 CLOSE / 0 PARTIAL / 3 GAP** of 19). #3 (Parameters page)
+  prerequisite met; remaining half = tab-click page-switch + `MoveWindow`.
+- GL gates PASS (S127 + S128): safe default `./bob` exit 0; flight frame-150
+  95.2% non-black on `:0`; dummy==GL `cmp` byte-identical on mainmenu,
+  phaseselect (S127) and quickshots (S128).
+- Cross-port: MA note 17's `DrawText DT_WORDBREAK` shared find implemented
+  BoB-side (S127) — outbound BoB note = shared-doc §8o; new-R\*-control-type
+  hosting checklist + MaskIcon temp-bind = §8p (S128). MA copy synced
+  byte-identical. Inbound MA notes 18–25 (§8g–8n) logged.

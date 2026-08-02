@@ -1560,6 +1560,41 @@ sweep. The mechanisms are genuinely distinct (a control CAN be a template member
 outside the client rect), so this is "checked, no current symptom", not "same fix" — adopt if
 one surfaces.
 
+## 8p. Hosting a new R\* control type is a recipe, not a subsystem (BoB S128) **[ENGINE]**
+
+**A blank widget on a screen can be an un-hosted CONTROL TYPE, not a data/font gap.** BoB's
+Quick-Shots page-tab row (Scenario/Parameters/…) was blank; the cause was that `IDC_RRADIO` is
+a `CRRadioCtrl` and the port had only ever hosted RListBox/RCombo/RStatic/RButton/REdit — every
+wrapper `InvokeHelper` on it was a silent no-op. Before chasing captions, check *what class the
+DDX/`CreateControl` binds* and whether your factory hosts it.
+
+**The recipe (each new type is ~1 hour once the seam exists — the sixth mirrored the fifth
+almost verbatim):**
+1. **Dispids come from the WRAPPER, not the control's DISP_MAP.** Read `SRC/MFC/<CTRL>.CPP`
+   (the generated `CRRadio` wrapper) — each method/prop `InvokeHelper(0xN,…)`/`GetProperty(0xN,…)`
+   gives the exact dispid the router will see (RRadio: 5=AddButton BSTR, 6=Clear, 1..4 props,
+   stock ForeColor). The server-side DISP_MAP order can differ; trust the wrapper.
+2. **Host = `struct Host<Ctrl> : public <Ctrl>Ctrl, public OleHost`** with `boot` (`OnResetState`
+   + empty-`CPropExchange DoPropExchange`), `applyDesignProps` (replay the persisted DLGINIT bag
+   through the genuine `DoPropExchange`, `m_hWnd=0` during replay), `draw` (set `m_FirstSweep=TRUE`
+   to skip the WM_GETARTWORK/offscreen path AND any `!m_hWnd` black-fill, then call the genuine
+   `OnDraw`), and dispid `dispatch`/`setprop`/`getprop`. Copy the closest existing host verbatim.
+3. **Register:** CLSID (from `IMPLEMENT_OLECREATE_EX` in the control's `.CPP` — the coclass uuid,
+   not the dispatch IID) in the factory; `bob_make_<ctrl>` in the host header; add the genuine
+   `<CTRL>C.CPP` + the host TU + the control's include dir to the R\*-controls build target.
+4. **Don't re-define the control's IIDs in the host** — the genuine `<CTRL>C.CPP` already defines
+   them with internal (`const`) linkage; the host doesn't reference them.
+5. **The genuine control's `OnDraw` may not compile on GCC — reuse the sibling's fix.** RRadio's
+   `MaskIcon(pDC, CPoint(x,y))` binds a temporary to a `CPoint&` (MSVC extension GCC rejects,
+   even under `-fpermissive`); RBUTTONC.CPP had already solved the identical call with a named
+   local (`_mip00`). Grep for the prior fix before re-deriving. Same documented compile-compat
+   exception class; no logic change.
+
+**Know where the story stops.** Rendering the control (its captions/icons) is one deliverable;
+*driving* it (click → event → the dialog's `ON_EVENT` handler → a page switch) is another, and a
+page-switching dialog also needs the `MoveWindow`/page-visibility mechanism. Ship the render as
+the prerequisite and name the remaining half rather than half-wiring a click that can't paint.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

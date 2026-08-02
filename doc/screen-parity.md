@@ -57,8 +57,8 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
 | # | Gold shot (16-xx-xx) | Screen | Native recipe (env beyond E) | Native capture | Verdict |
 |---|---|---|---|---|---|
 | 1 | 47-32 | Main menu (`title`) | `BOB_SHOT=40` | `native-mainmenu-2026-07-25.png` | **CLOSE** — art + menu placement match (menu now anchored at the game's own ListX/ListY=210,220). Deviations: last item "Website" vs gold "BDG 0.99" (BDG-patched string table); our stencil font vs gold's rounded gold face (R6.2 font pass). |
-| 2 | 47-38 | Quick Shots select (`quickview`/CSQuick1, Scenario page) | `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_SHOT=220` | `native-quickshots-2026-07-27.png` | **PARTIAL → improved (S127: description now WORD-WRAPS)** — background montage, mission combos, Back/Fly present; the multi-paragraph training description now wraps within its box (blank-line paragraph breaks preserved) instead of running off the right edge as one clipped line (`CDC::DrawText` DT_WORDBREAK, S127; `BOB_NO_WORDWRAP` reverts). Page-2/3 ghost combos GONE (S124 template-membership filter). Remaining: page-tab captions not drawn (blocks #3), font face (R6.2). |
-| 3 | 47-45 | Quick Shots — Parameters/player page (Squadron/Aircraft/Duty/Callsign, name box) | page tab click — no scripted recipe yet | — | **GAP** — the page tabs are dialog controls, not menu items; needs a `BOB_CLICKXY` recipe once the tab captions render (deviation above). |
+| 2 | 47-38 | Quick Shots select (`quickview`/CSQuick1, Scenario page) | `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_SHOT=220` | `native-quickshots-2026-08-02.png` | **PARTIAL → CLOSE (S128: PAGE TABS now render)** — background montage, mission combos, description (word-wrapped, S127), Back/Fly present, AND the page-tab row now draws: **✓Scenario / Parameters / Luftwaffe / RAF** with their selection-tick / radio icons (S128 hosts the genuine `CRRadioCtrl` for IDC_RRADIO — the tab captions come from its own OnDraw; `bob_make_rradio`). Remaining deviations: font face (R6.2); clicking a tab to switch pages (#3) needs the RRadio click→`OnSelectedRradio`→`QuickMissionParameters` page-switch wiring (distinct open item — see root cause 4). |
+| 3 | 47-45 | Quick Shots — Parameters/player page (Squadron/Aircraft/Duty/Callsign, name box) | page tab click — no scripted recipe yet | — | **GAP (prerequisite met S128)** — the page tabs now render (S128 CRRadio hosting), so the "Parameters" tab is at a known position for a `BOB_CLICKXY` recipe. Still needs: (a) RRadio click hit-test → `SetCurrentSelection`+fire `Selected(1)` → the general eventsink → `CSQuick1::OnSelectedRradio(1)` → `FullPanel()->QuickMissionParameters()`; (b) the page-switch render (the Parameters-page controls become visible — the `MoveWindow`/page-visibility mechanism, root cause 4). |
 | 4 | 47-57 | "Initialising 3D" loading screen (Dover art + red progress) | transient (drawn inside `StartFlying`→`Launch3d`) | — | **GAP (by design)** — our Launch3d bridge feeds the `Start3d` paint bits directly, so the progress screen never paints headlessly. Low value: transient screen. |
 | 5 | 48-09 | In-flight cockpit (Spitfire Mk I, on runway) | `BOB_BOOT_FRONTEND=1 BOB_DUMP_FRAME=150 BOB_DUMP_PATH=<p> BOB_EXIT_AFTER_DUMP=1` on `:0` under the display lock | `native-cockpit-2026-07-25.png` | **CLOSE** — cockpit frame, gunsight, instrument panel, HUD info line ("4ft Hdg 242 Speed 0Kts" matches gold's readout), mirror, clouds. Deviations: prop rendered as a static dark blade vs gold's blur disc; our white HUD bar + Tower ATC line vs gold's red-only info line; 800x600 vs gold ~1830x1080. |
 | 6 | 55-25 | PC Config — More GFX (`options3d2`) | `BOB_CONFIGSCREEN=gfx2 BOB_SHOT=70` | `native-config-moregfx-2026-07-26.png` (sbs: `sbs-config-moregfx.jpg`) | **CLOSE (S124: label-for-label gold)** — all 12 rows labeled exactly as gold: Filtering/Smoke Effects/Texture Quality/**Town and forest raises**/Routes/A-C Shadows/Item Shadows/Horizon Distance/**Detail Level**/G Effects/Injury Effects/White Outs (BDG captions via PE DLGINIT + IDS string-table resolution). Deviations: combo values (settings state), one stray box artifact at G Effects, tab-row spread, font face. |
@@ -113,10 +113,16 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
    descriptions wrap); ~~accelerator-escape "&&"→"&" in label draw (#8)~~ **☑ CLOSED S127**
    (Windows '&' prefix processing in the static `DrawText` path, DT_NOPREFIX-aware; combos
    keep literal '&' via ExtTextOut; `BOB_NO_AMP_ESCAPE` reverts). Still open: page-switching
-   dialogs (`MoveWindow` offsets not tracked); native-DLU font face/size pass (R6.2);
-   dirty-region repaint model (S126 covered-static erase covers #16); QS page-tab
-   captions/recipe (#3); LW Directives dialog wiring (#18); headless key-injection harness
-   (#17 typed-input + caret verification).
+   dialogs (`MoveWindow` offsets not tracked — the remaining half of #3, now that S128
+   draws the QS page tabs); native-DLU font face/size pass (R6.2); dirty-region repaint
+   model (S126 covered-static erase covers #16); LW Directives dialog wiring (#18);
+   headless key-injection harness (#17 typed-input + caret verification).
+6. **QS page-tab captions — ☑ CLOSED S128.** The Quick-Shots page tabs (Scenario/
+   Parameters/Luftwaffe/RAF, `IDC_RRADIO`) are a `CRRadioCtrl` — a 6th hosted R\* control
+   type (`bob_ole_rradio.cpp`, factory CLSID `5363BA22-…`). The genuine control's OnDraw
+   draws the tab captions + per-tab selection tick (MaskIcon) onto the panel. Same hosting
+   pattern as RButton/REdit; one compile-compat fix in the genuine RRADIOC.CPP (MaskIcon
+   temp-`CPoint&` bind, mirrors the existing RBUTTONC.CPP `_mip00` fix).
 5. **Parent-rect clipping (MA note 17 mechanism #2) — assessed N/A for BoB (S127).** MA
    clips template controls parked fully outside the dialog client rect. BoB's dead controls
    are already removed by the S124 template-membership filter, and no out-of-client-rect

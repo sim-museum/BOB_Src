@@ -1,6 +1,44 @@
 # Rowan's Battle of Britain — Linux Native Port
 
-> ## S127 (2026-08-02, Sprint 127): label-render fidelity — DT_WORDBREAK word-wrap + '&' accelerator escape in `CDC::DrawText`; #16 PARTIAL→CLOSE, #2/#8 improved; all DoD gates pass
+> ## S128 (2026-08-02, Sprint 128): host the `CRRadioCtrl` — Quick-Shots page tabs render (#2 PARTIAL→CLOSE); a 6th hosted R\* control type
+>
+> **The Quick-Shots page-tab row now draws.** `CSQuick1::OnInitDialog` binds `IDC_RRADIO`
+> as a `CRRadio` and `AddButton()`s the page tabs ("Scenario" / "Parameters" / "Luftwaffe" /
+> "RAF"); until now that control had no host, so the wrapper `InvokeHelper`s were no-ops and
+> the tab row was blank (#2's last PARTIAL deviation, and the #3 prerequisite). S128 hosts the
+> **genuine `CRRadioCtrl`** — the 6th hosted R\* type after RListBox/RCombo/RStatic/RButton/
+> REdit — following the established REdit/RButton host pattern:
+> - **New TU `SRC/RRADIO/bob_ole_rradio.cpp`** (`HostRRadio : CRRadioCtrl, OleHost`): `boot`
+>   (`OnResetState` + empty-`CPropExchange` `DoPropExchange`), `applyDesignProps` (replays the
+>   persisted DLGINIT bag → FontNum=-9 shadowed / Cols=4 / ColumnWidth=16), `draw`
+>   (`m_FirstSweep=TRUE` to skip the WM_GETARTWORK/offscreen path AND the `!m_hWnd` black-fill,
+>   then the genuine `OnDraw`), and dispid routing from the `CRRadio` wrapper (`SRC/MFC/
+>   RRADIO.CPP`): **5 AddButton** (BSTR), 6 Clear, 1 FontNum, 2 Cols, 3 CurrentSelection,
+>   4 ColumnWidth, stock ForeColor.
+> - **Factory + build:** `CLSID_RRadio` (`5363BA22-D90A-11d6-A1F0-0080C8582DE4`) added to
+>   `bob_ole_create_control`; `bob_make_rradio` declared in `bob_ole_host.h`; `RRADIOC.CPP` +
+>   the host TU + the `RRADIO` include dir added to the `bob_rlistbox` CMake target.
+> - **One compile-compat fix in the genuine `RRADIOC.CPP`:** `MaskIcon(pDC, CPoint(x,y))`
+>   bound a temporary to a `CPoint&` (an MSVC-ism GCC rejects) — replaced with a named local,
+>   mirroring the existing identical fix in `RBUTTONC.CPP` (`_mip00`). Same class as the
+>   documented compile-compat exceptions; no logic change.
+>
+> **Result (headless `BOB_TRACE_OLE`):** `created CRRadioCtrl for wrapper … id=1057`, all four
+> `AddButton "Scenario"/"Parameters"/"Luftwaffe"/"RAF"`; the tab row renders each caption in the
+> yellow game face with its selection-tick / radio icon (the `DrawTransparentBitmap`→`MaskIcon`
+> art path works in the QS context — no crash). **Gates:** build clean; 9-recipe regression
+> sweep 9/9 exit 0 (no regression from the new control); safe default `./bob` exit 0; flight
+> frame-150 on `:0` 95.2% non-black exit 0 (front-end change, flight unaffected); **dummy==GL
+> `cmp` BYTE-IDENTICAL on the changed QS screen** (the RRadio caption+icon draw is
+> backend-independent). **Verdict #2 PARTIAL→CLOSE** — parity now **16 CLOSE / 0 PARTIAL /
+> 3 GAP** of 19. **#3 (Parameters page) prerequisite met** — the tabs now render at known
+> positions; the remaining half is the RRadio click→`OnSelectedRradio`→`QuickMissionParameters`
+> page-switch + the page-visibility (`MoveWindow`) mechanism (a distinct open item). Evidence:
+> `doc/parity/native-quickshots-2026-08-02.png`. Files: `SRC/RRADIO/bob_ole_rradio.cpp` (new),
+> `SRC/RRADIO/RRADIOC.CPP` (1-line compat), `SRC/RLISTBOX/{bob_ole.cpp,bob_ole_host.h,
+> CMakeLists.txt}`.
+
+> ## S127 (2026-08-02, Sprint 127): label-render fidelity — DT_WORDBREAK word-wrap + '&' accelerator escape in `CDC::DrawText`; #8/#16 deviations retired, #2 improved; all DoD gates pass
 >
 > **Two contained, verified wins in the one compat method that renders every R\* STATIC
 > label — `CDC::DrawText` (`afxwin.h`).** Discovery: the genuine `CRStaticCtrl::OnDraw`
@@ -33,9 +71,9 @@
 > Racer session): safe default `./bob` exits 0 (headless, BOB_NO_RUN); flight `BOB_BOOT_FRONTEND`
 > frame-150 on `:0` **95.2% non-black, exit 0**; **dummy==GL `cmp` BYTE-IDENTICAL** on mainmenu
 > AND on the changed phaseselect screen (the word-wrap renders identically on both backends —
-> no uninit-PX garbage). **Verdicts:** #16 **PARTIAL→CLOSE**, #8 CLOSE ('&&' deviation retired),
+> no uninit-PX garbage). **Verdicts:** #16 word-wrap deviation retired (already CLOSE since S126), #8 '&&' deviation retired (already CLOSE since S124),
 > #2 improved (description wraps; still PARTIAL on page-tab captions #3). Parity now
-> **16 CLOSE / 1 PARTIAL / 3 GAP** of 19. **Cross-port:** MA note 17's `CDC::DrawText
+> **15 CLOSE / 1 PARTIAL / 3 GAP** of 19 (#16 was already CLOSE since S126; S127 retired its word-wrap deviation). **Cross-port:** MA note 17's `CDC::DrawText
 > DT_WORDBREAK` shared find is now implemented on the BoB side (outbound BoB note appended to
 > the shared lessons doc); MA note 17 mechanism #2 (parent-rect clipping) assessed **N/A** for
 > BoB (S124 membership filter already removes BoB's dead controls; no out-of-bounds stray in
