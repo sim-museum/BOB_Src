@@ -52,6 +52,14 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
   stays GAP with its true path (a flight-line click) now known. Parity unchanged.
   **All `bob` runs now go through `gl-lock`** (incl. headless captures) per the
   shared-display protocol.
+- **S130 spike: gold #3 (QS order-of-battle) root-caused.** The RAF/Luftwaffe tabs
+  (clickable since S129) reach `QuickMissionBlue`/`Red` — a never-run screen that
+  SIGSEGVs. Root cause: the variadic `DialList`'s per-slot ternary
+  `(count>k)?DialBox(temp):*(DialBox*)NULL` copy-constructs a DialBox from null for
+  inactive flight slots (benign-on-MSVC/faults-on-GCC UB; `fullpane.cpp:215`). Fix is
+  game-code (name the DialBox locals so the ternary yields a reference) — deferred;
+  banked with cross-port note §8q. #3 stays GAP, now exactly root-caused. Tabs 0/1
+  (Scenario/Parameters) render fine; 2/3 reach the crash.
 - GL gates PASS (S127 + S128): safe default `./bob` exit 0; flight frame-150
   95.2% non-black on `:0`; dummy==GL `cmp` byte-identical on mainmenu,
   phaseselect (S127) and quickshots (S128).

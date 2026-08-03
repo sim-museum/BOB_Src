@@ -1595,6 +1595,33 @@ almost verbatim):**
 page-switching dialog also needs the `MoveWindow`/page-visibility mechanism. Ship the render as
 the prerequisite and name the remaining half rather than half-wiring a click that can't paint.
 
+## 8q. The variadic `DialList` null terminator copies from `*(DialBox*)NULL` in a ternary (BoB S130) **[ENGINE]**
+
+_(Shared **dialog-framework** trap — both ports use `RDIALOG.H`'s `DialList` + `EDGES_*`. Related
+to §8d, a different failure of the same builder.)_
+
+Panel builders that assemble a **variable** number of children use `DialList` with a null
+terminator: `const DialBox& ND = *(DialBox*)NULL;` then
+`(count>k) ? DialBox(FIL_NULL, new SomeChild(...), EDGES_…) : ND` for each slot. This is
+**null-safe by construction on the list side** — `DialList` stores `diallist[i]=&d_i` (so an
+inactive slot is `&ND == 0`) and `AddChildren` iterates `for(i=0; diallist[i]; i++)`, stopping at
+the first null. **The trap is the ternary itself:** its operands are a **prvalue**
+(`DialBox(...)` temporary) and an **lvalue** (`ND`) of the same type, so C++ makes the conditional
+a prvalue — when the `:ND` branch is taken it **copy-constructs a `DialBox` from `*(DialBox*)NULL`**,
+dereferencing null. On MSVC that copy reads address 0 and (usually) survives; on GCC it SIGSEGVs.
+BoB hit it in `QuickMissionBlue`/`QuickMissionRed` (`FULLPANE.CPP`) the moment S129 made the QS
+order-of-battle tab reachable — the screen had never rendered on Linux. It only faults when a slot
+is actually inactive (`count ≤ k`), so a full-complement mission hides it — check with a *sparse*
+data set.
+
+**Diagnosis:** a `bt` frame at the exact `... : ND` line inside a panel builder (not in
+`AddChildren`, which is null-safe) is this. **Fix direction (game-code UB-exception):** make the
+true-branch an **lvalue** so the conditional yields a reference, not a copy — i.e. name the
+per-slot `DialBox` locals (respecting the §8d `Edges`-lifetime rule) — or give the builder a real
+empty-but-terminating sentinel. Not fixable compat-side: the copy happens in game code before the
+list exists. **Grep** for `*(DialBox*)NULL` / `: ND` in the panel builders to find every site
+before enabling the screens that reach them.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

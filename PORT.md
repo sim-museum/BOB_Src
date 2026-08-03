@@ -1,5 +1,44 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S130 (2026-08-02, Sprint 130 — SPIKE): gold #3 (the QS order-of-battle / player-flight editor) root-caused to a null-DialBox-copy crash; banked
+>
+> **Following S129's tab navigation, the RAF/Luftwaffe tabs now reach `QuickMissionBlue()`/
+> `QuickMissionRed()` — the QS order-of-battle with the `CSQuickLine` flight-line editors (gold
+> #3's Squadron/Aircraft/Duty/Callsign layout). That screen SIGSEGVs — a never-run-on-Linux
+> path.** gdb (`BOB_CLICKXY` on the RAF tab, `x=458`):
+> `RFullPanelDial::QuickMissionBlue (fullpane.cpp:215)` ← `bob_evt_fire(CSQuick1, id=1057,
+> dispid=1)` ← `bob_ole_click`.
+>
+> **Root cause — a copy-from-null-reference baked into the source (benign-on-MSVC / faults-on-GCC
+> UB class).** `QuickMissionBlue` builds the panel with a variadic `DialList` whose inactive
+> flight slots use `const DialBox& ND = *(DialBox*)NULL;` as a null terminator:
+> `(initind>k) ? DialBox(FIL_NULL, new CSQuickLine(...), EDGES_…) : ND`. `DialList` stores
+> `diallist[i]=&d_i` and `AddChildren` iterates `for(i=0; diallist[i]; i++)` — so `&ND==0` is a
+> valid tail terminator and `AddChildren` itself is null-safe. **The fault is in the ternary, not
+> the list:** its two operands are a **prvalue** (`DialBox(...)` temporary) and an **lvalue**
+> (`ND`) of the same type, so C++ makes the conditional a **prvalue — the `:ND` branch
+> copy-constructs a `DialBox` from `*(DialBox*)NULL`** → deref-null. With `initind=6` (6 active
+> flights in the tested scenario) only slot 6 (line 215) hits the `:ND` branch, matching the
+> crash line exactly. On MSVC the same copy reads address 0 without faulting (or the gold shot's
+> mission had `initind≥7`); on GCC it SIGSEGVs.
+>
+> **Why banked, not fixed:** the faithful fix cannot be compat-side — `AddChildren` is already
+> null-safe, and the copy happens in game code before the list is built. Preserving the
+> `&ND==NULL` terminator semantics while avoiding the null-copy needs the ternary's true-branch
+> to be an **lvalue** (so the conditional yields a reference, not a copy) — i.e. reworking each
+> `QuickMissionBlue`/`QuickMissionRed`/`QuickMissionParameters`-family variadic panel builder to
+> name its `DialBox` locals (a game-code UB-exception change across several call sites, with the
+> §8d `Edges`-lifetime rule to respect). A genuine sprint, deferred.
+>
+> **S129 interaction (honest):** S129's tab-nav (verified for buttons 0/1 = Scenario/Parameters,
+> which render fine) makes buttons **2/3 (Luftwaffe/RAF) clickable, and they lead to this crashing
+> OOB screen** — faithful (Windows lets you click them) but it exposes this latent game UB. No
+> code shipped this spike (game sources pristine; trace/gdb only); the S129 build is unchanged.
+> **Parity #3 stays GAP**, now with an exact root cause. Repro:
+> `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_CLICKXY="215,458,191"` (RAF tab) under `gl-lock`.
+> Cross-port: shared-doc **§8q** (the variadic-`DialList` null-terminator + ternary-copy-from-null
+> trap — MA uses the same `RDIALOG.H`).
+
 > ## S129 (2026-08-02, Sprint 129): Quick-Shots tab navigation works — RRadio click → page switch; the Parameters tab renders; gold #3 mapping corrected
 >
 > **Building on S128's hosted `CRRadioCtrl`, the QS page tabs are now interactive.** A click on
