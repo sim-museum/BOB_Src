@@ -30,6 +30,16 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **S136 closed: template-driven BUTTON hosting — gold #3's "Return to Player"
+  renders.** `IDC_RETURNTOPLAYER` (2146) is a template-only button no DDX binds →
+  never created (our creation is DDX-driven). Extended the S124 template-driven
+  static hosting to non-DDX **buttons** (`bob_dlg_enum_buttons` +
+  `bob_make_rbutton`; `BOB_NO_TEMPLATE_BUTTONS` reverts) → the briefing's "Return to
+  Player" now draws top-left with its caption = gold #3's key element. Config +
+  QS-Scenario + mainmenu + phase-select all **byte-identical** on/off (surgical);
+  safe default exit 0; flight 94.9% non-black. **#3 stays PARTIAL** (improved) —
+  remaining: "Bob" name box (`CREdtBt` pilot slot, unhosted) + Fly footer item
+  (gated); button art is the tickbox icon vs gold's bezel.
 - **S135 closed: the mission BRIEFING (gold #3, `IDD_BOBFRAG`) RENDERS.** New
   `BOB_BOBFRAG` scaffold (FULLPSYS.CPP, BOB_LINUX, default-off) is the reliable
   headless reach: QS click-mode pre-flight seeds `quickdef` →

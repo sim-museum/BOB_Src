@@ -80,6 +80,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
    The synthetic wrapper CWnds follow the existing host-lifetime pattern (hosts
    are never erased; draw/click filter by parentDlg). */
 extern "C" int bob_dlg_enum_statics(int dlgId, int* ids, int maxn);
+extern "C" int bob_dlg_enum_buttons(int dlgId, int* ids, int maxn);
 void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
     if (!dlg || dlgId <= 0) return;
     int ids[96];
@@ -89,6 +90,19 @@ void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
         CWnd* w = new CWnd;                                   /* synthetic wrapper (GetDlgItem/ShowWindow reach it via hosts()) */
         if (!bob_ole_create_control(w, (const GUID*)&CLSID_RStatic, dlg, (UINT)ids[i])) { delete w; continue; }
         if (bob_ole_trace()) fprintf(stderr, "[ole] template static id=%d hosted for dlg IDD=%d\n", ids[i], dlgId);
+    }
+    /* S136: same for template BUTTONS the dialog never DDX-binds (e.g. IDC_RETURNTOPLAYER on
+       IDD_BOBFRAG, gold #3). bob_make_rbutton already renders a hosted RButton's art+caption
+       (verified by the DDX-bound tickbox), so a template-created one draws the same way.
+       BOB_NO_TEMPLATE_BUTTONS reverts. */
+    static int noBtn = -1; if (noBtn < 0) noBtn = getenv("BOB_NO_TEMPLATE_BUTTONS") ? 1 : 0;
+    if (noBtn) return;
+    n = bob_dlg_enum_buttons(dlgId, ids, 96);
+    for (int i = 0; i < n; i++) {
+        if (bob_ole_find_wrapper(dlg, ids[i])) continue;     /* DDX-bound already */
+        CWnd* w = new CWnd;
+        if (!bob_ole_create_control(w, (const GUID*)&CLSID_RButton, dlg, (UINT)ids[i])) { delete w; continue; }
+        if (bob_ole_trace()) fprintf(stderr, "[ole] template button id=%d hosted for dlg IDD=%d\n", ids[i], dlgId);
     }
 }
 

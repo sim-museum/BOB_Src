@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S136 (2026-08-02, Sprint 136): template-driven BUTTON hosting — gold #3's "Return to Player" button renders
+>
+> **The most visible S135 deviation is closed.** gold #3's "Return to Player" button
+> (`IDC_RETURNTOPLAYER` = 2146) never appeared not because it failed to *draw* but because it was
+> never *created*: `BoBFrag::DoDataExchange` doesn't `DDX_Control` it, and our control creation is
+> DDX-driven, whereas Windows' dialog manager instantiates every template item. S124 already solved
+> the identical problem for non-DDX label **statics** (template-driven hosting); this extends it to
+> non-DDX **buttons**.
+>
+> **Fix:** `bob_dlg_enum_buttons` (`bob_dlgtemplate.cpp`, the K_RBUTTON twin of
+> `bob_dlg_enum_statics`) + a button pass in `bob_ole_host_template_statics` (`SRC/RLISTBOX/bob_ole.cpp`)
+> that creates a `CLSID_RButton` host for each template button no DDX bound. `bob_make_rbutton`
+> already renders a hosted RButton's art + caption (proven by the DDX-bound tickbox on the same
+> screen), so a template-created one draws the same way. `BOB_NO_TEMPLATE_BUTTONS` reverts.
+>
+> **Result:** the briefing's "Return to Player" now draws top-left with its caption — gold #3's key
+> distinguishing element (`doc/parity/native-quickshots-bobfrag-2026-08-02.png`). Its art is the
+> tickbox-style icon vs gold's rounded button bezel (minor).
+>
+> **Gates (all `gl-lock`):** the change is global (runs for every dialog's Create), so proven
+> surgical by byte-identical A/B (`BOB_NO_TEMPLATE_BUTTONS`) across **config gfx2/game/mission/
+> control/sound + QS-Scenario + mainmenu + phase-select** — all `cmp` identical (the hosting is
+> inert wherever no non-DDX template button actually draws); safe default exit 0; flight frame-150
+> 94.9% non-black. Only bobfrag changed.
+>
+> **#3 stays PARTIAL** (improved within it; parity 16 CLOSE / 1 PARTIAL / 2 GAP). Remaining: the
+> "Bob" pilot **name box** (a `CREdtBt` pilot slot — a control type not yet front-end-hosted) and
+> the **Fly** footer item (a `CheckForMissingMission`/`playersquadron` gate). Repro: `BOB_BOBFRAG=1
+> BOB_SHOT=120`. Files: `SRC/compat/bob_dlgtemplate.cpp`, `SRC/RLISTBOX/bob_ole.cpp`.
+
 > ## S135 (2026-08-02, Sprint 135): the mission BRIEFING (gold #3, `IDD_BOBFRAG`) renders with its flight roster — #3 GAP → PARTIAL
 >
 > **Gold #3 now renders.** Building on S134's re-mapping (gold #3 = the `BoBFrag` briefing), a new

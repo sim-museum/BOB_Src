@@ -665,6 +665,19 @@ extern "C" int bob_dlg_enum_statics(int dlgId, int* ids, int maxn) {
     return n;
 }
 
+/* S136: the PE template's RButton control ids for a dialog — buttons the game never
+   DDX_Control-binds (like IDC_RETURNTOPLAYER on IDD_BOBFRAG, gold #3). Same rationale as
+   bob_dlg_enum_statics: Windows' dialog manager creates every template item; our DDX-driven
+   creation misses the non-bound ones. Returns the count written to ids[]. */
+extern "C" int bob_dlg_enum_buttons(int dlgId, int* ids, int maxn) {
+    load();
+    int n = 0;
+    for (int i = 0; i < g_nrects && n < maxn; i++)
+        if (g_rects[i].dlgId == dlgId && g_rects[i].pe && g_rects[i].kind == K_RBUTTON)
+            ids[n++] = g_rects[i].id;
+    return n;
+}
+
 extern "C" int bob_load_string(void* h, unsigned id, char* buf, int maxlen);   /* bob_resources.cpp */
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz) {

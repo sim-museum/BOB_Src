@@ -468,6 +468,22 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
 - **Increment demo:** `BOB_BOBFRAG=1 BOB_SHOT=120` → the briefing with the flight roster
   (`doc/parity/native-quickshots-bobfrag-2026-08-02.png`).
 
+### Sprint 136 — "Render the briefing's Return-to-Player button" → *Increment: template-driven button hosting; gold #3's key element renders* — **✅ CLOSED 2026-08-02 (5/5 pts; §9 row 136 + PORT.md S136)**
+- **Sprint Goal:** close the most visible S135 deviation on gold #3 — the "Return to Player" button
+  — by extending template-driven hosting to non-DDX buttons.
+- **Committed (~5 pts):** S136 `bob_dlg_enum_buttons` + template-button hosting + regression A/B.
+- **Delivered:** gold #3's "Return to Player" (`IDC_RETURNTOPLAYER`=2146) is a template-only button
+  no DDX binds, so it was never created. Extended the S124 template-driven static hosting to
+  non-DDX **buttons** (`bob_dlg_enum_buttons` in bob_dlgtemplate.cpp + a K_RBUTTON pass in
+  `bob_ole_host_template_statics`; `bob_make_rbutton` already renders a hosted RButton) — the button
+  now draws top-left with its caption, matching gold #3's key element. `BOB_NO_TEMPLATE_BUTTONS`
+  reverts. **Regression:** config (gfx2/game/mission/control/sound) + QS-Scenario + mainmenu +
+  phase-select all **byte-identical** on/off (the hosting is inert wherever no non-DDX template
+  button draws); safe default exit 0; flight 94.9% non-black.
+- **#3 stays PARTIAL** (improved) — remaining: the "Bob" pilot name box (a `CREdtBt` slot, not yet
+  front-end-hosted) + the Fly footer item (gated). Button art is the tickbox icon vs gold's bezel.
+- **Increment demo:** `BOB_BOBFRAG=1 BOB_SHOT=120` → the briefing now shows "Return to Player".
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -515,6 +531,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **136** | ~5 | 5 | ★ **Template-driven BUTTON hosting — gold #3's "Return to Player" button now renders** | **(2026-08-02)** `IDC_RETURNTOPLAYER` (2146) is a template-only button no DDX binds → never created on Linux (our creation is DDX-driven). Extended the S124 template-driven static hosting to non-DDX **buttons**: `bob_dlg_enum_buttons` (bob_dlgtemplate.cpp, K_RBUTTON) + a button pass in `bob_ole_host_template_statics` creating `CLSID_RButton` for each unbound template button (`bob_make_rbutton` already renders art+caption; the DDX-bound tickbox proved the path). The briefing's "Return to Player" now draws top-left with its caption = gold #3's key element. `BOB_NO_TEMPLATE_BUTTONS` reverts. **Gates (gl-lock):** config (gfx2/game/mission/control/sound) + QS-Scenario + mainmenu + phase-select **all byte-identical** on/off (inert where no non-DDX template button draws — surgical); safe default exit 0; flight frame-150 94.9% non-black. **#3 stays PARTIAL** (improved) — remaining: "Bob" name box (`CREdtBt` pilot slot, unhosted) + Fly footer item (gated); button art is the tickbox icon vs gold's rounded bezel. Evidence `doc/parity/native-quickshots-bobfrag-2026-08-02.png`. |
 | **135** | ~6 | 6 | ★ **The mission BRIEFING (gold #3, `IDD_BOBFRAG`) RENDERS with its flight roster — #3 GAP → PARTIAL** | **(2026-08-02)** Built on S134's re-mapping (gold #3 = the BoBFrag briefing). New `BOB_BOBFRAG` scaffold (FULLPSYS.CPP, BOB_LINUX, default-off) is the reliable headless reach: QS click-mode pre-flight seeds `quickdef` → `LaunchScreen(&quickmission)` inits CSQuick1 → `LaunchScreen(&bobfrag)`, stopping at the briefing (no Rtestsh1 → no flight) so `BOB_SHOT` captures it. The briefing renders closely matching gold #3: crashed-109 + pink-cloud + two-He111 background, the roster listbox (`CRListBoxCtrl` id=1481: **Unit / Aircraft / Duty / Callsign → 54 Squadron / Spitfire / Patrol / Trumpet**), Back/Sim Config footer, exit 0. **Gates (gl-lock):** safe default exit 0; mainmenu dummy==GL byte-identical; flight frame-150 94.9% non-black (scaffold env-gated → no regression). **#3 GAP → PARTIAL.** Deviations named: "Return to Player" (`IDC_RETURNTOPLAYER`) is an RButton, not hosted in the front-end (follow-on); name edit (`CREditCtrl` 1923) created-not-drawn (template/rect); Fly footer item gated (`CheckForMissingMission`). Evidence `doc/parity/native-quickshots-bobfrag-2026-08-02.png`. |
 | **134** | ~2 | 2 | ◐ **SPIKE — gold #3 mapping RE-CORRECTED to `IDD_BOBFRAG` (the mission briefing), reach-path scoped** | **(2026-08-02)** Following S133's "flight-line click → editor" remaining-step, found it was a mis-mapping: gold #3's "Return to Player" (`IDC_RETURNTOPLAYER`) is in **`IDD_BOBFRAG`** (`class BoBFrag`, BOBFRAG.CPP) — the mission **briefing** (pilot roster + Squadron/Aircraft/Duty/Callsign + formation callsign buttons + Back/Sim Config/Fly footer), not a QS sub-editor. Reached via the **mission-fly / campaign-intercept flow** (`{IDS_FLY,&bobfrag,CheckForMissingMission}`; or `BOB_CAMPAIGN_FLY`) — the QS Scenario-page "Fly" (`FragFly2`) goes straight to flight (verified: hangs under the SDL-dummy capture driver, no GL). No code shipped (game pristine; investigation only). #3 stays GAP, now mapped to its true screen + reach-path; next sprint = reach BoBFrag headlessly + render its roster (likely reuses the S133 nested draw + RButton callsigns). |
 | **133** | ~6 | 6 | ★ **QS order-of-battle flight-lines RENDER — nested `DialList` draw walk; RAF/Luftwaffe tabs show the player flight row (Spitfire IA / 1 / Veteran)** | **(2026-08-02)** S132 fixed the crash so the OOB tabs load; the `CSQuickLine` content stayed blank because `bob_ole_draw_panel(pdial[d])` only draws controls whose `parentDlg==pdial[d]`, and the QS OOB is a `DialList` of `CSQuickLine` rows each with its own `parentDlg`. **Probe (`BOB_TRACE_OOBTREE`) found the game's layout is unusable headlessly** — nested nodes have `viewsize` height 0, `GetWindowRect`=full-screen, `OnGetXYOffset`=(0,0) (MoveWindow/OnSize stubs). **Fix (`FULLPSYS.CPP`, BOB_LINUX, default-on, `BOB_NO_QS_NESTED` reverts):** `bob_fp_draw_nested`/`bob_nested_walk` walk the panel's child `RDialog` tree (`fchild`/`sibling`), draw each nested dialog's hosted controls via `bob_ole_draw_panel`, **synthesizing** the vertical row stacking (identical rows → each content child one `rowStep` lower; `BOB_QS_ROWSTEP`) and reusing the existing template-rect column layout. RAF tab now shows the flight row (piloted-flag icon + Patrol/Altitude/Skill → Spitfire IA/1/Veteran). **Also: MA note 28 verified N/A** (map Bases OOB already composites correctly, no black fill). **Gates (gl-lock):** config-gfx2 + QS-Scenario `cmp` **BYTE-IDENTICAL** on/off (flat panels have no `fchild` → zero regression); mainmenu dummy==GL byte-identical; flight frame-150 94.9% non-black; safe default exit 0. **Honest:** single-flight rows validated; multi-row stacking synthesized (not yet captured with >1 flight); renders the OOB **list**, gold #3 proper (the per-flight *editor* via a flight-line click) stays GAP with that click the only step left. Evidence `doc/parity/native-quickshots-oob-raf-nested-2026-08-02.png`. Cross-port §8s. |
@@ -585,6 +602,19 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 136 (template button hosting):_ **When a control is missing, first ask "is it even
+  created?" — DDX-driven creation silently drops template-only controls.** gold #3's "Return to
+  Player" wasn't a draw bug; the button was never instantiated because `BoBFrag::DoDataExchange`
+  doesn't `DDX_Control` it (on Windows the dialog manager creates every template item regardless).
+  The fix was the exact sibling of S124's template-static hosting — a one-enum, one-loop extension
+  to buttons — because `bob_make_rbutton` already existed. Lessons: (1) trace whether a missing
+  widget was *created* before theorising about *drawing* it — "created CR…Ctrl" in the OLE trace is
+  the tell; (2) a global creation change needs a byte-identical A/B across unrelated screens
+  (config/QS/menu) as the regression proof — the change is only safe because it's inert wherever no
+  non-DDX template button draws; (3) reuse compounds — the roster listbox (already hosted) and now
+  the button both came almost free, so "render screen X" keeps shrinking to "host the one control
+  type X adds + a reach."
 
 - _Sprint 135 (render the briefing):_ **A direct-launch scaffold beats fighting the nav — when
   you can seed the state the screen needs.** S134 burned two runs on the fragile campaign/click
