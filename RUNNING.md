@@ -30,6 +30,17 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **S134 spike: gold #3 re-mapped to `IDD_BOBFRAG` (the mission briefing).**
+  Following S133's "flight-line click → editor" remaining-step, `grep
+  IDC_RETURNTOPLAYER` showed gold #3's "Return to Player" is in **`IDD_BOBFRAG`**
+  (`class BoBFrag`, BOBFRAG.CPP) — the mission **briefing** (pilot roster +
+  Squadron/Aircraft/Duty/Callsign + formation callsign buttons + Back/Sim
+  Config/Fly footer), not a QS `CSQuickLine`/`QuickParameters` sub-editor. Reached
+  via the mission-fly / campaign-intercept flow (`{IDS_FLY,&bobfrag,...}`;
+  `BOB_CAMPAIGN_FLY`) — the QS Scenario "Fly" (`FragFly2`) goes straight to flight
+  (hangs under the SDL-dummy capture driver, no GL). No code shipped. #3 stays
+  GAP, now mapped to its true screen; next sprint = reach BoBFrag headlessly +
+  render its roster (likely reuses the S133 nested draw + RButton callsigns).
 - **S133 closed: the QS order-of-battle flight-lines RENDER.** S132 fixed the
   crash so the RAF/Luftwaffe tabs load; the `CSQuickLine` content stayed blank
   because the per-panel draw only reaches controls whose `parentDlg` is that

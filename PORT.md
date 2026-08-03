@@ -1,5 +1,28 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S134 (2026-08-02, Sprint 134, SPIKE): gold #3 re-mapped to `IDD_BOBFRAG` — the mission briefing, not a QS sub-editor
+>
+> **A one-minute grep corrected three sprints of narrative.** S133 closed noting "gold #3's
+> remaining step is a flight-line click → the `CSQuickLine`/`QuickParameters` editor." Chasing
+> that, `grep IDC_RETURNTOPLAYER` (gold #3's distinctive "Return to Player" button) landed in
+> **`IDD_BOBFRAG`** (`class BoBFrag`, `BOBFRAG.CPP`) — the mission **briefing** screen: pilot
+> roster + Squadron/Aircraft/Duty/Callsign + formation callsign buttons + a Back/Sim Config/Fly
+> footer (matching gold `47-45`'s crashed-109 background + footer). It is **not** a QS
+> `CSQuickLine` sub-editor.
+>
+> **Reach-path (scoped for the next sprint):** BoBFrag is the mission-**fly** target
+> (`{IDS_FLY,&bobfrag,CheckForMissingMission}`, FPLAYOUT.CPP:1408) and the campaign-intercept
+> seam (`BOB_CAMPAIGN_FLY` → `CMIGView::LaunchFullPane(&bobfrag,UIR_FRAG)`). The QS
+> **Scenario-page** "Fly" is a *different* item — `{IDS_FLY,&quickmissionflight,FragFly2}` →
+> straight into flight (verified: a Scenario-Fly click **hangs under the SDL-dummy capture
+> driver**, which has no GL context — it's flight bring-up, not a briefing). So gold #3 must be
+> reached through the briefing-bearing fly path, not the Scenario Fly.
+>
+> **No code shipped** (game pristine; investigation only — the S130 spike precedent). #3 stays
+> GAP, now mapped to its true screen + reach-path. **Next sprint:** reach BoBFrag headlessly (the
+> campaign seam is the reliable path) + render its roster — likely reusing the S133 nested-panel
+> draw walk (BoBFrag's roster is a child-dialog structure) + the RButton callsign buttons.
+
 > ## S133 (2026-08-02, Sprint 133): the QS order-of-battle flight-lines RENDER — nested `DialList` panel draw walk; RAF/Luftwaffe tabs now show the player flight row
 >
 > **The nested-dialog-render gap S132 named is closed for the QS OOB.** S132 fixed the crash so
