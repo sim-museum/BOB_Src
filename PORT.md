@@ -1,5 +1,40 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S137 (2026-08-02, Sprint 137): the LW Directives dialog (gold #18) is now reachable + renders — #18 GAP → PARTIAL
+>
+> **The last-but-one parity GAP is broken open.** Gold #18 is the LW **Directives** dialog
+> (`LWDirectives` / `IDD_LWDIRECTIVES`, LWDIRECT.CPP) over the strategic map — the dense
+> Bomber-Allocation / Reconn / Escort / Ground-Attack-Gruppen order screen. It was GAP because it
+> was **unreachable**: unlike Bases/Squadrons (S113-S117, on the *main* toolbar TB_MAIN which
+> `bob_map_paint_oob` walks), the Directives dialog is logged on the **misc** toolbar (TB_MISC),
+> which the OOB paint never iterated.
+>
+> **Fix (`MAINFRM.CPP` + a `FULLPSYS.CPP` trigger):** (1) `bob_oob_open_directives` fires
+> `MiscToolBar().OpenDirectivetoggle(NULL)` — null-safe, since `LWDirectives`'s ctor builds a default
+> `LWDirectivesResults` from `MMC.directives.lw.current` when passed NULL — LogChild'ing the dialog on
+> TB_MISC (gated `BOB_MAP_DIRECTIVES`, mirrors `bob_oob_open_bases`); (2) `bob_map_paint_oob` now also
+> renders TB_MISC's logged children, via a **full recursive tree walk** `bob_oob_paint_tree_deep`
+> (fchild + sibling, drawing every node's art + hosted controls) — the fchild-only `bob_oob_paint_tree`
+> that suffices for Bases misses the dense grid that lives in nested sub-panels.
+>
+> **Result:** the dialog opens (exit 0, no crash) and renders its frame + "Rest All" button + the
+> standby reminder ("The Luftflotte are on standby, awaiting your orders.", `IDS_PHRASE_REMIND0`).
+> `doc/parity/native-strategic-directives-2026-08-02.png`.
+>
+> **Gates (all `gl-lock`):** Bases OOB (TB_MAIN path unchanged) still renders (exit 0, Luftflotte
+> lists); the TB_MISC paint is inert when no misc dialog is logged, so the plain strategic map is
+> unregressed; safe default exit 0.
+>
+> **#18 GAP → PARTIAL** (parity 16 CLOSE / 2 PARTIAL / 1 GAP — only #4, the by-design transient
+> loading screen, remains GAP). **Honest scope:** the dense allocation **grid** doesn't show — gold
+> #18 is **12 Aug Eagle Attack** (active gruppen to allocate); my capture is **10 July Convoys**,
+> where the game itself shows the standby state (the grid is hidden until an active phase has gruppen).
+> This is the same fresh-day-vs-Eagle-Attack campaign-state gap as #19 (the strategic map), not a
+> render bug; confirming the grid then renders through the deep walk in an active phase is the
+> follow-on. Repro: `BOB_AUTOCLICK=1,1,1,1 BOB_MAP_TIMER=8 BOB_MAP_DIRECTIVES=1 BOB_SHOT=900`. Files:
+> `SRC/MFC/MAINFRM.CPP` (`bob_oob_open_directives`, `bob_oob_paint_tree_deep`, TB_MISC paint),
+> `SRC/MFC/FULLPSYS.CPP` (the `BOB_MAP_DIRECTIVES` trigger).
+
 > ## S136 (2026-08-02, Sprint 136): template-driven BUTTON hosting — gold #3's "Return to Player" button renders
 >
 > **The most visible S135 deviation is closed.** gold #3's "Return to Player" button

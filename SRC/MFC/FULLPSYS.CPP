@@ -804,6 +804,8 @@ extern "C" void bob_frontend_tick(void)
 		   Bases for headless testing; BOB_NO_OOB reverts. */
 		if (getenv("BOB_MAP_OOB")) { extern void bob_oob_open_bases(void);
 			static int t=0; if (++t > 3) bob_oob_open_bases(); }
+		if (getenv("BOB_MAP_DIRECTIVES")) { extern void bob_oob_open_directives(void);  /* S137: gold #18 */
+			static int t=0; if (++t > 3) bob_oob_open_directives(); }
 		if (!getenv("BOB_NO_OOB")) { extern int bob_map_paint_oob(int,int); bob_map_paint_oob(sw, sh); }
 		bob_map_paint_end();
 		/* SP.1 (BOB_SHOT, default-off): deterministic one-shot screen capture for the parity

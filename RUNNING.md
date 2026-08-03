@@ -18,7 +18,7 @@ Rebuild: `cd /home/admin/bob/build && ninja bob`.
 | What | Where |
 |---|---|
 | Backlog (Releases R1–R7 + SP) + burndown | `scrum.md` — Release SP is the screen-parity epic; §9 burndown |
-| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 1 PARTIAL / 2 GAP of 19 (S135: #3 briefing GAP→PARTIAL) |
+| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 2 PARTIAL / 1 GAP of 19 (S135 #3 briefing + S137 #18 Directives both GAP→PARTIAL; only #4 loading-screen GAP remains, by design) |
 | Side-by-side captures | `doc/parity/` |
 | Engineering evidence log (newest first) | `PORT.md` |
 | Live product snapshot | `STATUS.md` |
@@ -30,6 +30,19 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **S137 closed: LW Directives dialog (gold #18) now REACHABLE + renders — #18
+  GAP → PARTIAL.** The Directives dialog (`LWDirectives`) is on the **misc**
+  toolbar (TB_MISC), which `bob_map_paint_oob` never walked. Added
+  `bob_oob_open_directives` (`MiscToolBar().OpenDirectivetoggle(NULL)`, null-safe)
+  + `BOB_MAP_DIRECTIVES` trigger + extended `bob_map_paint_oob` to render TB_MISC
+  logged children via a full recursive walk (`bob_oob_paint_tree_deep`). The dialog
+  opens (exit 0) + renders its frame + "Rest All" + standby reminder. Bases OOB
+  (TB_MAIN, unchanged) still renders; TB_MISC paint inert when no misc dialog
+  logged (no map regression); safe default exit 0. **Honest:** the dense
+  allocation grid doesn't show — gold #18 is 12 Aug Eagle Attack (active gruppen);
+  mine is 10 July Convoys standby state (grid hidden until active), same state gap
+  as #19. Parity now **16 CLOSE / 2 PARTIAL / 1 GAP** (only #4 loading-screen GAP
+  remains, by design). Evidence `doc/parity/native-strategic-directives-2026-08-02.png`.
 - **S136 closed: template-driven BUTTON hosting — gold #3's "Return to Player"
   renders.** `IDC_RETURNTOPLAYER` (2146) is a template-only button no DDX binds →
   never created (our creation is DDX-driven). Extended the S124 template-driven

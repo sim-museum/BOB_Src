@@ -1398,17 +1398,44 @@ static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
 		}
 	}
 }
+/* S137: full recursive OOB tree walk (fchild + sibling), drawing EVERY node's art + hosted
+   controls -- for dense NESTED dialogs like LW/RAF Directives (gold #18), whose allocation grid
+   lives in child sub-panels the fchild-only bob_oob_paint_tree never reaches. The nested controls
+   carry their own template rects (template-hosted), positioned relative to the same dialog origin
+   headlessly (the layout engine computes no sub-panel offset -- cf. S133), so draw each panel at
+   the shared (ox,oy). */
+static void bob_oob_paint_tree_deep(RDialog* n, int ox, int oy) {
+	for (; n; n = n->sibling) {
+		if (n->artnum) {
+			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+			bob_gdi_setdibits_origin(ox, oy);
+			n->DoPaint(&dc);
+			bob_gdi_setdibits_origin(0, 0);
+		}
+		bob_ole_draw_panel((CWnd*)n, ox, oy);      /* hosted controls regardless of artnum */
+		if (n->fchild) bob_oob_paint_tree_deep(n->fchild, ox, oy);
+	}
+}
 extern "C" int bob_map_paint_oob(int sw, int sh) {
 	/* S116: render whichever OOB info dialog is open (any main-toolbar logged child), so a real
 	   toolbar-button click (S92) that opened one actually shows it. Renders each open child's tree
 	   (background art via DoPaint + hosted controls via bob_ole_draw_panel) at a fixed panel origin. */
 	CRToolBar* tb = CMainFrame::toolbars[TB_MAIN];
-	if (!tb) return 0;
 	int n = 0;
-	for (int slot = 0; slot < CMainToolbar::MAX_ID; slot++) {
-		RDialog* child = tb->LoggedChild(slot);
-		if (child) { bob_oob_paint_tree(child, (sw - 340) / 2, 40); n++; }
-	}
+	if (tb)
+		for (int slot = 0; slot < CMainToolbar::MAX_ID; slot++) {
+			RDialog* child = tb->LoggedChild(slot);
+			if (child) { bob_oob_paint_tree(child, (sw - 340) / 2, 40); n++; }
+		}
+	/* S137: the misc toolbar (TB_MISC) also logs OOB dialogs -- notably the LW/RAF Directives
+	   (gold #18). Render its open logged children too; the Directives dialog is wide (~740px per
+	   gold), so anchor it near the top-left like gold rather than the Bases centre offset. */
+	CRToolBar* tbm = CMainFrame::toolbars[TB_MISC];
+	if (tbm)
+		for (int slot = 0; slot < CMiscToolbar::LISTLEN; slot++) {
+			RDialog* child = tbm->LoggedChild(slot);
+			if (child) { bob_oob_paint_tree_deep(child, 44, 20); n++; }  /* dense nested grid */
+		}
 	return n;
 }
 /* deterministically open Bases (fire OnClickedBases) once the map has settled -- removes the
@@ -1423,5 +1450,13 @@ extern "C" void bob_oob_open_bases(void) {
 	int id = (getenv("BOB_MAP_OOB") && atoi(getenv("BOB_MAP_OOB")) == 2) ? 1829 : 1827;
 	fprintf(stderr,"[oob] firing OnClicked id=%d\n", id);
 	bob_evt_fire((void*)tb, &typeid(*tb), id, 1);
+}
+/* S137: open the LW Directives dialog (gold #18) deterministically once the map has settled.
+   CMiscToolbar::OpenDirectivetoggle(NULL) LogChild's LWDirectives::Make(NULL) -- the ctor builds a
+   default LWDirectivesResults from MMC.directives.lw.current, so NULL is safe. BOB_MAP_DIRECTIVES. */
+extern "C" void bob_oob_open_directives(void) {
+	static int done = 0; if (done) return; done = 1;
+	fprintf(stderr,"[directives] OpenDirectivetoggle(NULL)\n");
+	MiscToolBar().OpenDirectivetoggle(NULL);
 }
 #endif
