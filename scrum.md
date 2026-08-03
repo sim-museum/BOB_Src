@@ -417,6 +417,28 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
 - **Increment demo:** `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_CLICKXY="215,458,191"` (RAF tab)
   loads the OOB screen without crashing (previously SIGSEGV).
 
+### Sprint 133 — "QS order-of-battle flight-lines render" → *Increment: the RAF/Luftwaffe tabs show the player flight row* — **✅ CLOSED 2026-08-02 (6/6 pts; §9 row 133 + PORT.md S133)**
+- **Sprint Goal:** close the nested-dialog-render gap S132 named — make the `CSQuickLine`
+  flight-line content paint on the QS order-of-battle (RAF/Luftwaffe) tabs, which S132 unblocked
+  structurally but left blank.
+- **Committed (~6 pts):** S133 nested `DialList` panel draw walk + regression + gates; verify MA
+  note 28 (OOB listbox black-fill) against BoB's campaign-map OOB dialogs.
+- **Delivered:** `bob_fp_draw_nested`/`bob_nested_walk` (FULLPSYS.CPP, BOB_LINUX, default-on,
+  `BOB_NO_QS_NESTED` reverts) walk the panel's child `RDialog` tree and draw each nested dialog's
+  hosted controls, **synthesizing** the vertical row stacking (the game's headless layout gives no
+  real rects — probe `BOB_TRACE_OOBTREE`: nested nodes have viewsize height 0 / full-screen
+  GetWindowRect) while reusing the existing template-rect column positioning. RAF tab now shows the
+  flight row (piloted-flag icon + Patrol/Altitude/Skill → Spitfire IA/1/Veteran). **MA note 28
+  verified N/A** — the campaign-map Bases dialog already composites its squadron lists over the
+  translucent panel (no black fill). Gates: config-gfx2 + QS-Scenario **byte-identical** on/off (no
+  regression on flat screens); mainmenu dummy==GL byte-identical; flight 94.9% non-black; safe
+  default exit 0.
+- **Honest:** single-flight rows validated; multi-row stacking synthesized (`rowStep=40`), not yet
+  captured with >1 flight. Renders the OOB **list**; gold #3 proper (the per-flight *editor* via a
+  flight-line click) stays GAP with that click the only remaining step.
+- **Increment demo:** `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_CLICKXY="180,458,191;220,458,191"`
+  (RAF tab) → the player flight row renders (Spitfire IA / 1 / Veteran).
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -464,6 +486,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **133** | ~6 | 6 | ★ **QS order-of-battle flight-lines RENDER — nested `DialList` draw walk; RAF/Luftwaffe tabs show the player flight row (Spitfire IA / 1 / Veteran)** | **(2026-08-02)** S132 fixed the crash so the OOB tabs load; the `CSQuickLine` content stayed blank because `bob_ole_draw_panel(pdial[d])` only draws controls whose `parentDlg==pdial[d]`, and the QS OOB is a `DialList` of `CSQuickLine` rows each with its own `parentDlg`. **Probe (`BOB_TRACE_OOBTREE`) found the game's layout is unusable headlessly** — nested nodes have `viewsize` height 0, `GetWindowRect`=full-screen, `OnGetXYOffset`=(0,0) (MoveWindow/OnSize stubs). **Fix (`FULLPSYS.CPP`, BOB_LINUX, default-on, `BOB_NO_QS_NESTED` reverts):** `bob_fp_draw_nested`/`bob_nested_walk` walk the panel's child `RDialog` tree (`fchild`/`sibling`), draw each nested dialog's hosted controls via `bob_ole_draw_panel`, **synthesizing** the vertical row stacking (identical rows → each content child one `rowStep` lower; `BOB_QS_ROWSTEP`) and reusing the existing template-rect column layout. RAF tab now shows the flight row (piloted-flag icon + Patrol/Altitude/Skill → Spitfire IA/1/Veteran). **Also: MA note 28 verified N/A** (map Bases OOB already composites correctly, no black fill). **Gates (gl-lock):** config-gfx2 + QS-Scenario `cmp` **BYTE-IDENTICAL** on/off (flat panels have no `fchild` → zero regression); mainmenu dummy==GL byte-identical; flight frame-150 94.9% non-black; safe default exit 0. **Honest:** single-flight rows validated; multi-row stacking synthesized (not yet captured with >1 flight); renders the OOB **list**, gold #3 proper (the per-flight *editor* via a flight-line click) stays GAP with that click the only step left. Evidence `doc/parity/native-quickshots-oob-raf-nested-2026-08-02.png`. Cross-port §8s. |
 | **132** | ~6 | 6 | ★ **S130 QS order-of-battle crash FIXED — null-reference-safe `DialBox` copy ctor; RAF/Luftwaffe tabs no longer SIGSEGV** | **(2026-08-02)** The crash S130 root-caused (and S129's tab-nav exposed): `QuickMissionBlue/Red` build a variadic `DialList` where inactive flight slots pass `(count>k)?DialBox(temp):*(DialBox*)NULL`; the ternary's prvalue copy-constructs a DialBox from null → the copy ctor derefs address 0. **Fix (RDIALOG.H, one method, BOB_LINUX):** null-ref-safe copy ctor → empty leaf DialBox (`dial=NULL`) for the null case; `AddChildren` already renders a null-dial child as empty `RDEmptyP`. **Two layers (gdb):** (1) the ctor deref; (2) the copy left `diallist[]` uninit (stock ctor relied on copy-elision; a real copy has none) → `AddChildren` recursed into garbage → fixed by copying `diallist` explicitly. **Gates (gl-lock):** RAF-tab click exit 0 (was SIGSEGV); 13/13 sweep; mainmenu/controls/phase `cmp` byte-identical to S131 (core change transparent; strat diff = sim-clock timing variance, two S132 runs also differ); flight 95.2% non-black; OOB dummy==GL byte-identical; safe default exit 0. **Honest:** fixes the crash + unblocks the screen; the `CSQuickLine` flight-line CONTENT (gold #3 fields) doesn't paint yet (nested-dialog-render gap). #3 stays GAP, crash blocker gone. Cross-port §8q addendum. |
 | **131** | ~8 | 8 | ★ **Per-face font registry — the pervasive "font FACE" deviation CLOSED (MA note 26 §2); data/labels render Arial (italic), ART screens byte-identical** | **(2026-08-02)** `bob_gdi_font` drew every face in one art TTF (Intel.ttf) → data/label rows in the Rowan art face, not Arial (the deviation on nearly every gold shot). Adopted MA note 26 §2: an 8-slot per-FACE registry (4 kinds × regular/italic) — ART=Intel (unchanged load), SANS=LiberationSans, SERIF=LiberationSerif, MONO=LiberationMono; `CFont::bobFaceKind` classifies the CreateFont face name + captures `bItalic`; `CDC::bobSetFace` threads face+italic through the DC's selected font; the front-end menu sets ART explicitly. **Beyond note 26:** honoured the italic flag → gold's italic combo values match. **N/A for BoB (verified):** §1 Japanese-branch (a `BOB_TRACE_FONT` dump showed the game already requests Arial/Courier/Intel — not a Japanese system), §3 combo-fill (already skipped via `m_FirstSweep=TRUE`); MA note 27's listbox-fill warning heeded. **Gates (all gl-lock):** 14/14 sweep; **mainmenu (ART) `cmp` BYTE-IDENTICAL** on vs off (art screens unregressed); controls **dummy==GL byte-identical**; flight 95.2% non-black; safe default exit 0. Config/campaign data/labels now = gold's Arial-italic scheme; `BOB_NO_FONTFACE` reverts. Cross-port: shared-doc §8r. |
 | **130** | ~5 | 3 | ◐ **SPIKE — gold #3 (QS order-of-battle) root-caused to a null-DialBox-copy SIGSEGV; banked** | **(2026-08-02)** With S129's tab-nav, the RAF/Luftwaffe tabs reach `QuickMissionBlue`/`Red` (the QS OOB with the `CSQuickLine` flight editors = gold #3's Squadron/Aircraft/Duty/Callsign) — a never-run-on-Linux screen that SIGSEGVs. gdb: `QuickMissionBlue (fullpane.cpp:215)`. **Root cause:** the variadic `DialList` uses `ND=*(DialBox*)NULL` as a null terminator; `DialList`+`AddChildren` are null-safe (`&ND==0`, `for(i;diallist[i];i++)`), but the per-slot ternary `(count>k)?DialBox(temp):ND` mixes a **prvalue** temp and the **lvalue** `ND` → the conditional is a prvalue → the `:ND` branch **copy-constructs a DialBox from `*(DialBox*)NULL`** (benign-on-MSVC/faults-on-GCC UB). Only inactive slots hit it (`initind=6` → line 215). **Faithful fix is game-code** (name the true-branch DialBox locals so the ternary yields a reference, across the `QuickMission*` builders — a UB-exception change) → deferred; not compat-fixable (copy precedes the list). Honest S129 interaction noted: tabs 0/1 (Scenario/Parameters) render fine; tabs 2/3 now reach this crash. No code shipped (game pristine; gdb/trace only). Cross-port: shared-doc §8q (MA uses the same RDIALOG.H). #3 stays GAP, now exactly root-caused. |
@@ -531,6 +554,22 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 133 (nested OOB render):_ **Probe the runtime geometry before trusting the game's own
+  layout — then synthesize what the stubs don't provide.** The obvious plan was "walk the tree and
+  read each row's rect." A 20-line `BOB_TRACE_OOBTREE` probe killed that in one run: every nested
+  node reports `viewsize` height 0 and full-screen `GetWindowRect` because `MoveWindow`/`OnSize`
+  are compat stubs — the game never computes the row layout headlessly. The winning move was to
+  stop trying to recover a layout that doesn't exist and instead *synthesize* the one invariant I
+  did know (identical rows stack vertically), reusing the per-control template-rect positioning the
+  config panels already trust. Lessons: (1) when porting a layout-driven screen, dump the runtime
+  rects first — a stubbed layout engine silently returns zeros, not errors; (2) `cmp`(on, off) on
+  the *flat* screens (config/Scenario byte-identical) is the cheap proof a new draw path is inert
+  everywhere it shouldn't fire — an early-return on `!fchild` plus a byte-identical A/B beats
+  eyeballing five screens; (3) measure the sibling's inbound note before adopting it — MA note 28's
+  black-fill fix dissolved on a single BoB capture (map OOB already composites), exactly as the
+  note itself warned; (4) separate "list renders" from "editor reached" honestly — #3's list is now
+  populated, the flight-line click to its editor is the named next step.
 
 - _Sprint 132 (null-DialBox crash fix):_ **Fix the crash at the smallest shared layer, and expect
   a second layer behind the first.** The whole class of `(cond)?DialBox(...):*(DialBox*)NULL`

@@ -315,11 +315,67 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		g_bobMenuN = i+1;
 	}
 }
+extern "C" void bob_gdi_setdibits_origin(int, int);
+/* S133 (probe, BOB_TRACE_OOBTREE): dump the nested RDialog child tree of a panel so we can
+   see the geometry model (OnGetXYOffset vs viewsize vs GetWindowRect) before wiring the real
+   nested draw. The QS order-of-battle panel (QuickMissionBlue/Red -> QuickMissionPanel with a
+   DialList of CSQuickLine rows) nests controls whose parentDlg != pdial[d], so the standard
+   bob_ole_draw_panel(pdial[d]) never draws them. */
+static void bob_oobtree_probe(RDialog* n, int depth)
+{
+	for (; n; n = n->sibling) {
+		long off = n->OnGetXYOffset();
+		CRect wr(0,0,0,0); n->GetWindowRect(&wr);
+		fprintf(stderr,
+			"[oobtree] %*snode=%p art=%d xyoff=(%d,%d) view=(%d,%d,%d,%d) home=(%d,%d,%d,%d) wr=(%d,%d,%d,%d) fchild=%p\n",
+			depth*2, "", (void*)n, (int)n->artnum,
+			(short)(off&0xFFFF), (short)((off>>16)&0xFFFF),
+			n->viewsize.left, n->viewsize.top, n->viewsize.right, n->viewsize.bottom,
+			n->homesize.left, n->homesize.top, n->homesize.right, n->homesize.bottom,
+			wr.left, wr.top, wr.right, wr.bottom, (void*)n->fchild);
+		if (n->fchild) bob_oobtree_probe(n->fchild, depth+1);
+	}
+}
+
+/* S133: draw a panel's NESTED child dialogs' hosted controls. bob_ole_draw_panel only draws
+   controls whose parentDlg == the passed dialog; a DialList screen (QS order-of-battle:
+   QuickMissionPanel -> DialList of CSQuickLine flight rows) nests each row as its own RDialog
+   with its own hosted controls, so the standard per-pdial draw never reaches them. The game's
+   own layout engine (MoveWindow/OnSize/GetWindowRect) computes no real rects headlessly (probe:
+   every nested node has viewsize height 0 + full-screen GetWindowRect), so we cannot read the
+   row positions from the tree. Instead SYNTHESIZE the vertical stacking: the DialList rows are
+   identical CSQuickLine panels, so draw each successive content-bearing child one row-step lower,
+   reusing bob_ole_draw_panel's own template-rect positioning for the within-row column layout.
+   Default-on; BOB_NO_QS_NESTED reverts to the empty-panel (pre-S133) behaviour for A/B. */
+static void bob_nested_walk(RDialog* n, int ox, int oyBase, int rowStep, int* rowIdx)
+{
+	for (; n; n = n->sibling) {
+		int oy = oyBase + (*rowIdx) * rowStep;
+		int drew = bob_ole_draw_panel((CWnd*)n, ox, oy);
+		if (drew > 0) (*rowIdx)++;   /* only content rows advance the vertical cursor */
+		if (n->fchild) bob_nested_walk(n->fchild, ox, oyBase, rowStep, rowIdx);
+	}
+}
+static void bob_fp_draw_nested(RDialog* top, int ox, int oy)
+{
+	static int off = -1; if (off < 0) off = getenv("BOB_NO_QS_NESTED") ? 1 : 0;
+	if (off || !top || !top->fchild) return;
+	int rowStep = 40;
+	if (getenv("BOB_QS_ROWSTEP")) rowStep = atoi(getenv("BOB_QS_ROWSTEP"));
+	int row = 0;
+	bob_nested_walk(top->fchild, ox, oy, rowStep, &row);
+}
+
 /* Repaint the current screen in place (background + dial panels + hosted controls + menu),
    without re-launching it (which would reset combo values). Used after a combo click cycles
    its value, so the new value shows. Mirrors LaunchScreen's BOB_LINUX paint block. */
 static void bob_fp_repaint(RFullPanelDial* fp)
 {
+	if (getenv("BOB_TRACE_OOBTREE"))
+		for (int d=0; d<3; d++) if (fp->pdial[d]) {
+			fprintf(stderr, "[oobtree] === pdial[%d]=%p ===\n", d, (void*)fp->pdial[d]);
+			bob_oobtree_probe(fp->pdial[d], 0);
+		}
 	fp->DoPaint(fp->GetDC());
 	for (int d=0; d<3; d++) if (fp->pdial[d]) {
 		fp->pdial[d]->DoPaint(fp->GetDC());
@@ -327,6 +383,7 @@ static void bob_fp_repaint(RFullPanelDial* fp)
 			int ox = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].X;
 			int oy = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].Y;
 			bob_ole_draw_panel((CWnd*)fp->pdial[d], ox, oy);
+			bob_fp_draw_nested(fp->pdial[d], ox, oy);   /* S133: nested DialList rows (QS OOB) */
 		}
 	}
 	bob_draw_menu(fp, fp->m_currentscreen, RFullPanelDial::resolutions[fp->m_currentres]);
@@ -1410,6 +1467,7 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 				int ox = m_currentscreen->resolutions[m_currentres].dials[d].X;
 				int oy = m_currentscreen->resolutions[m_currentres].dials[d].Y;
 				bob_ole_draw_panel((CWnd*)pdial[d], ox, oy);
+				bob_fp_draw_nested(pdial[d], ox, oy);   /* S133: nested DialList rows (QS OOB) */
 			}
 			fprintf(stderr, "[frontend]   dial[%d] painted\n", d);
 		}

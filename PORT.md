@@ -1,5 +1,50 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S133 (2026-08-02, Sprint 133): the QS order-of-battle flight-lines RENDER — nested `DialList` panel draw walk; RAF/Luftwaffe tabs now show the player flight row
+>
+> **The nested-dialog-render gap S132 named is closed for the QS OOB.** S132 fixed the crash so
+> the RAF/Luftwaffe tabs *load*, but the `CSQuickLine` flight-line content stayed blank: the
+> front-end paint calls `bob_ole_draw_panel(pdial[d])`, which only draws controls whose
+> `parentDlg == pdial[d]`. The QS order-of-battle is a `DialList` (`QuickMissionPanel` → a clump
+> of `EmptyChildWindow` + up to 7 `CSQuickLine` rows), and each row is its own `RDialog` with its
+> own hosted controls (distinct `parentDlg`), so the standard per-panel draw never reached them.
+>
+> **Root cause of "can't just read the layout" (probe `BOB_TRACE_OOBTREE`):** the game's own
+> layout engine computes **no real rects headlessly** — every nested node comes back with
+> `viewsize` height **0**, `GetWindowRect` = full-screen `(0,0,1024,768)`, and `OnGetXYOffset` =
+> `(0,0)`. `MoveWindow`/`OnSize`/`ClientToScreen` are compat stubs, so the row positions the game
+> would compute don't exist. **Fix (`FULLPSYS.CPP`, `#if BOB_LINUX`, default-on,
+> `BOB_NO_QS_NESTED` reverts):** walk the panel's child `RDialog` tree (`fchild`/`sibling`) and
+> draw each nested dialog's hosted controls with `bob_ole_draw_panel` — **synthesizing** the
+> vertical stacking (the rows are identical `CSQuickLine` panels, so each successive
+> content-bearing child draws one `rowStep` lower; `BOB_QS_ROWSTEP` override) while reusing
+> `bob_ole_draw_panel`'s existing per-control template-rect positioning for the within-row column
+> layout. Non-content nodes (`EmptyChildWindow`, the clump) draw 0 controls and don't advance the
+> row cursor.
+>
+> **Result:** the RAF tab now shows the player's flight row — the piloted-flag icon +
+> **Patrol / Altitude / Skill** headers over **Spitfire IA / 1 / Veteran** combos (the
+> `CSQuickLine` `IDC_TYPE/ALT/SKILL/FLIGHTS/PILOTEDFLAG` + statics) — instead of an empty panel.
+> Evidence: `doc/parity/native-quickshots-oob-raf-nested-2026-08-02.png` (vs the empty
+> `…-oob-raf-2026-08-02.png`).
+>
+> **Gates (all `gl-lock`):** build clean; **config-gfx2 + QS-Scenario `cmp` BYTE-IDENTICAL**
+> nested-on vs `BOB_NO_QS_NESTED` (flat panels have no `fchild` → the walk early-returns → zero
+> regression on every non-OOB screen); mainmenu **dummy==GL `cmp` BYTE-IDENTICAL**; flight
+> frame-150 on `:0` **94.9% non-black** exit 0; safe default exit 0.
+>
+> **Honest scope:** single-flight rows validated (the Basic-Training QM has one flight/side);
+> multi-row vertical stacking is synthesized (`rowStep=40`) and structurally correct but not yet
+> captured with >1 active flight. This renders the OOB **list** content; **gold #3 proper is a
+> further screen** — the per-flight *editor* (`QuickParameters`, "Return to Player") reached by
+> *clicking* a flight row — so #3 stays GAP with its remaining step (a flight-line click →
+> editor) now the only piece left, and the list it starts from finally populated. Also this
+> sprint: **MA note 28 (OOB listbox black-fill skip) verified N/A for BoB** — a `BOB_MAP_OOB=1`
+> capture of the campaign-map Bases dialog shows squadron lists compositing correctly over the
+> translucent panel (no opaque black fill), exactly what note 28 targets (measure-first paid off,
+> per the note's own advice). Files: `SRC/MFC/FULLPSYS.CPP` (`bob_fp_draw_nested` +
+> `bob_nested_walk` + the `BOB_TRACE_OOBTREE` probe). Cross-port: §8s.
+
 > ## S132 (2026-08-02, Sprint 132): the S130 QS order-of-battle crash is FIXED — null-reference-safe `DialBox` copy ctor; the RAF/Luftwaffe tabs no longer SIGSEGV
 >
 > **The crash S130 root-caused and S129's tab-nav exposed is fixed.** Clicking the QS

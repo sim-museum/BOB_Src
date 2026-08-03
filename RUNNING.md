@@ -30,6 +30,26 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **S133 closed: the QS order-of-battle flight-lines RENDER.** S132 fixed the
+  crash so the RAF/Luftwaffe tabs load; the `CSQuickLine` content stayed blank
+  because the per-panel draw only reaches controls whose `parentDlg` is that
+  panel, and the OOB is a `DialList` of `CSQuickLine` rows each with its own
+  `parentDlg`. Probe (`BOB_TRACE_OOBTREE`) showed the game's layout is unusable
+  headlessly (nested nodes: viewsize height 0, full-screen GetWindowRect —
+  MoveWindow/OnSize stubs). Fix: `bob_fp_draw_nested`/`bob_nested_walk`
+  (FULLPSYS.CPP, BOB_LINUX, default-on, `BOB_NO_QS_NESTED` reverts) walk the
+  panel's child `RDialog` tree and draw each nested dialog's hosted controls,
+  **synthesizing** the vertical row stacking (`BOB_QS_ROWSTEP`) + reusing the
+  template-rect column layout. RAF tab now shows the flight row (piloted-flag icon
+  + Patrol/Altitude/Skill → Spitfire IA/1/Veteran). **MA note 28 (OOB listbox
+  black-fill) verified N/A** — the map Bases dialog already composites correctly.
+  Gates: config-gfx2 + QS-Scenario `cmp` byte-identical on/off (no regression);
+  mainmenu dummy==GL byte-identical; flight 94.9% non-black; safe default exit 0.
+  **Honest:** single-flight rows validated; multi-row stacking synthesized (not
+  yet captured with >1 flight); renders the OOB **list** — gold #3 proper (the
+  per-flight *editor* via a flight-line click) stays GAP with that click the only
+  step left. Evidence `doc/parity/native-quickshots-oob-raf-nested-2026-08-02.png`.
+  Cross-port §8s.
 - **S132 closed: the S130 QS order-of-battle crash is FIXED.** The RAF/Luftwaffe
   tabs (clickable since S129) ran `QuickMissionBlue/Red`, whose variadic `DialList`
   copy-constructs a `DialBox` from `*(DialBox*)NULL` for inactive flight slots →

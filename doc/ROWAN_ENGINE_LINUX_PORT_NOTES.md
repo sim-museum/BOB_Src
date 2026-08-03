@@ -1670,6 +1670,41 @@ if they're ASCII English, you have only the §2 (registry) gap, not §1. (BoB's 
 also already handled by the `m_FirstSweep=TRUE` host convention; MA note 27's "listbox fill is
 load-bearing" warning was heeded — left untouched.)
 
+## 8s. Nested `DialList` screens: the game's layout is dead headlessly — synthesize it (BoB S133) **[ENGINE]**
+
+The front-end panel paint draws hosted controls via `bob_ole_draw_panel(pdial[d])`, which filters
+hosts by `parentDlg == pdial[d]`. That's fine for flat config panels, but a `DialList` screen —
+BoB's QS **order-of-battle** (`QuickMissionBlue/Red` → `QuickMissionPanel` + a clump of
+`CSQuickLine` flight rows, FULLPANE.CPP) — nests each row as its **own `RDialog` with its own
+`parentDlg`**, so the standard per-panel draw reaches none of the row content. The screen loads
+(after the §8q crash fix) but paints blank.
+
+**The trap:** the obvious fix is "walk the child tree and read each row's rect from the game." It
+doesn't work — the game's layout engine is stubbed on Linux. A 20-line probe (dump each nested
+node's `OnGetXYOffset` / `viewsize` / `GetWindowRect`) shows **every nested node has `viewsize`
+height 0, full-screen `GetWindowRect (0,0,W,H)`, and `xyoff (0,0)`** because `MoveWindow` /
+`OnSize` / `ClientToScreen` are compat stubs that never compute the layout. A stubbed layout engine
+returns *zeros, not errors* — so trust nothing until you dump the runtime rects.
+
+**The fix (BoB `FULLPSYS.CPP`, `bob_fp_draw_nested` + `bob_nested_walk`, default-on, revert env):**
+walk the panel's child `RDialog` tree (`fchild`/`sibling`) and call `bob_ole_draw_panel` on each
+nested dialog, but **synthesize** the geometry the stubs don't provide. The one invariant you *do*
+know: a `DialList`'s rows are identical sub-panels, so stack them — each successive content-bearing
+child draws one `rowStep` lower — while reusing `bob_ole_draw_panel`'s existing per-control
+template-rect positioning for the within-row column layout. Non-content nodes (an `EmptyChildWindow`
+placeholder, the clump container) draw 0 controls and don't advance the row cursor.
+
+Two cheap guardrails: (1) early-return on `!top->fchild` so the walk is inert on every flat screen,
+then prove it with `cmp`(on, off) on a config screen + a normal panel — byte-identical = zero
+regression, no eyeballing; (2) separate "the list renders" from "the editor is reached" in the
+verdict — the row list populating is one screen; a *click* on a row to reach its editor is the next.
+
+**Also (this sprint): measure an inbound sibling note before adopting it.** MA note 28's "skip the
+OOB listbox black fill" fix was verified **N/A for BoB** by a single `BOB_MAP_OOB=1` capture — BoB's
+map OOB dialogs already composite their lists over the translucent panel (no opaque fill). Half the
+carried "residuals" dissolve on measurement; the note said so itself. Applies to MiG Alley's
+`DialList` screens (Career/Log/order-of-battle) verbatim — same `RDialog` tree, same stubbed layout.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),
