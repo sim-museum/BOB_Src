@@ -30,6 +30,13 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **INBOUND MA note 28 (MA S71) — `doc/CROSS-PORT-FROM-MA-2026-08-02-note28.md`,
+  scoped for a future OOB-polish sprint.** Completes note 27 §2: skip the
+  `CRListBoxCtrl` black fill on the OOB draw path ONLY (a one-int context flag set
+  around the OOB `OnDraw`), so the front-end menu keeps its opaque box (byte-identical)
+  while OOB tables composite over the panel = gold. Check whether BoB's OOB dialogs
+  (Bases/Squadrons, S113-S117) show opaque-black listboxes first. Also §2: measure
+  carried "residuals" before fixing — half of MA's dissolved on measurement.
 - S126 closed (`6ab411d`): property-stream reader (`9105e25`) capture-proven —
   14-recipe sweep 14/14, 13 screens moved toward gold, #16 duplicate-date fixed
   (covered-static settled-state erase) → #16 CLOSE.
