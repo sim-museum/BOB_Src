@@ -18,7 +18,7 @@ Rebuild: `cd /home/admin/bob/build && ninja bob`.
 | What | Where |
 |---|---|
 | Backlog (Releases R1–R7 + SP) + burndown | `scrum.md` — Release SP is the screen-parity epic; §9 burndown |
-| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 0 PARTIAL / 3 GAP of 19 |
+| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 1 PARTIAL / 2 GAP of 19 (S135: #3 briefing GAP→PARTIAL) |
 | Side-by-side captures | `doc/parity/` |
 | Engineering evidence log (newest first) | `PORT.md` |
 | Live product snapshot | `STATUS.md` |
@@ -30,6 +30,19 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **S135 closed: the mission BRIEFING (gold #3, `IDD_BOBFRAG`) RENDERS.** New
+  `BOB_BOBFRAG` scaffold (FULLPSYS.CPP, BOB_LINUX, default-off) is the reliable
+  headless reach: QS click-mode pre-flight seeds `quickdef` →
+  `LaunchScreen(&quickmission)` inits CSQuick1 → `LaunchScreen(&bobfrag)`, stopping
+  at the briefing (no flight) so `BOB_SHOT` captures it. Renders closely matching
+  gold #3: crashed-109 + pink-cloud + two-He111 background, the roster listbox
+  (`CRListBoxCtrl` id=1481: **Unit / Aircraft / Duty / Callsign → 54 Squadron /
+  Spitfire / Patrol / Trumpet**), Back/Sim Config footer, exit 0. **#3 GAP →
+  PARTIAL** (parity 16 CLOSE / 1 PARTIAL / 2 GAP). Deviations: "Return to Player"
+  (RButton, not front-end-hosted); name edit (`CREditCtrl` 1923) created-not-drawn;
+  Fly footer item gated. Gates: safe default exit 0; mainmenu dummy==GL
+  byte-identical; flight 94.9% non-black. Evidence
+  `doc/parity/native-quickshots-bobfrag-2026-08-02.png`.
 - **S134 spike: gold #3 re-mapped to `IDD_BOBFRAG` (the mission briefing).**
   Following S133's "flight-line click → editor" remaining-step, `grep
   IDC_RETURNTOPLAYER` showed gold #3's "Return to Player" is in **`IDD_BOBFRAG`**

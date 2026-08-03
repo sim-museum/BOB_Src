@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S135 (2026-08-02, Sprint 135): the mission BRIEFING (gold #3, `IDD_BOBFRAG`) renders with its flight roster — #3 GAP → PARTIAL
+>
+> **Gold #3 now renders.** Building on S134's re-mapping (gold #3 = the `BoBFrag` briefing), a new
+> **`BOB_BOBFRAG`** scaffold (`FULLPSYS.CPP`, `#if BOB_LINUX`, default-off) provides the reliable
+> headless reach the S134 campaign/click paths couldn't. The briefing is data-driven — `BoBFrag`
+> reads `CSQuick1::quickdef` — so the scaffold reproduces exactly the state the real
+> title→QM→Fly→bobfrag flow provides: a QS **click-mode pre-flight** (resets the QS sentinel +
+> `gamestate=HOT`) → `LaunchScreen(&quickmission)` so CSQuick1's ctor populates
+> `quickdef=quickmissions[0]` → `LaunchScreen(&bobfrag)` → `BoBFragInit` → the `BoBFrag` roster
+> dialog. It **stops at the briefing** (never clicks Fly → no `Rtestsh1` → no flight bring-up, which
+> is what hung the S134 QS-Fly attempt under the SDL-dummy driver), so `BOB_SHOT` captures it.
+>
+> **Result (`doc/parity/native-quickshots-bobfrag-2026-08-02.png` vs gold `47-45`):** a close match
+> — the crashed-Bf109 + pink-cloud + two-He111 background, the flight **roster** from the genuine
+> `CRListBoxCtrl` (id=1481: **Unit / Aircraft / Duty / Callsign → 54 Squadron / Spitfire / Patrol /
+> Trumpet**), and the **Back / Sim Config** footer. Exit 0, no crash. The roster came essentially
+> for free from the already-hosted listbox control — a "new screen" that is mostly already-built
+> controls + a reach.
+>
+> **Gates (all `gl-lock`):** build clean; safe default exit 0; mainmenu **dummy==GL `cmp`
+> BYTE-IDENTICAL**; flight frame-150 on `:0` 94.9% non-black exit 0. The scaffold is env-gated
+> (default-off), so every other path is unaffected.
+>
+> **#3 GAP → PARTIAL** (parity 16 CLOSE / 1 PARTIAL / 2 GAP of 19). **Deviations named** for the
+> follow-on: (1) the **"Return to Player"** button (`IDC_RETURNTOPLAYER`) isn't drawn — it's an
+> RButton, and BoB doesn't host RButtons in the front-end (they render via the separate menu path),
+> so front-end RButton hosting is the piece; (2) the pilot **name edit** (`CREditCtrl` id=1923) is
+> created but not drawn (template/rect filter); (3) the **Fly** footer item isn't shown (only
+> Back/Sim Config — a `CheckForMissingMission`/`playersquadron` gate). Repro: `BOB_BOBFRAG=1
+> BOB_SHOT=120`. Files: `SRC/MFC/FULLPSYS.CPP` (the `BOB_BOBFRAG` scaffold).
+
 > ## S134 (2026-08-02, Sprint 134, SPIKE): gold #3 re-mapped to `IDD_BOBFRAG` — the mission briefing, not a QS sub-editor
 >
 > **A one-minute grep corrected three sprints of narrative.** S133 closed noting "gold #3's

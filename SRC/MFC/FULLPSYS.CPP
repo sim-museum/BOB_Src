@@ -978,6 +978,31 @@ extern "C" void bob_frontend_tick(void)
 		return;
 	}
 
+	/* S135 (BOB_BOBFRAG, default-off): reach the mission BRIEFING screen (IDD_BOBFRAG, gold #3)
+	   headlessly. The real flow is title->QM->Fly->bobfrag->Fly (see bob_startflying_preflight's
+	   note); bobfrag's roster comes from CSQuick1::quickdef. So: run the QM click-mode pre-flight
+	   (resets currquickmiss to the -1 sentinel + gamestate=HOT), launch `quickmission` so CSQuick1's
+	   ctor populates quickdef=quickmissions[0], then LaunchScreen(&bobfrag) -> BoBFragInit -> the
+	   BoBFrag roster dialog. We STOP at the briefing (never click its Fly), so no Rtestsh1 is created
+	   and BOB_SHOT can capture it. Models BOB_STARTFLYING but targets bobfrag, not the flight. */
+	if (getenv("BOB_BOBFRAG") && g_bobActiveFP) {
+		static int bf_t = 0; static int bf_phase = 0;
+		if (bf_phase == 0) {
+			if (++bf_t < 30) return;                       /* let the title screen settle/paint */
+			fprintf(stderr,"[bobfrag] pre-flight + LaunchScreen(quickmission)\n");
+			bob_startflying_preflight(true, true);         /* click-mode: resets QS sentinel, gamestate=HOT */
+			g_bobActiveFP->LaunchScreen(&RFullPanelDial::quickmission);  /* CSQuick1 ctor -> quickdef */
+			bf_phase = 1; bf_t = 0; return;
+		}
+		if (bf_phase == 1) {
+			if (++bf_t < 20) return;                       /* let CSQuick1 settle (quickdef ready) */
+			fprintf(stderr,"[bobfrag] LaunchScreen(bobfrag)\n");
+			g_bobActiveFP->LaunchScreen(&RFullPanelDial::bobfrag);
+			bf_phase = 2; return;
+		}
+		return;   /* hold on the briefing; BOB_SHOT captures it */
+	}
+
 	/* R1.1b Increment 4.1 (BOB_STARTFLYING, default-off): drive the game's own
 	   menu->flight path in one process. Once the front-end is up + has painted a few idles,
 	   run the QM pre-flight then LaunchScreen(quickmissionflight) -- whose InitProc is

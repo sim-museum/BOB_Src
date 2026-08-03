@@ -452,6 +452,22 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
   reuses the S133 nested-panel draw + the RButton callsign buttons. #3 stays GAP, now mapped to its
   true screen + reach-path.
 
+### Sprint 135 — "Render the mission briefing (gold #3)" → *Increment: the BoBFrag briefing renders with its roster* — **✅ CLOSED 2026-08-02 (6/6 pts; §9 row 135 + PORT.md S135)**
+- **Sprint Goal:** reach the `IDD_BOBFRAG` mission briefing (gold #3, per the S134 re-mapping)
+  headlessly + render its flight roster, flipping #3 off GAP.
+- **Committed (~6 pts):** S135 a reliable `BOB_BOBFRAG` reach scaffold + verify the render + gates.
+- **Delivered:** `BOB_BOBFRAG` scaffold (FULLPSYS.CPP, BOB_LINUX, default-off) — QS click-mode
+  pre-flight seeds `quickdef` → `LaunchScreen(&quickmission)` inits CSQuick1 → `LaunchScreen(&bobfrag)`;
+  stops at the briefing (no Rtestsh1 → no flight), so `BOB_SHOT` captures it. The briefing renders
+  closely matching gold #3: crashed-109 + pink-cloud + two-He111 background, the roster listbox
+  (`CRListBoxCtrl` id=1481: **Unit / Aircraft / Duty / Callsign → 54 Squadron / Spitfire / Patrol /
+  Trumpet**), Back/Sim Config footer, exit 0. Gates: safe default exit 0; mainmenu dummy==GL
+  byte-identical; flight 94.9% non-black (scaffold is env-gated → no regression).
+- **#3 GAP → PARTIAL.** Deviations named: "Return to Player" RButton not drawn (front-end RButton
+  hosting is the follow-on); name edit (`CREditCtrl` 1923) created-not-drawn; Fly footer item gated.
+- **Increment demo:** `BOB_BOBFRAG=1 BOB_SHOT=120` → the briefing with the flight roster
+  (`doc/parity/native-quickshots-bobfrag-2026-08-02.png`).
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -499,6 +515,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **135** | ~6 | 6 | ★ **The mission BRIEFING (gold #3, `IDD_BOBFRAG`) RENDERS with its flight roster — #3 GAP → PARTIAL** | **(2026-08-02)** Built on S134's re-mapping (gold #3 = the BoBFrag briefing). New `BOB_BOBFRAG` scaffold (FULLPSYS.CPP, BOB_LINUX, default-off) is the reliable headless reach: QS click-mode pre-flight seeds `quickdef` → `LaunchScreen(&quickmission)` inits CSQuick1 → `LaunchScreen(&bobfrag)`, stopping at the briefing (no Rtestsh1 → no flight) so `BOB_SHOT` captures it. The briefing renders closely matching gold #3: crashed-109 + pink-cloud + two-He111 background, the roster listbox (`CRListBoxCtrl` id=1481: **Unit / Aircraft / Duty / Callsign → 54 Squadron / Spitfire / Patrol / Trumpet**), Back/Sim Config footer, exit 0. **Gates (gl-lock):** safe default exit 0; mainmenu dummy==GL byte-identical; flight frame-150 94.9% non-black (scaffold env-gated → no regression). **#3 GAP → PARTIAL.** Deviations named: "Return to Player" (`IDC_RETURNTOPLAYER`) is an RButton, not hosted in the front-end (follow-on); name edit (`CREditCtrl` 1923) created-not-drawn (template/rect); Fly footer item gated (`CheckForMissingMission`). Evidence `doc/parity/native-quickshots-bobfrag-2026-08-02.png`. |
 | **134** | ~2 | 2 | ◐ **SPIKE — gold #3 mapping RE-CORRECTED to `IDD_BOBFRAG` (the mission briefing), reach-path scoped** | **(2026-08-02)** Following S133's "flight-line click → editor" remaining-step, found it was a mis-mapping: gold #3's "Return to Player" (`IDC_RETURNTOPLAYER`) is in **`IDD_BOBFRAG`** (`class BoBFrag`, BOBFRAG.CPP) — the mission **briefing** (pilot roster + Squadron/Aircraft/Duty/Callsign + formation callsign buttons + Back/Sim Config/Fly footer), not a QS sub-editor. Reached via the **mission-fly / campaign-intercept flow** (`{IDS_FLY,&bobfrag,CheckForMissingMission}`; or `BOB_CAMPAIGN_FLY`) — the QS Scenario-page "Fly" (`FragFly2`) goes straight to flight (verified: hangs under the SDL-dummy capture driver, no GL). No code shipped (game pristine; investigation only). #3 stays GAP, now mapped to its true screen + reach-path; next sprint = reach BoBFrag headlessly + render its roster (likely reuses the S133 nested draw + RButton callsigns). |
 | **133** | ~6 | 6 | ★ **QS order-of-battle flight-lines RENDER — nested `DialList` draw walk; RAF/Luftwaffe tabs show the player flight row (Spitfire IA / 1 / Veteran)** | **(2026-08-02)** S132 fixed the crash so the OOB tabs load; the `CSQuickLine` content stayed blank because `bob_ole_draw_panel(pdial[d])` only draws controls whose `parentDlg==pdial[d]`, and the QS OOB is a `DialList` of `CSQuickLine` rows each with its own `parentDlg`. **Probe (`BOB_TRACE_OOBTREE`) found the game's layout is unusable headlessly** — nested nodes have `viewsize` height 0, `GetWindowRect`=full-screen, `OnGetXYOffset`=(0,0) (MoveWindow/OnSize stubs). **Fix (`FULLPSYS.CPP`, BOB_LINUX, default-on, `BOB_NO_QS_NESTED` reverts):** `bob_fp_draw_nested`/`bob_nested_walk` walk the panel's child `RDialog` tree (`fchild`/`sibling`), draw each nested dialog's hosted controls via `bob_ole_draw_panel`, **synthesizing** the vertical row stacking (identical rows → each content child one `rowStep` lower; `BOB_QS_ROWSTEP`) and reusing the existing template-rect column layout. RAF tab now shows the flight row (piloted-flag icon + Patrol/Altitude/Skill → Spitfire IA/1/Veteran). **Also: MA note 28 verified N/A** (map Bases OOB already composites correctly, no black fill). **Gates (gl-lock):** config-gfx2 + QS-Scenario `cmp` **BYTE-IDENTICAL** on/off (flat panels have no `fchild` → zero regression); mainmenu dummy==GL byte-identical; flight frame-150 94.9% non-black; safe default exit 0. **Honest:** single-flight rows validated; multi-row stacking synthesized (not yet captured with >1 flight); renders the OOB **list**, gold #3 proper (the per-flight *editor* via a flight-line click) stays GAP with that click the only step left. Evidence `doc/parity/native-quickshots-oob-raf-nested-2026-08-02.png`. Cross-port §8s. |
 | **132** | ~6 | 6 | ★ **S130 QS order-of-battle crash FIXED — null-reference-safe `DialBox` copy ctor; RAF/Luftwaffe tabs no longer SIGSEGV** | **(2026-08-02)** The crash S130 root-caused (and S129's tab-nav exposed): `QuickMissionBlue/Red` build a variadic `DialList` where inactive flight slots pass `(count>k)?DialBox(temp):*(DialBox*)NULL`; the ternary's prvalue copy-constructs a DialBox from null → the copy ctor derefs address 0. **Fix (RDIALOG.H, one method, BOB_LINUX):** null-ref-safe copy ctor → empty leaf DialBox (`dial=NULL`) for the null case; `AddChildren` already renders a null-dial child as empty `RDEmptyP`. **Two layers (gdb):** (1) the ctor deref; (2) the copy left `diallist[]` uninit (stock ctor relied on copy-elision; a real copy has none) → `AddChildren` recursed into garbage → fixed by copying `diallist` explicitly. **Gates (gl-lock):** RAF-tab click exit 0 (was SIGSEGV); 13/13 sweep; mainmenu/controls/phase `cmp` byte-identical to S131 (core change transparent; strat diff = sim-clock timing variance, two S132 runs also differ); flight 95.2% non-black; OOB dummy==GL byte-identical; safe default exit 0. **Honest:** fixes the crash + unblocks the screen; the `CSQuickLine` flight-line CONTENT (gold #3 fields) doesn't paint yet (nested-dialog-render gap). #3 stays GAP, crash blocker gone. Cross-port §8q addendum. |
@@ -568,6 +585,20 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 135 (render the briefing):_ **A direct-launch scaffold beats fighting the nav — when
+  you can seed the state the screen needs.** S134 burned two runs on the fragile campaign/click
+  reach (the campaign-fly found no LW package; the QS "Fly" hung in flight bring-up). S135 landed
+  the screen in one build by asking "what state does BoBFrag actually read?" — `quickdef`, which
+  `CSQuick1` populates — and reproducing exactly that (pre-flight → launch quickmission → launch
+  bobfrag), stopping short of the Fly that starts flight. Lessons: (1) to reach a data-driven
+  screen headlessly, seed its data via the smallest real prerequisite (launch the screen that fills
+  the static it reads), don't replay the whole click chain; (2) stop the scaffold one step before
+  the expensive/ fragile action (here, Fly→flight) — the capture wants the screen, not the
+  transition; (3) the roster came for free from the genuine `CRListBoxCtrl` — the S133/earlier
+  hosting work compounds, so a "new screen" is often mostly already-built controls + a reach; (4)
+  name the missing pieces precisely (RButton-not-hosted vs template-filtered vs gated) so the
+  follow-on is a checklist, not a re-investigation.
 
 - _Sprint 134 (gold #3 re-mapping spike):_ **Follow the resource id to the screen, not the
   narrative to the screen.** #3 had been mapped by S129 to the "Parameters" tab, re-mapped to a
