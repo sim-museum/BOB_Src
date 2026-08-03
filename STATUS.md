@@ -7,7 +7,32 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session (S131, 2026-08-02):** **Per-face font registry** — the pervasive "font FACE"
+> **Latest sessions (S132–S140, 2026-08-02/03): the gold #3 briefing arc → CLOSE, + the Directives
+> dialog reached.** Screen parity is now **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 (was 16/1/3). The
+> Quick-Shots → mission-briefing thread was carried from crash to full parity:
+> - **S132** — fixed the QS order-of-battle SIGSEGV (a variadic `DialList` copy-constructs a
+>   `DialBox` from `*(DialBox*)NULL`; null-reference-safe copy ctor, RDIALOG.H).
+> - **S133** — the QS order-of-battle flight-lines render (nested `DialList` draw walk; the game's
+>   layout is dead headlessly, so the row stacking is synthesized).
+> - **S134** (spike) — re-mapped gold #3 to `IDD_BOBFRAG` (the mission *briefing*), not a QS editor.
+> - **S135** — the BoBFrag briefing renders (new `BOB_BOBFRAG` reach scaffold): roster listbox
+>   (Unit/Aircraft/Duty/Callsign → 54 Squadron/Spitfire/Patrol/Trumpet) + background. #3 GAP→PARTIAL.
+> - **S136** — template-driven *button* hosting → the "Return to Player" button (a template-only,
+>   non-DDX RButton) renders.
+> - **S137** — the LW **Directives** dialog (gold #18) is now reachable + framed: it's on the misc
+>   toolbar (TB_MISC), which `bob_map_paint_oob` didn't walk; added the open scaffold + a recursive
+>   TB_MISC paint. #18 GAP→PARTIAL (the dense allocation grid needs an active/Eagle-Attack phase).
+> - **S139** — footer-listbox clip fix: the last footer/tab column was clipped by a tight width; the
+>   "Fly" footer item now renders on the briefing (gold #3) and the QS Scenario page (gold #2).
+> - **S140** — hosted `CREdtBtCtrl` (the 7th R\* control type) → the "Bob" pilot **name box**
+>   renders. **With the roster + Return-to-Player + Fly footer, every gold-#3 element now renders →
+>   #3 PARTIAL → CLOSE.**
+>
+> Only #18 (Directives grid, needs the Eagle-Attack campaign state — same gap as #19's raid-day
+> map) and #4 (the by-design transient "Initialising 3D" loading screen) are non-CLOSE. All gated,
+> `gl-lock`-run, dummy==GL byte-identical + safe-default + flight-94.9%-non-black verified per sprint.
+>
+> Prior (S131, 2026-08-02): **Per-face font registry** — the pervasive "font FACE"
 > deviation is fixed. `bob_gdi_font` drew every font in the one Rowan art TTF, so data/label rows
 > rendered in the art face instead of Arial. Now an 8-slot registry (ART=Intel, SANS=LiberationSans,
 > SERIF=LiberationSerif, MONO=LiberationMono, each ×regular/italic) routes the game's requested
@@ -73,7 +98,9 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 | **Joystick flight input** | DirectInput→SDL_Joystick (enumerate/caps/objects/buffered `GetDeviceData`); default axis map (aileron/elevator/rudder/throttle). **PO fly-test passed.** | connect a stick; `BOB_TRACE_JOY` |
 | **In-flight mouse** | DirectInput→SDL relative motion → the in-3D UI cursor (`AU_UI_X/Y`) | default; `BOB_MOUSEFLY`, `BOB_NOMOUSE` |
 | **HUD info bar** | Altitude/speed + attitude indicator (after the unit-factor fix) | `BOB_HUD` |
-| **Front-end** | Navigable menu + config screens with real hosted R\* OLE controls (combo/static/listbox), combo cycle-on-click, RLE8 backgrounds | `BOB_FRONTEND=1 BOB_OLE_DRAW=1` |
+| **Front-end** | Navigable menu + config screens with real hosted R\* OLE controls — **7 types**: listbox/combo/static/button/edit/radio/**edit-button** (`CREdtBt`, S140), combo cycle-on-click, RLE8 backgrounds | `BOB_FRONTEND=1 BOB_OLE_DRAW=1` |
+| **Mission briefing** | The BoBFrag briefing (gold #3) renders CLOSE: roster listbox, "Return to Player", the "Bob" pilot name box, Back/Sim Config/Fly footer | `BOB_BOBFRAG=1 BOB_SHOT=120` |
+| **Screen parity** | **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 gold shots (`doc/screen-parity.md`); #18 Directives PARTIAL (grid needs Eagle-Attack state), #4 loading screen by-design GAP | `doc/parity/`, `BOB_SHOT` harness |
 | **Config screens** | All 6 options tabs render as readable forms (GFX/More GFX/Controls/Sound/2D/Sim); **Controls** screen is interactively re-bindable (click a device/axis combo → reassign) | `BOB_CONFIGSCREEN=controls\|gfx\|sound\|2d\|sim` |
 | **OCX event routing** | **General eventsink (S33):** the game's own `BEGIN_EVENTSINK_MAP`/`ON_EVENT` maps drive control events via RTTI dispatch — combo TextChanged + listbox Select fire the genuine handlers (replaces the two targeted R5.3b/R4.4 bridges) | `BOB_TRACE_OLE` |
 | **Text rendering** | Game-wide `CSprintf("%s",CString)` fixed (Itanium-ABI varargs) — config/debrief/controls text readable | (always on; `cstring_impl.cpp::FormatV`) |
