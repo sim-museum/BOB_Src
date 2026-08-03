@@ -171,6 +171,7 @@ END_MESSAGE_MAP()
 extern "C" void bob_gdi_present(void);                              /* present (bob_video.cpp) */
 extern "C" int  bob_gdi_text(int,int,const char*,int,unsigned);    /* TTF text (bob_gdi_font.cpp) */
 extern "C" int  bob_gdi_text_width(const char*,int);
+extern "C" void bob_gdi_set_face(int);                             /* S131: current text face (bob_gdi_font.cpp) */
 extern "C" int  bob_gdi_get_click(int*,int*);                      /* pending left-click (bob_video.cpp) */
 /* Linux port: drive the genuine CRListBoxCtrl::OnDraw (BOB_OLE_DRAW) instead of the
    hand-drawn menu text, to render the hosted ActiveX control's real layout. */
@@ -240,6 +241,9 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 {
 	g_bobActiveFP = self; g_bobMenuN = 0;
 	if (!scr) return;
+	bob_gdi_set_face(0);   /* S131: the menu / Back-Begin-Fly rows draw directly in the ART
+	                          (Rowan stencil) face -- reset in case a prior control draw left
+	                          the shared face non-ART. The hosted listbox draw sets its own. */
 	bool horiz = (scr->listalign & FullScreen::HORIZ) != 0;
 	int fh = resW * 36 / 1000; if (fh < 16) fh = 16;        /* ~37px at 1024 wide (matches wine) */
 	/* SP.2 (S123): anchor the menu list at the screen's own per-resolution ListX/ListY --

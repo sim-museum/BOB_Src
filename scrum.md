@@ -387,6 +387,24 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
 - **Increment demo:** navigate to QS, click the Parameters tab (`BOB_CLICKXY="215,214,191"`) →
   the mission-parameters form (Target Area/T.D./Weather/Time/Name) renders.
 
+### Sprint 130 — "gold #3 OOB spike" — **◐ SPIKE, banked 2026-08-02 (3 pts; §9 row 130 + PORT.md S130)**
+- Root-caused the QS order-of-battle SIGSEGV (null-DialBox copy in a variadic panel ternary);
+  fix is a game-code UB-exception deferred. No code shipped.
+
+### Sprint 131 — "Per-face font registry" → *Increment: data/labels render Arial* — **✅ CLOSED 2026-08-02 (8/8 pts; §9 row 131 + PORT.md S131)**
+- **Sprint Goal:** adopt inbound MA note 26 to fix the pervasive "font face" deviation — bob_gdi
+  drew every face in the one art TTF, so data/label rows rendered in the Rowan art face not Arial.
+- **Committed (~8 pts):** S131.1 EnumFontFamilies availability (§1), S131.2 per-face registry (§2),
+  S131.3 combo black-fill (§3) + verify/gates.
+- **Delivered:** §2 per-face registry (4 kinds × regular/italic; Intel ART / Arial SANS / Times
+  SERIF / Courier MONO) threaded through the DC's `CFont`, + italic (gold's italic combo values).
+  §1 and §3 verified **N/A for BoB** (already requests English faces; combos already translucent).
+  ART screens `cmp` byte-identical; controls dummy==GL byte-identical; 14/14 sweep; flight + safe
+  default pass. The "font face" deviation retired across the config/campaign screens. Cross-port
+  §8r; MA notes 26/27 processed. `BOB_NO_FONTFACE` reverts.
+- **Increment demo:** `BOB_CONFIGSCREEN=control BOB_SHOT=70` — labels/values render in Arial
+  (values italic) = gold's scheme; `BOB_TRACE_FONT` shows the requested faces.
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -434,6 +452,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **131** | ~8 | 8 | ★ **Per-face font registry — the pervasive "font FACE" deviation CLOSED (MA note 26 §2); data/labels render Arial (italic), ART screens byte-identical** | **(2026-08-02)** `bob_gdi_font` drew every face in one art TTF (Intel.ttf) → data/label rows in the Rowan art face, not Arial (the deviation on nearly every gold shot). Adopted MA note 26 §2: an 8-slot per-FACE registry (4 kinds × regular/italic) — ART=Intel (unchanged load), SANS=LiberationSans, SERIF=LiberationSerif, MONO=LiberationMono; `CFont::bobFaceKind` classifies the CreateFont face name + captures `bItalic`; `CDC::bobSetFace` threads face+italic through the DC's selected font; the front-end menu sets ART explicitly. **Beyond note 26:** honoured the italic flag → gold's italic combo values match. **N/A for BoB (verified):** §1 Japanese-branch (a `BOB_TRACE_FONT` dump showed the game already requests Arial/Courier/Intel — not a Japanese system), §3 combo-fill (already skipped via `m_FirstSweep=TRUE`); MA note 27's listbox-fill warning heeded. **Gates (all gl-lock):** 14/14 sweep; **mainmenu (ART) `cmp` BYTE-IDENTICAL** on vs off (art screens unregressed); controls **dummy==GL byte-identical**; flight 95.2% non-black; safe default exit 0. Config/campaign data/labels now = gold's Arial-italic scheme; `BOB_NO_FONTFACE` reverts. Cross-port: shared-doc §8r. |
 | **130** | ~5 | 3 | ◐ **SPIKE — gold #3 (QS order-of-battle) root-caused to a null-DialBox-copy SIGSEGV; banked** | **(2026-08-02)** With S129's tab-nav, the RAF/Luftwaffe tabs reach `QuickMissionBlue`/`Red` (the QS OOB with the `CSQuickLine` flight editors = gold #3's Squadron/Aircraft/Duty/Callsign) — a never-run-on-Linux screen that SIGSEGVs. gdb: `QuickMissionBlue (fullpane.cpp:215)`. **Root cause:** the variadic `DialList` uses `ND=*(DialBox*)NULL` as a null terminator; `DialList`+`AddChildren` are null-safe (`&ND==0`, `for(i;diallist[i];i++)`), but the per-slot ternary `(count>k)?DialBox(temp):ND` mixes a **prvalue** temp and the **lvalue** `ND` → the conditional is a prvalue → the `:ND` branch **copy-constructs a DialBox from `*(DialBox*)NULL`** (benign-on-MSVC/faults-on-GCC UB). Only inactive slots hit it (`initind=6` → line 215). **Faithful fix is game-code** (name the true-branch DialBox locals so the ternary yields a reference, across the `QuickMission*` builders — a UB-exception change) → deferred; not compat-fixable (copy precedes the list). Honest S129 interaction noted: tabs 0/1 (Scenario/Parameters) render fine; tabs 2/3 now reach this crash. No code shipped (game pristine; gdb/trace only). Cross-port: shared-doc §8q (MA uses the same RDIALOG.H). #3 stays GAP, now exactly root-caused. |
 | **129** | ~4 | 4 | ★ **QS tab navigation works — RRadio click → page switch; Parameters tab renders; gold #3 mapping corrected** | **(2026-08-02)** Built on S128's hosted CRRadio: the QS page tabs are now interactive. New `OleHost::onButtonClick(localX)` (HostRRadio maps click X → tab index, `SetCurrentSelection`) + a multi-button branch in `bob_ole_click` that fires the genuine `Selected(idx)` event (dispid 1, VTS_I4) via the S33 eventsink → `CSQuick1::OnSelectedRradio` → `QuickMissionParameters/Desc` → `LaunchDial` (the standard panel-nav, not MoveWindow — why it was tractable). **Result:** clicking Parameters switches to the mission-params page (Target Area/T.D./Weather/Time/Name — a real previously-unreachable QS page); clicking Scenario switches back; bidirectional, verified by genuine clicks. **Gold #3 mapping corrected:** the `16-47-45` gold shot is the per-flight PLAYER editor (Squadron/Aircraft/Duty/Callsign, "Return to Player"; `CSQuickLine`), not the Parameters tab — so #3 stays GAP with its true path (a flight-line click) identified, and the nav machinery it needed is built. Parity unchanged 16 CLOSE / 0 PARTIAL / 3 GAP (interactive-UI + mapping progress, not a verdict flip). **Gates (all under gl-lock):** build clean; 7/7 regression; both nav directions render; safe default exit 0; flight frame-150 95.2% non-black on `:0`; **dummy==GL `cmp` BYTE-IDENTICAL on the QS Parameters page**. |
 | **128** | ~6 | 6 | ★ **Host `CRRadioCtrl` — Quick-Shots page tabs render (#2 PARTIAL→CLOSE); 6th hosted R\* control type; parity 16 CLOSE / 0 PARTIAL / 3 GAP** | **(2026-08-02)** `CSQuick1` binds `IDC_RRADIO` as a `CRRadio` and `AddButton()`s the page tabs (Scenario/Parameters/Luftwaffe/RAF), but that control had no host → blank tab row (#2's last deviation, #3's prerequisite). Hosted the genuine `CRRadioCtrl` (`SRC/RRADIO/bob_ole_rradio.cpp`, `HostRRadio : CRRadioCtrl, OleHost`) mirroring the REdit/RButton pattern: boot + `applyDesignProps` (persisted DLGINIT bag → FontNum/Cols/ColW) + `draw` (`m_FirstSweep=TRUE` skips artwork+black-fill → genuine OnDraw) + dispid routing (5 AddButton BSTR, 6 Clear, 1-4 props, stock ForeColor). Registered `CLSID_RRadio` in the factory + `bob_make_rradio` + build integration (RRADIOC.CPP + host TU + include dir). One compile-compat fix in the genuine RRADIOC.CPP (MaskIcon temp-`CPoint&` bind → named local, mirrors RBUTTONC.CPP `_mip00`). **Result:** the tab row renders each caption + its selection-tick/radio icon (MaskIcon art path works, no crash); `[ole] created CRRadioCtrl … AddButton "Scenario"/…`. **Gates:** build clean; 9-recipe sweep 9/9; safe default exit 0; flight frame-150 95.2% non-black on `:0`; **dummy==GL `cmp` BYTE-IDENTICAL on the changed QS screen**. **#2 PARTIAL→CLOSE.** #3 (Parameters page) prerequisite met — remaining half is the tab-click page-switch (`OnSelectedRradio`→`QuickMissionParameters`) + page-visibility (`MoveWindow`), a distinct open item. |
@@ -499,6 +518,19 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 131 (per-face font registry):_ **Trace what the code actually asks for before porting
+  the sibling's fix — the diagnosis transfers even when the patch doesn't.** MA note 26's headline
+  was a Japanese-branch trap; a 10-minute `BOB_TRACE_FONT` dump showed BoB already requests
+  Arial/Courier/Intel (English), so §1 was a no-op and §3 was already handled — the real gap was
+  only §2 (the registry). Porting §1 blindly would have added dead code chasing a bug BoB doesn't
+  have. Lessons: (1) the empirical trace both scoped the sprint down AND de-risked it (I knew the
+  classification worked before writing the registry); (2) the byte-identical `cmp`(on, revert) on
+  the ART title screen was the safety net that let me ship a font change touching every screen —
+  it proved the art screens were untouched in one command; (3) going one step past the sibling
+  note (honouring `bItalic`) was cheap once the registry existed and closed the last visible gap
+  (gold's italic values); (4) heed the sibling's *warning* as much as its fix — note 27 said "don't
+  skip the listbox fill", so I checked and left it alone.
 
 - _Sprint 130 (gold #3 OOB spike):_ **A cheap probe with the machinery you just built can
   reveal the next real bug — and knowing when to bank beats grinding.** One click on the RAF tab

@@ -67,13 +67,15 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
   BoB-side (S127) — outbound BoB note = shared-doc §8o; new-R\*-control-type
   hosting checklist + MaskIcon temp-bind = §8p (S128); null-DialBox-copy trap =
   §8q (S130). MA copy synced byte-identical. Inbound MA notes 18–25 (§8g–8n) logged.
-- **INBOUND MA note 26 (MA S69) — `doc/CROSS-PORT-FROM-MA-2026-08-02-note26.md`,
-  scoped as S131 (NEXT).** BoB has the SAME trap MA found: compat
-  `EnumFontFamiliesExA` (compat_wingdi.h:247) always calls the enum proc, so the
-  game's font-candidate loop (MIG.CPP:300-315) always picks the *first* candidate
-  regardless of availability — the likely root of the pervasive "font face" parity
-  deviation (data/label rows never get Arial). Fix = MA §1 (report a family present
-  only when actually available / pure-ASCII) + §2 (per-face registry: Intel art face
-  vs a metric-compatible sans for Arial) + §3 (combo opaque-black `FillRect` skip).
-  Substantial — a dedicated sprint. Not yet integrated into the shared doc (avoid a
-  mid-flight conflict with the running MA session; integrate when applying in S131).
+- **S131 closed: per-face font registry (MA note 26 §2) — the pervasive "font FACE"
+  deviation is FIXED.** `bob_gdi_font` drew every face in the one art TTF (Intel.ttf);
+  now an 8-slot registry (4 kinds × regular/italic) routes the game's requested face +
+  italic to its own TTF: Intel→ART, Arial→LiberationSans, Times→LiberationSerif,
+  Courier→LiberationMono. Threaded through the DC's selected `CFont`. Config/campaign
+  data/labels now render Arial (values italic) = gold. ART screens `cmp` byte-identical;
+  controls dummy==GL byte-identical; 14/14 sweep; flight + safe default pass.
+  `BOB_NO_FONTFACE` reverts. **MA note 26 §1 (Japanese-branch) N/A for BoB** — a
+  `BOB_TRACE_FONT` dump showed the game already requests Arial/Courier/Intel; §3
+  (combo fill) already handled by `m_FirstSweep=TRUE`. **MA note 27 (S70) processed:**
+  its listbox-black-fill-is-load-bearing warning heeded (untouched). Shared-doc §8r
+  (BoB's adoption + the "not-Japanese/§1-N/A" diagnostic + the italic extension).

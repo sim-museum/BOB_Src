@@ -1622,6 +1622,38 @@ empty-but-terminating sentinel. Not fixable compat-side: the copy happens in gam
 list exists. **Grep** for `*(DialBox*)NULL` / `: ND` in the panel builders to find every site
 before enabling the screens that reach them.
 
+## 8r. Adopting the per-face font registry — and how to tell if your port is "Japanese" (BoB S131, from MA note 26) **[ENGINE]**
+
+BoB adopted MA note 26 §2 (per-face registry) and it fixed the pervasive "font face" deviation
+(data/label rows drew in the Rowan art face instead of Arial). Recast for the shared engine:
+
+**(1) The registry is the load-bearing fix; keep ART byte-identical.** `bob_gdi_font` (MA:
+`ma_gdi_font_create`) drew every face in one TTF. Key the registry by face KIND × style:
+ART=the game's own art TTF (Intel.ttf — *preserve the exact old load order* so ART screens stay
+byte-identical), SANS=LiberationSans, SERIF=LiberationSerif, MONO=LiberationMono (metric-compatible
+with Arial/Times/Courier). Classify the `CreateFont` face name (Arial/Sans→SANS, Times/Roman→SERIF,
+Courier→MONO, Intel/Header/**unknown→ART** so nothing regresses). Thread the resolved face through
+the DC's *currently-selected* `CFont` (both ports already track it on `SelectObject`), setting it
+right before each text draw/measure; the front-end MENU draws outside a DC, so set ART there
+explicitly. Verify ART is unregressed with a `cmp`(S131-on, revert) on the title screen — it must
+be **byte-identical**.
+
+**(2) ★ Honour the `bItalic` flag — gold's data values are Arial *Italic*.** MA note 26 stopped at
+regular faces; the gold config **combo values are italic** (and some labels). Capture the
+`CreateFont` italic byte (or `LOGFONT.lfItalic`) into the `CFont`, double the registry to
+regular/italic per kind, and select the `-Italic` TTF. ART has no italic (stencil) → fall back to
+ART regular. This is what makes the config screens' slanted values line up with gold.
+
+**(3) ★ §1 (the Japanese-branch trap) is NOT universal — check before "fixing" it.** MA's port
+took the Japanese font branch because its `EnumFontFamilies` stub always "found" the CJK probe
+face. **BoB did not**: a one-line `BOB_TRACE_FONT` dump of the names `CreateFont` actually receives
+showed `Arial`/`Courier New`/`Intel`/`FC-Glamour-Bold`/`Fusion Bold` — the English set — so BoB's
+always-succeed enum stub happens to pick the correct first candidates, and the §1 fix is a no-op
+here. **The lesson is the diagnostic, not the patch:** trace the real requested face names first;
+if they're ASCII English, you have only the §2 (registry) gap, not §1. (BoB's §3 combo-fill was
+also already handled by the `m_FirstSweep=TRUE` host convention; MA note 27's "listbox fill is
+load-bearing" warning was heeded — left untouched.)
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

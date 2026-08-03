@@ -48,6 +48,7 @@ class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 extern "C" void bob_gdi_screen_size(int*, int*);   /* live SDL window size (bob_video.cpp) */
 extern "C" int  bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned color); /* bob_gdi_font.cpp */
 extern "C" int  bob_gdi_text_width(const char* str, int pixelH);
+extern "C" void bob_gdi_set_face(int kind);   /* S131: 0=ART 1=SANS 2=SERIF 3=MONO for the next bob_gdi_text/width */
 extern "C" void bob_gdi_line(int x0, int y0, int x1, int y1, unsigned color);
 extern int g_bobListFontH;   /* live R* list font pixel height (bob_ole.cpp); shared so the control's
                                 Shrink/GetTextExtent and OnDraw/ExtTextOut agree on size */
@@ -438,12 +439,44 @@ class CFont : public CGdiObject {
 public:
     int m_height = 0;   /* pixel height (abs of CreateFont's lfHeight) so SelectObject
                            can drive the R* controls' GetTextMetrics/text at the real size */
+    int m_face = 0;     /* S131 (MA note 26): resolved face KIND -- 0=ART (Intel/Rowan art
+                           face), 1=SANS (Arial -> LiberationSans), 2=SERIF (Times ->
+                           LiberationSerif), 3=MONO (Courier -> LiberationMono). The game
+                           CreateFonts each g_AllFonts[] with a face name; classify it here so
+                           bob_gdi renders data/label rows in Arial, not the art face (the
+                           pervasive "font face" parity deviation). */
+    int m_italic = 0;   /* S131: honour the CreateFont bItalic flag -> the italic variant of
+                           the face (gold's combo values are Arial Italic). ART has no italic
+                           (stencil) -> falls back to ART regular. */
+    /* classify a requested face name into a KIND. We ship no CJK faces, so any non-ASCII
+       (Shift-JIS mojibake from the localized font strings) -> ART; unknown -> ART so nothing
+       regresses. Case-insensitive substring match, no libc extension needed. */
+    static int bobFaceKind(const char* name) {
+        if (!name || !name[0]) return 0;
+        char lc[64]; int n = 0;
+        for (const unsigned char* q = (const unsigned char*)name; *q && n < 63; ++q) {
+            if (*q >= 0x80) return 0;                      /* CJK / high-byte -> ART */
+            unsigned char c = *q; if (c >= 'A' && c <= 'Z') c += 32; lc[n++] = (char)c;
+        }
+        lc[n] = 0;
+        auto has = [&](const char* s) -> bool {
+            for (int i = 0; i + 0 <= n; ++i) { int k = 0; while (s[k] && lc[i+k] == s[k]) k++; if (!s[k]) return true; }
+            return false; };
+        if (has("arial") || has("sans") || has("helvetica")) return 1;   /* SANS */
+        if (has("courier")) return 3;                                     /* MONO */
+        if (has("times") || has("serif") || has("roman")) return 2;      /* SERIF */
+        return 0;   /* Intel / Header / Fusion / FC-Glamour / unknown -> ART */
+    }
     CFont() {}
     BOOL CreateFontIndirect(const LOGFONT* lf) {
-        if (lf) { long h = ((const long*)lf)[0]; m_height = (int)(h < 0 ? -h : h); }
+        if (lf) { long h = ((const long*)lf)[0]; m_height = (int)(h < 0 ? -h : h);
+                  const LOGFONT* l = (const LOGFONT*)lf;
+                  m_face = bobFaceKind(l->lfFaceName); m_italic = l->lfItalic ? 1 : 0; }
         return TRUE; }
-    BOOL CreateFont(int h, int, int, int, int, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, LPCSTR) {
-        m_height = h < 0 ? -h : h; return TRUE; }
+    BOOL CreateFont(int h, int, int, int, int, BYTE bItalic, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, LPCSTR name) {
+        m_height = h < 0 ? -h : h; m_face = bobFaceKind(name); m_italic = bItalic ? 1 : 0;
+        if (getenv("BOB_TRACE_FONT")) fprintf(stderr, "[font] CreateFont h=%d face=%d ital=%d name=\"%s\"\n", h, m_face, m_italic, name ? name : "");
+        return TRUE; }
     BOOL CreatePointFont(int, LPCSTR, CDC* = NULL);
     operator HFONT() const { return (HFONT)m_hObject; }
 };
@@ -513,6 +546,14 @@ public:
     CGdiObject* SelectObject(CGdiObject*) { return NULL; }
     HGDIOBJ SelectStockObject(int) { return NULL; }
     CFont* m_bobCurFont = NULL;
+    /* S131: route the current DC font's resolved face KIND to bob_gdi before a text draw/
+       measure, so Arial/Times/Courier rows render in the right TTF (not the art face). No
+       font selected -> ART (0). The front-end menu draws directly (not via a CDC) and set
+       ART itself. */
+    void bobSetFace() const {
+        int code = m_bobCurFont ? (m_bobCurFont->m_face + (m_bobCurFont->m_italic ? 4 : 0)) : 0;
+        bob_gdi_set_face(code);
+    }
     CFont* SelectObject(CFont* f) {
         /* NOTE: we deliberately do NOT adopt f->m_height here. The front-end panels
            are drawn scaled-up (template DLU rects x resolution), but the game's fonts
@@ -550,6 +591,7 @@ public:
     BOOL ExtTextOutA(int x, int y, UINT, LPCRECT, LPCSTR s, UINT n, LPINT) {
         if (m_bobScreen && s && n) {
             char buf[512]; UINT k = n < 511 ? n : 511; memcpy(buf, s, k); buf[k] = 0;
+            bobSetFace();
             bob_gdi_text(m_bobVpX + x, m_bobVpY + y, buf, m_bobTextH, bobColor(m_textColor));
         }
         return TRUE;
@@ -627,10 +669,11 @@ public:
     CSize GetTextExtent(LPCSTR s, int len) const {
         if (!s || len <= 0) return CSize(0, m_bobTextH);
         char buf[512]; int k = len < 511 ? len : 511; memcpy(buf, s, k); buf[k] = 0;
+        bobSetFace();
         return CSize(bob_gdi_text_width(buf, m_bobTextH), m_bobTextH);
     }
     template<class S> CSize GetTextExtent(const S& s) const {
-        LPCSTR p = (LPCSTR)s; return CSize(bob_gdi_text_width(p ? p : "", m_bobTextH), m_bobTextH);
+        LPCSTR p = (LPCSTR)s; bobSetFace(); return CSize(bob_gdi_text_width(p ? p : "", m_bobTextH), m_bobTextH);
     }
     CSize GetOutputTextExtent(LPCSTR s, int len) const { return GetTextExtent(s, len); }
     int  DrawText(LPCSTR s, int len, LPRECT r, UINT format) {
@@ -642,6 +685,7 @@ public:
            lone '&' removed — BDG's "Cockpit && UI" -> "Cockpit & UI", gold #8).
            BOB_NO_WORDWRAP / BOB_NO_AMP_ESCAPE revert each. */
         if (!s || !r) return m_bobTextH;
+        bobSetFace();   /* S131: this DC's font face for the whole wrap+draw below */
         char raw[512]; int n = len < 0 ? (int)strlen(s) : len; if (n < 0) n = 0; if (n > 511) n = 511;
         memcpy(raw, s, n); raw[n] = 0;
 

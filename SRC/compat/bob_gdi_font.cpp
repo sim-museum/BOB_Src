@@ -14,11 +14,28 @@
 
 extern "C" unsigned* bob_gdi_dc_bits(int*, int*);
 
-static unsigned char* g_fontBuf = NULL;
-static stbtt_fontinfo  g_font;
-static int g_fontState = 0;    /* 0 = unloaded, 1 = ok, -1 = failed */
+/* S131 (MA note 26 §2): a per-FACE registry. The game CreateFonts each g_AllFonts[] with a
+   real face name (Intel/FC-Glamour/Fusion -> ART; Arial -> SANS; Times -> SERIF; Courier ->
+   MONO -- classified in CFont::bobFaceKind, afxwin.h). Until now bob_gdi drew every face in
+   the one art TTF (Intel.ttf), so data/label rows rendered in the Rowan art face instead of
+   Arial -- the pervasive "font face" parity deviation. Now each KIND resolves to its own TTF.
+   Face 0 (ART) keeps the exact old load order so the ART screens (title menu, headers,
+   listbox) stay byte-identical. The current face is set by CDC text draws via
+   bob_gdi_set_face(); the front-end menu path leaves it 0 (ART). BOB_NO_FONTFACE forces every
+   request back to ART (the pre-S131 behaviour) for A/B + safety. */
+/* face code = kind + (italic ? 4 : 0); kind 0=ART 1=SANS 2=SERIF 3=MONO. 8 slots. */
+enum { FACE_ART = 0, FACE_SANS = 1, FACE_SERIF = 2, FACE_MONO = 3, FACE_KINDS = 4, FACE_N = 8 };
+struct Face { unsigned char* buf; stbtt_fontinfo info; int state; };   /* state: 0 unloaded, 1 ok, -1 fail */
+static Face g_faces[FACE_N];
+static int  g_curFace = 0;
 
-static int try_one(const char* p)   /* fopen + read + InitFont; keeps g_fontBuf on success */
+extern "C" void bob_gdi_set_face(int code) {
+	static int noFace = -1;
+	if (noFace < 0) noFace = getenv("BOB_NO_FONTFACE") ? 1 : 0;
+	g_curFace = (noFace || code < 0 || code >= FACE_N) ? FACE_ART : code;
+}
+
+static int try_into(Face* fa, const char* p)   /* fopen + read + InitFont into fa */
 {
 	if (!p) return 0;
 	FILE* f = fopen(p, "rb"); if (!f) return 0;
@@ -26,47 +43,87 @@ static int try_one(const char* p)   /* fopen + read + InitFont; keeps g_fontBuf 
 	if (n <= 0) { fclose(f); return 0; }
 	unsigned char* buf = (unsigned char*)malloc(n);
 	size_t got = fread(buf, 1, n, f); fclose(f);
-	if ((long)got != n || !stbtt_InitFont(&g_font, buf, stbtt_GetFontOffsetForIndex(buf, 0))) {
+	if ((long)got != n || !stbtt_InitFont(&fa->info, buf, stbtt_GetFontOffsetForIndex(buf, 0))) {
 		free(buf); return 0;
 	}
-	g_fontBuf = buf; fprintf(stderr, "[gdifont] loaded %s\n", p); return 1;
+	fa->buf = buf; fprintf(stderr, "[gdifont] face loaded %s\n", p); return 1;
 }
-static int load_font(void)
+static int load_face(int code)
 {
-	if (g_fontState) return g_fontState > 0;
+	if (code < 0 || code >= FACE_N) code = FACE_ART;
+	Face* fa = &g_faces[code];
+	if (fa->state) return fa->state > 0;
+	int kind = code % FACE_KINDS;      /* 0 ART 1 SANS 2 SERIF 3 MONO */
+	int ital = code >= FACE_KINDS;     /* italic variant? */
 	char path[1200];
 	const char* drive = getenv("BOB_DRIVE_C");
-	/* Try, in order: override; the game's frontend fonts (some are non-standard TTFs stb
-	   can't parse -> skip to the next); then a system serif close to the wine menu face. */
-	const char* gameFonts[] = { "Intel.ttf", "g101016_.ttf", "FUSION_B.TTF", NULL };
-	if (try_one(getenv("BOB_FONT"))) { g_fontState = 1; return 1; }
-	for (int i = 0; drive && gameFonts[i]; i++) {
-		snprintf(path, sizeof(path), "%s/windows/Fonts/%s", drive, gameFonts[i]);
-		if (try_one(path)) { g_fontState = 1; return 1; }
+	if (kind == FACE_ART) {
+		/* ART regular is unchanged from the pre-S131 load_font() (override; the game's own
+		   frontend fonts, some non-parseable -> skip; then a system serif). The Rowan art
+		   face has no italic variant -> ART italic reuses ART regular. */
+		if (ital) { if (load_face(FACE_ART)) { *fa = g_faces[FACE_ART]; return 1; } fa->state = -1; return 0; }
+		const char* gameFonts[] = { "Intel.ttf", "g101016_.ttf", "FUSION_B.TTF", NULL };
+		if (try_into(fa, getenv("BOB_FONT"))) { fa->state = 1; return 1; }
+		for (int i = 0; drive && gameFonts[i]; i++) {
+			snprintf(path, sizeof(path), "%s/windows/Fonts/%s", drive, gameFonts[i]);
+			if (try_into(fa, path)) { fa->state = 1; return 1; }
+		}
+		if (try_into(fa, "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf")) { fa->state = 1; return 1; }
+	} else {
+		/* SANS/SERIF/MONO: metric-compatible Liberation faces (Arial/Times/Courier), regular
+		   or italic per `ital`, DejaVu fallback. Gold's English data/label rows are Arial
+		   (values italic); LiberationSans matches its metrics. */
+		const char* cand[3] = { NULL, NULL, NULL };
+		if (kind == FACE_SANS) {
+			cand[0] = ital ? "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf"
+			               : "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf";
+			cand[1] = ital ? "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"
+			               : "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
+		} else if (kind == FACE_SERIF) {
+			cand[0] = ital ? "/usr/share/fonts/truetype/liberation/LiberationSerif-Italic.ttf"
+			               : "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf";
+			cand[1] = ital ? "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf"
+			               : "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf";
+		} else { /* MONO */
+			cand[0] = ital ? "/usr/share/fonts/truetype/liberation/LiberationMono-Italic.ttf"
+			               : "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf";
+			cand[1] = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf";
+		}
+		for (int i = 0; i < 3; i++) if (try_into(fa, cand[i])) { fa->state = 1; return 1; }
+		/* last resort: the regular variant of the same kind, then ART, so text still renders */
+		if (ital && load_face(kind)) { *fa = g_faces[kind]; return 1; }
+		if (load_face(FACE_ART)) { *fa = g_faces[FACE_ART]; return 1; }
 	}
-	if (try_one("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf")) { g_fontState = 1; return 1; }
-	fprintf(stderr, "[gdifont] FAILED to load any font\n"); g_fontState = -1; return 0;
+	fprintf(stderr, "[gdifont] FAILED to load face code %d\n", code); fa->state = -1; return 0;
+}
+/* resolve the font to render/measure with -- the current face, ART fallback. */
+static stbtt_fontinfo* cur_font(void)
+{
+	int k = g_curFace;
+	if (!load_face(k)) { if (!load_face(FACE_ART)) return NULL; k = FACE_ART; }
+	return &g_faces[k].info;
 }
 
 /* Draw `str` at (x,y) top-left, glyph pixel height `pixelH`, colour 0x00RRGGBB.
    Antialiased, alpha-blended into the BGRA framebuffer. Returns the advance width. */
 extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned color)
 {
-	if (!load_font() || !str || pixelH <= 0) return 0;
+	stbtt_fontinfo* fnt = cur_font();
+	if (!fnt || !str || pixelH <= 0) return 0;
 	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
 	if (!fb) return 0;
-	float scale = stbtt_ScaleForPixelHeight(&g_font, (float)pixelH);
-	int ascent; stbtt_GetFontVMetrics(&g_font, &ascent, NULL, NULL);
+	float scale = stbtt_ScaleForPixelHeight(fnt, (float)pixelH);
+	int ascent; stbtt_GetFontVMetrics(fnt, &ascent, NULL, NULL);
 	int baseline = y + (int)(ascent * scale + 0.5f);
 	unsigned cr = (color >> 16) & 0xff, cg = (color >> 8) & 0xff, cb = color & 0xff;
 	float penx = (float)x;
 	for (const unsigned char* p = (const unsigned char*)str; *p; p++) {
 		int x0, y0, x1, y1;
-		stbtt_GetCodepointBitmapBox(&g_font, *p, scale, scale, &x0, &y0, &x1, &y1);
+		stbtt_GetCodepointBitmapBox(fnt, *p, scale, scale, &x0, &y0, &x1, &y1);
 		int gw = x1 - x0, gh = y1 - y0;
 		if (gw > 0 && gh > 0) {
 			unsigned char* glyph = (unsigned char*)malloc((size_t)gw * gh);
-			stbtt_MakeCodepointBitmap(&g_font, glyph, gw, gh, gw, scale, scale, *p);
+			stbtt_MakeCodepointBitmap(fnt, glyph, gw, gh, gw, scale, scale, *p);
 			int ox = (int)penx + x0, oy = baseline + y0;
 			for (int gy = 0; gy < gh; gy++) for (int gx = 0; gx < gw; gx++) {
 				int a = glyph[gy * gw + gx]; if (!a) continue;
@@ -81,9 +138,9 @@ extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned 
 			}
 			free(glyph);
 		}
-		int aw; stbtt_GetCodepointHMetrics(&g_font, *p, &aw, NULL);
+		int aw; stbtt_GetCodepointHMetrics(fnt, *p, &aw, NULL);
 		penx += aw * scale;
-		if (p[1]) penx += stbtt_GetCodepointKernAdvance(&g_font, p[0], p[1]) * scale;
+		if (p[1]) penx += stbtt_GetCodepointKernAdvance(fnt, p[0], p[1]) * scale;
 	}
 	return (int)penx - x;
 }
@@ -111,13 +168,14 @@ extern "C" void bob_gdi_line(int x0, int y0, int x1, int y1, unsigned color)
 /* Measure the advance width of `str` at `pixelH` without drawing (for centring/click rects). */
 extern "C" int bob_gdi_text_width(const char* str, int pixelH)
 {
-	if (!load_font() || !str || pixelH <= 0) return 0;
-	float scale = stbtt_ScaleForPixelHeight(&g_font, (float)pixelH);
+	stbtt_fontinfo* fnt = cur_font();
+	if (!fnt || !str || pixelH <= 0) return 0;
+	float scale = stbtt_ScaleForPixelHeight(fnt, (float)pixelH);
 	float penx = 0;
 	for (const unsigned char* p = (const unsigned char*)str; *p; p++) {
-		int aw; stbtt_GetCodepointHMetrics(&g_font, *p, &aw, NULL);
+		int aw; stbtt_GetCodepointHMetrics(fnt, *p, &aw, NULL);
 		penx += aw * scale;
-		if (p[1]) penx += stbtt_GetCodepointKernAdvance(&g_font, p[0], p[1]) * scale;
+		if (p[1]) penx += stbtt_GetCodepointKernAdvance(fnt, p[0], p[1]) * scale;
 	}
 	return (int)penx;
 }

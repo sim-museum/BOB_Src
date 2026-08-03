@@ -7,7 +7,16 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session (S129, 2026-08-02):** **Quick-Shots tab navigation** — building on S128's
+> **Latest session (S131, 2026-08-02):** **Per-face font registry** — the pervasive "font FACE"
+> deviation is fixed. `bob_gdi_font` drew every font in the one Rowan art TTF, so data/label rows
+> rendered in the art face instead of Arial. Now an 8-slot registry (ART=Intel, SANS=LiberationSans,
+> SERIF=LiberationSerif, MONO=LiberationMono, each ×regular/italic) routes the game's requested
+> face + `bItalic` flag to its own TTF, threaded through the DC's selected `CFont`. Config/campaign
+> data/labels now render Arial with italic values = gold's scheme; the ART screens (title menu,
+> headers) are `cmp`-verified byte-identical. Adopted from MA note 26 §2 (§1 Japanese-branch N/A —
+> BoB already requests English faces; §3 combo-fill already handled). `BOB_NO_FONTFACE` reverts.
+>
+> Prior (S129, 2026-08-02): **Quick-Shots tab navigation** — building on S128's
 > hosted `CRRadioCtrl`, a click on a page tab now fires the genuine `Selected` event
 > (`OleHost::onButtonClick` → `bob_ole_click` → the S33 eventsink → `CSQuick1::OnSelectedRradio`
 > → `LaunchDial`), switching the panel page. Clicking Parameters renders the mission-parameters

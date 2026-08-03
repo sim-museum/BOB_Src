@@ -30,6 +30,18 @@ capture must be byte-identical (`cmp`) to a real-GL capture of the same recipe �
 on mainmenu (first try)** — catches the environment-dependent uninitialized-PX class
 without a display. Fresh captures: `native-*-2026-07-27.png` (13 changed screens).
 
+**S131 (2026-08-02): the pervasive "font FACE" deviation is CLOSED** (MA note 26 §2).
+`bob_gdi_font` rendered every face in the one art TTF (Intel.ttf), so data/label rows
+drew in the Rowan art face instead of Arial. Now a per-FACE registry routes the game's
+requested face + italic to its own metric-compatible TTF (Intel/FC-Glamour/Fusion→ART;
+Arial→LiberationSans; Times→LiberationSerif; Courier→LiberationMono; italic→the italic
+variant, matching gold's italic combo values). Threaded through the DC's selected `CFont`
+(`CFont::bobFaceKind` classifies the CreateFont face name). Config/campaign screens
+(#6–#13, #16, #17) now render data/labels in Arial (values italic) = gold's scheme; the
+ART screens (title menu, headers) are `cmp`-verified byte-identical (`BOB_NO_FONTFACE`
+reverts). MA note 26 §1 (Japanese-branch) N/A for BoB; §3 (combo fill) already handled;
+MA note 27 (listbox-fill is load-bearing) heeded. Fresh captures: `native-config-*-2026-08-02.png`.
+
 **Capture harness (SP.1, this sprint):** `BOB_SHOT=<n>` + `BOB_SHOT_PATH=<file>` —
 deterministic one-shot capture: after n front-end ticks (or map paints) the GDI
 framebuffer is dumped and the process exits. Works headless (`SDL_VIDEODRIVER=dummy`).
@@ -107,8 +119,18 @@ key screens (mainmenu, config-gfx, quickshots, phaseselect, strategic-map, cockp
    FontNum/FontNum2 (gold's large tab/heading faces), fore/shadow colors, RStatic
    numeric ResourceNumber (the faithful caption-resolution path — would settle #16's
    duplicate date), REdit props.
-4. **Remaining render classes:** ~~multi-line word-wrap for description statics (R6.2)~~
-   **☑ CLOSED S127** (`CDC::DrawText` DT_WORDBREAK; only multi-line-height boxes wrap so
+4. **Remaining render classes:** ~~native-DLU font FACE pass (R6.2)~~ **☑ CLOSED S131
+   (MA note 26 §2):** `bob_gdi_font` drew every face in the one art TTF (Intel.ttf), so
+   data/label rows rendered in the Rowan art face instead of Arial — the pervasive "font
+   face" deviation on nearly every config/campaign screen. Now a per-FACE registry routes
+   the game's requested face (Intel/FC-Glamour/Fusion→ART, Arial→SANS LiberationSans,
+   Times→SERIF, Courier→MONO) + the italic flag (gold's combo values are Arial Italic) to
+   its own TTF, threaded through the DC's selected `CFont`. ART screens stay byte-identical
+   (title menu `cmp`-verified). MA note 26 §1 (EnumFontFamilies Japanese-branch) is **N/A
+   for BoB** — the game already requests the English faces; §3 (combo black-fill) already
+   handled by BoB's `m_FirstSweep=TRUE` host convention; MA note 27's listbox-fill warning
+   heeded (untouched). `BOB_NO_FONTFACE` reverts. ~~multi-line word-wrap for description
+   statics (R6.2)~~ **☑ CLOSED S127** (`CDC::DrawText` DT_WORDBREAK; only multi-line-height boxes wrap so
    single-line config labels are untouched; `BOB_NO_WORDWRAP` reverts — #2 QS + #16 phase
    descriptions wrap); ~~accelerator-escape "&&"→"&" in label draw (#8)~~ **☑ CLOSED S127**
    (Windows '&' prefix processing in the static `DrawText` path, DT_NOPREFIX-aware; combos

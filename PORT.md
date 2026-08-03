@@ -1,5 +1,47 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S131 (2026-08-02, Sprint 131): per-face font registry — the pervasive "font FACE" deviation CLOSED (MA note 26 §2); data/labels render Arial (italic), ART screens byte-identical
+>
+> **The single biggest cross-screen parity deviation is fixed.** `bob_gdi_font` drew *every*
+> font in one global TTF (Intel.ttf, the Rowan art face), so every data/label row rendered in
+> the stencil art face instead of Arial — the "font face" deviation named on nearly every gold
+> shot (#6–#13, #16, #17). Adopted from **MA note 26 §2** (recast for BoB):
+> - **Per-FACE registry (`bob_gdi_font.cpp`).** 8 slots = 4 kinds × regular/italic:
+>   ART=Intel.ttf (the existing load chain, unchanged), SANS=LiberationSans, SERIF=
+>   LiberationSerif, MONO=LiberationMono (all metric-compatible with Arial/Times/Courier),
+>   each with its `-Italic` variant; ART has no italic (stencil) → falls back to ART regular.
+>   `cur_font()` resolves the current face; ART loads byte-identically to the old `load_font()`.
+> - **Classification + threading.** `CFont::bobFaceKind` (`afxwin.h`) classifies the game's
+>   `CreateFont` face name (Intel/FC-Glamour/Fusion→ART, Arial→SANS, Times→SERIF, Courier→MONO,
+>   CJK/unknown→ART) and captures the `bItalic` flag; `CDC::SelectObject` already tracks the
+>   current `CFont`, so `CDC::bobSetFace()` routes `face+italic` to `bob_gdi_set_face()` before
+>   each text draw/measure. The front-end menu draws directly (not via a CDC) → it sets ART(0)
+>   in `bob_draw_menu` (the title/Back-Begin-Fly rows are the art face). No signature churn on
+>   `bob_gdi_text`.
+> - **Italic (beyond note 26).** Gold's combo values are Arial *Italic*; honouring the game's
+>   `bItalic` flag → the italic TTF variant makes the config values slant exactly like gold.
+>
+> **What was N/A for BoB (verified, unlike MA):** §1 (the `EnumFontFamilies` Japanese-branch
+> trap) — a `BOB_TRACE_FONT` dump proved the game already requests the **English** faces
+> (`Arial`/`Courier New`/`Intel`/`FC-Glamour-Bold`/`Fusion Bold`), so BoB was never running as a
+> Japanese system; the always-succeed enum stub happens to pick the correct first candidates.
+> §3 (combo opaque-black `FillRect`) — already skipped by BoB's `m_FirstSweep=TRUE` host
+> convention (combos were already translucent). **MA note 27 heeded:** did NOT skip the
+> `CRListBoxCtrl` black-fill (it is load-bearing for the front-end menu on MA; BoB's menu draws
+> via `bob_draw_menu`, but the warning stands — left untouched).
+>
+> **Gates (all under `gl-lock`):** build clean; **14-recipe headless sweep 14/14 exit 0**;
+> **mainmenu (ART) `cmp` BYTE-IDENTICAL S131-on vs `BOB_NO_FONTFACE`** (the art screens are
+> provably unregressed — the registry only touches sans/serif/mono requests); config-controls
+> **dummy==GL `cmp` BYTE-IDENTICAL** (the registry is backend-independent); flight frame-150 on
+> `:0` 95.2% non-black exit 0; safe default `./bob` exit 0. **Result:** config/campaign
+> data/labels now render Arial with italic values = gold's scheme — the "font face" deviation
+> retired across ~10 screens (all already CLOSE; deviation removed). `BOB_NO_FONTFACE` reverts.
+> Evidence: `doc/parity/native-config-{controls,gfx,sound}-2026-08-02.png`. Files:
+> `SRC/compat/{bob_gdi_font.cpp,afxwin.h}`, `SRC/MFC/FULLPSYS.CPP`. Cross-port: MA notes 26/27
+> processed; shared-doc §8r (BoB's adoption + the "not-Japanese, §1 N/A" finding + the italic
+> extension).
+
 > ## S130 (2026-08-02, Sprint 130 — SPIKE): gold #3 (the QS order-of-battle / player-flight editor) root-caused to a null-DialBox-copy crash; banked
 >
 > **Following S129's tab navigation, the RAF/Luftwaffe tabs now reach `QuickMissionBlue()`/
