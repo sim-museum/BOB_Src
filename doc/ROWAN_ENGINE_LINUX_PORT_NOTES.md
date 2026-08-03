@@ -1705,6 +1705,35 @@ map OOB dialogs already composite their lists over the translucent panel (no opa
 carried "residuals" dissolve on measurement; the note said so itself. Applies to MiG Alley's
 `DialList` screens (Career/Log/order-of-battle) verbatim — same `RDialog` tree, same stubbed layout.
 
+## 8t. Hosting `CREdtBt` (the edit-button), + two OCX compile traps that recur per new control TU (BoB S140) **[ENGINE]**
+
+Bringing a 7th R\* control type online (`CREdtBtCtrl`, the edit-button used for pilot-name slots)
+confirmed the new-control-type recipe (§8p) and surfaced two compile traps worth pre-empting on any
+port that adds a genuine OCX TU to the build:
+
+**1 — the `IconsUI` enum forward-decl underlying-type mismatch.** `uiicons.h` defines
+`enum IconsUI : unsigned int` (its `ICON_SELECT_MASK=0xff000000` overflows `int`). Several control
+headers forward-declare it as `enum IconsUI : int;` — MSVC ignored the mismatch, GCC errors
+("different underlying type"). Fix the forward decl to `: unsigned int` (BOB_LINUX-guarded). Only
+TUs that include BOTH the control header and `uiicons.h` hit it, which is why RButton/RRadio didn't.
+
+**2 — `MaskIcon(CDC*, CPoint&)` won't bind a temporary.** `icon->MaskIcon(pDC, CPoint(x,y))` passes
+a prvalue to a non-const `CPoint&` — GCC rejects it. Name the temp: `CPoint p(x,y);
+icon->MaskIcon(pDC, p);` (RRADIOC/RBUTTONC already do this — grep the compiling sibling TUs for the
+exact pattern before reasoning it out).
+
+**Two control-specific host subtleties** (read the genuine control before writing the host): (a)
+`CREdtBt`'s Caption is a *stock* property — the wrapper's `SetCaption` calls
+`SetProperty(DISPID_CAPTION, ...)` (not a custom dispid like CREdit's `0x3`), so route
+`DISPID_CAPTION_` → `InternalSetText` (compat `SetText` is a no-op); (b) its `OnDraw` draws a
+`captiontext` member refreshed only in click/OnTextChanged handlers, not inside `OnDraw`, so a host
+that drives `OnDraw` directly must set `captiontext = InternalGetText()` first. General rule: check
+`SetProperty(...)` in the wrapper `.cpp` for the caption dispid, and read the control's own `OnDraw`
+for where its text actually comes from.
+
+MiG Alley: if any MA screen hosts `CREdtBt`/edit-buttons (pilot rosters, name entry), the same host
++ the same two compile fixes transfer verbatim.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

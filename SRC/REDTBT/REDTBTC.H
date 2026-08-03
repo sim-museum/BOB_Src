@@ -12,7 +12,11 @@
 
 #include "globdefs.h"
 #include "files.g"
+#if BOB_LINUX
+enum IconsUI : unsigned int;   /* match uiicons.h's underlying type (0xff000000 values -> unsigned); GCC rejects the int mismatch MSVC ignored */
+#else
 enum IconsUI : int;
+#endif
 class CREdtBtCtrl : public COleControl
 {
 	DECLARE_DYNCREATE(CREdtBtCtrl)

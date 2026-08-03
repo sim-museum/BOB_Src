@@ -18,7 +18,7 @@ Rebuild: `cd /home/admin/bob/build && ninja bob`.
 | What | Where |
 |---|---|
 | Backlog (Releases R1–R7 + SP) + burndown | `scrum.md` — Release SP is the screen-parity epic; §9 burndown |
-| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently 16 CLOSE / 2 PARTIAL / 1 GAP of 19 (S135 #3 briefing + S137 #18 Directives both GAP→PARTIAL; only #4 loading-screen GAP remains, by design) |
+| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 (S140: #3 briefing PARTIAL→CLOSE; #18 Directives PARTIAL; only #4 loading-screen GAP remains, by design) |
 | Side-by-side captures | `doc/parity/` |
 | Engineering evidence log (newest first) | `PORT.md` |
 | Live product snapshot | `STATUS.md` |
@@ -30,6 +30,18 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-03)
 
+- **S140 closed: hosted `CREdtBtCtrl` (7th R\* control type) — the "Bob" briefing
+  name box renders; gold #3 PARTIAL → CLOSE.** BoBFrag's pilot slots
+  `IDC_PILOT_0..14` are `CREdtBt` (edit-button), DDX-bound; `OnInitDialog`'s
+  `SetCaption(playerslotname)` sets the player's "Bob". Hosted the genuine
+  `CREdtBtCtrl` (new `SRC/REDTBT/bob_ole_redtbt.cpp` + OCX `REDTBTC.CPP` +
+  `CLSID_REdtBt`) mirroring the REdit host (caption is stock →
+  `InternalSetText`; `captiontext` refreshed from `InternalGetText()` in
+  `draw()`). Two OCX compile-compat fixes (BOB_LINUX): `IconsUI` forward-decl
+  `:int`→`:unsigned int` + `MaskIcon(CPoint&)` temp-bind (§8p). Gates: safe
+  default exit 0; mainmenu dummy==GL byte-identical; flight 94.9% non-black.
+  **Parity 17 CLOSE / 1 PARTIAL / 1 GAP** — with S135 roster + S136
+  Return-to-Player + S139 Fly footer, every gold-#3 element renders.
 - **S139 closed: footer-listbox clip fix — clipped last footer/tab columns now
   render.** The footer/tab `CRListBoxCtrl` lays columns at its own internal widths
   but `ExtTextOut`-clips each to the passed `rcBounds`; `bob_draw_menu` passed a

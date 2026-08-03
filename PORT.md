@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S140 (2026-08-03, Sprint 140): hosted `CREdtBtCtrl` (7th R\* control type) — the "Bob" briefing name box renders; gold #3 PARTIAL → CLOSE
+>
+> **Gold #3 is now CLOSE — the last missing element renders.** BoBFrag's pilot roster slots
+> `IDC_PILOT_0..14` are `CREdtBt` (an edit-button control), DDX_Control-bound; `OnInitDialog` does
+> `GETDLGITEM(IDC_PILOT_[i])->SetCaption(playerslotname / leadername)`, and the player's slot holds
+> "Bob" (`Save_Data.CommsPlayerName`) — gold #3's name box. Our control creation is DDX-driven, but
+> `CREdtBt` was the one R\* type not yet hosted, so the slots no-op'd and the box was blank.
+>
+> **Fix — host the 7th R\* control type** (the established §8p recipe, cf. S128 CRRadio): new host
+> `SRC/REDTBT/bob_ole_redtbt.cpp` (`HostREdtBt : CREdtBtCtrl, OleHost`) mirroring the REdit host, the
+> genuine OCX `REDTBT/REDTBTC.CPP` added to the `bob_rlistbox` library, and `CLSID_REdtBt`
+> (`461a1fe3…`) wired into `bob_ole_create_control`. The pilot slots are DDX-bound, so they
+> instantiate automatically once the CLSID resolves. **Two CREdtBt-specifics vs the REdit recipe:**
+> (1) its Caption is a *stock* property — `CREdtBt::SetCaption → SetProperty(DISPID_CAPTION)`
+> (REDTBT.CPP), unlike CREdit's custom dispid 3 — and compat's `CWnd::SetText` is a no-op, so the
+> host sets the caption via `InternalSetText` (the `m_bobText` that `InternalGetText` returns); (2)
+> the genuine `OnDraw` draws a `captiontext` member it only refreshes in its handlers/`OnTextChanged`
+> (REDTBTC.CPP), *not* inside `OnDraw`, so the host refreshes `captiontext = InternalGetText()` in
+> `draw()` before calling `OnDraw`.
+>
+> **Two OCX compile-compat fixes** (BOB_LINUX-guarded, the §8p class): the `IconsUI` forward-decl in
+> `REDTBTC.H` was `enum IconsUI : int;` but `uiicons.h` defines it `: unsigned int` (its
+> `0xff000000` values overflow int) — GCC rejects the mismatch MSVC ignored; fixed to `: unsigned
+> int`. And `icon->MaskIcon(pDC, CPoint(x,y))` binds a temporary to `MaskIcon`'s `CPoint&` — named
+> the temp, exactly as RRADIOC/RBUTTONC already do.
+>
+> **Result:** the briefing now shows the bordered **"Bob"** name box mid-left = gold #3
+> (`doc/parity/native-quickshots-bobfrag-2026-08-02.png`). With S135 (roster), S136 (Return-to-Player
+> button), and S139 (Fly footer), **every gold-#3 element renders → #3 PARTIAL → CLOSE**
+> (parity **17 CLOSE / 1 PARTIAL / 1 GAP** of 19).
+>
+> **Gates (all `gl-lock`):** build clean; safe default exit 0; mainmenu **dummy==GL byte-identical**;
+> flight frame-150 94.9% non-black. `CREdtBt` only instantiates on BoBFrag, so every other screen is
+> unaffected. **Deviations remaining on #3:** the Return-to-Player button art is the tickbox-style
+> icon vs gold's rounded bezel; font face (R6.2). Repro: `BOB_BOBFRAG=1 BOB_SHOT=120`. Files:
+> `SRC/REDTBT/bob_ole_redtbt.cpp` (new), `SRC/REDTBT/REDTBTC.CPP` + `REDTBTC.H` (compat fixes),
+> `SRC/RLISTBOX/bob_ole.cpp` + `bob_ole_host.h` + `CMakeLists.txt` (wiring). Cross-port: §8t.
+
 > ## S139 (2026-08-03, Sprint 139): footer-listbox clip fix — clipped last footer/tab columns render (gold #3 "Fly", gold #2 "Fly")
 >
 > **A one-line clip widen fixed the missing "Fly" on gold #3 — and several other screens with it.**

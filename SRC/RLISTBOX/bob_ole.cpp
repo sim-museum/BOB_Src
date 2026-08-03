@@ -34,6 +34,7 @@ static const CLSID CLSID_RStatic  = { 0xc42bac3d, 0xca3c, 0x11d6, { 0xa1,0xf0,0x
 static const CLSID CLSID_RButton  = { 0x78918646, 0xa917, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 static const CLSID CLSID_REdit    = { 0x499e2be6, 0xac32, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 static const CLSID CLSID_RRadio   = { 0x5363ba22, 0xd90a, 0x11d6, { 0xa1,0xf0,0x00,0x80,0xc8,0x58,0x2d,0xe4 } };
+static const CLSID CLSID_REdtBt   = { 0x461a1fe3, 0xb81b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S140: CREdtBt pilot slots (BoBFrag) */
 
 /* wrapper CWnd*  ->  hosted control (type-agnostic via OleHost). */
 static std::unordered_map<CWnd*, OleHost*>& hosts() {
@@ -61,6 +62,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
     else if (memcmp(clsid, &CLSID_RButton,  sizeof(CLSID)) == 0) { h = bob_make_rbutton(parent);  what = "CRButtonCtrl"; }
     else if (memcmp(clsid, &CLSID_REdit,    sizeof(CLSID)) == 0) { h = bob_make_redit(parent);    what = "CREditCtrl"; }
     else if (memcmp(clsid, &CLSID_RRadio,   sizeof(CLSID)) == 0) { h = bob_make_rradio(parent);   what = "CRRadioCtrl"; }
+    else if (memcmp(clsid, &CLSID_REdtBt,   sizeof(CLSID)) == 0) { h = bob_make_redtbt(parent);   what = "CREdtBtCtrl"; }
     if (!h) return FALSE;              /* other R* controls not hosted yet -> wrapper no-ops */
     h->ctrlId = (int)id; h->parentDlg = parent; h->dlgId = g_bobDlgIDD;
     h->applyDesignProps();

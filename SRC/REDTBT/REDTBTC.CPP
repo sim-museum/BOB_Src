@@ -438,7 +438,12 @@ void CREdtBtCtrl::DrawTransparentBitmap(FileNum filenum,CDC * pDC, int x, int y)
 		if (filenum>=0x10000)
 		{
 			IconDescUI* icon=(IconDescUI*)pData;
+#if BOB_LINUX
+			CPoint _mipxy(x,y);   /* MaskIcon takes CPoint& -- no temp bind on GCC, cf. RRADIOC/RBUTTONC (§8p) */
+			icon->MaskIcon(pDC,_mipxy);
+#else
 			icon->MaskIcon(pDC,CPoint(x,y));
+#endif
 		}
 		else
 		if (pData && pData[0]=='B' && pData[1]=='M') // checks if its a bitmap file
