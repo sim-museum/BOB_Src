@@ -28,8 +28,19 @@ Gold standard: `/run/media/admin/BEA6-BBCE/bob/` (19 PNGs). Oracle ruling: the
 gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 `boblang.dll` PE resources since S124; `BOB_NO_PE_RSRC=1` reverts).
 
-## Current state (2026-08-02)
+## Current state (2026-08-03)
 
+- **S139 closed: footer-listbox clip fix — clipped last footer/tab columns now
+  render.** The footer/tab `CRListBoxCtrl` lays columns at its own internal widths
+  but `ExtTextOut`-clips each to the passed `rcBounds`; `bob_draw_menu` passed a
+  tight `total` (re-measured text widths) that clipped the last column off
+  (bobfrag "Fly", QS Scenario "Fly", config tab edges). Widened the listbox clip
+  to the remaining screen width (positions internal + hit-rects from `wids[]` →
+  nothing moves; `BOB_NO_FOOTER_CLIP` reverts). bobfrag footer = Back/Sim
+  Config/Fly (gold #3); QS footer = Back/Fly (gold #2). A/B verified each screen's
+  diff is a benign clipped-edge reveal (mainmenu byte-identical). Gates: safe
+  default exit 0; flight 94.9% non-black. #3 nearer CLOSE (only the "Bob" name box
+  `CREdtBt` remains).
 - **S137 closed: LW Directives dialog (gold #18) now REACHABLE + renders — #18
   GAP → PARTIAL.** The Directives dialog (`LWDirectives`) is on the **misc**
   toolbar (TB_MISC), which `bob_map_paint_oob` never walked. Added

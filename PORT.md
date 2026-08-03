@@ -1,5 +1,32 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S139 (2026-08-03, Sprint 139): footer-listbox clip fix — clipped last footer/tab columns render (gold #3 "Fly", gold #2 "Fly")
+>
+> **A one-line clip widen fixed the missing "Fly" on gold #3 — and several other screens with it.**
+> The front-end footer/tab rows draw through a hosted `CRListBoxCtrl` (`bob_draw_menu` →
+> `bob_ole_draw_listbox`). The control lays its columns at its OWN internal widths (`AddColumn` +
+> `ResizeToFit` in `PositionRListBox`) and `ExtTextOut`-clips each column to the `rcBounds` width it
+> is handed (`RLISTBXC.CPP:517` `if (x<cliprect->right)`). `bob_draw_menu` handed it a **tight**
+> `total` = the sum of *re-measured* text widths, which is narrower than the control's internal
+> per-column spread, so the **last column clipped off** — bobfrag's Back/Sim Config/**Fly** showed
+> only the first two (gold #3, S138 spike), and the same bug clipped the QS Scenario "Fly" (gold #2).
+>
+> **Fix (`FULLPSYS.CPP`, `bob_draw_menu`, `BOB_NO_FOOTER_CLIP` reverts):** widen the clip passed to
+> the listbox to the remaining screen width (`resW - x - 8`). The clip only gates *visibility* — the
+> column POSITIONS are internal to the control and the click hit-rects are computed separately from
+> `wids[]` — so a wider clip moves nothing; the previously-hidden columns simply appear.
+>
+> **General fix, A/B-verified surgical:** re-ran the sweep with the clip on vs `BOB_NO_FOOTER_CLIP`
+> and diffed the *bounding box* of changed pixels per screen — every diff is a small clipped-edge
+> reveal in the footer/tab band (bobfrag + QS "Fly" newly visible; config-gfx2 "C…" fully revealed;
+> phase/campsel a revealed glyph edge), mainmenu byte-identical (ART, no listbox). No layout shift,
+> no spurious content. bobfrag footer now Back/Sim Config/Fly = gold #3; QS footer now Back/Fly =
+> gold #2.
+>
+> **Gates (all `gl-lock`):** safe default exit 0; flight frame-150 94.9% non-black. **#3 nearer
+> CLOSE** — the only remaining deviation is the "Bob" pilot name box (a `CREdtBt` slot, a control
+> type not yet front-end-hosted). Repro: `BOB_BOBFRAG=1 BOB_SHOT=120`. Files: `SRC/MFC/FULLPSYS.CPP`.
+
 > ## S137 (2026-08-02, Sprint 137): the LW Directives dialog (gold #18) is now reachable + renders — #18 GAP → PARTIAL
 >
 > **The last-but-one parity GAP is broken open.** Gold #18 is the LW **Directives** dialog

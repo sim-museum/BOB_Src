@@ -277,9 +277,19 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		   from the drawn text (the first-pilot hit-box bug class). Documented deviation. */
 		int total = sumw + gap * n;   /* keep old width semantics for the OLE box */
 		int x = useXY ? lx : (resW - total) / 2; if (x < 8) x = 8;
+		/* S139: the CRListBoxCtrl lays its columns at its OWN colwidths (AddColumn/ResizeToFit in
+		   PositionRListBox) but ExtTextOut-clips each to the passed rcBounds width; our tight
+		   `total` (sum of re-measured text widths) is narrower than the listbox's internal column
+		   spread (per-column m_horzSeperation), so a 3rd column clips off -- e.g. bobfrag's
+		   Back/Sim Config/**Fly** footer showed only the first two (gold #3). The clip width only
+		   gates visibility -- column POSITIONS are internal to the listbox and hit-rects come from
+		   wids[] below -- so widen the clip to the remaining screen width: previously-clipped
+		   columns appear, nothing moves. BOB_NO_FOOTER_CLIP reverts to the tight `total`. */
+		int clipw = total;
+		if (!getenv("BOB_NO_FOOTER_CLIP")) { clipw = resW - x - 8; if (clipw < total) clipw = total; }
 		/* Real ActiveX control render: draw the hosted CRListBoxCtrl (multi-column
 		   tab row) and keep click rects from the same oleH-measured widths. */
-		if (bobOleDraw() && bob_ole_draw_listbox((CWnd*)&self->m_IDC_RLISTBOX, x, y, total, fh + fh/2, oleH)) {
+		if (bobOleDraw() && bob_ole_draw_listbox((CWnd*)&self->m_IDC_RLISTBOX, x, y, clipw, fh + fh/2, oleH)) {
 			int rx = x;
 			for (int i = 0; i < n; i++) {
 				g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=wids[i]; g_bobMenuRect[i].h=fh+fh/2;

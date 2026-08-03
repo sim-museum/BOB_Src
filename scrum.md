@@ -502,6 +502,22 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
   the deep walk once active is the follow-on.
 - **Increment demo:** `BOB_AUTOCLICK=1,1,1,1 BOB_MAP_TIMER=8 BOB_MAP_DIRECTIVES=1 BOB_SHOT=900`.
 
+### Sprint 139 — "Footer-listbox clip fix" → *Increment: clipped last footer/tab columns render* — **✅ CLOSED 2026-08-03 (3/3 pts; §9 row 139 + PORT.md S139)**
+- **Sprint Goal:** fix the S138-diagnosed footer draw bug so gold #3's "Fly" (and any other clipped
+  last column) renders.
+- **Committed (~3 pts):** S139 the `bob_draw_menu` clip-width widen + A/B regression.
+- **Delivered:** the footer/tab `CRListBoxCtrl` lays its columns at its own internal widths but
+  `ExtTextOut`-clips each to the passed `rcBounds`; `bob_draw_menu`'s tight `total` (re-measured text
+  widths) clipped the last column off (bobfrag's "Fly", the QS Scenario "Fly", config tab edges).
+  Widened the listbox clip to the remaining screen width — column positions are internal + hit-rects
+  come from `wids[]`, so nothing moves, previously-clipped columns just appear (`BOB_NO_FOOTER_CLIP`
+  reverts). **General fix:** bobfrag footer now Back/Sim Config/Fly (gold #3); QS Scenario footer
+  now Back/Fly (gold #2); config tab-row / phase / campsel reveal clipped char edges. A/B verified
+  each diff is a benign clipped-edge reveal (mainmenu byte-identical; all diffs ≤ a few px in the
+  footer/tab band). Gates: safe default exit 0; flight 94.9% non-black.
+- **#3 nearer CLOSE** — only the "Bob" name box (`CREdtBt`) remains; #2 footer improved.
+- **Increment demo:** `BOB_BOBFRAG=1 BOB_SHOT=120` → footer shows Back / Sim Config / Fly.
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -549,6 +565,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **139** | ~3 | 3 | ★ **Footer-listbox clip fix — clipped last footer/tab columns render (gold #3 "Fly", gold #2 "Fly")** | **(2026-08-03)** The footer/tab `CRListBoxCtrl` lays columns at its own internal widths but `ExtTextOut`-clips each to the passed `rcBounds`; `bob_draw_menu` passed a tight `total` (re-measured text widths) that clipped the last column (bobfrag "Fly", QS Scenario "Fly", config tab edges). Widened the listbox clip to the remaining screen width — positions are internal + hit-rects come from `wids[]`, so nothing moves, previously-clipped columns appear (`BOB_NO_FOOTER_CLIP` reverts). bobfrag footer = Back/Sim Config/Fly (gold #3); QS footer = Back/Fly (gold #2). **A/B verified** each of 4 screens' diffs is a benign clipped-edge reveal (mainmenu byte-identical; diffs ≤ a few px in the footer/tab band, e.g. QS "Fly" newly visible, gfx2 "C…" fully revealed). Gates: safe default exit 0; flight 94.9% non-black. #3 nearer CLOSE (only the "Bob" name box remains). |
 | **137** | ~5 | 5 | ★ **LW Directives dialog (gold #18) now REACHABLE + renders — #18 GAP → PARTIAL** | **(2026-08-02)** The Directives dialog (`LWDirectives`/`IDD_LWDIRECTIVES`) is on the **misc** toolbar (TB_MISC), which `bob_map_paint_oob` never walked → unreachable. Added `bob_oob_open_directives` (`MiscToolBar().OpenDirectivetoggle(NULL)`, null-safe: the ctor builds a default `LWDirectivesResults` from `MMC.directives.lw.current`) + a `BOB_MAP_DIRECTIVES` trigger, and extended `bob_map_paint_oob` to render TB_MISC logged children via a full recursive walk (`bob_oob_paint_tree_deep`, fchild+sibling — dense nested grids the fchild-only Bases walk misses). The dialog opens (exit 0, no crash) + renders its frame + "Rest All" + standby reminder. **Gates (gl-lock):** Bases OOB (TB_MAIN, unchanged) still renders; TB_MISC paint inert when no misc dialog logged (no map regression); safe default exit 0. **Honest:** the dense allocation grid doesn't show — gold #18 is 12 Aug Eagle Attack (active gruppen), mine is 10 July Convoys where the game shows the standby state (grid hidden until active); same state gap as #19. Evidence `doc/parity/native-strategic-directives-2026-08-02.png`. |
 | **136** | ~5 | 5 | ★ **Template-driven BUTTON hosting — gold #3's "Return to Player" button now renders** | **(2026-08-02)** `IDC_RETURNTOPLAYER` (2146) is a template-only button no DDX binds → never created on Linux (our creation is DDX-driven). Extended the S124 template-driven static hosting to non-DDX **buttons**: `bob_dlg_enum_buttons` (bob_dlgtemplate.cpp, K_RBUTTON) + a button pass in `bob_ole_host_template_statics` creating `CLSID_RButton` for each unbound template button (`bob_make_rbutton` already renders art+caption; the DDX-bound tickbox proved the path). The briefing's "Return to Player" now draws top-left with its caption = gold #3's key element. `BOB_NO_TEMPLATE_BUTTONS` reverts. **Gates (gl-lock):** config (gfx2/game/mission/control/sound) + QS-Scenario + mainmenu + phase-select **all byte-identical** on/off (inert where no non-DDX template button draws — surgical); safe default exit 0; flight frame-150 94.9% non-black. **#3 stays PARTIAL** (improved) — remaining: "Bob" name box (`CREdtBt` pilot slot, unhosted) + Fly footer item (gated); button art is the tickbox icon vs gold's rounded bezel. Evidence `doc/parity/native-quickshots-bobfrag-2026-08-02.png`. |
 | **135** | ~6 | 6 | ★ **The mission BRIEFING (gold #3, `IDD_BOBFRAG`) RENDERS with its flight roster — #3 GAP → PARTIAL** | **(2026-08-02)** Built on S134's re-mapping (gold #3 = the BoBFrag briefing). New `BOB_BOBFRAG` scaffold (FULLPSYS.CPP, BOB_LINUX, default-off) is the reliable headless reach: QS click-mode pre-flight seeds `quickdef` → `LaunchScreen(&quickmission)` inits CSQuick1 → `LaunchScreen(&bobfrag)`, stopping at the briefing (no Rtestsh1 → no flight) so `BOB_SHOT` captures it. The briefing renders closely matching gold #3: crashed-109 + pink-cloud + two-He111 background, the roster listbox (`CRListBoxCtrl` id=1481: **Unit / Aircraft / Duty / Callsign → 54 Squadron / Spitfire / Patrol / Trumpet**), Back/Sim Config footer, exit 0. **Gates (gl-lock):** safe default exit 0; mainmenu dummy==GL byte-identical; flight frame-150 94.9% non-black (scaffold env-gated → no regression). **#3 GAP → PARTIAL.** Deviations named: "Return to Player" (`IDC_RETURNTOPLAYER`) is an RButton, not hosted in the front-end (follow-on); name edit (`CREditCtrl` 1923) created-not-drawn (template/rect); Fly footer item gated (`CheckForMissingMission`). Evidence `doc/parity/native-quickshots-bobfrag-2026-08-02.png`. |
@@ -621,6 +638,17 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 139 (footer clip fix):_ **A one-screen deviation was a shared-primitive bug — fixing it
+  at the primitive fixed several screens at once.** #3's missing "Fly" looked local, but the clip was
+  in `bob_draw_menu`'s width handed to every hosted footer listbox, so the same one-line widen
+  surfaced the QS Scenario "Fly" (gold #2) and clipped config-tab edges too. Lessons: (1) when a
+  widget renders "N-1 of N," suspect a width/clip handed in from the caller before the control's own
+  draw — the control was drawing all N, the caller clipped one; (2) prove a global draw-width change
+  safe by diffing the *bounding box* of changed pixels per screen, not just cmp — every diff being a
+  few px in the footer band (and a legible revealed glyph) is the evidence it reveals, not shifts;
+  (3) keep positions and hit-rects decoupled from the clip so widening it is provably inert to
+  layout — the fix moved nothing, it only stopped hiding.
 
 - _Sprint 137 (reach the Directives dialog):_ **A "GAP" screen can be two different gaps —
   reachability and content — and the reach is often the cheap half.** #18 read as one blocker but was
