@@ -1,5 +1,44 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S132 (2026-08-02, Sprint 132): the S130 QS order-of-battle crash is FIXED — null-reference-safe `DialBox` copy ctor; the RAF/Luftwaffe tabs no longer SIGSEGV
+>
+> **The crash S130 root-caused and S129's tab-nav exposed is fixed.** Clicking the QS
+> Luftwaffe/RAF tabs runs `QuickMissionBlue`/`Red` (FULLPANE.CPP), which build a variadic
+> `DialList` whose inactive flight slots pass `(activeCount>k) ? DialBox(new CSQuickLine(...))
+> : *(DialBox*)NULL`. The ternary mixes a prvalue (the DialBox temp) with an lvalue (the null
+> ref) → C++ makes it a prvalue → the `:NULL` branch **copy-constructs a `DialBox` from
+> `*(DialBox*)NULL`**, and `DialBox`'s copy ctor read `d.edges/d.art/d.dial` at address 0 →
+> SIGSEGV (benign on MSVC; the OOB screen never rendered on Linux).
+>
+> **Fix — a null-reference-safe copy ctor (`RDIALOG.H`, one method, `#if BOB_LINUX`):** when
+> `&d == NULL`, produce an EMPTY leaf `DialBox` (`dial=NULL`, `diallist[0]=NULL`) instead of
+> derefing; `AddChildren` already turns a `dial==NULL` child into an empty `RDEmptyP`
+> placeholder (RDIALOG.CPP:546), so inactive slots simply draw nothing. **Two layers, both
+> found by gdb:** (1) the copy ctor deref (fixed → crash moved *past* `QuickMissionBlue`); (2)
+> the copy left `diallist[]` uninitialised — the stock ctor relied on the ternary's copy-
+> *elision* to preserve a leaf's `diallist[0]=NULL`, but a real copy of the `:NULL` branch has
+> no elision, so `AddChildren` recursed into garbage children (`RDialog.cpp:549`). Fixed by
+> **copying `diallist` explicitly** in the copy ctor — deterministic, and identical to the
+> elided values for the working screens (DialList overwrites its own `diallist` in its body
+> anyway). UB-exception, same null-ref family as the ConvertPtrUID guards / §8q.
+>
+> **Gates (all under `gl-lock`):** build clean; RAF-tab click **exit 0** (was SIGSEGV) — the
+> OOB screen loads, tabs render, RAF selected; **13-recipe regression sweep 13/13**;
+> mainmenu / config-controls / phase-select **`cmp` BYTE-IDENTICAL to the pre-S132 (S131)
+> build** (the core `DialBox` change is transparent — the strat-map's only diff is the sim
+> clock's run-to-run timing variance, confirmed by two S132 runs also differing there); flight
+> frame-150 on `:0` 95.2% non-black exit 0 (the 3D path builds dialogs too — unaffected);
+> OOB screen **dummy==GL `cmp` BYTE-IDENTICAL**; safe default exit 0.
+>
+> **Honest scope:** this FIXES the crash and unblocks the screen structurally, but the
+> `CSQuickLine` flight-line **content** (gold #3's Squadron/Aircraft/Duty/Callsign) does not
+> paint yet — the OOB panel and its child panels are created, but the child panels' hosted
+> controls aren't in the compat draw walk (a nested-dialog-render gap, now the remaining #3
+> work). **#3 stays GAP** but its crash blocker is gone and the OOB is reachable. Repro:
+> `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_CLICKXY="215,458,191"` (RAF tab). Files:
+> `SRC/H/RDIALOG.H` (the `DialBox` copy ctor). Evidence:
+> `doc/parity/native-quickshots-oob-raf-2026-08-02.png`. Cross-port: §8q addendum (the fix).
+
 > ## S131 (2026-08-02, Sprint 131): per-face font registry — the pervasive "font FACE" deviation CLOSED (MA note 26 §2); data/labels render Arial (italic), ART screens byte-identical
 >
 > **The single biggest cross-screen parity deviation is fixed.** `bob_gdi_font` drew *every*

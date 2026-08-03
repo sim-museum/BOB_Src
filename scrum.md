@@ -405,6 +405,18 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
 - **Increment demo:** `BOB_CONFIGSCREEN=control BOB_SHOT=70` — labels/values render in Arial
   (values italic) = gold's scheme; `BOB_TRACE_FONT` shows the requested faces.
 
+### Sprint 132 — "Kill the QS order-of-battle crash" → *Increment: the RAF/Luftwaffe tabs no longer SIGSEGV* — **✅ CLOSED 2026-08-02 (6/6 pts; §9 row 132 + PORT.md S132)**
+- **Sprint Goal:** fix the S130-root-caused crash (null-`DialBox` copy in the QS OOB panel
+  builders) so the RAF/Luftwaffe tabs — clickable since S129 — stop crashing.
+- **Committed (~6 pts):** S132 the game-code UB-exception fix + regression + gates.
+- **Delivered:** null-reference-safe `DialBox` copy ctor (RDIALOG.H, BOB_LINUX) — inactive slot →
+  empty leaf DialBox; `AddChildren` renders it as empty `RDEmptyP`. Two layers (ctor deref + the
+  uninit `diallist` behind copy-elision). RAF-tab exit 0; 13/13 sweep; core change byte-identical
+  on working screens; flight + OOB dummy==GL + safe default all pass. **Honest:** crash fixed +
+  screen unblocked; the `CSQuickLine` content (gold #3 fields) doesn't paint yet (deferred).
+- **Increment demo:** `BOB_STARTFLYING=click BOB_AUTOCLICK=0 BOB_CLICKXY="215,458,191"` (RAF tab)
+  loads the OOB screen without crashing (previously SIGSEGV).
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -452,6 +464,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **132** | ~6 | 6 | ★ **S130 QS order-of-battle crash FIXED — null-reference-safe `DialBox` copy ctor; RAF/Luftwaffe tabs no longer SIGSEGV** | **(2026-08-02)** The crash S130 root-caused (and S129's tab-nav exposed): `QuickMissionBlue/Red` build a variadic `DialList` where inactive flight slots pass `(count>k)?DialBox(temp):*(DialBox*)NULL`; the ternary's prvalue copy-constructs a DialBox from null → the copy ctor derefs address 0. **Fix (RDIALOG.H, one method, BOB_LINUX):** null-ref-safe copy ctor → empty leaf DialBox (`dial=NULL`) for the null case; `AddChildren` already renders a null-dial child as empty `RDEmptyP`. **Two layers (gdb):** (1) the ctor deref; (2) the copy left `diallist[]` uninit (stock ctor relied on copy-elision; a real copy has none) → `AddChildren` recursed into garbage → fixed by copying `diallist` explicitly. **Gates (gl-lock):** RAF-tab click exit 0 (was SIGSEGV); 13/13 sweep; mainmenu/controls/phase `cmp` byte-identical to S131 (core change transparent; strat diff = sim-clock timing variance, two S132 runs also differ); flight 95.2% non-black; OOB dummy==GL byte-identical; safe default exit 0. **Honest:** fixes the crash + unblocks the screen; the `CSQuickLine` flight-line CONTENT (gold #3 fields) doesn't paint yet (nested-dialog-render gap). #3 stays GAP, crash blocker gone. Cross-port §8q addendum. |
 | **131** | ~8 | 8 | ★ **Per-face font registry — the pervasive "font FACE" deviation CLOSED (MA note 26 §2); data/labels render Arial (italic), ART screens byte-identical** | **(2026-08-02)** `bob_gdi_font` drew every face in one art TTF (Intel.ttf) → data/label rows in the Rowan art face, not Arial (the deviation on nearly every gold shot). Adopted MA note 26 §2: an 8-slot per-FACE registry (4 kinds × regular/italic) — ART=Intel (unchanged load), SANS=LiberationSans, SERIF=LiberationSerif, MONO=LiberationMono; `CFont::bobFaceKind` classifies the CreateFont face name + captures `bItalic`; `CDC::bobSetFace` threads face+italic through the DC's selected font; the front-end menu sets ART explicitly. **Beyond note 26:** honoured the italic flag → gold's italic combo values match. **N/A for BoB (verified):** §1 Japanese-branch (a `BOB_TRACE_FONT` dump showed the game already requests Arial/Courier/Intel — not a Japanese system), §3 combo-fill (already skipped via `m_FirstSweep=TRUE`); MA note 27's listbox-fill warning heeded. **Gates (all gl-lock):** 14/14 sweep; **mainmenu (ART) `cmp` BYTE-IDENTICAL** on vs off (art screens unregressed); controls **dummy==GL byte-identical**; flight 95.2% non-black; safe default exit 0. Config/campaign data/labels now = gold's Arial-italic scheme; `BOB_NO_FONTFACE` reverts. Cross-port: shared-doc §8r. |
 | **130** | ~5 | 3 | ◐ **SPIKE — gold #3 (QS order-of-battle) root-caused to a null-DialBox-copy SIGSEGV; banked** | **(2026-08-02)** With S129's tab-nav, the RAF/Luftwaffe tabs reach `QuickMissionBlue`/`Red` (the QS OOB with the `CSQuickLine` flight editors = gold #3's Squadron/Aircraft/Duty/Callsign) — a never-run-on-Linux screen that SIGSEGVs. gdb: `QuickMissionBlue (fullpane.cpp:215)`. **Root cause:** the variadic `DialList` uses `ND=*(DialBox*)NULL` as a null terminator; `DialList`+`AddChildren` are null-safe (`&ND==0`, `for(i;diallist[i];i++)`), but the per-slot ternary `(count>k)?DialBox(temp):ND` mixes a **prvalue** temp and the **lvalue** `ND` → the conditional is a prvalue → the `:ND` branch **copy-constructs a DialBox from `*(DialBox*)NULL`** (benign-on-MSVC/faults-on-GCC UB). Only inactive slots hit it (`initind=6` → line 215). **Faithful fix is game-code** (name the true-branch DialBox locals so the ternary yields a reference, across the `QuickMission*` builders — a UB-exception change) → deferred; not compat-fixable (copy precedes the list). Honest S129 interaction noted: tabs 0/1 (Scenario/Parameters) render fine; tabs 2/3 now reach this crash. No code shipped (game pristine; gdb/trace only). Cross-port: shared-doc §8q (MA uses the same RDIALOG.H). #3 stays GAP, now exactly root-caused. |
 | **129** | ~4 | 4 | ★ **QS tab navigation works — RRadio click → page switch; Parameters tab renders; gold #3 mapping corrected** | **(2026-08-02)** Built on S128's hosted CRRadio: the QS page tabs are now interactive. New `OleHost::onButtonClick(localX)` (HostRRadio maps click X → tab index, `SetCurrentSelection`) + a multi-button branch in `bob_ole_click` that fires the genuine `Selected(idx)` event (dispid 1, VTS_I4) via the S33 eventsink → `CSQuick1::OnSelectedRradio` → `QuickMissionParameters/Desc` → `LaunchDial` (the standard panel-nav, not MoveWindow — why it was tractable). **Result:** clicking Parameters switches to the mission-params page (Target Area/T.D./Weather/Time/Name — a real previously-unreachable QS page); clicking Scenario switches back; bidirectional, verified by genuine clicks. **Gold #3 mapping corrected:** the `16-47-45` gold shot is the per-flight PLAYER editor (Squadron/Aircraft/Duty/Callsign, "Return to Player"; `CSQuickLine`), not the Parameters tab — so #3 stays GAP with its true path (a flight-line click) identified, and the nav machinery it needed is built. Parity unchanged 16 CLOSE / 0 PARTIAL / 3 GAP (interactive-UI + mapping progress, not a verdict flip). **Gates (all under gl-lock):** build clean; 7/7 regression; both nav directions render; safe default exit 0; flight frame-150 95.2% non-black on `:0`; **dummy==GL `cmp` BYTE-IDENTICAL on the QS Parameters page**. |
@@ -518,6 +531,21 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 132 (null-DialBox crash fix):_ **Fix the crash at the smallest shared layer, and expect
+  a second layer behind the first.** The whole class of `(cond)?DialBox(...):*(DialBox*)NULL`
+  ternaries across the panel builders was fixable by ONE null-safe copy ctor rather than rewriting
+  each builder — because `AddChildren` already handled the resulting `dial==NULL` child. But
+  stopping there just moved the crash: the copy left `diallist[]` uninitialised (the stock ctor
+  silently depended on copy-elision), so the fix wasn't done until gdb showed the second SIGSEGV
+  and I copied `diallist` too. Lessons: (1) when a crash is a value-category / UB quirk, the fix
+  usually belongs in the shared primitive (the copy ctor), not the many call sites — one guarded
+  method beats N rewrites; (2) a "benign on MSVC" copy ctor that reads members can hide a
+  *second* dependency on copy-elision — verify by re-running, don't assume the first fix is
+  complete; (3) `cmp`(pre, post) on working screens is the proof a core-header change is
+  transparent — mainmenu/controls/phase byte-identical said more than any eyeball; (4) separate
+  "no crash" from "renders" honestly — the screen loads now, but its content paint is a named,
+  deferred follow-on, not a claimed win.
 
 - _Sprint 131 (per-face font registry):_ **Trace what the code actually asks for before porting
   the sibling's fix — the diagnosis transfers even when the patch doesn't.** MA note 26's headline

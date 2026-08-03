@@ -1595,6 +1595,22 @@ almost verbatim):**
 page-switching dialog also needs the `MoveWindow`/page-visibility mechanism. Ship the render as
 the prerequisite and name the remaining half rather than half-wiring a click that can't paint.
 
+**Fix (BoB S132) — a null-reference-safe `DialBox` copy ctor, two layers.** Make
+`DialBox(const DialBox& d)` check `&d==NULL` (needs `-fno-delete-null-pointer-checks`, which both
+ports build with) and produce an EMPTY leaf (`dial=NULL`, `diallist[0]=NULL`) instead of reading
+`d.edges/d.art/d.dial` at address 0. `AddChildren` already turns a `dial==NULL` child into an
+empty `RDEmptyP`, so inactive slots draw nothing — no need to touch the panel builders. **The
+second layer bites if you stop at layer one:** the stock copy ctor left `diallist[]`
+uninitialised and relied on the ternary's copy-*elision* to preserve a leaf's `diallist[0]=NULL`;
+a real copy of the `:NULL` branch has no elision, so `AddChildren` recurses into garbage children
+and crashes again one frame deeper. Fix by **copying `diallist` explicitly** in the ctor —
+deterministic, and identical to the elided values for the working screens (`DialList` overwrites
+its own `diallist` in its body). One header method, `#if BOB_LINUX`; regression-verify with a
+`cmp`(pre, post) on a few working dialog screens — it must be byte-identical (the change only
+touches the previously-crashing null-copy path). **Caveat:** this fixes the *crash*; the child
+panels' hosted-control CONTENT is a separate render task (they're created but may not be in your
+per-panel draw walk).
+
 ## 8q. The variadic `DialList` null terminator copies from `*(DialBox*)NULL` in a ternary (BoB S130) **[ENGINE]**
 
 _(Shared **dialog-framework** trap — both ports use `RDIALOG.H`'s `DialList` + `EDGES_*`. Related

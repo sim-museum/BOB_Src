@@ -97,7 +97,31 @@ struct DialBox:DialMake
 	DialBox(FileNum artnum,RDialog*	newdial,const Edges& e=*(Edges*)NULL):
 	DialMake(&e,artnum)
 	{dial=newdial;diallist[0]=NULL;diallist[1]=(DialBox*)0x12345678;}
+#if BOB_LINUX
+	/* S132: null-reference-safe copy ctor. The QS order-of-battle panel builders
+	   (RFullPanelDial::QuickMissionBlue/Red, FULLPANE.CPP) pass
+	   (activeCount>k) ? DialBox(new CSQuickLine(...)) : *(DialBox*)NULL for each
+	   inactive flight slot. That ternary mixes a prvalue (the DialBox temporary) with an
+	   lvalue (the null ref), so C++ makes the result a prvalue -> the `:NULL` branch
+	   copy-constructs a DialBox FROM *(DialBox*)NULL, and this ctor read d.edges/d.art/
+	   d.dial at address 0 -> SIGSEGV (benign on MSVC; the OOB screen never rendered on
+	   Linux). Copy an EMPTY DialBox instead (dial=NULL); AddChildren already renders a
+	   null-dial child as an empty RDEmptyP placeholder, so inactive slots draw nothing.
+	   UB-exception, same null-ref family as the ConvertPtrUID guards / shared-doc 8q. */
+	DialBox(const DialBox& d)
+	: DialMake((&d==NULL) ? (const Edges*)NULL : d.edges, (&d==NULL) ? FIL_NULL : d.art)
+	{
+		if (&d==NULL) { dial=NULL; diallist[0]=NULL; }   /* empty leaf placeholder */
+		/* Copy the child array explicitly. The stock ctor left diallist[] uninitialised and
+		   relied on the ternary's copy-elision to preserve a leaf's diallist[0]=NULL; a real
+		   copy (the `:NULL` inactive slot) has no elision, so AddChildren (RDialog.cpp:636)
+		   would recurse into garbage children. Copying is deterministic and matches the elided
+		   values for the working screens (DialList overwrites diallist in its own body anyway). */
+		else { dial=d.dial; for (int i=0;i<10;i++) diallist[i]=d.diallist[i]; }
+	}
+#else
 	DialBox(const DialBox& d):DialMake(d.edges,d.art){dial=d.dial;}
+#endif
 protected:
 	DialBox()	{dial=NULL; edges=NULL; art=FIL_NULL;}
 };

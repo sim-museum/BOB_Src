@@ -30,6 +30,17 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-02)
 
+- **S132 closed: the S130 QS order-of-battle crash is FIXED.** The RAF/Luftwaffe
+  tabs (clickable since S129) ran `QuickMissionBlue/Red`, whose variadic `DialList`
+  copy-constructs a `DialBox` from `*(DialBox*)NULL` for inactive flight slots →
+  SIGSEGV. Fixed with a null-reference-safe `DialBox` copy ctor (RDIALOG.H,
+  BOB_LINUX) — inactive slot → empty leaf DialBox; `AddChildren` renders it as an
+  empty `RDEmptyP`. Two layers (ctor deref + uninit `diallist` behind copy-elision →
+  copy `diallist` explicitly). RAF-tab exit 0; 13/13 sweep; mainmenu/controls/phase
+  `cmp` byte-identical to S131 (core change transparent); flight + OOB dummy==GL +
+  safe default pass. **Honest:** crash fixed + screen unblocked, but the `CSQuickLine`
+  flight-line CONTENT (gold #3 fields) doesn't paint yet (nested-dialog-render gap).
+  #3 stays GAP, crash blocker gone. Cross-port §8q addendum.
 - **INBOUND MA note 28 (MA S71) — `doc/CROSS-PORT-FROM-MA-2026-08-02-note28.md`,
   scoped for a future OOB-polish sprint.** Completes note 27 §2: skip the
   `CRListBoxCtrl` black fill on the OOB draw path ONLY (a one-int context flag set
