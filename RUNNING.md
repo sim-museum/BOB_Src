@@ -65,5 +65,15 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
   phaseselect (S127) and quickshots (S128).
 - Cross-port: MA note 17's `DrawText DT_WORDBREAK` shared find implemented
   BoB-side (S127) — outbound BoB note = shared-doc §8o; new-R\*-control-type
-  hosting checklist + MaskIcon temp-bind = §8p (S128). MA copy synced
-  byte-identical. Inbound MA notes 18–25 (§8g–8n) logged.
+  hosting checklist + MaskIcon temp-bind = §8p (S128); null-DialBox-copy trap =
+  §8q (S130). MA copy synced byte-identical. Inbound MA notes 18–25 (§8g–8n) logged.
+- **INBOUND MA note 26 (MA S69) — `doc/CROSS-PORT-FROM-MA-2026-08-02-note26.md`,
+  scoped as S131 (NEXT).** BoB has the SAME trap MA found: compat
+  `EnumFontFamiliesExA` (compat_wingdi.h:247) always calls the enum proc, so the
+  game's font-candidate loop (MIG.CPP:300-315) always picks the *first* candidate
+  regardless of availability — the likely root of the pervasive "font face" parity
+  deviation (data/label rows never get Arial). Fix = MA §1 (report a family present
+  only when actually available / pure-ASCII) + §2 (per-face registry: Intel art face
+  vs a metric-compatible sans for Arial) + §3 (combo opaque-black `FillRect` skip).
+  Substantial — a dedicated sprint. Not yet integrated into the shared doc (avoid a
+  mid-flight conflict with the running MA session; integrate when applying in S131).
