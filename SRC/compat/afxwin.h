@@ -54,6 +54,8 @@ extern int g_bobListFontH;   /* live R* list font pixel height (bob_ole.cpp); sh
                                 Shrink/GetTextExtent and OnDraw/ExtTextOut agree on size */
 extern int g_bobDlgIDD;      /* IDD of the dialog currently being created (CDialog::Create), so each
                                 hosted control knows its dialog -> (dialog,control) DLGINIT caption */
+extern "C" void bob_dialog_destroy_trace(class CWnd* dlg);  /* S155: BOB_TRACE_DESTROY -- who gets
+                                                            DestroyWindow, and who owns the hosts */
 extern "C" void bob_dialog_teardown(class CWnd* dlg);  /* S154 (SP.23): release a dialog's hosted
                                                         controls + clear its logged slot; no-op
                                                         unless BOB_DLG_TEARDOWN. */
@@ -865,9 +867,11 @@ public:
        S153: 181,424 hosted controls on one dialog).
        NB S108's note said "our Linux CDialog::OnCancel is a no-op" -- accurate about the symptom,
        wrong about the location, which is why the defect stayed hidden behind it for ~45 sprints.
-       Teardown is default-OFF behind BOB_DLG_TEARDOWN: this is the lifecycle every dialog runs
-       through and the failure mode next door is S108's stack overflow. */
-    BOOL DestroyWindow() { bob_dialog_teardown(this); return TRUE; }
+       S155: teardown is now DEFAULT-ON (BOB_NO_DLG_TEARDOWN reverts) -- flipped on evidence, not
+       optimism: 181,424 -> 184 hosted controls, the directive-dialog cancel toggle (S108's
+       territory) exercised without incident, and a full gate suite run with it enabled coming back
+       14/14 byte-identical. */
+    BOOL DestroyWindow() { bob_dialog_destroy_trace(this); bob_dialog_teardown(this); return TRUE; }
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
     BOOL MoveWindow(LPCRECT, BOOL = TRUE) { return TRUE; }
     CWnd* GetTopWindow() const { return NULL; }

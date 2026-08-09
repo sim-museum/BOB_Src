@@ -930,6 +930,30 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
 - **Design note for the finisher:** release hosts + clear the slot, but do **not** free the dialog
   object — ownership varies and freeing the wrong one is worse than retaining it.
 
+### Sprint 155 — "Trace, don't guess" → *Increment: dialog teardown lands; 181,424 hosted controls → 184, default-on* — **✅ CLOSED 2026-08-09 (8/8 pts; §9 row 155 + PORT.md S155)**
+- **Sprint Goal:** finish SP.23 by instrumenting the destroy call graph instead of guessing a fifth
+  hook site.
+- **✅ One trace settled it.** `BOB_TRACE_DESTROY` printed, per `DestroyWindow`: object RTTI, hosts
+  naming it as parent, and the same per descendant. Result: `RDEmptyD hosts_here=0` →
+  `child LWDirectives hosts=184`. **DestroyWindow gets the PANEL; the controls belong to the dialog
+  inside it.** Uniform across every dialog (DirectiveResults 3, LWMissionFolder 23, TakeOverOffered
+  6 **×4 instances in one campaign day** — the leak in ordinary play). The trace also proved the
+  `dynamic_cast` guard sound.
+- **✅ Fix:** release the destroyed node **and** its `fchild`/`sibling` descendants, bounded.
+  **181,424 → 184 hosted controls** (exactly one dialog's worth — no accumulation), tracked dialogs
+  12 → 6, same end state.
+- **✅ Flipped DEFAULT-ON on evidence:** the measurement; the campaign cancel-toggle path (S108's
+  stack-overflow territory) exercised without incident; and **a full gate suite run with teardown
+  enabled: 14/14 byte-identical**. `BOB_NO_DLG_TEARDOWN` reverts.
+- **Deliberately still not freeing the dialog object** — ownership varies; freeing the wrong one is
+  worse than retaining it. Reclaims control storage + removes the use-after-free hazard.
+- **Banked §8-BoB155 (synced to MA):** the panel-wrapper has now cost two unrelated 3-sprint hunts
+  (S144-146 driving the handler, S153-155 releasing resources) and **both failure modes report
+  success**. Rule: print `typeid(*p).name()` before driving or destroying.
+- **Gates, twice:** with teardown enabled *and* on the shipped default — both **14/14
+  byte-identical**, safe default exit 0, dummy==GL byte-identical, flight 98.6%, binary hash
+  unchanged, gate valid.
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -977,6 +1001,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **155** | ~8 | 8 | ★ **Dialog teardown lands — 181,424 hosted controls → 184, default-on** | **(2026-08-09)** Applied S154's own retro: instrument instead of a 5th hook-site guess. `BOB_TRACE_DESTROY` printed per-`DestroyWindow` RTTI + host counts + descendants, and one run answered it: `RDEmptyD hosts_here=0` → `child LWDirectives hosts=184` — **DestroyWindow gets the PANEL, the controls belong to the contained dialog**. Uniform across all dialogs; `TakeOverOffered` appeared as **4 distinct instances in one campaign day** (leak in ordinary play). Fix: release the node **and** its bounded `fchild`/`sibling` descendants. **181,424 → 184** (exactly one dialog's worth), tracked dialogs 12 → 6, end state unchanged. **Flipped default-ON on evidence**: measurement + the S108 cancel-toggle path exercised clean + **a full gate suite WITH teardown on returning 14/14 byte-identical**. `BOB_NO_DLG_TEARDOWN` reverts. Still does not free the dialog object (ownership varies). Banked **§8-BoB155** — the panel wrapper has now cost two unrelated 3-sprint hunts and both failure modes *report success*. |
 | **154** | ~8 | 4 | ⚠️ **PARTIAL — the missing teardown is `CWnd::DestroyWindow() { return TRUE; }`; hooked default-off, not finished** | **(2026-08-09)** ⭐ The chain executes correctly (`LWDirectives::OnCancel` → `RDialog::OnCancel` → `EndDialog(IDCANCEL)` → walks children → `DestroyWindow()`) and the final call **reports success and destroys nothing** — the *"stub that returns SUCCESS and hides a subsystem"* class the port's notes say to grep `{ return TRUE; }` for (cf. MA S68's `DrawIcon`). **Corrects S108**, which named `CDialog::OnCancel` as the no-op: `Rowan::CDialog` adds only a constructor, so that resolves to `RDialog::OnCancel`, which does real work — the stub is 3 calls further down, and the wrong location read as a closed question for ~45 sprints. **Honest:** 3 hook sites were wrong before this (DestroyPanel never reached, 0 releases at 181,424 hosts; compat `::CDialog` wrong class; `DestroyWindow` fires but frees **1 control not 184** — it reaches the panel, hosts belong to the contained dialog). Next step named (walk `fchild`/`sibling`, needs a safe `CWnd*`→`RDialog*` test), **deliberately not guessed a 4th time**. Default-off (`BOB_DLG_TEARDOWN`); **gates 14/14 byte-identical**. |
 | **153** | ~8 | 4 | ⚠️ **PARTIAL — the host "leak" is really that the port NEVER DESTROYS A DIALOG** | **(2026-08-09)** Booked as "prune the host table" (S143 banner: 184 → 1656 across re-opens). Wrote `bob_ole_release_dialog()` + `DestroyPanel` hook, measured **0 releases** on a run reaching **181,424** hosted controls, tens of thousands still *drawn*. Root cause: compat's `CDialog::OnCancel`/`EndDialog` are **no-ops** (afxwin.h:1133/1135) → closing a logged child destroys nothing → `DestroyPanel` unreachable → **every re-open allocates a fresh dialog + ~184 hosts and retains both**. **S108 had documented the same no-op** while fixing a stack overflow and moved on — a note explaining one symptom is not a note scoping the defect. → **SP.23 (8 pts)**, flagged delicate because S108's re-entrancy guard depends on the slot not clearing. Hook kept, documented dormant, fires when teardown lands. SP.21 carries. **Gates:** 14/14 byte-identical, valid. |
 | **151** | ~8 | 5 | ★ **`settings.cfg` loads again (preferences no longer die on every rebuild) — and S150's conclusion about four parity rows RETRACTED** | **(2026-08-09)** Root cause measured: `SaveData`'s deserialiser gates on `strcmp(date,date2)` where **both embed `__DATE__`**, so settings load only if written by a binary compiled the same calendar day — the original's own design, harmless to authors who didn't rebuild daily, corrosive to a port that rebuilds constantly (every `ninja bob` discarded preferences; `SavePreferences()` wrote a file the next run rejected). **The fix already existed in the same file for Campaign saves** (`BOB_LINUX`: *"version string embeds the build `__DATE__` … load anyway — the binary format is what matters, /Zp1 vs -fpack-struct"*) and had simply never been applied to `SaveData`. Applied; `BOB_NO_PREFS_LOAD` reverts; verified on four config screens. **⭐ RETRACTION:** S150 had concluded from `successfulLoad=0` that gold parsed the same file and therefore #6/#9/#10/#11's combo differences were ours. **Both assumptions false** — the file's stamp is `Jul 19 2026` (**our port wrote it**; gold shots are 2026-06-24), and with the load fixed those screens are **byte-identical** to factory defaults (loading changes no pixel). Rows → cause unknown, SP.20 reopens, docs corrected in place. **Rule: a measurement licenses only the claim it measures.** |
@@ -1064,6 +1089,21 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
+- _Sprint 155 (trace, don't guess):_ **The previous sprint's retro was the whole plan, and it worked
+  on the first attempt.** S154 ended with "when the second guess is wrong, stop guessing and
+  instrument"; S155 opened by writing one trace that printed RTTI, host ownership and descendants
+  per destroy. It produced the answer, the safety proof for the `dynamic_cast`, and the shape of the
+  fix in a single run — after four hook-site guesses across two sprints had produced nothing.
+  **Retro items are only worth writing if the next sprint actually executes them**; this is the
+  first time in this thread that one was cashed immediately, and it was the cheapest sprint of the
+  four.
+  **Second: the flip to default-on was earned, not assumed.** Three independent pieces of evidence —
+  the leak measurement, the specific dangerous path (S108's cancel toggle) exercised clean, and a
+  full gate suite run *with the flag on* — before changing what every player gets. A default-off flag
+  is a way to make a risky change measurable, not a way to avoid deciding.
+  **Third, the standing pattern:** two subsystems in this port were hidden behind `{ return TRUE; }`
+  stubs, and the wrapper-vs-dialog confusion has now cost six sprints across two unrelated tasks.
+  Both are *searchable* — grep for success-returning stubs; print RTTI before acting on a dialog.
 - _Sprint 154 (implement dialog teardown):_ **Four hook sites, three wrong, and the measurement
   caught each one in a single run — but the real lesson is that I should have instrumented the call
   graph once instead of probing it four times.** S146 already taught me to print the RTTI of an

@@ -419,6 +419,16 @@ extern "C" void bob_ole_dump_template_membership(int dlgId) {
    freed storage -- and a later CWnd allocated at the same address would silently find a stale host
    (wrong control type, wrong ids, wrong parent). Pruning on destroy removes a use-after-free hazard
    as well as the growth. Returns the number released so the caller can trace it. */
+/* S155 (SP.23): how many hosts name this CWnd as their parent? The teardown question S154 could
+   not answer by inspection -- DestroyWindow reaches SOME object, and the 184 hosts belong to
+   another -- is answered definitively by asking the host table itself, per candidate object.
+   Cheap, and it cannot be wrong the way four successive hook-site guesses were. */
+extern "C" int bob_ole_count_for_dialog(CWnd* dialog) {
+    int n = 0;
+    for (auto& kv : hosts()) if (kv.second && kv.second->parentDlg == dialog) n++;
+    return n;
+}
+
 extern "C" int bob_ole_release_dialog(CWnd* dialog) {
     if (!dialog) return 0;
     auto& m = hosts();

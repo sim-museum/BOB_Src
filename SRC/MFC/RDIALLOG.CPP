@@ -283,20 +283,60 @@ RDialog* CRToolBar::LoggedChild(int i)
    the per-re-open control storage and fixes the lifetime lie in the slot table; the object-level
    leak is a separate, smaller question. */
 extern "C" int bob_ole_release_dialog(CWnd*);
-extern "C" void bob_dialog_teardown(CWnd* dlg)
+extern "C" int bob_ole_count_for_dialog(CWnd*);
+/* S155 (SP.23): one trace instead of a fourth guess. For every DestroyWindow, print the object's
+   RTTI, how many hosted controls name IT as parent, and the same for each fchild/sibling
+   descendant -- so "which object owns the 184" stops being an inference. BOB_TRACE_DESTROY. */
+extern "C" void bob_dialog_destroy_trace(CWnd* dlg)
 {
 	static int on = -1;
-	if (on < 0) on = getenv("BOB_DLG_TEARDOWN") ? 1 : 0;
+	if (on < 0) on = getenv("BOB_TRACE_DESTROY") ? 1 : 0;
 	if (!on || !dlg) return;
-	/* S154 MEASURED LIMIT: this releases hosts whose parentDlg == dlg, and the trace says that is
-	   1 control per call, not the 184 the Directives dialog owns. So DestroyWindow is reached on
-	   an object that is NOT the dialog holding the hosts -- the hosts belong to the CONTAINED
-	   dialog (e.g. LWDirectives), while what gets destroyed here is the panel/window around it.
-	   The next step is to release for the destroyed node's DESCENDANTS too (walk fchild/sibling),
-	   which needs a safe way to know this CWnd* really is an RDialog before casting. Left
-	   deliberately un-guessed: three hook sites have already been wrong this sprint, each caught
-	   by measurement in one run, and a fourth guess costs more than the instrumentation would. */
+	static int budget = 0;
+	if (++budget > 40) return;            /* predicate-free but bounded; 40 is plenty to see the shape */
+	fprintf(stderr, "[destroy] %p rtti=%s hosts_here=%d\n",
+		(void*)dlg, typeid(*dlg).name(), bob_ole_count_for_dialog(dlg));
+	/* descendants, if this really is an RDialog -- guarded by the same RTTI we just printed */
+	RDialog* rd = dynamic_cast<RDialog*>(dlg);
+	if (!rd) { fprintf(stderr, "[destroy]    (not an RDialog -- no child walk)\n"); return; }
+	int d = 0;
+	for (RDialog* c = rd->fchild; c && d < 12; c = c->sibling, d++)
+		fprintf(stderr, "[destroy]    child %p rtti=%s hosts=%d\n",
+			(void*)c, typeid(*c).name(), bob_ole_count_for_dialog((CWnd*)c));
+	fflush(stderr);
+}
+
+extern "C" void bob_dialog_teardown(CWnd* dlg)
+{
+	/* S155: now DEFAULT-ON. It shipped default-off in S154 because this is the lifecycle every
+	   dialog runs through and S108's stack overflow lives on the same path. The evidence to flip it:
+	   the leak measurement went 181,424 -> 184 hosted controls (exactly one dialog's worth, i.e. no
+	   accumulation), the campaign accept/dismiss run exercised the directive dialogs' cancel toggle
+	   -- S108's territory -- without incident, and the full gate suite run WITH it enabled came back
+	   14/14 byte-identical, dummy==GL byte-identical, flight 98.6%. BOB_NO_DLG_TEARDOWN reverts. */
+	static int on = -1;
+	if (on < 0) on = getenv("BOB_NO_DLG_TEARDOWN") ? 0 : 1;
+	if (!on || !dlg) return;
+	/* S155: release the destroyed node AND its children. S154 measured that this hook frees only
+	   1 control, and the S155 destroy trace said exactly why:
+	       [destroy] 0x9d06900 rtti=RDEmptyD      hosts_here=0
+	       [destroy]    child 0x9f79430 rtti=LWDirectives hosts=184
+	   DestroyWindow is called on the PANEL (an RDEmptyD placeholder, or RFullPanelDial), while the
+	   hosted controls belong to the dialog CONTAINED in it. Same shape for every dialog measured:
+	   DirectiveResults 3, LWMissionFolder 23, TakeOverOffered 6 (x4 distinct instances -- the leak
+	   in flight). The dynamic_cast is the safety check S154 said this needed: DestroyWindow is on
+	   CWnd and reaches plenty of non-RDialog windows. Walk depth-first but BOUNDED -- a corrupt or
+	   cyclic list must not hang a teardown. */
 	int n = bob_ole_release_dialog(dlg);
+	if (RDialog* rd = dynamic_cast<RDialog*>(dlg)) {
+		int guard = 0;
+		for (RDialog* c = rd->fchild; c && guard < 64; c = c->sibling, guard++) {
+			n += bob_ole_release_dialog((CWnd*)c);
+			int g2 = 0;
+			for (RDialog* gc = c->fchild; gc && g2 < 64; gc = gc->sibling, g2++)
+				n += bob_ole_release_dialog((CWnd*)gc);
+		}
+	}
 	int slots = 0;
 	/* clear any logged-child slot that points at this dialog (or its dial ancestor) */
 	for (int t = 0; t < TB_TOTAL; t++) {

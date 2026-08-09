@@ -1,5 +1,56 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S155 (2026-08-09, Sprint 155): dialog teardown lands — 181,424 hosted controls → 184, default-on
+>
+> **One trace answered what four hook-site guesses could not.** S154's retro said: when the second
+> guess is wrong, stop guessing and instrument. So `BOB_TRACE_DESTROY` printed, for every
+> `DestroyWindow`, the object's RTTI, how many hosted controls name it as parent, and the same for
+> each `fchild`/`sibling`. One run:
+> ```
+> [destroy] 0x9d06900 rtti=8RDEmptyD           hosts_here=0
+> [destroy]    child 0x9f79430 rtti=12LWDirectives hosts=184
+> ```
+> **`DestroyWindow` is called on the PANEL; the hosted controls belong to the dialog inside it.**
+> Uniform across every dialog measured — `DirectiveResults` 3, `LWMissionFolder` 23,
+> `TakeOverOffered` 6 **× four distinct instances in a single campaign day** (the leak caught in
+> ordinary play, not just under scaffolds). The trace also *proved the safety check* S154 flagged:
+> the `dynamic_cast<RDialog*>` succeeded and enumerated children, so the walk is sound.
+>
+> **Fix:** release the destroyed node **and** its `fchild`/`sibling` descendants (bounded, so a
+> corrupt or cyclic list cannot hang a teardown).
+>
+> **Result — the leak is gone, not reduced:**
+>
+> | | before | after |
+> |---|---|---|
+> | dialog 1032 hosted controls | **181,424** (38,532 drawn) | **184** (156 drawn) |
+> | dialogs tracked | 12 | 6 |
+>
+> 184 is exactly one dialog's worth: no accumulation at all. Same end state
+> (`phase=1 date=1250035200 time=46280`), so behaviour is preserved.
+>
+> **Flipped to DEFAULT-ON, on evidence rather than optimism.** S154 shipped it default-off because
+> this is the lifecycle every dialog runs through and S108's stack overflow lives on the same path
+> (the directive dialogs' cancel toggle only terminated because our slot never cleared — teardown now
+> clears it). Three pieces of evidence justified the flip: the 181,424 → 184 measurement; the
+> campaign accept/dismiss run exercising that exact cancel toggle without incident; and **a full gate
+> suite run with teardown enabled coming back 14/14 byte-identical**, dummy==GL byte-identical,
+> flight 98.6%. `BOB_NO_DLG_TEARDOWN` reverts.
+>
+> **Still not freeing the dialog object** — ownership varies (members vs `new`ed by `Make()`), and
+> freeing the wrong one is worse than retaining it. This reclaims the per-re-open control storage and
+> removes the use-after-free hazard (the table no longer holds keys to freed `DDX_Control` members);
+> the object-level leak remains a separate, smaller question.
+>
+> **Banked as shared note §8-BoB155**, because the wrapper has now cost two unrelated multi-sprint
+> hunts — S144-S146 (driving the OK handler ran the wrapper's, so `MakeLWPackages` never fired) and
+> S153-S155 (teardown freed 1 control instead of 184). Both failure modes *report success*. The rule:
+> **print `typeid(*p).name()` before driving or destroying a dialog** — `RDEmptyD`/`RFullPanelDial`
+> means you are holding the wrapper.
+>
+> Files: `SRC/MFC/RDIALLOG.CPP` (descendant walk, default-on), `SRC/compat/afxwin.h`,
+> `SRC/RLISTBOX/bob_ole.cpp` (`bob_ole_count_for_dialog` probe).
+
 > ## S154 (2026-08-09, Sprint 154): the missing dialog teardown is a `{ return TRUE; }` stub — found, hooked, and honestly not finished
 >
 > **⭐ `CWnd::DestroyWindow() { return TRUE; }` (afxwin.h:855).** The whole teardown chain executes
