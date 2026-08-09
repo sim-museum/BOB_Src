@@ -379,6 +379,16 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
                 return 1;
             }
             if (h->onClick()) {
+                /* S161: supply the event ARGUMENTS. bob_evt_call marshals a (LPCTSTR,short)
+                   handler as (caption, (short)bob_evtA0), and this branch never set them — so the
+                   index parameter carried whatever the last radio/listbox click left behind.
+                   Handlers that re-read the control (SController) were fine; handlers that use the
+                   parameter were not: CSQuick1::OnTextChangedFamilylists does
+                   `currquickfamily = index`, so choosing Dogfight applied a stale family and the
+                   game launched Training/Takeoff. bob_evtP is cleared rather than left dangling —
+                   the thunk would otherwise pass a stale pointer as the caption. */
+                static const int noEvtIdx = getenv("BOB_NO_EVT_INDEX") ? 1 : 0;   /* revert */
+                if (!noEvtIdx) { bob_evtA0 = h->curIndex(); bob_evtA1 = 0; bob_evtP = 0; }
                 /* S33: the value already cycled (onClick); now fire the combo's TextChanged event
                    (dispid 1) on the dialog's RUNTIME type via the general eventsink so the genuine
                    handler runs (e.g. SController::OnTextChanged* applies the device/axis rebind —

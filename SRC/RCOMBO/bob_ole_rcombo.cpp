@@ -52,6 +52,14 @@ struct HostRCombo : public CRComboCtrl, public OleHost {
     /* Click cycles to the next value (the genuine R* combo is a click-to-advance spinner, not a
        drop-list). Advances the real CRComboCtrl's index so OnDraw shows the new value, and the
        config's writeback pass (PreDestroyPanel reads GetIndex) persists it on tab change. */
+    /* S161: expose the selection so bob_ole_click can pass it as the event's index argument.
+       Handlers split into two kinds and the port only served one: SController's read the control
+       back (GetIndex), but CSQuick1::OnTextChangedFamilylists uses the `index` PARAMETER
+       (currquickfamily = index). With no arg supplied that parameter carried a stale bob_evtA0,
+       so picking Dogfight set the family to whatever was left over — the lower combo kept listing
+       Training missions AND the launched mission was Training/Takeoff (user-reported 2026-08-09). */
+    int curIndex() override { return (int)GetIndex(); }
+
     int onClick() override {
         int n = m_list.GetCount();
         if (n <= 1) return 0;
