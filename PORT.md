@@ -1,5 +1,41 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S154 (2026-08-09, Sprint 154): the missing dialog teardown is a `{ return TRUE; }` stub — found, hooked, and honestly not finished
+>
+> **⭐ `CWnd::DestroyWindow() { return TRUE; }` (afxwin.h:855).** The whole teardown chain executes
+> correctly — `LWDirectives::OnCancel` → `RDialog::OnCancel` → `EndDialog(IDCANCEL)` →
+> `RDialog::EndDialog` walks the children → `DestroyWindow()` — and the final call **reports success
+> and destroys nothing**. This is the recurring class the port's own notes tell us to hunt (*"the
+> stub that returns SUCCESS and hides a whole subsystem… grep the compat layer for `{ return TRUE; }`
+> bodies"*, the shape of MA S68's `DrawIcon`, where no icon in the port had ever rendered).
+>
+> **It also corrects a note that had been misdirecting for ~45 sprints.** S108 recorded the no-op as
+> *"our Linux `CDialog::OnCancel`"*. But `Rowan::CDialog` (RDIALOG.H:535) adds **only a constructor**,
+> so `OnCancel` resolves to `RDialog::OnCancel`, which does real work and calls `EndDialog`. The stub
+> is three calls further down. **A note that names the wrong location is worse than no note**: it
+> reads as a closed question, and nobody re-opened it.
+>
+> **Honest state: found and hooked, not fixed.** Three hook sites were wrong before this one, each
+> caught by measurement in a single run — `RDialog::DestroyPanel` (never reached; 0 releases on a run
+> that grew to 181,424 hosts), compat's `::CDialog::OnCancel`/`EndDialog` (wrong class — these
+> dialogs are `Rowan::CDialog`), and now `DestroyWindow`, which **does** fire but releases
+> **1 control, not 184**: it reaches the panel/window while the hosts belong to the **contained**
+> dialog. The next step is to release for the destroyed node's descendants (`fchild`/`sibling`),
+> which first needs a safe way to know a `CWnd*` really is an `RDialog*`. **Left un-guessed on
+> purpose** — a fourth guess costs more than the instrumentation would, and that judgement is the
+> sprint's actual output.
+>
+> All of it sits behind **`BOB_DLG_TEARDOWN`, default-off**: this is the lifecycle every dialog runs
+> through and the failure next door is S108's stack overflow. Gates confirm the default path is
+> untouched (**14/14 byte-identical**), which is what makes shipping the partial state safe.
+>
+> **Design note recorded for whoever finishes it:** teardown must release hosts and clear the logged
+> slot, but must **not** free the dialog object — ownership varies (some are members, some are
+> `new`ed by `Make()`), and freeing the wrong one is far worse than retaining it.
+>
+> Files: `SRC/compat/afxwin.h` (`DestroyWindow` hook + the reasoning), `SRC/MFC/RDIALLOG.CPP`
+> (`bob_dialog_teardown`, default-off, with its measured limit documented in place).
+
 > ## S153 (2026-08-09, Sprint 153): the host "leak" is really that this port never destroys a dialog at all
 >
 > **SP.10 as booked was mis-scoped, and the measurement said so within one run.** The S143 banner had

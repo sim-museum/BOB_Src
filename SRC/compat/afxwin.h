@@ -54,6 +54,9 @@ extern int g_bobListFontH;   /* live R* list font pixel height (bob_ole.cpp); sh
                                 Shrink/GetTextExtent and OnDraw/ExtTextOut agree on size */
 extern int g_bobDlgIDD;      /* IDD of the dialog currently being created (CDialog::Create), so each
                                 hosted control knows its dialog -> (dialog,control) DLGINIT caption */
+extern "C" void bob_dialog_teardown(class CWnd* dlg);  /* S154 (SP.23): release a dialog's hosted
+                                                        controls + clear its logged slot; no-op
+                                                        unless BOB_DLG_TEARDOWN. */
 void bob_ole_host_template_statics(class CWnd* dlg, int dlgId);  /* S124: create the template's
                                 non-DDX label statics (PE DIALOG data) — bob_ole.cpp */
 class CDataExchange; class CPrintInfo; class CCreateContext_;
@@ -852,7 +855,19 @@ public:
         return TRUE;
     }
     BOOL UpdateWindow() { return TRUE; }
-    BOOL DestroyWindow() { return TRUE; }
+    /* S154 (SP.23): the real no-op at the end of the teardown chain, and a textbook instance of
+       this port's recurring "stub that returns SUCCESS and hides a subsystem" class (the memory
+       note says to grep the compat layer for `{ return TRUE; }` bodies -- this is one).
+       The chain runs correctly all the way here: LWDirectives::OnCancel -> RDialog::OnCancel ->
+       EndDialog(IDCANCEL) -> RDialog::EndDialog walks the children -> DestroyWindow() ... which
+       reports success and destroys nothing. So no dialog is ever torn down, every re-open
+       allocates a fresh dialog plus its ~184 hosted controls, and both are retained (measured
+       S153: 181,424 hosted controls on one dialog).
+       NB S108's note said "our Linux CDialog::OnCancel is a no-op" -- accurate about the symptom,
+       wrong about the location, which is why the defect stayed hidden behind it for ~45 sprints.
+       Teardown is default-OFF behind BOB_DLG_TEARDOWN: this is the lifecycle every dialog runs
+       through and the failure mode next door is S108's stack overflow. */
+    BOOL DestroyWindow() { bob_dialog_teardown(this); return TRUE; }
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
     BOOL MoveWindow(LPCRECT, BOOL = TRUE) { return TRUE; }
     CWnd* GetTopWindow() const { return NULL; }
@@ -1130,6 +1145,17 @@ public:
        the R* ActiveX controls get created/bound (MFC's OnInitDialog path is no-op'd). */
     BOOL Create(UINT nID, CWnd* parent = NULL);
     virtual void OnOK() {}
+    /* S154 (SP.23, default-OFF behind BOB_DLG_TEARDOWN): on Windows CDialog::OnCancel destroys the
+       dialog window, which frees the dialog and clears the logged-child slot that referenced it.
+       Ours has always been a no-op, so nothing is ever torn down: every re-open of a logged dialog
+       allocates a fresh dialog plus its hosted R* controls and retains both (measured S153: the
+       Directives dialog reached 181,424 hosted controls, tens of thousands still drawn). It is also
+       why S108 needed a per-slot re-entrancy guard -- on Windows the directive dialogs' cancel
+       toggle-loop terminates because the slot clears; here it recursed to stack overflow.
+
+       Emulating the part that matters (release the hosted controls, clear the slot) is delicate
+       enough to earn a flag: this is the lifecycle every dialog in the game runs through, and the
+       failure mode next door is a stack overflow. Default OFF until measured on the campaign paths. */
     virtual void OnCancel() {}
     virtual LRESULT OnCommandHelp(WPARAM, LPARAM) { return 0; }
     void EndDialog(int) {}

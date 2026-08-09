@@ -269,6 +269,55 @@ RDialog* CRToolBar::LoggedChild(int i)
 	else
 		return (dialoglinks.loggedchild[i]);
 }
+#if BOB_LINUX
+/* S154 (SP.23): the teardown compat's CDialog::OnCancel/EndDialog never did.
+   Default OFF (BOB_DLG_TEARDOWN=1 enables) -- see the note in afxwin.h for why this is gated.
+
+   Two things window-destruction does on Windows that matter to us:
+     1. the dialog's hosted R* controls go away  -> bob_ole_release_dialog()
+     2. the logged-child slot referencing it clears -> so LoggedChild() stops reporting a dialog
+        that is gone, and the directive dialogs' cancel toggle-loop terminates the way it does on
+        Windows instead of relying on S108's re-entrancy guard.
+   We do NOT free the dialog object itself: ownership is the game's (some are members, some are
+   `new`ed by Make()) and freeing the wrong one is a far worse bug than retaining it. This reclaims
+   the per-re-open control storage and fixes the lifetime lie in the slot table; the object-level
+   leak is a separate, smaller question. */
+extern "C" int bob_ole_release_dialog(CWnd*);
+extern "C" void bob_dialog_teardown(CWnd* dlg)
+{
+	static int on = -1;
+	if (on < 0) on = getenv("BOB_DLG_TEARDOWN") ? 1 : 0;
+	if (!on || !dlg) return;
+	/* S154 MEASURED LIMIT: this releases hosts whose parentDlg == dlg, and the trace says that is
+	   1 control per call, not the 184 the Directives dialog owns. So DestroyWindow is reached on
+	   an object that is NOT the dialog holding the hosts -- the hosts belong to the CONTAINED
+	   dialog (e.g. LWDirectives), while what gets destroyed here is the panel/window around it.
+	   The next step is to release for the destroyed node's DESCENDANTS too (walk fchild/sibling),
+	   which needs a safe way to know this CWnd* really is an RDialog before casting. Left
+	   deliberately un-guessed: three hook sites have already been wrong this sprint, each caught
+	   by measurement in one run, and a fourth guess costs more than the instrumentation would. */
+	int n = bob_ole_release_dialog(dlg);
+	int slots = 0;
+	/* clear any logged-child slot that points at this dialog (or its dial ancestor) */
+	for (int t = 0; t < TB_TOTAL; t++) {
+		CRToolBar* tb = CMainFrame::toolbars[t];
+		if (!tb || !tb->dialoglinks.loggedchild) continue;
+		for (int i = 0; i < tb->dialoglinks.MAX_CHILD_DIALS; i++) {
+			RDialog* c = tb->dialoglinks.loggedchild[i];
+			if (!c) continue;
+			if (c == (RDialog*)dlg || c->dialoglinks.loggedparentlauncher == (RDialog*)dlg) {
+				tb->dialoglinks.loggedchild[i] = NULL;
+				tb->dialoglinks.loggedchildlauncher[i] = NULL;
+				slots++;
+			}
+		}
+	}
+	if ((n || slots) && getenv("BOB_TRACE_OLE"))
+		fprintf(stderr, "[dlg] teardown %p: released %d control(s), cleared %d slot(s)\n",
+			(void*)dlg, n, slots);
+}
+#endif
+
 bool	RDialog::CloseLoggedChild(int i)
 {	//returns true if child still there!
 	RDialog* top=InDialAncestor();
