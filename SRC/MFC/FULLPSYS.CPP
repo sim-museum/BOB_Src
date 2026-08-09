@@ -187,6 +187,30 @@ static RFullPanelDial* g_bobActiveFP = NULL;
 static struct { int x,y,w,h; } g_bobMenuRect[10];
 static int g_bobMenuN = 0;
 long g_bob_shot_t = 0;   /* SP.1 (BOB_SHOT): one-shot parity-capture tick counter (map + front-end) */
+/* S145 (SP.7, from MA note 29 section 3): BOB_SHOT counts ABSOLUTE ticks, so it cannot be
+   aimed at a state whose arrival time varies -- the capture lands wherever the run happens to
+   be. That is not theoretical: S144's map capture drifted THREE campaign days past the state
+   its verdict would have claimed (caught only by the S143 state banner). BOB_SHOT_AFTER=<n>
+   instead captures n paints after a drive scaffold calls bob_shot_arm() -- i.e. relative to
+   the EVENT the recipe cares about, so queueing, lock waits and frame-rate cannot move it. */
+long g_bob_shot_armed = -1;   /* -1 = not armed; >=0 = paints since arming */
+extern "C" void bob_shot_arm(const char* why) {
+	if (g_bob_shot_armed >= 0) return;   /* first arm wins; re-arming would reintroduce drift */
+	g_bob_shot_armed = 0;
+	fprintf(stderr, "[shot] ARMED by %s (BOB_SHOT_AFTER=%s)\n",
+		why ? why : "?", getenv("BOB_SHOT_AFTER") ? getenv("BOB_SHOT_AFTER") : "(unset)");
+	fflush(stderr);
+}
+/* Shared by both capture sites: has the shot condition been met this paint? */
+static bool bob_shot_due(void) {
+	const char* after = getenv("BOB_SHOT_AFTER");
+	if (after && *after) {
+		if (g_bob_shot_armed < 0) return false;          /* drive has not fired yet */
+		return ++g_bob_shot_armed >= atol(after);
+	}
+	const char* abs_ = getenv("BOB_SHOT");
+	return abs_ && *abs_ && ++g_bob_shot_t >= atol(abs_);
+}
 /* S143 (SP.9, adopted from FreeFalcon note 15): "a parity capture must record the state it
    claims to be capturing." Without this, a mis-selected screen and a genuine render bug are
    indistinguishable in the output — FF spent a sprint on a deviation whose recorded mechanism
@@ -871,9 +895,8 @@ extern "C" void bob_frontend_tick(void)
 		   sweep -- after N map paints dump the GDI framebuffer to BOB_SHOT_PATH (private target;
 		   /tmp is shared with the sibling ports) and exit. Same counter serves the front-end
 		   branch below; whichever paint path is active when the count is reached dumps. */
-		if (getenv("BOB_SHOT")) {
-			extern long g_bob_shot_t;
-			if (++g_bob_shot_t >= atol(getenv("BOB_SHOT"))) {
+		if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER")) {
+			if (bob_shot_due()) {
 				const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
 				bob_shot_state_banner("map");   /* S143/SP.9: record the state, not just the pixels */
 				bob_gdi_present();
@@ -896,9 +919,8 @@ extern "C" void bob_frontend_tick(void)
 
 	/* SP.1 (BOB_SHOT, default-off): front-end half of the one-shot parity capture (see the map
 	   branch above). Counts front-end ticks; dumps the settled screen then exits. */
-	if (getenv("BOB_SHOT")) {
-		extern long g_bob_shot_t;
-		if (++g_bob_shot_t >= atol(getenv("BOB_SHOT"))) {
+	if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER")) {
+		if (bob_shot_due()) {
 			const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
 			bob_shot_state_banner("frontend");   /* S143/SP.9: record the state, not just the pixels */
 			int nz = bob_gdi_dump_to(sp);

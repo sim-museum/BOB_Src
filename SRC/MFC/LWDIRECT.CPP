@@ -1078,6 +1078,21 @@ void LWDirectives::OnOK()
 	//to reset reconn priorities
 	LWDirectivesResults::FillTargetLists(dr);
 
+#if BOB_LINUX
+	/* S145 (SP.11, env-gated diagnostic, default-off): gold #19's raid stacks are built by
+	   DirectiveResults::OnOK -> MakeLWPackages, and that dialog only opens when the guard below
+	   passes. Two readings of WHY it fails headlessly have already been wrong, so measure it:
+	   report the guard's value plus the first few compacted dirresults lines. BOB_TRACE_DIR. */
+	if (getenv("BOB_TRACE_DIR")) {
+		fprintf(stderr, "[dir] OnOK: dr=%p guard(dirresults[0].targets[0])=%ld\n",
+			(void*)dr, dr ? (long)dr->dirresults[0].targets[0] : -1L);
+		if (dr) for (int _d = 0; _d < 4; _d++)
+			fprintf(stderr, "[dir]   dirresults[%d].targets[0]=%ld bombers=%d\n",
+				_d, (long)dr->dirresults[_d].targets[0],
+				(int)dr->dirresults[_d].mission.bombers);
+		fflush(stderr);
+	}
+#endif
 
 	if (dr->dirresults[0].targets[0])
 	{

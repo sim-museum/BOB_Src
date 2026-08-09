@@ -1501,6 +1501,7 @@ extern "C" void bob_oob_suppress_directives(void) {
 		fprintf(stderr,"[directives]   dismiss pass %d: %d -> %d\n", pass, open, mtb.LoggedChild());
 	}
 	fprintf(stderr,"[directives] after dismiss: open-index=%d\n", mtb.LoggedChild());
+	{ extern void bob_shot_arm(const char*); bob_shot_arm("suppress-directives"); }   /* S145 */
 }
 
 /* S144 (SP.11, gold #19): ACCEPT the LW orders flow instead of trying to escape it.
@@ -1537,6 +1538,9 @@ extern "C" void bob_oob_accept_directives(void) {
 		}
 	}
 	fprintf(stderr,"[directives] accept done: open-index=%d\n", mtb.LoggedChild());
+	/* S145 (SP.7): arm the capture RELATIVE to this event, so BOB_SHOT_AFTER=<n> lands n map
+	   paints after the orders flow completes rather than at an absolute tick that drifts. */
+	{ extern void bob_shot_arm(const char*); bob_shot_arm("accept-directives"); }
 }
 
 extern "C" void bob_oob_close_dialogs(void) {

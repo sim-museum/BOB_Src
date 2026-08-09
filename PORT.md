@@ -1,5 +1,48 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S145 (2026-08-08, Sprint 145): captures are armed FROM THE DRIVE — the state drift is gone; and the S144 "accept" workaround is proven to have been running the wrong handler
+>
+> **S145.1 (SP.7) — done, and immediately proven.** `BOB_SHOT` counted absolute ticks, so a capture
+> could not be aimed at a state whose arrival time varies; that is exactly how S144's map capture
+> landed three campaign days past the state its verdict would have claimed. `BOB_SHOT_AFTER=<n>` now
+> fires n paints after a drive scaffold calls `bob_shot_arm()` (first-arm-wins, so re-arming cannot
+> reintroduce drift), and the accept/suppress scaffolds arm it. **Result, first run:**
+> `[shot] ARMED by accept-directives` then a capture at **`phase=1 date=1250035200`** — the correct
+> 12 August Eagle Attack state, where the same recipe under absolute ticks had drifted to 15 August.
+> Adopted from MA note 29 §3.
+>
+> **S145.2 (SP.11) — not delivered, and the trace is why; this is a decisive negative, not a stall.**
+> A gated trace (`BOB_TRACE_DIR`) in `LWDirectives::OnOK` printed **nothing**, while the accept
+> scaffold reported success and the dialog closed. So S144's workaround never ran the derived
+> handler. The cause is structural and worth more than the sprint: **the logged child is an RDialog
+> *panel wrapper*, not the dialog.** `LWDirectives::Make` returns
+> `MakeTopDialog(..., DialBox(FIL_D_LWDIRECTIVES, new LWDirectives(dirres)))` — the panel *contains*
+> the `LWDirectives` (a `RowanDialog`) as its `dial`. Firing OK at the panel ran `RDialog::OnOK` →
+> `EndDialog(IDOK)`: the panel closed, `MakeLWPackages` was never reached, **and it looked like it
+> had worked**. A workaround that silently performs the base behaviour and skips the derived logic is
+> worse than one that fails loudly.
+>
+> **Corrections issued this sprint (both mine, both from S144, both now fixed at source):**
+> 1. §8y in the **shared** doc claimed firing under the base type "still reaches the derived
+>    override". It does not — corrected and re-synced to MA, since MA was told to act on that note.
+> 2. The raid-guard reading ("index 0 is the RECON slot `FillTargetLists` never fills") was wrong:
+>    `dirresults[]` is a **compacted** list built by `RefreshMissions` (`k=0` → recon line → i=1..7,
+>    each returning the next `k`), so index 0 is the first *allocated* line, and `FillTargetLists`
+>    writes no `dirresults` at all.
+>
+> That is four mechanism claims in this thread produced by reading and overturned by measurement.
+> The pattern is consistent enough to state as a rule: **in this engine, do not describe a control
+> path you have not traced.** Every one of the four looked reasonable on the page.
+>
+> **#19's next step, from evidence:** reach the panel's `dial` (the `RowanDialog`) rather than the
+> panel, and drive *its* OK — then `LWDirectives::OnOK` → `OpenDirectiveResultsToggle` →
+> `DirectiveResults::OnOK` → `MakeLWPackages` builds the day's raids. The capture side is now solved
+> (S145.1), so #19 is one correctly-addressed handler away.
+>
+> Files: `SRC/MFC/FULLPSYS.CPP` (`bob_shot_arm`, `bob_shot_due`, both capture sites),
+> `SRC/MFC/MAINFRM.CPP` (scaffolds arm the shot), `SRC/MFC/LWDIRECT.CPP` (`BOB_TRACE_DIR`,
+> env-gated, default-off). Cross-port: §8y corrected.
+
 > ## S144 (2026-08-08, Sprint 144): the title-bar OK works for the first time — every event registered on a BASE class had been silently dead; the strategic map is finally capturable on an active campaign day
 >
 > ⭐ **The headline is a defect S143's instrumentation walked us into: `bob_evt_fire` matches
@@ -15,9 +58,13 @@
 > It stayed invisible because every event previously wired (CSCampaign, CSQuick1, the toolbars) was
 > registered on the *same* class that received it, so exact matching and correct matching were
 > indistinguishable. **The first base-registered event anyone tried was the first failure.**
-> Fixed for the scaffold by firing under `typeid(RDialog)` — the derived override still runs, since
-> `RDialog::OnOK` implicitly overrides compat's `virtual CDialog::OnOK` and the thunk's
-> `((RDialog*)p)->OnOK()` virtual-dispatches to `LWDirectives::OnOK` / `DirectiveResults::OnOK`.
+> Fixed for the scaffold by firing under `typeid(RDialog)` — which makes the event *fire*.
+> **[S145 CORRECTION: it does NOT reach the derived override, as claimed here.** A gated trace in
+> `LWDirectives::OnOK` never ran while the dialog closed anyway. The cause is structural: the logged
+> child is an RDialog **panel wrapper** and the real dialog is a separate object inside it —
+> `LWDirectives::Make` returns `MakeTopDialog(..., DialBox(FIL_D_LWDIRECTIVES, new LWDirectives(..)))`.
+> So the OK ran `RDialog::OnOK` → `EndDialog(IDOK)`: panel closed, derived logic skipped, and it
+> looked like success. §8y corrected and re-synced to MA.**]**
 > The general fix (a base-class walk in the sink) changes dispatch for every existing registration
 > and is booked as **SP.12** with the byte-identical sweep as its gate. Shared as **§8y**, with a
 > specific pointer for MA: if the Player Log's `?`/`✓` buttons don't respond, this is very likely why.
@@ -40,10 +87,17 @@
 > `BOB_SHOT=<tick>` cannot be aimed at a state whose arrival time varies, which is exactly how this
 > run drifted three days; and (b) satisfy the raid-generation condition: `LWDirectives::OnOK` only
 > opens DirectiveResults `if (dr->dirresults[0].targets[0])`, and only `DirectiveResults::OnOK` calls
-> `MakeLWPackages`. Index 0 is the RECON slot, which `FillTargetLists` never fills (its loop starts
-> at `i=1`), so with Reconn Missions = 0 — gold's own value — the results dialog never opens and no
-> packages are built. The raid path therefore runs through either a recon allocation or the
-> `germanisauto` → `AutoLWPackages` branch (LWDIRECT.CPP:2046). SP.11 carries with both named.
+> `MakeLWPackages`. **[Corrected in S145 — the S144 reading of this condition was wrong.]**
+> `dirresults[]` is a **compacted** list, not a fixed-slot array: `LWDirectives::RefreshMissions`
+> starts `k=0`, calls `FillReconnDirectivesLine`, then `FillOneDirectivesLine` for i=1..7, each
+> returning the next `k`, and terminates with `dirresults[k].targets[0] = UID_NULL`
+> (LWDIRECT.CPP:628-643). So index 0 is the **first allocated line**, not "the RECON slot"; and
+> `FillTargetLists` writes no `dirresults` at all (it fills the candidate-target pools), so its
+> `i=1` loop start is irrelevant to the condition. Our grid *does* show allocations (Airfields 2,
+> Docks 1, RDF 2), so the better hypothesis is that **`RefreshMissions` never ran in the headless
+> instance**, leaving `dirresults` empty. To be verified with a gated trace rather than asserted —
+> that is the third mechanism claim in this thread and the previous two were both wrong from
+> reading alone. SP.11 carries with the trace as its first step.
 >
 > **Also confirmed twice more:** the SP.10 host leak — dialog 1032 at **184 → 368** (one re-open) and
 > **→ 1656** (the suppress+accept run). It reproduces on any path that re-creates that dialog.
