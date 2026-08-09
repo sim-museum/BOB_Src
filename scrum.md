@@ -849,18 +849,49 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
   defaults against gold's saved values and the deviation is **ours**. `BOB_TRACE_PREFS` prints it;
   the measurement was still queued on the shared display at sprint close, so the story carries with
   the instrument in place rather than a guess written down.
-- **⭐ SP.20 ANSWERED after the sprint entry was drafted, and it went the other way:**
-  `[prefs] exists=1 … successfulLoad=0`. **The port finds the install's `settings.cfg` and fails to
-  parse it**, falling back to factory defaults; gold parsed the same file under Wine. So #6/#9/#10/#11's
-  differences are **ours**, not user state — four rows reclassified — and the impact runs past parity:
-  every run starts at factory defaults and `SavePreferences()` writes a file the next run rejects, so
-  a player's preferences are silently discarded. Booked **SP.22** (8 pts).
+- **◐ SP.20 measured: `[prefs] exists=1 … successfulLoad=0`** — the port finds the install's
+  `settings.cfg` and **fails to parse it**, falling back to factory defaults. Real defect, fixed in
+  S151. **[S151 CORRECTION: this entry originally went on to conclude "gold parsed the same file, so
+  #6/#9/#10/#11's differences are ours" and reclassified four rows. That was wrong** — the file's
+  own stamp says `Jul 19 2026`, i.e. **our port wrote it**, and the gold shots (2026-06-24) predate
+  it; and with the load fixed those four screens are **byte-identical** to the factory-default
+  captures. Cause unknown again; SP.20 reopens.**]** Booked **SP.22** (8 pts).
 - **Gates (all `gl-lock`, via `tools/bob_gates.sh`):** sweep 14/14 exit 0; safe default exit 0;
   **dummy==GL byte-identical**; flight **98.6% non-black**; **A/B 14/14 byte-identical vs pre-S142**
   (correctly so — the sweep-row suppression is scoped to dlg 1032, which no swept recipe renders);
   **binary hash unchanged — gate valid**.
 - **Increment demo:** `BOB_AUTOCLICK=1,1,#1000:1,1,1 BOB_MAP_TIMER=8 BOB_SHOT=1100` → the Directives
   grid with clean section headers.
+
+### Sprint 151 — "Settings survive a rebuild; and a retraction" → *Increment: `settings.cfg` loads again; S150's conclusion about four parity rows withdrawn* — **✅ CLOSED 2026-08-09 (5/8 pts; §9 row 151 + PORT.md S151)**
+- **Sprint Goal:** make `settings.cfg` parse (SP.22) and confirm what that does to #6/#9/#10/#11.
+- **✅ SP.22 root cause, measured:** `SaveData`'s deserialiser gates on `strcmp(date,date2)==0`
+  where **both are `"Rowan Savegame: " __DATE__`** — settings load only if written by a binary
+  compiled the **same calendar day**. The original's own design (preferences die on every rebuild);
+  its authors never felt it because they didn't rebuild daily. **We do** — so every `ninja bob`
+  silently discarded the player's preferences, and `SavePreferences()` wrote a file the next run
+  rejected.
+- **The fix was already in the file, for savegames.** `operator>>(BIStream&, Campaign&)` has a
+  `BOB_LINUX` block — *"the version string embeds the build `__DATE__` … load anyway — the binary
+  save format is what matters (/Zp1-packed, our -fpack-struct read matches)"*. Never applied to
+  `SaveData`. Applied now with the same reasoning; `BOB_NO_PREFS_LOAD` reverts. Verified on four
+  config screens: loads, exit 0, no garbage.
+- **⭐ RETRACTION, and it matters more than the fix.** S150 measured `successfulLoad=0` and concluded
+  gold had parsed the same file, so #6/#9/#10/#11's differences were ours — reclassifying four rows.
+  **Both unchecked assumptions were false:** the file's stamp reads `Jul 19 2026`, so **our own port
+  wrote it** and the 2026-06-24 gold shots never saw it; and with the load fixed those screens are
+  **byte-identical** to the factory-default captures, so loading changes no pixel. Rows reverted to
+  **cause unknown**; SP.20 reopens; PORT.md + parity doc corrected in place.
+- **The rule this cost: a measurement licenses only the claim it measures.** `successfulLoad=0`
+  proves *we* don't load the file — nothing about what gold did. Two cheap checks (the file's own
+  date stamp; a pixel diff) refuted the story built on it.
+- **Gates (`tools/bob_gates.sh`):** sweep 14/14 exit 0; safe default exit 0; **dummy==GL
+  byte-identical**; flight **98.6% non-black**; **A/B 14/14 byte-identical vs pre-S142**; binary hash
+  unchanged — gate valid. **That 14/14 is corroboration, not a formality:** settings now load, and
+  nothing renders differently — exactly what the pixel diff predicted, because the saved file holds
+  default values. Had the struct layout been wrong, this is where garbage would have shown up.
+- **Increment demo:** `BOB_TRACE_PREFS=1 BOB_CONFIGSCREEN=gfx2` → *"version string differs … loading
+  anyway"*, settings applied instead of discarded.
 
 ---
 
@@ -909,7 +940,8 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
-| **150** | ~8 | 6 | ★ **Gold #18's stray row was a CUT FEATURE's orphaned controls — found by dumping geometry after an id guess failed** | **(2026-08-09)** S146 guessed `IDC_FIGHTERSWEEP*`; the probe matched **nothing**. The widened per-control dump answered it: six real rows at y=317..447 (12 controls each) plus an extra **11-control row at y=229** whose ids are the `...7` members of the same families = index 7 of `FillTargetLists`' `for(i=1;i<8;i++)` = **SWEEPSNDECOYS**, which the game marks dead (`INT3; //Patrols removed.`, LWDIRECT.CPP:1626). **The fighter-sweep feature was cut; its controls stayed in the BDG template** and our DDX/template hosting drew them over the "Ground Attack Gruppen"/"Escort Gruppen" headers. Suppressed by measured id (`BOB_NO_SWEEPROW_SKIP` reverts); headers clean, six real rows untouched. **Residual → SP.21, explicitly not assumed to share the cause:** the "Sweeps" label + "Escort 1:1" row remain, but `IDC_ESCORT_PROPORTION` (1680) is **live code**. **SP.18:** all 16 scaffold hooks audited — one repeatable hook logs, and its tail was **redundant** (S146's all-toolbar sweep superseded the S143 misc-only loop: stack walked twice, policy in two places). Deleted, not quietened. **SP.20:** instrumented (`BOB_TRACE_PREFS`) and deliberately unconcluded — settings.cfg parsing vs failing means opposite things for whose deviation it is. |
+| **151** | ~8 | 5 | ★ **`settings.cfg` loads again (preferences no longer die on every rebuild) — and S150's conclusion about four parity rows RETRACTED** | **(2026-08-09)** Root cause measured: `SaveData`'s deserialiser gates on `strcmp(date,date2)` where **both embed `__DATE__`**, so settings load only if written by a binary compiled the same calendar day — the original's own design, harmless to authors who didn't rebuild daily, corrosive to a port that rebuilds constantly (every `ninja bob` discarded preferences; `SavePreferences()` wrote a file the next run rejected). **The fix already existed in the same file for Campaign saves** (`BOB_LINUX`: *"version string embeds the build `__DATE__` … load anyway — the binary format is what matters, /Zp1 vs -fpack-struct"*) and had simply never been applied to `SaveData`. Applied; `BOB_NO_PREFS_LOAD` reverts; verified on four config screens. **⭐ RETRACTION:** S150 had concluded from `successfulLoad=0` that gold parsed the same file and therefore #6/#9/#10/#11's combo differences were ours. **Both assumptions false** — the file's stamp is `Jul 19 2026` (**our port wrote it**; gold shots are 2026-06-24), and with the load fixed those screens are **byte-identical** to factory defaults (loading changes no pixel). Rows → cause unknown, SP.20 reopens, docs corrected in place. **Rule: a measurement licenses only the claim it measures.** |
+| **150** | ~8 | 6 | ★ **Gold #18's stray row was a CUT FEATURE's orphaned controls — found by dumping geometry after an id guess failed** | **(2026-08-09)** S146 guessed `IDC_FIGHTERSWEEP*`; the probe matched **nothing**. The widened per-control dump answered it: six real rows at y=317..447 (12 controls each) plus an extra **11-control row at y=229** whose ids are the `...7` members of the same families = index 7 of `FillTargetLists`' `for(i=1;i<8;i++)` = **SWEEPSNDECOYS**, which the game marks dead (`INT3; //Patrols removed.`, LWDIRECT.CPP:1626). **The fighter-sweep feature was cut; its controls stayed in the BDG template** and our DDX/template hosting drew them over the "Ground Attack Gruppen"/"Escort Gruppen" headers. Suppressed by measured id (`BOB_NO_SWEEPROW_SKIP` reverts); headers clean, six real rows untouched. **Residual → SP.21, explicitly not assumed to share the cause:** the "Sweeps" label + "Escort 1:1" row remain, but `IDC_ESCORT_PROPORTION` (1680) is **live code**. **SP.18:** all 16 scaffold hooks audited — one repeatable hook logs, and its tail was **redundant** (S146's all-toolbar sweep superseded the S143 misc-only loop: stack walked twice, policy in two places). Deleted, not quietened. **SP.20:** instrumented (`BOB_TRACE_PREFS`); measured `successfulLoad=0` (real defect, fixed S151) — but the conclusion drawn from it about #6/#9/#10/#11 was **retracted in S151** (our own port wrote that file; loading it changes no pixel). |
 | **149** | ~7 | 7 | ★ **Self-certifying gate suite (SP.19) + a THIRD state-mismatched verdict found and fixed (SP.17)** | **(2026-08-08)** Gate promoted to versioned `tools/bob_gates.sh` — the scratchpad+`sed` arrangement had failed twice (a silent rename mismatch overwrote a baseline; recipes drifted from the prose). It now takes an outdir + baseline, A/Bs itself, and **hashes `build/bob` before and after, exiting 2 loudly if it moved** — S148's mixed-binary 13/14 can never again be read as code. First run self-certified: *binary unchanged (md5=a8eccc5e…) — gate valid*, **14/14 byte-identical**. **SP.17 audit:** gold #17 is **Eagle Attack 12–23 Aug**; recipe `1,1,1` never chose a phase → every capture was Convoys. `#1000:1` makes it match gold line for line (`phase=1 autoclick=4/4`). **All three campaign rows (#16/#17/#19) shared one root: no phase token.** ⭐ **And none was invisible** — #17's row literally said "phase/date differ only by selected phase (state)". They were recorded as deviations then reasoned past. Parity doc now states the distinction it had been merging: **a state difference the recipe CAN fix is a defect in the test; one it cannot is a finding about the port.** #6/#9/#10/#11's "combo values (settings state)" deliberately NOT claimed (settings-resident, not recipe-resident) → SP.20, *plausibly benign, not verified*. |
 | **148** | ~7 | 7 | ★ **State-predicate capture trigger (SP.16) — and gold #19 judged on a like-for-like frame at last** | **(2026-08-08)** `BOB_SHOT_WHEN=clear` fires on the first map paint with **no logged child on ANY toolbar** (asking every toolbar deliberately — S146 showed one can report -1 while another holds the dialog), AND-able with `BOB_SHOT_DATE` / `BOB_SHOT_TIME_LT`. Rationale: S145's `BOB_SHOT_AFTER` fixed **queueing** drift; S147 found the layer beneath — suppressing prompts makes the campaign run faster, so one recipe gave 12 Aug in S146 and 13 Aug twice in S147 at two paint counts. No counter survives the harness changing the sim rate; only a state description does. **Worked first use after seven counter attempts failed:** clean **12 Aug 20:58 x300** map, `phase=1 date=1250035200`. **#19 re-judged like-for-like** (it had compared a fresh-Convoys capture to a 12-Aug gold since S123): terrain, sectors, labels, No.11 Group, unit-icon layer, footer log, x300 clock, toolbars, ruler all agree → CLOSE, earned. **Raid-stack difference = TIMING, measured:** gold 06:31 raids outbound; our first clear paint 20:58, raids landed. **The map is obstructed precisely while raids fly** (the game prompts) — S146 has ours *with* routes at 07:52 behind a dialog. Evidence `doc/parity/native-strategic-map-eagle-2026-08-08.png` + refreshed `sbs-strategic-map.jpg`. |
 | **147** | ~8 | 5 | ⚠️ **PARTIAL — 5 NULL derefs fixed; the capture-timing model shown to be wrong (and my own scaffold carried MA's one-shot bug)** | **(2026-08-08)** **SP.13:** swept every `SendMessage(WM_GETHINTBOX)` site instead of the two I'd read — RCOMBO **0/4** unguarded, RLISTBOX **1/4**, **RBUTTON 4/4**; `CRButtonCtrl` (what a title bar *is*) had no guarded site at all. Five derefs fixed with the codebase's own safe spelling, 6-line diff; note 19 to MA corrected ("one safe, one unsafe" understated it). **Unplanned ⭐:** `bob_oob_close_dialogs` was `static int done`-guarded — MA note 29 §3's trap, in a hook I wrote *after* reading the warning — so the dismiss fired once per process and the Mission Folder + a **"Take over? Dover CH under attack"** prompt sailed past while I blamed the game. Fixed; 5 sibling hooks → **SP.15**. **⭐⭐ Then the fix exposed SP.7's limit:** with prompts suppressed the campaign runs faster, so the recipe that gave 12 Aug 07:52 in S146 gave **13 Aug** twice, at both 340 and 150 paints — **the scaffold changed the quantity the timing depended on**. Captures need a **game-state predicate** → **SP.16**. **#19 still not judged** after six attempts across three sprints; stopped deliberately rather than grind more paint-count guesses. **Gates:** sweep 14/14 + byte-identical vs pre-S142; safe default exit 0; dummy==GL byte-identical; flight 98.7%. |
@@ -993,6 +1025,22 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
+- _Sprint 151 (settings survive a rebuild; and a retraction):_ **The seventh mechanism claim this
+  thread has overturned by measuring — and the first where the measurement was RIGHT and the story
+  built on it was wrong.** That is the more dangerous shape: `successfulLoad=0` was a real number,
+  and it lent unearned credibility to two unchecked inferences (that gold had read the same file,
+  and that reading it would change what the screens show). Both were refuted in minutes — by the
+  file's own date stamp, and by a pixel diff. **Rule: a measurement licenses only the claim it
+  measures.** Write down what was observed and what was inferred as separate sentences; the second
+  kind needs its own evidence.
+  **Second, the good half:** the fix for a defect I'd called novel had been sitting in the same file
+  for dozens of sprints, applied to `Campaign` saves with the reasoning already written out. Before
+  designing an accommodation, grep for the same problem elsewhere in the tree — this port has solved
+  most of its own problems once already.
+  **Third, on damage control:** the retraction touched PORT.md, two board entries and five parity
+  rows, because the wrong conclusion had been propagated eagerly the moment it looked good. Good
+  news travels fast and needs correcting everywhere it went; that is an argument for holding a
+  pleasing conclusion for one extra check before writing it into five places.
 - _Sprint 150 (dump the geometry, don't guess the ids):_ **The probe that dumps everything beat four
   sprints of naming candidates.** S146 guessed an id family for #18's stray row and matched nothing;
   widening the same probe to print every drawn control's id and rect identified the row, its

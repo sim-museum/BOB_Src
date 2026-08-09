@@ -272,7 +272,31 @@ BIStream& operator	>>	(BIStream& bis,SaveData& savedata)
 	bis>>date;
 	int dummy;
 	bis>>dummy;
+#if BOB_LINUX
+	/* S151 (SP.22): both `date` and `date2` are "Rowan Savegame: " __DATE__ , so this guard only
+	   passes when the file was written by a binary compiled on the SAME CALENDAR DAY. That is the
+	   original game's own design -- it invalidates preferences whenever the exe is rebuilt -- and
+	   the authors never felt it because they did not rebuild daily. We do: measured in S150, the
+	   installed BDG 0.99 build's settings.cfg is rejected outright (`successfulLoad=0`), so every
+	   run starts at factory defaults, `SavePreferences()` writes a file the next run rejects, and
+	   the player's preferences are silently discarded. Four parity rows (#6/#9/#10/#11) had been
+	   recording the resulting combo differences as "settings state" for ~25 sprints.
+
+	   This is the SAME accommodation the port already makes for Campaign saves a few hundred lines
+	   below ("version string differs -- loading anyway"), with the same justification recorded
+	   there: the binary layout is what matters and it agrees (the original is /Zp1-packed, we build
+	   -fpack-struct=1). Applied here for the same reason rather than invented.
+	   BOB_NO_PREFS_LOAD restores the stock date-gated behaviour. */
+	bool bobDateOk = (strcmp(date,date2)==0);
+	if (!bobDateOk && !getenv("BOB_NO_PREFS_LOAD")) {
+		if (getenv("BOB_TRACE_PREFS"))
+			fprintf(stderr,"[prefs] version string differs (%s != %s) -- loading anyway\n", date, date2);
+		bobDateOk = true;
+	}
+	if (bobDateOk)
+#else
 	if (strcmp(date,date2)==0)
+#endif
 	{
 		bis.read((char*)&savedata,sizeof(SaveDataLoad));
 		char buffer[180];

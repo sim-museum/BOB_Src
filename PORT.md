@@ -1,5 +1,45 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S151 (2026-08-09, Sprint 151): settings now survive a rebuild — and a retraction of yesterday's conclusion about why four parity rows differ
+>
+> **SP.22 — root cause, measured.** `SaveData`'s deserialiser gates on
+> `strcmp(date, date2)==0` where **both strings are `"Rowan Savegame: " __DATE__`** — so
+> `settings.cfg` only loads if it was written by a binary compiled on the **same calendar day**.
+> That is the original game's own design (it invalidates preferences whenever the exe is rebuilt),
+> and its authors never felt it because they did not rebuild daily. This port does: every
+> `ninja bob` on a new date silently discards the player's preferences, including ones the port
+> itself wrote, and `SavePreferences()` then writes a file the next run rejects.
+>
+> **The fix was already in the file, for savegames.** `operator>>(BIStream&, Campaign&)` carries a
+> `BOB_LINUX` block reading *"the version string embeds the build `__DATE__`, which never matches
+> the original game's saves. Load anyway — the binary save format is what matters (and it is
+> /Zp1-packed, so our -fpack-struct read matches it)."* The identical accommodation had simply never
+> been applied to `SaveData`. Applied now, same reasoning, `BOB_NO_PREFS_LOAD` restores stock
+> behaviour. Verified across four config screens: `[prefs] version string differs (… Jul 19 2026 !=
+> … Aug  9 2026) -- loading anyway`, all exit 0, no garbage values.
+>
+> **⭐ And the retraction, which matters more than the fix.** S150 measured `successfulLoad=0` and
+> concluded that gold had parsed the same file under Wine, so the four "settings state" deviations
+> on #6/#9/#10/#11 were ours. **Both halves of that inference were unchecked, and both are false:**
+> - The trace prints the stamp — `Rowan Savegame: **Jul 19 2026**`. A 2000-era BDG binary cannot
+>   stamp 2026: **our own port wrote that file**, the day this install was made. The gold shots are
+>   **2026-06-24**, three weeks earlier. Gold never saw it.
+> - With the load fixed, the four screens are **byte-identical** to the factory-default captures.
+>   The file holds default values, so loading it changes no pixel — it could not have explained a
+>   difference even if gold had read it.
+>
+> So those four rows go back to **cause unknown** (SP.20 reopens), the parity-doc reclassification is
+> withdrawn, and the S150 PORT.md entry is corrected in place.
+>
+> **The rule this cost:** *a measurement licenses only the claim it measures.* `successfulLoad=0`
+> proves **we** do not load the file. Everything past that — who else read it, and whether reading it
+> would change anything — was inference presented as finding. Two cheap checks (the file's own date
+> stamp, and a pixel diff) refuted it. This is the seventh mechanism claim in this thread overturned
+> by measurement, and the first where the *measurement was right and the story built on it was not* —
+> which is the more insidious version, because a real number gives the story unearned credibility.
+>
+> Files: `SRC/MISSMAN/SAVEGAME.CPP` (date-gate accommodation + `BOB_TRACE_PREFS`).
+
 > ## S150 (2026-08-09, Sprint 150): gold #18's stray row was a CUT FEATURE's orphaned controls — found by dumping geometry instead of guessing ids
 >
 > **SP.8 — the "Sweeps" row identified, and it is not a visibility bug.** S146 guessed the row was
@@ -45,9 +85,14 @@
 > [prefs] parsed successfulLoad=0   (0 => factory defaults are what the config screens show)
 > ```
 > **The port finds the installed build's saved settings and fails to parse them**, falling back to
-> factory defaults. Gold, running the same install under Wine, parsed them. So the four
-> "combo values (settings state)" deviations on #6/#9/#10/#11 are **not user state and not out of
-> scope — they are ours**, and four parity rows have been carrying a defect described as cosmetic.
+> factory defaults. **[S151 CORRECTION: the rest of this paragraph as first written was wrong.** It
+> concluded "gold parsed them, so the four #6/#9/#10/#11 deviations are ours". S151 checked the two
+> assumptions behind that: the file's stamp reads `Rowan Savegame: Jul 19 2026`, so **our own port
+> wrote it** and the 2026-06-24 gold shots never saw it; and with the load fixed the four screens
+> are **byte-identical** to the factory-default captures, so loading changes no pixel. The cause of
+> those rows' differences is still **unknown**, and the reclassification is withdrawn. The
+> settings-load defect below is real and worth fixing on its own merits — it is just not the
+> explanation for those rows.**]**
 >
 > **And the impact is larger than parity:** the port silently ignores the player's saved
 > preferences — every run starts at factory defaults, and `SavePreferences()` writes a file the next
