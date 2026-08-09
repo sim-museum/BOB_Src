@@ -41,5 +41,32 @@ extern "C" int bob_evt_fire(void* dlg, const void* tinfo, int id, int dispid) {
             v[i].thunk(dlg); fired = 1;
         }
     }
+    /* S160: report a fire that found NO handler, and say what IS registered for that id. A miss is
+       the symptom of both known traps and they need opposite fixes, so the trace must distinguish
+       them rather than leave it to argument:
+         - §8z    : handler registered on a BASE class; exact type match here can never reach it.
+         - §8-BoB155: we fired under the PANEL wrapper's type (RDEmptyD/...) while the handler is
+                      registered on the contained dialog (CSQuick1/...).
+       Printing the fired type next to the registered types tells you which in one line.
+       Deduped per (id,dispid,type) — BOB_TRACE_OLE is per-control-per-frame and once wrote 70 MB. */
+    if (!fired && getenv("BOB_TRACE_EVT")) {
+        static std::vector<long> seen;
+        long key = ((long)id << 20) ^ ((long)dispid << 8) ^ (long)(size_t)dt;
+        bool dup = false;
+        for (size_t k = 0; k < seen.size(); k++) if (seen[k] == key) { dup = true; break; }
+        if (!dup && seen.size() < 200) {
+            seen.push_back(key);
+            fprintf(stderr, "[evt_miss] id=%d dispid=%d fired-as=%s -- NO HANDLER",
+                    id, dispid, dt ? dt->name() : "?");
+            int shown = 0;
+            for (size_t i = 0; i < v.size(); i++)
+                if (v[i].id == id && v[i].dispid == dispid && v[i].ti && shown < 4) {
+                    fprintf(stderr, "%s registered-on=%s", shown ? "," : "; ", v[i].ti->name());
+                    shown++;
+                }
+            if (!shown) fprintf(stderr, "; nothing registered for this id/dispid");
+            fprintf(stderr, "\n");
+        }
+    }
     return fired;
 }

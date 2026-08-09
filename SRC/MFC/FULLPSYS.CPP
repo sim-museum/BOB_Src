@@ -180,6 +180,8 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
 extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py);  /* S141 */
 extern "C" void bob_ole_dump_template_membership(int dlgId);  /* S146 (SP.8 probe) */
+extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog);       /* S160: hit-test target dump */
+extern "C" int  bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int* h);  /* S160 */
 static int g_bobOleDraw = -1;
 static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_DRAW") ? 1 : 0; return g_bobOleDraw; }
 
@@ -260,6 +262,24 @@ static void bob_shot_state_banner(const char* where)
 	/* S146 (SP.8): with BOB_TRACE_DIR=<dlgId>, dump that dialog's template membership once. */
 	{ const char* td = getenv("BOB_TRACE_DIR");
 	  if (td && atoi(td) > 1) bob_ole_dump_template_membership(atoi(td)); }
+	/* S160: dump EVERY hit-test target on this screen -- the menu rects and each panel's hosted
+	   controls. User-reported (2026-08-09): the Fly/Back buttons on Quick Mission and Begin/Back in
+	   campaign do nothing, and their clicks produce NO trace line at all, while combos on the same
+	   screen log "combo cycled". A click that matches nothing is the S156 class (never arrives),
+	   not the §8z class (arrives, no handler) -- opposite fixes, so establish which before touching
+	   anything. If no target covers the button's pixels, that is the answer. BOB_DUMP_HITTARGETS=1 */
+	if (getenv("BOB_DUMP_HITTARGETS")) {
+		fprintf(stderr, "[hittargets] menu rects: n=%d\n", g_bobMenuN);
+		for (int i = 0; i < g_bobMenuN; i++)
+			fprintf(stderr, "[hittargets]   menu[%d] = (%d,%d %dx%d)\n",
+				i, g_bobMenuRect[i].x, g_bobMenuRect[i].y, g_bobMenuRect[i].w, g_bobMenuRect[i].h);
+		if (g_bobActiveFP)
+			for (int d = 0; d < 3; d++)
+				if (g_bobActiveFP->pdial[d]) {
+					fprintf(stderr, "[hittargets] panel %d hosted controls:\n", d);
+					bob_ole_dump_drawn_rects((CWnd*)g_bobActiveFP->pdial[d]);
+				}
+	}
 	const char* ac = getenv("BOB_AUTOCLICK");
 	int acTotal = 0; if (ac && *ac) { acTotal = 1; for (const char* p = ac; *p; p++) if (*p == ',') acTotal++; }
 	long art = -1; int resw = 0, phase = -1;
@@ -386,9 +406,25 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		/* Real ActiveX control render: draw the hosted CRListBoxCtrl (multi-column
 		   tab row) and keep click rects from the same oleH-measured widths. */
 		if (bobOleDraw() && bob_ole_draw_listbox((CWnd*)&self->m_IDC_RLISTBOX, x, y, clipw, fh + fh/2, oleH)) {
+			/* S160 (user-reported): take each item's click rect from the column the listbox
+			   ACTUALLY DREW, not from a re-measurement. The hosted CRListBoxCtrl lays its columns
+			   out internally (PositionRListBox / m_horzSeperation) while wids[] below is
+			   bob_gdi_text_width() packed with a fixed `gap` — two independent layouts that drift.
+			   Measured on Quick Mission before this fix: "Fly" painted x=132..153 vs click rect
+			   x=83..108 (NO overlap — the button could not be clicked at all), "Back" painted
+			   56..97 vs rect 25..69 (only its leftmost 14px responded). Same class as S156's
+			   OOB hit-testing and MA §8-MA84 trap #1: store what paint did, never re-derive it.
+			   Falls back to the old computation per item if the column is not drawn.
+			   BOB_NO_MENU_DRAWNRECT reverts. */
 			int rx = x;
+			int useDrawn = !getenv("BOB_NO_MENU_DRAWNRECT");
 			for (int i = 0; i < n; i++) {
-				g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=wids[i]; g_bobMenuRect[i].h=fh+fh/2;
+				int cx, cy, cw, ch;
+				if (useDrawn && bob_ole_col_rect((CWnd*)&self->m_IDC_RLISTBOX, i, &cx, &cy, &cw, &ch)) {
+					g_bobMenuRect[i].x=cx; g_bobMenuRect[i].y=cy; g_bobMenuRect[i].w=cw; g_bobMenuRect[i].h=ch;
+				} else {
+					g_bobMenuRect[i].x=rx; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=wids[i]; g_bobMenuRect[i].h=fh+fh/2;
+				}
 				rx += wids[i] + gap;
 			}
 			g_bobMenuN = n;

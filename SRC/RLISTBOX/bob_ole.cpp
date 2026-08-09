@@ -295,6 +295,66 @@ extern "C" { extern long bob_evtA0, bob_evtA1; }
    one question a click test asks: WHICH control took it. This costs one int per click. */
 extern "C" int bob_ole_last_click_id = 0;
 
+/* S160: the DRAWN screen span of one column of a hosted list control, from the control's own
+   GetColFromX walk — the same source bob_ole_click hit-tests with.
+
+   Why: the front-end menu row (Back / Fly / Sim Config ...) is drawn by the hosted
+   CRListBoxCtrl at its OWN internal column spacing (PositionRListBox / m_horzSeperation), but
+   its click rects were built separately from bob_gdi_text_width() re-measurements packed with a
+   fixed gap. Two independent layouts, and they drift: measured on Quick Mission, "Fly" is painted
+   at x=132..153 while its click rect sat at x=83..108 — no overlap at all, so the button was
+   unclickable, and "Back" (painted 56..97, rect 25..69) only responded on its leftmost 14px.
+   Same principle as S156's OOB hit-testing and MA's §8-MA84 trap #1: store what paint did,
+   never re-derive it. Returns 1 and fills the rect if the column is drawn. */
+extern "C" int bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int* h) {
+    bool diag = getenv("BOB_DUMP_HITTARGETS") != 0;
+    auto it = hosts().find(ctrl);
+    if (it == hosts().end()) {
+        if (diag) fprintf(stderr, "[colrect] ctrl=%p col=%d -- NO HOST for this CWnd (hosts=%d)\n",
+                          (void*)ctrl, col, (int)hosts().size());
+        return 0;
+    }
+    OleHost* ho = it->second;
+    if (!ho || ho->sw <= 0 || ho->sh <= 0) {
+        if (diag) fprintf(stderr, "[colrect] ctrl=%p col=%d -- host found but NOT DRAWN rect=(%d,%d %dx%d)\n",
+                          (void*)ctrl, col, ho?ho->sx:0, ho?ho->sy:0, ho?ho->sw:0, ho?ho->sh:0);
+        return 0;
+    }
+    int start = -1, end = -1;
+    for (int t = 0; t < ho->sw; t++) {
+        if (ho->colAtX(t) == col) { if (start < 0) start = t; end = t; }
+        else if (start >= 0) break;
+    }
+    if (start < 0) {
+        if (diag) fprintf(stderr, "[colrect] ctrl=%p col=%d -- host drawn (%d,%d %dx%d) but NO SUCH COLUMN "
+                          "(colAtX(0)=%d colAtX(w-1)=%d)\n", (void*)ctrl, col,
+                          ho->sx, ho->sy, ho->sw, ho->sh, ho->colAtX(0), ho->colAtX(ho->sw-1));
+        return 0;
+    }
+    if (x) *x = ho->sx + start;
+    if (y) *y = ho->sy;
+    if (w) *w = end - start + 1;
+    if (h) *h = ho->sh;
+    return 1;
+}
+
+/* S160: list every hosted control's LAST-DRAWN screen rect for one dialog — i.e. exactly the
+   rects bob_ole_click hit-tests against. Used to answer "is there any clickable target under
+   this button's pixels?", which distinguishes a click that never arrives from one that arrives
+   and finds no handler. */
+extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog) {
+    int n = 0;
+    for (auto& kv : hosts()) {
+        OleHost* h = kv.second;
+        if (h->parentDlg != dialog) continue;
+        fprintf(stderr, "[hittargets]   id=%-5d rect=(%d,%d %dx%d)%s\n",
+                h->ctrlId, h->sx, h->sy, h->sw, h->sh,
+                (h->sw <= 0 || h->sh <= 0) ? "  <-- NOT HIT-TESTABLE (zero extent)" : "");
+        n++;
+    }
+    fprintf(stderr, "[hittargets]   (%d hosted controls for this dialog)\n", n);
+}
+
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     if (bob_ole_trace()) {
         int match=0; for (auto& kv : hosts()) if (kv.second->parentDlg==dialog) match++;
@@ -495,6 +555,15 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
     dc.m_bobVpX = x; dc.m_bobVpY = y;
     dc.m_bobTextH = textH > 0 ? textH : 14;
     host->draw(&dc, w, h);
+    /* S160: record what we just drew, like every other draw path does. This one never did, so the
+       front-end menu row (Back / Fly / Sim Config ...) had NO drawn rect — which is exactly why the
+       menu path had to re-derive its click rects from bob_gdi_text_width() instead of reading them
+       back, and why those re-derived rects drifted off the painted text ("Fly" painted x=132..153,
+       click rect x=83..108 — unclickable; user-reported 2026-08-09).
+       Recording it does not add a new click path: bob_ole_click is only called on the pdial[]
+       panels, and this host belongs to the RFullPanelDial itself. It exists so hit rects can come
+       from the paint (S156 / MA §8-MA84 trap 1: store what paint did, never re-derive it). */
+    host->sx = x; host->sy = y; host->sw = w; host->sh = h;
     if (bob_ole_trace()) fprintf(stderr, "[ole] OnDraw %p at (%d,%d) %dx%d h=%d\n", (void*)wrapper, x, y, w, h, textH);
     return 1;
 }
