@@ -13,6 +13,18 @@ a Quick-Mission cockpit. Requires a healthy GL display session.
 
 Rebuild: `cd /home/admin/bob/build && ninja bob`.
 
+Run the per-sprint DoD gates (one lock acquisition, self-certifying):
+
+```bash
+gl-lock tools/bob_gates.sh <outdir> [baseline-dir]
+```
+
+It runs the 14-recipe headless sweep, the safe-default check, dummy-vs-real-GL `cmp`, the flight
+frame, and an A/B against `baseline-dir` — then **hashes `build/bob` before and after and exits 2
+if the binary changed under it**. Do not rebuild while a gate is queued or running: treat "queued"
+as "running" (S148 lost a sweep to a mid-run rebuild, and the mixed-binary result looked exactly
+like a regression).
+
 ## Check progress
 
 | What | Where |

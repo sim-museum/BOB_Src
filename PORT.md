@@ -1,5 +1,47 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S149 (2026-08-08, Sprint 149): the gate certifies its own validity — and a deliberate audit finds a THIRD verdict resting on a state mismatch
+>
+> **SP.19 — `tools/bob_gates.sh`, versioned, with an integrity check.** The gate suite had been a
+> scratchpad script cloned per sprint by `sed`; that arrangement failed twice (a rename silently
+> didn't match, so one sprint's sweep overwrote the previous baseline; and the recipes drifted from
+> the prose documenting them). It now lives in the repo, takes an output dir and an optional
+> baseline, does its own A/B — and **hashes `build/bob` before and after, exiting 2 with a loud
+> banner if the binary moved.** S148's sweep straddled two builds because I rebuilt while the gate
+> sat in the gl-lock queue, and the resulting 13/14 had two comfortable innocent explanations
+> available; that can no longer be mistaken for a code result. First run under it:
+> `### binary unchanged (md5=a8eccc5e…) — gate valid`, **14/14 byte-identical**.
+>
+> **SP.17 — the audit found a third mismatch, and the pattern is worse than the count.** Gold #17
+> shows **"Luftwaffe Eagle Attack / 12th August - 23rd August"**; our recipe `BOB_AUTOCLICK=1,1,1`
+> walks title → Luftwaffe → Begin **without ever choosing a phase**, so every capture sat in the
+> Convoys default. Adding the S141 phase token (`#1000:1`) makes it read *"Commander Bob / Luftwaffe
+> Eagle Attack / 12th August - 23rd August"* — matching gold line for line (`phase=1 autoclick=4/4`).
+> All three campaign rows (#16 S141, #19 S148, #17 S149) shared exactly one root: **no phase
+> selection in the recipe**, against three gold shots that are all Eagle Attack.
+>
+> **⭐ How they read before the fix is the finding.** None was invisible. #17's row said "phase/date
+> strings differ only by selected phase (state)"; #19's said "fresh Convoys day … gold is 12 August
+> Eagle Attack". They were **recorded as deviations and then reasoned past**, because *"that's just
+> state"* sounds like a reason to stop looking. The distinction the doc had been merging, now
+> written into it: **a state difference the recipe CAN fix is a defect in the test; one it cannot is
+> a finding about the port.** Three verdicts had been resting on the former while described as the
+> latter.
+>
+> **Not claimed as fixed, deliberately:** four rows (#6, #9, #10, #11) cite "combo values (settings
+> state)". Same shape, but that state lives in the installed build's saved settings rather than a
+> recipe token, so it is not a one-token fix — booked as **SP.20** with the honest status
+> *plausibly benign, not verified*. Rows checked and clean on state: #1, #2, #3, #5, #7, #8, #12,
+> #13, #14/#15, #18. #4 is the by-design GAP.
+>
+> **Gates:** sweep 14/14 exit 0; safe default exit 0; **dummy==GL byte-identical**; flight frame-150
+> **98.6% non-black**; **A/B 14/14 byte-identical vs the pre-S142 binary** (now spanning S142→S149);
+> **binary hash unchanged — gate certified valid**.
+>
+> Files: `tools/bob_gates.sh` (new), `doc/screen-parity.md` (#17 recipe + verdict, #19 stale recipe
+> corrected, new "Capture-vs-gold STATE audit" section),
+> `doc/parity/native-campaign-entername-eagle-2026-08-08.png`.
+
 > ## S148 (2026-08-08, Sprint 148): captures aim at a STATE, not a moment — and gold #19 finally has a like-for-like frame
 >
 > **SP.16 — the capture trigger describes what we want instead of guessing when it happens.**
