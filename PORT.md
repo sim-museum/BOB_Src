@@ -1,5 +1,40 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S153 (2026-08-09, Sprint 153): the host "leak" is really that this port never destroys a dialog at all
+>
+> **SP.10 as booked was mis-scoped, and the measurement said so within one run.** The S143 banner had
+> caught dialog 1032's hosted-control count going 184 → 1656 across re-opens, which reads as "the
+> host table is never pruned". So: a `bob_ole_release_dialog()` that erases every host whose
+> `parentDlg` matches, hooked into `RDialog::DestroyPanel`.
+>
+> **Result: 0 releases, and the count reached 181,424.** The hook is correct and never fires.
+>
+> **Root cause, and it is larger than the symptom:** compat's `CDialog::OnCancel` and `EndDialog`
+> are **no-ops** (`afxwin.h:1133/1135`). Closing a logged child therefore destroys nothing —
+> `DestroyPanel` is unreachable, dialog objects are never freed, and **every re-open allocates a
+> fresh dialog plus its ~184 hosted controls and retains both**. 184 → 1656 in ordinary cycling;
+> **181,424** when a scaffold closes the dialog every paint, with tens of thousands still being
+> *drawn*. **This port has no dialog teardown.**
+>
+> **Half of it was already written down.** S108 had documented the same no-op while fixing a stack
+> overflow: *"On Windows this terminates because `CDialog::OnCancel` destroys the window (clearing
+> the slot); our Linux `CDialog::OnCancel` is a no-op, so the loop recurses forever."* That note
+> recorded the consequence for one crash and moved on; nobody asked what else "never destroys the
+> window" implies. It implies this.
+>
+> **Booked as SP.23 (8 pts), with the trap flagged:** S108's per-slot re-entrancy guard exists
+> *because* our `OnCancel` does not clear the slot — the directive dialogs' cancel handlers form a
+> toggle loop that recursed to stack overflow under faithful behaviour. Implementing teardown must
+> preserve or replace that guard, which is why it is not a two-line change. `bob_ole_release_dialog()`
+> and its hook stay in place, documented as **correct but unreached**, so the release lands
+> automatically once teardown exists.
+>
+> **Gates:** sweep 14/14 exit 0; safe default exit 0; dummy==GL byte-identical; flight 98.6%
+> non-black; **A/B 14/14 byte-identical vs pre-S142**; binary hash unchanged — gate valid.
+>
+> Files: `SRC/RLISTBOX/bob_ole.cpp` (`bob_ole_release_dialog`), `SRC/MFC/RDIALOG.CPP` (hook + the
+> reason it is dormant).
+
 > ## S151 (2026-08-09, Sprint 151): settings now survive a rebuild — and a retraction of yesterday's conclusion about why four parity rows differ
 >
 > **SP.22 — root cause, measured.** `SaveData`'s deserialiser gates on

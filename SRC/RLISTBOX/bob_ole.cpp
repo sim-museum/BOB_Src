@@ -407,6 +407,35 @@ extern "C" void bob_ole_dump_template_membership(int dlgId) {
     fflush(stderr);
 }
 
+/* S153 (SP.10): release a dialog's hosted controls when the dialog dies.
+   The host table was never pruned -- by design, per the original comment ("hosts are never erased;
+   draw/click filter by parentDlg"). The S143 state banner then caught the consequence: driving the
+   Directives dialog through a few open/close cycles took its hosted-control count from **184 to
+   1656**, with 334 of them still being DRAWN. The game re-opens that dialog by itself, so this
+   grows during ordinary play, not just under scaffolds.
+
+   The sharper problem is correctness, not memory. The wrapper CWnd* that keys this map is usually a
+   DDX_Control MEMBER of the dialog object, so once the dialog is freed the map holds keys into
+   freed storage -- and a later CWnd allocated at the same address would silently find a stale host
+   (wrong control type, wrong ids, wrong parent). Pruning on destroy removes a use-after-free hazard
+   as well as the growth. Returns the number released so the caller can trace it. */
+extern "C" int bob_ole_release_dialog(CWnd* dialog) {
+    if (!dialog) return 0;
+    auto& m = hosts();
+    int n = 0;
+    for (auto it = m.begin(); it != m.end(); ) {
+        if (it->second && it->second->parentDlg == dialog) {
+            delete it->second;
+            it = m.erase(it);
+            n++;
+        } else ++it;
+    }
+    if (n && bob_ole_trace())
+        fprintf(stderr, "[ole] released %d hosted control(s) with dialog %p (%zu remain)\n",
+                n, (void*)dialog, m.size());
+    return n;
+}
+
 extern "C" int bob_ole_state_summary(char* out, int outsz) {
     if (!out || outsz <= 0) return 0;
     out[0] = 0;

@@ -511,8 +511,22 @@ RDialog* RDialog::AddPanel(RDialog* dial, int X2flag,CRect rect, FileNum artnum,
     dial->ShowWindow(SW_SHOW);
 */
 
+#if BOB_LINUX
+extern "C" int bob_ole_release_dialog(CWnd*);   /* S153 (SP.10) */
+#endif
 void RDialog::DestroyPanel()
 {
+#if BOB_LINUX
+	/* S153 (SP.10): drop this dialog's hosted R* controls with the dialog.
+	   NB this hook is CORRECT but currently UNREACHED, and that is the sprint's finding rather
+	   than an oversight: compat's `CDialog::OnCancel` and `EndDialog` are no-ops (afxwin.h), so
+	   closing a logged child destroys nothing and DestroyPanel never runs. Measured: 0 releases
+	   over a run that took the Directives dialog's hosted-control count to 181,424. The real
+	   defect is that this port has no dialog teardown at all -- every re-open allocates a fresh
+	   dialog plus its ~184 hosts and retains both. Kept here so the release lands automatically
+	   once teardown exists (SP.23); it costs nothing meanwhile. */
+	bob_ole_release_dialog(this);
+#endif
 	RDialog** pptr=&parent->fchild;
 	while (*pptr!=this)
 		pptr=&pptr[0]->sibling;
