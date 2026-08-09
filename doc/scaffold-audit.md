@@ -346,3 +346,37 @@ If misses dominate, the fix is to stop relying on the declared base and instead 
 registered class, a probe `bool(*)(void*)` doing `dynamic_cast<T*>(...)` — emitted from the same
 macro where `T` is known — and fall back to scanning probes on a miss. That is inheritance-correct
 regardless of what the map declares. **Not implemented speculatively; the census decides.**
+
+### 7e. Runtime census — the prediction in §7d was right, and the chain walk works
+
+First census (`BOB_MSG_DISPATCH=1 BOB_TRACE_MSG=1`, campaign-map recipe). The dispatch is live:
+
+```
+[msg] DISPATCHED 0x401 (WM_GETARTWORK)      to RFullPanelDial (depth 0) -> 27922
+[msg] DISPATCHED 0x402 (WM_GETXYOFFSET)     to CRToolBar      (depth 1) -> 65280
+[msg] DISPATCHED 0x405 (WM_RELEASELASTFILE) to CRToolBar      (depth 1) -> 0
+```
+
+| | count |
+|---|---|
+| `WM_RELEASELASTFILE` dispatched | 19 |
+| `WM_GETXYOFFSET` dispatched | 18 |
+| `WM_GETARTWORK` dispatched | 3 |
+| receivers | `CRToolBar` (depth 1) ×37, `RFullPanelDial` (depth 0) ×3 |
+| still unhandled (unique ids) | `0x401`, `0x402`, `0x405`, `0x409`, `0x40a` |
+
+Two things this establishes:
+
+1. **The base-class walk works and is needed** — `depth 1` means a handler registered on a base was
+   found for a derived object. That is the §8z failure mode (exact `type_info` match, no walk)
+   avoided *and demonstrated*, not merely asserted. `WM_GETARTWORK` returning **27922** matches the
+   `fe_art=27922` in the shot-state banner: a real art FileNum, not a placeholder.
+2. **§7d's prediction held.** The *same* message ids appear in both lists — dispatched for
+   `CRToolBar`/`RFullPanelDial`, still missed for other receivers. Those are the derived dialogs
+   whose maps declare `CDialog` while really deriving from `RowanDialog`, with no rows of their own.
+
+So the fallback designed in §7d was implemented **after** the measurement justified it, not before:
+each registered class also records a `dynamic_cast<T*>` probe, and a lookup that exhausts the
+declared chain scans probes for a class that both handles the message and matches the object. It is
+inheritance-correct whatever the map declares, and costs nothing on the hit path (miss-only).
+148 probes registered, 86 handler rows.
