@@ -1,5 +1,67 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S156 (2026-08-09, Sprint 156): the map's OOB dialogs were RENDER-ONLY — they now take real clicks
+>
+> **Nothing was failing. That was the problem.** SP.14 came from MA note 31 §3, whose heuristic is
+> that *a capability only ever exercised through scaffolding is evidence the real path is missing*.
+> Reading `bob_frontend_tick`'s map click dispatch:
+> ```c
+> if (bob_map_click_toolbars(cx, cy)) { if (!g_bob_map_active) return; }
+> else bob_map_select(cx, cy);
+> ```
+> Toolbar buttons, then unit selection — **no branch into an open dialog anywhere**. Every OOB panel
+> built across S113–S155 could be opened and painted but never clicked. It never showed up because
+> every interaction I had ever performed on those panels went through my own scaffolds
+> (`BOB_AUTOCLICK`, `bob_ole_ctrl_point`), which call `bob_ole_click` directly.
+>
+> **Fix — `bob_map_click_oob` (MAINFRM.CPP):** an open dialog gets **first refusal** before the
+> toolbars. It walks each toolbar's logged children *and their descendants* (§8-BoB155: the controls
+> live on the contained dialog, not the panel wrapper), and **swallows in-dialog misses** so clicking
+> dialog background can't select a unit behind it. `BOB_NO_OOB_CLICK` reverts. Hit-testing reuses the
+> hosts' own last-drawn screen rects, so hit rects cannot drift from what was painted — the drift MA
+> had to engineer around by mirroring its paint walk.
+>
+> **Evidence — one binary, hash checked before and after, with a noise floor.** A click at (712,499):
+> ```
+> [mapclick] injecting (712,499)
+> [oobclick] (712,499) consumed by toolbar 3 child 6 ctrl id=2600     ← IDC_RBUTTONREST
+> ```
+> | comparison | result |
+> |---|---|
+> | click vs no-click | 4,742 px differ |
+> | **no-click vs no-click (noise floor)** | differs only in a **16×8 box** at (649–665, 248–256) — a clock field |
+> | signal outside that box | **4,666 px** |
+>
+> The noise floor is the load-bearing measurement, not a formality: this codebase's signature bug
+> class is run-to-run variance from uninitialised reads, so "two runs differ" is worthless until
+> "two *identical* runs don't" is established. Every affected band — grid rows y320/346/372, the
+> button at y493–505, the footer at y649–767 — contains **zero** noise pixels.
+>
+> **The handler genuinely ran.** Before/after crops of the directive grid: values `1 / 0 / 1` with
+> yellow totals `1 1 1` become **zeros in every column and every total**. Resting all squadrons
+> clears their allocations and all 85 hosted spinners re-render the new data — a data change, not a
+> repaint artifact.
+>
+> **A latent defect found by self-review, with no symptom.** My first version declared the callee
+> in-body as `extern int bob_map_click_oob(int,int);` — C++ linkage against an `extern "C"`
+> definition, which should be an undefined reference. It linked. Reason: `_MFC.CPP` is a **unity TU**
+> that includes `MainFrm.cpp` (line 79) before `fullpsys.cpp` (line 105), so a C-linkage declaration
+> is already visible and `[dcl.link]/6` makes the redeclaration inherit it. It was correct **by
+> include order**, not by construction — reorder `_MFC.CPP` or split the unity build and it breaks
+> with an undefined reference to a symbol defined right there, and nothing in that commit to blame.
+> Now declared `extern "C"` at file scope beside the existing `bob_map_click_toolbars`. Banked as
+> **§8-BoB156b** (MiG Alley has the identical layout). Corollary: `nm` finds no `FULLPSYS.CPP.o`
+> because there isn't one — symbols live in `_MFC.CPP.o`.
+>
+> **Three self-inflicted measurement faults this sprint, all one family** — the plumbing not reaching
+> the thing measured: (1) the first click test piped traces through `2>/dev/null` and then grepped for
+> them; (2) the control run was launched with cwd `/home/admin/bob` instead of the game data dir and
+> died at `Can't find ROOTS.DIR`, before init; (3) the first pixel diff compared against a capture
+> made by an **S150-era binary**, which would have credited the click with six sprints of unrelated
+> change. Each was caught before it reached a claim, but the recurrence is the point — see the retro.
+>
+> **Gates:** see `scrum.md` §9 row 156.
+
 > ## S155 (2026-08-09, Sprint 155): dialog teardown lands — 181,424 hosted controls → 184, default-on
 >
 > **One trace answered what four hook-site guesses could not.** S154's retro said: when the second

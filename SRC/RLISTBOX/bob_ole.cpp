@@ -289,6 +289,11 @@ extern "C" int bob_ole_draw_toolbar(CWnd* dialog, int ox, int oy, int pxPer100) 
 #include <typeinfo>
 extern "C" int bob_evt_fire(void* dlg, const void* tinfo, int id, int dispid);  /* S33 general OCX eventsink */
 extern "C" { extern long bob_evtA0, bob_evtA1; }
+/* S156: id of the control that last consumed a click. The full per-control hit trace lives
+   behind BOB_TRACE_OLE, but that fires per-control-per-frame at draw time (85 spinners once
+   wrote a 70 MB log and starved a run past its timeout), so it is unusable for answering the
+   one question a click test asks: WHICH control took it. This costs one int per click. */
+extern "C" int bob_ole_last_click_id = 0;
 
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     if (bob_ole_trace()) {
@@ -301,6 +306,7 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (bob_ole_trace()) fprintf(stderr, "[ole]   hit? id=%d rect=(%d,%d,%d,%d) click=(%d,%d)\n", h->ctrlId, h->sx, h->sy, h->sw, h->sh, x, y);
         if (h->sw <= 0 || h->sh <= 0) continue;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
+            bob_ole_last_click_id = h->ctrlId;   /* S156: report the hit control to the caller */
             /* S129: a multi-button control (RRadio tab row) -- select the button under the
                cursor and fire its genuine Selected(index) event (dispid 1, VTS_I4) via the
                general eventsink so the dialog's handler runs (e.g. CSQuick1::OnSelectedRradio

@@ -2243,6 +2243,81 @@ whichever screen you happened to open.**
   and nearly became a finding; the fields were `Float` and the trace cast them to `long`. **A
   constant value deserves the same suspicion as a surprising one.**
 
+## 8-BoB156. A capability only ever exercised through SCAFFOLDING is unproven — BoB's map dialogs were render-only for 40+ sprints (BoB S156) **[PROCESS]**
+
+MA note 31 §3 asked BoB to check whether its map OOB dialogs accept real clicks. They did not, and
+had not since S113. The map click dispatch was:
+
+```c
+if (bob_map_click_toolbars(cx, cy)) { if (!g_bob_map_active) return; }
+else bob_map_select(cx, cy);          /* unit selection */
+```
+
+Toolbar buttons, then unit selection — **no branch into an open dialog at all**. Dialogs opened,
+painted, and rendered hosted controls correctly; they simply could not be clicked.
+
+**Why it stayed invisible for so long is the transferable part.** There was extensive testing of
+those dialogs — value parity against gold shots, host counts, teardown, draw rects. All of it drove
+the controls through port-side scaffolds (`BOB_AUTOCLICK`, `bob_ole_ctrl_point`) that call
+`bob_ole_click(dialog, x, y)` **directly**. The scaffold enters the system *below* the dispatch, so
+it validated everything except the one link a player depends on. No test failed, because no test
+used that path.
+
+**The check to run on your own port** — cheap, and it produces a concrete list:
+
+> For each capability you believe works, name the last time it was exercised **without** a
+> `BOB_*`/`MA_*` scaffold. If the answer is "never", it is unproven, not working.
+
+Prime suspects in both ports: anything reached only via an autoclick sequence — menu navigation,
+config screens, unit selection, dialog buttons. The failure is silent by construction: a scaffold
+that bypasses a layer will never report that the layer is missing.
+
+**Shape of the fix (BoB's, reusable):** give an open dialog **first refusal** ahead of the existing
+click consumers; walk each toolbar's logged children **and descendants** (§8-BoB155 — controls live
+on the contained dialog, not the panel wrapper); and **swallow in-dialog misses**, so a click on
+dialog background does not fall through and select whatever is underneath. Keep it revertible
+(`BOB_NO_OOB_CLICK`).
+
+**One thing BoB got for free that MA had to engineer:** hit rects are the hosts' *own last-drawn
+screen rects*, recorded at paint time, so hit-testing cannot drift from what was painted. If your
+port hit-tests against separately computed geometry, that drift is a live bug class; recording the
+drawn rect and testing against it removes it by construction.
+
+**Verifying a fix like this needs a noise floor.** "With-click and without-click frames differ" is
+not evidence on its own — in a codebase whose signature bug is uninitialised-read variance, two
+identical runs may differ too. Run the *same* recipe twice with no click first and measure that
+delta; only the difference outside it is signal. In BoB's case the noise floor was a 16×8 clock
+field, leaving 4,666 of 4,742 changed pixels as genuine — including the directive grid going to all
+zeros, which is what `IDC_RBUTTONREST` is supposed to do.
+
+## 8-BoB156b. These are UNITY builds: a wrong-linkage declaration links anyway, until it doesn't (BoB S156) **[ENGINE]**
+
+Rowan's `_MFC.CPP` / `_FULL.CPP` / `_LW.CPP` are **unity translation units** — they `#include`
+the `.CPP` files themselves (`_MFC.CPP` pulls in `MainFrm.cpp` at line 79 and `fullpsys.cpp` at
+line 105). MiG Alley is laid out the same way. Two consequences that bit BoB in S156:
+
+**1. A language-linkage mismatch can silently succeed.** I added a call in `FULLPSYS.CPP` to a
+function defined `extern "C"` in `MAINFRM.CPP`, declaring it in-body as plain `extern int f(int,int);`
+— C++ linkage against a C-linkage definition. That is normally an undefined reference at link
+time. It built and ran. The reason is *not* that the mismatch is benign: because both files land
+in the **same** TU and `MainFrm.cpp` is included **first**, a prior C-linkage declaration is
+already visible, so per `[dcl.link]/6` the redeclaration inherits C linkage. It links **by
+include order**, not by correctness.
+
+So the failure mode is delayed and misattributed: reorder `_MFC.CPP`, or split the unity build
+for parallel compilation, and you get an undefined reference to a symbol that is plainly defined
+right there — with nothing in the diff of that commit to blame. **Declare cross-file entry points
+at file scope with an explicit `extern "C"`, next to the existing ones.** (BoB's `FULLPSYS.CPP`
+already had `extern "C" int bob_map_click_toolbars(int,int);` at file scope — matching the
+neighbour would have avoided this outright. House style was right; I skipped it.)
+
+**2. The corollary for locating anything.** `nm` on a per-file object will not find these — there
+is no `FULLPSYS.CPP.o`. Symbols live in `SRC/MFC/CMakeFiles/bob_mfc.dir/_MFC.CPP.o`. Grepping the
+build tree for a per-source object and finding none is evidence about the *build layout*, not
+about the symbol. Also: an in-function `extern` declaration is the same shape as the
+`extern "C"`-inside-a-function-body error that has now broken this build twice (BoB S146, S153).
+Both are fixed the same way — put it at file scope.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

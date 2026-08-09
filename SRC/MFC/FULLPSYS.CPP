@@ -611,6 +611,7 @@ extern "C" void bob_map_paint_titlebar(int, int);             /* footer date/tim
 extern "C" void bob_map_paint_teletype(int, int);             /* footer event-log pane (TELETYPE.CPP) */
 extern "C" void bob_map_paint_toolbars(int, int);             /* footer button rows (MAINFRM.CPP, S89) */
 extern "C" int  bob_map_click_toolbars(int, int);             /* S92: map click -> button handler */
+extern "C" int  bob_map_click_oob(int, int);                  /* S156: open OOB dialog gets first refusal */
 extern "C" int  bob_gdi_get_click(int*, int*);
 extern "C" int  bob_gdi_get_mapnav(int*, int*, int*);         /* S96: pan/zoom from the SDL layer */
 extern "C" void bob_map_nav(int, int, int);                   /* S96: apply pan/zoom (MIGVIEW.CPP) */
@@ -638,8 +639,12 @@ extern "C" void bob_frontend_tick(void)
 			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
 		  if (haveClick) {
-			if (bob_map_click_toolbars(cx, cy)) { if (!g_bob_map_active) return; }
-			else bob_map_select(cx, cy);   /* S97: missed the toolbars -> select the unit under the click */
+			/* S156 (SP.14): an OPEN OOB dialog gets first refusal -- before S156 the map routed
+			   clicks to the toolbars and then to unit selection, so every OOB dialog was
+			   render-only (MA note 31 section 3 warned us to check; we were in the same state). */
+			if (bob_map_click_oob(cx, cy)) { if (!g_bob_map_active) return; }
+			else if (bob_map_click_toolbars(cx, cy)) { if (!g_bob_map_active) return; }
+			else bob_map_select(cx, cy);   /* S97: missed everything -> select the unit under the click */
 		  }
 		}
 		/* S96: strategic-map pan (arrows) + zoom (wheel / +/-), from the SDL layer. BOB_MAP_NAV="dx,dy,z"

@@ -954,6 +954,43 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
   byte-identical**, safe default exit 0, dummy==GL byte-identical, flight 98.6%, binary hash
   unchanged, gate valid.
 
+### Sprint 156 — "The dialogs were never clickable" → *Increment: OOB map dialogs accept real clicks; Rest zeroes the directive grid* — **✅ CLOSED 2026-08-09 (8/8 pts; §9 row 156 + PORT.md S156)**
+- **Sprint Goal:** answer SP.14 / MA note 31 §3 — do BoB's map OOB dialogs accept genuine clicks?
+  **Answer: they did not, and had not since S113.**
+- **✅ Found by reading the dispatch, not by a failing test.** `bob_frontend_tick`'s map click path
+  was `bob_map_click_toolbars(...)` → `bob_map_select(...)`: toolbar buttons, then unit selection,
+  **with no branch into an open dialog**. Every OOB panel built across S113–S155 was *render-only*.
+  Nothing failed, because every interaction with those panels had gone through my own
+  `BOB_AUTOCLICK`/`bob_ole_ctrl_point` scaffolds. MA note 31 §3's heuristic — *a capability only ever
+  exercised through scaffolding is evidence the real path is missing* — is what prompted the look.
+- **✅ Fix (`bob_map_click_oob`, MAINFRM.CPP):** an open dialog gets **first refusal**; walks each
+  toolbar's logged children *and* descendants (§8-BoB155 — controls live on the contained dialog);
+  swallows in-dialog misses so a click on dialog background cannot select a unit behind it.
+  `BOB_NO_OOB_CLICK` reverts. Hit rects are the hosts' own last-drawn screen rects, so they cannot
+  drift from what was painted (the drift MA had to engineer around).
+- **✅ Proven end-to-end with a noise-floor-controlled A/B**, one binary (`d9fcef96…`, hash checked
+  before *and* after both runs):
+  | run | result |
+  |---|---|
+  | click (712,499) | `[oobclick] consumed by toolbar 3 child 6 ctrl id=2600` = **`IDC_RBUTTONREST`** |
+  | click vs no-click | **4,742 px differ** |
+  | no-click vs no-click (**noise floor**) | differs only in a **16×8 box** at (649–665, 248–256) — a clock field |
+  | signal outside the noise box | **4,666 px** — grid rows y320/346/372, the button y493–505, footer y649–767 (**0 noise px in every one**) |
+- **✅ The handler genuinely ran** — not a repaint: before/after crops show the directive grid going
+  from `1 / 0 / 1` with yellow totals `1 1 1` to **all zeros in every column and total**. Resting all
+  squadrons clears their allocations, and all 85 spinners re-render the new data.
+- **✅ Latent defect found by self-review, not by symptom.** The new call linked only because
+  `_MFC.CPP` includes `MainFrm.cpp` (line 79) before `fullpsys.cpp` (line 105) — same unity TU, so an
+  in-body `extern int` inherited C linkage per `[dcl.link]/6`. Correct by include order, not by
+  construction; reordering or splitting the unity build would break it with an undefined reference
+  pointing nowhere near the cause. Now declared `extern "C"` at file scope. **Banked §8-BoB156b**
+  (MiG Alley has the identical unity layout).
+- **Process:** three self-inflicted measurement faults this sprint, all one family — *plumbing that
+  didn't reach the thing being measured*: `2>/dev/null` swallowing the trace being grepped; a control
+  run launched from the wrong cwd (`Can't find ROOTS.DIR`, dead before init); and a first diff taken
+  against an **S150-era binary**, which would have bundled six sprints of change into "the click did
+  this". See §10.
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -1001,6 +1038,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **156** | ~8 | 8 | ★ **BoB's map OOB dialogs were RENDER-ONLY — now they take real clicks; Rest zeroes the directive grid** | **(2026-08-09)** SP.14 / MA note 31 §3, answered by *reading the dispatch*: `bob_frontend_tick`'s map click path went `bob_map_click_toolbars` → `bob_map_select` with **no branch into an open dialog**. Every OOB panel built S113–S155 was render-only, and nothing ever failed because **every interaction with them had gone through my own scaffolds** (`BOB_AUTOCLICK`, `bob_ole_ctrl_point`) — MA's heuristic that *a capability only exercised through scaffolding is evidence the real path is missing* is what prompted the look. Fix `bob_map_click_oob`: open dialog gets **first refusal**, walks each toolbar's logged children **and descendants** (§8-BoB155), swallows in-dialog misses so a background click can't select a unit behind the dialog; `BOB_NO_OOB_CLICK` reverts. Hit rects are the hosts' own last-drawn rects → cannot drift from what was painted. **Proven with a noise-floor-controlled A/B on ONE binary** (`d9fcef96…`, hashed before *and* after): click at (712,499) → `consumed by toolbar 3 child 6 ctrl id=2600` = **`IDC_RBUTTONREST`**; click vs no-click **4,742 px**; **no-click vs no-click differs only in a 16×8 clock field** (649–665, 248–256) → **4,666 px of signal, 0 noise px in every affected band**. **Handler genuinely ran, not a repaint:** grid goes `1/0/1` + totals `1 1 1` → **all zeros**, all 85 spinners re-rendering new data. ⭐ **Latent defect caught by self-review:** the new call linked only because `_MFC.CPP` includes `MainFrm.cpp` (79) before `fullpsys.cpp` (105) — same unity TU, so an in-body `extern int` inherited C linkage via `[dcl.link]/6`. Correct by *include order*, not construction; now `extern "C"` at file scope, banked **§8-BoB156b**. **Process:** 3 self-inflicted measurement faults, one family (plumbing not reaching the measurement): `2>/dev/null` eating the grepped trace; control run from the wrong cwd (`Can't find ROOTS.DIR`); first diff taken against an **S150-era binary**. |
 | **155** | ~8 | 8 | ★ **Dialog teardown lands — 181,424 hosted controls → 184, default-on** | **(2026-08-09)** Applied S154's own retro: instrument instead of a 5th hook-site guess. `BOB_TRACE_DESTROY` printed per-`DestroyWindow` RTTI + host counts + descendants, and one run answered it: `RDEmptyD hosts_here=0` → `child LWDirectives hosts=184` — **DestroyWindow gets the PANEL, the controls belong to the contained dialog**. Uniform across all dialogs; `TakeOverOffered` appeared as **4 distinct instances in one campaign day** (leak in ordinary play). Fix: release the node **and** its bounded `fchild`/`sibling` descendants. **181,424 → 184** (exactly one dialog's worth), tracked dialogs 12 → 6, end state unchanged. **Flipped default-ON on evidence**: measurement + the S108 cancel-toggle path exercised clean + **a full gate suite WITH teardown on returning 14/14 byte-identical**. `BOB_NO_DLG_TEARDOWN` reverts. Still does not free the dialog object (ownership varies). Banked **§8-BoB155** — the panel wrapper has now cost two unrelated 3-sprint hunts and both failure modes *report success*. |
 | **154** | ~8 | 4 | ⚠️ **PARTIAL — the missing teardown is `CWnd::DestroyWindow() { return TRUE; }`; hooked default-off, not finished** | **(2026-08-09)** ⭐ The chain executes correctly (`LWDirectives::OnCancel` → `RDialog::OnCancel` → `EndDialog(IDCANCEL)` → walks children → `DestroyWindow()`) and the final call **reports success and destroys nothing** — the *"stub that returns SUCCESS and hides a subsystem"* class the port's notes say to grep `{ return TRUE; }` for (cf. MA S68's `DrawIcon`). **Corrects S108**, which named `CDialog::OnCancel` as the no-op: `Rowan::CDialog` adds only a constructor, so that resolves to `RDialog::OnCancel`, which does real work — the stub is 3 calls further down, and the wrong location read as a closed question for ~45 sprints. **Honest:** 3 hook sites were wrong before this (DestroyPanel never reached, 0 releases at 181,424 hosts; compat `::CDialog` wrong class; `DestroyWindow` fires but frees **1 control not 184** — it reaches the panel, hosts belong to the contained dialog). Next step named (walk `fchild`/`sibling`, needs a safe `CWnd*`→`RDialog*` test), **deliberately not guessed a 4th time**. Default-off (`BOB_DLG_TEARDOWN`); **gates 14/14 byte-identical**. |
 | **153** | ~8 | 4 | ⚠️ **PARTIAL — the host "leak" is really that the port NEVER DESTROYS A DIALOG** | **(2026-08-09)** Booked as "prune the host table" (S143 banner: 184 → 1656 across re-opens). Wrote `bob_ole_release_dialog()` + `DestroyPanel` hook, measured **0 releases** on a run reaching **181,424** hosted controls, tens of thousands still *drawn*. Root cause: compat's `CDialog::OnCancel`/`EndDialog` are **no-ops** (afxwin.h:1133/1135) → closing a logged child destroys nothing → `DestroyPanel` unreachable → **every re-open allocates a fresh dialog + ~184 hosts and retains both**. **S108 had documented the same no-op** while fixing a stack overflow and moved on — a note explaining one symptom is not a note scoping the defect. → **SP.23 (8 pts)**, flagged delicate because S108's re-entrancy guard depends on the slot not clearing. Hook kept, documented dormant, fires when teardown lands. SP.21 carries. **Gates:** 14/14 byte-identical, valid. |
@@ -1088,6 +1126,28 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 156 (nothing was failing — that was the problem):_ **The bug with no symptom is the one
+  scaffolding hides.** The OOB dialogs had been render-only since S113 and no test, gate or capture
+  ever complained, because every interaction I had performed on them went through my own
+  `BOB_AUTOCLICK`/`bob_ole_ctrl_point` scaffolds, which call `bob_ole_click` directly and bypass the
+  dispatch entirely. Fifteen sprints of work on those panels never touched the path a *player* uses.
+  **Standing check to run against the rest of the port: for each capability, name the last time it
+  was exercised WITHOUT a `BOB_*` scaffold. If the answer is "never", the real path is unproven** —
+  and that is a testable question, not a vague worry. Candidates already visible: menu navigation,
+  unit selection, and every config screen that has only ever been driven by `BOB_AUTOCLICK`.
+  **Second — the recurring fault this sprint was not in the code, it was in the measurement plumbing:**
+  three times (stderr to `/dev/null` then grepped; a run from the wrong cwd that died before init; a
+  diff against a six-sprint-old binary) the apparatus failed to reach what it claimed to measure.
+  These join the same list as S148's two-binary gate and the monitor that matched its own echo. The
+  gate suite already hashes the binary because of S148; **the general lesson is that a measurement
+  needs its own sanity check — a hash, a control run, a known-nonzero baseline — and the noise-floor
+  run is exactly that check.** Here it earned its keep: without it, "4,742 pixels changed" would have
+  been a claim resting on an assumption of determinism this codebase specifically does not warrant.
+  **Third, on self-review:** the linkage defect had no symptom and would have surfaced only on a
+  future unity-build change, far from the cause. It was found by asking "*why* did this link?" about
+  code that already worked. Worth repeating when a change works first try for a reason not fully
+  understood.
 
 - _Sprint 155 (trace, don't guess):_ **The previous sprint's retro was the whole plan, and it worked
   on the first attempt.** S154 ended with "when the second guess is wrong, stop guessing and

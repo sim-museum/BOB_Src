@@ -1346,6 +1346,57 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
    and fire the hit button's Clicked event (OnClickedBases/Missionfolder/...) via the OCX eventsink.
    Returns 1 if a button consumed the click. */
 extern "C" int bob_ole_click(CWnd*, int, int);
+/* S156 (SP.14, from MA note 31 section 3): route a map click into an OPEN OOB dialog.
+   MA found its OOB dialogs painted perfectly and ignored every click, and warned us to check.
+   We were in the same state: the map dispatch tried the three toolbars and then fell through to
+   unit selection, so a click on the Directives grid, Bases or the Mission Folder did nothing at
+   all. Everything those dialogs have ever been driven by in this port was a BOB_* scaffold --
+   exactly the evidence pattern MA identified ("a capability only ever exercised through
+   scaffolding is evidence the real path is missing").
+
+   Shape follows MA's: an open dialog gets FIRST REFUSAL, and a click inside it that hits no
+   control is SWALLOWED rather than falling through to the map underneath (otherwise clicking a
+   dialog's background selects a unit behind it). Hit-testing needs no separate geometry: the hosts
+   record their last-drawn screen rect at paint time, so hit rects cannot drift from drawn rects --
+   which is the drift MA had to engineer around by mirroring its paint walk.
+   Walks the same set bob_map_paint_oob draws: each toolbar's logged children, plus descendants
+   (the panel-wrapper rule, section 8-BoB155 -- the controls live on the CONTAINED dialog). */
+extern "C" int bob_ole_click(CWnd*, int, int);
+extern "C" int bob_ole_last_click_id;
+static int bob_oob_click_tree(RDialog* d, int cx, int cy, int depth)
+{
+	if (!d || depth > 4) return 0;
+	if (bob_ole_click((CWnd*)d, cx, cy)) return 1;
+	for (RDialog* c = d->fchild; c; c = c->sibling)
+		if (bob_oob_click_tree(c, cx, cy, depth + 1)) return 1;
+	return 0;
+}
+extern "C" int bob_map_click_oob(int cx, int cy)
+{
+	if (getenv("BOB_NO_OOB_CLICK")) return 0;
+	for (int tb = 0; tb < TB_TOTAL; tb++) {
+		CRToolBar* t = CMainFrame::toolbars[tb];
+		if (!t || !t->dialoglinks.loggedchild) continue;
+		for (int i = 0; i < t->dialoglinks.MAX_CHILD_DIALS; i++) {
+			RDialog* d = t->dialoglinks.loggedchild[i];
+			if (!d) continue;
+			if (bob_oob_click_tree(d, cx, cy, 0)) {
+				fprintf(stderr, "[oobclick] (%d,%d) consumed by toolbar %d child %d ctrl id=%d\n",
+					cx, cy, tb, i, bob_ole_last_click_id);
+				return 1;
+			}
+			/* inside the dialog but on no control -> swallow (do not select the map beneath) */
+			CRect r; d->GetWindowRect(r);
+			if (cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom) {
+				if (getenv("BOB_TRACE_OLE"))
+					fprintf(stderr, "[oobclick] (%d,%d) inside dialog %d/%d, no control -- swallowed\n", cx, cy, tb, i);
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
 extern "C" int bob_map_click_toolbars(int cx, int cy)
 {
 	if (!AfxGetMainWnd()) return 0;
