@@ -985,7 +985,13 @@ public:
            earns its keep -- the registration above is inert until this runs. Keyed on the
            object's DYNAMIC type and walked up the base chain (§8z: exact-type matching is what
            made every base-registered OCX event dead for the port's whole life). */
-        if (getenv("BOB_MSG_DISPATCH")) {
+        /* S160b: cache the flag. SendMessage is on the per-control draw path, and a getenv() per
+           call measurably slowed startup: the flight gate's frame 150 began arriving BEFORE the
+           engine spins up, so the stationary propeller (solid black blades) covered part of the
+           view and non-black fell 98.7% -> 94.7%. That read like a render regression and was
+           really a timing shift -- the frame differs by `Power 71` vs `Power 0`, not by quality. */
+        static const int bob_msg_dispatch_on = getenv("BOB_MSG_DISPATCH") ? 1 : 0;
+        if (bob_msg_dispatch_on) {
             long r = 0;
             if (bob_msgmap_call(&typeid(*this), m, (void*)this, (int)w, (int)l, &r))
                 return (LRESULT)r;
@@ -997,7 +1003,8 @@ public:
            BOB_TRACE_MSG reports each UNHANDLED id ONCE (deduped -- S142's BOB_TRACE_OLE wrote a
            70 MB log and starved a run by tracing per-call), so a single run says which dead routes
            are actually exercised rather than merely present in a grep. */
-        if (getenv("BOB_TRACE_MSG")) {
+        static const int bob_msg_trace_on = getenv("BOB_TRACE_MSG") ? 1 : 0;   /* S160b: hot path */
+        if (bob_msg_trace_on) {
             static unsigned seen[64]; static int nseen = 0;
             bool dup = false;
             for (int i = 0; i < nseen; i++) if (seen[i] == m) { dup = true; break; }

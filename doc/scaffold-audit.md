@@ -483,3 +483,45 @@ fatal, and nothing here claims they do. Dispatch stays default-off. Next step is
 (actual). Two of the three were *plausible and sourced*; one came from a note I trust and sync. The
 note itself warned: *"each time the mechanism was argued about first and traced second."* I did it
 again. **The backtrace cost one env var and one run; each wrong hypothesis cost a commit.**
+
+---
+
+## 8. A bisect over artifacts collected at DIFFERENT TIMES is not a controlled experiment
+
+S160's gate reported flight frame-150 at **94.7%** non-black where five earlier runs that day sat at
+98.6–98.7%. The sequence that followed is worth recording because the reasoning failed twice in
+opposite directions.
+
+1. **First claim (correct):** the flight gate boots with `BOB_BOOT_FRONTEND=1`, straight to flight,
+   never touching the menu path S160 changed — so S160 cannot be the cause.
+2. **Retracted it** after bisecting the day's ten saved gate outputs: every binary through S159 read
+   98.6–98.7, the S160 binary read 94.7. That looks conclusive.
+3. **The retraction was wrong.** Those gate runs were collected between 07:02 and 09:15. The bisect
+   therefore confounded *which binary* with *what time it ran*. Rebuilding the exact pre-S160
+   binary (hash reproduced byte-identically as `f6f318a4`) and running it back-to-back **now** gave
+   **96.8% / 94.7%** — the same low band. The code was innocent; the machine had changed.
+
+**The rule:** a "bisect" across artifacts gathered at different moments tests time as much as it
+tests code. Only a same-conditions A/B — both binaries, back to back, now — isolates the variable.
+When the artifacts are already on disk it is tempting to treat them as an experiment; they are
+observations, and they carry whatever else drifted.
+
+**Second finding, about the metric itself.** Comparing the frames showed the difference is not
+render quality at all:
+
+| | S158 frame | S160 frame |
+|---|---|---|
+| HUD | `Power 71` | `Power 0` |
+| propeller | spinning (invisible) | **stationary — solid black blades** |
+
+Frame 150 simply arrives *earlier in the startup sequence* when the machine is slower, and a
+stationary prop covers part of the view. **The gate's non-black percentage conflates render quality
+with sim progress**, so it can move for reasons that have nothing to do with correctness — exactly
+what `gl-lock`'s own header warns about ("a second sim loading the GPU *or the 4 cores* can
+manufacture a failure that looks like a port defect"). A frame-150 check keyed on engine state, or
+compared against the gold cockpit, would fail for the right reasons. → backlog.
+
+**Kept anyway:** the `getenv()` calls added to `SendMessage` (S158) and `OnGetFile` (S159) are now
+cached in function-local statics. They were *not* the cause — the pre-S160 binary shows the same
+numbers — but a `getenv()` on a per-control-draw path is bad hygiene regardless, and removing it
+eliminates one confound from every future timing measurement.

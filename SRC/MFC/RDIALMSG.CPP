@@ -111,8 +111,15 @@ BYTE* DIALCLASS::OnGetFile(int filenum)
 		   dispatch (S158) is what exposed it: the bug is created by making a subsystem work.
 		   If somebody already holds it, BORROW their data -- valid for the draw, and deliberately
 		   NOT stored in m_pfileblock, because releasing a block we do not own would turn a clean
-		   quit into a use-after-free. BOB_NO_FILEBLK_SHARE reverts. */
-		if (!getenv("BOB_NO_FILEBLK_SHARE"))
+		   quit into a use-after-free.
+
+		   DEFAULT-OFF, on evidence (S159): it does NOT fix the fatal it was written for -- that
+		   collision never reaches this handler (backtrace: bob_fp_repaint -> ... -> makelink,
+		   with OnGetFile absent, and `borrows: 0` measured) -- and default-on it REGRESSED the
+		   gate: config-control DIFF bbox=(552,489,648,505), 13/14 byte-identical. A change that
+		   alters rendering while not fixing its target ships opt-in. Enable: BOB_FILEBLK_SHARE=1. */
+		static const int bobFileblkShare = getenv("BOB_FILEBLK_SHARE") ? 1 : 0;   /* S160b: draw path */
+		if (bobFileblkShare)
 		{
 			void* shared=fileblocklink::BOB_GetOpenFileData((FileNum)filenum);
 			if (shared)
