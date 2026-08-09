@@ -158,7 +158,19 @@ front-end ticks/map paints, then exit — the screen-parity harness; see `doc/sc
 `BOB_NO_LISTXY` (revert menu lists to the pre-S123 synthetic anchors),
 `BOB_NO_PE_RSRC` (S124: revert dialog layout/caption data to the source-checkout .rc parse —
 default is the INSTALLED build's PE resources, boblang.dll = BDG 0.99, the parity oracle),
-`BOB_CHECK_SURF`, `BOB_RC_DIR`. See PORT.md (newest first) for the full dated history.
+`BOB_CHECK_SURF`, `BOB_RC_DIR`.
+
+**Interaction / dispatch (S156–S158).** `BOB_MAP_CLICK="x,y"` injects a map click at the dispatch
+(layer 3); **`BOB_MAP_SDLCLICK="x,y"` / `BOB_SDL_CLICK="tick,x,y"` push a REAL `SDL_MOUSEBUTTONDOWN`**
+(layer 1) — only meaningful on a real GL display, because under `SDL_VIDEODRIVER=dummy`
+`SDL_CreateWindow` fails and `pump_events` is never called at all, so no headless run can exercise
+the SDL layer. `BOB_TRACE_CLICKPATH` traces the click through all five layers.
+`BOB_NO_OOB_CLICK` reverts S156's open-dialog-first-refusal routing (before S156 the map's OOB
+dialogs were **render-only** — paintable, never clickable). `BOB_MSG_DISPATCH` enables S158's real
+message map (compat's `SendMessage` was an allowlist of 3; 16 of the 20 `WM_*` routes the game sends
+died returning 0); `BOB_TRACE_MSG` reports dispatched/unhandled routes, deduped one line per id.
+See `doc/scaffold-audit.md` for which capabilities are actually proven vs only ever driven by a
+scaffold, and PORT.md (newest first) for the full dated history.
 
 ## Conventions
 - **Anonymous repo.** Commit as `curator <noreply@anthropic.com>`; never expose a real email.

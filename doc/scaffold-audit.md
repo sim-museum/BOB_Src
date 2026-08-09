@@ -216,3 +216,133 @@ env flag (default off) so the registration is inert until measured — the blast
 **Watch for the §8z trap:** key the lookup so a handler registered on a BASE class is still found;
 the eventsink's exact-`type_info` match is precisely the bug that made every base-registered event
 dead for the port's whole life.
+
+---
+
+## 7. S158: the dead dispatcher was hiding dead *code*, not just dead routes
+
+Giving `SendMessageA` a real dispatch produced a **link** error before it ever ran:
+
+```
+undefined reference to `operator+(CString const&, char)'
+  RLISTBXC.CPP:1700  CRListBoxCtrl::OnMouseMove
+  RCOMBOC.CPP:1134   CRComboCtrl::OnMouseMove
+```
+
+The call site:
+
+```c
+phintbox = (CDialog*)GetParent()->SendMessage(WM_GETHINTBOX, NULL, NULL);
+if (phintbox) { CString realhint = CString(' ') + str + ' '; ... }
+```
+
+compat's `SendMessage` was an inline allowlist of three that returned a literal `0` for
+`WM_GETHINTBOX`. The optimizer could therefore prove `phintbox` NULL, delete the guarded block
+entirely, and never emit the `operator+` call. Four single-character `operator+` overloads
+(`CString+TCHAR`, `TCHAR+CString`, and their `char` twins — `typedef char TCHAR`, so two
+signatures) had been **declared but never implemented for the port's entire life**, and nothing
+ever failed, because no reachable code called them.
+
+**The general shape, worth carrying to any port:** a stub that returns a *compile-time constant*
+does not merely disable a feature at runtime — it lets the optimizer delete every branch that
+depends on it, which suppresses the link errors that would otherwise reveal the rest of the missing
+implementation. **The gap hides its own symptoms.** Restoring one route surfaced two more.
+
+Corollary for estimating: "the dispatcher is missing" is not a bounded fix. Every route restored
+makes previously-unreachable code reachable, and that code may reference more unimplemented compat.
+Expect the work to grow as it succeeds — and treat each new link error as *evidence the fix is
+working*, not as a setback.
+
+### 7a. The stub existed in TWO layers, and fixing one registered nothing
+
+`ON_MESSAGE` was stubbed in `compat/afxwin.h` **and again** in `SRC/H/GLOBDEFS.H`, which does
+`#undef ON_MESSAGE` first and re-defines it empty under `#if defined(BOB_LINUX)` — with a comment
+from an earlier session of this port: *"Message maps are stubbed (no-op) in the Linux port."*
+GLOBDEFS.H wins. So the first implementation compiled cleanly, defined 146 `bob_mm_register()`
+functions, and **registered nothing at all**.
+
+It would have run, dispatched nothing, changed no pixel, and looked exactly like "the routes are
+dead for some other reason". That is the same silent-success shape S158 exists to remove.
+
+**What caught it was a static check, before spending a run:**
+
+```
+$ objdump -d --demangle bob | grep -c 'call.*bob_msgmap_chain'   # 296  <- BEGIN_MESSAGE_MAP worked
+$ objdump -d --demangle bob | grep -c 'call.*bob_msgmap_add'     # 0    <- ON_MESSAGE did not
+```
+
+Two counters that should both be non-zero, one of which wasn't. **When you implement a registration
+mechanism, verify the registrations exist before you test the behaviour** — `nm`/`objdump` answers
+it in seconds, and a behavioural test that comes back negative cannot tell you *which* half failed.
+(After fixing GLOBDEFS.H: `bob_msgmap_add` 86 call sites.)
+
+Note also *why* symbol-counting was needed rather than looking for the runner objects: the
+per-class registrar is an empty struct whose constructor GCC inlines into the TU's
+`_GLOBAL__sub_I` thunk, so `nm | grep bob_mm_runinst_` finds **zero** even when registration works
+perfectly. Absence of the symbol was not absence of the call — checking the wrong symbol would have
+produced a confident wrong conclusion.
+
+### 7b. Restoring a route keeps surfacing what the stub hid
+
+Each step of enabling the dispatch exposed another gap that had been invisible:
+
+| enabling step | what surfaced | why it was hidden |
+|---|---|---|
+| real `SendMessage` dispatch | `operator+(CString const&, char)` ×2 undefined | call sites were behind `if (ptr)` where the stub returned a constant 0, so the optimizer deleted them |
+| real `ON_MESSAGE` | `WM_COMMANDHELP` not declared (3 sites) | the empty macro never evaluated its `message` argument, so the constant never had to exist |
+
+An empty macro doesn't just discard the registration — **it also stops its arguments from ever
+having to be valid**. Expect a wave of small missing definitions when you un-stub one, and read each
+as confirmation the mechanism is now live.
+
+### 7c. Static proof the mechanism targets the right routes
+
+Registered message ids, read straight out of the binary (the immediates pushed to
+`bob_msgmap_add`) — no display, no run needed:
+
+```
+$ objdump -d --demangle bob | grep -B8 'call.*bob_msgmap_add' \
+    | grep -oE '\$0x(4[0-9a-f]{2}|365)' | sort | uniq -c | sort -rn
+```
+
+| id | message | regs | id | message | regs |
+|---|---|---|---|---|---|
+| `0x401` | `WM_GETARTWORK` | 6 | `0x40a` | `WM_GETOFFSCREENDC` | 5 |
+| `0x402` | `WM_GETXYOFFSET` | 7 | `0x40b` | `WM_GETHINTBOX` | 5 |
+| `0x403` | `WM_GETGLOBALFONT` | 6 | `0x40c` | `WM_PLAYSOUND` | 6 |
+| `0x404` | `WM_GETFILE` | 6 | `0x40d` | `WM_GETCOMBOLISTBOX` | 6 |
+| `0x405` | `WM_RELEASELASTFILE` | 5 | `0x40e` | `WM_GETCOMBODIALOG` | 5 |
+| `0x406` | **`WM_SELECTTAB`** | **9** | `0x40f` | `WM_ACTIVEXSCROLL` | 5 |
+| `0x407` | `WM_CANACCEPTDROP` | 1 | `0x410` | `WM_GETSTRING` | 6 |
+| `0x408` | `WM_DROPPEDON` | 1 | `0x365` | `WM_COMMANDHELP` | 3 |
+| `0x409` | `WM_GETX2FLAG` | 5 | | | |
+
+**All 16 `WM_USER` routes the game sends are covered**, plus `WM_COMMANDHELP`. `WM_SELECTTAB` has
+the most registrations of any route, consistent with its four `OnSelectTab` handlers plus the
+`ON_MESSAGE_CLASS` row in FULLPSYS.CPP — it is the SP.6 / gold #16 suspect and is now wired.
+
+Still unproven at this point, and not claimed: that any of these *fire* at runtime, that behaviour
+changes, or that the tab highlight is fixed. Registration is necessary, not sufficient.
+
+### 7d. Known risk before the runtime census: the declared map bases are not the real bases
+
+`BEGIN_MESSAGE_MAP(theClass, baseClass)` is the only base information available at registration
+time, and in this codebase it is frequently **not** the real C++ base:
+
+| class | map declares | actual C++ base | own ON_MESSAGE rows |
+|---|---|---|---|
+| `LWDirectives` | `CDialog` | `RowanDialog` | **0** |
+| `RDialog` | `CDialog` | — | full set |
+| `CRToolBar` | `CDialog` | `CDialog` | full set |
+
+So the chain for a derived dialog walks `LWDirectives -> CDialog` and **never reaches `RDialog`'s
+handlers**. The four classes `RDIALMSG.H` names ("rdialog, rmdldlg, rtoolbar, AND cmigview should
+all respond to all these messages") each declare the full `ON_MESSAGE` list themselves — which is
+exactly why the static census shows 5–9 registrations per route rather than one.
+
+**Prediction, to be checked against the run rather than assumed:** messages sent to those four
+classes dispatch at depth 0; messages sent to a derived dialog with no rows of its own still miss.
+If misses dominate, the fix is to stop relying on the declared base and instead record, per
+registered class, a probe `bool(*)(void*)` doing `dynamic_cast<T*>(...)` — emitted from the same
+macro where `T` is known — and fall back to scanning probes on a miss. That is inheritance-correct
+regardless of what the map declares. **Not implemented speculatively; the census decides.**
