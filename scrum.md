@@ -197,6 +197,9 @@ screen sweep with the gold shots as the fixed oracle.*
 |---|---|---|---|
 | SP.1 | **Gold-shot inventory** — ☑ **DONE (S123, 2026-07-25).** All shots mapped (NB: the folder holds **19** PNGs, not 17 — two near-dupe side-selects, flagged for PO) with scripted repro recipes; `doc/screen-parity.md` verdict table (MATCH/CLOSE/PARTIAL/GAP + named deviations) + 15 native captures in `doc/parity/` (3 BEFORE/after pairs). New deterministic capture harness `BOB_SHOT`/`BOB_SHOT_PATH` (headless, private path); `BOB_CONFIGSCREEN` gained game/mission/views/flight/quick. | 3 | ☑ |
 | SP.2 | **Front-end parity** — ◐ **BDG-ORACLE PE RESOURCES LANDED (S124)** after S123's 3 systemic fixes. S124: the port reads the INSTALLED build's PE resources (`boblang.dll` = BDG 0.99) at runtime — DIALOG rects/rows, DLGINIT captions with the genuine IDS→string-table resolution, template-driven hosting of non-DDX label statics (the Mission-tab root cause), template-membership draw filter (source-only controls BDG dropped aren't drawn). Every config tab now CLOSE with gold label sets ("Town and forest raises", "109 Fuel Capacity", "Gamma Level", BDG's extra GFX rows). `BOB_NO_PE_RSRC` reverts. _S123: (1) dialog-SCOPED control-rect lookup; (2) menu lists at the game's `ListX/ListY` (`BOB_NO_LISTXY` reverts); (3) runtime `ShowWindow` honored._ _S125: REdit hosted (#17 CLOSE — genuine `CREditCtrl`, gold line layout) + DLGINIT design-prop slices (`bob_dlg_columns`/`bob_dlg_resnum`): authored listbox columns → #16 tab-row spread per gold; RButton alignment byte → #17/#16 label placement; `BOB_NO_DLGINIT_PROPS` reverts._ _S126: **full sequential property-stream reader** — every hosted R\*'s genuine `DoPropExchange` replays its DLGINIT bag (layout validated vs all 1280 bags); authored fonts/colors land gold-exact (phase-date pixel-exact color); #16 duplicate date settled via covered-static erase emulation → #16 CLOSE; dummy==GL `cmp` bar adopted+passing; `BOB_NO_PROP_STREAM`/`BOB_NO_COVER_ERASE` revert._ Remaining: word-wrap (R6.2), `MoveWindow` page tracking, font face size mapping (FontNum→px, e.g. the Controls "4 axes" line draws large), "&&" escape, QS tab captions/recipe (#3), Directives dialog (#18), key-injection harness (#17 typed input/caret). | 13 | ◐ |
+| SP.4 | **Host `CRSpinBut` — the 8th (and last) R\* control type.** The LW Directives grid's ~50 numeric spinner boxes and their values (gold #18: Bomber Allocation 40/30 %, per-aircraft gruppen counts, Resting counts) don't draw because `CRSpinBut` (`SRC/H/LWDIRECT.H`) has no host — the only R\* type still unhosted after S140. Follow the §8p new-control-type recipe (new host TU + genuine OCX in the build + CLSID in the factory); expect the two recurring OCX compile traps (§8t). Closes the last named deviation on #18 and is the prerequisite for any *editable* directives. *(S141)* | 6 | ☐ |
+| SP.5 | **Dismiss a logged dialog headlessly.** There is no way to CLOSE an OOB/misc-toolbar dialog: `CMiscToolbar::OpenDirectivetoggle` opens a **second stacked instance** when the dialog was opened by the game rather than by our scaffold. Blocks capturing the strategic map *under* an auto-opened dialog — which is what gold **#19**'s remaining raid-stack/route deviation needs (an active Eagle Attack day is now reachable, S141, but the Directives dialog covers the map). Find the genuine close route (title-bar `✕` → `CloseLoggedChild`, already de-bugged in S110) and give it a trigger. Question also sent to MA (note 18). *(S141)* | 5 | ☐ |
+| SP.6 | **Mirror the genuine click's SELECTION state in the hosted-listbox path.** `CRListBoxCtrl::OnLButtonDown` sets `m_iRowSel`/`m_iColSel` *before* the Select event fires; our synthesized click fires the event only, so the control doesn't repaint its selection. Visible on gold **#16**: gold draws the selected phase tab WHITE ("Eagle Attack"), ours leaves all four gold. Small and contained, but it touches the shared click path — gate with the byte-identical sweep. *(S141)* | 3 | ☐ |
 | SP.3 | **Flight / map parity** — ◐ **BOTH CAPTURED + VERDICTED (S123).** Cockpit vs gold: CLOSE (structure/instruments/HUD readout match; prop-blur + HUD style deviations named). Strategic map vs gold: CLOSE (terrain/sectors/icons/footer/toolbars/clock match; raid-stacks/routes absent in the fresh-day capture, ruler art plain, Directives dialog = GAP). Remaining: LW Directives dialog reachability, raid-day capture, deviation fixes. | 13 | ◐ |
 
 ### Icebox (environment-blocked — not schedulable until the environment changes)
@@ -538,6 +541,35 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
   S139 (Fly footer) + S135 (roster), every gold-#3 element now renders.
 - **Increment demo:** `BOB_BOBFRAG=1 BOB_SHOT=120` → the briefing shows the "Bob" name box.
 
+### Sprint 141 — "Choose the campaign phase (gold #18 → CLOSE)" → *Increment: the campaign phase is selectable; Eagle Attack's Directives allocation grid renders* — **✅ CLOSED 2026-08-08 (8/8 pts; §9 row 141 + PORT.md S141)**
+- **Sprint Goal:** reach an active campaign phase headlessly so gold #18's allocation grid renders —
+  the last non-by-design parity deviation, and the same state gap #19 names.
+- **Committed (~8 pts):** S141.1 column-aware listbox Select + `#ID[:COL]` recipe token (3);
+  S141.2 Eagle-Attack map + Directives capture & verdict (4); S141.3 gates/docs/cross-port (1).
+- **Delivered — the grid was never a render gap.** BoB models a tab row as the **columns of one
+  `CRListBoxCtrl`**; `CSCampaign::OnSelectRlistCampaigns(row, column)` picks the campaign phase from
+  the **column**, and our hosted-listbox click passed a hardcoded `0` there while resolving the row
+  faithfully. Every campaign the port had ever run therefore started in phase 0 (Convoys, 10 July —
+  a standby day with nothing to allocate). Resolving the column through the genuine control's own
+  `GetColFromX` (`colAtX` beside `rowAtY`; `BOB_NO_LIST_COL` reverts) makes the phase selectable:
+  the select screen now reads **12th August – 23rd August** with the Eagle Attack narrative, and on
+  that day **the game opens the Directives dialog itself** (S137's `BOB_MAP_DIRECTIVES` scaffold is
+  no longer needed) with the full grid drawing through S137's deep TB_MISC walk — structurally 1:1
+  with gold #18 down to the Missions column's 1/1/1/0/0/0.
+- **Recipe grammar `#ID[:COL]` adopted from MA S62/S63** — the click point is resolved from the
+  control's own drawn rect + column walk (`bob_ole_ctrl_point`), never fixed pixels.
+- **#18 PARTIAL → CLOSE** (parity **18 CLOSE / 0 PARTIAL / 1 GAP**; the one GAP is #4, by design).
+- **Honest, carried:** (a) the ~50 numeric spinner boxes don't draw — `CRSpinBut` is the 8th R\*
+  type and the only unhosted one (follow-on story, §8p recipe); (b) **#19's raid-stack deviation is
+  NOT retired** — that needs the map without the dialog over it, and `OpenDirectivetoggle` opens a
+  *second* dialog rather than closing a game-opened one. Banked as its own story + a question to MA.
+- **Gates (all `gl-lock`):** build clean; 14-recipe headless sweep 14/14 exit 0; **A/B on the same
+  build (default vs `BOB_NO_LIST_COL=1`) 14/14 BYTE-IDENTICAL** — the shared click primitive is
+  surgical; safe default (`BOB_NO_RUN`) exit 0; Eagle-Attack phase select **dummy==GL
+  byte-identical**; flight frame-150 on `:0` **98.6% non-black**.
+- **Increment demo:** `BOB_AUTOCLICK=1,1,#1000:1,1,1 BOB_MAP_TIMER=8 BOB_SHOT=1100` → the Eagle
+  Attack Directives grid over the strategic map, clock "12 August 10:45 x1".
+
 ---
 
 ## 7a. Forward roadmap — to "all functionality" (regroomed 2026-06-17)
@@ -585,6 +617,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **141** | ~8 | 8 | ★ **The campaign PHASE is selectable — Eagle Attack reached, gold #18's Directives allocation grid renders; #18 PARTIAL → CLOSE (parity 18 CLOSE / 0 PARTIAL / 1 GAP, the GAP by design)** | **(2026-08-08)** The grid was never a render gap. BoB models a tab row as the **columns of one `CRListBoxCtrl`**: `CSCampaign::OnInitDialog` `AddString`s each phase into its own column and `OnSelectRlistCampaigns(row, column)` (`VTS_I4 VTS_I4`) picks the phase from the **column** — which `bob_ole_click` hardcoded to `0` while resolving the row faithfully via the genuine `GetRowFromY`. So **every campaign the port had ever run started in phase 0** (Convoys, 10 July — a standby day with nothing to allocate), which is why S137's Directives dialog came up empty and read as a screen needing more work. Fixed symmetrically: `OleHost::colAtX` + `HostRListBox::colAtX` → the genuine `GetColFromX` (walks `m_sizeList`); `BOB_NO_LIST_COL` reverts. Also added a **metrics-resolved recipe token** `BOB_AUTOCLICK=#ID[:COL]` (`bob_ole_ctrl_point`) — adopted from **MA S62/S63** so no drive recipe encodes fixed pixels. **Result:** phase select reads "12th August - 23rd August" + the Eagle Attack narrative; on that day **the game opens Directives itself** (S137's `BOB_MAP_DIRECTIVES` no longer needed) and the full grid draws through S137's deep TB_MISC walk — Bomber Allocation / Reconn / Mission Timing / Attached+Detached Escort / Ground Attack Gruppen / **Missions column reading gold's 1/1/1/0/0/0** / Escort Gruppen / Resting / Rest All, footer "Aircraft Quota Allocated", clock "12 August 10:45 x1". **Also corrected a silent STATE mismatch on #16** — gold #16 *is* the Eagle Attack phase; every native capture had been Convoys. **Gates (gl-lock):** sweep 14/14 exit 0; **A/B default vs `BOB_NO_LIST_COL=1` 14/14 BYTE-IDENTICAL**; safe default (`BOB_NO_RUN`) exit 0; phase select **dummy==GL byte-identical**; flight frame-150 **98.6% non-black**. **Honest:** the ~50 numeric spinner boxes don't draw (`CRSpinBut` = 8th R\* type, only unhosted one → SP.4); **#19's raid-stack deviation NOT retired** — no headless way to dismiss a game-opened OOB dialog, `OpenDirectivetoggle` stacks a second (→ SP.5); selected-tab highlight not mirrored (→ SP.6). Evidence `doc/parity/native-strategic-directives-eagle-2026-08-08.png`, `sbs-strategic-directives.jpg`, `native-campaign-phaseselect-eagle-2026-08-08.png`. Cross-port §8u + note 18. |
 | **140** | ~6 | 6 | ★ **Hosted `CREdtBtCtrl` (7th R\* type) — the "Bob" briefing name box renders; gold #3 PARTIAL → CLOSE** | **(2026-08-03)** BoBFrag's pilot slots `IDC_PILOT_0..14` are `CREdtBt` (edit-button), DDX-bound; `OnInitDialog`'s `SetCaption(playerslotname)` sets the player's "Bob". Hosted the genuine `CREdtBtCtrl` (new `SRC/REDTBT/bob_ole_redtbt.cpp` + OCX `REDTBTC.CPP` in the bob_rlistbox lib + `CLSID_REdtBt` wired) mirroring the REdit host — with two CREdtBt-specifics: caption is *stock* (`SetProperty(DISPID_CAPTION)`→`InternalSetText`; compat `SetText` is a no-op) and OnDraw's `captiontext` member is refreshed only in handlers → refreshed from `InternalGetText()` in `draw()`. **Two OCX compile-compat fixes** (BOB_LINUX-guarded, §8p class): `IconsUI` forward-decl `:int`→`:unsigned int` (match uiicons.h) + `MaskIcon(CPoint&)` temp-bind (name the temp, cf. RRADIOC/RBUTTONC). **Gates (gl-lock):** safe default exit 0; mainmenu dummy==GL byte-identical; flight 94.9% non-black (CREdtBt only instantiates on BoBFrag → other screens unaffected). **#3 CLOSE** — with S135 roster + S136 Return-to-Player + S139 Fly footer, every gold-#3 element renders. Parity **17 CLOSE / 1 PARTIAL / 1 GAP**. Evidence `doc/parity/native-quickshots-bobfrag-2026-08-02.png`. |
 | **139** | ~3 | 3 | ★ **Footer-listbox clip fix — clipped last footer/tab columns render (gold #3 "Fly", gold #2 "Fly")** | **(2026-08-03)** The footer/tab `CRListBoxCtrl` lays columns at its own internal widths but `ExtTextOut`-clips each to the passed `rcBounds`; `bob_draw_menu` passed a tight `total` (re-measured text widths) that clipped the last column (bobfrag "Fly", QS Scenario "Fly", config tab edges). Widened the listbox clip to the remaining screen width — positions are internal + hit-rects come from `wids[]`, so nothing moves, previously-clipped columns appear (`BOB_NO_FOOTER_CLIP` reverts). bobfrag footer = Back/Sim Config/Fly (gold #3); QS footer = Back/Fly (gold #2). **A/B verified** each of 4 screens' diffs is a benign clipped-edge reveal (mainmenu byte-identical; diffs ≤ a few px in the footer/tab band, e.g. QS "Fly" newly visible, gfx2 "C…" fully revealed). Gates: safe default exit 0; flight 94.9% non-black. #3 nearer CLOSE (only the "Bob" name box remains). |
 | **137** | ~5 | 5 | ★ **LW Directives dialog (gold #18) now REACHABLE + renders — #18 GAP → PARTIAL** | **(2026-08-02)** The Directives dialog (`LWDirectives`/`IDD_LWDIRECTIVES`) is on the **misc** toolbar (TB_MISC), which `bob_map_paint_oob` never walked → unreachable. Added `bob_oob_open_directives` (`MiscToolBar().OpenDirectivetoggle(NULL)`, null-safe: the ctor builds a default `LWDirectivesResults` from `MMC.directives.lw.current`) + a `BOB_MAP_DIRECTIVES` trigger, and extended `bob_map_paint_oob` to render TB_MISC logged children via a full recursive walk (`bob_oob_paint_tree_deep`, fchild+sibling — dense nested grids the fchild-only Bases walk misses). The dialog opens (exit 0, no crash) + renders its frame + "Rest All" + standby reminder. **Gates (gl-lock):** Bases OOB (TB_MAIN, unchanged) still renders; TB_MISC paint inert when no misc dialog logged (no map regression); safe default exit 0. **Honest:** the dense allocation grid doesn't show — gold #18 is 12 Aug Eagle Attack (active gruppen), mine is 10 July Convoys where the game shows the standby state (grid hidden until active); same state gap as #19. Evidence `doc/parity/native-strategic-directives-2026-08-02.png`. |
@@ -660,6 +693,32 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
 
+- _Sprint 141 (choose the campaign phase, #18 → CLOSE):_ ⭐ **A hardcoded event argument spent four
+  sprints disguised as a rendering gap.** S137 looked at an empty Directives dialog and correctly
+  concluded "state gap — the grid is hidden until an active phase"; S141 found *why* the port could
+  never be in an active phase: the hosted-listbox click fired `Select(row, column)` with the column
+  **hardcoded to 0**, and BoB picks the campaign phase from that column. Nothing was uninitialised
+  and nothing errored — the value was simply always the same wrong constant, so the symptom surfaced
+  four screens away and got written down as a screen that needed more work. **This is the §8i family
+  wearing a new coat** (stubbed/ignored argument → plausible-looking downstream defect), and it
+  extends the standing rule: when a screen looks *state-starved*, audit what SELECTS the state before
+  touching what draws it. The tell here wasn't run-to-run variance (the giveaway for the uninit
+  flavour) but **invariance** — the campaign started on 10 July every single time, across every
+  capture, for four sprints. An always-identical value in something the user is supposed to choose
+  deserves the same suspicion as a value that changes when it shouldn't.
+  Second lesson, cheaper: **adopting MA's `#ID[:COL]` recipe rule cost nothing because it was done
+  before the first pixel was written down.** The temptation was to hardcode "click (419,36)" — the
+  point we'd just measured — and move on. Retro-fitting that rule cost MA a sprint; applying it
+  pre-emptively cost about ten lines. Adopt a sibling port's *process* lessons at the moment you'd
+  otherwise commit the mistake, not after.
+  Third, a gate-hygiene one: **the safe-default gate first reported `exit=124` and it was the
+  harness, not the port.** Bare `./bob` on a real data dir correctly enters the interactive `Run()`
+  loop and never exits — the standing gate is `BOB_NO_RUN=1` (link-only safe default). A gate that
+  is *mis-specified* rather than failing is the expensive kind: it reports a number that looks like
+  a regression and invites a hunt through a clean diff. Two rules banked: read how the previous
+  sprint actually invoked a gate before re-implementing it, and never wrap an interactive app in a
+  bare `timeout` and read its exit code as a verdict (cf. the standing "no timeout on interactive
+  apps" rule, and MA's `timeout -k`).
 - _Sprint 140 (host CREdtBt, #3 → CLOSE):_ **The new-control-type recipe (§8p) held, and its two
   known compile traps were the whole cost.** Hosting the 7th R\* type went exactly as the checklist
   predicts — mirror the nearest host (REdit), wire CLSID + CMake, DDX auto-instantiates — and the

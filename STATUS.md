@@ -7,8 +7,24 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest sessions (S132–S140, 2026-08-02/03): the gold #3 briefing arc → CLOSE, + the Directives
-> dialog reached.** Screen parity is now **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 (was 16/1/3). The
+> **Latest session (S141, 2026-08-08): the campaign PHASE is selectable — gold #18's Directives
+> allocation grid renders.** Screen parity is now **18 CLOSE / 0 PARTIAL / 1 GAP** of 19, and the
+> single remaining GAP (#4, the transient "Initialising 3D" loading screen) is **by design**.
+> BoB models a tab row as the **columns of one `CRListBoxCtrl`**, and
+> `CSCampaign::OnSelectRlistCampaigns(row, column)` picks the campaign phase from the **column** —
+> which our hosted-listbox click hardcoded to `0` while resolving the row faithfully. So every
+> campaign the port had ever run started in phase 0 (Convoys, 10 July, a standby day), and that,
+> not any renderer, is why S137's Directives dialog came up empty. Resolving the column through the
+> genuine control's own `GetColFromX` (`BOB_NO_LIST_COL` reverts) makes the phase selectable: the
+> select screen reads **12th August – 23rd August** (Eagle Attack), and on that day the game opens
+> Directives itself with the full allocation grid drawing through S137's deep TB_MISC walk.
+> `BOB_AUTOCLICK` also gained a metrics-resolved `#ID[:COL]` step (adopted from MA S62/S63 — drive
+> recipes must never encode fixed pixels). Carried: the ~50 numeric spinner boxes need `CRSpinBut`,
+> the 8th R\* type and the only unhosted one; and gold #19's raid-stack deviation still stands
+> because there is no headless way to *dismiss* a game-opened OOB dialog.
+>
+> **Prior (S132–S140, 2026-08-02/03): the gold #3 briefing arc → CLOSE, + the Directives
+> dialog reached.** Screen parity was then **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 (from 16/1/3). The
 > Quick-Shots → mission-briefing thread was carried from crash to full parity:
 > - **S132** — fixed the QS order-of-battle SIGSEGV (a variadic `DialList` copy-constructs a
 >   `DialBox` from `*(DialBox*)NULL`; null-reference-safe copy ctor, RDIALOG.H).
@@ -100,7 +116,7 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 | **HUD info bar** | Altitude/speed + attitude indicator (after the unit-factor fix) | `BOB_HUD` |
 | **Front-end** | Navigable menu + config screens with real hosted R\* OLE controls — **7 types**: listbox/combo/static/button/edit/radio/**edit-button** (`CREdtBt`, S140), combo cycle-on-click, RLE8 backgrounds | `BOB_FRONTEND=1 BOB_OLE_DRAW=1` |
 | **Mission briefing** | The BoBFrag briefing (gold #3) renders CLOSE: roster listbox, "Return to Player", the "Bob" pilot name box, Back/Sim Config/Fly footer | `BOB_BOBFRAG=1 BOB_SHOT=120` |
-| **Screen parity** | **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 gold shots (`doc/screen-parity.md`); #18 Directives PARTIAL (grid needs Eagle-Attack state), #4 loading screen by-design GAP | `doc/parity/`, `BOB_SHOT` harness |
+| **Screen parity** | **18 CLOSE / 0 PARTIAL / 1 GAP** of 19 gold shots (`doc/screen-parity.md`); S141 closed #18 (Directives grid — the Eagle-Attack state is now reachable), leaving only #4, the transient loading screen, as a **by-design** GAP | `doc/parity/`, `BOB_SHOT` harness |
 | **Config screens** | All 6 options tabs render as readable forms (GFX/More GFX/Controls/Sound/2D/Sim); **Controls** screen is interactively re-bindable (click a device/axis combo → reassign) | `BOB_CONFIGSCREEN=controls\|gfx\|sound\|2d\|sim` |
 | **OCX event routing** | **General eventsink (S33):** the game's own `BEGIN_EVENTSINK_MAP`/`ON_EVENT` maps drive control events via RTTI dispatch — combo TextChanged + listbox Select fire the genuine handlers (replaces the two targeted R5.3b/R4.4 bridges) | `BOB_TRACE_OLE` |
 | **Text rendering** | Game-wide `CSprintf("%s",CString)` fixed (Itanium-ABI varargs) — config/debrief/controls text readable | (always on; `cstring_impl.cpp::FormatV`) |

@@ -1,5 +1,71 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S141 (2026-08-08, Sprint 141): the campaign PHASE is selectable — Eagle Attack reached, the LW Directives allocation grid renders; gold #18 PARTIAL → CLOSE
+>
+> **A one-argument bug kept the whole campaign in July.** Every native campaign run since the map
+> came up started in **phase 0 (Convoys, 10 July)** — a standby day. S137 correctly diagnosed gold
+> #18's missing allocation grid as a *state* gap ("the grid is hidden until an active phase has
+> gruppen to allocate") and named reaching an active phase as the follow-on. This sprint reached it.
+>
+> **Root cause — the Select event's second argument was hardcoded.** BoB models a tab row as the
+> **columns of a single `CRListBoxCtrl`**: `CSCampaign::OnInitDialog` `AddString`s each campaign phase
+> into its own column (0=Convoys 1=Eagle Attack 2=Critical Period 3=Blitz), and the handler
+> `CSCampaign::OnSelectRlistCampaigns(long row, long column)` (`ON_EVENT … VTS_I4 VTS_I4`) switches
+> phase on the **column** — `RefreshDate(column)` + `FullPanel()->ChangeCamp(column)`. Our hosted-
+> listbox click path (`bob_ole.cpp`) resolved the **row** from the control's own metrics
+> (`GetRowFromY`) but passed `bob_evtA1 = 0` for the column. So a click anywhere on the phase row
+> re-selected Convoys, and `CampaignSelectInit`'s `ChangeCamp(0)` default stood — for every campaign
+> the port has ever run. Fixed by resolving the column the same way the row already was, through the
+> genuine control's own `GetColFromX` (walks `m_sizeList`, the authored/Shrink-computed column
+> widths): `OleHost::colAtX` + `HostRListBox::colAtX`. `BOB_NO_LIST_COL` reverts to 0.
+>
+> **Recipe grammar — `#ID[:COL]`, adopted from MiG Alley (MA S62/S63).** Choosing the phase headlessly
+> needed a click on a *panel control*, not a menu item, and MA's lesson is that a drive recipe must
+> never encode fixed pixels (a font change moved MA's menu pitch 16→28px and silently broke every
+> parity capture *and* every ASan drive recipe at once — the whole regression gate, at peak diff).
+> So `BOB_AUTOCLICK` gained a `#ID[:COL]` step that resolves its click point from the **control's own**
+> drawn rect + column walk (`bob_ole_ctrl_point`, `SRC/RLISTBOX/bob_ole.cpp`). `BOB_AUTOCLICK=1,1,#1000:1,1,1`
+> = Campaigns → Luftwaffe → **Eagle Attack** → Begin → Begin.
+>
+> **Result 1 — the phase select is real.** The screen now reads **"12th August - 23rd August"** with the
+> Eagle Attack narrative ("the Luftwaffe attacked British radar sites and RAF airfields…") instead of
+> 10 July / Convoys; `[evt_fire] id=1000 dispid=1 type=CSCampaign -> HANDLER CALLED`.
+>
+> **Result 2 — gold #18's allocation grid renders (PARTIAL → CLOSE).** On an Eagle Attack day **the
+> game opens the Directives dialog by itself** — the S137 `BOB_MAP_DIRECTIVES` scaffold is no longer
+> needed to reach it — and the dense grid draws through S137's deep TB_MISC walk, structurally 1:1
+> with gold: Bomber Allocation, Reconn, Mission Timing "Coincidental", Attached/Detached Escort rows,
+> **Ground Attack Gruppen** (Ju87/He111/Ju88/Do17 × Airfields/Docks/RDF/Convoys/London/Factories), the
+> **Missions** column reading gold's 1/1/1/0/0/0, Escort Gruppen, Resting, "Rest All", the
+> "Aircraft Quota Allocated" footer log and the "12 August 10:45 x1" clock (gold: 06:30).
+> Evidence: `doc/parity/native-strategic-directives-eagle-2026-08-08.png`, side-by-side
+> `doc/parity/sbs-strategic-directives.jpg`.
+>
+> **Honest — what did NOT land.** (a) The ~50 numeric **spinner boxes** and their values don't draw:
+> they are `CRSpinBut` (`SRC/H/LWDIRECT.H`), the **8th R\* control type and the only one still
+> unhosted**; the escort tick-boxes draw as plain circles vs gold's red-tick squares; no title-bar
+> `? ✓ ✕`. All control-art gaps, all one follow-on story (the §8p host recipe, cf. S128/S140).
+> (b) **Gold #19's raid-stack deviation is NOT retired.** Checking whether raid stacks/routes appear
+> on a live Eagle Attack day needs the map *without* the dialog over it, and there is no way to
+> dismiss an OOB dialog headlessly: `bob_oob_open_directives` calls `CMiscToolbar::OpenDirectivetoggle`,
+> which — when the dialog was opened by the game rather than by us — **opens a second one instead of
+> toggling the first closed** (captured: a larger stacked frame, `map-eagle-nodlg`). Banked as a
+> distinct story; #19 keeps its deviation.
+>
+> **Gates (all under `gl-lock`, queued behind two sibling ports — the lock did its job):** build
+> clean; 14-recipe headless sweep **14/14 exit 0**; ⭐ **A/B on the same build (default vs
+> `BOB_NO_LIST_COL=1`) — 14/14 BYTE-IDENTICAL**, i.e. touching the shared click primitive changed
+> nothing on any screen that doesn't click a multi-column listbox; safe default (`BOB_NO_RUN`)
+> **exit 0**; Eagle-Attack phase select **dummy==GL byte-identical**; flight frame-150 on `:0`
+> **98.6% non-black**, exit 0. *(Harness note: the first attempt at the safe-default gate ran bare
+> `./bob` with no env and came back `124` — a **timeout**, not a failure. Bare `./bob` on a real
+> data dir correctly enters the interactive `Run()` loop and never exits by itself; the standing
+> gate is `BOB_NO_RUN=1`, which forces the link-only safe default. A mis-specified gate that
+> reports a scary number is worse than no gate — the exit code was from the harness, not the
+> port.)* Files: `SRC/RLISTBOX/bob_ole.cpp`,
+> `SRC/RLISTBOX/bob_ole_host.h`, `SRC/RLISTBOX/bob_ole_rlistbox.cpp`, `SRC/MFC/FULLPSYS.CPP`.
+> Cross-port: §8u.
+
 > ## S140 (2026-08-03, Sprint 140): hosted `CREdtBtCtrl` (7th R\* control type) — the "Bob" briefing name box renders; gold #3 PARTIAL → CLOSE
 >
 > **Gold #3 is now CLOSE — the last missing element renders.** BoBFrag's pilot roster slots

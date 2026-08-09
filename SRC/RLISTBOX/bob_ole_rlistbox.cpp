@@ -84,6 +84,14 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
     }
     /* R4.4: map a click's local Y (relative to the control's drawn top) to a list row. */
     int rowAtY(int localY) override { return (int)(short)GetRowFromY(localY); }
+    /* S141: map a click's local X to a list COLUMN via the genuine control's own
+       GetColFromX (walks m_sizeList, the authored/Shrink-computed column widths) --
+       the second half of the Select(row,column) event. Multi-COLUMN listboxes are how
+       BoB models tab rows: CSCampaign's IDC_RLIST_CAMPAIGNS AddString's each campaign
+       phase into its own column (0=Convoys 1=Eagle Attack 2=Critical Period 3=Blitz),
+       and CSCampaign::OnSelectRlistCampaigns(row,column) uses the COLUMN to pick the
+       phase. Passing a hardcoded 0 meant every click re-selected Convoys. */
+    int colAtX(int localX) override { return (int)(short)GetColFromX(localX); }
     /* R4.1: some hosted listboxes (e.g. CSCampaign's IDC_RLIST_CAMPAIGNS) rely on a column
        count persisted in the OCX property bag rather than calling AddColumn -- the game just
        AddString's into column 0..N. Our host boots from an empty CPropExchange, so m_list has

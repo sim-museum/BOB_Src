@@ -305,13 +305,51 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
                selectedfile). id==0 is the FullPanelDial menu listbox (handled elsewhere) — skip. */
             int row = h->rowAtY(y - h->sy);
             if (row >= 0 && h->ctrlId) {
-                bob_evtA0 = row; bob_evtA1 = 0;
+                /* S141: the Select event is Select(row, COLUMN) (VTS_I4 VTS_I4) and the
+                   column half was hardcoded 0. BoB's tab rows are multi-COLUMN listboxes
+                   (one column per item), so handlers that switch on the column — e.g.
+                   CSCampaign::OnSelectRlistCampaigns -> ChangeCamp(column), the campaign
+                   PHASE selector — could only ever be told "column 0". Resolve it from the
+                   control's own metrics (GetColFromX). BOB_NO_LIST_COL reverts to 0. */
+                int col = getenv("BOB_NO_LIST_COL") ? 0 : h->colAtX(x - h->sx);
+                bob_evtA0 = row; bob_evtA1 = col;
                 if (bob_evt_fire((void*)dialog, &typeid(*dialog), h->ctrlId, 1)) {
-                    if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> list id=%d row=%d selected (evt fired)\n", x, y, h->ctrlId, row);
+                    if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> list id=%d row=%d col=%d selected (evt fired)\n", x, y, h->ctrlId, row, col);
                     return 1;
                 }
             }
         }
+    }
+    return 0;
+}
+
+/* S141: resolve a click point for control `id` on `dialog` from the CONTROL'S OWN metrics
+   (its last-drawn rect + the genuine GetColFromX column walk), so headless drive recipes can
+   say "click control #1000 column 1" instead of hardcoding pixels. Adopted from the MiG Alley
+   port's `f,#ID[:COL]` recipe grammar (MA S62/S63): fixed pixel coordinates in test recipes
+   silently break the moment a font or layout change moves a row, and they broke MA's entire
+   regression gate at once. Returns 1 and fills (*px,*py) if the control is drawn. */
+extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py) {
+    for (auto& kv : hosts()) {
+        OleHost* h = kv.second;
+        if (h->ctrlId != id) continue;
+        if (dialog && h->parentDlg != dialog) continue;
+        if (h->sw <= 0 || h->sh <= 0) continue;          /* not drawn (hidden / off-template) */
+        int lx = h->sw / 2;
+        if (col > 0 || h->colAtX(h->sw - 1) > 0) {       /* multi-column: find the column's span */
+            int start = -1, end = -1;
+            for (int t = 0; t < h->sw; t++) {
+                if (h->colAtX(t) == col) { if (start < 0) start = t; end = t; }
+                else if (start >= 0) break;
+            }
+            if (start < 0) return 0;                     /* no such column */
+            lx = (start + end) / 2;
+        }
+        if (px) *px = h->sx + lx;
+        if (py) *py = h->sy + h->sh / 2;
+        if (bob_ole_trace()) fprintf(stderr, "[ole] ctrl_point id=%d col=%d -> (%d,%d) rect=(%d,%d,%d,%d)\n",
+            id, col, h->sx + lx, h->sy + h->sh / 2, h->sx, h->sy, h->sw, h->sh);
+        return 1;
     }
     return 0;
 }

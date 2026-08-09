@@ -18,7 +18,7 @@ Rebuild: `cd /home/admin/bob/build && ninja bob`.
 | What | Where |
 |---|---|
 | Backlog (Releases R1–R7 + SP) + burndown | `scrum.md` — Release SP is the screen-parity epic; §9 burndown |
-| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently **17 CLOSE / 1 PARTIAL / 1 GAP** of 19 (S140: #3 briefing PARTIAL→CLOSE; #18 Directives PARTIAL; only #4 loading-screen GAP remains, by design) |
+| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently **18 CLOSE / 0 PARTIAL / 1 GAP** of 19 (S141: #18 Directives PARTIAL→CLOSE; only #4 loading-screen GAP remains, **by design**) |
 | Side-by-side captures | `doc/parity/` |
 | Engineering evidence log (newest first) | `PORT.md` |
 | Live product snapshot | `STATUS.md` |
@@ -28,8 +28,25 @@ Gold standard: `/run/media/admin/BEA6-BBCE/bob/` (19 PNGs). Oracle ruling: the
 gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 `boblang.dll` PE resources since S124; `BOB_NO_PE_RSRC=1` reverts).
 
-## Current state (2026-08-03)
+## Current state (2026-08-08)
 
+- **S141 closed: the campaign PHASE is selectable — gold #18's Directives
+  allocation grid renders; #18 PARTIAL → CLOSE (parity 18 CLOSE / 0 PARTIAL /
+  1 GAP, the GAP being #4 by design).** BoB models a tab row as the *columns*
+  of one `CRListBoxCtrl`; `CSCampaign::OnSelectRlistCampaigns(row, column)`
+  picks the campaign phase from the **column**, which our hosted-listbox click
+  hardcoded to 0 — so every campaign the port ran started in phase 0 (Convoys,
+  10 July, a standby day with nothing to allocate). Now resolved through the
+  genuine control's own `GetColFromX` (`colAtX` beside `rowAtY`;
+  `BOB_NO_LIST_COL` reverts). `BOB_AUTOCLICK` gained a `#ID[:COL]` step that
+  resolves its click point from the control's own drawn rect + column metrics
+  (adopted from MA S62/S63 — never fixed pixels in a drive recipe).
+  **Repro:** `BOB_AUTOCLICK=1,1,#1000:1,1,1 BOB_MAP_TIMER=8 BOB_SHOT=1100`
+  (the game opens Directives itself on an active day — `BOB_MAP_DIRECTIVES` is
+  no longer needed). Carried: the ~50 numeric spinner boxes need `CRSpinBut`
+  hosted (8th R\* type, the only unhosted one); #19's raid-stack deviation
+  still stands — no headless way to dismiss a game-opened OOB dialog
+  (`OpenDirectivetoggle` stacks a second one).
 - **S140 closed: hosted `CREdtBtCtrl` (7th R\* control type) — the "Bob" briefing
   name box renders; gold #3 PARTIAL → CLOSE.** BoBFrag's pilot slots
   `IDC_PILOT_0..14` are `CREdtBt` (edit-button), DDX-bound; `OnInitDialog`'s

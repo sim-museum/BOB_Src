@@ -178,6 +178,7 @@ extern "C" int  bob_gdi_get_click(int*,int*);                      /* pending le
 extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, int textH);
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
+extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py);  /* S141 */
 static int g_bobOleDraw = -1;
 static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_DRAW") ? 1 : 0; return g_bobOleDraw; }
 
@@ -1096,7 +1097,24 @@ extern "C" void bob_frontend_tick(void)
 		bool sideSel = bob_on_sideselect();   /* R4.1: art-polygon screen has no text menu */
 		if (++t % 120 == 0 && (g_bobMenuN>0 || sideSel)) {
 			const char* p = ac; for (int k=0; k<seq && p; k++) { p=strchr(p,','); if(p) p++; }
-			if (p && *p) {
+			/* S141: a "#ID[:COL]" step clicks a hosted PANEL control by its dialog id
+			   (optionally a listbox column) instead of a menu-item index -- the point is
+			   resolved from the control's own drawn rect + column metrics. This is how the
+			   campaign PHASE is chosen headlessly (#1000:1 = IDC_RLIST_CAMPAIGNS, Eagle
+			   Attack), and it follows MA S62/S63's rule that a drive recipe must never
+			   encode fixed pixels. */
+			if (p && *p=='#') {
+				int cid = atoi(p+1), ccol = 0;
+				const char* c = strchr(p+1, ':');
+				if (c && (!strchr(p,',') || c < strchr(p,','))) ccol = atoi(c+1);
+				for (int d=0; d<3 && !got; d++) {
+					RDialog* pd = g_bobActiveFP->pdial[d];
+					if (pd && bob_ole_ctrl_point((CWnd*)pd, cid, ccol, &cx, &cy)) got=true;
+				}
+				if (got) { seq++; fprintf(stderr,"[frontend] autoclick step #%d:%d -> (%d,%d)\n", cid, ccol, cx, cy); }
+				else fprintf(stderr,"[frontend] autoclick step #%d:%d -- control not drawn yet, retrying\n", cid, ccol);
+			}
+			else if (p && *p) {
 				int n=atoi(p);
 				int resW = RFullPanelDial::resolutions[g_bobActiveFP->m_currentres];
 				if (sideSel && bob_sideselect_centroid(n, resW, &cx, &cy)) { got=true; seq++; }

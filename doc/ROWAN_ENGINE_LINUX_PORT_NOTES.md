@@ -1734,6 +1734,42 @@ for where its text actually comes from.
 MiG Alley: if any MA screen hosts `CREdtBt`/edit-buttons (pilot rosters, name entry), the same host
 + the same two compile fixes transfer verbatim.
 
+## 8u. The `Select(row, COLUMN)` event has two arguments — and a tab row is COLUMNS (BoB S141) **[ENGINE]**
+
+**Check your hosted-listbox click path right now: does it pass a real column?** BoB's front end
+models a *tab row* as the **columns of one `CRListBoxCtrl`** — `CSCampaign::OnInitDialog`
+`AddString`s each campaign phase into its own column, and the handler
+`ON_EVENT(…, 1 /* Select */, OnSelectRlistCampaigns, VTS_I4 VTS_I4)` switches phase on the
+**column**, not the row. Our click path resolved the row faithfully (through the genuine
+`GetRowFromY`) and then passed a hardcoded `0` for the column. Result: every click on the phase row
+re-selected phase 0, so **every campaign the port had ever run started in the first phase** — and
+that, not any render bug, is why the LW Directives allocation grid never appeared (it is empty on a
+standby day). One hardcoded argument masqueraded as a screen-render gap for four sprints.
+
+**The fix is symmetric with the row:** the genuine control already has `GetColFromX(long)` (walks
+`m_sizeList`, the authored/Shrink-computed column widths), exactly as it has `GetRowFromY`. Host it
+the same way — `colAtX()` alongside `rowAtY()` — and pass both event args. If MA hosts any listbox
+whose handler takes `VTS_I4 VTS_I4`, it has the same latent bug; grep for `1 /* Select */` and check
+which handlers read their second parameter (BoB has ~30 such handlers, several of which use the
+column: `GroupGeschwader`, `LWDiaryDetails`, `RAFDiaryDetails`, `CSCampaign`).
+
+**Generalised lesson — a stubbed/hardcoded OUT- or IN-argument reads as a missing feature.** This is
+the same family as the uninit/stub traps (§8i, `WM_GETSTRING`'s ignored OUT half): nothing errors,
+nothing is uninitialised, the value is simply always the same wrong constant, so the symptom shows
+up somewhere far away and gets written down as "that screen needs more work". When a screen looks
+state-starved, check what selects the state before rendering anything.
+
+**Also (recipe hygiene, adopting MA S62/S63 verbatim):** driving a *panel control* headlessly needs
+a click point, and BoB now resolves it from the control's own drawn rect + column walk
+(`bob_ole_ctrl_point`, `BOB_AUTOCLICK=#ID[:COL]`) rather than fixed pixels — MA's rule after a font
+change moved its menu pitch and silently broke every parity capture and ASan drive recipe at once.
+
+**Open, banked, sent as a question to MA:** we cannot *dismiss* an OOB dialog headlessly.
+`CMiscToolbar::OpenDirectivetoggle` is named a toggle, but when the dialog was opened by the game
+(rather than by our scaffold) calling it **opens a second stacked instance instead of closing the
+first**. Has MA implemented a faithful dialog-close path (the title-bar `✕`/`CloseLoggedChild`
+route)? It blocks capturing the map *under* an auto-opened dialog.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),
