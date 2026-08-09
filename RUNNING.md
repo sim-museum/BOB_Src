@@ -30,7 +30,7 @@ like a regression).
 | What | Where |
 |---|---|
 | Backlog (Releases R1–R7 + SP) + burndown | `scrum.md` — Release SP is the screen-parity epic; §9 burndown |
-| Per-gold-shot parity verdicts | `doc/screen-parity.md` — currently **18 CLOSE / 0 PARTIAL / 1 GAP** of 19 (S141: #18 Directives PARTIAL→CLOSE; only #4 loading-screen GAP remains, **by design**) |
+| Per-gold-shot parity verdicts | `doc/screen-parity.md` — **18 CLOSE / 0 PARTIAL / 1 GAP** of 19; only #4 (transient loading screen) is a GAP, **by design**. See the **Capture-vs-gold STATE audit** section there: #16/#17/#19's verdicts are earned as of S149, four rows remain unverified (SP.20) |
 | Side-by-side captures | `doc/parity/` |
 | Engineering evidence log (newest first) | `PORT.md` |
 | Live product snapshot | `STATUS.md` |
@@ -42,6 +42,28 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-08)
 
+- **S149 closed: the gate suite certifies its own validity, and a deliberate audit
+  found a THIRD parity verdict resting on a capture-vs-gold state mismatch.**
+  Gates now run from versioned `tools/bob_gates.sh` (see above) which hashes the
+  binary before and after. The audit: gold #17 is **Eagle Attack, 12–23 Aug**, but
+  the recipe `1,1,1` never selected a phase, so every capture was Convoys — the same
+  root as #16 (S141) and #19 (S148). All three now carry the `#1000:1` phase token
+  and match gold on state. **The lesson recorded in `doc/screen-parity.md`: a state
+  difference the recipe CAN fix is a defect in the test; one it cannot is a finding
+  about the port** — the doc had been merging the two, which is how three verdicts
+  looked earned when they were not. Four "combo values (settings state)" rows
+  (#6/#9/#10/#11) are the same shape but settings-resident: **not verified** (SP.20).
+- **S148 closed: captures aim at a STATE, not a moment.** `BOB_SHOT_WHEN=clear`
+  fires on the first map paint with no logged child on any toolbar, AND-able with
+  `BOB_SHOT_DATE` / `BOB_SHOT_TIME_LT`. Seven counter-based attempts at gold #19's
+  frame missed; the first state-based one hit. Gold #19's verdict is now made on a
+  like-for-like 12-Aug Eagle-Attack frame, and its raid-stack difference is measured
+  as **timing** (the map is covered precisely while raids fly).
+- **S146 closed: the LW orders flow completes** — `LWDirectives::OnOK` →
+  `DirectiveResults::OnOK` → `MakeLWPackages`. The day's raids are built, fly and
+  land (routes, Mission Folder R001/Tangmere AF, "Geschwader Landed"). Reaching it
+  needed descending from the logged child (an `RDEmptyD` **placeholder panel**) to
+  its `fchild`, the real dialog.
 - **S142 closed: hosted `CRSpinButCtrl` — the 8th and LAST R\* control type; the
   Directives grid's numbers render and match gold #18 value-for-value.** The dialog
   is mostly made of this type (85 DDX-bound spinners), driven via `CRSpinButExtra`'s
