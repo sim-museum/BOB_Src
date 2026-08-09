@@ -202,15 +202,48 @@ extern "C" void bob_shot_arm(const char* why) {
 		why ? why : "?", getenv("BOB_SHOT_AFTER") ? getenv("BOB_SHOT_AFTER") : "(unset)");
 	fflush(stderr);
 }
+/* S148 (SP.16): capture on a GAME-STATE PREDICATE rather than a count.
+   S145's BOB_SHOT_AFTER fixed drift caused by QUEUEING (arm from the drive, not an absolute tick).
+   S147 found the next layer and it defeats every counter: the dismiss scaffold suppresses the
+   prompts the campaign would otherwise block on, so the sim runs FASTER -- the same recipe landed
+   on 12 Aug in S146 and on 13 Aug twice in S147, at two different paint counts. The harness
+   changed the quantity the timing depended on. The only stable answer is to describe the STATE we
+   want and shoot when it arrives:
+     BOB_SHOT_WHEN=clear    -- no logged child on ANY toolbar (nothing covering the map)
+     BOB_SHOT_DATE=<n>      -- and MMC.currdate == n            (optional extra term)
+     BOB_SHOT_TIME_LT=<n>   -- and MMC.currtime <  n            (optional extra term)
+   Every term is something the frame itself displays, so the verdict stays checkable against the
+   pixels rather than resting on the recipe's word. */
+extern "C" int bob_oob_any_dialog_open(void);
+static bool bob_shot_state_ok(void) {
+	const char* when = getenv("BOB_SHOT_WHEN");
+	if (!when || !*when) return true;
+	if (bob_oob_any_dialog_open()) return false;          /* "clear": map unobstructed */
+	const char* wd = getenv("BOB_SHOT_DATE");
+	if (wd && *wd && (long)MMC.currdate != atol(wd)) return false;
+	/* S148: time-of-day term. Gold #19 is 12 Aug *06:31* -- raids OUTBOUND, route lines and raid
+	   stacks on the map. The first CLEAR paint on that day came at 20:58, by which time the footer
+	   reads "Geschwader Landed" and the routes are gone: the map is obstructed precisely WHILE raids
+	   fly (that is when the game prompts) and clear precisely when they do not. So the state we want
+	   is a morning one, and it has to be said out loud rather than hoped for.
+	   MMC.currtime is seconds-of-day (06:31 = 23460; measured 28340 at 07:52, 75520 at 20:58). */
+	const char* wt = getenv("BOB_SHOT_TIME_LT");
+	if (wt && *wt && (long)MMC.currtime >= atol(wt)) return false;
+	return true;
+}
+
 /* Shared by both capture sites: has the shot condition been met this paint? */
 static bool bob_shot_due(void) {
+	if (!bob_shot_state_ok()) return false;   /* S148: never shoot in the wrong state */
 	const char* after = getenv("BOB_SHOT_AFTER");
 	if (after && *after) {
 		if (g_bob_shot_armed < 0) return false;          /* drive has not fired yet */
 		return ++g_bob_shot_armed >= atol(after);
 	}
 	const char* abs_ = getenv("BOB_SHOT");
-	return abs_ && *abs_ && ++g_bob_shot_t >= atol(abs_);
+	if (abs_ && *abs_) return ++g_bob_shot_t >= atol(abs_);
+	/* BOB_SHOT_WHEN on its own: the state IS the trigger -- shoot the first paint it holds. */
+	return getenv("BOB_SHOT_WHEN") != NULL;
 }
 /* S143 (SP.9, adopted from FreeFalcon note 15): "a parity capture must record the state it
    claims to be capturing." Without this, a mis-selected screen and a genuine render bug are
@@ -899,7 +932,7 @@ extern "C" void bob_frontend_tick(void)
 		   sweep -- after N map paints dump the GDI framebuffer to BOB_SHOT_PATH (private target;
 		   /tmp is shared with the sibling ports) and exit. Same counter serves the front-end
 		   branch below; whichever paint path is active when the count is reached dumps. */
-		if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER")) {
+		if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER") || getenv("BOB_SHOT_WHEN")) {
 			if (bob_shot_due()) {
 				const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
 				bob_shot_state_banner("map");   /* S143/SP.9: record the state, not just the pixels */
@@ -923,7 +956,7 @@ extern "C" void bob_frontend_tick(void)
 
 	/* SP.1 (BOB_SHOT, default-off): front-end half of the one-shot parity capture (see the map
 	   branch above). Counts front-end ticks; dumps the settled screen then exits. */
-	if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER")) {
+	if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER") || getenv("BOB_SHOT_WHEN")) {
 		if (bob_shot_due()) {
 			const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
 			bob_shot_state_banner("frontend");   /* S143/SP.9: record the state, not just the pixels */

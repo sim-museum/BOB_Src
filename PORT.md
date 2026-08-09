@@ -1,5 +1,66 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S148 (2026-08-08, Sprint 148): captures aim at a STATE, not a moment — and gold #19 finally has a like-for-like frame
+>
+> **SP.16 — the capture trigger describes what we want instead of guessing when it happens.**
+> `BOB_SHOT_WHEN=clear` fires on the first map paint where **no toolbar holds a logged child**,
+> optionally AND-ed with `BOB_SHOT_DATE` (campaign day) and `BOB_SHOT_TIME_LT` (time of day). It
+> asks *every* toolbar deliberately: S146 established that a dialog can be logged on one while
+> another truthfully reports −1, which is how the Mission Folder slipped through.
+>
+> Why this and not another counter: S145's `BOB_SHOT_AFTER` fixed drift caused by **queueing**;
+> S147 found the layer beneath it, where suppressing the game's prompts makes the campaign run
+> **faster**, so the same recipe landed on 12 Aug in S146 and 13 Aug twice in S147, at two different
+> paint counts. **The harness changed the quantity the timing depended on.** No counter survives
+> that; only a description of the state does.
+>
+> **It worked on its first use, after seven counter-based attempts failed.**
+> `[shot-state] phase=1 date=1250035200` — a completely clean strategic map at **12 August 20:58
+> x300**: full unit-icon layer (green/blue/yellow + red-ringed), sectors A-E/Y/Z, London, No.11
+> Group, Southampton/Brighton/Dover, footer event log, both LW toolbar rows, right ruler, and no
+> dialog anywhere. Saved as `doc/parity/native-strategic-map-eagle-2026-08-08.png`; sbs refreshed.
+>
+> **⭐ Gold #19's verdict is now made on a like-for-like frame.** Since S123 it had rested on a
+> *fresh-Convoys* capture compared against a *12-Aug Eagle-Attack* gold. Everything structural
+> agrees on the new frame — terrain, sectors, city labels, No.11 Group, the unit-icon layer, the
+> footer log, the date-clock **at x300**, toolbars, ruler — which is the CLOSE verdict, finally
+> earned rather than inherited.
+>
+> **And the raid-stack deviation is measured, not assumed: it is TIMING.** Gold is **12 Aug 06:31**
+> with raids *outbound* — route lines and two raid-stack boxes over the French coast. The first
+> paint on which our map is *unobstructed* is **20:58**, by which time the footer reads "Geschwader
+> Landed" and the routes are gone. The structural reason, and it is the useful part: **the map is
+> covered precisely while raids fly** (that is when the game raises its prompts) **and clear
+> precisely when they are not.** S146 separately captured our map *with* route lines and raid
+> markers at 07:52, obstructed by the Mission Folder — so the port renders them; no single frame has
+> yet held both. Gold's human author dismissed a prompt and shot in that instant. `BOB_SHOT_TIME_LT`
+> exists to ask for that window explicitly; if no clear morning paint exists, the honest conclusion
+> is that this target needs a dismiss-then-shoot primitive, which is a small named story rather than
+> another guess.
+>
+> **Deviations unchanged:** ruler band plain vs gold's wooden art; accel transport buttons not in shot.
+>
+> **Gates (all `gl-lock`):** sweep 14/14 exit 0; safe default (`BOB_NO_RUN`) exit 0; phase select
+> **dummy==GL byte-identical**; flight frame-150 **98.7% non-black**. **A/B vs the pre-S142 binary:
+> 13/14 byte-identical from the sweep, and the 14th re-verified to 14/14 — read the next paragraph
+> rather than the headline number.**
+>
+> **The one differing frame was my own doing, and the check that caught it is worth more than the
+> result.** `config-control` came back differing in a 96x16 band (a combo value, `"Ser…"` → `"Small"`).
+> Two innocent explanations were available — the Controls screen renders live input-device state
+> (MA classifies their equivalent out of the default gate for exactly that), and run-to-run variance
+> is this port's classic tell for the uninitialised-read class. Both would have been comfortable to
+> write down. Measured instead: **three fresh runs on the final binary are identical to each other
+> AND identical to the pre-S142 baseline** — so the screen is deterministic and unchanged, and the
+> odd frame is the *sweep capture*. Cause: I rebuilt twice (a comment fix, then the S148 dismiss
+> logging fix) **while `gates148` was sitting in the gl-lock queue**, so the 14 sequential `bob`
+> invocations straddled binaries and the 4th recipe was captured mid-swap. **A gate whose inputs can
+> change under it is not a gate** — booked as SP.19 (stamp the binary hash at gate start and end,
+> fail loudly on mismatch; treat "queued" as "running" before touching the tree).
+>
+> Files: `SRC/MFC/FULLPSYS.CPP` (`bob_shot_state_ok`, predicate wired into both capture sites),
+> `SRC/MFC/MAINFRM.CPP` (`bob_oob_any_dialog_open`, dismiss logs transitions not polls).
+
 > ## S147 (2026-08-08, Sprint 147): five NULL derefs fixed in the R\* controls; and the #19 capture hunt ends with the real reason it keeps missing
 >
 > **S147.1 (SP.13) — the `WM_GETHINTBOX` NULL derefs, swept properly.** MA note 31 §2 warned that a

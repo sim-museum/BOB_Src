@@ -1554,6 +1554,17 @@ extern "C" void bob_oob_accept_directives(void) {
 	{ extern void bob_shot_arm(const char*); bob_shot_arm("accept-directives"); }
 }
 
+/* S148 (SP.16): is ANY toolbar holding a logged child? The capture predicate's "map is
+   unobstructed" term. Deliberately asks every toolbar: S146 learned the hard way that a dialog can
+   be logged on one toolbar while another truthfully reports -1 (the Mission Folder). */
+extern "C" int bob_oob_any_dialog_open(void) {
+	for (int tb = 0; tb < TB_TOTAL; tb++) {
+		CRToolBar* t = CMainFrame::toolbars[tb];
+		if (t && t->LoggedChild() >= 0) return 1;
+	}
+	return 0;
+}
+
 extern "C" void bob_oob_close_dialogs(void) {
 	/* S147: deliberately NOT one-shot. It was, and that is MA note 29 section 3's trap in my own
 	   scaffold: a drive hook guarded by a function-local `static done` fires once per PROCESS, so
@@ -1570,12 +1581,19 @@ extern "C" void bob_oob_close_dialogs(void) {
 	for (int tb = 0; tb < TB_TOTAL; tb++) {
 		CRToolBar* t = CMainFrame::toolbars[tb];
 		if (!t) continue;
+		int had = t->LoggedChild();          /* S148: remember, so we can log only on a transition */
 		for (int pass = 0; pass < 4 && t->LoggedChild() >= 0; pass++) {
 			int open = t->LoggedChild();
 			t->CloseLoggedChildren();
 			if (t->LoggedChild() == open) { if (t->CloseLoggedChild(open)) break; }
 		}
-		fprintf(stderr,"[directives] toolbar %d: open-index=%d\n", tb, t->LoggedChild());
+		/* S148: report only when this pass actually CLOSED something. Making the hook repeatable
+		   (S147) without making its logging conditional turned it into per-paint spam -- one run
+		   produced a 3.5-million-line log, which is both noise and real stderr I/O drag on a capture
+		   that has to reach a particular game state. "Filter, don't cap" applies to scaffold logging
+		   too: print the transition, not the poll. */
+		if (had >= 0)
+			fprintf(stderr,"[directives] toolbar %d: %d -> %d\n", tb, had, t->LoggedChild());
 	}
 	CMiscToolbar& mtb = MiscToolBar();
 	/* On an active campaign day the misc toolbar holds a STACK, not one dialog: the game opens
