@@ -1466,9 +1466,9 @@ extern "C" void bob_oob_open_directives(void) {
    OpenDirectivetoggle again is a coin-flip on who logged what; CloseLoggedChildren() is
    unconditional and index-agnostic, which is exactly the property a scaffold needs.
    BOB_MAP_CLOSEDLG=<n>: close after n map paints. Reports what it closed. */
-/* S143 (SP.5, the RIGHT lever — found by instrumenting instead of fighting the close).
+/* S143 (SP.5, the RIGHT lever -- found by instrumenting instead of fighting the close).
    Closing the directives dialogs does not work and cannot work: on an active campaign day the
-   game keeps a STACK of two that mutually re-open each other — `DirectiveResults::OnCancel`
+   game keeps a STACK of two that mutually re-open each other -- `DirectiveResults::OnCancel`
    calls `OpenDirectivetoggle(dr)` (DIRRSULT.CPP:194) and the day-start path re-opens on
    `!MMC.directivespopup` (LWDIRECT.CPP:2050). A close loop just oscillates 6→5→6→5 (measured),
    and every re-open re-creates the dialog's hosted controls, which the state banner caught
@@ -1491,7 +1491,7 @@ extern "C" void bob_oob_suppress_directives(void) {
 		(int)MMC.directivespopup, mtb.LoggedChild());
 	/* Anything already up still needs dismissing, and the stack unwinds one level per pass:
 	   closing DIRECTIVES(6) leaves DIRECTIVERESULTS(5); closing 5 fires its OnCancel, which
-	   re-opens 6 ONE more time — but with the popup now suppressed the day-start path no longer
+	   re-opens 6 ONE more time -- but with the popup now suppressed the day-start path no longer
 	   re-arms it, so the loop converges instead of oscillating. Bounded regardless. */
 	for (int pass = 0; pass < 8; pass++) {
 		int open = mtb.LoggedChild();
@@ -1503,13 +1503,49 @@ extern "C" void bob_oob_suppress_directives(void) {
 	fprintf(stderr,"[directives] after dismiss: open-index=%d\n", mtb.LoggedChild());
 }
 
+/* S144 (SP.11, gold #19): ACCEPT the LW orders flow instead of trying to escape it.
+   S143 established that Directives <-> DirectiveResults is a closed loop on *cancel* -- each
+   one's OnCancel opens the other (LWDIRECT.CPP:1104, DIRRSULT.CPP:194) -- which is faithful: the
+   Luftwaffe player must ISSUE orders. The exit is OnOK, and DirectiveResults::OnOK calls
+   LWDirectivesResults::MakeLWPackages(dr, true) (DIRRSULT.CPP:207) -- the call that builds the
+   day's raid packages. So completing the flow is not just how the map gets uncovered, it is what
+   CREATES the raid stacks and route lines gold #19 shows.
+
+   Drive it the genuine way (MA note 29 §1: drive the handler, don't reimplement it): the title
+   bar's OK is an event on the dialog itself: ON_EVENT(RDialog, IDJ_TITLE, 3 = OK, OnOK)
+   (RDIALOG.CPP:1179) -- so fire dispid 3 at IDJ_TITLE on whatever child is logged, using the
+   dialog's RUNTIME type so the DERIVED OnOK runs (LWDirectives::OnOK / DirectiveResults::OnOK),
+   not RDialog's. Accepting one opens the next, so loop until nothing is logged. BOB_MAP_ACCEPTDIR. */
+extern "C" void bob_oob_accept_directives(void) {
+	static int done = 0; if (done) return; done = 1;
+	CMiscToolbar& mtb = MiscToolBar();
+	for (int pass = 0; pass < 8; pass++) {
+		int idx = mtb.LoggedChild();
+		if (idx < 0) { fprintf(stderr,"[directives] accept: nothing logged after %d pass(es)\n", pass); break; }
+		RDialog* dlg = mtb.LoggedChild(idx);
+		if (!dlg) { fprintf(stderr,"[directives] accept: index %d has no dialog\n", idx); break; }
+		fprintf(stderr,"[directives] accept pass %d: firing title-bar OK on child %d\n", pass, idx);
+		/* Fire under typeid(RDialog), NOT typeid(*dlg): bob_evt_fire matches the type
+		   EXACTLY (bob_eventsink.cpp:39, *v[i].ti == *dt) with no base-class walk, and the
+		   title-bar OK entry is registered on RDialog. The derived handler still runs --
+		   RDialog::OnOK implicitly overrides compat's virtual CDialog::OnOK, so the call
+		   virtual-dispatches to LWDirectives::OnOK / DirectiveResults::OnOK. */
+		bob_evt_fire((void*)dlg, &typeid(RDialog), 21 /*IDJ_TITLE*/, 3 /*OK*/);
+		if (mtb.LoggedChild() == idx) {   /* handler didn't take it down -- don't spin */
+			fprintf(stderr,"[directives] accept: child %d still logged after OK; stopping\n", idx);
+			break;
+		}
+	}
+	fprintf(stderr,"[directives] accept done: open-index=%d\n", mtb.LoggedChild());
+}
+
 extern "C" void bob_oob_close_dialogs(void) {
 	static int done = 0; if (done) return; done = 1;
 	CMiscToolbar& mtb = MiscToolBar();
 	/* On an active campaign day the misc toolbar holds a STACK, not one dialog: the game opens
 	   DIRECTIVERESULTS (5), whose own code opens DIRECTIVES (6) on top of it (DIRRSULT.CPP:197).
 	   One CloseLoggedChildren() pass drops only the top, so loop until the toolbar reports
-	   nothing open (bounded — never trust a close to be idempotent in one call). */
+	   nothing open (bounded -- never trust a close to be idempotent in one call). */
 	for (int pass = 0; pass < 8; pass++) {
 		int open = mtb.LoggedChild();
 		fprintf(stderr,"[directives] close pass %d: open-index=%d\n", pass, open);

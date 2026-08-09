@@ -861,6 +861,10 @@ extern "C" void bob_frontend_tick(void)
 		   toggle, so the strategic map is capturable on an active day (gold #19). Default-off. */
 		if (getenv("BOB_MAP_NODIRECTIVES")) { extern void bob_oob_suppress_directives(void);
 			static int t=0; if (++t > atoi(getenv("BOB_MAP_NODIRECTIVES"))) bob_oob_suppress_directives(); }
+		/* S144 (SP.11): ACCEPT the orders flow (title-bar OK on each logged dialog) -- the faithful
+		   exit, and the call chain that creates the day's raid packages (gold #19). Default-off. */
+		if (getenv("BOB_MAP_ACCEPTDIR")) { extern void bob_oob_accept_directives(void);
+			static int t=0; if (++t > atoi(getenv("BOB_MAP_ACCEPTDIR"))) bob_oob_accept_directives(); }
 		if (!getenv("BOB_NO_OOB")) { extern int bob_map_paint_oob(int,int); bob_map_paint_oob(sw, sh); }
 		bob_map_paint_end();
 		/* SP.1 (BOB_SHOT, default-off): deterministic one-shot screen capture for the parity

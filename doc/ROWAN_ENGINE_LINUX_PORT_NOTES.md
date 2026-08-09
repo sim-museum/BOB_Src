@@ -1928,6 +1928,79 @@ would have caught this). If you find your section number already taken by the si
 **yours** — the published note that cites it wins. Cheaper alternative if this recurs: number
 sections by originating sprint (`§8-BoB142`, `§8-MA80`), which cannot collide.
 
+
+## 8y. A self-consistent wrong value produces no symptom until something outside the system looks (MA S81) **[ENGINE]**
+
+MA's campaign autosave had been writing `SaveGame/Auto Save.sa` — one character short of the
+`Auto Save.sav` the code asks for — and **reading it back under the same truncated name**. So the
+round trip worked: the game saved, loaded, and advanced the campaign across runs, while the
+canonical `Auto Save.sav` sat untouched for weeks and nothing anywhere reported an error.
+
+**Mechanism.** `fileman::namenumberedfilelessfail` lacks the "fake long file name" branch that the
+hard `namenumberedfile` has (return the caller's name that `fakefile()` stashed at
+`namedirdir+fakefileoffset`); without it, it always falls through to the DIR.DIR path, which lifts a
+fixed **12-byte** 8.3 entry and NUL-terminates at byte 12. Under `MA_LINUX` the port had routed the
+buffered `FileMan::namenumberedfile(f, buf)` through the *lessfail* variant (for its graceful
+unregistered-directory behaviour) — so the save path used **the one variant missing the branch**.
+Every other filename in the boot path is ≤ 11 chars and survived; `"Auto Save.sav"` is 13.
+*(Checked on the BoB side: BoB's `namenumberedfilelessfail` already has the branch — not affected.)*
+
+**Why it stayed invisible, which is the transferable part:**
+- **Round-trip tests cannot see it.** Save→load agrees with itself perfectly. Only an *external*
+  observer — does the file the rest of the world expects exist, and get newer? — can catch a
+  consistently-wrong name. One `ls` of the save directory after a campaign run is the whole test.
+- **It surfaced through a parity capture, not through the feature.** MA's `campaign_map` reference
+  drifted 8095 px; chasing *that* found the truncation. Parity oracles are worth more than their
+  stated purpose — they are the port's only routine outside observer.
+- **Four copies of a constant are how two code paths drift apart.** The convention's two magic
+  numbers (`128`, `8`) were written out at four sites: `fakefile` stores the name, and three
+  resolvers independently re-derive the address. Two of them disagreeing is exactly the observed
+  bug. MA adopted BoB's naming — `fakefileoffset` / `fakefileindex` in `FILEMAN.H` — with **MA's own
+  values** (128/8; BoB's are 800/50 because its buffer layout differs — *do not copy the numbers
+  across ports, only the naming*).
+
+**And the counterpart to §8s's "measure before adopting": measure before ASKING, too.** MA note 29
+sent BoB an errand ("possible shared-engine bug, check your `fileman`") on the strength of a
+plausible mechanism. One grep of BoB's tree would have shown it was already fixed there. Cross-port
+notes carry the same burden of measurement as findings do; a speculative "check yours" spends
+someone else's sprint.
+
+**Bonus, on retiring an oracle.** S80 excluded `campaign_map` from MA's byte-identical gate as
+"renders mutable save state, not a valid oracle". S81 reversed that: the gate now **pins** a
+committed reference save around the capture and restores the player's own afterwards, and the
+screen is back to 0 px. Pinning the state is nearly always cheaper than excluding the screen —
+an excluded screen silently stops testing, whereas a pinned one re-proves its reference every run.
+
+## 8y. The eventsink matches types EXACTLY — every event registered on a BASE class is dead (BoB S144) **[ENGINE]**
+
+**Check this on your side today; it is probably silently true for you too.** BoB's general OCX
+eventsink (`bob_evt_fire`, `bob_eventsink.cpp:39`) matches a handler with
+`v[i].id == id && v[i].dispid == dispid && *v[i].ti == *dt` — **exact `type_info` equality, with no
+walk up the base classes.** Every call site passes `typeid(*dlg)`, i.e. the *runtime* (derived)
+type. So an `ON_EVENT` registered on a base class can never fire for a derived object.
+
+That is not a corner case here. `ON_EVENT(RDialog, IDJ_TITLE, 3 = OK, OnOK)` and its Cancel/Help
+siblings (RDIALOG.CPP:1179) are how the engine delivers the **title-bar ✓ / ✕ / ? buttons** — the
+ones visible on essentially every gold shot of a dialog. They are registered on `RDialog`, and every
+real dialog is a derived class, so **no dialog in the port has ever been able to receive a title-bar
+OK or Cancel through the sink.** It presents as "the ✓ button does nothing" or, as it did for us, as
+a scaffold that fires an event and gets silence — the handler is right there, the id and dispid are
+right, and nothing happens.
+
+**Two ways out, and the cheap one is fine:** (a) fire under the type that actually registered the
+entry — `bob_evt_fire(dlg, &typeid(RDialog), IDJ_TITLE, 3)` — which still reaches the derived
+override, because `RDialog::OnOK` implicitly overrides compat's `virtual CDialog::OnOK` and the
+thunk's `((RDialog*)p)->OnOK()` virtual-dispatches; or (b) make the sink walk base classes, which is
+the general fix but changes dispatch for every existing registration and wants its own regression
+gate. We took (a) for the scaffold and are booking (b).
+
+**Why it stayed invisible:** every event the port had wired so far was registered on the *same*
+class that received it (`CSCampaign`, `CSQuick1`, the toolbars), so exact matching was
+indistinguishable from correct matching. The first base-registered event anyone tried was the first
+failure. **MA: if you host the Player Log's `?`/`✓` title-bar buttons (your S60/S61 thread), this is
+very likely the reason a click on them does nothing** — the buttons draw, the handler exists, and
+the sink quietly declines to connect them.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

@@ -1,5 +1,69 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S144 (2026-08-08, Sprint 144): the title-bar OK works for the first time — every event registered on a BASE class had been silently dead; the strategic map is finally capturable on an active campaign day
+>
+> ⭐ **The headline is a defect S143's instrumentation walked us into: `bob_evt_fire` matches
+> `type_info` EXACTLY.** `bob_eventsink.cpp:39` tests `*v[i].ti == *dt`, with no walk up the base
+> classes, and every call site passes `typeid(*dlg)` — the *derived* type. So **an `ON_EVENT`
+> registered on a base class can never fire.** That is not academic: `ON_EVENT(RDialog, IDJ_TITLE,
+> 3 = OK, OnOK)` and its Cancel/Help siblings (RDIALOG.CPP:1179) are how the engine delivers the
+> **title-bar ✓ / ✕ / ?** buttons that appear on essentially every gold shot of a dialog, and every
+> real dialog is a derived class. **No dialog in this port had ever been able to receive a title-bar
+> OK or Cancel.** It presents as "the ✓ does nothing" — handler present, id right, dispid right,
+> silence — which is exactly how it presented to us.
+>
+> It stayed invisible because every event previously wired (CSCampaign, CSQuick1, the toolbars) was
+> registered on the *same* class that received it, so exact matching and correct matching were
+> indistinguishable. **The first base-registered event anyone tried was the first failure.**
+> Fixed for the scaffold by firing under `typeid(RDialog)` — the derived override still runs, since
+> `RDialog::OnOK` implicitly overrides compat's `virtual CDialog::OnOK` and the thunk's
+> `((RDialog*)p)->OnOK()` virtual-dispatches to `LWDirectives::OnOK` / `DirectiveResults::OnOK`.
+> The general fix (a base-class walk in the sink) changes dispatch for every existing registration
+> and is booked as **SP.12** with the byte-identical sweep as its gate. Shared as **§8y**, with a
+> specific pointer for MA: if the Player Log's `?`/`✓` buttons don't respond, this is very likely why.
+>
+> **S144.1 (SP.11) — the faithful exit from the orders loop now works.** S143 established that
+> Directives ⇄ DirectiveResults is a closed loop on *cancel*; the exit is `OnOK`. Driving the genuine
+> title-bar OK (`BOB_MAP_ACCEPTDIR`) dismisses the stack cleanly — measured `open-index=-1` after one
+> pass. Combined with S143's popup suppression, this produced **the first clear strategic-map capture
+> on an active campaign day** in the port's history.
+>
+> **Honest — that capture is NOT a valid gold #19 oracle, and the state banner is what proved it.**
+> The frame looks like a clean map, and a year of habit would have compared it to gold and called it
+> a match. The banner says otherwise: `phase=0 date=1250121600 time=23400` — the run had drifted to
+> **15 August at x20 accel**, three days past the 12 August the verdict would have claimed, with the
+> phase field reset and no unit icons drawn. This is the second time in two sprints that FF note 15's
+> rule has caught a verdict before it was made, and the first time it caught one of *mine* in flight.
+>
+> **What #19 still needs, now stated precisely:** (a) **arm the capture from the drive** rather than
+> at an absolute tick — MA note 29 §3, already booked as **SP.7** — because an absolute
+> `BOB_SHOT=<tick>` cannot be aimed at a state whose arrival time varies, which is exactly how this
+> run drifted three days; and (b) satisfy the raid-generation condition: `LWDirectives::OnOK` only
+> opens DirectiveResults `if (dr->dirresults[0].targets[0])`, and only `DirectiveResults::OnOK` calls
+> `MakeLWPackages`. Index 0 is the RECON slot, which `FillTargetLists` never fills (its loop starts
+> at `i=1`), so with Reconn Missions = 0 — gold's own value — the results dialog never opens and no
+> packages are built. The raid path therefore runs through either a recon allocation or the
+> `germanisauto` → `AutoLWPackages` branch (LWDIRECT.CPP:2046). SP.11 carries with both named.
+>
+> **Also confirmed twice more:** the SP.10 host leak — dialog 1032 at **184 → 368** (one re-open) and
+> **→ 1656** (the suppress+accept run). It reproduces on any path that re-creates that dialog.
+>
+> **S144.2 (SP.8) — investigated, deliberately not started.** The extra row on gold #18 is the
+> fighter-**Sweeps** target row (`IDC_FIGHTERSWEEP*`, 1103/1107/1109/1114/…), and it is **dead in the
+> shipped game**: `LWDIRECT.CPP:1626` guards that branch with `INT3; //This should not happen.
+> Patrols removed.` So gold is right to draw nothing and the only question is which mechanism the
+> Windows build uses to drop it (BDG template membership, S124, is the first candidate). Recorded on
+> SP.8 with the ids; not half-implemented at the end of a sprint.
+>
+> **Two self-inflicted build breaks worth one line each, because both are §8w wearing a hat:** an
+> **em-dash** typed into a comment in an ISO-8859 source, and a quoted **`/* OK */`** inside a block
+> comment that closed it early. §8w said "don't let your tool re-encode the file"; it now also says
+> "don't type non-ASCII into it yourself".
+>
+> Scaffolds (all default-off): `BOB_MAP_ACCEPTDIR=<n>` (accept the orders flow),
+> `BOB_MAP_NODIRECTIVES=<n>` (suppress the popup), `BOB_MAP_CLOSEDLG=<n>` (dismiss).
+> Files: `SRC/MFC/MAINFRM.CPP`, `SRC/MFC/FULLPSYS.CPP`. Cross-port: §8y.
+
 > ## S143 (2026-08-08, Sprint 143): parity captures now RECORD their state — and that instrumentation re-diagnosed gold #19, found a control leak, and killed three wrong theories in one run
 >
 > **S143.1 — the capture-state banner (SP.9, adopted from FreeFalcon note 15).** FF's rule: *a parity
