@@ -1,5 +1,64 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S143 (2026-08-08, Sprint 143): parity captures now RECORD their state — and that instrumentation re-diagnosed gold #19, found a control leak, and killed three wrong theories in one run
+>
+> **S143.1 — the capture-state banner (SP.9, adopted from FreeFalcon note 15).** FF's rule: *a parity
+> capture must record the state it claims to be capturing*; otherwise "the recipe never fired",
+> "something switched it back" and "the renderer is wrong" are indistinguishable — which cost FF a
+> sprint on a deviation whose recorded mechanism turned out to be invented. It applied to BoB
+> immediately: **S142's own Directives verdict was corroborated only by luck**, because the phase
+> happened to be rendered into the frame. Every `BOB_SHOT` dump now emits, always-on:
+> `[shot-state] where=… tick=… fe_art=… resw=… phase=… date=… time=… autoclick=<fired>/<total>
+> dialogs=<n> dlg=<id>:<drawn>/<total> …`. The `autoclick` pair required making the drive-step
+> counter observable, so a recipe step that silently fails to fire can no longer masquerade as a
+> render bug. `fe_art` is deliberately named: on the map path it is the last *front-end* screen's
+> art, and a banner that overstates what it knows would be the very failure it exists to prevent
+> (cf. S101 — a diagnostic that lies is worse than no diagnostic).
+>
+> **It paid for itself three times in its first four runs:**
+> 1. **Killed three wrong theories about one behaviour.** S141 said `OpenDirectivetoggle` "opens a
+>    second stacked instance"; after MA note 29 that was revised to "an index mismatch"; both were
+>    wrong. Two `fprintf`s of `LoggedChild()` showed the truth in one run: it is a **stack of two
+>    different dialogs** — the game opens `DIRECTIVERESULTS` (index 5), whose own code opens
+>    `DIRECTIVES` (6) on top (DIRRSULT.CPP:197). Closing 6 reveals 5, a *larger* dialog, which is
+>    what was misread as a second instance. It also means **S137's capture was DirectiveResults,
+>    not the allocation grid** — corrected in the parity doc.
+> 2. **Found a control LEAK nobody was looking for (→ SP.10):** across open/close cycles dialog
+>    1032's hosted-control count went **184 → 1656**, with 334 of them still being *drawn*. The
+>    game re-opens that dialog by itself, so this leaks in normal play, not just under scaffolds.
+> 3. **Re-diagnosed gold #19** (below), by making the dialog stack observable at capture time.
+>
+> **S143.2 — dismissing the dialog (SP.5): the mechanism works, the goal does not, and the reason is
+> the interesting part.** Per MA note 29 §2 a scaffold should call `CloseLoggedChildren()` directly
+> rather than route through a toggle. Implemented — and measured to **oscillate forever**: passes ran
+> 6→5→6→5→6. The pair is a **closed loop on cancel**: `LWDirectives::OnCancel` opens DirectiveResults
+> (`OpenEmptyDirectiveResults`, LWDIRECT.CPP:1104) and `DirectiveResults::OnCancel` opens Directives
+> back (DIRRSULT.CPP:194). Suppressing the day-start popup through the game's own toolbar toggle
+> (`MMC.directivespopup`, driven as a genuine Clicked event on IDC_DIRECTIVETOGGLE via the eventsink,
+> since the handler is `protected`) stops the *day-start* re-arm but does not break the cycle.
+>
+> **This is faithful behaviour, not a port defect:** on an active campaign day the Luftwaffe player
+> is meant to be held in the allocation UI until orders are **issued**, not until they are escaped.
+>
+> **⭐ Which re-diagnoses gold #19.** Its standing deviation ("no raid stacks/route lines — fresh
+> Convoys day, paused-start; gold is 12 Aug at x300 with live raids") implied that reaching an active
+> day and letting the clock run would produce raids. **It would not.** The exit from the loop is
+> `OnOK`, and `DirectiveResults::OnOK` calls **`LWDirectivesResults::MakeLWPackages(dr, true)`**
+> (DIRRSULT.CPP:207) — the call that builds the day's packages. So #19's raid stacks are downstream
+> of *completing the orders flow*, not of the clock. Named next step, **SP.11**: drive the genuine
+> `OnOK` on both dialogs, then let the map run — that should yield both a clear map and the raids.
+> This supersedes S141's framing of #19 and is the third correction this thread has taken; each one
+> came from instrumenting rather than reasoning.
+>
+> **Honest:** #19 is NOT closed and no raid-map capture was obtained this sprint. What was obtained
+> is a precise, evidenced blocker with a named fix, replacing a plausible-but-wrong one.
+> Scaffolds: `BOB_MAP_CLOSEDLG=<n>` (dismiss, bounded loop), `BOB_MAP_NODIRECTIVES=<n>` (suppress the
+> day-start popup via the genuine toggle) — both default-off.
+>
+> Files: `SRC/MFC/FULLPSYS.CPP` (banner + both capture sites + observable drive counter),
+> `SRC/RLISTBOX/bob_ole.cpp` (`bob_ole_state_summary`), `SRC/MFC/MAINFRM.CPP` (dismiss + suppress
+> scaffolds). Cross-port: §8u extended with the measured mechanism; inbound FF note 15 acted on.
+
 > ## S142 (2026-08-08, Sprint 142): hosted `CRSpinButCtrl` — the 8th and LAST R\* control type; the Directives grid's numbers render and match gold #18 number-for-number
 >
 > **The R\* control set is complete.** `CRSpinBut` was the only one of the eight R\* ActiveX types

@@ -356,6 +356,34 @@ extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* p
     return 0;
 }
 
+/* S143 (SP.9, from FF note 15): summarise which dialogs are actually hosted and how many of
+   their controls were last DRAWN, for the parity-capture state banner. A verdict that says
+   "screen X with control set Y" must be able to point at output proving X and Y were up —
+   otherwise a mis-selected state and a render bug are indistinguishable, which cost the
+   FreeFalcon port a sprint. Writes e.g. "dlg=1481:7 dlg=2010:85" (drawn/total per dialog). */
+extern "C" int bob_ole_state_summary(char* out, int outsz) {
+    if (!out || outsz <= 0) return 0;
+    out[0] = 0;
+    int used = 0, ndlg = 0;
+    /* group by dlgId without allocating: for each distinct id, count total + drawn */
+    for (auto& kv : hosts()) {
+        int id = kv.second->dlgId;
+        bool seen = false;
+        for (auto& kv2 : hosts()) { if (kv2.second == kv.second) break;
+                                    if (kv2.second->dlgId == id) { seen = true; break; } }
+        if (seen) continue;
+        int total = 0, drawn = 0;
+        for (auto& kv2 : hosts()) if (kv2.second->dlgId == id) {
+            total++;
+            if (kv2.second->visible && kv2.second->sw > 0 && kv2.second->sh > 0) drawn++;
+        }
+        int n = snprintf(out + used, outsz - used, "%sdlg=%d:%d/%d", used ? " " : "", id, drawn, total);
+        if (n < 0 || n >= outsz - used) break;
+        used += n; ndlg++;
+    }
+    return ndlg;
+}
+
 extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vtRet, void* pvRet, const BYTE* /*pInfo*/, va_list ap) {
     OleHost* h = findHost(self); if (h) h->dispatch(id, vtRet, pvRet, ap);
 }

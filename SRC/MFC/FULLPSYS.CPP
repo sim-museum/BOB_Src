@@ -187,6 +187,40 @@ static RFullPanelDial* g_bobActiveFP = NULL;
 static struct { int x,y,w,h; } g_bobMenuRect[10];
 static int g_bobMenuN = 0;
 long g_bob_shot_t = 0;   /* SP.1 (BOB_SHOT): one-shot parity-capture tick counter (map + front-end) */
+/* S143 (SP.9, adopted from FreeFalcon note 15): "a parity capture must record the state it
+   claims to be capturing." Without this, a mis-selected screen and a genuine render bug are
+   indistinguishable in the output — FF spent a sprint on a deviation whose recorded mechanism
+   was invented because nothing logged which view was actually in force, and BoB's own S142
+   Directives verdict was corroborated only by luck (the phase happened to be rendered into the
+   frame). Always-on, one line, emitted right before every BOB_SHOT dump. */
+int g_bob_autoclick_seq = 0;      /* how many BOB_AUTOCLICK steps have actually FIRED */
+extern "C" int bob_ole_state_summary(char* out, int outsz);
+static void bob_shot_state_banner(const char* where)
+{
+	char panels[256]; panels[0] = 0;
+	int ndlg = bob_ole_state_summary(panels, (int)sizeof(panels));
+	const char* ac = getenv("BOB_AUTOCLICK");
+	int acTotal = 0; if (ac && *ac) { acTotal = 1; for (const char* p = ac; *p; p++) if (*p == ',') acTotal++; }
+	long art = -1; int resw = 0, phase = -1;
+	if (g_bobActiveFP) {
+		phase = g_bobActiveFP->whichcamp;
+		if (g_bobActiveFP->m_currentscreen) {
+			art  = (long)g_bobActiveFP->m_currentscreen->resolutions[g_bobActiveFP->m_currentres].artwork;
+			resw = RFullPanelDial::resolutions[g_bobActiveFP->m_currentres];
+		}
+	}
+	/* NB `fe_art` is the FRONT-END screen's resolved art FileNum; on the map path it is the last
+	   front-end screen, not the map's own art. Named so the banner can't imply more than it knows —
+	   a state line that overstates is the failure mode it exists to prevent (cf. BoB S101: a
+	   diagnostic that lies is worse than no diagnostic). */
+	fprintf(stderr,
+		"[shot-state] where=%s tick=%ld fe_art=%ld resw=%d phase=%d date=%d time=%d "
+		"autoclick=%d/%d dialogs=%d %s\n",
+		where, g_bob_shot_t, art, resw, phase,
+		(int)MMC.currdate, (int)MMC.currtime,
+		g_bob_autoclick_seq, acTotal, ndlg, panels);
+	fflush(stderr);
+}
 
 /* R4.1: the Campaigns side-select screen (RFullPanelDial::singleplayer -> SinglePlayerInit ->
    SideSelect dialog). Its choices are not text menu items but POLYGON hit-areas over the
@@ -817,6 +851,16 @@ extern "C" void bob_frontend_tick(void)
 			static int t=0; if (++t > 3) bob_oob_open_bases(); }
 		if (getenv("BOB_MAP_DIRECTIVES")) { extern void bob_oob_open_directives(void);  /* S137: gold #18 */
 			static int t=0; if (++t > 3) bob_oob_open_directives(); }
+		/* S143 (SP.5): dismiss any open misc-toolbar dialog after N map paints, so the map
+		   underneath can be captured (gold #19's raid stacks). Default-off. NB on an ACTIVE
+		   campaign day this alone is not enough — the two directives dialogs mutually re-open
+		   (see bob_oob_suppress_directives); use BOB_MAP_NODIRECTIVES there. */
+		if (getenv("BOB_MAP_CLOSEDLG")) { extern void bob_oob_close_dialogs(void);
+			static int t=0; if (++t > atoi(getenv("BOB_MAP_CLOSEDLG"))) bob_oob_close_dialogs(); }
+		/* S143 (SP.5): suppress the day-start directives popup via the game's own toolbar
+		   toggle, so the strategic map is capturable on an active day (gold #19). Default-off. */
+		if (getenv("BOB_MAP_NODIRECTIVES")) { extern void bob_oob_suppress_directives(void);
+			static int t=0; if (++t > atoi(getenv("BOB_MAP_NODIRECTIVES"))) bob_oob_suppress_directives(); }
 		if (!getenv("BOB_NO_OOB")) { extern int bob_map_paint_oob(int,int); bob_map_paint_oob(sw, sh); }
 		bob_map_paint_end();
 		/* SP.1 (BOB_SHOT, default-off): deterministic one-shot screen capture for the parity
@@ -827,6 +871,7 @@ extern "C" void bob_frontend_tick(void)
 			extern long g_bob_shot_t;
 			if (++g_bob_shot_t >= atol(getenv("BOB_SHOT"))) {
 				const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
+				bob_shot_state_banner("map");   /* S143/SP.9: record the state, not just the pixels */
 				bob_gdi_present();
 				int nz = bob_gdi_dump_to(sp);
 				fprintf(stderr, "[shot] map paint %ld -> %s (nonblack=%d) -- exiting\n",
@@ -851,6 +896,7 @@ extern "C" void bob_frontend_tick(void)
 		extern long g_bob_shot_t;
 		if (++g_bob_shot_t >= atol(getenv("BOB_SHOT"))) {
 			const char* sp = getenv("BOB_SHOT_PATH"); if (!sp || !*sp) sp = "/tmp/bobshot.ppm";
+			bob_shot_state_banner("frontend");   /* S143/SP.9: record the state, not just the pixels */
 			int nz = bob_gdi_dump_to(sp);
 			fprintf(stderr, "[shot] frontend tick %ld -> %s (nonblack=%d) -- exiting\n",
 				g_bob_shot_t, sp, nz); fflush(stderr);
@@ -1093,7 +1139,7 @@ extern "C" void bob_frontend_tick(void)
 	/* BOB_AUTOCLICK supports a comma-separated SEQUENCE (e.g. "5,3" = open PC Config,
 	   then click the Sound tab) -- one click every 120 ticks, to walk into sub-screens. */
 	const char* ac = getenv("BOB_AUTOCLICK");
-	if (!got && ac) { static int t=0; static int seq=0;
+	if (!got && ac) { static int t=0; int& seq = g_bob_autoclick_seq;   /* S143: observable by the shot banner */
 		bool sideSel = bob_on_sideselect();   /* R4.1: art-polygon screen has no text menu */
 		if (++t % 120 == 0 && (g_bobMenuN>0 || sideSel)) {
 			const char* p = ac; for (int k=0; k<seq && p; k++) { p=strchr(p,','); if(p) p++; }

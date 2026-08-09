@@ -1459,4 +1459,69 @@ extern "C" void bob_oob_open_directives(void) {
 	fprintf(stderr,"[directives] OpenDirectivetoggle(NULL)\n");
 	MiscToolBar().OpenDirectivetoggle(NULL);
 }
+/* S143 (SP.5, from MA note 29 §2): DISMISS whatever misc-toolbar dialog is up, so a parity
+   capture can see the map underneath. The point of the note: a capture scaffold must not route
+   through a *toggle*, because the toggle's branch depends on state the scaffold did not create.
+   On an active campaign day the GAME opens Directives itself (DIRRSULT.CPP:197), so calling
+   OpenDirectivetoggle again is a coin-flip on who logged what; CloseLoggedChildren() is
+   unconditional and index-agnostic, which is exactly the property a scaffold needs.
+   BOB_MAP_CLOSEDLG=<n>: close after n map paints. Reports what it closed. */
+/* S143 (SP.5, the RIGHT lever — found by instrumenting instead of fighting the close).
+   Closing the directives dialogs does not work and cannot work: on an active campaign day the
+   game keeps a STACK of two that mutually re-open each other — `DirectiveResults::OnCancel`
+   calls `OpenDirectivetoggle(dr)` (DIRRSULT.CPP:194) and the day-start path re-opens on
+   `!MMC.directivespopup` (LWDIRECT.CPP:2050). A close loop just oscillates 6→5→6→5 (measured),
+   and every re-open re-creates the dialog's hosted controls, which the state banner caught
+   ballooning 184 → 1656.
+
+   The game's own lever is the misc-toolbar DIRECTIVES toggle, whose genuine handler flips
+   `MMC.directivespopup`; with it TRUE the day-start path never pops the dialog. Drive the
+   genuine handler (MA note 29's rule) rather than poking the flag, so the toolbar button state
+   and hint string stay consistent. BOB_MAP_NODIRECTIVES=1. */
+extern "C" void bob_oob_suppress_directives(void) {
+	static int done = 0; if (done) return; done = 1;
+	CMiscToolbar& mtb = MiscToolBar();
+	/* `OnClickedDirectivetoggle` is protected (an afx_msg handler), so drive it the way the rest
+	   of the port drives toolbar buttons: fire the genuine Clicked event (dispid 1) at
+	   IDC_DIRECTIVETOGGLE through the S33 eventsink, exactly as bob_oob_open_bases does. That
+	   keeps the toolbar's pressed state and hint string consistent, which poking MMC directly
+	   would not. */
+	if (!MMC.directivespopup) bob_evt_fire((void*)&mtb, &typeid(mtb), 1007 /*IDC_DIRECTIVETOGGLE*/, 1);
+	fprintf(stderr,"[directives] popup suppressed: MMC.directivespopup=%d (open-index=%d)\n",
+		(int)MMC.directivespopup, mtb.LoggedChild());
+	/* Anything already up still needs dismissing, and the stack unwinds one level per pass:
+	   closing DIRECTIVES(6) leaves DIRECTIVERESULTS(5); closing 5 fires its OnCancel, which
+	   re-opens 6 ONE more time — but with the popup now suppressed the day-start path no longer
+	   re-arms it, so the loop converges instead of oscillating. Bounded regardless. */
+	for (int pass = 0; pass < 8; pass++) {
+		int open = mtb.LoggedChild();
+		if (open < 0) break;
+		mtb.CloseLoggedChildren();
+		if (mtb.LoggedChild() == open) { if (mtb.CloseLoggedChild(open)) break; }
+		fprintf(stderr,"[directives]   dismiss pass %d: %d -> %d\n", pass, open, mtb.LoggedChild());
+	}
+	fprintf(stderr,"[directives] after dismiss: open-index=%d\n", mtb.LoggedChild());
+}
+
+extern "C" void bob_oob_close_dialogs(void) {
+	static int done = 0; if (done) return; done = 1;
+	CMiscToolbar& mtb = MiscToolBar();
+	/* On an active campaign day the misc toolbar holds a STACK, not one dialog: the game opens
+	   DIRECTIVERESULTS (5), whose own code opens DIRECTIVES (6) on top of it (DIRRSULT.CPP:197).
+	   One CloseLoggedChildren() pass drops only the top, so loop until the toolbar reports
+	   nothing open (bounded — never trust a close to be idempotent in one call). */
+	for (int pass = 0; pass < 8; pass++) {
+		int open = mtb.LoggedChild();
+		fprintf(stderr,"[directives] close pass %d: open-index=%d\n", pass, open);
+		if (open < 0) break;
+		mtb.CloseLoggedChildren();
+		if (mtb.LoggedChild() == open) {          /* no progress -> close that index explicitly */
+			bool still = mtb.CloseLoggedChild(open);
+			fprintf(stderr,"[directives]   explicit CloseLoggedChild(%d) -> %s\n",
+				open, still ? "STILL OPEN" : "closed");
+			if (still) break;
+		}
+	}
+	fprintf(stderr,"[directives] final open-index=%d\n", mtb.LoggedChild());
+}
 #endif

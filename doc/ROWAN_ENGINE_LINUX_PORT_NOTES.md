@@ -1774,14 +1774,40 @@ toggle is the button handler `OnClickedXxx`, and a capture scaffold should call
 **`CloseLoggedChild(<INDEX>)` / `CloseLoggedChildren()`** directly — precisely because a scaffold
 must not care *who* opened the dialog.
 
-Checked on the BoB side: `CMiscToolbar::OpenDirectivetoggle` (MSCTLBR.CPP:378) **is** a real toggle
-(`if (!LoggedChild(DIRECTIVES)) LogChild(...) else CloseLoggedChild(DIRECTIVES)`), so BoB's original
-"OpenXxx is ensure-open" framing does **not** hold here — the stacking must instead be an
-**index mismatch** (the game's auto-open logs under a different child index than `DIRECTIVES`, so our
-`LoggedChild(DIRECTIVES)` test is false and we log a *second* dialog on top). Either way MA's
-prescription is the right one and is index-agnostic in the way that matters: **don't route a
-scaffold through a toggle whose branch depends on state your scaffold didn't create.** BoB adopts
-`CloseLoggedChild`/`CloseLoggedChildren` as the dismiss trigger (backlog SP.5).
+**BoB's actual mechanism — measured in S143, after TWO wrong guesses.** For the record, because the
+wrong guesses are instructive: (1) S141 said "`OpenDirectivetoggle` opens a second stacked instance
+instead of closing"; (2) after MA note 29 that was revised to "an index mismatch". **Both wrong.**
+`CMiscToolbar::OpenDirectivetoggle` (MSCTLBR.CPP:378) *is* a genuine toggle on index `DIRECTIVES`,
+and it *did* close it. What is actually there is a **stack of two different dialogs**: on an active
+campaign day the game opens `DIRECTIVERESULTS` (index 5), whose own code then opens `DIRECTIVES`
+(index 6) on top of it (DIRRSULT.CPP:197). Closing 6 reveals 5 — a *larger* dialog — which is what
+was misread as "a second stacked instance". (It also means BoB's S137 capture, described then as
+"the Directives dialog renders its frame + Rest All + the standby reminder", was really
+DIRECTIVERESULTS, not the allocation grid.)
+
+**And closing them cannot work at all — the stack is self-healing.** The looped
+`CloseLoggedChildren()` above *oscillates*: measured passes went 6→5→6→5→6, ending open. Two sites
+re-open it — `DirectiveResults::OnCancel` calls `OpenDirectivetoggle(dr)` (DIRRSULT.CPP:194), and
+the day-start path re-opens whenever `!MMC.directivespopup` (LWDIRECT.CPP:2050). **This is faithful
+game behaviour, not a port defect:** on an active campaign day the Luftwaffe player is *supposed* to
+be holding the allocation UI until orders are issued. A scaffold that fights it also **leaks** — the
+S143 state banner caught the dialog's hosted-control count ballooning **184 → 1656** across the
+open/close cycles, because each re-open re-creates the controls.
+
+**The right lever is the game's own toolbar toggle.** `MMC.directivespopup` gates the day-start
+popup; the genuine `CMiscToolbar::OnClickedDirectivetoggle` (IDC_DIRECTIVETOGGLE = 1007) flips it
+and keeps the button's pressed state + hint string consistent. It is `protected`, so drive it as a
+genuine **Clicked event through the eventsink** (as the port already does for the Bases button)
+rather than poking `MMC` — same "drive the genuine handler" rule MA states in §1 of note 29.
+
+Three things follow. **(1)** A scaffold must not route through a toggle, assume a single dialog, *or*
+assume a dialog stays closed. **(2)** Prefer the game's own *suppression* setting over fighting its
+*creation* — the setting exists because the designers anticipated exactly this want. **(3)** The
+transferable half: **three explanations were offered for one behaviour before anyone printed the
+state, and all three were wrong.** Two `fprintf`s of `LoggedChild()` settled it in one run, and the
+same banner incidentally exposed a control leak nobody was looking for — the same conclusion
+FreeFalcon reached in note 15 from the opposite direction. When you catch yourself revising a
+mechanism a second time, stop reasoning and instrument.
 
 
 ## 8v. One-shot statics in test-drive hooks silently cap what the harness can reach (MA S80) **[HARNESS]**
