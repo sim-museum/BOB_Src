@@ -182,3 +182,37 @@ caught it. A regex that can silently produce a *plausible wrong name* is the sam
 their existing handlers — start with `WM_SELECTTAB` and check SP.6 / gold #16's tab highlight;
 (2) the `EndDayReview` day-advance, replacing `BOB_DAYLOOP`; (3) re-run the menu-nav path through
 `BOB_SDL_CLICK` on real GL to close its layer-(1) gap too.
+
+---
+
+## 6. S158 groundwork: the signature problem is already solved by the game
+
+Implementing the dispatch looked like it needed template machinery, because the handlers are *not*
+MFC-shaped: `long RDialog::OnGetXYOffset()` and `void CLoad::OnSelectTab()` take no arguments and
+differ in return type.
+
+They don't need it. `SRC/H/GLOBDEFS.H` already defines an adapter family:
+
+```c
+#define MSG2_0(memberFxn)  LRESULT MSG2_##memberFxn(int,int)     {return (int)memberFxn();}
+#define MSG2_1(memberFxn)  LRESULT MSG2_##memberFxn(int a,int)   {return (int)memberFxn(a);}
+#define MSG2_2(memberFxn)  LRESULT MSG2_##memberFxn(int a,int b) {return (int)memberFxn(a,b);}
+#define MSG2_0v(memberFxn) LRESULT MSG2_##memberFxn(int,int)     {memberFxn();return 0;}
+#define MSG2_1v(memberFxn) LRESULT MSG2_##memberFxn(int a,int)   {memberFxn(a);return 0;}
+```
+
+and the headers use them alongside the declarations (`RDIALMSG.H`: `afx_msg long OnGetXYOffset();`
+then `MSG2_0(OnGetXYOffset);`). Every wrapped handler therefore already has a **uniform
+`LRESULT (Class::*)(int,int)`** entry point — this is the original authors' own answer to the same
+signature-variance problem.
+
+So `ON_MESSAGE(message, memberFxn)` can expand to a registration of `&ThisClass::MSG2_##memberFxn`,
+keyed on `typeid(ThisClass)`, and `SendMessageA` can look up `(typeid(*this), msg)` — the same shape
+as the existing OCX eventsink. **Check before relying on it:** confirm each target handler actually
+has a `MSG2_*` line (coverage is per-header and may be incomplete), and keep the dispatch behind an
+env flag (default off) so the registration is inert until measured — the blast radius is every
+`BEGIN_MESSAGE_MAP` in the game.
+
+**Watch for the §8z trap:** key the lookup so a handler registered on a BASE class is still found;
+the eventsink's exact-`type_info` match is precisely the bug that made every base-registered event
+dead for the port's whole life.
