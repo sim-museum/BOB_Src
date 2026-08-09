@@ -11,8 +11,20 @@
 > ```
 > Toolbar buttons, then unit selection — **no branch into an open dialog anywhere**. Every OOB panel
 > built across S113–S155 could be opened and painted but never clicked. It never showed up because
-> every interaction I had ever performed on those panels went through my own scaffolds
-> (`BOB_AUTOCLICK`, `bob_ole_ctrl_point`), which call `bob_ole_click` directly.
+> the only thing that had ever *driven* those dialogs was `bob_oob_accept_directives` /
+> `bob_oob_close_dialogs` (`BOB_MAP_ACCEPTDIR`), which call **`bob_evt_fire` directly on the dialog**
+> — skipping hit-testing and the dispatch entirely. S144–S146 drove the Directives OK that way and
+> got the whole orders flow to complete, which read as "this dialog works".
+>
+> **The distinction that matters (and that I first got wrong):** a scaffold which substitutes an
+> *input* is harmless — `BOB_MAP_CLICK` and the front-end's `BOB_AUTOCLICK` only synthesize a
+> coordinate and then fall into the very same `if (haveClick)` / `if (got)` block a real mouse click
+> reaches, so they exercise the real path (`BOB_AUTOCLICK`'s own comment says so: *"synthesize a
+> click on item N's centre so the real hit-test path below runs"*). A scaffold which substitutes a
+> **call** is the dangerous kind: it enters below one or more layers and can never report that those
+> layers are missing. Only the second kind hid this bug. My first write-up of this entry named
+> `BOB_AUTOCLICK`/`bob_ole_ctrl_point` as the culprits; they are the harmless kind, and they act on
+> the front-end panels (`g_bobActiveFP->pdial`), not on the map's OOB dialogs at all.
 >
 > **Fix — `bob_map_click_oob` (MAINFRM.CPP):** an open dialog gets **first refusal** before the
 > toolbars. It walks each toolbar's logged children *and their descendants* (§8-BoB155: the controls

@@ -2256,21 +2256,35 @@ else bob_map_select(cx, cy);          /* unit selection */
 Toolbar buttons, then unit selection — **no branch into an open dialog at all**. Dialogs opened,
 painted, and rendered hosted controls correctly; they simply could not be clicked.
 
-**Why it stayed invisible for so long is the transferable part.** There was extensive testing of
-those dialogs — value parity against gold shots, host counts, teardown, draw rects. All of it drove
-the controls through port-side scaffolds (`BOB_AUTOCLICK`, `bob_ole_ctrl_point`) that call
-`bob_ole_click(dialog, x, y)` **directly**. The scaffold enters the system *below* the dispatch, so
-it validated everything except the one link a player depends on. No test failed, because no test
-used that path.
+**Why it stayed invisible for so long is the transferable part** — and the useful form of the
+lesson is sharper than "scaffolds are bad", because most scaffolds are fine. Sort yours into two
+kinds:
+
+| | what it substitutes | does it prove the real path? |
+|---|---|---|
+| **Shallow** | an **input** — synthesizes a coordinate/keystroke, then falls into the same dispatch a real event reaches | **Yes.** Everything downstream is production code. |
+| **Deep** | a **call** — invokes a handler, fires an event, or pokes a control directly | **No.** It enters *below* one or more layers, and can never report that those layers are missing. |
+
+BoB's `BOB_MAP_CLICK` and front-end `BOB_AUTOCLICK` are **shallow**: they compute a point and hand
+it to the same `if (haveClick)` / `if (got)` block the SDL mouse feeds (`BOB_AUTOCLICK`'s own
+comment: *"synthesize a click on item N's centre so the real hit-test path below runs"*). Those
+were never the problem.
+
+The OOB dialogs were driven only by `bob_oob_accept_directives` / `bob_oob_close_dialogs`, which
+call **`bob_evt_fire` directly on the dialog** — deep. S144–S146 used it to drive the Directives OK
+and got the entire LW orders flow to complete: raids built, flown, landed. That reads as
+overwhelming evidence the dialog works, and it says nothing whatever about whether a click can
+reach it. Extensive parity testing of those same dialogs (gold-shot value parity, host counts,
+teardown, draw rects) also never touched the dispatch.
 
 **The check to run on your own port** — cheap, and it produces a concrete list:
 
-> For each capability you believe works, name the last time it was exercised **without** a
-> `BOB_*`/`MA_*` scaffold. If the answer is "never", it is unproven, not working.
+> For each capability you believe works, name the last time it was exercised by something that
+> entered at the **same layer a player enters at**. If every driver is a *deep* scaffold, the
+> capability is unproven, not working — however rich the evidence downstream of it looks.
 
-Prime suspects in both ports: anything reached only via an autoclick sequence — menu navigation,
-config screens, unit selection, dialog buttons. The failure is silent by construction: a scaffold
-that bypasses a layer will never report that the layer is missing.
+The failure is silent by construction, and note the trap: the deeper the scaffold, the more
+impressive the evidence it produces, because it drives the working part of the system directly.
 
 **Shape of the fix (BoB's, reusable):** give an open dialog **first refusal** ahead of the existing
 click consumers; walk each toolbar's logged children **and descendants** (§8-BoB155 — controls live
