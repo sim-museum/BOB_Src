@@ -215,6 +215,26 @@ extern "C" int bob_gdi_get_mapnav(int* panx, int* pany, int* zoomsteps) {
 	g_mapPanX = g_mapPanY = g_mapZoomSteps = 0; return 1;
 }
 /* The front-end (bob_frontend_tick) polls this for menu clicks. */
+/* S157 (SP.24): queue a REAL SDL left-click at framebuffer coords (converted to window-logical,
+   the inverse of the poll handler's scaling). Callable from any state-aware site; the event is
+   consumed by the normal SDL_PollEvent loop, so the handler, the scaling and g_clickPending all
+   run as they do for a physical mouse. Returns SDL_PushEvent's result. */
+extern "C" int bob_sdl_push_click(int fbx, int fby) {
+	int lw = g_scrW, lh = g_scrH;
+	if (g_win) SDL_GetWindowSize(g_win, &lw, &lh);
+	SDL_Event ev; memset(&ev, 0, sizeof ev);
+	ev.type = SDL_MOUSEBUTTONDOWN;
+	ev.button.button = SDL_BUTTON_LEFT;
+	ev.button.state  = SDL_PRESSED;
+	ev.button.clicks = 1;
+	ev.button.x = g_scrW ? fbx * lw / g_scrW : fbx;
+	ev.button.y = g_scrH ? fby * lh / g_scrH : fby;
+	int rc = SDL_PushEvent(&ev);
+	fprintf(stderr, "[sdlclick] queued real SDL_MOUSEBUTTONDOWN fb=(%d,%d) logical=(%d,%d) rc=%d\n",
+		fbx, fby, ev.button.x, ev.button.y, rc);
+	return rc;
+}
+
 extern "C" int bob_gdi_get_click(int* x, int* y) {
 	/* BOB_CLICKXY="tick,x,y;tick,x,y;..." injects clicks at arbitrary framebuffer coords on the
 	   given front-end tick (diagnostic; pairs with BOB_AUTOCLICK menu nav to reach + click a
@@ -234,7 +254,10 @@ extern "C" int bob_gdi_get_click(int* x, int* y) {
 		}
 	}
 	if (!g_clickPending) return 0;
-	if (x) *x = g_clickX; if (y) *y = g_clickY; g_clickPending = 0; return 1;
+	if (x) *x = g_clickX; if (y) *y = g_clickY; g_clickPending = 0;
+	if (getenv("BOB_TRACE_CLICKPATH"))
+		fprintf(stderr, "[clickpath] 2. bob_gdi_get_click CONSUMED (%d,%d)\n", g_clickX, g_clickY);
+	return 1;
 }
 /* R2.4: 1 while a flight is live (set by the Launch3d bridge in FULLPSYS, cleared when
    OnFlyingClosed returns). Lets BOB_AUTOQUIT re-arm per mission when chaining (BOB_REFLY). */
@@ -332,6 +355,49 @@ static void pump_events(void)
 			}
 		}
 	}
+	/* S157 (SP.24): BOB_SDL_CLICK="tick,x,y[;tick,x,y...]" -- push a REAL SDL_MOUSEBUTTONDOWN into
+	   the event queue at the given pump tick, in FRAMEBUFFER coords (converted to window-logical
+	   here, the inverse of what the handler below does).
+
+	   Why this exists rather than another injection point: every other click driver in this port
+	   (BOB_CLICKXY, BOB_AUTOCLICK, BOB_MAP_CLICK) enters AFTER the SDL event handler, so the
+	   handler itself -- the branch, the logical->drawable scaling, g_clickPending -- has never been
+	   executed by any test. S156 found a whole subsystem (the map's OOB dialogs) that had been
+	   render-only for 40+ sprints for exactly this reason: the only driver entered below the layer
+	   that was missing. This pushes an actual event, so everything from SDL_PollEvent downward is
+	   production code and the sole thing not covered is the physical mouse / X server. */
+	{
+		const char* sc = getenv("BOB_SDL_CLICK");
+		static long sc_calls = -1;
+		if (sc) {
+			sc_calls++;
+			for (const char* p = sc; p && *p; ) {
+				long T; int px, py;
+				if (sscanf(p, "%ld,%d,%d", &T, &px, &py) == 3 && sc_calls == T) {
+					int lw = g_scrW, lh = g_scrH;
+					if (g_win) SDL_GetWindowSize(g_win, &lw, &lh);
+					SDL_Event ev; memset(&ev, 0, sizeof ev);
+					ev.type = SDL_MOUSEBUTTONDOWN;
+					ev.button.button = SDL_BUTTON_LEFT;
+					ev.button.state  = SDL_PRESSED;
+					ev.button.clicks = 1;
+					/* framebuffer -> window-logical (handler scales back the other way) */
+					ev.button.x = g_scrW ? px * lw / g_scrW : px;
+					ev.button.y = g_scrH ? py * lh / g_scrH : py;
+					int pushed = SDL_PushEvent(&ev);
+					fprintf(stderr, "[sdlclick] pushed real SDL_MOUSEBUTTONDOWN fb=(%d,%d) "
+						"logical=(%d,%d) tick=%ld rc=%d\n", px, py, ev.button.x, ev.button.y, T, pushed);
+				}
+				p = strchr(p, ';'); if (p) p++;
+			}
+		}
+	}
+	if (getenv("BOB_TRACE_CLICKPATH")) {   /* S157: does the pump run at all in this mode? */
+		static long pumps = 0;
+		if (pumps == 0 || pumps == 100 || pumps == 10000)
+			fprintf(stderr, "[clickpath] 0. pump_events call #%ld\n", pumps);
+		pumps++;
+	}
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) { fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0); }
@@ -340,6 +406,9 @@ static void pump_events(void)
 				g_clickX = lw ? e.button.x * g_scrW / lw : e.button.x;
 				g_clickY = lh ? e.button.y * g_scrH / lh : e.button.y;
 				g_clickPending = 1;
+				if (getenv("BOB_TRACE_CLICKPATH"))
+					fprintf(stderr, "[clickpath] 1. SDL event POLLED logical=(%d,%d) -> fb=(%d,%d)\n",
+						e.button.x, e.button.y, g_clickX, g_clickY);
 			}
 		else if (e.type == SDL_MOUSEWHEEL) {   /* S96: wheel = map zoom in/out */
 			g_mapZoomSteps += e.wheel.y;

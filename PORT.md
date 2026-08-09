@@ -1,5 +1,75 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S157 (2026-08-09, Sprint 157): a click driven from a REAL SDL event, end to end — and the message dispatcher is an allowlist of three
+>
+> S156's retro asked, for each capability, *what actually drives it* — and split scaffolds into
+> **shallow** (substitutes an **input**, so everything downstream is production code) and **deep**
+> (substitutes a **call**, so it proves nothing above where it enters). The full audit is
+> `doc/scaffold-audit.md`; two findings came out of it.
+>
+> ### 1. Layer (1) of the click path had never been executed by any test — now it has
+>
+> The chain is: SDL event handler → `bob_gdi_get_click` → dispatch → hit-test → handler. **Every**
+> existing driver (`BOB_CLICKXY`, `BOB_AUTOCLICK`, `BOB_MAP_CLICK`) enters at step 2 or later, so the
+> SDL handler and its logical→drawable scaling were never run.
+>
+> `BOB_SDL_CLICK` / `BOB_MAP_SDLCLICK` (S157) push a **real `SDL_MOUSEBUTTONDOWN`** into the queue
+> instead — `bob_sdl_push_click()` converts framebuffer→window-logical (the inverse of the handler's
+> own scaling) and lets the normal poll loop consume it. The map-side trigger reuses `BOB_MAP_CLICK`'s
+> settled-after-6-paints rule rather than a tick count, per S148 (*no counter survives the harness
+> changing the sim rate; only a state description does*).
+>
+> **First result was a negative one, and it explains 40 sprints of harness design.** Headless, the
+> pushed event never arrived. Instrumenting `pump_events` at calls #0/#100/#10000 printed **nothing
+> at all**: under `SDL_VIDEODRIVER=dummy`, `SDL_CreateWindow` fails, so no window exists, none of the
+> present/`BeginScene`/`SwapWindow` paths run, and **the pump is never called even once**. The
+> headless harness therefore *cannot* reach layer (1) — every driver entering below it was a
+> necessity, not an oversight. Note what this does **not** show: nothing about whether real mouse
+> input works, only that no headless test can speak to it either way.
+>
+> **On real GL it works, whole chain, one run:**
+> ```
+> [clickpath] 0. pump_events call #0                                   <- the pump runs
+> [sdlclick]     queued real SDL_MOUSEBUTTONDOWN fb=(712,499) rc=1
+> [clickpath] 1. SDL event POLLED logical=(712,499) -> fb=(712,499)    <- layer (1), a first
+> [clickpath] 2. bob_gdi_get_click CONSUMED (712,499)                  <- layer (2)
+> [oobclick]     (712,499) consumed by toolbar 3 child 6 ctrl id=2600  <- layers (3)(4)(5)
+> ```
+> `id=2600` = `IDC_RBUTTONREST`. Nothing bypassed but the physical mouse and X server — and it
+> re-proves S156's fix through the real path rather than through injection.
+>
+> ### 2. `CWnd::SendMessageA` is an allowlist of three, and 16 routes die reporting success
+>
+> Compat handles `WM_GETFILE`, `WM_GETGLOBALFONT`, `WM_GETSTRING` and **`return 0` for everything
+> else**; `SendMessageToDescendants` is `{}`; `ON_MESSAGE(msg, fn)` expands to **nothing**. This is
+> MA's §8-MA83 class, and the same silent-success shape as §8z and §8-MA91.
+>
+> The game sends **20 distinct `WM_*` types**. `BOB_TRACE_MSG` (deduped one line per id — S142's
+> per-call trace once wrote 70 MB and starved a run) shows **four dead routes firing in one ordinary
+> campaign-map run**:
+>
+> | id | message | static sends | note |
+> |---|---|---|---|
+> | `WM_USER+1` | `WM_GETARTWORK` | 15 | widget box-art |
+> | `WM_USER+2` | `WM_GETXYOFFSET` | 11 | real handler `RDialog::OnGetXYOffset` exists |
+> | `WM_USER+5` | `WM_RELEASELASTFILE` | 21 | release half of `WM_GETFILE`; §8-MA84's hazard |
+> | `WM_USER+9` | `WM_GETX2FLAG` | 5 | |
+>
+> `WM_SELECTTAB` has **four** real `OnSelectTab` handlers and is structurally dead — a strong
+> candidate for SP.6 / gold #16's missing tab highlight — but it did **not** fire in this recipe, so
+> it stays dead-by-inspection, not runtime-confirmed. **No individual symptom is claimed as caused by
+> this yet** (S151: a measurement licenses only the claim it measures).
+>
+> Corroboration that this is a real subsystem gap rather than a grep artifact: the port has already
+> hand-delivered two of these routes at individual call sites — `MAINFRM.CPP:1417` calls
+> `OnGetXYOffset()` directly, and `FULLPSYS.CPP:1198` delivers a swallowed `WM_GETSTRING` with the
+> comment *"compat has no message-map dispatch … we deliver it"*. Two local workarounds, one missing
+> subsystem.
+>
+> *Method note:* the static counts came from `grep -o "WM_[A-Z_]*"`, whose class excludes digits and
+> silently truncated `WM_GETX2FLAG` to a plausible-looking `WM_GETX`. The runtime census caught it —
+> §8k(3)/§8m(2)'s class, a tool's own limit misread as evidence about the system.
+
 > ## S156 (2026-08-09, Sprint 156): the map's OOB dialogs were RENDER-ONLY — they now take real clicks
 >
 > **Nothing was failing. That was the problem.** SP.14 came from MA note 31 §3, whose heuristic is

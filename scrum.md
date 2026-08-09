@@ -954,6 +954,38 @@ game boots + plays a Quick Mission end-to-end, no env vars; a human pilot has fl
   byte-identical**, safe default exit 0, dummy==GL byte-identical, flight 98.6%, binary hash
   unchanged, gate valid.
 
+### Sprint 157 — "What actually drives it?" → *Increment: a click driven from a real SDL event, end to end; the message dispatcher found to be an allowlist of 3* — **✅ CLOSED 2026-08-09 (8/8 pts; §9 row 157 + PORT.md S157)**
+- **Sprint Goal:** cash S156's retro — audit every capability's drivers, classify **shallow**
+  (substitutes an input → proves the real path) vs **deep** (substitutes a call → proves nothing
+  above it), and close the biggest gap. Audit lives in `doc/scaffold-audit.md`.
+- **✅ Found: layer (1) of the click path had never been executed by any test.** Every existing
+  driver (`BOB_CLICKXY`, `BOB_AUTOCLICK`, `BOB_MAP_CLICK`) enters at `bob_gdi_get_click` or later, so
+  the SDL event handler + its logical→drawable scaling were never run.
+- **✅ Built `BOB_SDL_CLICK` / `BOB_MAP_SDLCLICK`** — push a **real `SDL_MOUSEBUTTONDOWN`** into the
+  queue (`bob_sdl_push_click()`, framebuffer→logical, inverse of the handler's own scaling); the
+  normal poll loop consumes it. Map trigger reuses the settled-after-6-paints **state** rule, not a
+  tick count (S148).
+- **✅ The negative result explained 40 sprints of harness design.** Headless it never arrived;
+  instrumenting `pump_events` at calls #0/#100/#10000 printed **nothing** — under
+  `SDL_VIDEODRIVER=dummy` `SDL_CreateWindow` fails, no window exists, and the pump is never called.
+  The headless harness **cannot** reach layer (1); every driver entering below it was a necessity.
+  Explicitly **not** claimed: anything about whether real mouse input works.
+- **✅ Proven on real GL, whole chain, one run:** `pump_events #0` → `SDL event POLLED (712,499)` →
+  `bob_gdi_get_click CONSUMED` → `oobclick … ctrl id=2600` (**`IDC_RBUTTONREST`**). Nothing bypassed
+  but the physical mouse — and it re-proves S156's fix via the real path, not injection.
+- **✅ Second finding — `CWnd::SendMessageA` is an allowlist of three** (`WM_GETFILE`,
+  `WM_GETGLOBALFONT`, `WM_GETSTRING`) and returns 0 for everything else; `SendMessageToDescendants`
+  is `{}`; `ON_MESSAGE` expands to nothing. MA's §8-MA83 class. The game sends **20** `WM_*` types;
+  `BOB_TRACE_MSG` (deduped, per S142's 70 MB lesson) caught **4 firing in one ordinary run**:
+  `WM_GETARTWORK`, `WM_GETXYOFFSET`, `WM_RELEASELASTFILE`, `WM_GETX2FLAG`. Corroborated by the port
+  already hand-delivering two of these routes at individual call sites (MAINFRM.CPP:1417,
+  FULLPSYS.CPP:1198) — two local workarounds, one missing subsystem.
+- **Deliberately NOT claimed:** that any specific parity/backlog symptom is *caused* by the dead
+  dispatcher. `WM_SELECTTAB` (4 real handlers, prime suspect for SP.6 / gold #16's tab highlight) did
+  not fire in this recipe → dead-by-inspection only. S151's rule.
+- **Method note banked:** `grep -o "WM_[A-Z_]*"` excludes digits and silently truncated
+  `WM_GETX2FLAG` to a plausible `WM_GETX`; the runtime census caught it. §8k(3)/§8m(2)'s class.
+
 ### Sprint 156 — "The dialogs were never clickable" → *Increment: OOB map dialogs accept real clicks; Rest zeroes the directive grid* — **✅ CLOSED 2026-08-09 (8/8 pts; §9 row 156 + PORT.md S156)**
 - **Sprint Goal:** answer SP.14 / MA note 31 §3 — do BoB's map OOB dialogs accept genuine clicks?
   **Answer: they did not, and had not since S113.**
@@ -1045,6 +1077,7 @@ Adapted to an autonomous single-agent cadence (a "session" = a sprint):
 
 | Sprint | Committed pts | Done pts | Increment shipped? | Notes |
 |---|---|---|---|---|
+| **157** | ~8 | 8 | ★ **A click driven from a REAL SDL event, end to end — and the message dispatcher is an allowlist of 3** | **(2026-08-09)** Cashed S156's retro by auditing what actually drives each capability (`doc/scaffold-audit.md`), splitting scaffolds **shallow** (substitutes an *input* → everything downstream is production code) vs **deep** (substitutes a *call* → proves nothing above it). **Finding 1:** every existing click driver (`BOB_CLICKXY`, `BOB_AUTOCLICK`, `BOB_MAP_CLICK`) enters at `bob_gdi_get_click` or later, so **layer (1) — the SDL event handler + logical→drawable scaling — had never been executed by any test**. Built `BOB_SDL_CLICK`/`BOB_MAP_SDLCLICK` to push a **real `SDL_MOUSEBUTTONDOWN`** (state-triggered, not tick-counted, per S148). **The negative result explained 40 sprints of harness design:** headless it never arrived, and a trace on `pump_events` calls #0/#100/#10000 printed **nothing** — under `SDL_VIDEODRIVER=dummy` `SDL_CreateWindow` fails, no window exists, the pump never runs. The headless harness *cannot* reach layer (1); entering below it was a necessity, not an oversight. Explicitly **not** claimed: anything about whether real mouse input works. **On real GL the whole chain ran in one go:** `pump_events #0` → `SDL event POLLED (712,499)` → `get_click CONSUMED` → `oobclick … id=2600` (`IDC_RBUTTONREST`), and the resulting **grid crop is byte-identical to S156's injected click** while differing from no-click — same game-state change via two independent entry points. **Finding 2:** `CWnd::SendMessageA` handles **3** message ids and returns 0 for the rest; `SendMessageToDescendants` is `{}`; `ON_MESSAGE` expands to nothing (MA §8-MA83 class). Game sends **20** `WM_*` types; `BOB_TRACE_MSG` (deduped — S142's 70 MB lesson) caught **4 firing in one ordinary run**: `WM_GETARTWORK`, `WM_GETXYOFFSET`, `WM_RELEASELASTFILE`, `WM_GETX2FLAG`. Corroborated by the port already hand-delivering two of those routes at single call sites (MAINFRM:1417, FULLPSYS:1198) — two workarounds, one missing subsystem. **Deliberately not claimed:** that any specific parity symptom is *caused* by it; `WM_SELECTTAB` (4 real handlers, prime SP.6/#16 suspect) didn't fire in this recipe → dead-by-inspection only. **Method note:** `grep -o "WM_[A-Z_]*"` excludes digits and silently truncated `WM_GETX2FLAG` → plausible-looking `WM_GETX`; the runtime census caught it. |
 | **156** | ~8 | 8 | ★ **BoB's map OOB dialogs were RENDER-ONLY — now they take real clicks; Rest zeroes the directive grid** | **(2026-08-09)** SP.14 / MA note 31 §3, answered by *reading the dispatch*: `bob_frontend_tick`'s map click path went `bob_map_click_toolbars` → `bob_map_select` with **no branch into an open dialog**. Every OOB panel built S113–S155 was render-only, and nothing ever failed because the only driver those dialogs ever had was `bob_oob_accept_directives`/`bob_oob_close_dialogs`, which call **`bob_evt_fire` directly** (skipping hit-test + dispatch) — MA's heuristic that *a capability only exercised through scaffolding is evidence the real path is missing* is what prompted the look. **Corrected mid-sprint:** the first write-up blamed `BOB_AUTOCLICK`/`bob_ole_ctrl_point`, which are **shallow** (synthesize a coordinate into the real dispatch) and target front-end panels, not map dialogs — the real distinction is **shallow (substitutes an input, proves the path) vs deep (substitutes a call, proves nothing above it)**. Fix `bob_map_click_oob`: open dialog gets **first refusal**, walks each toolbar's logged children **and descendants** (§8-BoB155), swallows in-dialog misses so a background click can't select a unit behind the dialog; `BOB_NO_OOB_CLICK` reverts. Hit rects are the hosts' own last-drawn rects → cannot drift from what was painted. **Proven with a noise-floor-controlled A/B on ONE binary** (`d9fcef96…`, hashed before *and* after): click at (712,499) → `consumed by toolbar 3 child 6 ctrl id=2600` = **`IDC_RBUTTONREST`**; click vs no-click **4,742 px**; **no-click vs no-click differs only in a 16×8 clock field** (649–665, 248–256) → **4,666 px of signal, 0 noise px in every affected band**. **Handler genuinely ran, not a repaint:** grid goes `1/0/1` + totals `1 1 1` → **all zeros**, all 85 spinners re-rendering new data. ⭐ **Latent defect caught by self-review:** the new call linked only because `_MFC.CPP` includes `MainFrm.cpp` (79) before `fullpsys.cpp` (105) — same unity TU, so an in-body `extern int` inherited C linkage via `[dcl.link]/6`. Correct by *include order*, not construction; now `extern "C"` at file scope, banked **§8-BoB156b**. **Process:** 3 self-inflicted measurement faults, one family (plumbing not reaching the measurement): `2>/dev/null` eating the grepped trace; control run from the wrong cwd (`Can't find ROOTS.DIR`); first diff taken against an **S150-era binary**. |
 | **155** | ~8 | 8 | ★ **Dialog teardown lands — 181,424 hosted controls → 184, default-on** | **(2026-08-09)** Applied S154's own retro: instrument instead of a 5th hook-site guess. `BOB_TRACE_DESTROY` printed per-`DestroyWindow` RTTI + host counts + descendants, and one run answered it: `RDEmptyD hosts_here=0` → `child LWDirectives hosts=184` — **DestroyWindow gets the PANEL, the controls belong to the contained dialog**. Uniform across all dialogs; `TakeOverOffered` appeared as **4 distinct instances in one campaign day** (leak in ordinary play). Fix: release the node **and** its bounded `fchild`/`sibling` descendants. **181,424 → 184** (exactly one dialog's worth), tracked dialogs 12 → 6, end state unchanged. **Flipped default-ON on evidence**: measurement + the S108 cancel-toggle path exercised clean + **a full gate suite WITH teardown on returning 14/14 byte-identical**. `BOB_NO_DLG_TEARDOWN` reverts. Still does not free the dialog object (ownership varies). Banked **§8-BoB155** — the panel wrapper has now cost two unrelated 3-sprint hunts and both failure modes *report success*. |
 | **154** | ~8 | 4 | ⚠️ **PARTIAL — the missing teardown is `CWnd::DestroyWindow() { return TRUE; }`; hooked default-off, not finished** | **(2026-08-09)** ⭐ The chain executes correctly (`LWDirectives::OnCancel` → `RDialog::OnCancel` → `EndDialog(IDCANCEL)` → walks children → `DestroyWindow()`) and the final call **reports success and destroys nothing** — the *"stub that returns SUCCESS and hides a subsystem"* class the port's notes say to grep `{ return TRUE; }` for (cf. MA S68's `DrawIcon`). **Corrects S108**, which named `CDialog::OnCancel` as the no-op: `Rowan::CDialog` adds only a constructor, so that resolves to `RDialog::OnCancel`, which does real work — the stub is 3 calls further down, and the wrong location read as a closed question for ~45 sprints. **Honest:** 3 hook sites were wrong before this (DestroyPanel never reached, 0 releases at 181,424 hosts; compat `::CDialog` wrong class; `DestroyWindow` fires but frees **1 control not 184** — it reaches the panel, hosts belong to the contained dialog). Next step named (walk `fchild`/`sibling`, needs a safe `CWnd*`→`RDialog*` test), **deliberately not guessed a 4th time**. Default-off (`BOB_DLG_TEARDOWN`); **gates 14/14 byte-identical**. |
@@ -1133,6 +1166,23 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ## 10. Retrospective Log
 *(Newest on top. One improvement note per sprint.)*
+
+- _Sprint 157 (the negative result was the useful one):_ **The test that failed to fire taught more
+  than the one that worked.** `BOB_MAP_SDLCLICK` was built to prove layer (1); headless, it produced
+  nothing — and chasing *why* found that under `SDL_VIDEODRIVER=dummy` the pump never runs at all, so
+  no headless test in this project's history could ever have exercised the SDL layer. That reframed
+  the whole audit: the drivers weren't sloppy, they were **constrained**, and the untested layer was
+  a consequence of the harness, not of carelessness. **When a new test comes back empty, the first
+  question is whether the harness can reach the thing at all** — before concluding anything about the
+  code. Had I skipped that and gone straight to "the SDL path is broken", it would have been the same
+  shape of error as S150's retracted conclusion.
+  **Second: state what a measurement does NOT cover, in the same breath as the result.** The headless
+  null result says nothing about whether real mouse input works; the real-GL run says nothing about
+  the physical mouse/X server. Writing both bounds down at the time is what stops a later sprint from
+  reading the note as broader than it was — the failure mode behind S150→S151.
+  **Third: two independent entry points producing a byte-identical outcome is the cheapest strong
+  evidence available.** The real-SDL click and S156's injected click zero the directive grid to the
+  same bytes. Neither alone rules out a scaffold artifact; together they do.
 
 - _Sprint 156 (nothing was failing — that was the problem):_ **The bug with no symptom is the one a
   DEEP scaffold hides.** The OOB dialogs had been render-only since S113 and no test, gate or capture

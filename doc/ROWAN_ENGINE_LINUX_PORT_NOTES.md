@@ -2332,6 +2332,62 @@ about the symbol. Also: an in-function `extern` declaration is the same shape as
 `extern "C"`-inside-a-function-body error that has now broken this build twice (BoB S146, S153).
 Both are fixed the same way — put it at file scope.
 
+## 8-BoB157. Your headless harness probably cannot pump SDL at all — and `SendMessage` is an allowlist (BoB S157) **[ENGINE]**
+
+Two findings from auditing what actually drives each capability (the §8-BoB156 check). Both are
+almost certainly true of MiG Alley too — same compat layer, same harness design.
+
+### (a) Under `SDL_VIDEODRIVER=dummy` the event pump never runs
+
+BoB added a driver that pushes a **real `SDL_MOUSEBUTTONDOWN`** rather than injecting past SDL, to
+prove the one layer no test had ever executed: the event handler and its logical→drawable scaling.
+Headless, it produced nothing. A trace on `pump_events` calls #0/#100/#10000 printed **nothing at
+all** — `SDL_CreateWindow` fails under the dummy driver (*"OpenGL support is either not configured
+in SDL or not available in current SDL video driver"*), so no window exists, none of the
+present/`BeginScene`/`SwapWindow` paths run, and the pump is never called once.
+
+**Consequences worth internalising before you write another capture recipe:**
+
+- Every headless click/key driver *must* enter below the SDL layer. That is a constraint of the
+  harness, not sloppiness — and it means **no headless test in your project's history has said
+  anything about your SDL input layer**, in either direction.
+- Anything you want to prove about layer (1) needs a **real GL display**. On real GL, BoB's chain
+  ran end to end in one go: `pump_events #0` → `SDL event POLLED` → `bob_gdi_get_click CONSUMED` →
+  hit-test → handler fired.
+- Corollary for evidence hygiene: a *null* result from a headless run is not evidence about the
+  code until you have confirmed the harness can reach the code. Ask "can this rig physically
+  observe the thing?" before concluding anything about the thing.
+
+Cheap strong check while you're there: drive the same outcome from **two independent entry points**
+(a real event at layer 1, an injection at layer 3) and compare the resulting frame. BoB's two agreed
+**byte-for-byte** on the changed region while differing from the no-click control. Neither alone
+rules out a scaffold artifact; together they do.
+
+### (b) `CWnd::SendMessageA` answers only three messages; the rest die reporting success
+
+BoB's compat `SendMessageA` handles `WM_GETFILE`, `WM_GETGLOBALFONT` and `WM_GETSTRING`, and
+**`return 0`** for everything else. `SendMessageToDescendants` is `{}`. **`ON_MESSAGE(msg, fn)`
+expands to nothing**, so every `ON_MESSAGE` row in every `BEGIN_MESSAGE_MAP` in the game is
+decorative. This is §8-MA83's class and §8-MA91's class at once.
+
+The game sends **20 distinct `WM_*` types**. A deduped one-line-per-id trace (`BOB_TRACE_MSG` —
+*do not* trace per call; §8's 70 MB starvation lesson) caught **four firing in a single ordinary
+run**: `WM_GETARTWORK`, `WM_GETXYOFFSET`, `WM_RELEASELASTFILE`, `WM_GETX2FLAG`. Several dead routes
+have **real implemented handlers** on the other side — `RDialog::OnGetXYOffset`,
+`RDialog::OnReleaseLastFile`, and four separate `OnSelectTab` implementations for `WM_SELECTTAB`.
+
+**The tell that this is a subsystem gap and not a curiosity:** the port had already hand-delivered
+two of these routes at individual call sites — one calling `OnGetXYOffset()` directly, one
+delivering a swallowed `WM_GETSTRING` with the comment *"compat has no message-map dispatch … we
+deliver it"*. **Two local workarounds for the same missing subsystem, written sprints apart, neither
+recognising the other.** If you find yourself hand-delivering a second message, stop and implement
+the dispatch.
+
+*Method warning:* the static send-counts came from `grep -o "WM_[A-Z_]*"`, whose character class
+excludes digits — it silently truncated `WM_GETX2FLAG` to a perfectly plausible `WM_GETX`. A regex
+that can produce a **believable wrong answer** is the §8k(3)/§8m(2) hazard; the runtime census is
+what caught it.
+
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
 - **Map/world & campaign rules** (Channel/1940 vs Korea/1950s), flight models (props vs jets),

@@ -945,6 +945,23 @@ public:
             int mx = (unsigned char)buf[0]; if (mx <= 0 || mx > 99) mx = 99;
             return (LRESULT)bob_load_string(NULL, (unsigned)w, buf, mx);
         }
+        /* S157 (SP.24): this dispatcher is an ALLOWLIST OF THREE and answers 0 for every other
+           route the game sends -- the §8-MA83 class, and the same silent-success shape as the
+           eventsink's exact-type match (§8z) and the empty macros (§8-MA91). The game sends 20
+           distinct WM_* types; 16 of them land here and die reporting success.
+           BOB_TRACE_MSG reports each UNHANDLED id ONCE (deduped -- S142's BOB_TRACE_OLE wrote a
+           70 MB log and starved a run by tracing per-call), so a single run says which dead routes
+           are actually exercised rather than merely present in a grep. */
+        if (getenv("BOB_TRACE_MSG")) {
+            static unsigned seen[64]; static int nseen = 0;
+            bool dup = false;
+            for (int i = 0; i < nseen; i++) if (seen[i] == m) { dup = true; break; }
+            if (!dup && nseen < 64) {
+                seen[nseen++] = m;
+                fprintf(stderr, "[msg] UNHANDLED SendMessage 0x%03x (WM_USER+%d) -> returning 0\n",
+                        m, (int)m - 0x400);
+            }
+        }
         return 0;
     }
     LRESULT SendMessage(UINT m, WPARAM w = 0, LPARAM l = 0) { return SendMessageA(m, w, l); }

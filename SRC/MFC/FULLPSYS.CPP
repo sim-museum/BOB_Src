@@ -612,6 +612,7 @@ extern "C" void bob_map_paint_teletype(int, int);             /* footer event-lo
 extern "C" void bob_map_paint_toolbars(int, int);             /* footer button rows (MAINFRM.CPP, S89) */
 extern "C" int  bob_map_click_toolbars(int, int);             /* S92: map click -> button handler */
 extern "C" int  bob_map_click_oob(int, int);                  /* S156: open OOB dialog gets first refusal */
+extern "C" int  bob_sdl_push_click(int, int);                 /* S157: queue a REAL SDL mouse event */
 extern "C" int  bob_gdi_get_click(int*, int*);
 extern "C" int  bob_gdi_get_mapnav(int*, int*, int*);         /* S96: pan/zoom from the SDL layer */
 extern "C" void bob_map_nav(int, int, int);                   /* S96: apply pan/zoom (MIGVIEW.CPP) */
@@ -638,6 +639,14 @@ extern "C" void bob_frontend_tick(void)
 		  if (mcxy && !mc_done && ++mc_paints > 6) { int mx, my;
 			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
+		  /* S157 (SP.24): BOB_MAP_SDLCLICK="x,y" -- same settling rule, but pushes a REAL
+		     SDL_MOUSEBUTTONDOWN instead of assigning cx/cy here. That makes the SDL event handler,
+		     its logical->drawable scaling and bob_gdi_get_click part of what the test proves,
+		     instead of the three layers every existing click driver skips. The click arrives via
+		     bob_gdi_get_click on a subsequent paint, not this one. */
+		  static int sc_paints = 0, sc_done = 0; const char* scxy = getenv("BOB_MAP_SDLCLICK");
+		  if (scxy && !sc_done && ++sc_paints > 6) { int mx, my;
+			if (sscanf(scxy, "%d,%d", &mx, &my) == 2) { bob_sdl_push_click(mx, my); sc_done = 1; } }
 		  if (haveClick) {
 			/* S156 (SP.14): an OPEN OOB dialog gets first refusal -- before S156 the map routed
 			   clicks to the toolbars and then to unit selection, so every OOB dialog was
