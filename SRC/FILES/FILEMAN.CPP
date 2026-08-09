@@ -88,6 +88,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //#define	DUMP_USED_FILES	"\\bob\\filelist.txt"
 
 #include	<windows.h>
+#if defined(BOB_LINUX)
+#include	<execinfo.h>	/* S159: backtrace() for the BOB_TRACE_FILEBLK diagnostic */
+#include	<stdlib.h>
+#endif
 #include	"dosdefs.h"
 #include	"hardpasm.h"
 #include	"myerror.h"
@@ -1522,6 +1526,19 @@ fileblocklink	*s2;
 //Returns	
 //
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+/* S159 (§8-MA84): see the header. Walks the OPEN list for this FileNum and returns the block's
+   data without opening anything, so a second holder can share instead of tripping the fatal. */
+void*	fileblocklink::BOB_GetOpenFileData(FileNum filenum)
+{
+	dirindex reqdir=dirnum(filenum);
+	for (fileblocklink* s=FILEMAN.direntries[reqdir].openfiles; s; s=s->dir.next)
+		if (s->filenum==filenum && s->fileoffset==0)
+			return s->fileblockdata;
+	return 0;
+}
+#endif
+
 void*	fileblocklink::makelink(FileNum filenum,ULong fileoffset,ULong size,fileblocklink*&link)
 {
 int	filehandle=-1;
@@ -1559,7 +1576,21 @@ fileblocklink	*s2;
 	while (s2)
 	{
 		if (s2->filenum==filenum)
+		{
+#if defined(BOB_LINUX)
+			/* S159 (§8-MA84): "this bug family has now been diagnosed three times across the two
+			   ports and EACH time the mechanism was argued about first and traced second" -- so
+			   name the whole chain in one run. BOB_TRACE_FILEBLK=1. */
+			if (getenv("BOB_TRACE_FILEBLK"))
+			{
+				void* bt[32]; int n=backtrace(bt,32);
+				fprintf(stderr,"[fileblk] FATAL: filenum %x already open -- chain:\n",(unsigned)filenum);
+				fflush(stderr);
+				backtrace_symbols_fd(bt,n,2);
+			}
+#endif
 			_Error.ReallyEmitSysErr("Opened file block (%x) again without closing!",filenum);
+		}
 		s2=s2->dir.next;
 	}
 

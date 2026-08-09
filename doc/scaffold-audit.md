@@ -440,3 +440,46 @@ dispatch problem.
 **Worth stating plainly:** this failure is evidence the fix works. Sixteen dead routes were
 returning 0; restoring them means real handlers now run, hold resources, and must be balanced. A
 port that has never executed a protocol has never had to be correct about it.
+
+### 7g. ⚠️ The §8-MA84 attribution was ALSO wrong — the trace names a different chain
+
+S158 blamed the probe scan; §7f corrected that to §8-MA84's per-dialog `m_pfileblock` collision,
+adopted from the shared notes. **The backtrace refutes that too**, and the refutation was available
+the whole time — MA's own note said to trace this family first, and I argued the mechanism twice
+before tracing it once.
+
+Implemented MA's fix (`fileblocklink::BOB_GetOpenFileData`, borrow-don't-open, don't store the
+borrowed block), re-ran, and got:
+
+```
+borrows: 0        FATAL: 2 (6d12)        dispatched: 14     unhandled: 0
+```
+
+**Zero borrows** — the hook never fired. The backtrace says why:
+
+```
+bob_run -> CMIGApp::OnIdle -> bob_frontend_tick (fullpsys.cpp:485)
+        -> fileblock::getdata() -> fileblock::makefileblock -> fileblocklink::makelink -> FATAL
+```
+
+`RDialog::OnGetFile` **is not on the stack at all.** The colliding open does not go through the
+`WM_GETFILE` handler, so a fix inside that handler cannot possibly help — `borrows: 0` is exactly
+what a correct hook in the wrong place looks like.
+
+The real site is `bob_fp_repaint` (FULLPSYS.CPP:479), **the port's own repaint scaffold**, which
+paints the panel and then all three `pdial[]` dialogs in a single pass. Something on that path
+constructs a `fileblock` directly. So:
+
+- the *condition* MA identified is right — two things painting where one used to;
+- the *mechanism* is not `OnGetFile`/`m_pfileblock`, and the fix keyed to it is inert here;
+- and the trigger is port-side scaffolding, not game code.
+
+**Status:** `BOB_GetOpenFileData` + the borrow path are kept (they are correct for the
+`OnGetFile` case MA documented, and revert via `BOB_NO_FILEBLK_SHARE`), but they **do not** fix this
+fatal, and nothing here claims they do. Dispatch stays default-off. Next step is to find the direct
+`fileblock` construction under the repaint path — with the trace, not another guess.
+
+**Third wrong mechanism in this area, and the pattern is now unmistakable:** probe scan → §8-MA84 →
+(actual). Two of the three were *plausible and sourced*; one came from a note I trust and sync. The
+note itself warned: *"each time the mechanism was argued about first and traced second."* I did it
+again. **The backtrace cost one env var and one run; each wrong hypothesis cost a commit.**

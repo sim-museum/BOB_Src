@@ -55,23 +55,25 @@
 > from the other side. This port has **never executed** that open/release protocol, so its
 > bookkeeping has never had to balance.
 >
-> **⚠️ My first hypothesis was wrong, and the answer was already in the shared notes.** I guessed the
-> probe scan was picking `RDialog`'s non-virtual handler over a derived override. **§8-MA84 already
-> has the root cause** — and had explicitly predicted this moment for BoB (*"your map OOB dialogs are
-> the same shape, and the moment they paint alongside the toolbars you will meet this"*).
-> Real mechanism: `RDialog::OnGetFile` stores its block in **`m_pfileblock`, a per-dialog member**,
-> while the engine allows **one open per FileNum globally** — so two different parents drawing art
-> that shares a FileNum collide, and the second to paint exits the game. Nothing collides while only
-> one thing paints per frame, which is why **the bug is created by making a subsystem work.**
-> Fix (also specified there): a read-only accessor for an already-open FileNum, with `OnGetFile`
-> serving that block's data instead of duplicating the open, and **not** storing the borrowed block
-> in `m_pfileblock` (releasing someone else's block turns a quit into a use-after-free); plus a
-> `backtrace()` behind an env var at the fatal branch. → **S159.**
+> **⚠️ TWO wrong mechanisms here, both overturned by one backtrace (see S159).** I first blamed the
+> probe scan; then adopted §8-MA84's per-dialog `m_pfileblock` collision from the shared notes.
+> **The trace refutes both.** S159 implemented MA's fix and measured `borrows: 0` with the fatal
+> unchanged — a correct hook in a function that is not on the stack:
+> ```
+> bob_run -> CMIGApp::OnIdle -> bob_frontend_tick (fullpsys.cpp:485)
+>         -> fileblock::getdata() -> makefileblock -> makelink -> FATAL
+> ```
+> `RDialog::OnGetFile` never appears. The colliding open happens under **`bob_fp_repaint`, the
+> port's own repaint scaffold** (FULLPSYS.CPP:479), which paints the panel and all three `pdial[]`
+> dialogs in one pass; something on that path constructs a `fileblock` directly. MA's *condition*
+> (two things painting where one used to) holds; MA's *mechanism* does not apply, and the fix keyed
+> to it is inert here. → **S159 continues** from the trace, not from another guess.
 >
-> **Process note:** I maintain and sync those notes every sprint and still guessed before looking.
-> Check the cross-port notes for the *symptom* before forming a mechanism.
->
-> **Honest status: the mechanism lands, the protocol does not.** Dispatch stays default-off, so
+> **Process note, three times over:** the mechanism in this area has now been argued twice and
+> traced once, and only the trace was right. §8-MA84 itself warned *"each time the mechanism was
+> argued about first and traced second"* — I read that note, adopted its conclusion, and still did
+> not run its diagnostic first. The backtrace cost one env var and one run; each hypothesis cost a
+> commit.
 > nothing ships broken. **Gates on the shipped default: 14/14 byte-identical, safe default exit 0,
 > dummy==GL byte-identical, flight frame-150 98.7%, binary hash unchanged — gate valid.**
 >

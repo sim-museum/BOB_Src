@@ -83,6 +83,16 @@ public:
 	int		filehandle;
 	static	void*	makelink(FileNum,ULong fileoffset,ULong datasize,fileblocklink*&link);
 			//returns data area if already known
+#if defined(BOB_LINUX)
+	/* S159 (§8-MA84): read-only peek at a FileNum that is ALREADY open. The engine allows one
+	   open per FileNum globally (makelink serves reuse only from the FREED cache; finding the
+	   filenum in openfiles is a fatal), but RDialog::OnGetFile holds its block in a PER-DIALOG
+	   member -- so two parents drawing controls that share one piece of art kill the game.
+	   Callers BORROW: the pointer is valid for the draw (the holder only releases on its own
+	   next call, and a released block keeps its data in the freed cache) and must NOT be stored
+	   or deleted -- releasing someone else's block turns a clean quit into a use-after-free. */
+	static	void*	BOB_GetOpenFileData(FileNum filenum);
+#endif
 	Bool	breaklink();
 	static Bool	deletelink(ULong size);
 	static Bool	purgelink(FileNum);

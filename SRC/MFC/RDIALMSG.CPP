@@ -102,6 +102,28 @@ BYTE* DIALCLASS::OnGetFile(int filenum)
 //		if (!(filenum>0x6600 && filenum<0x7100))  //only directories 104..113
 		if (!(filenum>0x6600 && filenum<0x7200))  //only directories 104..113
 			return NULL;
+#if defined(BOB_LINUX)
+		/* S159 (§8-MA84): the engine allows ONE open per FileNum globally, but this block is
+		   held in m_pfileblock, a PER-DIALOG member -- so as soon as two different parents draw
+		   controls sharing one piece of art, the second to paint opens a block the first still
+		   holds and the game exits ("Opened file block (%x) again without closing!"). Nothing
+		   collided while only one thing painted per frame, which is why enabling the message
+		   dispatch (S158) is what exposed it: the bug is created by making a subsystem work.
+		   If somebody already holds it, BORROW their data -- valid for the draw, and deliberately
+		   NOT stored in m_pfileblock, because releasing a block we do not own would turn a clean
+		   quit into a use-after-free. BOB_NO_FILEBLK_SHARE reverts. */
+		if (!getenv("BOB_NO_FILEBLK_SHARE"))
+		{
+			void* shared=fileblocklink::BOB_GetOpenFileData((FileNum)filenum);
+			if (shared)
+			{
+				if (getenv("BOB_TRACE_FILEBLK"))
+					fprintf(stderr,"[fileblk] %x already open -- borrowing (dialog %p keeps m_pfileblock NULL)\n",
+						(unsigned)filenum,(void*)this);
+				return (BYTE*)shared;
+			}
+		}
+#endif
 		m_pfileblock=new fileblock((FileNum)filenum);//,PalTrans);
 		return (BYTE*)getdata(m_pfileblock);
 	}
