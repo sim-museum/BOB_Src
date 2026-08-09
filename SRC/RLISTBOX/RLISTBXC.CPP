@@ -1672,7 +1672,7 @@ void CRListBoxCtrl::OnMouseMove(UINT nFlags, CPoint point)
 				if (phintbox)
 				{
 					phintbox=(CDialog*)GetParent()->SendMessage(WM_GETHINTBOX,NULL,NULL);
-					phintbox->ShowWindow(SW_HIDE);
+					if (phintbox) phintbox->ShowWindow(SW_HIDE);   /* BOB_LINUX: unrouted ON_MESSAGE -> 0 */
 					phintbox=NULL;
 					ReleaseCapture();
 				}

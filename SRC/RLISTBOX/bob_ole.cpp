@@ -375,7 +375,10 @@ extern "C" void bob_ole_dump_template_membership(int dlgId) {
         if (h->dlgId != dlgId) continue;
         int m = bob_dlg_in_template(h->dlgId, h->ctrlId);
         if (m == 0) out_++; else in++;
-        if (h->ctrlId >= 1103 && h->ctrlId <= 1130)   /* the sweeps band, the ones in question */
+        /* S147: dump EVERY hosted control, not a guessed id band -- S146's guess (IDC_FIGHTERSWEEP*)
+           matched nothing, and the row we draw has to be identified by where it LANDS. Sorted by
+           the caller; y is what distinguishes the stray row from the six real target rows. */
+        if (h->sw > 0 && h->sh > 0)
             fprintf(stderr, "[tmpl] dlg=%d id=%d in_template=%d visible=%d rect=(%d,%d,%d,%d)\n",
                 h->dlgId, h->ctrlId, m, h->visible, h->sx, h->sy, h->sw, h->sh);
     }

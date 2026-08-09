@@ -1,5 +1,62 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S147 (2026-08-08, Sprint 147): five NULL derefs fixed in the R\* controls; and the #19 capture hunt ends with the real reason it keeps missing
+>
+> **S147.1 (SP.13) — the `WM_GETHINTBOX` NULL derefs, swept properly.** MA note 31 §2 warned that a
+> genuine handler may itself contain an unported call: `phintbox =
+> (CDialog*)GetParent()->SendMessage(WM_GETHINTBOX,NULL,NULL); phintbox->ShowWindow(SW_HIDE);` —
+> `ON_MESSAGE` is an empty macro here, so the send yields 0 and the next line derefs it. Rather than
+> trust the two sites I had read, I enumerated every one:
+>
+> | control | sites | unguarded |
+> |---|---|---|
+> | RCOMBO | 4 | 0 |
+> | RLISTBOX | 4 | 1 |
+> | RBUTTON | 4 | **4** |
+>
+> **`CRButtonCtrl` — the control a title bar *is* — had no guarded site at all.** Five derefs, all
+> fixed with the codebase's own safe spelling (`if (phintbox)`), six-line diff. Latent today only
+> because we fire events through the sink and never drive `OnLButtonUp`; wiring a real title-bar
+> click (SP.14's territory) walks straight into them. Note 19 to MA corrected with these counts —
+> my first version said "one safe, one unsafe", which understated it. (Also: the tree holds stale
+> case-variant duplicates — `rbuttonc.cpp` vs `RBUTTONC.CPP`; only the uppercase ones are in
+> `CMakeLists`, so patching the wrong one is silent no-op work.)
+>
+> **⭐ S147.2 — my own scaffold had MA's one-shot-static bug, in a hook written AFTER reading the
+> warning.** Four different dialogs blocked the #19 shot in turn — Directives, DirectiveResults,
+> Mission Folder, and a **"Take over? — Target confirmed. Dover CH under attack."** intercept prompt
+> — and I had been writing that up as *"the game keeps re-opening dialogs"*. Partly true (the
+> Directives popup genuinely re-arms; measured as an oscillation), but `bob_oob_close_dialogs` was
+> guarded by a function-local `static int done`, so the dismiss fired **once per process** and
+> everything opened later sailed past it. That is MA note 29 §3 exactly: harness code masquerading
+> as a game limitation. Fixed; **five more `static int done` hooks in the same file** are booked as
+> SP.15 for the same judgement.
+>
+> **⭐⭐ And then the fix exposed the real reason the capture keeps missing — the limit of SP.7.**
+> With the dismiss suppressing every blocking prompt, the campaign runs **faster**: the same recipe
+> that landed on 12 Aug 07:52 in S146 landed on **13 August** twice in S147, at both 340 and 150
+> paints after arming. **The scaffold changed the very quantity the capture timing depended on.**
+> SP.7 fixed drift caused by *queueing*; this is drift caused by *the harness altering the
+> simulation rate*, and no amount of paint-counting fixes it. A capture has to be armed on a
+> **game-state predicate** ("date == 12 Aug and packages > 0"), not on ticks or paints — booked as
+> **SP.16**, and it is what gold #19's clean capture actually needs.
+>
+> **Honest close: #19 is still not judged, and I stopped rather than iterate further.** Six capture
+> attempts across three sprints, each one producing a real finding and none producing a comparison
+> frame. The evidence that the raids exist is now overwhelming (routes, Mission Folder R001/Tangmere
+> AF, "Geschwader Landed [R002]/[R005]", a live intercept prompt on Dover CH), but a parity verdict
+> is a claim about a comparison and I do not have the comparison. SP.16 is the thing that unblocks
+> it; grinding more paint-count guesses would not have.
+>
+> **A characterisation worth recording for whoever does SP.16:** an unobstructed strategic map on a
+> live raid day may not be a state this game naturally sits in. It is a sequence of decision prompts,
+> by design — which is what the gold shot's human author could dismiss at will and a headless harness
+> cannot. Expect the predicate to need "no logged child on any toolbar" as one of its terms.
+>
+> Files: `SRC/RBUTTON/RBUTTONC.CPP`, `SRC/RLISTBOX/RLISTBXC.CPP` (5 guards),
+> `SRC/MFC/MAINFRM.CPP` (dismiss made repeatable), `SRC/RLISTBOX/bob_ole.cpp` (SP.8 probe widened
+> to every drawn control, after S146's id guess matched nothing). Cross-port: note 19 corrected.
+
 > ## S146 (2026-08-08, Sprint 146): the LW orders flow completes end-to-end — gold #19's RAIDS EXIST: packages built, routes drawn, geschwader flown and landed
 >
 > **The chain runs.** S145 proved the accept was hitting the wrong object; S146 found what the right

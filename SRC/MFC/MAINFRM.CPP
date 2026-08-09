@@ -1555,7 +1555,14 @@ extern "C" void bob_oob_accept_directives(void) {
 }
 
 extern "C" void bob_oob_close_dialogs(void) {
-	static int done = 0; if (done) return; done = 1;
+	/* S147: deliberately NOT one-shot. It was, and that is MA note 29 section 3's trap in my own
+	   scaffold: a drive hook guarded by a function-local `static done` fires once per PROCESS, so
+	   every dialog the game opened LATER sailed past it -- the Mission Folder, then the "Take over?"
+	   intercept prompt -- and I was writing that up as "the game keeps re-opening dialogs". Part of
+	   that was real (the Directives popup genuinely re-arms; measured as an oscillation), but part
+	   was this. A dismiss-for-capture hook must re-run: on a live raid day the campaign is a
+	   sequence of prompts, so whatever pops between arming and the shot has to be cleared too.
+	   Cheap: every call early-outs per toolbar when nothing is logged. */
 	/* S146: dialogs are logged per TOOLBAR, and a scaffold that walks only the misc toolbar leaves
 	   the others up -- the post-orders Mission Folder is logged on a different one, so
 	   MiscToolBar().LoggedChild() correctly said -1 while the folder still covered half the map.

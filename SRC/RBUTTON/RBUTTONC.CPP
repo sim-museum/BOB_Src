@@ -777,7 +777,7 @@ void CRButtonCtrl::OnLButtonUp(UINT nFlags, CPoint point)
 	if (phintbox)
 	{
 		phintbox=(CDialog*)GetParent()->SendMessage(WM_GETHINTBOX,NULL,NULL);
-		phintbox->ShowWindow(SW_HIDE);
+		if (phintbox) phintbox->ShowWindow(SW_HIDE);   /* BOB_LINUX: WM_GETHINTBOX is an unrouted ON_MESSAGE -> 0 */
 		phintbox=NULL;
 	}
 	CRect clientrect;
@@ -876,6 +876,7 @@ void  CRButtonCtrl::DisplayHint()
 	if (!phintbox)
 	{
 		phintbox=(CDialog*)GetParent()->SendMessage(WM_GETHINTBOX,NULL,NULL);
+		if (phintbox) {   /* BOB_LINUX: WM_GETHINTBOX is an unrouted ON_MESSAGE -> 0 */
 		CString realhint=" "+m_hintString+" ";
 		phintbox->SetWindowText(realhint);
 		CDC* pDC=phintbox->GetDC();
@@ -894,6 +895,7 @@ void  CRButtonCtrl::DisplayHint()
 		phintbox->MoveWindow(hinttopleft.x,hinttopleft.y,textsize.cx+2,textsize.cy+2);
 		phintbox->ShowWindow(SW_SHOW);
 		phintbox->ReleaseDC(pDC);
+		}   /* end BOB_LINUX phintbox guard */
 	}
 }
 
@@ -939,7 +941,7 @@ void CRButtonCtrl::OnMouseMove(UINT nFlags, CPoint point)
 		{
 			ReleaseCapture();
 			phintbox=(CDialog*)GetParent()->SendMessage(WM_GETHINTBOX,NULL,NULL);
-			phintbox->ShowWindow(SW_HIDE);
+			if (phintbox) phintbox->ShowWindow(SW_HIDE);   /* BOB_LINUX: unrouted ON_MESSAGE -> 0 */
 			if (m_LButtonDown)
 			{
 				m_LButtonDown=false;
@@ -1439,7 +1441,7 @@ void CRButtonCtrl::OnClose()
 	{
 		phintbox=(CDialog*)GetParent()->SendMessage(WM_GETHINTBOX,NULL,NULL);
 		ReleaseCapture();
-		phintbox->ShowWindow(SW_HIDE);
+		if (phintbox) phintbox->ShowWindow(SW_HIDE);   /* BOB_LINUX: unrouted ON_MESSAGE -> 0 */
 		phintbox=NULL;
 	}	
 	if (m_nTimer) KillTimer(m_nTimer);
