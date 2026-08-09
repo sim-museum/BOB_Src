@@ -1595,23 +1595,11 @@ extern "C" void bob_oob_close_dialogs(void) {
 		if (had >= 0)
 			fprintf(stderr,"[directives] toolbar %d: %d -> %d\n", tb, had, t->LoggedChild());
 	}
-	CMiscToolbar& mtb = MiscToolBar();
-	/* On an active campaign day the misc toolbar holds a STACK, not one dialog: the game opens
-	   DIRECTIVERESULTS (5), whose own code opens DIRECTIVES (6) on top of it (DIRRSULT.CPP:197).
-	   One CloseLoggedChildren() pass drops only the top, so loop until the toolbar reports
-	   nothing open (bounded -- never trust a close to be idempotent in one call). */
-	for (int pass = 0; pass < 8; pass++) {
-		int open = mtb.LoggedChild();
-		fprintf(stderr,"[directives] close pass %d: open-index=%d\n", pass, open);
-		if (open < 0) break;
-		mtb.CloseLoggedChildren();
-		if (mtb.LoggedChild() == open) {          /* no progress -> close that index explicitly */
-			bool still = mtb.CloseLoggedChild(open);
-			fprintf(stderr,"[directives]   explicit CloseLoggedChild(%d) -> %s\n",
-				open, still ? "STILL OPEN" : "closed");
-			if (still) break;
-		}
-	}
-	fprintf(stderr,"[directives] final open-index=%d\n", mtb.LoggedChild());
+	/* S150 (SP.18): the misc-toolbar-only loop that used to live here is GONE, not silenced.
+	   It dated from S143 when only that toolbar was swept; S146's all-toolbar loop above
+	   superseded it, and leaving it behind meant the stack was walked twice AND it printed
+	   ~2 lines per call unconditionally -- the residue of the same per-paint spam S148 fixed
+	   in the loop above but not here. Deleting redundant code beats making it quieter:
+	   the duplicate was also a second place for the dismiss policy to drift. */
 }
 #endif

@@ -2484,10 +2484,28 @@ void SaveData::InitPreferences(int wh)
 	int backupminsbetweensavegame=minsbetweensavegame;
 	//Do initialisation before here!!							//PD 11Feb99
 	FileNum	sgfile=File_Man.fakefile(FIL_SAVEGAMEDIR,"settings.cfg");
+#if BOB_LINUX
+	/* S150 (SP.20, env-gated, default-off): four parity rows (#6/#9/#10/#11) attribute their combo
+	   differences to "settings state". This is where that state would come from -- the installed
+	   build's SAVEGAME/settings.cfg. Report whether we find it and whether it PARSES, because the
+	   two answers mean opposite things: if it parses, our combos show saved values and any
+	   difference vs gold is genuine user state (out of scope for a port verdict); if it does not,
+	   we are showing factory defaults while gold shows saved ones, and the deviation is OURS.
+	   Note we build -fpack-struct=1, so a file written by the MSVC build is a plausible mis-parse.
+	   BOB_TRACE_PREFS. */
+	if (getenv("BOB_TRACE_PREFS"))
+		fprintf(stderr, "[prefs] settings.cfg exists=%d path=%s\n",
+			(int)File_Man.ExistNumberedFile(sgfile), File_Man.NameNumberedFile(sgfile));
+#endif
 	if (File_Man.ExistNumberedFile(sgfile))
 	{
 		BIStream bis(File_Man.NameNumberedFile(sgfile));
 		bis>>*this;
+#if BOB_LINUX
+		if (getenv("BOB_TRACE_PREFS"))
+			fprintf(stderr, "[prefs] parsed successfulLoad=%d  (0 => factory defaults are what the config screens show)\n",
+				(int)successfulLoad);
+#endif
 		if (!successfulLoad)
 		{
 			MessageBox(hWnd,LoadResString(IDS_CONFIGIGNORED),LoadResString(IDS_CHOOSEPREFS),MB_OK);

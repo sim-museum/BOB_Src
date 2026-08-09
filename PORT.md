@@ -1,5 +1,61 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S150 (2026-08-09, Sprint 150): gold #18's stray row was a CUT FEATURE's orphaned controls — found by dumping geometry instead of guessing ids
+>
+> **SP.8 — the "Sweeps" row identified, and it is not a visibility bug.** S146 guessed the row was
+> `IDC_FIGHTERSWEEP*` and the probe matched **nothing**, so S147 widened it to dump every drawn
+> control's id and rect on the dialog. The geometry answered immediately: the six real target rows
+> sit at y=317..447 with **12 controls each**, and there is an extra **11-control row at y=229**
+> whose ids are the `...7` members of the same families — index **7** of `FillTargetLists`'
+> `for (i=1;i<8;i++)`, i.e. **SWEEPSNDECOYS**. The game marks that branch dead:
+> `INT3; //This should not happen. Patrols removed.` (LWDIRECT.CPP:1626).
+>
+> **So the fighter-sweep feature was CUT from the shipped game — its logic is unreachable, but its
+> controls stayed in the BDG dialog template**, and our DDX/template hosting faithfully drew them,
+> on top of the "Ground Attack Gruppen" / "Escort Gruppen" headers. Suppressed by measured id
+> (`BOB_NO_SWEEPROW_SKIP` reverts); the headers now read cleanly and the six real rows are
+> untouched. Gold agrees because the shipped game has no sweep line.
+> Evidence: `doc/parity/native-strategic-directives-nosweep-2026-08-09.png`, sbs refreshed.
+>
+> **Residual, and explicitly NOT assumed to have the same cause:** the "Sweeps" *label* static and
+> the **"Escort 1:1"** row (`IDC_ESCORT_PROPORTION`, id 1680, y=195) still draw where gold shows
+> neither. But 1680 is **live code** — `LWDirectives` drives it with
+> `SetIndex(escortproportion/.19)` — so gold hiding it needs a different explanation than "cut
+> feature". Booked as **SP.21** with that warning attached, because the one thing this thread has
+> taught reliably is that a plausible explanation for the neighbouring control is not evidence.
+>
+> **SP.18 — the logging sweep found a redundancy, not just noise.** An audit of all 16 scaffold
+> hooks showed exactly one repeatable hook with logging (`bob_oob_close_dialogs`) — and that S148's
+> fix had silenced only its *first* loop. Reading the rest revealed the tail was **superseded**:
+> S146's all-toolbar sweep had replaced the S143 misc-only loop, so the stack was walked twice and
+> the dismiss policy had two places to drift. **Deleted rather than quietened.**
+>
+> **SP.20 — instrumented, deliberately not concluded.** The four "combo values (settings state)"
+> rows would source their values from the install's `SAVEGAME/settings.cfg` (1976 bytes, present),
+> which `SaveData::InitPreferences` reads — falling back to factory defaults + an `IDS_CONFIGIGNORED`
+> box when `successfulLoad` is false. The two outcomes mean **opposite** things: parses → our combos
+> show saved values and any gold difference is genuine user state (out of scope for a port verdict);
+> fails → we show defaults against gold's saved values and the deviation is **ours**. A `-fpack-struct=1`
+> mis-parse of an MSVC-written struct is the obvious suspect and is exactly the shape of hypothesis
+> that has been wrong five times in this thread, so `BOB_TRACE_PREFS` prints the answer instead.
+>
+> **⭐ MEASURED, and it is the uncomfortable branch:**
+> ```
+> [prefs] settings.cfg exists=1 path=...\savegame\settings.cfg
+> [prefs] parsed successfulLoad=0   (0 => factory defaults are what the config screens show)
+> ```
+> **The port finds the installed build's saved settings and fails to parse them**, falling back to
+> factory defaults. Gold, running the same install under Wine, parsed them. So the four
+> "combo values (settings state)" deviations on #6/#9/#10/#11 are **not user state and not out of
+> scope — they are ours**, and four parity rows have been carrying a defect described as cosmetic.
+>
+> **And the impact is larger than parity:** the port silently ignores the player's saved
+> preferences — every run starts at factory defaults, and `SavePreferences()` writes a file the next
+> run will reject. That is a product-level gap that a screen-parity note had been quietly absorbing.
+> Booked as **SP.22** (make `settings.cfg` parse), with the `-fpack-struct=1`-vs-MSVC-layout suspicion
+> recorded as a lead to *test*, not a conclusion: `successfulLoad=0` is the fact; the reason is next
+> sprint's measurement.
+
 > ## S149 (2026-08-08, Sprint 149): the gate certifies its own validity — and a deliberate audit finds a THIRD verdict resting on a state mismatch
 >
 > **SP.19 — `tools/bob_gates.sh`, versioned, with an integrity check.** The gate suite had been a

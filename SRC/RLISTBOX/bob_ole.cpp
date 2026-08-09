@@ -165,6 +165,27 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            never be created by the Windows dialog manager -- don't draw it (e.g. CSSound's
            source-only music combos over the BDG IDD_SSOUND layout). Dialogs the PE doesn't
            cover return -1 (no filtering). Zeroed hit rect keeps clicks consistent. */
+        /* S150 (SP.8, gold #18): the LW Directives grid draws a SEVENTH target row that gold shows
+           nowhere, overprinting the "Ground Attack Gruppen"/"Escort Gruppen" headers. Measured, not
+           guessed: a per-control dump (BOB_TRACE_DIR=<dlg>) put the six real rows at y=317..447 with
+           12 controls each and an extra 11-control row at y=229 whose ids are the ...7 members of the
+           same families -- i.e. index 7 of FillTargetLists' `for (i=1;i<8;i++)`, which is
+           SWEEPSNDECOYS. The game marks that branch DEAD (`INT3; //This should not happen. Patrols
+           removed.` LWDIRECT.CPP:1626): the feature was cut, its logic is unreachable, but its
+           controls stayed in the BDG template so our DDX/template hosting still draws them. Skip
+           them -- the shipped game has no fighter-sweep line, which is exactly what gold shows.
+           BOB_NO_SWEEPROW_SKIP reverts. (S146's IDC_FIGHTERSWEEP* guess was wrong; these are the
+           real ids.) */
+        static int noSweepSkip = -1;
+        if (noSweepSkip < 0) noSweepSkip = getenv("BOB_NO_SWEEPROW_SKIP") ? 1 : 0;
+        if (!noSweepSkip && host->dlgId == 1032) {
+            static const int deadSweepRow[] = { 1468, 2227, 2247, 2267, 2277, 2287,
+                                                2297, 2307, 2327, 2337, 2377 };
+            bool dead = false;
+            for (unsigned k = 0; k < sizeof(deadSweepRow)/sizeof(deadSweepRow[0]); k++)
+                if (host->ctrlId == deadSweepRow[k]) { dead = true; break; }
+            if (dead) { host->sw = host->sh = 0; continue; }
+        }
         if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; continue; }
         DluRect r;
         /* SP.2 (S123): look the rect up SCOPED to the control's own dialog template first.
