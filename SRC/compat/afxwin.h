@@ -69,9 +69,38 @@ struct tagHELPINFO; struct COleControlSite;
  * Message-map / runtime-class macros — all no-ops. BoB's handlers are wired by
  * these on Windows; on Linux input/events are driven by SDL, so we drop them.
  * ============================================================ */
-#define DECLARE_MESSAGE_MAP()
-#define BEGIN_MESSAGE_MAP(theClass, baseClass)
-#define END_MESSAGE_MAP()
+/* S158: the message map is REAL now. It used to expand to nothing (see the
+   comment above: "on Linux input/events are driven by SDL, so we drop them") --
+   a reasonable-sounding early decision that silently killed 16 of the 20 WM_*
+   routes the game sends, several of which have real implemented handlers.
+   S157 measured four of them firing and dying in one ordinary run.
+
+   DECLARE_MESSAGE_MAP declares a static member so that the thunks emitted by
+   ON_MESSAGE (inside its out-of-line definition) can reach the game's own
+   `MSG2_*` adapters, which are `private:`. It leaves access at `protected:`,
+   matching real MFC, because it is conventionally the last line of a class body.
+   Dispatch itself is gated: BOB_MSG_DISPATCH must be set (S158 lands it
+   default-off; registration is inert until then). */
+extern "C" void bob_msgmap_add(const void* tinfo, unsigned msg, long (*fn)(void*, int, int));
+extern "C" void bob_msgmap_chain(const void* derived, const void* base);
+extern "C" void bob_msgmap_probe(const void* tinfo, int (*fn)(void*));
+extern "C" int  bob_msgmap_call(const void* tinfo, unsigned msg, void* self, int a, int b, long* out);
+extern "C" void bob_msgmap_stats(int* entries, int* classes);
+
+#define DECLARE_MESSAGE_MAP() \
+ public: \
+    static void bob_mm_register(); \
+ protected:
+#define BEGIN_MESSAGE_MAP(theClass, baseClass) \
+    static struct bob_mm_run_##theClass { \
+        bob_mm_run_##theClass() { theClass::bob_mm_register(); } \
+    } bob_mm_runinst_##theClass; \
+    void theClass::bob_mm_register() { \
+        typedef theClass BobMsgThisClass; \
+        bob_msgmap_chain(&typeid(theClass), &typeid(baseClass)); \
+        bob_msgmap_probe(&typeid(theClass), [](void* p) -> int { \
+            return dynamic_cast<theClass*>((CWnd*)p) != 0; });
+#define END_MESSAGE_MAP() }
 #define DECLARE_DYNAMIC(class_name)   public: virtual class CRuntimeClass* GetRuntimeClass() const { return 0; }
 #define IMPLEMENT_DYNAMIC(class_name, base_class)
 /* DECLARE_DYNCREATE declares the CreateObject factory bob hand-defines/registers */
@@ -237,7 +266,14 @@ public: \
 #define ON_COMMAND_RANGE(id1, id2, memberFxn)
 #define ON_UPDATE_COMMAND_UI(id, memberFxn)
 #define ON_CONTROL(code, id, memberFxn)
-#define ON_MESSAGE(message, memberFxn)
+/* S158: register the row. The thunk calls the game's uniform MSG2_ adapter
+   (GLOBDEFS.H: `LRESULT MSG2_<fn>(int,int)`), which normalises the handlers'
+   0/1/2-arg, void/non-void signatures. Emitted inside theClass::bob_mm_register,
+   so private MSG2_ members are reachable. */
+#define ON_MESSAGE(message, memberFxn) \
+    bob_msgmap_add(&typeid(BobMsgThisClass), (unsigned)(message), \
+        [](void* w, int a, int b) -> long { \
+            return (long)((BobMsgThisClass*)w)->MSG2_##memberFxn(a, b); });
 #define ON_NOTIFY(code, id, memberFxn)
 #define ON_BN_CLICKED(id, memberFxn)
 #define ON_EN_CHANGE(id, memberFxn)
@@ -944,6 +980,15 @@ public:
             char* buf = (char*)l;
             int mx = (unsigned char)buf[0]; if (mx <= 0 || mx > 99) mx = 99;
             return (LRESULT)bob_load_string(NULL, (unsigned)w, buf, mx);
+        }
+        /* S158: try the real message map before giving up. Gated on BOB_MSG_DISPATCH while it
+           earns its keep -- the registration above is inert until this runs. Keyed on the
+           object's DYNAMIC type and walked up the base chain (§8z: exact-type matching is what
+           made every base-registered OCX event dead for the port's whole life). */
+        if (getenv("BOB_MSG_DISPATCH")) {
+            long r = 0;
+            if (bob_msgmap_call(&typeid(*this), m, (void*)this, (int)w, (int)l, &r))
+                return (LRESULT)r;
         }
         /* S157 (SP.24): this dispatcher is an ALLOWLIST OF THREE and answers 0 for every other
            route the game sends -- the §8-MA83 class, and the same silent-success shape as the

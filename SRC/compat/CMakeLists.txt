@@ -9,6 +9,7 @@ add_library(bob_compat STATIC
     cstring_impl.cpp
     bob_stubs.cpp
     bob_video.cpp
+    bob_msgmap.cpp
     bob_resources.cpp
     bob_threads.cpp
     bob_gdi_font.cpp

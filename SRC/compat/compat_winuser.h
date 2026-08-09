@@ -77,6 +77,14 @@ extern "C" {
 #define WM_ENTERSIZEMOVE    0x0231
 #define WM_EXITSIZEMOVE     0x0232
 #define WM_USER             0x0400
+/* S158: MFC private message (afxpriv.h). RDialog/CMainFrame/RToolBar each register
+   ON_MESSAGE(WM_COMMANDHELP, OnCommandHelp), but while ON_MESSAGE expanded to nothing
+   its `message` argument was never evaluated, so the constant never had to exist --
+   the empty macro hid a missing definition as well as discarding the registration
+   (§8-MA91, and the same shape as the CString operator+ overloads S158 also uncovered). */
+#ifndef WM_COMMANDHELP
+#define WM_COMMANDHELP      0x0365
+#endif
 /* additional window messages used by bob's MFC UI */
 #ifndef WM_SETFONT
 #define WM_SETFONT          0x0030

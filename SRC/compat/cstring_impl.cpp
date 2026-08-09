@@ -273,6 +273,37 @@ CString AFXAPI operator+(LPCTSTR lpsz, const CString& string)
 	return s;
 }
 
+/* S158: the single-character overloads. CSTRING.H declares four of these -- the
+   TCHAR pair and the char pair -- but `typedef char TCHAR`, so each pair is one
+   signature and these two definitions satisfy all four declarations.
+
+   They were missing for the port's entire life and NOTHING ever failed to link,
+   because every call site sat behind a test the optimizer could fold away. The
+   hint-box path is the example that exposed them (RLISTBXC.CPP:1700):
+
+       phintbox = (CDialog*)GetParent()->SendMessage(WM_GETHINTBOX, NULL, NULL);
+       if (phintbox) { CString realhint = CString(' ') + str + ' '; ... }
+
+   compat's SendMessage was an allowlist of three that returned a literal 0 for
+   WM_GETHINTBOX, and it was inline, so the compiler proved phintbox NULL, deleted
+   the block, and never emitted the operator+ call. Giving SendMessage a real
+   dispatch (S158) made the branch opaque, the code reachable, and the gap a link
+   error. Dead routes were hiding dead CODE -- the linker cannot warn about a
+   function nobody calls. */
+CString AFXAPI operator+(const CString& string, TCHAR ch)
+{
+	CString s;
+	s.ConcatCopy(string.GetData()->nDataLength, string.m_pchData, 1, &ch);
+	return s;
+}
+
+CString AFXAPI operator+(TCHAR ch, const CString& string)
+{
+	CString s;
+	s.ConcatCopy(1, &ch, string.GetData()->nDataLength, string.m_pchData);
+	return s;
+}
+
 /* ---- search --------------------------------------------------------------- */
 int CString::Find(TCHAR ch) const
 {

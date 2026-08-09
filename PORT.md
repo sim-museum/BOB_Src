@@ -1,5 +1,73 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S158 (2026-08-09, Sprint 158, PARTIAL): the message map is real — 16 dead routes now dispatch, and doing so trips §8-MA84
+>
+> S157 found `CWnd::SendMessageA` was an **allowlist of three** and that
+> `DECLARE_MESSAGE_MAP`/`BEGIN_MESSAGE_MAP`/`ON_MESSAGE`/`END_MESSAGE_MAP` all expanded to
+> **nothing** — so every `ON_MESSAGE` row in the game was decorative and 16 of the 20 `WM_*` types
+> the game sends died returning 0. S158 implements the dispatch. **Default-off (`BOB_MSG_DISPATCH`);
+> gates clean on the shipped default.**
+>
+> **Mechanism.** `DECLARE_MESSAGE_MAP` declares a per-class static member; `BEGIN_MESSAGE_MAP`
+> defines it; `ON_MESSAGE` registers a thunk onto the game's own `MSG2_*` adapter (`GLOBDEFS.H`),
+> which already normalises the handlers' 0/1/2-arg, void/non-void signatures into a uniform
+> `LRESULT(int,int)` — the original authors' answer to the same problem, and what the Windows branch
+> of that macro does. The thunk must be emitted inside a class member because `MSG2_*` are `private:`.
+>
+> **Four things the stubs were hiding, each exposed by removing the previous one:**
+>
+> | step | surfaced | why invisible |
+> |---|---|---|
+> | real `SendMessage` | `operator+(CString const&, char)` ×2 undefined | call sites sat behind `if (ptr)` where the stub returned a **compile-time constant 0**, so the optimizer deleted the branch and the reference was never emitted |
+> | real `ON_MESSAGE` | `WM_COMMANDHELP` undeclared ×3 | the empty macro never evaluated its `message` argument, so the constant never had to exist |
+> | — | **the stub existed in TWO layers** | `GLOBDEFS.H` `#undef`s and re-stubs `ON_MESSAGE` under `BOB_LINUX`, winning over `compat/afxwin.h` |
+> | dispatch enabled | **`FATAL: Opened file block (6d12) again without closing!`** | the `WM_GETFILE`/`WM_RELEASELASTFILE` protocol had never run at all |
+>
+> The two-layer stub is the one that would have shipped as a **silent success**: the first
+> implementation compiled, defined 146 register functions, and registered **nothing**. Caught by
+> counting call sites before testing behaviour — `bob_msgmap_chain` 296, `bob_msgmap_add` **0**.
+> (Checking for the per-class registrar *objects* instead would have misled: they are empty structs
+> whose constructors GCC inlines into `_GLOBAL__sub_I`, so `nm | grep runinst_` reads zero even when
+> registration works.)
+>
+> **Census, measured.** All 16 `WM_USER` routes + `WM_COMMANDHELP` register (86 handler rows).
+> First run:
+> ```
+> DISPATCHED 0x401 WM_GETARTWORK      -> RFullPanelDial (depth 0) = 27922
+> DISPATCHED 0x402 WM_GETXYOFFSET     -> CRToolBar      (depth 1) = 65280
+> DISPATCHED 0x405 WM_RELEASELASTFILE -> CRToolBar      (depth 1) = 0
+> ```
+> **`depth 1` demonstrates the base-class walk** — the §8z failure mode (exact `type_info` match, no
+> walk, which made every base-registered OCX event dead for the port's life) avoided *and shown*, not
+> asserted. `27922` matches `fe_art=27922` in the shot-state banner: a real art FileNum.
+>
+> **A prediction written down before the run, then confirmed.** The declared map bases are often not
+> the real bases — `LWDirectives` declares `CDialog`, actually derives from `RowanDialog`, and has
+> **no `ON_MESSAGE` rows of its own** — so the chain could not reach `RDialog`'s handlers for derived
+> dialogs. The census showed the same ids both dispatched *and* unhandled, exactly as predicted. Only
+> then was the fallback implemented: each class also registers a `dynamic_cast<T*>` probe, and a
+> lookup that exhausts the declared chain scans probes (miss-path only). Result: **`unhandled=0`**,
+> 13 dispatches via probe to `RDialog`.
+>
+> **Then it hit §8-MA84 and that is where the sprint stops.** With every route live, the run dies:
+> `FILEMAN.CPP: Opened file block (6d12) again without closing!` — MiG Alley's documented hazard
+> (*"`OnGetFile` holds its block PER DIALOG, but the engine allows one open per FileNum"*), reached
+> from the other side. This port has **never executed** that open/release protocol, so its
+> bookkeeping has never had to balance.
+>
+> **Leading hypothesis, not a conclusion:** the probe scan takes the *first* matching registered
+> class, and `MSG2_*`/`OnGetFile` are **not virtual**, so a derived dialog can get `RDialog`'s
+> handler where an override exists, unbalancing get against release. Candidate fixes: prefer the
+> **most-derived** matching class; or resolve get/release to the same class. → **S159.**
+>
+> **Honest status: the mechanism lands, the protocol does not.** Dispatch stays default-off, so
+> nothing ships broken. **Gates on the shipped default: 14/14 byte-identical, safe default exit 0,
+> dummy==GL byte-identical, flight frame-150 98.7%, binary hash unchanged — gate valid.**
+>
+> **The failure is evidence the fix is real.** Sixteen routes were answering 0; making them work
+> means handlers now run, acquire resources and must be balanced. A port that has never executed a
+> protocol has never had to be correct about it.
+
 > ## S157 (2026-08-09, Sprint 157): a click driven from a REAL SDL event, end to end — and the message dispatcher is an allowlist of three
 >
 > S156's retro asked, for each capability, *what actually drives it* — and split scaffolds into

@@ -380,3 +380,45 @@ each registered class also records a `dynamic_cast<T*>` probe, and a lookup that
 declared chain scans probes for a class that both handles the message and matches the object. It is
 inheritance-correct whatever the map declares, and costs nothing on the hit path (miss-only).
 148 probes registered, 86 handler rows.
+
+### 7f. The probes fix the misses — and immediately trip §8-MA84
+
+Second census, with the `dynamic_cast` probe fallback:
+
+```
+probe-dispatched=13   total-dispatched=14   unhandled=0
+  12  RDialog (via probe) -> 0
+   1  RDialog (via probe) -> 144837792
+```
+
+**`unhandled=0`.** Every receiver the declared chain could not reach is now served, and the routes
+land on `RDialog`'s real handlers. The §7d fallback does what it was designed to do.
+
+**And the run then died:**
+
+```
+FILEMAN.CPP(1562): *** FATAL: Opened file block (6d12) again without closing!
+```
+
+This is **§8-MA84** exactly — *"`OnGetFile` holds its block PER DIALOG, but the engine allows one
+open per FileNum — two dialogs sharing one icon is fatal."* MiG Alley hit it from the other side.
+The port has never run the `WM_GETFILE` / `WM_RELEASELASTFILE` open/release protocol at all,
+because both routes died in the allowlist; switching them on activates a stateful protocol whose
+bookkeeping has never once had to balance.
+
+**Leading hypothesis (NOT yet confirmed):** the probe scan takes the *first* registered class that
+both handles the message and matches the object. `MSG2_*`/`OnGetFile` are **not virtual**, so for a
+derived dialog the scan can select `RDialog`'s handler where a more-derived override exists —
+unbalancing get against release. Fixes to evaluate, in order of preference:
+1. prefer the **most-derived** matching class (order probes by depth, or prefer a class whose probe
+   matches while no other matching class derives from it);
+2. pair get/release on the same resolved class, so both halves always route identically.
+
+**Status: mechanism lands, protocol does not.** Dispatch stays **default-off** (`BOB_MSG_DISPATCH`),
+so nothing ships broken, and the shipped default is gate-verified separately. Enabling it by default
+is blocked on the file-block pairing — that is S159, and it is a *game-protocol* problem now, not a
+dispatch problem.
+
+**Worth stating plainly:** this failure is evidence the fix works. Sixteen dead routes were
+returning 0; restoring them means real handlers now run, hold resources, and must be balanced. A
+port that has never executed a protocol has never had to be correct about it.
