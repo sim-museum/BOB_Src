@@ -55,10 +55,21 @@
 > from the other side. This port has **never executed** that open/release protocol, so its
 > bookkeeping has never had to balance.
 >
-> **Leading hypothesis, not a conclusion:** the probe scan takes the *first* matching registered
-> class, and `MSG2_*`/`OnGetFile` are **not virtual**, so a derived dialog can get `RDialog`'s
-> handler where an override exists, unbalancing get against release. Candidate fixes: prefer the
-> **most-derived** matching class; or resolve get/release to the same class. → **S159.**
+> **⚠️ My first hypothesis was wrong, and the answer was already in the shared notes.** I guessed the
+> probe scan was picking `RDialog`'s non-virtual handler over a derived override. **§8-MA84 already
+> has the root cause** — and had explicitly predicted this moment for BoB (*"your map OOB dialogs are
+> the same shape, and the moment they paint alongside the toolbars you will meet this"*).
+> Real mechanism: `RDialog::OnGetFile` stores its block in **`m_pfileblock`, a per-dialog member**,
+> while the engine allows **one open per FileNum globally** — so two different parents drawing art
+> that shares a FileNum collide, and the second to paint exits the game. Nothing collides while only
+> one thing paints per frame, which is why **the bug is created by making a subsystem work.**
+> Fix (also specified there): a read-only accessor for an already-open FileNum, with `OnGetFile`
+> serving that block's data instead of duplicating the open, and **not** storing the borrowed block
+> in `m_pfileblock` (releasing someone else's block turns a quit into a use-after-free); plus a
+> `backtrace()` behind an env var at the fatal branch. → **S159.**
+>
+> **Process note:** I maintain and sync those notes every sprint and still guessed before looking.
+> Check the cross-port notes for the *symptom* before forming a mechanism.
 >
 > **Honest status: the mechanism lands, the protocol does not.** Dispatch stays default-off, so
 > nothing ships broken. **Gates on the shipped default: 14/14 byte-identical, safe default exit 0,

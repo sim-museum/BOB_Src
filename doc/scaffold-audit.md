@@ -406,13 +406,31 @@ The port has never run the `WM_GETFILE` / `WM_RELEASELASTFILE` open/release prot
 because both routes died in the allowlist; switching them on activates a stateful protocol whose
 bookkeeping has never once had to balance.
 
-**Leading hypothesis (NOT yet confirmed):** the probe scan takes the *first* registered class that
-both handles the message and matches the object. `MSG2_*`/`OnGetFile` are **not virtual**, so for a
-derived dialog the scan can select `RDialog`'s handler where a more-derived override exists —
-unbalancing get against release. Fixes to evaluate, in order of preference:
-1. prefer the **most-derived** matching class (order probes by depth, or prefer a class whose probe
-   matches while no other matching class derives from it);
-2. pair get/release on the same resolved class, so both halves always route identically.
+**⚠️ My first hypothesis here was wrong, and the answer was already written down.** I guessed the
+probe scan was selecting `RDialog`'s non-virtual handler over a derived override, unbalancing get
+against release. **§8-MA84 in the shared notes already has the root cause** — and had already
+predicted this exact moment for BoB: *"your map OOB dialogs are the same shape, and the moment they
+paint alongside the toolbars you will meet this."*
+
+The real mechanism: `RDialog::OnGetFile` opens a `fileblock` and stores it in **`m_pfileblock`, a
+per-dialog member**, holding it until that dialog's own next `OnGetFile`/`OnReleaseLastFile`. The
+engine allows **one open per FileNum globally** (`fileblocklink::makelink` serves reuse only from the
+*freed* cache; finding the FileNum in `openfiles` is the fatal). So the moment two *different*
+parents draw controls sharing one piece of art, the second to paint opens a block the first still
+holds, and the game exits. Nothing collides while only one thing paints per frame — **the bug is
+created by making a subsystem work, not by breaking one.**
+
+**The fix is specified there too:** add a read-only `fileman` accessor for an already-open FileNum
+and have `OnGetFile` serve that block's data instead of duplicating the open — and **do not store
+the borrowed block in `m_pfileblock`**, because releasing someone else's block turns a clean quit
+into a use-after-free. Plus the diagnostic MA recommends: a `backtrace()` behind an env var at the
+fatal branch, since this family "has now been diagnosed three times across the two ports and *each*
+time the mechanism was argued about first and traced second".
+
+**Lesson for me, not for the code:** the shared notes are a place to *look things up*, not only to
+write to. I had the answer in a file I maintain and sync every sprint, and still reached for a guess
+first. Cost: one wrong hypothesis published in two documents. Check the cross-port notes for the
+symptom **before** forming a mechanism.
 
 **Status: mechanism lands, protocol does not.** Dispatch stays **default-off** (`BOB_MSG_DISPATCH`),
 so nothing ships broken, and the shipped default is gate-verified separately. Enabling it by default
