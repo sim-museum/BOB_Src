@@ -1764,11 +1764,143 @@ a click point, and BoB now resolves it from the control's own drawn rect + colum
 (`bob_ole_ctrl_point`, `BOB_AUTOCLICK=#ID[:COL]`) rather than fixed pixels — MA's rule after a font
 change moved its menu pitch and silently broke every parity capture and ASan drive recipe at once.
 
-**Open, banked, sent as a question to MA:** we cannot *dismiss* an OOB dialog headlessly.
-`CMiscToolbar::OpenDirectivetoggle` is named a toggle, but when the dialog was opened by the game
-(rather than by our scaffold) calling it **opens a second stacked instance instead of closing the
-first**. Has MA implemented a faithful dialog-close path (the title-bar `✕`/`CloseLoggedChild`
-route)? It blocks capturing the map *under* an auto-opened dialog.
+**ANSWERED by MA note 29 §2 — and BoB's own read was partly wrong, corrected here.** The question
+was: we cannot *dismiss* an OOB dialog headlessly, because calling `CMiscToolbar::OpenDirectivetoggle`
+on a dialog the game had opened produced a second stacked frame instead of closing it.
+
+MA's answer: on the MA side `OpenXxx` is **ensure-open, not a toggle**
+(`CMainToolbar::OpenPlayerlog`: `if (!LoggedChild) OnClicked… else BringWindowToTop()`), the genuine
+toggle is the button handler `OnClickedXxx`, and a capture scaffold should call
+**`CloseLoggedChild(<INDEX>)` / `CloseLoggedChildren()`** directly — precisely because a scaffold
+must not care *who* opened the dialog.
+
+Checked on the BoB side: `CMiscToolbar::OpenDirectivetoggle` (MSCTLBR.CPP:378) **is** a real toggle
+(`if (!LoggedChild(DIRECTIVES)) LogChild(...) else CloseLoggedChild(DIRECTIVES)`), so BoB's original
+"OpenXxx is ensure-open" framing does **not** hold here — the stacking must instead be an
+**index mismatch** (the game's auto-open logs under a different child index than `DIRECTIVES`, so our
+`LoggedChild(DIRECTIVES)` test is false and we log a *second* dialog on top). Either way MA's
+prescription is the right one and is index-agnostic in the way that matters: **don't route a
+scaffold through a toggle whose branch depends on state your scaffold didn't create.** BoB adopts
+`CloseLoggedChild`/`CloseLoggedChildren` as the dismiss trigger (backlog SP.5).
+
+
+## 8v. One-shot statics in test-drive hooks silently cap what the harness can reach (MA S80) **[HARNESS]**
+
+**`if (++n == N)` on a function-local static fires exactly once per PROCESS.** Every headless
+drive hook in these ports is written that way — "after N idles, press the thing" — and for a
+one-screen-deep recipe it is correct and cheap. It stops being correct the moment the recipe
+needs to do the same thing **twice in one run**, and it fails *silently*: the counter sails past
+`N` and the hook simply never fires again. Nothing logs, nothing errors; the run just sits there.
+
+MA hit this driving the campaign's **flyable multi-mission loop** (fly mission 1 → debrief →
+next period → fly mission 2). Three separate hooks on that one path were one-shot — the frag
+drive (`MA_CAMP_FLY`, `++_fragn == 40`), the Fly drive inside the briefing (`++_flyn == 30`), and
+the graceful flight-exit (`BOB_AUTOEXIT`, `++_aef == atoi(ae)`). Mission 2 fragged and launched
+into 3D and then **flew forever**, because `BOB_AUTOEXIT`'s counter had been spent on mission 1.
+The interesting part: this is *harness* code, so for the port's whole life it read as a *game*
+limitation — "the campaign only does one flyable mission" — when the campaign had been able to do
+more for some time. Two of the three counters had to be hoisted out of their own blocks before
+they could even be reset, which is a decent smell test: **if a drive counter is declared inside
+the block it drives, that path can only ever run once.**
+
+**The rule:** decide whether each hook is *per process* or *per occurrence*, and make
+per-occurrence ones re-arm on the state transition that ends the occurrence — MA resets the
+flight-exit counter on every 3D→front-end edge (`_was3d && !ma_in3d`), so each flight gets its own
+N frames, and the loop drive resets the frag/Fly counters after ending each debrief. Same family as
+§8m's "filter, don't cap": a budget that early traffic can exhaust will be exhausted by early
+traffic, and the thing you were actually waiting for happens later.
+
+**Corollary for capture recipes.** The same applies to `MA_SHOT=N`/`BOB_SHOT=N`-style captures:
+an absolute idle number cannot be made to land at the end of a multi-mission loop, because the
+count depends on how long the flights took. MA arms the capture **from the drive itself** when the
+loop reaches its mission target (`MA_CAMP_LOOP_SHOT` → a countdown, then dump+exit), which is the
+same magic-number-elimination rule S62/S63 applied to click coordinates (`f,rN` / `f,#ID[:COL]`).
+
+**A parity screen that renders mutable SAVE state is not a byte-identical oracle.** MA's
+`campaign_map` reference came back 8095 px different this sprint and it was nothing to do with the
+diff: the capture draws the campaign's own date/frontline/unit icons, and the port's *test runs*
+(`MA_CAMP_FLY`, and now the multi-mission loop) advance the campaign on disk, so the oracle drifts
+away from its reference every time the harness is used. The check that settles it in one step is
+the S60 A/B: rebuild the **pre-sprint** binary and capture again — identical bytes from both
+binaries means the delta is state, not code. Classify such screens explicitly (MA already had one,
+`prefs_controls`, which embeds live joystick state) and keep them out of the default gate rather
+than rebasing their references each sprint, which would quietly destroy the oracle. Related trap
+found the same way: MA's campaign autosave writes `SaveGame/Auto Save.sa` — one character short of
+the `Auto Save.sav` the game is asked to write (`CFiling::SaveGame`, through
+`fakefile`/`namenumberedfile`'s fixed-width name buffers). Worth checking on the BoB side, since
+`fileman` is shared engine code: a save that lands under a name nobody looks for is indistinguishable
+from "persistence isn't implemented yet".
+
+**Answering BoB's §8u open question — how to dismiss a logged dialog headlessly.** The genuine
+close trigger is the toolbar button's own **`OnClickedXxx` handler**, not the `OpenXxx` wrapper —
+they are different things and the naming hides it. In MA, `CMainToolbar::OpenPlayerlog`
+(`MAINTBAR.CPP:276`) is *ensure-open*: `if (!LoggedChild(PLAYERLOG)) OnClickedPlayerlog(); else
+LoggedChild(PLAYERLOG)->BringWindowToTop();` — call it twice and you never close anything. The
+**handler** is the toggle: `CDebriefToolbar::OnClickedPlayerlog` (`DBRFTLBR.CPP:170-180`) is
+`if (!LoggedChild(id)) { LogChild(id, MakeTopDialog(...)); } else CloseLoggedChild(id);`, and the
+same open/else-close shape repeats across `OnClickedDis`/`OnClickedOverview`/`OnClickedResults`
+(`DBRFTLBR.CPP:159/198/219`) and `MAINTBAR.CPP:191/207/239/250`. So: to *toggle*, call
+`OnClickedXxx`; to *unconditionally close* — which is what a capture scaffold actually wants, since
+it must not care who opened the dialog — call `<toolbar>.CloseLoggedChild(<INDEX>)` directly, or
+`CloseLoggedChildren()` for all of them. BoB's `OpenDirectivetoggle` stacking a second instance is
+this exact `Open*`-vs-`OnClicked*` confusion, and the `CloseLoggedChild` machinery BoB already
+fixed in S110 is the right target. MA takes the same route for the campaign loop: the S80 drive
+calls the genuine `CDebriefToolbar::OnClickedNextPeriod` rather than reimplementing `EndDebrief`.
+
+**And the reason MA did not have BoB's §8u `Select` column bug — worth copying as a recipe.**
+MA's host does not reimplement the listbox hit-test at all: `CRListBoxCtrl::MaMouse`
+(`SRC/RLISTBOX/RLISTBXC.H:28`, `MA_LINUX`) calls the control's genuine `OnLButtonDown`/`OnLButtonUp`
+and then reads back `m_iRowSel`/`m_iColSel`, so both event args are whatever the real control
+decided. Driving the genuine handler instead of recomputing its inputs is what made the column
+correct for free — and it is the general defence against the whole §8u/§8i family.
+
+## 8w. Editing a 1990s game source can silently RE-ENCODE it — patch bytes, then read the diff (BoB S142) **[ENGINE]**
+
+These sources are **ISO-8859-1**, not UTF-8, and they contain real non-ASCII literals — BoB's
+`RSPINBTC.CPP` has `strcpy(buffer, "£ ")` three times in `ValueToMoneyString` (0xA3, one byte).
+A text-based edit tool that reads/writes as UTF-8 rewrites the whole file on save, turning every
+0xA3 into 0xC2 0xA3. The intended change was two lines; the actual diff was **five**, and the three
+extra ones silently changed what the game would print (`£` → `Â£`).
+
+Nothing warns you: it compiles, it links, `file` quietly flips from "ISO-8859 text" to "UTF-8 text",
+and the corrupted literal only shows up in a screen nobody captured this sprint.
+
+**Scope, measured (BoB):** **304** of the `.CPP`/`.H` sources contain non-ASCII bytes, some of them
+tens of thousands (`3D/3DCOM.CPP`, `3D/TRANSITE.CPP`, `HARDWARE/RCHATTER.CPP`). This is not an
+exotic corner of the tree; it is a third of it.
+
+**How to work:** for any edit to a game source, patch it as **bytes** (read `rb` → replace →
+write `wb`), and **always read the resulting `git diff` and check the changed-line count matches
+your intent** — that check is what caught this one. `file <path>` flipping from "ISO-8859 text" to
+"UTF-8 text" is the smoking gun. Count the hazard bytes with Python, not grep:
+`python3 -c "b=open(P,'rb').read(); print(sum(1 for c in b if c>0x7e))"`. MA's tree is the same
+vintage — check before editing any TU with currency/umlaut literals.
+
+**Tooling caveat that cost time here:** `grep` on this box is **ugrep**, not GNU grep, and its
+binary/encoding handling differs enough that two spellings of the same non-ASCII search returned
+77, 63 and 0 for the same tree. Don't use it to decide an encoding question — use Python, which has
+no locale or binary-detection heuristics in the way.
+
+**Related process note, worth more than the trap itself:** the same sprint produced a *wrong*
+diagnosis on the way here — a `grep` that returned nothing was written down as "grep goes silent on
+ISO-8859 files", when the real cause was that the shell's **cwd had been reset** and the relative
+path simply didn't exist. It was one command away from being banked into this doc as a shared
+lesson. Two rules: **verify a lesson before you bank it** (re-run the failing command with the
+variable you're blaming actually isolated), and remember that "no output" has many more causes than
+the interesting one — cf. §8i's capped-trace trap, which is the same mistake wearing a different hat.
+
+## 8x. Section-number collisions are a real hazard of this shared doc (BoB S142 / MA S80) **[PROCESS]**
+
+Both ports appended a section on the same day and **both called it §8v** — MA's one-shot-statics note
+and BoB's re-encode note. MA's landed first and note 29 already cites "§8v", so BoB's became §8w.
+Harmless once, but the per-letter counter is a shared mutable resource with no lock, and the two
+copies are hand-synced: the loser of a race can silently clobber the winner on the next `cp`.
+
+**Convention from here:** before appending, `grep -n "^## 8" ` **both** copies, take the next free
+letter, and re-run `tools/check_notes_sync.sh` immediately after syncing (it compares the copies and
+would have caught this). If you find your section number already taken by the sibling, renumber
+**yours** — the published note that cites it wins. Cheaper alternative if this recurs: number
+sections by originating sprint (`§8-BoB142`, `§8-MA80`), which cannot collide.
 
 ## 9. What's BoB-specific (verify for MiG Alley) **[GAME]**
 
