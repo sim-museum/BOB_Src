@@ -820,6 +820,17 @@ void CSQuick1::OnTimer(UINT nIDEvent)
 void CSQuick1::OnTextChangedFamilylists(LPCTSTR Caption, short index) 
 {
 	currquickfamily = index;
+#if defined(BOB_LINUX)
+	/* S161b: record which family the event actually applied. S161 fixed the combo event firing
+	   with NO index argument (the handler got whatever the last radio/listbox click left in
+	   bob_evtA0), so "picking Dogfight launched Training/Takeoff". A play session afterwards could
+	   not be judged from the log at all, because nothing recorded the selection -- the user had to
+	   remember what they picked. Log it so the next session answers this from evidence.
+	   BOB_TRACE_QS=1. */
+	if (getenv("BOB_TRACE_QS"))
+		fprintf(stderr, "[qs] family index=%d -> currquickfamily=%d currquickmiss=%d\n",
+			(int)index, (int)currquickfamily, (int)currquickmiss);
+#endif
 	if (		(missionfamily[currquickfamily] > currquickmiss)
 			||	(missionfamily[currquickfamily+1] <= currquickmiss)		//RDH 20/03/00
 		)

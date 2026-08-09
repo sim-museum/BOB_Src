@@ -181,6 +181,7 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
 extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py);  /* S141 */
 extern "C" void bob_ole_dump_template_membership(int dlgId);  /* S146 (SP.8 probe) */
 extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog);       /* S160: hit-test target dump */
+extern "C" void bob_gdi_restore_mode(void);                   /* S162: back to the front-end mode */
 extern "C" int  bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int* h);  /* S160 */
 static int g_bobOleDraw = -1;
 static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_DRAW") ? 1 : 0; return g_bobOleDraw; }
@@ -626,6 +627,13 @@ int bob_process_flight_close(void)
 		if (id==IDOK) Rtestsh1::THISTHIS->OnOK();
 		else          Rtestsh1::THISTHIS->OnCancel();
 	}
+	/* S162: arm the one-shot capture on flight CLOSE, so a post-flight screen (the debrief) can be
+	   captured by STATE rather than by counting ticks. Front-end ticks pause while flying, so no
+	   tick number reliably lands after the return — three attempts at QS-3's repro missed for
+	   exactly that reason. S148's rule: no counter survives the harness changing the sim rate;
+	   only a state description does. Pairs with BOB_SHOT_AFTER=<n>. */
+	bob_shot_arm("flight-close");
+	bob_gdi_restore_mode();   /* S162: 3D ran 800x600; the front end lays out at 1024x768 */
 	if (g_bobActiveFP) {                       /* navigate back to a front-end screen */
 		g_bobActiveFP->OnFlyingClosed(NULL, id);
 		fprintf(stderr,"[startfly] back in front-end (InThe3D=%d)\n",(int)Inst3d::InThe3D());

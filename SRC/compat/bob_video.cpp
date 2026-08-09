@@ -84,6 +84,9 @@ static void gl_bind_thread(void)
 	g_glOwner = me;
 }
 static int g_scrW = 1024, g_scrH = 768;     /* current display-mode size */
+/* S162: the mode in force before the game first changed it — what the front end must get back
+   when a flight ends (the 3D view runs 800x600; the front end lays out at 1024x768). */
+static int g_origScrW = 0, g_origScrH = 0;
 static int g_traceVid = 0;
 
 #define VLOG(...) do{ if(g_traceVid) fprintf(stderr,"[vid] " __VA_ARGS__); }while(0)
@@ -128,6 +131,21 @@ static void ensure_window(int w, int h)
    instead of 0x0 (which made the front-end pick resolution 0 and size every panel to nothing). */
 extern "C" void bob_gdi_ensure_window(void) { ensure_window(g_scrW, g_scrH); }
 extern "C" void bob_gdi_screen_size(int* w, int* h) { if (w) *w = g_scrW; if (h) *h = g_scrH; }
+
+/* S162 (user-reported QS-3): put the display back to the mode the front end uses.
+   The 3D view runs 800x600; the front end lays out at 1024x768 and draws its menu row at y=710,
+   so while the framebuffer stays 800x600 that row is off the bottom — after ALT-X from a flight
+   the debrief had no reachable way back. DD_RestoreDisplayMode was a `{ return DD_OK; }` stub, but
+   fixing it was INERT: the game never calls it on this path (verified — the restore trace never
+   fired). So the port restores at the point it knows the front end has regained control: the
+   flight-close bridge. BOB_NO_RESTORE_MODE reverts. */
+extern "C" void bob_gdi_restore_mode(void) {
+    static const int off = getenv("BOB_NO_RESTORE_MODE") ? 1 : 0;
+    if (off || g_origScrW <= 0) return;
+    if (g_scrW == g_origScrW && g_scrH == g_origScrH) return;
+    fprintf(stderr, "[vid] restore front-end mode: %dx%d -> %dx%d\n", g_scrW, g_scrH, g_origScrW, g_origScrH);
+    ensure_window(g_origScrW, g_origScrH);
+}
 
 /* ====================================================================== *
  * Phase 2: DirectInput keyboard -> SDL.                                   *
@@ -1084,8 +1102,30 @@ static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSu
 static HRESULT DD_SetCooperativeLevel(IDirectDraw7* This, HWND h, DWORD f) {
 	GLDD7* dd=(GLDD7*)This; dd->hwnd=h; dd->coopFlags=f; ensure_window(g_scrW, g_scrH); return DD_OK;
 }
-static HRESULT DD_SetDisplayMode(IDirectDraw7*, DWORD w, DWORD h, DWORD, DWORD, DWORD) { ensure_window((int)w,(int)h); return DD_OK; }
-static HRESULT DD_RestoreDisplayMode(IDirectDraw7*) { return DD_OK; }
+static HRESULT DD_SetDisplayMode(IDirectDraw7*, DWORD w, DWORD h, DWORD, DWORD, DWORD) {
+	if (!g_origScrW) { g_origScrW = g_scrW; g_origScrH = g_scrH; }   /* S162: remember the front-end mode */
+	ensure_window((int)w,(int)h);
+	return DD_OK;
+}
+
+/* S162 (user-reported QS-3): this was `{ return DD_OK; }` — a stub that reports SUCCESS and does
+   nothing, the same class as compat's SendMessage allowlist (§8-MA83) and the empty ON_MESSAGE
+   macros (§8-MA91). The game sets 800x600 for the 3D view and calls RestoreDisplayMode on the way
+   out to get its front-end resolution back. Because nothing happened, the GDI framebuffer stayed
+   at 800x600 while the front end kept laying out at resw=1024 — so after ALT-X from a flight the
+   debrief's menu row, drawn at y=710, fell entirely outside a 600-tall buffer: invisible and
+   unclickable. Measured: window created 1024x768, post-flight framebuffer 800x600, menu rects
+   menu[0..3] all at y=710.
+   BOB_NO_RESTORE_MODE reverts. */
+static HRESULT DD_RestoreDisplayMode(IDirectDraw7*) {
+	static const int off = getenv("BOB_NO_RESTORE_MODE") ? 1 : 0;
+	if (!off && g_origScrW > 0 && (g_scrW != g_origScrW || g_scrH != g_origScrH)) {
+		VLOG("RestoreDisplayMode %dx%d -> %dx%d\n", g_scrW, g_scrH, g_origScrW, g_origScrH);
+		fprintf(stderr, "[vid] RestoreDisplayMode: %dx%d -> %dx%d\n", g_scrW, g_scrH, g_origScrW, g_origScrH);
+		ensure_window(g_origScrW, g_origScrH);
+	}
+	return DD_OK;
+}
 static HRESULT DD_GetCaps(IDirectDraw7*, LPDDCAPS a, LPDDCAPS b) {
 	if (a) { memset(a,0,sizeof(DDCAPS)); a->dwSize=sizeof(DDCAPS); a->dwVidMemTotal=256u*1024*1024; a->dwVidMemFree=256u*1024*1024; }
 	if (b) { memset(b,0,sizeof(DDCAPS)); b->dwSize=sizeof(DDCAPS); }
