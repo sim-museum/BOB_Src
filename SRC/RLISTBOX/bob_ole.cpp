@@ -361,6 +361,28 @@ extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* p
    "screen X with control set Y" must be able to point at output proving X and Y were up —
    otherwise a mis-selected state and a render bug are indistinguishable, which cost the
    FreeFalcon port a sprint. Writes e.g. "dlg=1481:7 dlg=2010:85" (drawn/total per dialog). */
+/* S146 (SP.8, env-gated one-shot, default-off): gold #18 shows no "Sweeps" row, we draw one.
+   The row is the fighter-sweep target line (IDC_FIGHTERSWEEP*), and LWDIRECT.CPP:1626 marks that
+   branch dead ("Patrols removed"). The open question is only WHICH mechanism the Windows build
+   uses to drop it -- template membership (S124) is the first candidate. Print, per hosted control
+   on a given dialog, its id, whether the installed BDG template contains it, and its drawn rect.
+   BOB_TRACE_DIR=<dlgId>. */
+extern "C" void bob_ole_dump_template_membership(int dlgId) {
+    static int done = 0; if (done) return; done = 1;
+    int in = 0, out_ = 0;
+    for (auto& kv : hosts()) {
+        OleHost* h = kv.second;
+        if (h->dlgId != dlgId) continue;
+        int m = bob_dlg_in_template(h->dlgId, h->ctrlId);
+        if (m == 0) out_++; else in++;
+        if (h->ctrlId >= 1103 && h->ctrlId <= 1130)   /* the sweeps band, the ones in question */
+            fprintf(stderr, "[tmpl] dlg=%d id=%d in_template=%d visible=%d rect=(%d,%d,%d,%d)\n",
+                h->dlgId, h->ctrlId, m, h->visible, h->sx, h->sy, h->sw, h->sh);
+    }
+    fprintf(stderr, "[tmpl] dlg=%d summary: %d in template, %d absent\n", dlgId, in, out_);
+    fflush(stderr);
+}
+
 extern "C" int bob_ole_state_summary(char* out, int outsz) {
     if (!out || outsz <= 0) return 0;
     out[0] = 0;

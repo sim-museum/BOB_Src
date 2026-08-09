@@ -782,6 +782,11 @@ void	RDialog::AddChildren(const DialBox*const* diallist,DialMake::ChildType chil
 //////////////////////////////////////////////////////////////////////
 void RDialog::EndDialog( int nResult )
 {
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_DIR"))
+		fprintf(stderr, "[dlg] RDialog::EndDialog this=%p rtti=%s nResult=%d fchild=%p\n",
+			(void*)this, typeid(*this).name(), nResult, (void*)fchild);
+#endif
 	if (edges.l&EDGE::ACTIONS_ARTCHILD) return;
 // Search tree of dialogs from the top and send the message to them all
 // except for the original one since it has already received it.
@@ -851,6 +856,13 @@ void RDialog::EndDialog( int nResult )
 
 void RDialog::OnOK( )
 {
+#if BOB_LINUX
+	/* S146 (SP.11, env-gated, default-off): four readings of this control path have been
+	   wrong, so print who actually receives OnOK rather than reasoning about it. BOB_TRACE_DIR. */
+	if (getenv("BOB_TRACE_DIR"))
+		fprintf(stderr, "[dlg] RDialog::OnOK this=%p rtti=%s artchild=%d\n",
+			(void*)this, typeid(*this).name(), (int)(edges.l&EDGE::ACTIONS_ARTCHILD));
+#endif
 	if (edges.l&EDGE::ACTIONS_ARTCHILD) return;
 //F*	TRACE1("Dialog with pointer %d received OK\n",this);
 	EndDialog(IDOK);

@@ -1525,10 +1525,21 @@ extern "C" void bob_oob_accept_directives(void) {
 		if (idx < 0) { fprintf(stderr,"[directives] accept: nothing logged after %d pass(es)\n", pass); break; }
 		RDialog* dlg = mtb.LoggedChild(idx);
 		if (!dlg) { fprintf(stderr,"[directives] accept: index %d has no dialog\n", idx); break; }
+		/* S146: the logged child is a PLACEHOLDER PANEL (traced: rtti=RDEmptyD), not the dialog.
+		   LWDirectives::Make returns MakeTopDialog(.., DialBox(art, new LWDirectives(dr))), so the
+		   real dialog hangs off the panel as fchild. S144/S145 fired OK at the PANEL, which ran
+		   RDialog::OnOK -> EndDialog and closed it without ever reaching LWDirectives::OnOK --
+		   while reporting success. Fire at the children first; the panel remains the fallback. */
+		int firedChild = 0;
+		for (RDialog* c = dlg->fchild; c; c = c->sibling) {
+			fprintf(stderr,"[directives]   child %p rtti=%s -- firing OK\n", (void*)c, typeid(*c).name());
+			if (bob_evt_fire((void*)c, &typeid(RDialog), 21 /*IDJ_TITLE*/, 3 /*OK*/)) firedChild = 1;
+		}
+		fprintf(stderr,"[directives] accept pass %d: child-fire=%d\n", pass, firedChild);
 		fprintf(stderr,"[directives] accept pass %d: firing title-bar OK on child %d\n", pass, idx);
 		/* Fire under typeid(RDialog), NOT typeid(*dlg): bob_evt_fire matches the type
 		   EXACTLY (bob_eventsink.cpp:39, *v[i].ti == *dt) with no base-class walk, and the
-		   title-bar OK entry is registered on RDialog. The derived handler still runs --
+		   title-bar OK entry is registered on RDialog. NB (S145): this alone does NOT reach a derived handler when the target is a panel --
 		   RDialog::OnOK implicitly overrides compat's virtual CDialog::OnOK, so the call
 		   virtual-dispatches to LWDirectives::OnOK / DirectiveResults::OnOK. */
 		bob_evt_fire((void*)dlg, &typeid(RDialog), 21 /*IDJ_TITLE*/, 3 /*OK*/);
@@ -1545,6 +1556,20 @@ extern "C" void bob_oob_accept_directives(void) {
 
 extern "C" void bob_oob_close_dialogs(void) {
 	static int done = 0; if (done) return; done = 1;
+	/* S146: dialogs are logged per TOOLBAR, and a scaffold that walks only the misc toolbar leaves
+	   the others up -- the post-orders Mission Folder is logged on a different one, so
+	   MiscToolBar().LoggedChild() correctly said -1 while the folder still covered half the map.
+	   Sweep every toolbar; same "a scaffold must not assume a single dialog" rule as the stack. */
+	for (int tb = 0; tb < TB_TOTAL; tb++) {
+		CRToolBar* t = CMainFrame::toolbars[tb];
+		if (!t) continue;
+		for (int pass = 0; pass < 4 && t->LoggedChild() >= 0; pass++) {
+			int open = t->LoggedChild();
+			t->CloseLoggedChildren();
+			if (t->LoggedChild() == open) { if (t->CloseLoggedChild(open)) break; }
+		}
+		fprintf(stderr,"[directives] toolbar %d: open-index=%d\n", tb, t->LoggedChild());
+	}
 	CMiscToolbar& mtb = MiscToolBar();
 	/* On an active campaign day the misc toolbar holds a STACK, not one dialog: the game opens
 	   DIRECTIVERESULTS (5), whose own code opens DIRECTIVES (6) on top of it (DIRRSULT.CPP:197).

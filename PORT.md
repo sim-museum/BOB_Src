@@ -1,5 +1,48 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S146 (2026-08-08, Sprint 146): the LW orders flow completes end-to-end — gold #19's RAIDS EXIST: packages built, routes drawn, geschwader flown and landed
+>
+> **The chain runs.** S145 proved the accept was hitting the wrong object; S146 found what the right
+> one is by tracing rather than reading. `RDialog::OnOK` reported `rtti=8RDEmptyD` — the logged child
+> is an **empty placeholder panel**, and the real dialog hangs off it as `fchild`. Descending one
+> level and firing there produced, in one run:
+> `child rtti=12LWDirectives -- firing OK` → `[dir] OnOK: guard(dirresults[0].targets[0])=13178` →
+> `child rtti=16DirectiveResults -- firing OK` → `MakeLWPackages`.
+>
+> **⭐ Gold #19's long-standing deviation is substantively resolved: the day's raids exist.** The
+> strategic map now draws **route lines across the Channel** and raid markers, the game's own Mission
+> Folder lists a real package — **R001, 36 aircraft, Dive Bomb, T/O 08:53, ToT 09:59, Status
+> Readying, Target Tangmere AF** (+ "108 Detached 09:31") — and, left to run, the footer event log
+> reports **"Geschwader Landed [R002]", "[R005]", "Geschwader Landing [R005]"**. The raids are built,
+> they fly, and they come home. The state banner confirms the whole thing happened where it should:
+> `phase=1 date=1250035200` — 12 August, Eagle Attack.
+>
+> **A fifth wrong reading, retired by the same trace.** S145 recorded the live hypothesis that
+> `RefreshMissions` never ran headlessly, leaving `dirresults` empty. It had run: the guard passed
+> with real values — `dirresults[0..2].targets[0] = 13178 / 11766 / 13435`, i.e. Airfields, Docks and
+> RDF, exactly matching the grid's 2/1/2 missions. **The guard was never the problem.**
+> `LWDirectives::OnOK` was simply never being called. That is five readings of one control path, five
+> wrong, and the trace that settled it was twelve lines.
+>
+> **Honest — #19 is NOT marked CLOSE, because I have no unobstructed capture.** Two different dialogs
+> covered the map in turn, and each taught something: the post-orders **Mission Folder is logged on a
+> DIFFERENT toolbar**, so `MiscToolBar().LoggedChild()` truthfully returned −1 while the folder still
+> covered half the screen (fixed: the dismiss now sweeps all `TB_TOTAL` toolbars — same
+> "don't assume a single dialog" rule as the stack); and with the popup suppression flag omitted, the
+> Directives dialog simply re-armed before the capture. The remaining step is one composition of
+> flags already built (`BOB_MAP_NODIRECTIVES` + `BOB_MAP_ACCEPTDIR` + `BOB_MAP_CLOSEDLG` +
+> `BOB_SHOT_AFTER`) — a single run, deliberately left to the next sprint rather than claimed here.
+>
+> **SP.8 probe result, and it refutes my own id guess.** `[tmpl] dlg=1032: 167 in template, 17
+> absent`, and the banner shows exactly `167/184` drawn — so **the S124 template filter is working
+> correctly** and the 17 non-template controls are properly suppressed. **No hosted control on that
+> dialog has an id in the 1103–1130 `IDC_FIGHTERSWEEP*` band**, so the row we draw is *in* the BDG
+> template and hidden by some other mechanism. Next probe step named on SP.8; no sixth guess offered.
+>
+> Files: `SRC/MFC/MAINFRM.CPP` (child descent, all-toolbar dismiss), `SRC/MFC/RDIALOG.CPP` +
+> `SRC/MFC/LWDIRECT.CPP` (`BOB_TRACE_DIR`, env-gated, default-off), `SRC/RLISTBOX/bob_ole.cpp` +
+> `SRC/MFC/FULLPSYS.CPP` (template-membership probe).
+
 > ## S145 (2026-08-08, Sprint 145): captures are armed FROM THE DRIVE — the state drift is gone; and the S144 "accept" workaround is proven to have been running the wrong handler
 >
 > **S145.1 (SP.7) — done, and immediately proven.** `BOB_SHOT` counted absolute ticks, so a capture
@@ -23,7 +66,7 @@
 > worse than one that fails loudly.
 >
 > **Corrections issued this sprint (both mine, both from S144, both now fixed at source):**
-> 1. §8y in the **shared** doc claimed firing under the base type "still reaches the derived
+> 1. §8z in the **shared** doc claimed firing under the base type "still reaches the derived
 >    override". It does not — corrected and re-synced to MA, since MA was told to act on that note.
 > 2. The raid-guard reading ("index 0 is the RECON slot `FillTargetLists` never fills") was wrong:
 >    `dirresults[]` is a **compacted** list built by `RefreshMissions` (`k=0` → recon line → i=1..7,
@@ -41,7 +84,7 @@
 >
 > Files: `SRC/MFC/FULLPSYS.CPP` (`bob_shot_arm`, `bob_shot_due`, both capture sites),
 > `SRC/MFC/MAINFRM.CPP` (scaffolds arm the shot), `SRC/MFC/LWDIRECT.CPP` (`BOB_TRACE_DIR`,
-> env-gated, default-off). Cross-port: §8y corrected.
+> env-gated, default-off). Cross-port: §8z corrected.
 
 > ## S144 (2026-08-08, Sprint 144): the title-bar OK works for the first time — every event registered on a BASE class had been silently dead; the strategic map is finally capturable on an active campaign day
 >
@@ -64,9 +107,9 @@
 > child is an RDialog **panel wrapper** and the real dialog is a separate object inside it —
 > `LWDirectives::Make` returns `MakeTopDialog(..., DialBox(FIL_D_LWDIRECTIVES, new LWDirectives(..)))`.
 > So the OK ran `RDialog::OnOK` → `EndDialog(IDOK)`: panel closed, derived logic skipped, and it
-> looked like success. §8y corrected and re-synced to MA.**]**
+> looked like success. §8z corrected and re-synced to MA.**]**
 > The general fix (a base-class walk in the sink) changes dispatch for every existing registration
-> and is booked as **SP.12** with the byte-identical sweep as its gate. Shared as **§8y**, with a
+> and is booked as **SP.12** with the byte-identical sweep as its gate. Shared as **§8z**, with a
 > specific pointer for MA: if the Player Log's `?`/`✓` buttons don't respond, this is very likely why.
 >
 > **S144.1 (SP.11) — the faithful exit from the orders loop now works.** S143 established that
@@ -93,11 +136,13 @@
 > returning the next `k`, and terminates with `dirresults[k].targets[0] = UID_NULL`
 > (LWDIRECT.CPP:628-643). So index 0 is the **first allocated line**, not "the RECON slot"; and
 > `FillTargetLists` writes no `dirresults` at all (it fills the candidate-target pools), so its
-> `i=1` loop start is irrelevant to the condition. Our grid *does* show allocations (Airfields 2,
-> Docks 1, RDF 2), so the better hypothesis is that **`RefreshMissions` never ran in the headless
-> instance**, leaving `dirresults` empty. To be verified with a gated trace rather than asserted —
-> that is the third mechanism claim in this thread and the previous two were both wrong from
-> reading alone. SP.11 carries with the trace as its first step.
+> `i=1` loop start is irrelevant to the condition. **[S146: the follow-up hypothesis in this
+> paragraph — that `RefreshMissions` never ran headlessly, leaving `dirresults` empty — was ALSO
+> wrong.** The trace shows the guard passing with real values: `guard=13178`, and
+> `dirresults[0..2].targets[0] = 13178 / 11766 / 13435` (Airfields, Docks, RDF — matching the
+> grid's 2/1/2). `dirresults` was populated correctly all along. The condition was never the
+> problem: `LWDirectives::OnOK` was simply never being called, because the OK was going to the
+> panel wrapper. **That makes five readings of this one control path, five wrong.**]**
 >
 > **Also confirmed twice more:** the SP.10 host leak — dialog 1032 at **184 → 368** (one re-open) and
 > **→ 1656** (the suppress+accept run). It reproduces on any path that re-creates that dialog.
@@ -116,7 +161,7 @@
 >
 > Scaffolds (all default-off): `BOB_MAP_ACCEPTDIR=<n>` (accept the orders flow),
 > `BOB_MAP_NODIRECTIVES=<n>` (suppress the popup), `BOB_MAP_CLOSEDLG=<n>` (dismiss).
-> Files: `SRC/MFC/MAINFRM.CPP`, `SRC/MFC/FULLPSYS.CPP`. Cross-port: §8y.
+> Files: `SRC/MFC/MAINFRM.CPP`, `SRC/MFC/FULLPSYS.CPP`. Cross-port: §8z.
 
 > ## S143 (2026-08-08, Sprint 143): parity captures now RECORD their state — and that instrumentation re-diagnosed gold #19, found a control leak, and killed three wrong theories in one run
 >

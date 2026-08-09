@@ -179,6 +179,7 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
 extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py);  /* S141 */
+extern "C" void bob_ole_dump_template_membership(int dlgId);  /* S146 (SP.8 probe) */
 static int g_bobOleDraw = -1;
 static int bobOleDraw() { if (g_bobOleDraw < 0) g_bobOleDraw = getenv("BOB_OLE_DRAW") ? 1 : 0; return g_bobOleDraw; }
 
@@ -223,6 +224,9 @@ static void bob_shot_state_banner(const char* where)
 {
 	char panels[256]; panels[0] = 0;
 	int ndlg = bob_ole_state_summary(panels, (int)sizeof(panels));
+	/* S146 (SP.8): with BOB_TRACE_DIR=<dlgId>, dump that dialog's template membership once. */
+	{ const char* td = getenv("BOB_TRACE_DIR");
+	  if (td && atoi(td) > 1) bob_ole_dump_template_membership(atoi(td)); }
 	const char* ac = getenv("BOB_AUTOCLICK");
 	int acTotal = 0; if (ac && *ac) { acTotal = 1; for (const char* p = ac; *p; p++) if (*p == ',') acTotal++; }
 	long art = -1; int resw = 0, phase = -1;
