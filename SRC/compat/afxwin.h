@@ -961,6 +961,13 @@ public:
     void BringWindowToTop() {}
     BOOL IsWindowVisible() const { return FALSE; }
     void SetCapture() {}
+    /* S142: the mouse-capture pair. SetCapture has been a no-op since the port began, but
+       ReleaseCapture was simply absent — CRSpinButCtrl is the first hosted control whose own
+       code calls `this->ReleaseCapture()` (RSPINBTC.CPP: the spin-repeat drag ends). Faithfully
+       a no-op here: we synthesize discrete clicks rather than a real capture-tracked drag, so
+       there is no capture to release. Named on CWnd (not the global ::ReleaseCapture) because
+       that is what the control calls. */
+    void ReleaseCapture() {}
     CWnd* GetParent() const { return m_pBobParent; }
     CWnd* GetParentFrame() const { return NULL; }
     CWnd* GetParentOwner() const { return NULL; }

@@ -7,7 +7,20 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> **Latest session (S141, 2026-08-08): the campaign PHASE is selectable — gold #18's Directives
+> **Latest (S142, 2026-08-08): the R\* ActiveX control set is COMPLETE — all 8 types hosted.**
+> `CRSpinBut` was the last unhosted one, and the LW Directives dialog is mostly made of it (**85**
+> DDX-bound spinners), which is why S141 could render that screen's labels and headers while every
+> allocation number stayed blank. Hosted via the §8p recipe (`SRC/RSPINBUT/bob_ole_rspinbut.cpp`,
+> `CLSID_RSpinBut`), and the grid's numbers now match gold #18 **value for value** — Morning 40 /
+> Mid-day 30, Reconn 0/1, the Ground-Attack matrix, Missions 1/1/1/0/0/0, Escort 2/1·1/0·2/0,
+> %Free 100, Resting 1/3/2/2 and 3/1 — with the spin-arrow art drawn. Two compat gaps closed en
+> route: `CWnd::ReleaseCapture` was absent (no hosted control had ever called it), and the control's
+> **static** `m_bDrawing` reentrancy flag — cleared only inside `DrawBitmap` — would have latched on
+> any black-fill draw and silently killed the other 84 spinners for the rest of the process
+> (neutralised host-side, no game-code edit). One new deviation booked (**SP.8**): we draw a "Sweeps"
+> row and an "Escort 1:1" row that gold doesn't show.
+>
+> **Prior (S141, 2026-08-08): the campaign PHASE is selectable — gold #18's Directives
 > allocation grid renders.** Screen parity is now **18 CLOSE / 0 PARTIAL / 1 GAP** of 19, and the
 > single remaining GAP (#4, the transient "Initialising 3D" loading screen) is **by design**.
 > BoB models a tab row as the **columns of one `CRListBoxCtrl`**, and

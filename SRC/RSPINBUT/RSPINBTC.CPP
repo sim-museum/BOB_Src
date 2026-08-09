@@ -432,7 +432,8 @@ void CRSpinButCtrl::DrawTransparentBitmap(int filenum,CDC * pDC, int x, int y)
 	if (filenum>=ICON_PAGE_BASE)
 	{
 			IconDescUI* icon=(IconDescUI*)pData;
-			icon->MaskIcon(pDC,CPoint(x,y));
+			CPoint _mipxy(x,y);   /* BOB_LINUX: MaskIcon takes CPoint& (no temp bind on GCC), cf. RRADIOC/RBUTTONC.CPP */
+			icon->MaskIcon(pDC,_mipxy);
 	}
 	else
 	if (pData && pData[0]=='B' && pData[1]=='M') // checks if its a bitmap file

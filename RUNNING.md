@@ -30,6 +30,17 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
 
 ## Current state (2026-08-08)
 
+- **S142 closed: hosted `CRSpinButCtrl` — the 8th and LAST R\* control type; the
+  Directives grid's numbers render and match gold #18 value-for-value.** The dialog
+  is mostly made of this type (85 DDX-bound spinners), driven via `CRSpinButExtra`'s
+  `Clear()->MakeNumList()->SetIndex()` (= dispids 7 / 5×N / setprop 2). Two compat
+  gaps closed: `CWnd::ReleaseCapture` was absent from `afxwin.h`, and the control's
+  **static** `m_bDrawing` flag (cleared only inside `DrawBitmap`) would have latched
+  on any black-fill draw and silently stopped the other 84 spinners — cleared
+  host-side. **Repro:** `BOB_AUTOCLICK=1,1,#1000:1,1,1 BOB_MAP_TIMER=8 BOB_SHOT=900`.
+  New deviation booked as SP.8: a "Sweeps" row + "Escort 1:1" row we draw and gold
+  doesn't. **Careful with `BOB_TRACE_OLE` on this screen** — it is per-control-per-frame
+  and writes ~70 MB over a full run, slow enough to miss the capture tick.
 - **S141 closed: the campaign PHASE is selectable — gold #18's Directives
   allocation grid renders; #18 PARTIAL → CLOSE (parity 18 CLOSE / 0 PARTIAL /
   1 GAP, the GAP being #4 by design).** BoB models a tab row as the *columns*

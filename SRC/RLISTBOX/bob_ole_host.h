@@ -42,6 +42,7 @@ OleHost* bob_make_rbutton(class CWnd* parent);
 OleHost* bob_make_redit(class CWnd* parent);
 OleHost* bob_make_rradio(class CWnd* parent);
 OleHost* bob_make_redtbt(class CWnd* parent);
+OleHost* bob_make_rspinbut(class CWnd* parent);   /* S142: 8th (last) R* type */
 
 bool bob_ole_trace();   /* BOB_TRACE_OLE gate, shared */
 

@@ -1,5 +1,77 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S142 (2026-08-08, Sprint 142): hosted `CRSpinButCtrl` — the 8th and LAST R\* control type; the Directives grid's numbers render and match gold #18 number-for-number
+>
+> **The R\* control set is complete.** `CRSpinBut` was the only one of the eight R\* ActiveX types
+> the port had never hosted, so every wrapper `InvokeHelper` on it was a silent no-op. It is also
+> the type the LW Directives dialog is mostly *made of* — **85 DDX-bound spinners** (`LWDIRECT.CPP`
+> lines 149+) — which is why S141 could render that dialog's labels, headers, row names and even its
+> Missions column while every allocation *number* stayed blank.
+>
+> **Host** (`SRC/RSPINBUT/bob_ole_rspinbut.cpp`, the §8p recipe): `HostRSpinBut : CRSpinButCtrl,
+> OleHost`, dispids taken from the WRAPPER (`SRC/MFC/RSPINBUT.CPP`) — stock ForeColor, 1 RepeatDelay,
+> 2 Index, 3 FontNum, 4 CurrentValue, 5 AddString, 6 DeleteString, 7 Clear, 8/9/0xb/0xc the
+> Price/Value/SearchValue/PlayerNegPrice options, 0xa SetPassWord. `CLSID_RSpinBut`
+> (`c3270e66-6d6b-11d6-…`) wired into the factory; `RSPINBTC.CPP` + the host TU + the include dir
+> added to the `bob_rlistbox` target.
+>
+> **Why the routing is right by construction:** the dialog never calls the spin control directly — it
+> uses `CRSpinButExtra` (`RCOMBOX.CPP`), a thin subclass whose chained
+> `Clear()->MakeNumList(steps,base,step)->SetIndex(i)` idiom is just `Clear` (dispid 7) +
+> `AddString` ×N (dispid 5) + `SetIndex` (setprop 2). All three land on the host.
+>
+> **Three traps, two predicted and one new:**
+> 1. `MaskIcon(pDC, CPoint(x,y))` temp-bind — §8t's known trap; fixed with RRADIOC/RBUTTONC's named
+>    local. **Patched as BYTES** (see §8w): the first, text-tool edit silently re-encoded three `£`
+>    literals in `ValueToMoneyString` from ISO-8859-1 to UTF-8, turning a 2-line change into a 5-line
+>    one. Reverted and redone; the committed diff is exactly the 2 intended lines and `file` still
+>    reports ISO-8859.
+> 2. **`CWnd::ReleaseCapture` was simply absent from compat.** `SetCapture` has been a no-op since
+>    the port began, but no hosted control had ever called its counterpart; `CRSpinButCtrl`'s
+>    spin-repeat drag does. Added as a documented no-op in `afxwin.h` — we synthesize discrete
+>    clicks, so there is no capture to release.
+> 3. ⭐ **`m_bDrawing` is a STATIC reentrancy flag that is cleared only inside `DrawBitmap`, not at
+>    the end of `OnDraw`.** `OnDraw` opens with `if (m_bDrawing || !m_hWnd) return;`, so any draw that
+>    takes the `artnum==0` branch (`FillRect` black) leaves it TRUE **forever** — and because the flag
+>    is class-wide, every one of the other 84 spinners on every later frame would then return
+>    immediately. That is the difference between a grid and one lonely box, and it would have
+>    presented as "the spin host doesn't work" rather than as a latch. Neutralised **host-side**
+>    (cleared before and after each `draw()`), so no game-code edit and it cannot latch even if the
+>    art lookup fails.
+>
+> **Result vs gold #18 — the numbers agree, not just the layout:** Morning **40**, Mid-day **30**;
+> Reconn Missions **0**, Aircraft **1**; the Ground-Attack matrix (Airfields **1**/0/0/0, Docks
+> 0/**1**/0/0, RDF **1**/0/0/0, Convoys/London/Factories 0); Size per target **"1 Gruppe" ×6**;
+> Missions **1/1/1/0/0/0**; Escort Gruppen **2/1, 1/0, 2/0**; %tied **0** / %Free **100** ×6;
+> Resting **1/3/2/2** and **3/1** — every value matches, with the red spin-arrow art drawn.
+> Evidence: `doc/parity/native-strategic-directives-spin-2026-08-08.png`, side-by-side
+> `doc/parity/sbs-strategic-directives.jpg`.
+>
+> **Honest — one NEW deviation this capture exposed:** we draw a **"Sweeps" spinner row and an
+> "Escort 1:1" combo row that gold does not show at all**, and the Sweeps row overprints the
+> "Ground Attack Gruppen" / "Escort Gruppen" section headers. That is the template-membership /
+> runtime-`ShowWindow` class (S123/S124), not a spin-control gap — booked as its own backlog item
+> rather than patched at the end of a sprint. The escort tick-boxes (circles vs gold's red-tick
+> squares) and the missing title-bar `? ✓ ✕` are unchanged from S141.
+>
+> **Harness lesson paid for in wall-clock:** `BOB_TRACE_OLE` is per-control-per-frame, so 85 new
+> spinners × ~1000 ticks wrote a **70 MB** log and starved the run past its own timeout — three
+> failed capture attempts before the cause was obvious. This is "filter, don't cap" (§8i) in a new
+> place: the trace needs a *predicate* (this dialog, this id), not a smaller budget. Compounded by a
+> genuinely silly one: `pkill -f "<pattern>"` matches **its own shell** when the pattern appears in
+> that shell's command line, so the cleanup killed the relaunch it was making room for.
+>
+> **Gates (all under `gl-lock`):** build clean; 14-recipe headless sweep **14/14 exit 0** and
+> ⭐ **14/14 BYTE-IDENTICAL against the pre-S142 binary** — the strongest form of the A/B here, since
+> `CRSpinBut` only instantiates on `LWDirectives`, so every other screen must be untouched and
+> provably is; safe default (`BOB_NO_RUN`) **exit 0**; phase select **dummy==GL byte-identical**;
+> flight frame-150 on `:0` **98.7% non-black**.
+>
+> Files: `SRC/RSPINBUT/bob_ole_rspinbut.cpp` (new), `SRC/RSPINBUT/RSPINBTC.CPP` (2-line compile
+> compat), `SRC/compat/afxwin.h`, `SRC/RLISTBOX/bob_ole.cpp` + `bob_ole_host.h` + `CMakeLists.txt`.
+> Cross-port: §8w (re-encode trap), §8x (shared-doc section collisions); inbound MA note 29 received
+> and acted on in `26a2a3f`.
+
 > ## S141 (2026-08-08, Sprint 141): the campaign PHASE is selectable — Eagle Attack reached, the LW Directives allocation grid renders; gold #18 PARTIAL → CLOSE
 >
 > **A one-argument bug kept the whole campaign in July.** Every native campaign run since the map
