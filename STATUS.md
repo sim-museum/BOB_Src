@@ -7,6 +7,51 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
+> ## Latest (S156–S163, 2026-08-09/10): a play session found four real bugs the gates could not reach
+>
+> The Product Owner played the shipped build under `gdb` and reported four defects in ~20 minutes.
+> All four are now fixed, root-caused and gated. **Every one lived in an interaction path no
+> headless recipe exercised** — the direct payoff of S157's scaffold audit.
+>
+> | # | Symptom (as reported) | Root cause | Sprint |
+> |---|---|---|---|
+> | QS-1 | "clicking on fly or back has no effect" | `bob_ole_draw_listbox` never recorded its drawn rect, so the menu **re-derived** click rects from text widths; they drifted off the paint. "Fly" painted x=132..153, rect x=83..108 — **zero overlap** | S160 |
+> | QS-2 | "select dogfight … lower drop-down still gives training" | the combo click branch fired `TextChanged` **without setting `bob_evtA0`**, so the handler's `index` parameter carried a stale value from the last radio/listbox click. Wrong family applied → launched Training/Takeoff | S161 |
+> | QS-3 | "after ALT-X … no back button to return" | the 3D view sets 800×600 and **nothing restored the mode**; the front end kept laying out at 1024×768 and drew its menu row at y=710 — below the buffer. Not missing, unreachable | S162 |
+> | HAT | "hat switch … has no effect" | POV was written to the **immediate** device state only; the **buffered** `GetDeviceData` path the game reads had no POV loop — hat computed, then discarded | S163 |
+>
+> **The pattern, stated once:** all four are *one half of a pair implemented, the other silently
+> missing*. Alongside them S158 found `CWnd::SendMessageA` serving **3 of the 20** `WM_*` routes the
+> game sends (the rest `return 0`), and `ON_MESSAGE`/`BEGIN_MESSAGE_MAP` expanding to **nothing** —
+> so every `ON_MESSAGE` row in the game was decorative. None of these ever failed loudly.
+>
+> **What made them invisible** (S157, `doc/scaffold-audit.md`): sort scaffolds by what they
+> substitute. A **shallow** one substitutes an *input* and still runs the real dispatch — harmless.
+> A **deep** one substitutes a *call*, entering below the layer under test, and can never report
+> that layer missing. S156 found the map's OOB dialogs had been **render-only since S113**: the only
+> thing that ever drove them called `bob_evt_fire` directly. The trap is that the deeper the
+> scaffold, the *more impressive* the evidence it produces — S144–S146 used one to build, fly and
+> land whole raids through a dialog that could not be clicked.
+>
+> **Also landed:** S156 map OOB dialogs take real clicks; S157 `BOB_SDL_CLICK`/`BOB_MAP_SDLCLICK`
+> push a **real `SDL_MOUSEBUTTONDOWN`**, proving the whole chain on real GL for the first time
+> (headless can *never* test it — under `SDL_VIDEODRIVER=dummy` `SDL_CreateWindow` fails, so
+> `pump_events` is never called at all); S158 the message map is real (all 16 dead routes register,
+> base-class walk verified at `depth 1`) but stays **default-off**, blocked on a file-block fatal.
+>
+> **Open:** `TERRAIN-1` (dogfight tiles scrambled — not yet reproduced; my headless dogfight frame
+> looks coherent, so it needs the PO's mission/altitude detail), `HAT-2` (delivery restored and
+> verified; *actuation* needs a physical hat press), `S159` (message dispatch default-on blocked on
+> the `bob_fp_repaint` file-block collision).
+>
+> **Method notes worth keeping** (the expensive lessons, all in `doc/scaffold-audit.md`):
+> a stub returning a **compile-time constant** lets the optimizer delete dependent branches, which
+> suppresses the link errors that would reveal the rest of the missing implementation — restoring one
+> route surfaced two more. A **bisect over artifacts collected at different times** tests time as
+> much as code; only a same-conditions A/B isolates the variable. And **when a comparison moves,
+> establish reproducibility before explaining it** — a one-run diff and a real regression look
+> identical.
+
 > **Latest (S142, 2026-08-08): the R\* ActiveX control set is COMPLETE — all 8 types hosted.**
 > `CRSpinBut` was the last unhosted one, and the LW Directives dialog is mostly made of it (**85**
 > DDX-bound spinners), which is why S141 could render that screen's labels and headers while every
