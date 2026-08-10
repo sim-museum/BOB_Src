@@ -2079,6 +2079,7 @@ static int g_joyNAxes=0, g_joyNButtons=0, g_joyNHats=0;
 static int g_joyAxisOfs[16];      /* SDL axis index -> data-format buffer offset (-1 = unmapped) */
 static int g_joyButtonOfs[64];    /* SDL button index -> offset */
 static int g_joyHatOfs = -1;      /* POV/hat offset */
+static DWORD g_joyLastPov = 0xFFFFFFFF;   /* S163: last POV reported through the buffered path */
 static int g_joyTraced = 0;
 static int g_joyLastAxis[16];     /* last reported axis values (for buffered change events) */
 static int g_joyLastBtn[64];
@@ -2206,6 +2207,35 @@ static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEO
 				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_joyButtonOfs[i];
 					buf[got].dwData=(DWORD)v; buf[got].dwSequence=++g_kbSeq; }
 				if (!(flags & 0x1)) g_joyLastBtn[i]=v;
+				got++;
+			}
+		}
+		/* S163 (user-reported): emit POV/hat change events too. They were missing entirely — this
+		   loop only reported axes and buttons, so the hat state computed in GetDeviceState was
+		   never delivered through the BUFFERED path the game actually reads (see the comment
+		   above: "not immediate GetDeviceState"). Result: the X3D's hat switch did nothing,
+		   because no hat event ever reached the keymap. The immediate path was implemented and its
+		   sibling was not — the same shape as this port's other silent gaps.
+		   dwData is the DirectInput POV angle in hundredths of a degree, 0xFFFFFFFF centred, which
+		   is what ANALOGUE.CPP's hatmaps expect (either as key events at hatkeyplace or, when the
+		   user has mapped the hat to an axis, via AX_FLAG_HATASAXIS). BOB_NO_JOY_HAT reverts. */
+		static const int noHat = getenv("BOB_NO_JOY_HAT") ? 1 : 0;
+		if (!noHat && g_joyHatOfs>=0 && g_joyNHats>0 && got<want) {
+			Uint8 h=SDL_JoystickGetHat(g_sdlJoy,0); DWORD pov=0xFFFFFFFF;
+			if      (h==SDL_HAT_UP)        pov=0;
+			else if (h==SDL_HAT_RIGHTUP)   pov=4500;
+			else if (h==SDL_HAT_RIGHT)     pov=9000;
+			else if (h==SDL_HAT_RIGHTDOWN) pov=13500;
+			else if (h==SDL_HAT_DOWN)      pov=18000;
+			else if (h==SDL_HAT_LEFTDOWN)  pov=22500;
+			else if (h==SDL_HAT_LEFT)      pov=27000;
+			else if (h==SDL_HAT_LEFTUP)    pov=31500;
+			if (pov!=g_joyLastPov) {
+				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_joyHatOfs;
+					buf[got].dwData=pov; buf[got].dwSequence=++g_kbSeq; }
+				if (!(flags & 0x1)) g_joyLastPov=pov;
+				if (getenv("BOB_TRACE_JOY"))
+					fprintf(stderr,"[joy] HAT event: sdl=%d -> pov=%lu at ofs=%d\n",(int)h,(unsigned long)pov,g_joyHatOfs);
 				got++;
 			}
 		}

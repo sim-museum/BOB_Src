@@ -102,8 +102,16 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
 - **Keyboard flight input (DirectInput → SDL).** Real keypresses on the GL window drive flight: SDL
   keydown → DIK scancode → buffered DInput keyboard device → the game's event-driven `OnKeyInput`
   (MIG.CPP:809 → STUB3D.CPP) → `OnKeyDown(dik)` → `commonkeymaps` → flight command. Proven end-to-end
-  (`BOB_AUTOFLY=throttle` → `[key] OnKeyDown dik=0x0b -> index=50`). Joystick is not enumerated yet
-  (`DI_EnumDevices` returns 0; also no joystick hardware here) — keyboard is the working control path.
+  (`BOB_AUTOFLY=throttle` → `[key] OnKeyDown dik=0x0b -> index=50`).
+  **Joystick: CORRECTED 2026-08-09 (S163).** This note used to read *"not enumerated yet
+  (`DI_EnumDevices` returns 0; also no joystick hardware here)"* — both halves are false now.
+  Measured with `BOB_TRACE_JOY`: `[joy] opened 'Logitech Extreme 3D': axes=4 buttons=12 hats=1`,
+  `EnumDevices -> reporting`, `SetDataFormat: 17 objs, ax0ofs=768 btn0ofs=260 povofs=504`, and live
+  axis + buffered change events. **Hat/POV was delivered to the IMMEDIATE state only** — the
+  buffered `GetDeviceData` path the game actually reads emitted axis and button events but had no
+  POV loop, so the hat switch did nothing (user-reported). S163 adds the POV change event.
+  **Not yet verified:** that the view actually pans — that needs a physical hat press; if it still
+  does nothing, suspect the `hatmaps[]` binding in ANALOGUE.CPP/the Controls screen, not delivery.
 - **Front-end GDI 2D pipeline** — window framebuffer + present (`bob_gdi_*`), `SetDIBitsToDevice`,
   stb_truetype text (`bob_gdi_font.cpp`), mouse-navigable menu (`bob_frontend_tick`).
 

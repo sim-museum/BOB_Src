@@ -358,6 +358,20 @@ BOOL CSQuick1::OnInitDialog()
 		i++;
 	}
 	missionfamily[j] = 255;
+#if defined(BOB_LINUX)
+	/* S163: list the mission families and their combo indices. Needed to drive a specific family
+	   (e.g. Dogfight) headlessly for TERRAIN-1 — until S161 these missions could not be selected
+	   at all, so their map/terrain has likely never rendered in this port. BOB_TRACE_QS=1. */
+	if (getenv("BOB_TRACE_QS")) {
+		for (int f = 0; f < j; f++) {
+			char nm[128]; nm[0] = 127;
+			int idx = missionfamily[f];
+			const char* s = LoadResString(quickmissions[idx].titlename);
+			fprintf(stderr, "[qs] family[%d] = quickmissions[%d] \"%s\"\n", f, idx, s ? s : "(null)");
+		}
+		fprintf(stderr, "[qs] %d families total\n", j);
+	}
+#endif
 	combo->SetIndex(currquickfamily);
 
 
