@@ -2462,3 +2462,308 @@ That is the §8z trap avoided *and demonstrated*.)
 never had to balance. Suspect non-virtual handlers being resolved to a base class where a derived
 override exists, which unbalances get against release. **Keep the dispatch behind a flag until this
 is settled** — the mechanism landing and the protocol being correct are two different milestones.
+
+---
+
+## §8-MA95 — The last unrouted consumer, and why the *test* was the hard part
+
+**MA Sprint 95.** A play-tester reported that clicking any icon on the campaign map did nothing.
+The expected dialog never appeared. Nothing in the game code was wrong.
+
+**The mechanism.** On Windows the map dialog receives clicks from the message queue. This port has
+no queue, so every click is routed by hand in the idle loop: open OOB dialogs get first refusal,
+then the system box, then each toolbar. If all of them declined, the click was **dropped** — and
+`CMapDlg` was never in the list at all. The engine's chain behind it was complete and correct:
+
+```
+CMapDlg::OnLButtonDown -> FindMapItem(point) -> m_buttonid
+CMapDlg::OnLButtonUp   -> OnClickItem(m_buttonid) -> CMainToolbar::OpenDossier -> MakeSheet
+```
+
+**If you hand-route clicks, enumerate the consumers and name the one that gets the fall-through.**
+A router built as a chain of "does this widget want it?" tests silently discards whatever no widget
+claims, and the missing consumer is invisible in the code — there is no line to notice. BoB's map
+and any other full-screen view that owned mouse input on Windows will have the same hole.
+
+**Drive the engine's handler, not your own hit-test.** `FindMapItem` already accounts for bands,
+map filters, scroll and zoom. Where the handler is `protected`, add one narrow public seam under
+the port's `#ifdef` rather than a `friend` or a cast — it documents itself at the declaration.
+
+**Deliver Down and Up in the same call for a click.** That is what a click without intervening
+motion *is*, and it keeps `m_bDragging` FALSE — so the click takes the item path and **never enters
+`OnMouseMove`, which dereferences `GetDC()` unchecked in this port**. Same rule as §8-MA82: the
+genuine handler you drive may itself contain an unported call, so prefer the path that visits
+fewest of them.
+
+### ⚠ The part worth copying: a hardcoded coordinate is not a test
+
+The first click, aimed at a point read off a scan of the map, resolved to **no item**. Same binary,
+same pinned save. The canvas had grown **800×600 → 1021×644** between the scan frame and the click
+frame, moving every icon by ~108 px. Read naively, that is "the routing does not work" — a fix
+being abandoned because the harness lied.
+
+The gate therefore **names no coordinate**. It asks the map's own hit-test where the icons are at
+the frame it is about to click, clicks the first one clear of the toolbars, and passes on *item hit
++ dialog painted + process survived*.
+
+This is the third distinct instance in this port of one failure mode: **a check whose result
+depends on state the check does not control** — a save file the player can advance (§8-MA81, and
+again in S94 when a play session silently turned a 9-dialog sweep into 0), and now a coordinate the
+layout can move. The general rule: *if a gate's expected value was obtained by a human looking at
+one run, the gate is measuring that run, not the code.* Derive the expectation inside the run.
+
+---
+
+## §8-MA96 — A blit that overhangs the screen must clip, not resize the screen
+
+**MA Sprint 96.** Reported as "click-drag on the map messes up the display". The compat GDI's
+`SetDIBits`/`StretchDIBits` **grew the canvas to fit whatever was drawn**. Windows clips a DC blit
+to the client area; the size of a blit tells you nothing about the size of the screen.
+
+The campaign map is tiled (256×256 blocks). As soon as it scrolls, tiles hang off the edges — and
+each overhanging tile enlarged the whole screen, **every frame of the drag**:
+
+```
+[canvas] stretch_dibits at(0,456) dest=256x256 -> grow 1024x712
+[canvas] stretch_dibits at(0,460) dest=256x256 -> grow 1024x716   ... for the length of the drag
+```
+
+**Rule:** growth is only legitimate from a blit anchored at or above the origin — something
+*establishing* the screen. Content placed inside the screen that runs off an edge clips.
+
+### The part that matters more than the drag
+
+The same trace on a plain boot, **no input at all**:
+
+```
+[canvas] set_dibits at(0,0) dib=800x600      <- the front end establishes the screen: 800x600
+[canvas] stretch_dibits at(-111,388) 256x256 <- a map tile hanging off the bottom
+[canvas] grow -> 800x644 ... 30 growth events ... -> 1021x644
+```
+
+**The campaign map screen had been 1021×644 for as long as it had rendered — 221 px wider than the
+game's actual screen — because its own tiles inflated it.** Every other screen was 800×600. A
+long-standing wrong value that nothing ever contradicted, because the parity reference was captured
+*from the port* and faithfully encoded it.
+
+**If you keep native-vs-native references, ask periodically what would have caught a wrong value at
+the moment it was first captured.** A byte-identical self-comparison locks in whatever was true on
+day one, including bugs. Here the check that would have caught it costs nothing: *every screen
+should be the same size, and that size should be the configured display mode.*
+
+Anything positioned relative to a screen edge (`_cw - w - 4`) was being placed against an edge that
+was not where the screen ended — worth checking in BoB, which positions the same system box.
+
+### ⚠ And the test lied first: "0 px differ" == "nothing happened"
+
+The drag gate's first version reported a **perfect lossless round trip** while the drag did
+**nothing at all**. The hook pushes real SDL events deliberately (§8-MA93: a hook that bypasses the
+path it tests proves nothing) — and **the event queue was never drained without a window**. S93
+moved the synthetic input hooks above `if (!g_win) return;` and left the guard standing in front of
+`SDL_PollEvent`. *The same bug, in its other half, one sprint later.* **When you move code past a
+guard, check what else is still behind it.**
+
+The gate now asserts three things, and the first exists purely to give the second meaning:
+
+1. one-way drag **≠** baseline — proves the drag moves the map
+2. round trip **==** baseline — proves panning is lossless
+3. the release is **suppressed** as a click — proves a pan is not also a click
+
+**Any "no difference" assertion needs a companion assertion that the action happened.** This port
+has now been fooled by silence four times (§8-MA83, S64→S65, §8-MA93, here); a negative result is
+only evidence when something independent shows the code ran.
+
+### Related: a drag is not a click
+A drag ends in a release, which raised the same one-click edge as a tap — so once map clicks were
+routed (§8-MA95), **every pan finished by opening a dialog**. Windows fires a control only when
+press and release land together; require that (≤4 px) before treating a release as a click.
+
+---
+
+## §8-MA97 — Art that is *named* after a control is not necessarily the art *for* that control
+
+**MA Sprint 97.** The `CSystemBox` cluster (minimise / resize / **exit**) drew as three blank
+buttons, so the play-tester could not leave the campaign. `F_GRAFIX.G` has `FIL_ICON_THUMBNAIL`,
+`FIL_ICON_ZOOMIN` and `FIL_ICON_CLOSE1`, named after the three control ids — **and two of the three
+are the wrong pictures.** They render as unrelated map glyphs.
+
+The gold shot settles what the buttons look like; a name in a header does not. Identify art by
+**comparing renders against gold**, and make that cheap — a runtime override
+(`MA_BTN_ART="id=0xNNNN,…"`) turns "which of these twelve file numbers is it?" into minutes instead
+of a rebuild per candidate. The final mapping was confirmed self-consistent by *behaviour*
+(`IDC_ZOOMIN` drives `OnGoBig`/`OnGoNormal`, so `FIL_ICON_SCREENSIZE` is right), which is the
+cross-check worth insisting on.
+
+### A widget must not change the state of the screen it draws on
+Drawing the box left a different **GDI font** selected in the screen DC, and the campaign map's date
+readout — drawn from the same DC later in the frame — inherited it and rendered in a plain sans.
+The failure appeared **top left, nowhere near the box**. Save/restore the DC's font (and any other
+selected object) around a composite draw.
+
+**The check that makes this convincing:** after the fix, the *only* pixels differing from the
+previous reference were the box's own 72×48 rect at its own position. "Parity still passes" is
+weaker than "the diff is exactly the shape of what I added, and nothing else moved".
+
+### ⚠ Giving a control art can *reveal* a second bug that was always there
+With art, a **second copy** of the cluster appeared at the top-left and outlived the campaign, still
+sitting on the title screen. `ma_ole_draw_all` had always been drawing those controls at their raw
+template origin *in addition to* the parent-scoped draw — **with no art it painted nothing, so
+nobody saw it**.
+
+BoB will have the same shape: the map toolbars escape the global pass only because their parent
+`CDialog` is created **hidden**. That is an accident, not a rule. If a dialog is composited by a
+parent-scoped path, **say so explicitly** (MA added `ma_ole_set_parent_scoped(dialog)`) rather than
+relying on its parent's show state.
+
+**And note how it was found: no gate caught it.** The parity `title` capture is a clean boot that
+never enters the campaign, so it stayed byte-identical while the title screen was visibly wrong
+*after an exit*. It was found by looking at the screenshot of the thing just built. Transition
+states — screen A after coming from screen B — are a systematic hole in a per-screen parity suite.
+
+---
+
+## §8-MA98 — Four dead links in one chain, each invisible until the one before it was fixed
+
+**MA Sprint 98.** "Clicking the '?' on a dialog yields no documentation screen." One user-visible
+symptom; **four independent breakages**, all in the port, and each one only became observable after
+the previous one was repaired:
+
+1. **The title-bar hit router returned early for the help band** —
+   `if (disp == 0) return 1; /* nothing to route to yet */`.
+2. **`WM_COMMANDHELP` was not defined at all.** It is MFC's own private message (`afxpriv.h`,
+   `0x0365`). This is **§8-MA83 in its purest form**: while `ON_MESSAGE` expanded to nothing it
+   never evaluated its message argument, so the symbol had never been *required to exist*. Adding
+   the route is what made it required — expect a compile error per route you restore, and treat
+   each as confirmation the fix is real.
+3. **`CWnd::SendMessage` only dispatched `WM_USER+`** (`>= 0x400`) and `WM_COMMANDHELP` is `0x0365`,
+   *below* it. Name such messages explicitly rather than widening the range — everything else under
+   `WM_USER` should keep returning 0 untouched.
+4. **`CWnd::OnCommandHelp` was a non-virtual stub returning 0**, and `CDialog` overrode it back to 0.
+   MFC routes this message **up the window chain** until something handles it, so the frame's
+   override — the thing that actually opens help — was unreachable; and being non-virtual it could
+   not have dispatched through a `CWnd*` even if called.
+
+**The generalisable part: give the chain a return value you can read.** The measured send returned
+**0** after fixes 1–3 and **1** after fix 4. That single number is what identified the last dead
+link instead of guessing at it. When wiring a message route through a port, log *what the handler
+returned*, not merely that you sent it — "delivered" and "handled" are different claims, and a
+chain of stubs returns a plausible 0 at every step.
+
+**Check for the same shape in BoB:** a non-virtual `CWnd` stub that a derived class "overrides"
+compiles fine and silently never runs. Any `afx_msg`/`virtual` mismatch in the compat headers is a
+route that looks wired and is not.
+
+### Test recipes should name symbols, not pixels — and beware sscanf's return value
+MA added a recipe form `#ID@Class:?` meaning "the help glyph of this title bar", resolved by asking
+the control's **own** hit-test where its help band is. Glyph positions come from the button art and
+move with dialog width and font.
+
+Adding it hit a trap worth knowing: **`sscanf` returns the number of ASSIGNMENTS, not literals**, so
+a format ending in a literal `:?` matches happily when `:?` is absent — the new branch silently
+stole an unrelated recipe entry. Verify literal tokens yourself.
+
+### Scope honestly when the port genuinely lacks a feature
+Routing the click was a real fix; there is still **no WinHelp viewer**, so nothing is displayed. MA
+recorded PO-4 as **half closed** and made the *gate print that boundary in its own output*, so no
+later reader mistakes a green result for "help works". Reconnaissance first (`hlp_probe.py`: 44
+topics, 35 context mappings, Hall compression identified) turns "should we build a viewer?" into a
+decision with facts behind it — and is far cheaper than half-building one.
+
+---
+
+## §8-MA99 — ⭐ An oracle the failure mode can satisfy is not an oracle
+
+**MA Sprint 99.** Decoding the shipped `MIG.HLP` documentation so the "?" button can show it. The
+sprint was set up carefully: *the output must read as English* was chosen as the oracle up front,
+precisely because this port keeps being fooled by checks that cannot see the bug.
+
+It was implemented as "fraction of words that are common English words". Successive decoder fixes
+took it **0.016 → 0.140 → 0.282 → 0.484**, printed as **PLAUSIBLE**. Here is the 0.484 text:
+
+> *"airfield , different a : Summary automatically a KHowever icon have four a make, Patrolcampaign
+> for a OtherNose, mousecampaign icon Forces"*
+
+Gibberish. **A wrong phrase-table decoder emits real dictionary words in the wrong order — exactly
+what a word-frequency metric rewards.** The metric did not just miss the failure; the failure mode
+*maximised* it. Three consecutive "improvements" were measured by a number that could not tell
+success from the thing being measured.
+
+**The rule: design the oracle by asking what the FAILURE MODE would score.** If a plausible wrong
+answer satisfies it, it measures nothing. Prefer an independent reference the decoder does not feed:
+here, `|TTLBTREE` stores every topic's real title, and correctly decoded topic text contains its own
+title — that needs the right words *in the right place*, which a scrambled decode cannot fake. It
+reports 0/39 today, correctly.
+
+This is the fifth time this port has been fooled by a check that could not see the bug (§8-MA83,
+S64→S65, §8-MA93, §8-MA96, here) and the first where the check was the one designed as the
+safeguard. Consider it the general form of the other four.
+
+### Two concrete WinHelp findings, if you ever read a .hlp
+- **`|PhrIndex`'s bit reader is LSB-first over 32-bit DWORDs**, not MSB-first over bytes. The
+  natural guess is *almost* right: the phrase image decodes to correct alphabetical fragments and
+  only the **boundaries** land wrong (`aboutagainstaircraf` / `tair`). **Nearly-right output is the
+  signature of a nearly-right bit order** — worth remembering for any packed format.
+- **Topic links are addressed by `TopicPos` in a logical space of fixed `0x4000` blocks**, though
+  each block decompresses to far less. Concatenating decompressed blocks and walking linearly
+  desynchronises at the first boundary — and presents as **"only 6 of 44 topics exist"**, i.e. as
+  missing data rather than as an addressing bug. When a count comes out far too low, suspect the
+  addressing before suspecting the data.
+
+### And on scoping a feature the port simply lacks
+Four of five decode stages are solved and separately evidenced; the fifth (the Hall text opcode
+table) is not, so **nothing was wired into the game** and the tool states its own status in its
+header. Shipping a decoder that produces confident nonsense would have been worse than shipping
+nothing — the "?" showing wrong documentation is harder to notice than the "?" showing none.
+
+---
+
+## §8-MA100 — ⭐ The 3D overlay font is RASTERISED AT RUNTIME, and the stub that broke it said so
+
+**MA Sprint 100.** "Text doesn't print" for every 3D overlay readout — padlock info, in-flight map
+menu, radio menu. Five sprints of investigation had gone past the cause.
+
+`COverlay` does not load its font as artwork. It **builds a glyph atlas at runtime** by asking
+Windows to rasterise each character: `ImageMap_Desc::MakeChar` → `GetGlyphOutline(...,
+GGO_GRAY8_BITMAP, ...)`. The compat layer's stub:
+
+```c
+/* GetGlyphOutline glyph-rasterising API (OVERLAY renders overlay text via font
+   glyphs). Stubbed for bring-up: returns 0 (no glyph bitmap) -> blank text now; */
+static inline DWORD GetGlyphOutlineA(...) { return 0; }
+```
+
+Every glyph's alpha stayed zero, so overlay text was laid out, positioned and composited perfectly
+and drawn **completely transparent**. **Check `GetGlyphOutline` in BoB before investigating any
+"overlay text missing" symptom** — this engine's HUD font comes through it.
+
+**Grep your stubs for the ones whose comments describe a user-visible consequence.** This one
+announced the defect in its own text since bring-up. A stub that says "blank text now" is a bug
+report nobody filed.
+
+### Implementing GGO_GRAY8_BITMAP — the details that bite
+Taken from what `MakeChar` actually consumes, not from the API docs:
+- **levels are 0..64, not 0..255** (the caller masks `0x40404040` to split out the saturated bit)
+- rows are `gmBlackBoxX` bytes **padded to a DWORD**
+- `gmptGlyphOrigin.y` is height *above* the baseline (stb_truetype's `y0` is negative there)
+- the `MAT2` is 16.16 fixed and this engine passes a **non-square** scale — scale the axes
+  independently rather than assuming one factor
+
+### ⚠ Two invalid instruments before one that works — and one would have concluded the sprint
+1. **Screenshot.** Showed "10 20 30 40" on the altitude ladder after the fix. Convincing, and
+   wrong: that is **cockpit art**, present with the fix and without it.
+2. **Whole-frame A/B, glyphs on vs off:** 14187 px differ. Also worthless — **two IDENTICAL flight
+   runs differ by ~2700 px.** A frame diff of a live simulation measures the simulation.
+   *Establish that a comparison is repeatable BEFORE drawing a conclusion from it.* One run of the
+   same config twice is the cheapest experiment in this project and it invalidated the method.
+3. **What works:** count the ink in the atlas — deterministic, and the exact thing that was broken.
+   `2666 of 16384` non-zero alpha bytes with the fix, **`0`** with the stub restored.
+
+Keep the disable switch (`MA_NO_GLYPHS=1`). A switch that removes *exactly* the feature is a claim a
+wrong fix cannot satisfy — §8-MA99's rule, applied on the first attempt rather than the third.
+
+### It also retires an earlier conclusion of ours
+§8-MA94 traced these glyphs to palette slot 252, found `WHITE == 252` made
+`SetPaletteEntry(252, GetPaletteEntry(WHITE))` a self-copy no-op, and reported the text as "rendered
+correctly and drawn transparent". Writing real white into 252 changed nothing — recorded at the time
+as "so the texels don't index 252 either". Correct, and the reason is that **there were no texels**.
+A true observation about the wrong layer will happily survive several sprints.
