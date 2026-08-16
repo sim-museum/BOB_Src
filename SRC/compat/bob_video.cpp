@@ -91,11 +91,51 @@ static int g_traceVid = 0;
 
 #define VLOG(...) do{ if(g_traceVid) fprintf(stderr,"[vid] " __VA_ARGS__); }while(0)
 
+/* S172 (cross-port from MA S155, both halves):
+   (1) A resize keeps the window's old top-left, so a larger mode spills off the screen instead of
+       being centred -- the PO's "1920x1080 is not centered on the screen, as it is in MA". Re-centre
+       after a resize, and when the mode fills the desktop drop the border and pin to (0,0) so no
+       title bar pushes it off the bottom.
+   (2) These are MAIN-THREAD-ONLY SDL video calls, and ensure_window is reached from
+       SetCooperativeLevel/SetDisplayMode during flight setup -- which in MA ran on the FLIGHT
+       thread and wedged X11, hanging the game at 100% CPU with the window never returning. That
+       cost a play session there before it was found; BoB has the same call shape, so it gets the
+       same guard before it bites. Off-thread callers record the size; the main thread applies it.
+   BOB_WINDOW_ANYTHREAD=1 restores the old behaviour. */
+static volatile int g_pendingW = 0, g_pendingH = 0;
+static unsigned long g_mainThread = 0;
+static void ensure_window(int w, int h);
+extern "C" void bob_apply_pending_resize(void)
+{
+	int pw = g_pendingW, ph = g_pendingH;
+	if (!pw || !ph) return;
+	g_pendingW = g_pendingH = 0;
+	ensure_window(pw, ph);
+}
 static void ensure_window(int w, int h)
 {
 	if (w > 0 && h > 0) { g_scrW = w; g_scrH = h; }
 	if (g_win) {
+		if (g_mainThread && (unsigned long)SDL_ThreadID() != g_mainThread
+		    && !getenv("BOB_WINDOW_ANYTHREAD")) {
+			g_pendingW = g_scrW; g_pendingH = g_scrH;
+			if (getenv("BOB_TRACE_VID"))
+				fprintf(stderr, "[vid] resize %dx%d requested off-thread -> deferred to main\n",
+				        g_scrW, g_scrH);
+			return;
+		}
+		static int lastW = 0, lastH = 0;
+		if (g_scrW == lastW && g_scrH == lastH) return;   /* skip redundant resizes */
+		lastW = g_scrW; lastH = g_scrH;
 		SDL_SetWindowSize(g_win, g_scrW, g_scrH);
+		SDL_DisplayMode dm;
+		if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && g_scrW >= dm.w && g_scrH >= dm.h) {
+			SDL_SetWindowBordered(g_win, SDL_FALSE);
+			SDL_SetWindowPosition(g_win, 0, 0);
+		} else {
+			SDL_SetWindowBordered(g_win, SDL_TRUE);
+			SDL_SetWindowPosition(g_win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+		}
 		return;
 	}
 	g_traceVid = getenv("BOB_TRACE_VID") ? 1 : 0;
@@ -112,6 +152,7 @@ static void ensure_window(int w, int h)
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		g_scrW, g_scrH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!g_win) { fprintf(stderr, "[vid] SDL_CreateWindow failed: %s\n", SDL_GetError()); return; }
+	g_mainThread = (unsigned long)SDL_ThreadID();   /* S172: only this thread may resize it */
 	g_ctx = SDL_GL_CreateContext(g_win);
 	if (!g_ctx) { fprintf(stderr, "[vid] SDL_GL_CreateContext failed: %s\n", SDL_GetError()); return; }
 	SDL_GL_MakeCurrent(g_win, g_ctx);
@@ -462,6 +503,7 @@ static void pump_events(void)
    is the next step. */
 extern "C" unsigned long bob_msg_wait(unsigned long nCount, void* const* handles, unsigned long dwMilliseconds)
 {
+	bob_apply_pending_resize();   /* S172: window ops deferred by other threads land here */
 	pump_events();
 	/* Hand the GL context off to the draw thread: the first time the owning (main)
 	   thread parks here it has finished all its rendering, so release the context and
