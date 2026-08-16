@@ -2974,3 +2974,37 @@ first time) and covering text drawn earlier. That is the next investigation, and
 the subsystem — it is in something that was never exercised before and has therefore never had to
 be correct. Look for the protocol the newly-live code now completes, and check whether the port
 implemented both halves of it.
+
+---
+
+## §8-BoB169 — mip-mapping must be split by ALPHA KIND, not applied to every texture (BoB → MA)
+
+**A reverse note: BoB solved this properly first; MA's S153 got it half right and is corrected in
+MA S154.**
+
+The engine's terrain and detail textures tile heavily and are viewed at grazing angles, so with
+`GL_TEXTURE_MIN_FILTER = GL_LINEAR` and no mip chain they alias and smear at distance. Both ports
+have that symptom (MA's Product Owner reported it as *"at distance the filtering does a low pass on
+the corners of the leading end of the runway, and it disappears as you get closer"*). The fix is a
+mip chain plus `GL_LINEAR_MIPMAP_LINEAR` — **but not for every texture.**
+
+BoB's `upload_texture` already splits three ways, and the reasoning is worth copying exactly:
+
+| texture kind | filter | why |
+|---|---|---|
+| opaque (terrain, detail tiles) | `GL_LINEAR_MIPMAP_LINEAR` + **anisotropy** | tiled and grazing-angle; isotropic mips alias into stripes |
+| **1-bit masked / colour-keyed** (1555, or ckey set) | `GL_NEAREST`, **no mip chain** | LINEAR pulls the keyed mask colour into the alpha edges — a rainbow/magenta fringe |
+| smooth alpha (4444, 32-bit) | `GL_LINEAR` | soft sprites (clouds, smoke); their dithered 4-bit alpha under NEAREST showed as a hard white **checkerboard** — a first-pilot report |
+
+MA's S153 turned mipmapping on for **every** texture in both of its upload paths. That is right for
+the terrain it was aimed at and wrong for masked art: MA's 8-bit path keys palette index 0 to
+alpha 0, so minification averages fully-transparent texels into every sprite edge and leaves a dark
+halo. MA S154 corrects it — hard-masked textures (8-bit palette, or 1555) keep plain `GL_LINEAR`
+with no chain, exactly their pre-S153 behaviour, and only opaque/smooth-alpha textures get the
+chain.
+
+**The generalisable point:** "enable mipmapping" is not one decision. Minification averaging is
+only valid where neighbouring texels are meant to be blended, and a colour key or 1-bit mask is
+precisely a declaration that they are not. Any port turning on mip-mapping for a 1990s engine
+should enumerate its alpha kinds first — and BoB's remaining anisotropy step is still available to
+MA when it wants it.

@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S169 (2026-08-16, Sprint 169): a cross-port CENSUS — three MA findings checked against BoB, two already solved here, one wrong in MA
+>
+> Rather than porting MA's recent fixes blind, each was checked against this tree first. The
+> results are more interesting than a straight port would have been.
+>
+> | MA finding | BoB status |
+> |---|---|
+> | `sprintf("%s", CString)` prints pointer bytes (MA S135, 53 sites) | **present — 126 sites**, fixed in S164 |
+> | `CDialog::DoModal` stub answers every confirmation (MA S138) | **present**, fixed in S165 |
+> | Listbox paints an opaque black box behind front-end lists (MA S143) | **not present** — main menu and config screens are clean; checked, not assumed |
+> | `SetTextAlign` is a no-op (MA S135) | present, but no BoB screen depends on it yet — logged, not fixed |
+> | No mip-mapping on 3D textures (MA S153) | **already solved here, and better** — see below |
+>
+> **The mip-mapping one runs backwards.** BoB's `upload_texture` has had trilinear mipmapping *plus
+> anisotropy* for terrain since R3.3, and — the part that matters — it splits the decision by alpha
+> kind: `GL_NEAREST` and **no chain** for 1-bit masked / colour-keyed textures (LINEAR pulls the
+> keyed colour into the alpha edges — the magenta fringe), `GL_LINEAR` for smooth 4444/32-bit alpha
+> (whose dithered alpha under NEAREST showed as a white checkerboard in a first-pilot report).
+>
+> MA's S153 turned mipmapping on for **every** texture. Right for the terrain it targeted, wrong for
+> masked art: MA's 8-bit path keys palette index 0 to alpha 0, so minification averages
+> fully-transparent texels into every sprite edge and leaves a dark halo. **Corrected in MA S154**
+> using BoB's rule; MA's gates re-run green (parity 5/5, hardware stress 4/4). Shared note
+> **§8-BoB169**.
+>
+> *Two lessons for the next cross-port: check before porting — three of five findings did not
+> transfer as expected — and traffic flows both ways. The sister port is not only a source of
+> fixes; it is also a reviewer of yours.*
+
 > ## S168 (2026-08-16, Sprint 168): message dispatch is ON by default — the second blocker was `WM_GETARTWORK`, and MA had already written the answer down
 >
 > S167 cleared the file-block fatal and then found dispatch still regressed three screens
