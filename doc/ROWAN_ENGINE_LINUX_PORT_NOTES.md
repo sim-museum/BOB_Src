@@ -2865,3 +2865,51 @@ by whatever draws first, which is always the menu.
 gate screens are clean with the detector armed, and the control arm confirms they were clean before
 the fix too. So this is a latent class removed on evidence of mechanism, not a reproduced defect
 repaired.
+
+---
+
+## §8-MA103 — `CDialog::DoModal` returning a stub answers every confirmation the game ever asks
+
+**Found in MA (S138); same defect present in BoB, fixed there S165. Applies to both ports.**
+
+`RDialog::RMessageBox` is the engine's confirmation box: it fills an `RMdlDlg` with a title,
+message and up to three button captions, then returns `m_pMessageBox->DoModal()`. In both ports
+`CDialog::DoModal` was `{ return -1; }` and `CDialog::EndDialog` was `{}`, so **every caller in the
+game received -1** — a value none of them expect:
+
+| caller | code | what -1 does |
+|---|---|---|
+| `CMainFrame::OnBye` | `if (rv==0) save; else if (rv<2) quit;` | **quits the campaign without asking** |
+| BoB `LWDIRECT` bad weather | `if (RMessageBox(...)==1) badweather=false;` | never offers to fly; the period is always skipped |
+| BoB `LWDIRECT` aircraft allocation | branches on `rv` | always the not-chosen branch |
+
+The quit path is the one that matters: the player is thrown out of a campaign and the dialog the
+game was written to show never appears. It is silent — nothing logs, nothing crashes.
+
+**Fix:** a real nested loop on `RMdlDlg` only — create + `OnInitDialog`, then *pump input → let the
+dialog paint its own art → draw its hosted controls → present*, until a button calls `EndDialog`
+(0 = OK, 1 = Cancel, 2 = Retry). Route input to that dialog alone while it runs; `RMessageBox` has
+already disabled the toolbars around the call. Keep it **scoped to `RMdlDlg`** — the other
+`DoModal` call sites are forwarding overrides, and a nested loop under a dialog the port drives
+differently would hang rather than fail visibly. **Bound the loop**: an undismissable modal must
+return the safe answer rather than freeze the game.
+
+**Choose the no-answer default deliberately.** Not 0, and not -1: pick the code every caller reads
+as *do nothing*. In both games that is **2** — `OnBye` stays in the game, the weather prompt leaves
+`badweather` set.
+
+**Two port-specific traps, and they differ between the ports** — worth knowing before copying code:
+- **Coordinates.** MA's hit-test needs dialog-local coordinates (its click walk mirrors its paint
+  walk). **BoB's `bob_ole_click` takes SCREEN coordinates**, because BoB's hosts record their
+  last-drawn screen rect at paint time (S156/S160). Subtracting the panel origin in BoB — the
+  correct thing to do in MA — misses every button, and looks exactly like "the modal ignores
+  clicks".
+- **Capture.** Both ports' screenshot hooks count *idle-loop ticks*, and a modal is precisely what
+  suspends the idle loop, so neither can photograph one. Add a loop-local hook
+  (`BOB_MODAL_SHOT` / `MA_MODAL_SHOT`).
+
+**Give it a trigger.** Neither port had a headless way to reach a modal (`OnBye` needs the system
+box; the weather prompt needs a campaign day whose weather says so). BoB's `BOB_TEST_MODAL=<tick>`
+fires the real `RMessageBox` from the idle loop and prints its return. *A defect you cannot drive
+from a script cannot have a gate.* The gate then asserts the **answer, per button** — three
+distinct codes is the only thing that proves a loop actually ran.

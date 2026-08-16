@@ -1,5 +1,54 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S165 (2026-08-16, Sprint 165): the game asked "Are you sure?" and never waited for the answer
+>
+> `CDialog::DoModal` was `{ return -1; }` and `EndDialog` a no-op, so `RDialog::RMessageBox` —
+> the engine's confirmation box — returned -1 to **every caller in the game**, and none of them
+> expect it:
+>
+> | caller | code | what -1 did |
+> |---|---|---|
+> | `CMainFrame::OnBye` | `if (rv==0) save; else if (rv<2) quit;` | **quit the campaign without asking** |
+> | `LWDIRECT` bad weather | `if (RMessageBox(...)==1) badweather=false;` | never offered to fly; the period was always skipped |
+> | `LWDIRECT` aircraft allocation | branches on `rv` | always the not-chosen branch |
+>
+> Cross-ported from MA S138, which found the identical stub. Silent in both: nothing logs, nothing
+> crashes, the dialog simply never appears and the most destructive branch is taken.
+>
+> **What shipped.** `RMdlDlg::DoModal` (BOB_LINUX) runs a real nested loop — create +
+> `OnInitDialog`, then pump input → the dialog paints its own art → `bob_ole_draw_panel` draws its
+> hosted controls → `bob_gdi_present` — until a button calls `EndDialog` (0 = OK/Save, 1 = Cancel,
+> 2 = Retry). Input goes to that dialog alone while it runs; `RMessageBox` has already disabled the
+> toolbars. Scoped to `RMdlDlg`, and **bounded**: an undismissable modal returns the safe answer
+> rather than freezing the game. The no-answer default is **2**, the code every caller reads as
+> *do nothing* — `OnBye` stays in the game, the weather prompt leaves `badweather` set.
+>
+> **The BoB-specific trap.** MA's equivalent passes **dialog-local** coordinates to its hit-test.
+> BoB's `bob_ole_click` takes **screen** coordinates, because BoB's hosts record their last-drawn
+> screen rect at paint time (S156/S160). Subtracting the panel origin — the correct thing in MA —
+> missed every button, and presented as "the modal ignores clicks". Cross-porting a fix is not
+> cross-porting its coordinates.
+>
+> **Driving it.** There was no headless way to reach a modal at all — `OnBye` needs the system box,
+> the weather prompt needs a campaign day whose weather says so. `BOB_TEST_MODAL=<tick>` fires the
+> real `RMessageBox` from the idle loop and prints what it returns; `BOB_MODAL_SHOT=<path>`
+> photographs it (the standard `BOB_SHOT` counts idle ticks, and a modal is exactly what suspends
+> the idle loop — MA hit the same wall).
+>
+> **Evidence.** `doc/img_quit_confirm.png` — **Quit Game / Are you sure? / Save · Yes · Cancel**,
+> the confirmation that had never once been shown. Clicking each button returns a distinct, correct
+> code:
+> ```
+>   Save -> 0      Yes -> 1      Cancel -> 2
+> ```
+>
+> **New gate 1c** in `tools/bob_gates.sh` asserts exactly that, per button — three distinct codes
+> is the only thing that proves a loop ran, where "the dialog appeared" would not.
+>
+> **Gates:** full suite clean — 14 recipes exit 0, `dummy==GL BYTE-IDENTICAL`, flight frame-150
+> 94.6% non-black, binary-hash valid. Shared notes updated as **§8-MA103**, synced to
+> `~/ma/port/BOB_PORT_LESSONS.md`.
+
 > ## S164 (2026-08-16, Sprint 164): 126 sites of `sprintf("%s", <CString>)` — an MFC idiom that prints pointer bytes under GCC
 >
 > Cross-ported from MA S135, where this class cost several separately-reported UI bugs before it

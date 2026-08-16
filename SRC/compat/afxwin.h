@@ -1231,7 +1231,15 @@ public:
        failure mode next door is a stack overflow. Default OFF until measured on the campaign paths. */
     virtual void OnCancel() {}
     virtual LRESULT OnCommandHelp(WPARAM, LPARAM) { return 0; }
-    void EndDialog(int) {}
+    /* S165 (cross-port from MA S138): record the modal's answer.
+       EndDialog was a no-op and CDialog::DoModal returns -1, so RDialog::RMessageBox -- the
+       game's Save/Yes/Cancel confirmation -- always reported the same answer. CMainFrame::OnBye
+       reads `rv<2` as "quit", so the game quit WITHOUT ASKING; the bad-weather and
+       aircraft-allocation prompts in LWDIRECT.CPP compare against 1 and so always took the
+       not-chosen branch. RMdlDlg::DoModal (BOB_LINUX) runs the real loop and watches these. */
+    int  m_bobModalResult = -1;
+    int  m_bobModalDone = 0;
+    void EndDialog(int n) { m_bobModalResult = n; m_bobModalDone = 1; }
     void GotoDlgCtrl(CWnd*) {}
     void NextDlgCtrl() const {}
 };

@@ -1012,6 +1012,28 @@ extern "C" void bob_frontend_tick(void)
 
 	if (!g_bobActiveFP) return;
 
+	/* S165 (BOB_TEST_MODAL=<tick>, default-off): fire the game's OWN confirmation box once, from
+	   the idle loop, and report the answer it returns.
+	   The modal loop this exercises had no reachable trigger in any headless recipe -- OnBye needs
+	   the system box, and the bad-weather prompt needs a campaign day whose weather says so. A
+	   defect you cannot drive from a script cannot have a gate (MA S121), so this drives it. The
+	   answer is printed, because the ANSWER is what was broken: DoModal returned -1 and
+	   CMainFrame::OnBye reads `rv<2` as "quit". */
+	if (const char* tm = getenv("BOB_TEST_MODAL")) {
+		static int fired = 0; static long ticks = 0;
+		/* own counter: g_bob_shot_t only advances when a BOB_SHOT* variable is set */
+		if (!fired && ++ticks >= atol(tm)) {
+			fired = 1;
+			fprintf(stderr, "[testmodal] calling RMessageBox(QUITGAME, AREYOUSURE, SAVE, YES, CANCEL)\n");
+			fflush(stderr);
+			int rv = RDialog::RMessageBox(IDS_QUITGAME, IDS_AREYOUSURE, IDS_SAVE, IDS_YES, IDS_CANCEL);
+			fprintf(stderr, "[testmodal] RMessageBox returned %d  (%s)\n", rv,
+			        rv == 0 ? "Save" : rv == 1 ? "Yes/quit" : rv == 2 ? "Cancel/stay" : "STUB -- no dialog ran");
+			fflush(stderr);
+			if (getenv("BOB_TEST_MODAL_EXIT")) _exit(0);
+		}
+	}
+
 	/* SP.1 (BOB_SHOT, default-off): front-end half of the one-shot parity capture (see the map
 	   branch above). Counts front-end ticks; dumps the settled screen then exits. */
 	if (getenv("BOB_SHOT") || getenv("BOB_SHOT_AFTER") || getenv("BOB_SHOT_WHEN")) {

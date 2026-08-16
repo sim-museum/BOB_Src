@@ -51,6 +51,25 @@ run phaseselect   380 BOB_AUTOCLICK=1,1
 run entername     520 BOB_AUTOCLICK=1,1,1
 run bobfrag       120 BOB_BOBFRAG=1
 
+# ── GATE 1c (S165): the game's own confirmation box answers what the player clicked ────────────
+# CDialog::DoModal was `return -1` and EndDialog a no-op, so RDialog::RMessageBox always reported
+# the same answer -- and CMainFrame::OnBye reads `rv<2` as "quit", so the game left a campaign
+# without ever showing the Save/Yes/Cancel it was written to show. There is no headless trigger for
+# a modal (OnBye needs the system box; the bad-weather prompt needs a campaign day whose weather
+# says so), so BOB_TEST_MODAL fires the real RMessageBox from the idle loop and prints its return.
+# Assert on the ANSWER, per button: three distinct codes is the only thing that proves a loop ran.
+echo "### GATE 1c: modal message box (Save=0 Yes=1 Cancel=2)"
+modal_ok=1
+for bx in "390 Save 0" "518 Yes 1" "647 Cancel 2"; do
+  set -- $bx
+  got=$(cd "$GD" && timeout -k 5 200 env BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
+        SDL_VIDEODRIVER=dummy BOB_TEST_MODAL=60 BOB_TEST_MODAL_EXIT=1 \
+        BOB_CLICKXY="100,$1,411;200,$1,411;400,$1,411" "$BOB" 2>&1 |
+        grep -a "RMessageBox returned" | sed "s/.*returned \\([0-9-]*\\).*/\\1/")
+  if [ "$got" = "$3" ]; then echo "  $2 -> $got"; else echo "  $2 -> $got (EXPECTED $3)"; modal_ok=0; fi
+done
+[ $modal_ok -eq 1 ] && echo "  modal: PASS" || echo "  modal: FAIL"
+
 echo "### GATE 2: safe default (BOB_NO_RUN)"
 timeout -k 5 120 env BOB_NO_RUN=1 "$BOB" >/dev/null 2>&1; echo "  default exit=$?"
 

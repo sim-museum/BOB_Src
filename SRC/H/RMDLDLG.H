@@ -26,6 +26,13 @@ public:
 	enum	{m_scalingfactor=1};
 	RMdlDlg(CWnd* pParent = NULL);   // standard constructor
 	FileNum m_artnum;
+#if defined(BOB_LINUX)
+	/* S165 (cross-port from MA S138): the port has no modal message loop, so CDialog::DoModal
+	   returned -1 and every RMessageBox answer in the game was that stub. This runs a real nested
+	   loop for THIS dialog only -- the game's only true modal -- rather than changing
+	   CDialog::DoModal for everything. */
+	virtual int DoModal();
+#endif
 	fileblock* m_pfileblock;
 	CString m_TitleID;
 	CString m_MessageID;

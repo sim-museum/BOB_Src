@@ -342,3 +342,79 @@ BOOL RMdlDlg::OnEraseBkgnd(CDC* pDC)
 {
 	return TRUE;
 }
+
+#if defined(BOB_LINUX)
+/* ---------------------------------------------------------------------------------------------
+   S165 (cross-port from MA S138): a real modal loop for the game's message box.
+
+   `CDialog::DoModal` was `{ return -1; }` and `EndDialog` a no-op, so RDialog::RMessageBox always
+   returned -1 and none of its callers ever saw a human answer:
+
+     CMainFrame::OnBye         `if (rv==0) save; else if (rv<2) quit;`   -1 < 2  -> QUIT, unasked
+     LWDIRECT bad weather      `if (RMessageBox(...)==1) badweather=false;`      -> never flies
+     LWDIRECT aircraft alloc   branches on rv                                    -> stale branch
+
+   The quit path is the dangerous one: the game threw the player out of a campaign without ever
+   showing the Save / Yes / Cancel it was written to show.
+
+   This runs the loop the port never had: pump input, let the dialog paint its own art, draw its
+   hosted controls, present, until one of the buttons calls EndDialog (0 = OK/Save, 1 = Cancel,
+   2 = Retry -- RMDLDLG.CPP:198-211). Clicks are routed to this dialog alone while it runs, which
+   is what "modal" means; RMessageBox has already disabled every toolbar around the call.
+
+   Scoped to RMdlDlg deliberately: the other DoModal call sites are RDialog's and CRToolBar's
+   forwarding overrides, and a nested loop under a dialog the port drives differently would hang
+   rather than fail visibly.
+   --------------------------------------------------------------------------------------------- */
+extern "C" {
+void  bob_modal_set_at(void* dlg, int ox, int oy, int w, int h);
+void  bob_modal_pump(void);
+void  bob_gdi_present(void);
+void  bob_gdi_screen_size(int* w, int* h);
+int   bob_ole_draw_panel(CWnd*, int, int);
+int   bob_gdi_dump_to(const char*);
+}
+
+int RMdlDlg::DoModal()
+{
+	Create(RMdlDlg::IDD, m_pBobParent);    /* template + OnInitDialog + host the controls */
+
+	int sw = 800, sh = 600;
+	bob_gdi_screen_size(&sw, &sh);
+	/* The dialog's art positions itself from OnGetXYOffset(), which is 0 here, so the panel is
+	   drawn at the origin the host gives it. Centre it on a nominal message-box size; the art
+	   decides its own extent within that. */
+	const int dw = 400, dh = 200;
+	int ox = (sw - dw) / 2; if (ox < 0) ox = 0;
+	int oy = (sh - dh) / 2; if (oy < 0) oy = 0;
+
+	m_bobModalDone = 0;
+	/* No answer must never mean "quit" or "act". 2 is Retry/Cancel for the three-button form and
+	   "neither button" for the two-button ones, so every caller takes its do-nothing branch:
+	   OnBye stays in the game, and the weather prompt leaves badweather set. */
+	m_bobModalResult = 2;
+	bob_modal_set_at(this, ox, oy, dw, dh);
+
+	/* Bounded: a modal that can never be dismissed (no hosted buttons, say) must not hang the
+	   game. Falling out returns the same safe answer. */
+	int guard = 0;
+	const int BOB_MODAL_MAX_ITERS = 200000;
+	while (!m_bobModalDone && ++guard < BOB_MODAL_MAX_ITERS)
+	{
+		bob_modal_pump();
+		OnPaint();                              /* the dialog's own background art */
+		bob_ole_draw_panel(this, ox, oy);       /* its buttons and message text */
+		bob_gdi_present();
+		/* BOB_MODAL_SHOT=<path>: capture the modal once it has settled. BOB_SHOT counts ticks
+		   of the idle loop, and the idle loop is exactly what a modal suspends -- so the standard
+		   capture hook can never photograph a modal dialog (MA S138 hit the same wall). */
+		{ const char* ms = getenv("BOB_MODAL_SHOT");
+		  if (ms && guard == 20) bob_gdi_dump_to(ms); }
+	}
+	if (guard >= BOB_MODAL_MAX_ITERS)
+		fprintf(stderr, "[modal] dismissal never arrived after %d iterations -> Cancel\n", guard);
+
+	bob_modal_set_at(0, 0, 0, 0, 0);
+	return m_bobModalResult;
+}
+#endif

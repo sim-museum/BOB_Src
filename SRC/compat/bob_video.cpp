@@ -2550,3 +2550,44 @@ extern "C" int bob_input_smoketest(void)
 }
 
 #endif /* FF_LINUX */
+
+/* ---- S165 (cross-port from MA S138): modal dialog input -------------------------------------
+ * The port had no modal loop, so CDialog::DoModal returned its -1 stub and every RMessageBox
+ * answer in the game was that stub. While a modal is up, input belongs to it alone -- which is
+ * what modal means, and RDialog::RMessageBox has already disabled every toolbar around the call.
+ * The dialog's own loop (RMdlDlg::DoModal) drives the drawing; this supplies the input.
+ */
+static void* g_bobModalDlg = 0;
+static int   g_bobModalOx = 0, g_bobModalOy = 0, g_bobModalW = 0, g_bobModalH = 0;
+
+extern "C" int  bob_ole_click(class CWnd* dialog, int x, int y);
+extern "C" int  bob_gdi_get_click(int* x, int* y);
+
+extern "C" void bob_modal_set_at(void* dlg, int ox, int oy, int w, int h) {
+	g_bobModalDlg = dlg; g_bobModalOx = ox; g_bobModalOy = oy; g_bobModalW = w; g_bobModalH = h;
+	/* NOT gated on a trace env: a test that has to FIND the dialog needs its rect, and the gate
+	   that answers this dialog is the one proving the campaign can be left at all (MA S138). */
+	fprintf(stderr, "[modal] %s dlg=%p at (%d,%d) size %dx%d\n",
+	        dlg ? "begin" : "end", dlg, ox, oy, w, h);
+	fflush(stderr);
+}
+extern "C" void* bob_modal_active(void) { return g_bobModalDlg; }
+
+extern "C" void bob_modal_pump(void) {
+	pump_events();
+	if (g_bobModalDlg) {
+		int cx = 0, cy = 0;
+		/* BOB_AUTOCLICK / BOB_SDL_CLICK injection comes through this same path, so a modal is
+		   scriptable -- without that it could only ever be tested by hand. */
+		if (bob_gdi_get_click(&cx, &cy)) {
+			/* SCREEN coords, not dialog-local: BoB's hosts record their last-drawn screen rect at
+			   paint time (S156/S160), so bob_ole_click hit-tests in screen space and hit rects
+			   cannot drift from drawn rects. Subtracting the panel origin here -- which is what
+			   MA's equivalent has to do -- missed every button. */
+			int hit = bob_ole_click((class CWnd*)g_bobModalDlg, cx, cy);
+			if (getenv("BOB_TRACE_CLICK") || getenv("BOB_TRACE_CLICKPATH"))
+				fprintf(stderr, "[modal] click (%d,%d) -> %s\n", cx, cy, hit ? "taken" : "outside");
+		}
+	}
+	SDL_Delay(8);          /* the modal is idle-waiting for a human; do not spin a core */
+}
