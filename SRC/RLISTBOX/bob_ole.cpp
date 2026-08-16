@@ -499,6 +499,12 @@ extern "C" void bob_ole_dump_template_membership(int dlgId) {
    not answer by inspection -- DestroyWindow reaches SOME object, and the 184 hosts belong to
    another -- is answered definitively by asking the host table itself, per candidate object.
    Cheap, and it cannot be wrong the way four successive hook-site guesses were. */
+/* S166: the WHOLE host table's size. bob_ole_count_for_dialog answers "who owns these?"; this
+   answers "how many are there at all?", which is the question the S154 teardown flag was gated on
+   ("default OFF until measured on the campaign paths"). Without a total, the leak can only be
+   inferred from per-dialog samples. */
+extern "C" int bob_ole_host_total(void) { return (int)hosts().size(); }
+
 extern "C" int bob_ole_count_for_dialog(CWnd* dialog) {
     int n = 0;
     for (auto& kv : hosts()) if (kv.second && kv.second->parentDlg == dialog) n++;

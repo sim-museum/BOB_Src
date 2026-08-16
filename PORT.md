@@ -1,5 +1,41 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S166 (2026-08-16, Sprint 166, MEASUREMENT): the dialog-teardown flag, measured — and deliberately NOT flipped
+>
+> S154 left `BOB_DLG_TEARDOWN` default-OFF with an explicit condition: *"Default OFF until
+> measured on the campaign paths."* This sprint supplies the instrument and the measurement, and
+> then declines to flip the default, for a reason worth writing down.
+>
+> **Instrument.** `bob_ole_host_total()` returns the size of the whole hosted-control table;
+> `BOB_TRACE_OLETOTAL=<every-n-ticks>` prints it from the idle loop. Until now the only probe was
+> `bob_ole_count_for_dialog` — "who owns these?" — which cannot answer "how many are there at all?".
+>
+> **Measured, campaign map path** (`BOB_AUTOCLICK=1,1,#1000:1,1,1 BOB_MAP_TIMER=2 BOB_DAYADV=1`,
+> 24 samples):
+>
+> ```
+>   teardown OFF : 37 .. 42 hosted controls, stable (no growth; the count also FALLS)
+>   teardown ON  : identical
+> ```
+>
+> and the **full gate suite is green with `BOB_DLG_TEARDOWN=1`** — 14 recipes exit 0, the new modal
+> gate passes, `dummy==GL BYTE-IDENTICAL`, flight frame-150 96.5% non-black.
+>
+> **Why the default stays off anyway.** None of that touches the mechanism the flag exists for.
+> S153's 181,424 controls came from repeatedly re-opening a logged dialog (the Directives cancel
+> toggle-loop); no recipe available here drives that, so a stable 42 is evidence that the *normal*
+> path does not leak — not evidence that teardown is safe when it finally runs. Flipping a default
+> on a green suite that never exercises the changed code is precisely the mistake MA made in its
+> S128–S130 (three changes, every gate green, front end dead on the shipped build, reverted on the
+> Product Owner's evidence). The previous session also named the failure mode next door — a stack
+> overflow in the directive dialogs' toggle loop — which is not something to discover in a release.
+>
+> **What would settle it,** for whoever picks this up: a recipe that opens a logged dialog and
+> cancels it N times (BoB's OOB dialogs take real clicks since S156, and `BOB_CLICKXY` can drive
+> them), with `BOB_TRACE_OLETOTAL` running. If the count grows with teardown off and stays flat
+> with it on, and the toggle-loop terminates without the S108 re-entrancy guard, the flag has met
+> its condition. That is a bounded piece of work; it is just not "run the gates".
+
 > ## S165 (2026-08-16, Sprint 165): the game asked "Are you sure?" and never waited for the answer
 >
 > `CDialog::DoModal` was `{ return -1; }` and `EndDialog` a no-op, so `RDialog::RMessageBox` —

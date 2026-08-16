@@ -611,6 +611,7 @@ int g_campfly_shot = 0;   /* R4.3 (BOB_CAMPFLY_SHOT): frames-until-bobfrag-captu
 int g_campfly_go = 0;     /* R4.3 (BOB_CAMPFLY_GO): frames-until-Fly (bobfrag -> campaign flight) */
 int g_campfly_flown = 0;  /* R4.3: a campaign mission has been launched -> stop the post-mission sim FF */
 extern "C" int bob_gdi_dump_to(const char*);   /* R4.3: one-shot framebuffer dump (bob_video.cpp) */
+extern "C" int bob_ole_host_total(void);       /* S166: size of the hosted-control table */
 static int g_bobFlightCloseId = -1;
 void bob_capture_wm_command(unsigned int /*msg*/, unsigned int id)
 {
@@ -1019,6 +1020,18 @@ extern "C" void bob_frontend_tick(void)
 	   defect you cannot drive from a script cannot have a gate (MA S121), so this drives it. The
 	   answer is printed, because the ANSWER is what was broken: DoModal returned -1 and
 	   CMainFrame::OnBye reads `rv<2` as "quit". */
+	/* S166 (BOB_TRACE_OLETOTAL=<every-n-ticks>): how many hosted R* controls exist right now.
+	   The S154 dialog teardown is gated "default OFF until measured on the campaign paths"; this
+	   is the measurement. With teardown off the table only ever grows -- every re-open of a logged
+	   dialog allocates a fresh dialog plus its controls and retains both. */
+	if (const char* ot = getenv("BOB_TRACE_OLETOTAL")) {
+		static long t = 0; long every = atol(ot); if (every < 1) every = 100;
+		if ((++t % every) == 0) {
+			fprintf(stderr, "[oletotal] tick %ld: %d hosted controls\n", t, bob_ole_host_total());
+			fflush(stderr);
+		}
+	}
+
 	if (const char* tm = getenv("BOB_TEST_MODAL")) {
 		static int fired = 0; static long ticks = 0;
 		/* own counter: g_bob_shot_t only advances when a BOB_SHOT* variable is set */
