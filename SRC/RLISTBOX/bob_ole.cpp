@@ -14,6 +14,7 @@
 #include "stdafx.h"
 #include "bob_ole_host.h"
 #include <unordered_map>
+#include <set>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstdio>
@@ -65,7 +66,20 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
     else if (memcmp(clsid, &CLSID_RRadio,   sizeof(CLSID)) == 0) { h = bob_make_rradio(parent);   what = "CRRadioCtrl"; }
     else if (memcmp(clsid, &CLSID_REdtBt,   sizeof(CLSID)) == 0) { h = bob_make_redtbt(parent);   what = "CREdtBtCtrl"; }
     else if (memcmp(clsid, &CLSID_RSpinBut, sizeof(CLSID)) == 0) { h = bob_make_rspinbut(parent); what = "CRSpinButCtrl"; }
-    if (!h) return FALSE;              /* other R* controls not hosted yet -> wrapper no-ops */
+    if (!h) {
+        /* S170 (MA's census method, S136/S140): an UNHOSTED control type is silent -- the wrapper
+           becomes a no-op and the dialog simply lacks that widget, which reads as "the game does
+           not have one" rather than "the port did not build it". MA found two whole types this way
+           (RRadio, RScrlBar), each of which had been quietly discarding every call the game made.
+           Report each distinct CLSID once, uncapped: a per-run budget would be spent by whatever
+           screen loads first. */
+        static std::set<unsigned long> seen;
+        unsigned long d1 = clsid ? (unsigned long)clsid->Data1 : 0;
+        if (seen.insert(d1).second)
+            fprintf(stderr, "[ole] UNHOSTED control clsid.Data1=%08lx (id=%u, parent=%p) -- wrapper is a no-op\n",
+                    d1, id, (void*)parent);
+        return FALSE;
+    }
     h->ctrlId = (int)id; h->parentDlg = parent; h->dlgId = g_bobDlgIDD;
     h->applyDesignProps();
     hosts()[self] = h;

@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S170 (2026-08-16, Sprint 170): an unhosted-control census that came back CLEAN, and ASan over the three changed lifetimes
+>
+> **Census (MA's method, S136/S140).** `bob_ole_create_control` dispatches eight R* CLSIDs and
+> returns FALSE for anything else — silently, so an unhosted control type presents as *"the game
+> does not have that widget"* rather than *"the port did not build it"*. MA found **two whole
+> types** that way (RRadio and RScrlBar), each quietly discarding every call the game made to it.
+>
+> The unhosted branch now reports each distinct CLSID once, uncapped. Run across the main menu, a
+> config screen, enter-name, the QS frag screen and the campaign map: **nothing**. Every control
+> type these screens create is hosted. A clean negative, and the probe stays as a permanent guard —
+> the next screen that needs a ninth type will say so instead of rendering short.
+>
+> **ASan over the lifetimes this session changed.** S167 made `WM_RELEASELASTFILE` actually free
+> `bob_dlg_getfile`'s held `fileblock`, which is a lifetime change: if any control still read
+> through that pointer after sending the release, it would be a use-after-free — the kind that
+> surfaces three screens later. So, with `-DBOB_ASAN=ON`:
+>
+> ```
+>   enter-name (the S167 fatal reproducer) : exit 0, 7 odr-violation, 0 heap errors
+>   campaign map + OOB dialogs             : exit 0, 7 odr-violation, 0 heap errors
+>   the new modal loop, answered            : exit 0, 7 odr-violation, 0 heap errors
+>                                            ("RMessageBox returned 2 (Cancel/stay)")
+> ```
+>
+> No `heap-use-after-free`, no `heap-buffer-overflow`, no `double-free`. The ODR violations are
+> this build arrangement's own noise (MA's ASan build reports the same class, for the same reason).
+>
+> *The release contract was documented as "the OCX reads it synchronously in the same OnDraw", and
+> that turns out to be true — but it was worth the twenty minutes to check rather than to trust,
+> because the failure mode is silent and delayed.*
+
 > ## S169 (2026-08-16, Sprint 169): a cross-port CENSUS — three MA findings checked against BoB, two already solved here, one wrong in MA
 >
 > Rather than porting MA's recent fixes blind, each was checked against this tree first. The
