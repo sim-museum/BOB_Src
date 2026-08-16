@@ -7,7 +7,26 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> ## Latest (S156–S163, 2026-08-09/10): a play session found four real bugs the gates could not reach
+> ## Latest (S164–S169, 2026-08-16): the message map is ON by default, and a cross-port census
+>
+> Six sprints applying (and checking) what the sister MiG Alley port learned, plus closing the
+> blocker S158/S159 stopped on.
+>
+> | # | What | Result |
+> |---|---|---|
+> | S164 | `sprintf("%s", <CString>)` prints pointer bytes under GCC | **126 sites** corrected; ABI proved in isolation; `BOB_TRACE_GARBAGE` detector added |
+> | S165 | `CDialog::DoModal` was a `-1` stub, so `RMessageBox` answered every confirmation itself | real modal loop; **the quit dialog now appears and is answered** (gate 1c: Save 0, Yes 1, Cancel 2) |
+> | S166 | `BOB_DLG_TEARDOWN`, gated "until measured" | measured (37–42 hosts, stable); **default deliberately NOT flipped** — the gates never exercise the leak |
+> | S167 | S159's file-block fatal | the compat held a `WM_GETFILE` block open and ignored all **23** `WM_RELEASELASTFILE` sends; fixed, control-armed |
+> | S168 | second blocker: `WM_GETARTWORK` sent controls down the offscreen path | pinned to 0 (MA's documented answer); **A/B 11/14 → 14/14 byte-identical → message dispatch DEFAULT ON** |
+> | S169 | census of five MA findings against this tree | two already solved here; one (mip-mapping) **wrong in MA**, corrected there |
+>
+> **Open:** `TERRAIN-1` (dogfight tiles scrambled — still not reproduced), `HAT-2` (needs a physical
+> hat press), `SetTextAlign` (a no-op; nothing here depends on it yet), and the three-screen
+> regression is gone but `BOB_ARTWORK_DISPATCH=1` still shows the offscreen-composite path is
+> unimplemented.
+
+> ## Previously (S156–S163, 2026-08-09/10): a play session found four real bugs the gates could not reach
 >
 > The Product Owner played the shipped build under `gdb` and reported four defects in ~20 minutes.
 > All four are now fixed, root-caused and gated. **Every one lived in an interaction path no
