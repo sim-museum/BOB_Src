@@ -284,7 +284,7 @@ void RAFCombat::RAFRefresh()
 					s = GETDLGITEM(IDC_RSTATICHTENEMY);
 					int alt = (intercept->interceptheight*10)/Save_Data.alt.mediummm;
 					alt = 100*((alt + 50)/100);
-					CString altstring = CSprintf("%i%s",alt,LoadResString(Save_Data.alt.mediumabbr));
+					CString altstring = CSprintf("%i%s",alt,(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr));
 					if (alt)						//RJS 18Oct00
 						s->SetString(altstring);
 					else
@@ -501,7 +501,7 @@ void RAFCombat::LWRefresh()
 						s = GETDLGITEM(IDC_RSTATICHTENEMY);
 						int alt = (intercept->interceptheight*10)/Save_Data.alt.mediummm;
 						alt = 100*((alt + 50)/100);
-						CString altstring = CSprintf("%i%s",alt,LoadResString(Save_Data.alt.mediumabbr));
+						CString altstring = CSprintf("%i%s",alt,(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr));
 						if (alt)										//RJS 18Oct00
 							s->SetString(altstring);
 						else

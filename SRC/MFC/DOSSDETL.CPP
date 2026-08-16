@@ -280,7 +280,7 @@ BOOL DossierDetails::OnInitDialog()
 			capacity = 20 * ((capacity+10)/20);
 
 
-		s->SetString(CSprintf("%i %s",capacity, RESSTRING(PERWEEK)));
+		s->SetString(CSprintf("%i %s",capacity, (LPCTSTR)RESSTRING(PERWEEK)));
 	}else
 	{
 		s->ShowWindow(false);

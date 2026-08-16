@@ -986,9 +986,9 @@ void	SController::RemakeDisplay()
 	combo->SetIndex(index);
 	CRStatic* desc=GETDLGITEM(IDC_DEVDESC);
 	desc->SetString(CSprintf("%i %s, %i %s, %i %s",
-						connecteddevices[index].numaxes,RESSTRING(JOYAXES),
-						connecteddevices[index].numhats,RESSTRING(COOLIEHATS),
-						connecteddevices[index].numbuttons,RESSTRING(BUTTONS)	));
+						connecteddevices[index].numaxes,(LPCTSTR)RESSTRING(JOYAXES),
+						connecteddevices[index].numhats,(LPCTSTR)RESSTRING(COOLIEHATS),
+						connecteddevices[index].numbuttons,(LPCTSTR)RESSTRING(BUTTONS)));
 	CRButton* button=GETDLGITEM(IDC_SELPOLL);
 	button->SetPressed(connecteddevices[index].enablepoll);
 	button=GETDLGITEM(IDC_SELFF);
@@ -1246,7 +1246,7 @@ bool	SController::SetAxesCombo(CRCombo& m_ID,AxisUses task,bool xonly,bool analo
 					 {
 						 CString aliassedname=ao->aliassedcombo->GetCaption();
 						 ao->aliassercomboindex=currindex;
-						 combo->AddString(CSprintf("%s: %s",LoadResString(ao->aliaseed_IDS),aliassedname));
+						 combo->AddString(CSprintf("%s: %s",(LPCTSTR)LoadResString(ao->aliaseed_IDS),aliassedname));
 						 if ( _Analogue.tune[ao->aliasedtask].aliased[allowaliassing])
 							selindex=currindex;
 						 currindex++;

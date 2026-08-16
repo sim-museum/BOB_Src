@@ -157,10 +157,10 @@ void RAFTaskSummary::Refresh()
 //		enum	MissTypes {PATROL,ANTISWEEP,ANTISINGLE,ANTIUNESC,ANTIESC,ANTIBIG,MAXMISSTYPES};
 	CString templatename;
 	if (misstype==Directives::RAF::PATROL)
-		templatename=CSprintf("%s: %s",RESSTRING(PATROL),GetTargName(pk.packagetarget[0]));
+		templatename=CSprintf("%s: %s",(LPCTSTR)RESSTRING(PATROL),(LPCTSTR)GetTargName(pk.packagetarget[0]));
 	else
 	{
-		templatename=CSprintf("%s: %s",RESSTRING(INTERCEPT),RESLIST(FIGHTERSWEEP,misstype-1));
+		templatename=CSprintf("%s: %s",(LPCTSTR)RESSTRING(INTERCEPT),(LPCTSTR)RESLIST(FIGHTERSWEEP,misstype-1));
 	}
 	m_IDC_TEMPLATE.SetString(templatename);
 
@@ -329,19 +329,19 @@ void RAFTaskSummary::Refresh()
 	spinbut->Clear();
 	if (maxac==-1 || maxac>6)
 	{
-		spinbut->AddString(CSprintf("%i %s",squadinfo[0].numoutput,LoadResString(squadinfo[0].name)));
-		spinbut->AddString(CSprintf("%i %s",squadinfo[1].numoutput,LoadResString(squadinfo[1].name)));
-		spinbut->AddString(CSprintf("%i %s",squadinfo[2].numoutput,LoadResString(squadinfo[2].name)));
+		spinbut->AddString(CSprintf("%i %s",squadinfo[0].numoutput,(LPCTSTR)LoadResString(squadinfo[0].name)));
+		spinbut->AddString(CSprintf("%i %s",squadinfo[1].numoutput,(LPCTSTR)LoadResString(squadinfo[1].name)));
+		spinbut->AddString(CSprintf("%i %s",squadinfo[2].numoutput,(LPCTSTR)LoadResString(squadinfo[2].name)));
 		for (int i=1;i<=maxsquads;i++)
-			spinbut->AddString(CSprintf("%i %s",winginfo[i-1].numoutput,LoadResString(winginfo[i-1].name)));
+			spinbut->AddString(CSprintf("%i %s",winginfo[i-1].numoutput,(LPCTSTR)LoadResString(winginfo[i-1].name)));
 	}
 	else
 	{
-		spinbut->AddString(CSprintf("%i %s",squadinfo[0].numoutput,LoadResString(squadinfo[0].name)));
+		spinbut->AddString(CSprintf("%i %s",squadinfo[0].numoutput,(LPCTSTR)LoadResString(squadinfo[0].name)));
 		if (maxac>=3)
-			spinbut->AddString(CSprintf("%i %s",squadinfo[1].numoutput,LoadResString(squadinfo[1].name)));
+			spinbut->AddString(CSprintf("%i %s",squadinfo[1].numoutput,(LPCTSTR)LoadResString(squadinfo[1].name)));
 		if (maxac>=6)
-			spinbut->AddString(CSprintf("%i %s",squadinfo[2].numoutput,LoadResString(squadinfo[2].name)));
+			spinbut->AddString(CSprintf("%i %s",squadinfo[2].numoutput,(LPCTSTR)LoadResString(squadinfo[2].name)));
 	}
 	if (currentnumsquads>1 || currentnumac>=9)
 		spinbut->SetIndex(currentnumsquads+2);
@@ -352,8 +352,8 @@ void RAFTaskSummary::Refresh()
 	if (numspitsqinpack && numhurrsqinpack)
 	{
 		totalmsg=CSprintf("%s: %i %s (%i %s)\n%s: %i %s (%i %s)",
-			RESSTRING(SPITFIRES),numspitsqinpack,LoadResString(winginfo[numspitsqinpack-1].name),numspitsqinpack*12,RESSTRING(AIRCRAFT_PLURAL),
-			RESSTRING(HURRICANES),numhurrsqinpack,LoadResString(winginfo[numspitsqinpack-1].name),numhurrsqinpack*12,RESSTRING(AIRCRAFT_PLURAL));
+			(LPCTSTR)RESSTRING(SPITFIRES),numspitsqinpack,(LPCTSTR)LoadResString(winginfo[numspitsqinpack-1].name),numspitsqinpack*12,(LPCTSTR)RESSTRING(AIRCRAFT_PLURAL),
+			(LPCTSTR)RESSTRING(HURRICANES),numhurrsqinpack,(LPCTSTR)LoadResString(winginfo[numspitsqinpack-1].name),numhurrsqinpack*12,(LPCTSTR)RESSTRING(AIRCRAFT_PLURAL));
 	}
 	else
 	{
@@ -363,14 +363,14 @@ void RAFTaskSummary::Refresh()
 			totalmsg=RESSTRING(HURRICANES);
 		if (currentnumsquads>1 || currentnumac>=9)
 			totalmsg=CSprintf("%s: %i %s (%i %s)",
-				totalmsg,currentnumsquads,LoadResString(winginfo[currentnumsquads-1].name),currentnumsquads*12,RESSTRING(AIRCRAFT_PLURAL));
+				totalmsg,currentnumsquads,(LPCTSTR)LoadResString(winginfo[currentnumsquads-1].name),currentnumsquads*12,(LPCTSTR)RESSTRING(AIRCRAFT_PLURAL));
 		else
 			if (currentnumac!=1)
 				totalmsg=CSprintf("%s: %i %s (%i %s)",
-					totalmsg,squadinfo[currentnumac/3].numoutput,LoadResString(squadinfo[currentnumac/3].name),currentnumac,RESSTRING(AIRCRAFT_PLURAL));
+					totalmsg,squadinfo[currentnumac/3].numoutput,(LPCTSTR)LoadResString(squadinfo[currentnumac/3].name),currentnumac,(LPCTSTR)RESSTRING(AIRCRAFT_PLURAL));
 			else
 				totalmsg=CSprintf("%s: %i %s (%i %s)",
-					totalmsg,squadinfo[0].numoutput,LoadResString(squadinfo[0].name),currentnumac,RESSTRING(AIRCRAFT));
+					totalmsg,squadinfo[0].numoutput,(LPCTSTR)LoadResString(squadinfo[0].name),currentnumac,(LPCTSTR)RESSTRING(AIRCRAFT));
 	}
 	m_IDC_RSTATICTOTAL.SetString(totalmsg);
 

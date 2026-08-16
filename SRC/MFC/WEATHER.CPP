@@ -173,7 +173,7 @@ BOOL CWeather::OnInitDialog()
 				alt = 100*((alt + 50)/100);
 
 				s->SetString(CSprintf("%i%s (%i/8)", 
-						alt,LoadResString(Save_Data.alt.mediumabbr), MMC.Sky.Layer[i].Cover/32));
+						alt,(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr), MMC.Sky.Layer[i].Cover/32));
 			}
 		}
 		if (!layerpresent)
@@ -268,7 +268,7 @@ BOOL CWeather::OnInitDialog()
 	{
  
 		GETDLGITEM(IDC_CLOUD_0)->SetString(CSprintf("%i%s (%i/8)", 
-						1000,LoadResString(Save_Data.alt.mediumabbr), 7));
+						1000,(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr), 7));
 
 		for (int index=1; index < 3; index++)
 		{

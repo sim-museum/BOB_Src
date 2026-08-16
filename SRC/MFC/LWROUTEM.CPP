@@ -498,7 +498,7 @@ void	LWRouteMain::RefreshList()
 			}
 			else
 			if (wp->applywave.Evaluate()!=ENABLE_COMPLEX_VAL && wp->applywave.Evaluate()>=0)
-	 			rlistbox->AddString(CSprintf("%i: %s",wp->applywave.Evaluate(),LoadResString(Profile::WPType(WpList[i]))),0);
+	 			rlistbox->AddString(CSprintf("%i: %s",wp->applywave.Evaluate(),(LPCTSTR)LoadResString(Profile::WPType(WpList[i]))),0);
 			else
 				rlistbox->AddString(LoadResString(Profile::WPType(WpList[i])),0);
 
@@ -567,7 +567,7 @@ void	LWRouteMain::RefreshList()
 			{
 				int alt = (wp->World.Y*10)/Save_Data.alt.mediummm;
 				alt = 100*((alt + 50)/100);
-				rlistbox->AddString(CSprintf("%i%s",alt,LoadResString(Save_Data.alt.mediumabbr)),2);
+				rlistbox->AddString(CSprintf("%i%s",alt,(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr)),2);
 			}
 			int t=wp->etas/60;
 			rlistbox->AddString(CSprintf("%02i:%02i",t/60,t%60),3);

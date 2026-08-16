@@ -167,7 +167,7 @@ void WayPointDialog::Refresh(bool remakespin)
 	if (wp)
 		if (wp->applywave==-2)
 		{
-			title->SetString(CSprintf("(%s)",LoadResString(Profile::WPType(Todays_Packages.hiwp))));
+			title->SetString(CSprintf("(%s)",(LPCTSTR)LoadResString(Profile::WPType(Todays_Packages.hiwp))));
 			CRCombo* combo=GETDLGITEM(IDC_RCOMBOALT);
 			combo->Clear();
 			combo->SetCaption("");
@@ -200,7 +200,7 @@ void WayPointDialog::Refresh(bool remakespin)
 			title->SetString(LoadResString(Profile::WPType(Todays_Packages.hiwp)));
 			CRStatic*   s;
 			s=GETDLGITEM(IDC_RSTATICALT);
-			s->SetString(CSprintf("%s, %s", RESSTRING(ALT),LoadResString(Save_Data.alt.mediumabbr)));
+			s->SetString(CSprintf("%s, %s", (LPCTSTR)RESSTRING(ALT),(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr)));
 			int t;
 			s=GETDLGITEM(IDC_RSTATICRELTOT);
 			t=wp->etas/60;
@@ -215,15 +215,15 @@ void WayPointDialog::Refresh(bool remakespin)
 			Todays_Packages[Todays_Packages.hipack].CalcFuel(Todays_Packages.hiwp, strikefuel, escortfuel);
 			s=GETDLGITEM(IDC_RSTATICFUEL);
 			if (strikefuel >= 0)
-				s->SetString(CSprintf("%3i%s",strikefuel,RESSTRING(MINS)));
+				s->SetString(CSprintf("%3i%s",strikefuel,(LPCTSTR)RESSTRING(MINS)));
 			else
-				s->SetString(CSprintf("%s",RESSTRING(NA)));
+				s->SetString(CSprintf("%s",(LPCTSTR)RESSTRING(NA)));
 
 			s=GETDLGITEM(IDC_RSTATICESCORTFUEL);
 			if (escortfuel >= 0)
-				s->SetString(CSprintf("%3i%s",escortfuel,RESSTRING(MINS)));
+				s->SetString(CSprintf("%3i%s",escortfuel,(LPCTSTR)RESSTRING(MINS)));
 			else
-				s->SetString(CSprintf("%s",RESSTRING(NA)));
+				s->SetString(CSprintf("%s",(LPCTSTR)RESSTRING(NA)));
 
 
 
@@ -232,7 +232,7 @@ void WayPointDialog::Refresh(bool remakespin)
 				ULong range,brg;
 				Todays_Packages[Todays_Packages.hipack].CalcRangeBrgFromPrev(Todays_Packages.hiwp,range,brg);
 	 			s=GETDLGITEM(IDC_RSTATICRNGFROM);
-				s->SetString(CSprintf("%i %s", (int)range, LoadResString(Save_Data.dist.longabbr)));
+				s->SetString(CSprintf("%i %s", (int)range, (LPCTSTR)LoadResString(Save_Data.dist.longabbr)));
 				s=GETDLGITEM(IDC_RSTATICBRGFROM);
 				s->SetString(CSprintf("%i°", (int)brg));
 			}else

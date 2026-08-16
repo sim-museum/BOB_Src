@@ -191,7 +191,7 @@ BOOL AcUnitRAF::OnInitDialog()
 			rlistbox->AddString(name,0);
 			rlistbox->AddString(RESLIST(SPIT_A, actype),1);
 			rlistbox->AddString(CSprintf("%i", sq->acavail),2);
-			rlistbox->AddString(CSprintf("%s", GetTargName(sq->homeairfield)),3);
+			rlistbox->AddString(CSprintf("%s", (LPCTSTR)GetTargName(sq->homeairfield)),3);
 			sqlist|=sq->squadron;										//JIM 04/07/01
 			
 

@@ -672,7 +672,7 @@ void LWDirectives::RefreshMission(int i,  int missions)
 	if (ininitdialog)
 	for(int entry = 0;entry< LWTaskSummary::SQUADSENSIBLEMAX;entry++)						//JIM 5Sep00
 	{
-		spinbut->AddString(CSprintf("%i %s", LWTaskSummary::squadinfo[entry].number, LoadResString(LWTaskSummary::squadinfo[entry].name)));
+		spinbut->AddString(CSprintf("%i %s", LWTaskSummary::squadinfo[entry].number, (LPCTSTR)LoadResString(LWTaskSummary::squadinfo[entry].name)));
 		int ac = LWTaskSummary::squadinfo[entry].numofsquads;
 		if  (	(staffelperraid  == ac )
 			)

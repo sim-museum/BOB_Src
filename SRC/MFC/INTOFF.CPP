@@ -211,11 +211,11 @@ void InterceptOffered::InitDialog()
 	if (maxreoffer)
 		s->SetString(
 			CSprintf("%s %03i (%i/%i): %s", 
-			RESSTRING(RAID),pk.raidnumentries[rd].raidnum,currreoffer+1,maxreoffer+1,RESSTRING(INTERCEPTMSG)));
+			(LPCTSTR)RESSTRING(RAID),pk.raidnumentries[rd].raidnum,currreoffer+1,maxreoffer+1,(LPCTSTR)RESSTRING(INTERCEPTMSG)));
 	else
 		s->SetString(
 			CSprintf("%s %03i: %s", 
-			RESSTRING(RAID),pk.raidnumentries[rd].raidnum, RESSTRING(INTERCEPTMSG)));
+			(LPCTSTR)RESSTRING(RAID),pk.raidnumentries[rd].raidnum, (LPCTSTR)RESSTRING(INTERCEPTMSG)));
 	
 }
 
@@ -298,6 +298,6 @@ void InterceptOffered::OnTimer(UINT nIDEvent)
 	if (countdown<=0)
 		OnOK();
 	else
-		GETDLGITEM(IDC_OK)->SetString(CSprintf("%s: %i",RESSTRING(OK),countdown));
+		GETDLGITEM(IDC_OK)->SetString(CSprintf("%s: %i",(LPCTSTR)RESSTRING(OK),countdown));
 
 }

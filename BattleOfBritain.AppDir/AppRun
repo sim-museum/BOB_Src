@@ -1,0 +1,12 @@
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "$0")")"
+export LD_LIBRARY_PATH="$HERE/usr/lib:${LD_LIBRARY_PATH:-}"
+# Runtime-read resources shipped alongside the binary (see packaging/README.md).
+export BOB_RC_DIR="${BOB_RC_DIR:-$HERE/usr/share/bob/SRC}"
+# Game data is NOT bundled (not redistributable). Point BOB_DRIVE_C at your Wine
+# drive_c, or just run the AppRun from inside the install directory — the engine
+# derives BOB_DRIVE_C from the cwd's drive_c ancestor.
+if [ -n "${BOB_DRIVE_C:-}" ] && [ -z "${BOB_NO_CHDIR:-}" ]; then
+  cd "$BOB_DRIVE_C/Program Files/Rowan Software/Battle Of Britain" 2>/dev/null || true
+fi
+exec "$HERE/usr/bin/bob" "$@"

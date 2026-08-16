@@ -161,14 +161,14 @@ void	Geschwader::RefreshLW()
  //CSprintf("%i",	wadernum)
 				if (Node_Data.geschwader[wader].reconn)
 					string =   CSprintf("%s%i<%s>",
-									RESLIST(J, Node_Data.geschwader[wader].wadername),
+									(LPCTSTR)RESLIST(J, Node_Data.geschwader[wader].wadername),
 									wadernum,
-									RESLIST(SPIT_A,Node_Data.geschwader[wader].aircrafttype));
+									(LPCTSTR)RESLIST(SPIT_A,Node_Data.geschwader[wader].aircrafttype));
 				else
 					string =   CSprintf("%s%i(%s)",
-									RESLIST(J, Node_Data.geschwader[wader].wadername),
+									(LPCTSTR)RESLIST(J, Node_Data.geschwader[wader].wadername),
 									wadernum,
-									RESLIST(SPIT_A,Node_Data.geschwader[wader].aircrafttype));
+									(LPCTSTR)RESLIST(SPIT_A,Node_Data.geschwader[wader].aircrafttype));
 				rlistbox->AddString(string,flotte*4);
 		
 				int i = 0, numsquad = 0;

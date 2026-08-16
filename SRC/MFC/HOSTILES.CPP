@@ -636,7 +636,7 @@ void	HostilesList::RefreshList()
 					alt = 0;
 				alt = alt*10/Save_Data.alt.mediummm;
 				alt = 100*((alt + 50)/100);
-				rlistbox->AddString(CSprintf("%i%s",alt,LoadResString(Save_Data.alt.mediumabbr)),4);
+				rlistbox->AddString(CSprintf("%i%s",alt,(LPCTSTR)LoadResString(Save_Data.alt.mediumabbr)),4);
 			}else
 				rlistbox->AddString(" ",4);
 //DeadCode RJS 12Nov00 			info_airgrpPtr item = Persons2::ConvertPtrUID(pk[firstsq].instance);

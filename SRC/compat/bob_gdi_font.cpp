@@ -106,10 +106,52 @@ static stbtt_fontinfo* cur_font(void)
 
 /* Draw `str` at (x,y) top-left, glyph pixel height `pixelH`, colour 0x00RRGGBB.
    Antialiased, alpha-blended into the BGRA framebuffer. Returns the advance width. */
+/* S164 (cross-port from MA S135/S141): a DRAWN-TEXT diagnostic.
+ *
+ * BOB_TRACE_TEXT=<substring>  trace every draw whose text contains <substring>, uncapped.
+ * BOB_TRACE_TEXT=1            trace the first 24 draws (a general look).
+ * BOB_TRACE_GARBAGE=1         report only text containing bytes outside printable ASCII.
+ *
+ * The last one is the useful one, and it is why this exists. MA found 53 sites of
+ * `sprintf("%s", <CString>)` -- an idiom that works by accident on MSVC (CString is one pointer
+ * and the ABI copies it) and passes the object's ADDRESS under GCC, so %s prints the raw bytes of
+ * a pointer. It never crashes and never logs; it just draws a few bytes of rubbish where a word
+ * should be, which reads as "the label is missing" from across the room. A detector that watches
+ * what actually reaches the rasteriser finds the whole class at once, including any site a grep
+ * would miss.
+ *
+ * Filter, don't cap: a fixed print budget is spent by whatever draws first (the menu), so the
+ * screen under investigation never gets a line. Booked six times in MA before it stuck. */
+static void bob_text_trace(const char* str)
+{
+	const char* want = getenv("BOB_TRACE_TEXT");
+	if (want) {
+		if (want[0] == '1' && !want[1]) {
+			static int n = 0;
+			if (n++ < 24) fprintf(stderr, "[text] \"%s\"\n", str);
+		} else if (strstr(str, want)) {
+			fprintf(stderr, "[text] \"%s\"\n", str);
+		}
+	}
+	if (getenv("BOB_TRACE_GARBAGE")) {
+		for (const unsigned char* p = (const unsigned char*)str; *p; ++p) {
+			if (*p < 0x20 || *p >= 0x7f) {
+				fprintf(stderr, "[garbage] drawn text has non-printable bytes:");
+				for (const unsigned char* q = (const unsigned char*)str; *q && q < (const unsigned char*)str + 32; ++q)
+					fprintf(stderr, " %02x", *q);
+				fprintf(stderr, "  as-text \"%s\"\n", str);
+				fflush(stderr);
+				break;
+			}
+		}
+	}
+}
+
 extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned color)
 {
 	stbtt_fontinfo* fnt = cur_font();
 	if (!fnt || !str || pixelH <= 0) return 0;
+	bob_text_trace(str);
 	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
 	if (!fb) return 0;
 	float scale = stbtt_ScaleForPixelHeight(fnt, (float)pixelH);

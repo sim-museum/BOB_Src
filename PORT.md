@@ -1,5 +1,56 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S164 (2026-08-16, Sprint 164): 126 sites of `sprintf("%s", <CString>)` — an MFC idiom that prints pointer bytes under GCC
+>
+> Cross-ported from MA S135, where this class cost several separately-reported UI bugs before it
+> was understood. The engine builds display strings as
+> `CSprintf("%s: %s", RESSTRING(PATROL), GetTargName(...))` — passing `CString` objects through
+> `...`. MFC's `CString` is a single `char*`, so on MSVC the ABI pushes that pointer and `%s`
+> prints the string; it is a well-known idiom *because* it works. GCC passes a non-trivially-
+> copyable object through `...` by invisible reference, so `%s` gets the **address of the object**
+> and prints the raw bytes of the pointer.
+>
+> **Proved in isolation before touching the tree** — five lines replicating only the ABI shape
+> (one pointer member, user-defined copy ctor and dtor), `-m32`, this compiler:
+>
+> ```
+> varargs   -> "0 9<garbage>Nm"   (len 9)
+> with cast -> "0 Nm"             (len 4)
+> ```
+>
+> **126 sites in 19 files** — `RAFTASKS` (23), `WPDIALOG` (7), `INTOFF` (5), `SCONTROL`,
+> `LWTASKSM`, `GESCHWDR` (4 each), `WEATHER`, `LWROUTEM`, `RAFCOMBT`, `DOSSDETL`, `HOSTILES`,
+> `RCOMBOX`, `TOOFF`, `ACUNITRF`, `LWDIRECT`, `RAFMSSFR` and their case-twins.
+>
+> **Applied with a parser, not a substitution.** Only the *variadic* arguments are cast: a
+> `CString` in the **format-string** position is a declared parameter and already converts, and
+> blanket-wrapping would have changed `RESSTRING(DEFAULTSPC)+CSprintf(...)`, which is CString
+> concatenation rather than an argument. The tool walks each call's argument list with paren and
+> string-literal awareness, so multi-line calls and nested calls like
+> `GetTargName(pk.packagetarget[0])` are handled.
+>
+> **The helper set is bigger than the obvious four.** Enumerating every function *declared to
+> return `CString`* and then looking for those names in printf-family argument lists added
+> `GetTargName` and `SubName` to `LoadResString`/`RESSTRING`/`RESLIST`/`RESTABLE`. MA's first pass
+> missed the equivalents.
+>
+> **New diagnostic, kept:** `BOB_TRACE_GARBAGE=1` reports any string reaching the text rasteriser
+> that contains bytes outside printable ASCII, and `BOB_TRACE_TEXT=<substring>` traces matching
+> draws uncapped (`=1` keeps a first-24 sample). This class never crashes and never logs — it draws
+> a few bytes of rubbish where a word belongs, which reads as "the label is missing". A detector at
+> the point of damage finds the whole class, including sites a grep would miss.
+>
+> **Honest scope.** The mechanism is proven and every site is corrected, but **no live instance was
+> reproduced on screen**: every affected call sits on a campaign dialog (RAF Tasks, intercept
+> offers, weather, waypoint lists) that no current recipe drives. With the detector armed, the
+> front-end gate screens report zero garbage — **and so does the control arm with the fix stashed
+> out**, so those screens prove nothing either way. This is a latent class removed on evidence of
+> mechanism, not a reproduced defect repaired. The detector is what will catch the first live one.
+>
+> **Gates:** full suite clean — 14 recipes exit 0, `dummy==GL BYTE-IDENTICAL`, flight frame-150
+> 94.9% non-black, binary-hash check valid. Shared notes updated as **§8-MA102** and synced to
+> `~/ma/port/BOB_PORT_LESSONS.md`.
+
 > ## S158 (2026-08-09, Sprint 158, PARTIAL): the message map is real — 16 dead routes now dispatch, and doing so trips §8-MA84
 >
 > S157 found `CWnd::SendMessageA` was an **allowlist of three** and that

@@ -289,7 +289,7 @@ void LWTaskSummary::Refresh()
 	int entry = 0;
 	while (AcSpin[entry] <= maxac)
 	{
-		spinbut->AddString(CSprintf("%i %s", AcSpin[entry], RESSTRING(AIRCRAFT)));
+		spinbut->AddString(CSprintf("%i %s", AcSpin[entry], (LPCTSTR)RESSTRING(AIRCRAFT)));
 		if  (	(Todays_Packages.taskdata.strike.acnum != -1)
 			&&	(Todays_Packages.taskdata.strike.acnum >= AcSpin[entry])
 			)
@@ -305,7 +305,7 @@ void LWTaskSummary::Refresh()
 			Todays_Packages.taskdata.strike.maxsquad=3*3*5;
 		while (squadinfo[entry].numofsquads <= Todays_Packages.taskdata.strike.maxsquad)
 		{
-			spinbut->AddString(CSprintf("%i %s", squadinfo[entry].number, LoadResString(squadinfo[entry].name)));
+			spinbut->AddString(CSprintf("%i %s", squadinfo[entry].number, (LPCTSTR)LoadResString(squadinfo[entry].name)));
 			if  (	(Todays_Packages.taskdata.strike.acnum == -1)
 				&&	(Todays_Packages.taskdata.strike.squadnum >= squadinfo[entry].numofsquads)
 				)
@@ -329,7 +329,7 @@ void LWTaskSummary::Refresh()
 	entry = 0;
 	while (FighterSpin[entry] <= maxac)
 	{
-		spinbut->AddString(CSprintf("%i %s", FighterSpin[entry], RESSTRING(AIRCRAFT)));
+		spinbut->AddString(CSprintf("%i %s", FighterSpin[entry], (LPCTSTR)RESSTRING(AIRCRAFT)));
 		if  (	(fighters != -1)
 			&&	(fighters >= FighterSpin[entry])
 			)
@@ -346,7 +346,7 @@ void LWTaskSummary::Refresh()
 		entry = 0;
 		while (squadinfo[entry].numofsquads <= Todays_Packages.taskdata.attached.maxsquad)
 		{
-			spinbut->AddString(CSprintf("%i %s", squadinfo[entry].number, LoadResString(squadinfo[entry].name)));
+			spinbut->AddString(CSprintf("%i %s", squadinfo[entry].number, (LPCTSTR)LoadResString(squadinfo[entry].name)));
 			if  (	(fighters == -1)
 				&&	(fightersquads >= squadinfo[entry].numofsquads)
 				)

@@ -350,9 +350,9 @@ void RAFDiaryDetails::Refresh()
 			{
 				CString str;
 				_Radio.GetLocationString(str,intercept->interceptloc);
-				str=CSprintf("%s %s: %i %s",str,RESSTRING(ALT),
+				str=CSprintf("%s %s: %i %s",str,(LPCTSTR)RESSTRING(ALT),
 					(intercept->interceptheight+METRES100)/Save_Data.alt.longcm,
-					LoadResString(Save_Data.alt.longabbr));
+					(LPCTSTR)LoadResString(Save_Data.alt.longabbr));
 				GETDLGITEM(IDC_RSTATICINTERCEPT1)->SetString(str);
 
 				CString	missString;										//RJS 9Nov00

@@ -205,7 +205,7 @@ void TakeOverOffered::OnTimer(UINT nIDEvent)
 	if (countdown<=0)
 		OnCancel();
 	else
-		GETDLGITEM(IDC_CANCEL)->SetString(CSprintf("%s: %i",RESSTRING(CANCEL),countdown));
+		GETDLGITEM(IDC_CANCEL)->SetString(CSprintf("%s: %i",(LPCTSTR)RESSTRING(CANCEL),countdown));
 
 }
 

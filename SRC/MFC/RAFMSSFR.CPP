@@ -350,7 +350,7 @@ void	RAFMissionFolder::RefreshList()
 //DEADCODE RDH 21/01/00 		sq = Node_Data[squid];
 
 		Squadron* sq = Node_Data[(SquadNum)packlistP.squadron];
-		rlistbox->AddString(CSprintf("%4s (%i)",sq->SubName(), packlistP.numofac),1);
+		rlistbox->AddString(CSprintf("%4s (%i)",(LPCTSTR)sq->SubName(), packlistP.numofac),1);
 
 
 
