@@ -633,7 +633,22 @@ public:
         if (m_bobScreen && s && n) {
             char buf[512]; UINT k = n < 511 ? n : 511; memcpy(buf, s, k); buf[k] = 0;
             bobSetFace();
-            bob_gdi_text(m_bobVpX + x, m_bobVpY + y, buf, m_bobTextH, bobColor(m_textColor));
+            /* S171: honour SetTextAlign. It used to be `{ return 0; }`, so TA_RIGHT and
+               TA_BASELINE were discarded and every such draw came out left-aligned from a
+               top-left origin. The map's SCALE RULER is the visible casualty:
+               SCALEBAR.CPP:230 asks for TA_RIGHT|TA_BASELINE and its labels then ran off the
+               right-hand edge of the screen -- "0 Nm" and "50" arrive clipped, where the Wine
+               reference shows them whole with a margin.
+               Win32: TA_LEFT=0 TA_RIGHT=2 TA_CENTER=6 (low 3 bits); TA_BASELINE=24, and
+               bob_gdi_text takes a TOP-left y, so a baseline origin must be raised by the
+               ascent. */
+            int ax = m_bobVpX + x, ay = m_bobVpY + y;
+            if (m_bobTextAlign & 6) {
+                int w = bob_gdi_text_width(buf, m_bobTextH);
+                ax -= ((m_bobTextAlign & 6) == 6) ? w / 2 : w;
+            }
+            if (m_bobTextAlign & 24 /*TA_BASELINE*/) ay -= (m_bobTextH * 4) / 5;
+            bob_gdi_text(ax, ay, buf, m_bobTextH, bobColor(m_textColor));
         }
         return TRUE;
     }
@@ -811,7 +826,9 @@ public:
         if (format & DT_CALCRECT) r->bottom = y;
         return y - r->top;
     }
-    UINT SetTextAlign(UINT) { return 0; }
+    /* S171: was a no-op -- see ExtTextOutA. The map ruler's labels depend on TA_RIGHT. */
+    int m_bobTextAlign = 0;
+    UINT SetTextAlign(UINT f) { UINT o = (UINT)m_bobTextAlign; m_bobTextAlign = (int)f; return o; }
     int  SetMapMode(int) { return 0; }
     int  SetROP2(int) { return 0; }
     int  SetStretchBltMode(int) { return 0; }

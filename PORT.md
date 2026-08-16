@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S171 (2026-08-16, Sprint 171): the map ruler's labels were running off the edge of the screen — `SetTextAlign` was a no-op
+>
+> Comparing our campaign map against the **Wine gold capture** (`gold standard/bob/`, the method MA
+> used to find three defects its own references could not see) showed the right-edge scale ruler
+> present and correct in ticks, spacing and backdrop — with its **labels clipped**: "0 Nm" as
+> "0 N", "50" as "5", "100" as "10". Gold shows them whole, with a margin.
+>
+> **Cause.** `CDC::SetTextAlign` was `{ return 0; }`. `SCALEBAR.CPP:230` asks for
+> `TA_RIGHT | TA_BASELINE | TA_NOUPDATECP` and places each label by its **right edge**; discard the
+> flag and it is drawn left-aligned from that point, off the screen. `TA_BASELINE` matters too:
+> `bob_gdi_text` takes a top-left y, so a baseline origin has to be raised by the ascent.
+>
+> Implemented in the DC (where GDI keeps it) and applied in `ExtTextOutA`. Evidence:
+> `doc/img_scaleruler_ab.png` — before on the left, after on the right.
+>
+> **This corrects my own S169 census**, which listed `SetTextAlign` as *"present, but nothing here
+> depends on it yet"*. That was decided by grepping for callers and looking at the front end. The
+> caller was `SCALEBAR.CPP` all along. **A grep tells you who calls an API; only a comparison
+> against the original tells you whether the result is right.**
+>
+> **The one screen that changed, checked against gold rather than against ourselves.** The A/B is
+> 13/14 byte-identical; `phaseselect`'s tab row moved (bbox 582,14–906,30). Measuring gold's tab
+> positions scaled to our 1024-wide screen — Critical Period ≈478–674, Blitz ≈802–869 — against
+> ours before (692–805, 875–915) and after (577–695, 837–870): **the new positions are closer to
+> gold on both tabs.** The change is a fidelity improvement, not a regression, and that verdict
+> comes from the original rather than from our previous output. `doc/img_phasetabs_ab.png`.
+>
+> **Gates:** modal PASS, `dummy==GL BYTE-IDENTICAL`, flight frame-150 94.6% non-black, 13/14
+> byte-identical vs the previous default (the fourteenth is the improvement above). Shared note
+> **§8-BoB171**.
+
 > ## S170 (2026-08-16, Sprint 170): an unhosted-control census that came back CLEAN, and ASan over the three changed lifetimes
 >
 > **Census (MA's method, S136/S140).** `bob_ole_create_control` dispatches eight R* CLSIDs and
