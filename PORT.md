@@ -1,5 +1,51 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S167 (2026-08-16, Sprint 167): S159's blocker was the compat holding a file block open — and the A/B nobody had run says dispatch still is not ready
+>
+> **The blocker, closed.** `bob_dlg_getfile` (the `WM_GETFILE` handler the R* controls fetch art
+> through) keeps its `fileblock` in a `static fileblock* s_lastfb` "until the next call", and the
+> matching `bob_dlg_releasefile()` **was defined and called by nothing**. The controls do their
+> part — `WM_RELEASELASTFILE` (`WM_USER+5` = 0x405) is sent from **23 call sites** — and the compat
+> `SendMessageA` ignored every one.
+>
+> Harmless while `WM_GETARTWORK` returned 0, because `RDialog::DoPaint` then never reached
+> `fileblock picture(artnum)`. Turn the message map on, `OnGetArt` answers for real, and the second
+> open collides with the block the compat is still holding:
+> `*** FATAL: Opened file block (6d12) again without closing!`
+>
+> **So the fatal was never the message map's bug** — it was the message map exposing a
+> half-implemented protocol underneath, the same "one half of a pair implemented, the other
+> silently missing" shape S156–S163's retro named. One line, and deliberately not a `return`: the
+> game's own `OnReleaseLastFile` must still run when dispatch is on.
+>
+> **The control arm earned its keep twice.** The first recipe tried (`mainmenu`) showed no fatal
+> *with or without* the fix — it never reproduced the bug, so it proved nothing. The reproducer is
+> `entername` (`BOB_AUTOCLICK=1,1,1`, shot 520):
+> ```
+>   without the fix : exit=1,  FATAL: Opened file block (6d12) again without closing!
+>   with the fix    : exit=0,  zero fatals
+> ```
+>
+> **And the default still does not flip.** The suite accepts a baseline directory for an A/B and no
+> previous session had run one. With the fatal gone, `BOB_MSG_DISPATCH=1` gives **11/14
+> byte-identical** and three screens visibly regressed:
+>
+> | screen | with dispatch on |
+> |---|---|
+> | `phaseselect` | phase tabs, date, description and Back/Begin **all gone**, artwork only |
+> | `entername` | "Commander Bob", "Luftwaffe Convoys", date, Back/Begin **all gone** |
+> | `bobfrag` | differs over most of the screen |
+>
+> Evidence: `doc/img_dispatch_phaseselect_ab.png`, `doc/img_dispatch_entername_ab.png` (off on top,
+> on below). The shape suggests background art now painting where it never did — `OnGetArt`
+> answering for the first time — and covering text drawn earlier. **That is a different bug from
+> the one this sprint closes**, and it is the next thing to chase. Turning dispatch on today would
+> trade a documented blocker for three broken screens.
+>
+> **Gates on the shipped default:** 14 recipes exit 0, modal gate PASS, `dummy==GL BYTE-IDENTICAL`,
+> flight frame-150 94.7% non-black, binary hash valid. Shared notes updated as **§8-BoB167** and
+> synced to `~/ma/port/BOB_PORT_LESSONS.md`.
+
 > ## S166 (2026-08-16, Sprint 166, MEASUREMENT): the dialog-teardown flag, measured — and deliberately NOT flipped
 >
 > S154 left `BOB_DLG_TEARDOWN` default-OFF with an explicit condition: *"Default OFF until

@@ -2913,3 +2913,64 @@ box; the weather prompt needs a campaign day whose weather says so). BoB's `BOB_
 fires the real `RMessageBox` from the idle loop and prints its return. *A defect you cannot drive
 from a script cannot have a gate.* The gate then asserts the **answer, per button** — three
 distinct codes is the only thing that proves a loop actually ran.
+
+---
+
+## §8-BoB167 — the other half of `WM_GETFILE`: a held file block, and why "the message map is broken" was the wrong diagnosis
+
+**BoB S167. The MA counterpart is §8-MA84, whose *mechanism* does not apply — see below.**
+
+BoB's message dispatch (S158) has been default-off since it was written, blocked on a fatal:
+
+```
+*** FATAL: Opened file block (6d12) again without closing!
+```
+
+S159 traced it properly and established what it was *not*: not `RDialog::OnGetFile`, and not MA's
+per-dialog `m_pfileblock` collision (that fix was implemented and measured `borrows: 0`, inert).
+The trace ended at *"something on the `bob_fp_repaint` path constructs a `fileblock` directly"*.
+
+**It is the compat layer holding one open.** `bob_dlg_getfile` — the `WM_GETFILE` handler the R*
+controls fetch their art through — does:
+
+```c
+static fileblock* s_lastfb = NULL;
+delete s_lastfb; s_lastfb = new fileblock((FileNum)filenum);   /* held until the NEXT call */
+```
+
+and the matching `bob_dlg_releasefile()` **was defined and called by nothing**. The controls do
+their part: `WM_RELEASELASTFILE` (`WM_USER+5` = 0x405) is sent from **23 call sites**, and the
+compat `SendMessageA` ignored every one. So the block stayed open indefinitely.
+
+That was harmless only while `WM_GETARTWORK` returned 0: with no artnum, `RDialog::DoPaint` never
+reached `fileblock picture(artnum)`. Turn the message map on, `OnGetArt` answers for real, and the
+second open collides with the one the compat is still holding.
+
+**So the fatal was never the message map's bug.** It was the message map *exposing a
+half-implemented protocol underneath* — the "one half of a pair implemented, the other silently
+missing" shape BoB's own S156–S163 retro had already named. The fix is one line, and it must not
+`return`: the game's own `OnReleaseLastFile` still has to run when dispatch is on.
+
+**Verified with a control arm, which mattered twice here.** The first recipe tried (`mainmenu`,
+120 ticks) showed no fatal *with or without* the fix — proving nothing. The reproducer is
+`entername` (`BOB_AUTOCLICK=1,1,1`, shot 520): **without the fix exit=1 and the 6d12 fatal;
+with it exit=0, zero fatals.**
+
+**But do not flip the default yet — there is a second blocker.** With the fatal gone, an A/B of the
+whole gate suite (the suite takes a baseline directory; the previous sessions had not run one)
+gives **11/14 byte-identical** and three screens visibly regressed:
+
+| screen | with dispatch on |
+|---|---|
+| `phaseselect` | phase tabs, date, description paragraph and Back/Begin **all gone**; artwork only |
+| `entername` | "Commander Bob", "Luftwaffe Convoys", the date and Back/Begin **all gone** |
+| `bobfrag` | differs over most of the screen |
+
+The shape suggests background art now painting where it never did (`OnGetArt` answering for the
+first time) and covering text drawn earlier. That is the next investigation, and it is a
+*different* bug from the one this note closes.
+
+**The generalisable lesson:** when enabling a subsystem trips a fatal, the fatal is usually not in
+the subsystem — it is in something that was never exercised before and has therefore never had to
+be correct. Look for the protocol the newly-live code now completes, and check whether the port
+implemented both halves of it.

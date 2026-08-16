@@ -837,6 +837,7 @@ class CListBox;
 extern "C" {
     BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* parent, UINT id);
     void* bob_dlg_getfile(int filenum);   /* WM_GETFILE: icon/art data (bob_ole_rcombo.cpp) */
+    void  bob_dlg_releasefile(void);     /* S167: WM_RELEASELASTFILE -- the other half of that protocol */
     void* bob_dlg_getfont(int fontnum);   /* WM_GETGLOBALFONT: CFont* from g_AllFonts */
     int bob_load_string(void* h, unsigned id, char* buf, int maxlen);  /* WM_GETSTRING: BDG string table (bob_resources.cpp) */
     void bob_ole_invoke(CWnd* self, DISPID id, WORD flags, VARTYPE vtRet, void* pvRet, const BYTE* pInfo, va_list ap);
@@ -970,6 +971,19 @@ public:
            (OnGetFile). Route it to the compat impl so OnDraw's icon draw doesn't
            NULL-deref. WM_GETFILE == WM_USER+4 == 0x404. */
         if (m == 0x404) return (LRESULT)bob_dlg_getfile((int)w);   /* WM_GETFILE  = WM_USER+4 */
+        /* S167: ...and the OTHER HALF of that protocol. WM_RELEASELASTFILE (WM_USER+5 = 0x405) is
+           how a control says "I am done with the file"; 23 call sites send it and the compat
+           ignored every one, so bob_dlg_getfile's `s_lastfb` stayed open indefinitely (the only
+           thing that ever freed it was the NEXT getfile for a different file, and
+           bob_dlg_releasefile was defined and never called by anything).
+           That is what blocked S159: with BOB_MSG_DISPATCH on, WM_GETARTWORK finally answers with
+           a real artnum, so RDialog::DoPaint reaches `fileblock picture(artnum)` for art that the
+           compat holder may still have open -> "Opened file block (%x) again without closing!".
+           The fatal is not caused by the message map; it is the message map exposing a half-
+           implemented protocol underneath -- the exact "one half of a pair implemented, the other
+           silently missing" shape S156-S163's retro named.
+           Not a `return`: the game's own OnReleaseLastFile must still run when dispatch is on. */
+        if (m == 0x405) bob_dlg_releasefile();                     /* WM_RELEASELASTFILE = +5 */
         if (m == 0x403) return (LRESULT)bob_dlg_getfont((int)w);   /* WM_GETGLOBALFONT = +3 */
         /* S126: WM_GETSTRING = WM_USER+16 — the genuine caption-resolution path.
            CRStaticCtrl::GetParentWndInfo sends it with the persisted ResourceNumber
