@@ -20,11 +20,19 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 > | S167 | S159's file-block fatal | the compat held a `WM_GETFILE` block open and ignored all **23** `WM_RELEASELASTFILE` sends; fixed, control-armed |
 > | S168 | second blocker: `WM_GETARTWORK` sent controls down the offscreen path | pinned to 0 (MA's documented answer); **A/B 11/14 → 14/14 byte-identical → message dispatch DEFAULT ON** |
 > | S169 | census of five MA findings against this tree | two already solved here; one (mip-mapping) **wrong in MA**, corrected there |
+> | S170 | unhosted-control census + ASan over the changed lifetimes | census **clean** (all 8 types hosted); ASan: 0 heap errors on three paths |
+> | S171 | gold comparison: the map ruler's labels ran off the screen | `SetTextAlign` was a no-op; fixed — and it **corrects S169's own census entry** |
 >
-> **Open:** `TERRAIN-1` (dogfight tiles scrambled — still not reproduced), `HAT-2` (needs a physical
-> hat press), `SetTextAlign` (a no-op; nothing here depends on it yet), and the three-screen
-> regression is gone but `BOB_ARTWORK_DISPATCH=1` still shows the offscreen-composite path is
-> unimplemented.
+> **Open:** `TERRAIN-1` (dogfight tiles scrambled — still not reproduced; a gold-vs-ours cockpit
+> comparison came back clean, so it needs the PO's mission/altitude detail), `HAT-2` (needs a
+> physical hat press), the offscreen-composite path (`BOB_ARTWORK_DISPATCH=1` still shows it
+> unimplemented), and `BOB_DLG_TEARDOWN` (measured in S166, default still off — needs a re-open
+> loop recipe, not another gate run).
+>
+> **Method note from this session:** the Wine gold captures in `gold standard/bob/` are a stronger
+> oracle than our own captures, and they found S171 after a grep-based census had cleared the same
+> API. MA learned the same lesson the hard way — four of its five committed parity references had a
+> defect baked into them.
 
 > ## Previously (S156–S163, 2026-08-09/10): a play session found four real bugs the gates could not reach
 >
