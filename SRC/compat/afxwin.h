@@ -985,6 +985,19 @@ public:
            Not a `return`: the game's own OnReleaseLastFile must still run when dispatch is on. */
         if (m == 0x405) bob_dlg_releasefile();                     /* WM_RELEASELASTFILE = +5 */
         if (m == 0x403) return (LRESULT)bob_dlg_getfont((int)w);   /* WM_GETGLOBALFONT = +3 */
+        /* S168 (from MA, RDIALOG.CPP's own note): WM_GETARTWORK (WM_USER+1 = 0x401) answers 0
+           DELIBERATELY, and must keep doing so even once the message map dispatches.
+           The panel's OnPaint has already composited the background art into the screen canvas,
+           so the hosted R* controls draw their text and bitmaps DIRECTLY over it -- the
+           transparent path. Answer with a real artnum and each control instead takes the
+           OFFSCREEN-COMPOSITING path, which in this port produces an all-black offscreen with a
+           text box on it. MA hit exactly this and settled on 0; BoB's S167 A/B shows the same
+           picture the moment dispatch lets OnGetArt answer for real -- phaseselect and entername
+           lose their text and gain black rectangles.
+           Served here, ahead of the dispatch, so the other fifteen routes still reach the game's
+           handlers. BOB_ARTWORK_DISPATCH=1 lets the real handler answer, for whoever fixes the
+           offscreen path properly. */
+        if (m == 0x401 && !getenv("BOB_ARTWORK_DISPATCH")) return 0;   /* WM_GETARTWORK = +1 */
         /* S126: WM_GETSTRING = WM_USER+16 — the genuine caption-resolution path.
            CRStaticCtrl::GetParentWndInfo sends it with the persisted ResourceNumber
            (now loaded from the property stream); every RDialog answers it with
@@ -1004,7 +1017,14 @@ public:
            engine spins up, so the stationary propeller (solid black blades) covered part of the
            view and non-black fell 98.7% -> 94.7%. That read like a render regression and was
            really a timing shift -- the frame differs by `Power 71` vs `Power 0`, not by quality. */
-        static const int bob_msg_dispatch_on = getenv("BOB_MSG_DISPATCH") ? 1 : 0;
+        /* S168: DEFAULT ON. S158 built the dispatcher and left it off "while it earns its keep";
+           S159 named the blocker (the file-block fatal) and stopped there. S167 root-caused that
+           to the compat holding a WM_GETFILE block open and fixed it; this sprint pinned
+           WM_GETARTWORK to 0 (the transparent-composite path MA documented). With both, an A/B of
+           the whole gate suite against the dispatch-off baseline is **14/14 byte-identical** --
+           the same screens, no fatals, with sixteen previously-dead routes dispatching.
+           BOB_NO_MSG_DISPATCH=1 reverts to the allowlist-only behaviour. */
+        static const int bob_msg_dispatch_on = getenv("BOB_NO_MSG_DISPATCH") ? 0 : 1;
         if (bob_msg_dispatch_on) {
             long r = 0;
             if (bob_msgmap_call(&typeid(*this), m, (void*)this, (int)w, (int)l, &r))

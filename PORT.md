@@ -1,5 +1,50 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S168 (2026-08-16, Sprint 168): message dispatch is ON by default — the second blocker was `WM_GETARTWORK`, and MA had already written the answer down
+>
+> S167 cleared the file-block fatal and then found dispatch still regressed three screens
+> (`phaseselect`, `entername`, `bobfrag`): text gone, **black rectangles** where controls should
+> be. This sprint identifies that and turns the feature on.
+>
+> **The second blocker.** `WM_GETARTWORK` (`WM_USER+1` = 0x401) had been answering 0 only because
+> nothing dispatched it. Let the real `OnGetArt` answer and every hosted R* control switches from
+> the **transparent** path — draw text and bitmaps straight onto the canvas the panel's `OnPaint`
+> has already composited — to the **offscreen-compositing** path, which in this port produces an
+> all-black offscreen with a text box on it. Those were the black rectangles.
+>
+> MA's `RDIALOG.CPP` carries the finding verbatim, from when it hit the same wall:
+>
+> > *"WM_GETARTWORK intentionally returns 0: the panel's OnPaint already composited the background
+> > art into the screen canvas, so hosted controls draw their content DIRECTLY over it (transparent
+> > path). Returning the real artnum would send controls down the offscreen-compositing path → an
+> > all-black offscreen + text box."*
+>
+> So 0x401 is now served in the compat allowlist, **ahead of** the dispatch, and the other fifteen
+> routes reach the game's handlers unchanged. `BOB_ARTWORK_DISPATCH=1` lets the real handler answer,
+> for whoever makes the offscreen path work.
+>
+> **Default flipped, on the project's own standard.** An A/B of the entire gate suite against the
+> dispatch-off baseline:
+>
+> ```
+>   before this sprint : 11/14 byte-identical  (phaseselect, entername, bobfrag regressed)
+>   after              : 14/14 byte-identical
+> ```
+>
+> — the same screens, no fatals, `dummy==GL BYTE-IDENTICAL`, modal gate PASS, flight frame-150
+> 96.5% non-black, and the recipe that used to die on the 6d12 fatal (`BOB_AUTOCLICK=1,1,1`) exits
+> 0. Sixteen routes that answered 0 for the port's whole life now dispatch to the game's own
+> handlers. `BOB_NO_MSG_DISPATCH=1` reverts.
+>
+> **A measurement mistake of mine, worth recording.** I first "measured" the regression by counting
+> yellow-ish pixels (`r>170, g>140, b<100`) — a predicate carried over from MA's blue title screen.
+> BoB's phase-select artwork is **amber**, so the predicate matched the background and reported
+> 38,488 "text" pixels on a screen with no text at all, briefly contradicting the eye. A colour
+> predicate is a screen-specific instrument; carrying one across ports is the same error as
+> carrying a coordinate convention across ports (S165). What actually identified the state was
+> hashing the captures and finding `phaseselect` and `entername` **byte-identical to each other** —
+> two different recipes landing in one broken state.
+
 > ## S167 (2026-08-16, Sprint 167): S159's blocker was the compat holding a file block open — and the A/B nobody had run says dispatch still is not ready
 >
 > **The blocker, closed.** `bob_dlg_getfile` (the `WM_GETFILE` handler the R* controls fetch art
