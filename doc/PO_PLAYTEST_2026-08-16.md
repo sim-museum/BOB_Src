@@ -39,8 +39,22 @@ What was tried, on real GL, and what each produced:
 | `BOB_STARTFLYING=click BOB_AUTOCLICK=0,1,2` | flies, but a **takeoff** scenario — on the runway again |
 | `BOB_STARTFLYING=click BOB_AUTOCLICK=1,0,2` | never reaches flight (timeout) |
 
-So every frame I can currently capture is of an aircraft **on the ground at an airfield**, where the
-terrain is flat and correct. The turkey shoot is `//COMBAT : turkey` in `SRC/BFIELDS/QMISS.CPP:370`
+> **RETRACTED (S173e).** The conclusion below — "the turkey shoot is unreachable headlessly" — was
+> wrong, and wrong in the most avoidable way: every recipe in the table above drives the **click**
+> path (`BOB_AUTOCLICK`/`BOB_STARTFLYING=click`), and the forced-flight path has read
+> **`BOB_QM_INDEX`** since the boot scaffold was written. `BOB_BOOT_FRONTEND=1 BOB_QM_INDEX=11`
+> boots straight into it: `[boot] QM: idx=11 title=2237` (`IDS_MISTYPE_DOGFIGHTING`) and a frame-150
+> dump reads **`Alt 9524ft  Speed 301 Kts  Power 90`** — airborne at the scenario's `FT_10000`, not
+> on a runway. Five recipes were tried and all five varied the same axis. *When a series of attempts
+> all fail the same way, the next thing to vary is the mechanism, not the parameters.*
+>
+> Index note: counting the table structurally gave 10 and the game answered `title=2236`
+> (`IDS_MISTYPE_FAMILIARISATION`) — off by one, because of the `#ifdef BOB_DEMO_VER` block at the
+> head of `quickmissions[]`. The trace settled it; the prediction was stated first so it could be
+> wrong out loud.
+
+So every frame the CLICK recipes can capture is of an aircraft **on the ground at an airfield**, where
+the terrain is flat and correct. The turkey shoot is `//COMBAT : turkey` in `SRC/BFIELDS/QMISS.CPP:370`
 — 1 Spitfire vs 1 Me109, `FT_10000`, over Ramsgate — and it **starts airborne**, which is exactly
 the state the corruption appears in and the one no recipe here reaches.
 
@@ -336,3 +350,34 @@ Message table with the clicked entry highlighted —
 
 which is what clicking an event-log line is supposed to open. Feature restored end to end: the line
 draws, takes the click, opens its dialog, the dialog paints, and a second click closes it.
+
+## BOB-PO-2 — REPRODUCED headlessly (S173e), and the recipe that does it
+
+```
+cd "<game dir>"
+gl-lock env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_QM_INDEX=11 BOB_AUTOFLY=view40 \
+  BOB_DUMP_FRAME=220 BOB_DUMP_PATH=/tmp/turkey_ext.ppm BOB_EXIT_AFTER_DUMP=1 ./build/bob
+```
+
+`BOB_QM_INDEX=11` is the turkey shoot (`[boot] QM: idx=11 title=2237` = `IDS_MISTYPE_DOGFIGHTING`);
+`BOB_AUTOFLY=view40` presses F6 for the external view once flight is live.
+
+**Cockpit arm** (`doc/img_turkey_cockpit_repro.png`, frame 150): `Alt 9524ft Speed 301Kts Power 90`
+— airborne at the scenario's `FT_10000`, gunsight and instruments correct, sky and horizon clean.
+
+**External arm** (`doc/img_turkey_tiles_repro.png`, frame 220): `Alt 9539ft Speed 300Kts`. The
+aircraft and everything **above** the horizon render correctly. **Below** the horizon the ground is
+black-to-dark-grey **flat rectangular blocks** at differing shades with visible tile seams, plus one
+lighter grey rectangle low-right — the PO's "patches, one black … tiles at wrong angles".
+
+So the defect is now reproducible on demand, in one command, without a play session. What it is not
+yet: diagnosed. The next cheap discriminators, in order —
+
+1. **Is it altitude or scenario?** Run a *familiarisation* airborne entry with the same external
+   view. If its ground is equally black, this is not turkey-specific and the search collapses to
+   terrain streaming at altitude.
+2. **Is it run-to-run stable?** Two identical runs, hash the frames. Variance is this port's
+   signature for an uninitialised read fed by a stub — it would collapse the search immediately.
+3. **Does the cockpit view show it too?** The cockpit arm above never points at the ground; a
+   nose-down attitude or a look-down view separates "the terrain is wrong" from "the external-view
+   scene setup is wrong" (the latter has already needed fixing once, S118/S119).
