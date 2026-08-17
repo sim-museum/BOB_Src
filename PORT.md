@@ -1,5 +1,60 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S173d (2026-08-16): `GetWindowRect` answered with the whole screen — one open dialog ate every map click
+>
+> BOB-PO-11, *"clicking red icon at bottom again does not dismiss dialog"*. S173c's lead — the event
+> log's controls were never drawn, so nothing hit-tested them — was real but **not sufficient**.
+> Adding `TB_REPORT` to the click walk changed nothing, and a **three-arm test** said so rather than
+> a second guess: one click, two clicks and no click all produced an identical `dialogs=6`.
+>
+> **Root cause, one line:**
+>
+> ```c
+> void GetWindowRect(LPRECT r) const { if (r) {
+>     int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
+> ```
+>
+> It answers with the **whole screen for every window**. S156's rule — *a click landing on an open
+> OOB dialog but hitting no control is swallowed, so the background does not select the map behind
+> it* — is a rect test, and with this stub it reads `cx>=0 && cx<1024 && cy>=0 && cy<768`: **true for
+> every pixel**. From the moment *any* dialog was open, every map click was discarded before reaching
+> the time controls, either icon row, the event log or unit selection. The map went inert, and the
+> only reason anything ever worked is that clicks arriving *before* the first dialog opened got
+> through.
+>
+> That includes S173's own Play click, which fires at tick 900 — just before the campaign opens the
+> LW Directives dialog by itself. **A green test that got in ahead of the bug.**
+>
+> Measured, once the swallow trace was ungated — it prints its own rect:
+>
+> ```
+> [oobclick] (200,657) inside dialog 3/6 (0,0)-(1024,768), no control -- SWALLOWED
+> ```
+>
+> **Fixes**, all one principle — *derive the region from the paint, never from a window query*:
+> `bob_ole_drawn_bounds` unions a dialog subtree's last-drawn control rects over the same nodes the
+> click walk visits; no drawn bounds means **do not swallow** (letting a click through is
+> recoverable, eating it is not); `TB_REPORT` added to **both** walks — it was missing from the click
+> walk, and then, once clicks arrived, from the **paint** walk too (`dlg=1087:0/15`, a dialog that
+> opened and drew nothing). The two walks must agree about the *set* as well as the geometry.
+>
+> **Verified**, same coordinates: one click → `[tbclick] consumed by event log ctrl id=1291`
+> (`IDC_LINE1`), `dialogs=7`, `dlg=1087` → **14/15** drawn — the Messages panel, filter tickboxes over
+> a Time/Location/Message table with the clicked entry highlighted (`06:30 Creil / Aircraft Quota
+> Allocated`). Two clicks → `dialogs=6`, `dlg=1087` gone. Open, paint, close.
+>
+> **Known limitation, stated rather than discovered later:** the union covers a dialog's *controls*,
+> not its background art, so a dialog whose art overhangs its outermost control keeps a border margin
+> where clicks fall through. A few pixels versus the entire screen, erring in the recoverable
+> direction.
+>
+> **Sister-port check (MA): not affected, and MA is the model** — its `GetWindowRect` already answers
+> from paint-recorded geometry (`m_maX/m_maY/m_maW/m_maH`). BoB should have copied that along with the
+> surrounding shim. Booked as §8-BoB173d, plus §8-BoB173c (a `pgrep -f` wait loop that self-matches
+> and hangs forever — the silent cousin of the `pkill -f` self-kill, both hit this sprint).
+>
+> Gate: 14/14 byte-identical, modal PASS, dummy==GL identical, binary hash unchanged.
+
 > ## S173 (2026-08-16, Sprint 173): the campaign clock could not be started — three layers, one frozen campaign
 >
 > PO, round 2: *"time is stopped at 0x ... not mission dialog appears (for German side)"*. That is one
