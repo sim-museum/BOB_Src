@@ -761,3 +761,41 @@ of those observations was real; none of them was the cause.
 **Next (a fix, not a measurement):** confirm that only one land-texture size gets an FBO, then give
 the other sizes the same RTT treatment. The A/B is already defined — `BOB_NO_FBO_RTT` reverts the
 existing path, and `blackTex` counts give a numeric pass/fail rather than an impression.
+
+### BOB-PO-2 — the mechanism, confirmed (S173m)
+
+`BOB_TRACE_RTT` over a turkey-shoot run:
+
+```
+[rtt] created FBO=1 tex=44 256x256 complete=1      <- exactly ONE FBO, and it is 256x256
+[rtt] ACCEPTED render-target texture 256x256   x1
+[rtt] ACCEPTED render-target texture 128x128   x2  <- accepted as RTT, no FBO ever created
+[rtt] Lock readback 256x256                    x20 <- readback only ever at 256x256
+[rtt] SetRenderTarget -> RTT                   x40
+[rtt] SetRenderTarget -> MAIN (unbind fbo)     x40
+```
+
+Forty render-target binds and **one** FBO. The engine composites each tile into a single scratch
+render target and reads it back to upload into that tile's own texture (`Render2Surface` ends with
+`EndScene` + `UploadTexture`); the readback path is servicing **only 256×256**. So tiles whose own
+texture is 64×64 or 128×128 receive nothing, and that is exactly the set measured as black:
+
+```
+blackTex dims 128x128 quads=2869
+blackTex dims  64x64  quads=9713      (256x256 is NOT in the black set)
+```
+
+Two independent measurements — which textures are black, and which sizes the RTT path services —
+name the same set. That is the mechanism.
+
+**Why the symptom looked so unstable.** Which screen regions use 64/128 tiles depends on view
+distance, so the black moved with pitch and altitude, differed between the sea and land arms,
+differed between two runs a few feet apart, and receded as the aircraft climbed and more of the view
+fell to 256-tiles. All of that was downstream of one thing: the low-resolution tiles never get their
+texture.
+
+**The fix is real work, not a one-liner**, and should be sized as its own story: give every land
+texture size the same render-to-texture treatment the 256 gets (or make the readback/upload path
+size-general). The A/B is already defined and numeric — `BOB_NO_FBO_RTT` reverts the existing path,
+`BOB_TRACE_TEXBLACK` gives `blackTex` counts that must go to zero, and the frame-800 near-band
+near-black percentage is the picture-level check.
