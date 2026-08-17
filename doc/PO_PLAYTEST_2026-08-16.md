@@ -644,3 +644,42 @@ flight paths put different tiles in view.
 from two attitudes) and see whether a given patch stays black. That separates "black tiles get
 repaired" from "black tiles go off-screen", and those have completely different fixes. It is the
 next thing to run, and it is cheap.
+
+### BOB-PO-2 — CORRECTION: it is the NEAR terrain that is black, not the distant terrain
+
+I had this backwards, in several commits, stated confidently. Splitting the below-horizon region
+into a band just under the horizon (far terrain) and a band well below it (nearer terrain):
+
+| frame | far band (just below horizon) | near band (well below) |
+|---|---|---|
+| 220 | mean (57,61,62) — black **0.1%** | mean (14,15,15) — black **61.2%** |
+| 300 | mean (84,87,89) — black **0.0%** | mean (12,15,15) — black **49.0%** |
+| 500 | mean (75,79,81) — black **0.0%** | mean (31,34,34) — black **36.8%** |
+| 800 | mean (74,78,80) — black **0.0%** | mean (30,36,36) — black **0.0%** |
+
+**The distant terrain is consistently fine** (0% black at every frame). The black is in the nearer
+band. Every statement of the form "distant terrain renders black" in the entries above is wrong and
+should be read as its opposite.
+
+That also explains the familiarisation arm, which I had filed as agreeing with the old story: at
+1052 ft the near ground was correct farmland and the *horizon* carried a black band. Under the old
+reading those two arms agreed; under the corrected one they disagree, and the thing that actually
+distinguishes them is what is underneath the aircraft — **the turkey shoot is over the Channel
+(sea), the familiarisation is inland (land)**. The sea RTT dump is consistent with this: it is a
+real water surface but a dark one (mean 50).
+
+**Honest state of this investigation.** Seven hypotheses have been eliminated by measurement
+(InfiniteStrip, the wipe, tile-creation capacity, RTT composition, cloud altitude, texture-pool
+exhaustion, untextured tiles, lighting), one arithmetic coincidence was caught by a counter, one
+confound was caught in my own method, and the headline geographic claim turned out to be inverted.
+What is solidly established:
+
+- the scenario is reproducible in one command, airborne, on demand;
+- the backdrop, the wipe, the lighting and the render targets are all correct;
+- terrain polygons near the aircraft draw black, and the effect is strongest early;
+- it correlates with being over water rather than over land.
+
+**Next, and deliberately narrow:** does a *sea* tile render black where a *land* tile does not?
+Fly the familiarisation scenario out over the coast, or the turkey shoot inland, and measure the
+near band in each. That is one variable, it is the one the two arms actually differ in, and it does
+not depend on any of the eliminated machinery.
