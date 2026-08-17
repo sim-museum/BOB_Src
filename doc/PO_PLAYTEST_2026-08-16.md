@@ -841,3 +841,45 @@ correct textures, black result.
 **Next measurement, and it is one field again:** bucket those blended black quads by their
 `g_srcBlend`/`g_dstBlend` factors, and count how many times they overlap the same pixels. If the
 factors are multiplicative and the overdraw is in the thousands, that is the mechanism.
+
+### BOB-PO-2 — the measured facts, and an explicit stop (S173p)
+
+The retraction above over-corrected. "Every black-textured quad is blended, therefore they cannot
+paint opaque black" is **wrong**: blending *enabled* is not the same as *transparent*. Three more
+fields, each one line in a trace that already existed:
+
+```
+blackTex dims  64x64  bpp=16 alphaMask=0x0 quads=9639 (blended=9639 colourKeyed=0)
+blackTex dims 128x128 bpp=16 alphaMask=0x0 quads=2863 (blended=2863 colourKeyed=0)
+blendFunc src=0x302 dst=0x303                       (GL_SRC_ALPHA / GL_ONE_MINUS_SRC_ALPHA)
+```
+
+So these surfaces have **no alpha channel** (`alphaMask=0`), **no colour key**, entirely black
+content, and are drawn with ordinary alpha blending. With no alpha in the texture, the source alpha
+can only come from the vertex — so unless the vertex alpha is zero, these quads paint black.
+
+And a texture that is 16-bit, has no alpha, has no colour key, and is *entirely black* is not a
+useful texture for anything. That combination reads as a texture that was **never filled** — which
+points back toward the earlier direction, though not via the `SURF_Blt` mechanism that was tried and
+measured to do nothing.
+
+**Stopping here deliberately.** This thread has produced two wrong root causes (the RTT size split;
+"blended therefore harmless"), one falsified fix, one arithmetic coincidence, one confound in my own
+method, and one inverted geographic claim. Each was caught by the next measurement, which is the
+process working — but the rate of self-correction says the useful thing now is a clean handover
+rather than a ninth hypothesis from me.
+
+**The two fields that would settle it, in order:**
+
+1. **The vertex alpha of those quads.** `BOB_TRACE_COL` already reports mean diffuse RGB; the alpha
+   byte of the same DWORD decides *opaque black* versus *invisible*. One field, same trace, and it
+   splits the entire question in half.
+2. **Where those surfaces come from.** 16-bit, no alpha, no key, 64×64 and 128×128, never filled —
+   tag the creation site (`make_surface`) with a caller id and print it for surfaces that later
+   classify black. That answers "which subsystem's textures are these" without any theorising.
+
+**Everything measured and reliable is in the commits**: the one-command airborne repro; the
+diagnostics (`BOB_TRACE_HORIZON`, `BOB_TRACE_TILES`, `BOB_TRACE_TEXBLACK`, `BOB_TRACE_RTT`,
+`BOB_DUMP_RTT`, `BOB_TRACE_COL`); and the confirmed-correct list — clear colour, backdrop bands,
+lighting, vertex RGB, texture allocation, tile queue, and the 256×256 land composition. The defect
+lives in what remains after all of those.

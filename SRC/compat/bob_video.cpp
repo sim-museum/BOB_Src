@@ -1713,6 +1713,22 @@ static HRESULT DEV_SetLight(IDirect3DDevice7*, DWORD, LPD3DLIGHT7) { return D3D_
 static HRESULT DEV_LightEnable(IDirect3DDevice7*, DWORD, BOOL) { return D3D_OK; }
 
 /* Render `count` verts of the FVF buffer `base` (already at start offset) as `prim`. */
+/* S173p (BOB-PO-2): which blend factors do the black-textured quads use? A multiplicative
+   destination factor (dst=GL_ZERO / GL_SRC_COLOR, or src=GL_DST_COLOR) drives whatever is beneath
+   toward black regardless of how correct the geometry, colours and textures are -- which is exactly
+   the situation left after S173n/o eliminated all three. GL enums for reading the output:
+   ZERO=0 ONE=1 SRC_COLOR=0x300 1-SRC_COLOR=0x301 SRC_ALPHA=0x302 1-SRC_ALPHA=0x303
+   DST_ALPHA=0x304 1-DST_ALPHA=0x305 DST_COLOR=0x306 1-DST_COLOR=0x307. */
+static unsigned g_tbSrc[8], g_tbDst[8]; static long g_tbN[8]; static int g_tbNum = 0;
+static void bob_texblack_note_blend(unsigned sf, unsigned df) {
+	for (int i = 0; i < g_tbNum; i++) if (g_tbSrc[i]==sf && g_tbDst[i]==df) { g_tbN[i]++; return; }
+	if (g_tbNum < 8) { g_tbSrc[g_tbNum]=sf; g_tbDst[g_tbNum]=df; g_tbN[g_tbNum]=1; g_tbNum++; }
+}
+static void bob_texblack_dump_blend(void) {
+	for (int i = 0; i < g_tbNum; i++)
+		fprintf(stderr, "[texblack]   blendFunc src=0x%x dst=0x%x quads=%ld\n", g_tbSrc[i], g_tbDst[i], g_tbN[i]);
+}
+
 static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
 	if (!g_win || !base || !count) return;
 	FvfLayout L = fvf_layout(fvf);
@@ -1783,23 +1799,34 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 			/* which surfaces are the black ones? histogram their dimensions -- the difference
 			   between "some texture is black" and "the NxN landscape tile textures are black",
 			   which is the actionable form. */
-			static int bw[16], bh[16]; static long bn[16], bblend[16]; static int nbd = 0;
+			static int bw[16], bh[16], bbpp[16]; static unsigned bamask[16]; static long bn[16], bblend[16], bckey[16]; static int nbd = 0;
 			if (cls == 0 && t) {
 				int found = -1;
 				for (int i = 0; i < nbd; i++) if (bw[i] == t->w && bh[i] == t->h) { found = i; break; }
-				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; bblend[found] = 0; }
+				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; bblend[found] = 0; bckey[found] = 0; bbpp[found] = 0; bamask[found] = 0; }
 				/* S173o: is this black-textured quad ALPHA-BLENDED? A black texture drawn with
 				   blending is what a shadow looks like, and the tile compositor calls
 				   RenderObjectShadow -- so "black texture" may be entirely legitimate rather than
 				   the defect. Splitting by blend state is what tells those apart. */
-				if (found >= 0) { bn[found]++; if (g_devAlphaBlend) bblend[found]++; }
+				/* S173p: does this black surface carry a COLOUR KEY, and does it have real alpha?
+				   Under src=SRC_ALPHA dst=1-SRC_ALPHA a black texel is transparent only if its
+				   alpha is 0 -- which for a 16-bit 565 surface (no alpha channel) can only come
+				   from a colour key being applied at upload. No key + no alpha = opaque black. */
+				if (found >= 0) { bn[found]++; if (g_devAlphaBlend) bblend[found]++;
+				                  if (t->ckeyOn) bckey[found]++; bbpp[found] = t->bpp;
+				                  bamask[found] = (unsigned)t->desc.ddpfPixelFormat.dwRGBAlphaBitMask; }
+				if (g_devAlphaBlend) bob_texblack_note_blend((unsigned)g_srcBlend, (unsigned)g_dstBlend);
 			}
 			if (++calls % s_tbEvery == 0) {
 				fprintf(stderr, "[texblack] quads: blackTex=%ld darkTex=%ld normalTex=%ld noTex=%ld (surfaces seen=%d)\n",
 					cnt[0], cnt[1], cnt[2], cnt[3], nkeys);
 				for (int i = 0; i < nbd; i++)
-					fprintf(stderr, "[texblack]   blackTex dims %dx%d quads=%ld (blended=%ld opaque=%ld)\n",
-						bw[i], bh[i], bn[i], bblend[i], bn[i]-bblend[i]);
+					/* alphaMask decides the question my RGB-only classifier could not: a 1555
+					   surface whose texels are all 0x0000 is FULLY TRANSPARENT, and reads as
+					   "black" to an RGB sample. Amask 0 => no alpha => genuinely opaque black. */
+					fprintf(stderr, "[texblack]   blackTex dims %dx%d bpp=%d alphaMask=0x%x quads=%ld (blended=%ld colourKeyed=%ld)\n",
+						bw[i], bh[i], bbpp[i], bamask[i], bn[i], bblend[i], bckey[i]);
+				bob_texblack_dump_blend();
 			}
 		}
 	}
