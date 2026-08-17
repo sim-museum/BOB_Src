@@ -152,7 +152,19 @@ static void ensure_window(int w, int h)
 	g_win = SDL_CreateWindow("Rowan's Battle of Britain (Linux native port)",
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		g_scrW, g_scrH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
-	if (!g_win) { fprintf(stderr, "[vid] SDL_CreateWindow failed: %s\n", SDL_GetError()); return; }
+	if (!g_win) {
+		/* S187b: say it ONCE. bob_gdi_dc_bits calls ensure_window on every framebuffer access, so
+		   under SDL_VIDEODRIVER=dummy (no GL) this failed and logged ~181 times per map paint --
+		   345,600 lines in a single headless run, which buries every diagnostic the run exists to
+		   produce and costs real wall-clock in write() syscalls. The retry itself is deliberate
+		   (a display can appear later); only the shouting is not. */
+		static int said = 0;
+		if (!said) { said = 1;
+			fprintf(stderr, "[vid] SDL_CreateWindow failed: %s\n", SDL_GetError());
+			fprintf(stderr, "[vid]   (further window-creation failures are silent; "
+			                "the GDI framebuffer still works headlessly)\n"); }
+		return;
+	}
 	g_mainThread = (unsigned long)SDL_ThreadID();   /* S172: only this thread may resize it */
 	g_bootW = g_scrW; g_bootH = g_scrH;             /* S182: ChangeDisplaySettings(NULL) restores this */
 	g_ctx = SDL_GL_CreateContext(g_win);

@@ -3236,3 +3236,176 @@ was the one that did not.
 rasteriser, so its D3D7 device may never set a sub-viewport and the bug may never fire — but the
 line is wrong there too, and the fix is safe by construction (identical output for any full-size
 viewport). Apply it with MA's own gate run; do not assume BoB's gate covers it.
+
+## §8-BoB180 — ⭐ Gating a renderer OFF is half a change; something must be gated ON (BoB S180) **[ENGINE]**
+
+**The bug.** The port renders the strategic map from one branch of an idle tick and the front-end /
+full-screen pages from the branch below it:
+
+```c
+if (g_map_active && onMapPage) { ...paint the map...; return; }
+if (!g_activeFullPane) return;                 /* the front-end / full-pane path */
+```
+
+`g_map_active` is the port's own flag, set when the map launches. `onMapPage` reads the GAME's page
+state. When the game moved to a full-screen page (`LaunchFullPane` → `m_currentpage = 1`) the first
+branch stopped matching — and the second was still gated behind it. **Neither painted.** The window
+kept its last map frame forever. The clock and every toolbar handler are correctly gated on the same
+page state, so they went quiet too, and the result was indistinguishable from a hang. The game was
+running normally throughout; the port had simply stopped drawing.
+
+The preceding sprint had added the *suppress* half deliberately, to stop a stale map being drawn
+over a page. Its own comment even said *"the flag which LaunchMap sets and NOTHING CLEARS"* — and
+the clear was still not written. **Suppressing the wrong renderer and selecting the right one are
+two changes; shipping only the first produces a black hole rather than a wrong picture.**
+
+**Rule.** When a mode flag decides *which* subsystem owns the screen, the transition must be a
+handoff: the same commit that stops one painting must start the other, and both directions must be
+driven by ordinary play. If you can grep your own diff for a "set" with no matching "clear", stop.
+
+## §8-BoB180b — ⭐ A scaffold that compensates for a missing production hook passes BECAUSE of the bug **[PROCESS]**
+
+The seam in §8-BoB180 had a dedicated harness, and it worked for forty sprints. It contained:
+
+```c
+g_map_active = 0;                       /* leave map mode -> front-end paint path */
+view->LaunchFullPane(&briefing, ...);   /* the production entry */
+```
+
+That first line is the hook production code was missing. The harness had **patched around the
+defect in order to reach the thing it was testing** — so it exercised the seam successfully while
+every real click path through the same seam froze the game. The green test was evidence *for* the
+bug's continued existence.
+
+**The tell:** a scaffold that sets engine state *immediately before* calling a public entry point.
+The entry point should be setting that state itself; if it doesn't, the scaffold is documenting a
+missing line, not preparing a fixture. Delete the compensating line and make the harness fail —
+then fix production. Related: §8-BoB173b (scaffolds that look like the feature).
+
+## §8-BoB181 — ⭐ A dialog's art is a SHEET; the window is what clipped it **[ENGINE]**
+
+Rowan dialogs blit a whole background bitmap at an offset and let the window clip it — the player
+sees a dialog-sized *window onto a larger shared sheet*. A 272x104-DLU message box draws from a
+780x585 image; an OOB dialog draws its own region of a common plate.
+
+A port with no windows draws into one screen-wide DC, so it sets an origin and no clip, and the
+whole sheet lands on the screen. Symptoms differ enough to look like unrelated bugs:
+
+- the message box covered most of the screen while its buttons drew correctly centred inside it;
+- a campaign dialog on the map painted past the screen edge and over its neighbour;
+- controls sharing one panel plate each painted the whole plate over each other (§8-BoB173b).
+
+All three are the same missing clip. **Wherever the port substitutes a screen-wide DC for a
+window, it inherits the window's clipping responsibility** — and the clip rect is the template's
+own size, which the resource parser already knows (or can, cheaply: the `DIALOG` statement's
+`x, y, cx, cy` is usually parsed and thrown away).
+
+**Corollary — a gate pinned to the defect fails when you fix it.** The modal's button coordinates
+in the gate suite had been *fitted to the unclipped layout*. That gate could only pass while the
+bug survived. Derive test coordinates from the template (control DLU rect → px), and assert the
+geometry alongside the behaviour, so a layout change fails loudly instead of as silently-missed
+clicks.
+
+## §8-BoB182 — a stub that returns SUCCESS deletes the evidence of its own gap **[ENGINE]**
+
+```c
+static inline LONG ChangeDisplaySettings(LPDEVMODE, DWORD) { return 0; /*DISP_CHANGE_SUCCESSFUL*/ }
+```
+
+The game's resolution setting was found, validated, applied through this, and discarded. Nothing
+anywhere reported a problem, because the stub said it worked. The *enumeration* half had been
+implemented a sprint earlier, which made it worse: the search now succeeded, so the failure moved
+from "no modes offered" (visible: an empty combo) to "your choice is silently ignored" (invisible).
+
+Generalises §8-BoB158: prefer a stub that returns FAILURE, or one that logs once. **A constant
+"success" is the single worst return value for an unimplemented call**, and implementing one half
+of an enumerate/apply pair without the other converts a visible gap into a silent one.
+
+## §8-BoB183 — a control that is not in your walk's collection does not exist **[ENGINE]**
+
+The campaign's only exit is a small system box — and it is not a member of the toolbar array every
+paint and click walk iterates. So nothing drew it and nothing hit-tested it: there was no X, and no
+way out of a campaign short of killing the window. It had been missing for the whole life of the
+map screen without ever producing an error.
+
+**Rule.** Enumerate owners from the window/dialog tree, not from the array you happen to have a
+loop over. When you do add a member by hand, add it to the paint walk and the click walk *in the
+same edit* — this port has now shipped the paint-only half three times (§8-BoB173d).
+
+## §8-BoB185 — ⭐ Deriving font size from the CONTROL BOX truncates the game's own captions **[ENGINE]**
+
+The port sized each control's text from its own box (`height - 4`) rather than from the font the
+game selected, on the stated reasoning that the real fonts were "tiny in our enlarged boxes". That
+was never measured. Measured, it is backwards for dialogs drawn at native DLU scale: a 230x25-DLU
+static asked for a **36px** font where the game had selected **14**, and its sentence rendered at
+twice the control's width.
+
+The decisive evidence was not the overflow but a **disappearing ellipsis**: the R* controls'
+own Shrink/GetTextExtent logic had been *truncating captions* because the font handed to it was too
+big. Fixing the size made truncated captions read in full. **When a widget's own fit/shrink logic
+is trimming content, suspect the metric you gave it before suspecting the widget.**
+
+**Do not adopt blindly, though.** The same measurement showed a 48px ART-face font being selected
+into a 26px box elsewhere, so "use `m_height`" would have broken screens that work. The safe rule
+is **shrink-only** — adopt the game's font when it is smaller than the box-derived value, keep the
+old value when larger. It fixes every overflow (text that fits its own control cannot paint over a
+neighbour) and declines the one direction the evidence does not support.
+
+**Instrument before you change a global.** One env-gated line printing
+`(dialog, control, box-derived, real-font)` turned a risky rewrite into a two-line rule with a
+table behind it — and showed which screens would move before any of them did.
+
+## §8-MA104 — ⭐ Two flags for one fact: BoB's freeze, and why MA never had it **[ENGINE]**
+
+§8-BoB180 froze BoB whenever the game moved to a full-screen page: the port's idle tick chose its
+renderer from a **port-owned** `g_map_active` flag ANDed with the **game's** page state, and when
+those two disagreed neither branch ran.
+
+MA's equivalent dispatch cannot express that bug:
+
+```c
+RFullPanelDial* fp = GetFullPanel(view);
+if (fp)                              { ...paint the full pane... }
+else if (view->m_currentpage == 0)   { ...paint the map... }
+```
+
+It branches on **the object that actually exists**, with the map as the fallback. There is no second
+variable to fall out of step, so there is no state in which nothing paints. BoB kept a parallel
+boolean saying the same thing the game already knew, and the freeze was the two copies diverging.
+
+**Rule.** Derive "which subsystem owns the screen" from the game's own objects/state, never from a
+port-side mirror of it. If a mirror already exists, the fix is not only to keep it in sync at every
+transition (BoB S180) but to plan its removal — a flag that must be cleared in N places will be
+missed in one. Cross-port: MA is the reference design here; BoB should converge on it.
+
+## §8-MA105 — do not cross-port a rendering change you cannot measure on the target **[PROCESS]**
+
+BoB S173v flips the D3D→GL viewport ORIGIN (§8-BoB173e), and MA's `DEV_SetViewport` is the same
+function, unflipped. Applying it looks like a one-line cross-port.
+
+It was not applied, on purpose. The flip is **inert for a full-screen viewport** and only matters if
+the game sets a sub-viewport — and MA's front end needs real mouse clicks to reach 3D, so the
+measurement that would answer "does MA ever set one?" could not be taken in this session. Shipping
+the flip blind would have risked a working renderer to fix a defect not shown to exist there.
+
+What was landed instead: `MA_TRACE_VIEWPORT=1`, printing one line per distinct viewport rect and
+labelling it `[full-height: flip inert]` or `[SUB-VIEWPORT: flip MATTERS]`. The next session that
+reaches 3D on MA answers the question in one run. **A cross-port note is a hypothesis about the
+other codebase, not a patch for it** — carry the instrument across first when the check is cheap and
+the change is not.
+
+## §8-MA106 — the box-derived font bug is BoB-only; MA's GDI object model already prevents it **[ENGINE]**
+
+§8-BoB185 (text sized from the control's box rather than the selected font, truncating the game's
+own captions) does not exist in MA. BoB's `CDC::SelectObject(CFont*)` keeps only a face code and
+discards `m_height`, leaving each drawing site to invent a size. MA's passes the font through to a
+real GDI object model:
+
+```c
+CFont* SelectObject(CFont* f) { if (f) ma_gdi_set_font((void*)m_hDC, (void*)f->m_hObject); return NULL; }
+```
+
+so the size the game chose is the size that gets drawn, everywhere, with no per-site heuristic to be
+wrong. **When one port has a class of bug the other cannot express, the difference is usually a
+missing abstraction rather than a missing fix** — BoB's real remedy is a DC that carries the font,
+not a better rule for guessing one.

@@ -1471,8 +1471,54 @@ extern "C" int bob_map_click_oob(int cx, int cy)
 	   hit-tested before the control walk or that button swallows them -- which is exactly what the
 	   PO's session showed (`[oobclick] ... ctrl id=21` for clicks aimed at the check mark). */
 	if (bob_oob_click_title_glyph(cx, cy)) return 1;
-	for (int tb = 0; tb < TB_TOTAL; tb++) {
+	/* S188: hit-test TOP-DOWN, i.e. the REVERSE of the paint order.
+
+	   "The click walk must mirror the paint walk" (S173d) was applied to the SET of toolbars but
+	   never to their ORDER. bob_map_paint_oob paints TB_MAIN, then TB_MISC, then TB_REPORT -- so a
+	   later one covers an earlier one -- while this walk ran the raw enum order
+	   (TB_TITLE, TB_MAIN, TB_REPORT, TB_MISC). TB_MAIN is painted FIRST (bottom) and tested SECOND;
+	   TB_MISC is painted LAST (top) and tested FOURTH.
+
+	   The consequence is a click that passes THROUGH the dialog covering it. Measured with both
+	   open: RAFDirectives (TB_MISC) spans (44,20)-(603,507) and InterceptOffered (TB_MAIN) spans
+	   (312,40)-(712,212); a click at (562,184) is under Directives on screen, and went to
+	   InterceptOffered's Fly button. The player clicks what they can see, and the game acts on a
+	   dialog hidden beneath it.
+
+	   Painting is back-to-front, so hit-testing must be front-to-back. The painted set comes first
+	   in reverse, then every other toolbar that can log a child. BOB_NO_OOB_ZORDER=1 reverts. */
+	int order[TB_TOTAL]; int nord = 0;
+	{
+		static int noZ = -1;
+		if (noZ < 0) noZ = getenv("BOB_NO_OOB_ZORDER") ? 1 : 0;
+		if (!noZ) {
+			const int painted[] = { TB_REPORT, TB_MISC, TB_MAIN };   /* reverse of the paint order */
+			for (unsigned k = 0; k < sizeof painted / sizeof *painted; k++) order[nord++] = painted[k];
+		}
+		for (int tb = 0; tb < TB_TOTAL; tb++) {
+			int dup = 0;
+			for (int k = 0; k < nord; k++) if (order[k] == tb) { dup = 1; break; }
+			if (!dup) order[nord++] = tb;
+		}
+	}
+	{ static int said = 0; if (!said && getenv("BOB_TRACE_ZORDER")) { said = 1;
+		fprintf(stderr, "[oobclick] hit-test order:");
+		for (int k = 0; k < nord; k++) fprintf(stderr, " %d", order[k]);
+		fprintf(stderr, "  (paint order is TB_MAIN=%d, TB_MISC=%d, TB_REPORT=%d)\n",
+			(int)TB_MAIN, (int)TB_MISC, (int)TB_REPORT); } }
+	for (int oi = 0; oi < nord; oi++) {
+		int tb = order[oi];
 		CRToolBar* t = CMainFrame::toolbars[tb];
+		if (getenv("BOB_TRACE_ZORDER") && t && t->dialoglinks.loggedchild) {
+			for (int i = 0; i < t->dialoglinks.MAX_CHILD_DIALS; i++) {
+				RDialog* c = t->dialoglinks.loggedchild[i];
+				if (!c) continue;
+				int ax0, ay0, ax1, ay1;
+				int has = bob_oob_drawn_bounds(c, 0, &ax0, &ay0, &ax1, &ay1);
+				fprintf(stderr, "[zorder]   toolbar %d child %d = %s drawn=%s (%d,%d)-(%d,%d)\n",
+					tb, i, typeid(*c).name(), has ? "yes" : "NO", ax0, ay0, ax1, ay1);
+			}
+		}
 		if (!t || !t->dialoglinks.loggedchild) continue;
 		for (int i = 0; i < t->dialoglinks.MAX_CHILD_DIALS; i++) {
 			RDialog* d = t->dialoglinks.loggedchild[i];

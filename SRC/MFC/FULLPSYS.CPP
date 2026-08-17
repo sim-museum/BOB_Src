@@ -705,10 +705,17 @@ extern "C" void bob_frontend_tick(void)
 		  if (!getenv("BOB_NO_BUTTONS") && bob_gdi_get_click(&cx, &cy)) haveClick = 1;
 		  /* BOB_MAP_CLICK="x,y" (diag): inject one click at (x,y) once the map has settled, to test
 		     the button-click -> handler path deterministically (no tick-counting). */
+		  /* S187: the settle count is now a THIRD field, "x,y[,afterPaints]" (default 6). Six paints
+		     reaches the toolbars, which is all this hook was built for -- but the dialogs worth
+		     clicking now (an intercept offer, a raid warning) only exist once the campaign sim has
+		     run a raid out, several hundred paints in. Without this the harness could only ever
+		     click things that are present immediately, which quietly limited what could be tested
+		     to the subset that was never in doubt. */
 		  static int mc_paints = 0, mc_done = 0; const char* mcxy = getenv("BOB_MAP_CLICK");
-		  if (mcxy && !mc_done && ++mc_paints > 6) { int mx, my;
-			if (sscanf(mcxy, "%d,%d", &mx, &my) == 2) { cx=mx; cy=my; haveClick=1; mc_done=1;
-				fprintf(stderr,"[mapclick] injecting (%d,%d)\n", cx, cy); } }
+		  if (mcxy && !mc_done) { int mx, my, after = 6;
+			int nf = sscanf(mcxy, "%d,%d,%d", &mx, &my, &after);
+			if (nf >= 2 && ++mc_paints > after) { cx=mx; cy=my; haveClick=1; mc_done=1;
+				fprintf(stderr,"[mapclick] injecting (%d,%d) after %d paints\n", cx, cy, after); } }
 		  /* S157 (SP.24): BOB_MAP_SDLCLICK="x,y" -- same settling rule, but pushes a REAL
 		     SDL_MOUSEBUTTONDOWN instead of assigning cx/cy here. That makes the SDL event handler,
 		     its logical->drawable scaling and bob_gdi_get_click part of what the test proves,

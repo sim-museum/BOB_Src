@@ -1,5 +1,60 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S187-S188 (2026-08-17): the click walk mirrored the paint walk's SET but not its ORDER
+>
+> The map can have two OOB dialogs open at once — the campaign opens Directives itself, and a raid
+> opens an intercept offer. They overlap. Painting is back-to-front (`bob_map_paint_oob` draws
+> TB_MAIN, then TB_MISC, then TB_REPORT), so a later toolbar's dialog covers an earlier one.
+>
+> Hit-testing ran the raw enum order — `TB_TITLE, TB_MAIN, TB_REPORT, TB_MISC` — which has no
+> relationship to it. **TB_MAIN is painted FIRST (bottom) and tested SECOND; TB_MISC is painted LAST
+> (top) and tested FOURTH.** So a click could pass *through* the dialog covering it and act on one
+> the player cannot see there.
+>
+> S173d booked the rule as *"the click walk must mirror the paint walk"* and applied it to the SET of
+> toolbars. Order is the other half: painting back-to-front means hit-testing front-to-back.
+>
+> **A/B on one binary** (`BOB_NO_OOB_ZORDER=1` is the control), same coordinates, same settle count,
+> with Directives drawn at (44,20)-(446,150) over InterceptOffered at (312,40)-(709,200):
+>
+> | arm | click at (380,55) |
+> |---|---|
+> | old order | `consumed by toolbar 1 ... ctrl id=21` — the title band of the dialog UNDERNEATH |
+> | top-down | `inside dialog 3/5 (44,20)-(446,150), no control -- SWALLOWED` — the one on top |
+>
+> **I got the first attempt at this test wrong, and the wrongness is the point.** I predicted the
+> click-through at (562,184), on the intercept dialog's Fly button, and both arms agreed — which I
+> could have read as "no bug". They agreed because the measured drawn bounds showed Directives only
+> reached x=446 at that moment, so (562,184) was *not* covered and routing it to Fly was correct.
+> The defect was real by construction but that probe could not see it. Printing the actual drawn
+> bounds of every logged child at click time (`BOB_TRACE_ZORDER`) gave the overlap rectangle, and the
+> retest inside it discriminated. **A null result from a probe aimed outside the overlap is not
+> evidence of absence** — compute where the arms must differ, then aim there.
+>
+> ### S187: the click injector could only reach dialogs that were already there
+>
+> `BOB_MAP_CLICK="x,y"` fired after 6 map paints — enough for the toolbars it was built for, but the
+> dialogs worth clicking only exist once the campaign sim has run a raid out, hundreds of paints
+> later. The settle count is now a third field, `"x,y[,afterPaints]"`. Without it the harness could
+> only ever click things present immediately, which quietly limited testing to the subset never in
+> doubt.
+>
+> ### S187b: 345,600 log lines in one run
+>
+> `bob_gdi_dc_bits` calls `ensure_window` on every framebuffer access, so under
+> `SDL_VIDEODRIVER=dummy` the failed `SDL_CreateWindow` logged ~181 times per map paint — **335k-345k
+> lines per run**, burying every diagnostic the run existed to produce and costing real wall-clock in
+> `write()`. Reported once now; the same run logs **35 lines total**. The retry is deliberate (a
+> display can appear later); only the shouting was not.
+>
+> ### Process: `pkill -x` was silently killing nothing
+>
+> Six BoB instances had accumulated across the session — `pkill -x bob` exits cleanly without killing
+> `setsid`-detached runs. They starved each other's paint loop, so a test "never fired" because the
+> run was CPU-starved rather than because the code was wrong; I spent several probes chasing that as
+> a code fault. Kill by explicit PID and **re-check `pgrep`** — verifying the kill is part of the
+> measurement, not housekeeping.
+
 > ## S185-S186 (2026-08-17): dialog text was sized to the control box, not to the font
 >
 > Chasing the PO's oversized intercept dialog into `bob_ole.cpp` found `m_bobTextH = boxheight - 4`
