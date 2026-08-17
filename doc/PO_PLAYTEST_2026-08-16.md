@@ -381,3 +381,43 @@ yet: diagnosed. The next cheap discriminators, in order —
 3. **Does the cockpit view show it too?** The cockpit arm above never points at the ground; a
    nose-down attitude or a look-down view separates "the terrain is wrong" from "the external-view
    scene setup is wrong" (the latter has already needed fixing once, S118/S119).
+
+### BOB-PO-2 — two of the three discriminators run
+
+**1. Altitude, not scenario.** Familiarisation free flight (`BOB_QM_INDEX=7`, same external view) at
+**`Alt 1052ft`** renders the near ground *beautifully* — green fields, hedgerows, roads, a ploughed
+brown field — with a **black band along the horizon** carrying the same dark rectangular blocks.
+The turkey shoot at **`Alt 9539ft`** shows that same blackness filling the whole ground.
+
+So it is **not turkey-specific**, and the unifying statement is: **distant terrain renders black**;
+altitude only decides how much of the screen counts as distant. At 1000ft most of the view is near
+terrain (correct) and only the horizon strip is black; at 9500ft essentially everything visible is
+distant, so the entire ground is black. That reframes the report from "tiles at wrong angles" to
+"the far terrain is not being shaded/textured", which is a different and much narrower search.
+
+**2. Run-to-run: the ground pattern varies, its darkness does not.** Two identical turkey runs,
+frame 220, differ by:
+
+| region | pixels differing >8 | of |
+|---|---|---|
+| sky    | 1,040   | 216,000 (0.5%) |
+| ground | 24,087  | 240,000 (10%)  |
+
+with ground mean brightness **32 vs 31** — i.e. both runs are equally black and the *pattern* is what
+moves. Non-determinism concentrated in exactly the failing region is this port's signature for an
+uninitialised read fed by a stub.
+
+**Caveat, stated because it would be easy to skip:** terrain **streaming** is time-dependent, so a
+frame-220 difference is also consistent with "different tiles had finished loading". That benign
+explanation has not been excluded. The discriminator is a **later frame** (e.g. 400–600, after
+streaming settles): if the ground still differs run-to-run there, streaming lag is out and an
+uninitialised read is in.
+
+**3.** Cockpit-vs-external is still unrun.
+
+**Adjacent prior art, not yet linked to this.** `PORT.md` records a game-side
+`LandScape::InfiniteStrip` (LANDSCAP.CPP:7427) horizon-UV defect — garbage `v` texcoords derived from
+`cloud_height_*` / sky-layer math — but that was diagnosed in the **mirror** path
+(`RenderMirrorLandscape`), which is dormant by default. Whether the main view's distant strip shares
+that derivation is a question, not a conclusion; it is the first place to look precisely because the
+geometry involved is the same horizon backdrop.
