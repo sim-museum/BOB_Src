@@ -498,3 +498,47 @@ blue and the lower screen is black, the far terrain is being drawn *with black* 
 wrong material) rather than skipped. The next measurement is the same shape as this one — dump what
 the land draw is handed (per-tile colour/texture/light state) for two runs and compare — rather than
 another look at the picture.
+
+### BOB-PO-2 — CHARACTERISED (S173g): tiles converge, far too slowly
+
+Measured the black-patch coverage of the ground region across frames, turkey shoot, external view:
+
+| frame | near-black ground | ground mean RGB |
+|---|---|---|
+| 220 | 35.6% / 35.8% (two runs) | (24, 27, 28) |
+| 300 | 17.8% | (34, 39, 40) |
+| 500 | 12.9% / 1.9% (two runs) | (59, 65, 68) / (62, 68, 72) |
+| 800 | **0.0%** | (73, 82, 89) |
+
+**It is not corruption. It is convergence.** Tiles start black and fill in monotonically; by frame
+800 — roughly 13 seconds at 60 fps — the ground is fully textured and no near-black pixels remain.
+Everything earlier in this investigation that looked like a defect in the *content* was really the
+same curve sampled at different points:
+
+- "the ground is black at altitude" — frame 220, 35% black, early on the curve;
+- "the pattern is non-deterministic, 20% of ground pixels differ" — frames 500 vs 500 at **12.9% vs
+  1.9%**, i.e. two runs at different points on the *same* curve, not two different pictures;
+- "large flat black quads move between runs" — individual tiles crossing from black to textured at
+  different moments.
+
+So the run-to-run difference is variance in the **rate**, not in the result. That is a much less
+alarming defect than "uninitialised read", and I had it pointed the wrong way for two rounds: the
+frame-220 variance measurement was real but I read non-determinism into a curve I had only sampled
+twice, at one frame. **Sampling a time-varying process at one instant and calling the difference
+non-determinism is a mistake worth naming** — the fix was to sample the axis, not to argue about
+the two points.
+
+**Both render targets are healthy**, which rules out the composition path: the sea RTT is a proper
+dark blue-green water surface and the land RTT (familiarisation, inland) is fully detailed farmland
+with fields, hedgerows and tracks (means 50 and 46). Whatever is black on screen is a tile that has
+not yet been given its texture, not a tile given a broken one.
+
+**And it matches the PO exactly.** Round 1: "one black patch". Round 2, after S172: *"tiles seem
+better, but still update too slowly"*. The second report is the accurate one, and it is now a
+measurement rather than an impression.
+
+**Next: find what paces tile creation.** The suspects are `SRC/3D/TILEMAKE.CPP` (the tile
+compositor, which calls `UploadTexture`) and whatever budgets how many tiles it may build per frame.
+The question to answer first is whether the pacing is the game's own design (a deliberate
+per-frame budget, tuned for 1999 hardware and now mis-scaled) or something the port added — because
+those have opposite fixes.
