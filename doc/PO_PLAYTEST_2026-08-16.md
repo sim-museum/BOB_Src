@@ -206,3 +206,23 @@ Colombert      Aircraft Quota Allocated
 
 against gold's `…werp / Aircraft Quota Allocated`. Two lines rather than three because only two
 messages exist at that point. `dlg=1065:8/8` in the same run (was `0/8`).
+
+## BOB-PO-4 (two mouse icons on the M view) — one theory checked and eliminated
+
+The obvious port explanation is the classic one: the game hides the OS cursor because it draws its
+own, the port's hide is a no-op, and you see both. Half of that is true —
+`compat_winuser.h`'s `ShowCursor` maintains Windows' display counter exactly (so
+`while (ShowCursor(FALSE) >= 0);` terminates) and **never tells SDL**, so it cannot hide anything.
+An inert stub of precisely the shape this port keeps getting caught by.
+
+**But it is not this defect:** grepping the whole game tree for `ShowCursor(` finds *no* caller —
+the only hits are an unrelated `m_bShowCursor` member in `REDIT/REDITCTL.CPP`, all but one of them
+dead-coded. The game never asks for the cursor to be hidden by that route, so a working
+`ShowCursor` would change nothing here.
+
+Left as-is deliberately: wiring `SDL_ShowCursor` into a function nothing calls would be an
+unverifiable change that looks like progress. Noted in case a later screen does call it.
+
+Next place to look for the real cause: whatever draws the in-flight/map cursor sprite (the
+`AU_UI_X`/`AU_UI_Y` UI cursor in `ANALOGUE.CPP`) — two *sprites*, rather than one sprite plus the OS
+pointer. Needs the M view, which is not currently reachable headlessly.
