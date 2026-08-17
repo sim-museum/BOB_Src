@@ -771,6 +771,26 @@ extern "C" void bob_frontend_tick(void)
 					(int)RDialog::m_pView->m_currentpage, (int)MMC.curracceltype, (int)MMC.currtime); }
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
 		}
+		/* S189: sample the acceleration BAND on every map paint, whichever drive is in use.
+		   The PO reported "fast forward did nothing, then went to 300x", and [accel] only printed
+		   on a button press -- so the interesting half, what the SIM does with the clock afterwards,
+		   was invisible. Fast-forward does not pick a speed: it lifts curracceltype above
+		   ACCEL_NORMAL, and SAGMOVE.CPP:1046 then overwrites type AND rate every sim frame with
+		   whatever the situation requires (no raid -> NONRAIDSPD 300, raid inbound -> RAIDSPD 20,
+		   dialog open -> DIALOGSPEED 1). The click legitimately reads as rate 1 and the rate climbs
+		   later on its own, which is exactly what the PO saw.
+		   Placed OUTSIDE the drive branches on purpose: my first cut sat inside the `else`, so
+		   setting BOB_MAP_TIMER (which takes the other arm) silently disabled the instrument -- the
+		   same shape as S179, where adding a gate switched off the diagnostic that would have
+		   explained the gate. Report each CHANGE, so it cannot flood. */
+		if (getenv("BOB_TRACE_CLOCK")) {
+			static int lastType = -1, lastRate = -1;
+			if ((int)MMC.curracceltype != lastType || (int)MMC.curraccelrate != lastRate) {
+				lastType = (int)MMC.curracceltype; lastRate = (int)MMC.curraccelrate;
+				fprintf(stderr, "[accel] band now type=%d rate=%d (currtime=%d)\n",
+					lastType, lastRate, (int)MMC.currtime);
+			}
+		}
 		/* S94: live accel controls -- when the player has clicked Play/Fastforward (so the campaign
 		   is not ACCEL_PAUSED), drive the clock each paint at the chosen rate, exactly as the map's
 		   WM_TIMER would. This is the faithful map behaviour (the day starts running on Play). Same

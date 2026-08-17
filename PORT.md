@@ -1,5 +1,56 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S189 (2026-08-17): "fast forward did nothing, then went to 300x" is CORRECT behaviour
+>
+> The PO reported this twice and I had it on the defect list. It is not a defect. Fast-forward does
+> not select a speed — it hands the clock to the sim's automatic speed control:
+>
+> ```c
+> void TitleBar::OnClickedFastforward() {
+>     if (MMC.curracceltype <= MMC.ACCEL_NORMAL)
+>         MMC.curracceltype = MMC.ACCEL_DIALOGSPEED;      /* just: get above ACCEL_NORMAL */
+>     MMC.curraccelrate = MMC.accelrates[MMC.curracceltype];
+> }
+> ```
+>
+> and from then on `SAGairgrp::MoveAllSAGs` overwrites BOTH type and rate every sim frame:
+>
+> ```c
+> Campaign::AccelType reqacceltype = ACCEL_NONRAIDSPD;        /* 300x -- nothing happening */
+> if (Campaign::AnyDialogsOpen()) reqacceltype = ACCEL_DIALOGSPEED;   /* 1x while a dialog is up */
+> ...  raids inbound -> RECONNSPD (40x) / RAIDSPD (20x)
+> if (MMC.curracceltype > MMC.ACCEL_NORMAL) { MMC.curracceltype = reqacceltype; ... }
+> ```
+>
+> Defaults (`MISSINIT.CPP`, player-editable on the acceleration-preferences screen):
+> `PAUSED 0, NORMAL 1, NONRAIDSPD 300, RECONNSPD 40, RAIDSPD 20, DIALOGSPEED 1`.
+>
+> So the observed sequence is the design: press fast-forward **with a dialog open** and the rate is
+> **1** — indistinguishable from nothing happening; close the dialogs with nothing inbound and it
+> becomes **300x**; a raid appears and it drops itself to 20-40x so the player does not miss it. The
+> button is a mode, not a multiplier.
+>
+> Measured (`BOB_MAP_CLICK="160,754,120"`, the centre of IDC_FASTFORWARD):
+> `[tbclick] (160,754) consumed by accel row ctrl id=1845` -> `[accel] Fastforward -> type=5 rate=1`.
+> The button works and the rate really is 1.
+>
+> **What I did NOT demonstrate:** the 1 -> 300 transition, because in every headless run a dialog
+> stayed open. `BOB_MAP_CLOSEDLG` cannot hold them shut (the campaign re-opens Directives itself)
+> and `BOB_MAP_NODIRECTIVES` flip-flops — `open-index 6 -> 5 -> 6 -> 5` for eight passes — which is
+> the exact failure S143 warned about when a scaffold routes through a *toggle*. The evidence for
+> that half is the PO's own session reaching 300x. Stated rather than glossed.
+>
+> **One contributing port-side factor, now fixed elsewhere.** Because the rate is pinned to 1x while
+> `AnyDialogsOpen()` is true, the ability to *close* a dialog is load-bearing for fast-forward. Until
+> S179b the title-bar tick neither accepted nor closed, so a player could be stuck at 1x with no way
+> out — which is how a faithful mode read as a broken button.
+>
+> **New instrument.** `BOB_TRACE_CLOCK` now reports every acceleration-band CHANGE
+> (`[accel] band now type=N rate=M`), not just button presses — the half of the story that was
+> invisible. My first cut put it inside the `else` of the drive branch, so setting `BOB_MAP_TIMER`
+> silently disabled it: the same shape as S179, where adding a gate switched off the diagnostic that
+> would have explained the gate. It sits outside both arms now.
+
 > ## S187-S188 (2026-08-17): the click walk mirrored the paint walk's SET but not its ORDER
 >
 > The map can have two OOB dialogs open at once — the campaign opens Directives itself, and a raid
