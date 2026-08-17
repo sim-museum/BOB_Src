@@ -683,3 +683,42 @@ What is solidly established:
 Fly the familiarisation scenario out over the coast, or the turkey shoot inland, and measure the
 near band in each. That is one variable, it is the one the two arms actually differ in, and it does
 not depend on any of the eliminated machinery.
+
+### BOB-PO-2 — the limit of screen-band statistics, and where to pick this up
+
+Applying the same banded measurement to the land arm inverts it again:
+
+| arm | far band (just below horizon) | near band (well below) |
+|---|---|---|
+| turkey, over sea, 9,500 ft | mean (57–84) black **0.0–0.1%** | mean (12–31) black **36–61%** |
+| familiarisation, inland, 1,052 ft | mean (9,9,4) black **82.6%** | mean (39,39,10) black **2.9%** |
+
+The two arms are **exact opposites**, so neither "the distant terrain is black" nor "the near
+terrain is black" survives as a description. And the colours show why the question is malformed:
+turkey's "far band" reads (74,78,80), a grey-blue haze, which is not ground at all — at 9,500 ft the
+rows just under the horizon are atmosphere, while at 1,052 ft they are land. **The bands do not
+reliably correspond to the same thing in the two arms**, so comparing them was never going to
+settle anything.
+
+That is the honest stopping point for this method. Screen-region statistics were the right tool to
+establish *that* something is wrong, to kill eight mechanisms, and to catch two errors of my own —
+but they cannot identify *which surfaces* are black, because a screen band is not a surface.
+
+**Pick this up with a different kind of measurement, not another band.** The question is "which
+geometry draws black", and it should be asked of the draw path directly: tag the terrain draw with
+what it is about to render (tile index, its texture handle, its world position, land-vs-sea) and
+dump that for the polygons covering a known-black screen region. The port already has the hook
+shape for this — `draw_fvf` per-quad tracing was used for the mirror-horizon work — so this is
+plumbing, not research.
+
+**What is banked and reliable:**
+
+- a one-command headless repro of an airborne dogfight (`BOB_QM_INDEX=11 BOB_AUTOFLY=view40`),
+  which the notes previously recorded as impossible;
+- three env-gated diagnostics that default off — `BOB_TRACE_HORIZON` (strip inputs + band colours,
+  periodic), `BOB_TRACE_TILES` (queue depth, per-rez free slots, untextured count, allocation
+  failures), and the existing `BOB_DUMP_RTT`;
+- eight eliminated mechanisms, each with the measurement that killed it;
+- the fact that the backdrop, wipe, lighting, render targets and texture allocation are all
+  **correct**, which is worth as much as a positive finding: it means the defect is in what the
+  terrain draw does with them.
