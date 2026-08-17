@@ -746,10 +746,42 @@ extern "C" void bob_frontend_tick(void)
 		   BOB_MAP_TIMER (headless) takes precedence; skip if it already ran this paint. */
 		else if (MMC.curracceltype != MMC.ACCEL_PAUSED && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))) {
 			int reps = MMC.curracceltype >= MMC.ACCEL_RAIDSPD ? 8 : 1;   /* fast-forward vs normal */
+			/* S175 (PO: "clock is not running, even though time is supposed to be 1x", and the accel
+			   buttons do nothing). The clock is driven from here, but the advance itself lives inside
+			   the map's OnTimer behind THREE gates that this loop cannot see:
+			       if (m_currentpage == 0)                      <- a full-screen page freezes it
+			       if (!RDialog::messageboxopen)                <- a modal is up
+			       if (!Master_3d.currinst)                     <- a 3D instance exists
+			   All three also disable every accel button (TitleBar::OnClickedPause/Play/Fastforward
+			   each start with the same m_currentpage guard), which is why the buttons take the click
+			   -- the log shows them consumed -- and nothing happens. So "drive ran, clock did not
+			   move" is the observation, and WHICH gate is shut is the only useful question. Report it
+			   rather than infer it: compare currtime across the drive and name the closed gate.
+			   BOB_TRACE_CLOCK=1, default off, one line when it is actually stuck. */
+			static int traceClock = -1;
+			if (traceClock < 0) traceClock = getenv("BOB_TRACE_CLOCK") ? 1 : 0;
+			long ct_before = traceClock ? (long)MMC.currtime : 0;
 			static int liveOnce = 0; if (getenv("BOB_TRACE_MAP") && !liveOnce) { liveOnce = 1;
 				fprintf(stderr,"[accel] live clock drive ON (curracceltype=%d rate=%d currtime=%d)\n",
 					(int)MMC.curracceltype, (int)MMC.curraccelrate, (int)MMC.currtime); }
 			for (int z = 0; z < reps; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+			/* Only report a clock that is REALLY stuck. At rate 1 most paints legitimately do not
+			   advance (the accumulator wraps), so "did not move this paint" is not a fault -- my
+			   first cut fired on healthy play and would have sent the next session chasing noise.
+			   Count consecutive non-advancing paints instead, and report once past a threshold no
+			   normal rate can reach. */
+			if (traceClock) {
+				static long same = 0; static long lastReport = -1;
+				if ((long)MMC.currtime == ct_before) same++; else { same = 0; lastReport = -1; }
+				if (same == 600 || (same > 600 && same - lastReport >= 600)) {
+					lastReport = same;
+					fprintf(stderr, "[clock] STUCK for %ld paints: currtime=%ld rate=%d type=%d | "
+						"m_currentpage=%d messageboxopen=%d Master_3d.currinst=%p campfly=%d\n",
+						same, (long)MMC.currtime, (int)MMC.curraccelrate, (int)MMC.curracceltype,
+						(int)RDialog::m_pView->m_currentpage, (int)RDialog::messageboxopen,
+						(void*)Master_3d.currinst, g_campfly_flown);
+				}
+			}
 		}
 		/* S107/S108/S110 (BOB_DAYLOOP): headless multi-day continuity, after EITHER clock-drive path
 		   (BOB_MAP_TIMER or the live accel controls). At dusk the sim's EndOfDay rolls the date/clock

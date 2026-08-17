@@ -376,6 +376,15 @@ void TitleBar::OnShowWindow(BOOL bShow, UINT nStatus)
 
 void TitleBar::OnClickedPause() 
 {
+#if BOB_LINUX
+	/* S175: this guard silently disables every transport button whenever a full-screen page is
+	   up -- the same condition that freezes the clock. The PO saw the clicks land (they are in the
+	   [tbclick] log) and nothing happen, which is indistinguishable from a broken handler unless
+	   the refusal says so. BOB_TRACE_CLOCK reports the refusal and, below, the result. */
+	if (getenv("BOB_TRACE_CLOCK") && RDialog::m_pView->m_currentpage != 0)
+		fprintf(stderr, "[accel] %s REFUSED: m_currentpage=%d (a full-screen page is up)\n",
+			"Pause", (int)RDialog::m_pView->m_currentpage);
+#endif
 	if (RDialog::m_pView->m_currentpage != 0)							//RJS 29Oct00
  		return;															//RJS 29Oct00
 
@@ -393,6 +402,15 @@ void TitleBar::OnClickedPause()
 
 void TitleBar::OnClickedFastforward() 
 {
+#if BOB_LINUX
+	/* S175: this guard silently disables every transport button whenever a full-screen page is
+	   up -- the same condition that freezes the clock. The PO saw the clicks land (they are in the
+	   [tbclick] log) and nothing happen, which is indistinguishable from a broken handler unless
+	   the refusal says so. BOB_TRACE_CLOCK reports the refusal and, below, the result. */
+	if (getenv("BOB_TRACE_CLOCK") && RDialog::m_pView->m_currentpage != 0)
+		fprintf(stderr, "[accel] %s REFUSED: m_currentpage=%d (a full-screen page is up)\n",
+			"Fastforward", (int)RDialog::m_pView->m_currentpage);
+#endif
 	if (RDialog::m_pView->m_currentpage != 0)							//RJS 29Oct00
  		return;															//RJS 29Oct00
 
@@ -404,7 +422,11 @@ void TitleBar::OnClickedFastforward()
 	GETDLGITEM(IDC_DATETIME)->SetString(CSprintf("%s: %s x%i",
 		GetDateName(MMC.currdate, DATE_LONG),GetTimeName(MMC.currtime),MMC.curraccelrate	));
 	GETDLGITEM(IDC_DATETIME)->Invalidate();
-	
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_CLOCK"))
+		fprintf(stderr, "[accel] Fastforward -> type=%d rate=%d\n",
+			(int)MMC.curracceltype, (int)MMC.curraccelrate);
+#endif
 }
 void	TitleBar::ClickPause()
 {
@@ -417,6 +439,15 @@ void	TitleBar::ClickPlay()
 
 void TitleBar::OnClickedPlay() 
 {
+#if BOB_LINUX
+	/* S175: this guard silently disables every transport button whenever a full-screen page is
+	   up -- the same condition that freezes the clock. The PO saw the clicks land (they are in the
+	   [tbclick] log) and nothing happen, which is indistinguishable from a broken handler unless
+	   the refusal says so. BOB_TRACE_CLOCK reports the refusal and, below, the result. */
+	if (getenv("BOB_TRACE_CLOCK") && RDialog::m_pView->m_currentpage != 0)
+		fprintf(stderr, "[accel] %s REFUSED: m_currentpage=%d (a full-screen page is up)\n",
+			"Play", (int)RDialog::m_pView->m_currentpage);
+#endif
 	if (RDialog::m_pView->m_currentpage != 0)							//RJS 29Oct00
  		return;															//RJS 29Oct00
 
