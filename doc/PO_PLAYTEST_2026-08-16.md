@@ -799,3 +799,45 @@ texture size the same render-to-texture treatment the 256 gets (or make the read
 size-general). The A/B is already defined and numeric — `BOB_NO_FBO_RTT` reverts the existing path,
 `BOB_TRACE_TEXBLACK` gives `blackTex` counts that must go to zero, and the frame-800 near-band
 near-black percentage is the picture-level check.
+
+### BOB-PO-2 — RETRACTION: the black textures are not the cause (S173n/o)
+
+Two entries above claimed a root cause: the 64×64/128×128 land textures are black because the
+RTT readback path only services 256×256. **Both the fix and the claim failed.**
+
+**The fix, predicted and falsified.** If `UploadTexture` blits the landscape scratch RT into each
+tile's texture without locking it, the copy would read stale bits — so refreshing an FBO-backed
+source inside `SURF_Blt` should fill them. Prediction stated before the run: `blackTex` collapses
+from ~12,600 toward zero. Measured after: **12,577 vs 12,582** — no change whatsoever, and the
+64×64/128×128 entries were untouched. Reverted; the readback was pure cost. The reasoning is left in
+a comment at the site because it is plausible enough that someone will think of it again.
+
+**Then the claim itself.** Splitting the black-textured quads by blend state:
+
+```
+blackTex dims 128x128 quads=2865 (blended=2865 opaque=0)
+blackTex dims  64x64  quads=9665 (blended=9665 opaque=0)
+```
+
+**Every one of them is alpha-blended. Not a single opaque quad has a black texture.** A black
+texture drawn with blending is a transparent sprite or a shadow — black is the *transparent* part,
+and the tile compositor calls `RenderObjectShadow` — so these are almost certainly legitimate. They
+cannot be painting an opaque black region.
+
+So "the low-resolution land textures are black" was a real measurement attached to a wrong
+conclusion: I counted black textures, found a size split that matched a plausible story about the
+RTT path, and stopped before asking whether those quads were even opaque. **The blend state was one
+extra field in a trace I had already written.**
+
+**What that leaves, and it is genuinely interesting.** The frame is cleared light blue, every
+backdrop band is light blue, vertex diffuse means are 100–173, and no opaque quad carries a black
+texture — yet a large screen region is opaque black. The remaining candidate is the **blending
+itself**: thousands of blended black quads with a multiplicative blend factor
+(`GL_DST_COLOR`/`GL_ZERO`) will drive whatever is beneath them toward black, and this compat does
+use `glBlendFunc(GL_DST_COLOR, GL_ONE)` on at least one path. Over-drawn or wrongly-factored
+shadow quads would produce exactly the observed picture: correct geometry, correct colours,
+correct textures, black result.
+
+**Next measurement, and it is one field again:** bucket those blended black quads by their
+`g_srcBlend`/`g_dstBlend` factors, and count how many times they overlap the same pixels. If the
+factors are multiplicative and the overdraw is in the thousands, that is the mechanism.

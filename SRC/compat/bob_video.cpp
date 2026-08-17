@@ -604,6 +604,27 @@ static HRESULT SURF_GetSurfaceDesc(IDirectDrawSurface7* This, LPDDSURFACEDESC2 d
 	if (d) { *d = s->desc; d->dwWidth = s->w; d->dwHeight = s->h; d->lPitch = s->w * ((s->bpp+7)/8); }
 	return DD_OK;
 }
+/* S173n (BOB-PO-2): pull an FBO-backed RTT surface's rendered pixels into its system bits.
+   Extracted from SURF_Lock so the BLIT path can use it too. GL reads bottom-up and the surface is
+   top-down, so rows are flipped. Returns 1 if a readback happened. */
+static int rtt_readback(GLSurface7* s) {
+	if (!s || !s->isRTT || !s->fbo || !s->bits || !load_fbo_funcs()) return 0;
+	gl_bind_thread();
+	p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	int bpp=(s->bpp+7)/8, pitch=s->w*bpp;
+	unsigned char* tmp=(unsigned char*)malloc((size_t)pitch*s->h);
+	if (tmp) {
+		if (s->bpp==16) glReadPixels(0,0,s->w,s->h,GL_RGB,GL_UNSIGNED_SHORT_5_6_5,tmp);
+		else            glReadPixels(0,0,s->w,s->h,GL_BGRA,GL_UNSIGNED_BYTE,tmp);
+		for (int y=0;y<s->h;y++) memcpy((char*)s->bits+(size_t)y*pitch, tmp+(size_t)(s->h-1-y)*pitch, pitch);
+		free(tmp);
+	}
+	p_glBindFramebuffer(GL_FRAMEBUFFER, g_curRT?g_curRT->fbo:0);
+	return 1;
+}
+
 static HRESULT SURF_Lock(IDirectDrawSurface7* This, LPRECT, LPDDSURFACEDESC2 d, DWORD, HANDLE) {
 	GLSurface7* s = (GLSurface7*)This;
 	check_surfaces("Lock-enter");
@@ -966,6 +987,14 @@ static HRESULT SURF_Blt(IDirectDrawSurface7* This, LPRECT, IDirectDrawSurface7* 
 	}
 	if (src) {
 		GLSurface7* s=(GLSurface7*)src; surf_alloc_bits(s);
+		/* S173n (BOB-PO-2): refreshing an FBO-backed RTT source here was TRIED AND REVERTED.
+		   The theory was that UploadTexture blits the landscape scratch RT into each tile's texture
+		   without locking it first, so the copy would read stale bits. Prediction stated before the
+		   run: blackTex would collapse from ~12600 toward zero. Measured after: 12577 vs 12582 --
+		   no change at all, and the 64x64/128x128 entries were untouched. So these blits are not
+		   how those textures are filled, and the readback was pure cost. Left as a comment because
+		   the reasoning is sound and someone will think of it again; rtt_readback() is still
+		   factored out and used by SURF_Lock. */
 		if (s->bits && d->bits && d->bpp==s->bpp) {
 			int bpp=(s->bpp+7)/8;
 			if (d->w==s->w && d->h==s->h) memcpy(d->bits,s->bits,(size_t)d->w*d->h*bpp);
@@ -1754,18 +1783,23 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 			/* which surfaces are the black ones? histogram their dimensions -- the difference
 			   between "some texture is black" and "the NxN landscape tile textures are black",
 			   which is the actionable form. */
-			static int bw[16], bh[16]; static long bn[16]; static int nbd = 0;
+			static int bw[16], bh[16]; static long bn[16], bblend[16]; static int nbd = 0;
 			if (cls == 0 && t) {
 				int found = -1;
 				for (int i = 0; i < nbd; i++) if (bw[i] == t->w && bh[i] == t->h) { found = i; break; }
-				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; }
-				if (found >= 0) bn[found]++;
+				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; bblend[found] = 0; }
+				/* S173o: is this black-textured quad ALPHA-BLENDED? A black texture drawn with
+				   blending is what a shadow looks like, and the tile compositor calls
+				   RenderObjectShadow -- so "black texture" may be entirely legitimate rather than
+				   the defect. Splitting by blend state is what tells those apart. */
+				if (found >= 0) { bn[found]++; if (g_devAlphaBlend) bblend[found]++; }
 			}
 			if (++calls % s_tbEvery == 0) {
 				fprintf(stderr, "[texblack] quads: blackTex=%ld darkTex=%ld normalTex=%ld noTex=%ld (surfaces seen=%d)\n",
 					cnt[0], cnt[1], cnt[2], cnt[3], nkeys);
 				for (int i = 0; i < nbd; i++)
-					fprintf(stderr, "[texblack]   blackTex dims %dx%d quads=%ld\n", bw[i], bh[i], bn[i]);
+					fprintf(stderr, "[texblack]   blackTex dims %dx%d quads=%ld (blended=%ld opaque=%ld)\n",
+						bw[i], bh[i], bn[i], bblend[i], bn[i]-bblend[i]);
 			}
 		}
 	}
