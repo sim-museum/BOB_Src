@@ -973,3 +973,34 @@ the source the pixels were**, rather than reasoning about what the source contai
 **Same class as this sprint's other two fixes** — `GetWindowRect` answering with the whole screen,
 and an enum parser that skipped without counting. A plausible value that silently reroutes work,
 invisible until one consumer depends on the part that is wrong.
+
+### Correction to S173v, and a new defect it exposed
+
+**The correction.** S173v's gate note said the one differing screen, `config-control`, "moves toward
+gold" because its Dead Zone combo read "Small", which is what gold shows. **That was wrong.** I
+checked the value against gold but never checked whether the value was *stable*. Running the gate
+again on the **same binary** (md5 `84ec41c4…` both times):
+
+| capture | region hash |
+|---|---|
+| before the fix (`s173p`) | `4089209611` |
+| after the fix (`vpfix`) | `90f2d16c05` |
+| after the fix, same binary (`final2`) | `4089209611` — back to the pre-fix value |
+
+Two of three runs give one result and one gives the other, independent of the change. So the
+viewport fix did **not** affect that screen; I sampled a coin-flip once and read it as an
+improvement. The terrain result is unaffected and stands on its own numbers (`blackTex` 12,529 → 0,
+worst-case frame 34.2% → 0.0% near-black, GATE 4b passing) — those are reproducible across runs,
+which is exactly the property this combo lacks.
+
+**The defect it exposed (BOB-PO-13).** That combo is **non-deterministic between runs of an
+identical binary**: sometimes it renders "Small", sometimes it renders nothing and the label behind
+it shows through (`doc/img_configcontrol_nondeterminism.png`, top and bottom are the same binary).
+A config value that differs run-to-run is this port's signature shape — an uninitialised read, or an
+ordering dependency between the screen's populate pass and its draw. It is small and it is
+cosmetic, but it is exactly the kind of thing that makes a *gate* untrustworthy: it is the reason
+GATE 5 reports 13/14 rather than 14/14, and a flapping gate teaches people to ignore gates.
+
+Worth fixing for that reason alone, and worth remembering as a method point: **an A/B against gold
+is only meaningful once you know the value is stable.** I have been careful about control arms all
+session and still skipped that check here, because the single sample happened to agree with gold.
