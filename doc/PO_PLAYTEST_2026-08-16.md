@@ -1043,3 +1043,33 @@ of the right-hand ruler column, above "0 Nm". Ours draws the ruler and no plate.
 control: `IDDT_SCALE` (the scale bar) and `IDDT_SPACEBAR` are both **empty templates**, and
 `IDDT_SYSTEM` holds only THUMBNAIL/ZOOMIN/FILES. So the X belongs to something else — identifying
 its owner is the first step, not designing a fix.
+
+### Correction to BOB-PO-14: the title IS hosted, and it swallows the clicks
+
+The entry above blamed `RTitle` being absent from the CLSID router. **Wrong for this dialog**, and
+the PO's own session log said so before I looked:
+
+```
+[oobclick] (767,37) consumed by toolbar 3 child 6 ctrl id=21
+[oobclick] (744,40) consumed by toolbar 3 child 6 ctrl id=21
+```
+
+`id 21` is `IDJ_TITLE`. The clicks the PO aimed at the missing check mark **were consumed** — so the
+title control is hosted, drawn and hit-testable. Checking the template explains why: in
+`IDD_LWDIRECTIVES`, `IDJ_TITLE` is declared with CLSID `{78918646-…}` — that is **RButton**, not
+RTitle — at `0,0,486,17`, i.e. **the full width of the title band**.
+
+So the situation is the opposite of "nothing is there": the title is a single wide button covering
+the whole band, it renders the red caption, and it eats every click across its width — including the
+right-hand region where gold draws `?` `✓` `✗`. The glyphs are simply never drawn, and the button
+that covers their position does nothing when clicked.
+
+(The RTitle observation stands on its own — it really is absent from the router — but it is not the
+cause here, and I should have read the log before reaching for it. The evidence was in the PO's own
+run.)
+
+**That adds a hard constraint to the fix.** Drawing the three glyphs is not enough: the title
+RButton spans them, so their hit-test must run **before** the general control walk, or the button
+will keep swallowing the clicks. This is the port's standing "the click walk must mirror the paint
+walk" rule in a new form — when two things overlap, paint order and hit order must agree, and the
+smaller, later-painted control has to be tested first.
