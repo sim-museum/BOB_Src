@@ -285,3 +285,8 @@ int BAD_RV = (int)0x80000000;
 char *compiledate = (char *)__DATE__;
 
 #endif /* FF_LINUX */
+
+/* S173h (BOB-PO-2): landscape-texture allocation failures per resolution band.
+   Lib3D::AllocateLandscapeTexture increments these when its band is exhausted; the tile trace
+   reports them. Defined here so both TUs share one instance. */
+long g_bobLandTexFail[8] = {0,0,0,0,0,0,0,0};

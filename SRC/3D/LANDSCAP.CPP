@@ -3672,7 +3672,28 @@ bool LandScape::ManageHighLandTextures(SLong px,SLong pz)
 				if (fp >= (int)sizeof(freebuf) - 8) break;
 			}
 			(void)made;
-			fprintf(stderr, "[tiles] call=%ld stillWaiting=%d freeTiles/rez=[%s]\n", call, waiting, freebuf);
+			/* S173h: how many cached tiles have NO texture handle. A tile whose
+			   AllocateLandscapeTexture failed keeps textHandle==HTEXTNULL and is skipped by
+			   Render2Surface, so it can only draw untextured -- the direct candidate for the black
+			   polygons. If this count falls to zero on the same ~13s curve the picture does, the
+			   black tiles are simply the untextured ones. */
+			int noTex = 0, total = 0;
+			const int gsz = _wholeAreaSizeMIN * _wholeAreaSizeMIN;
+			for (int t = 0; t < gsz; t++) {
+				total++;
+				if (tileCacheGrid[t].textHandle == HTEXTNULL) noTex++;
+			}
+			extern long g_bobLandTexFail[8];
+			char failbuf[128]; int qp = 0; long failTot = 0;
+			for (int r = 0; r < 8; r++) {
+				failTot += g_bobLandTexFail[r];
+				qp += snprintf(failbuf + qp, sizeof(failbuf) - qp, "%s%ld", r ? "," : "", g_bobLandTexFail[r]);
+				if (qp >= (int)sizeof(failbuf) - 8) break;
+			}
+			fprintf(stderr, "[tiles] call=%ld stillWaiting=%d noTexture=%d/%d freeTiles/rez=[%s] texAllocFail=%ld [%s]\n",
+				call, waiting, noTex, total, freebuf, failTot, failbuf);
+			(void)0;
+			if (0) fprintf(stderr, "[tiles] call=%ld stillWaiting=%d freeTiles/rez=[%s]\n", call, waiting, freebuf);
 			fflush(stderr);
 		}
 	}

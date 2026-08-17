@@ -8230,6 +8230,15 @@ HRESULT Lib3D::AllocateLandscapeTexture(UWord reqRez,UWord& tHndl)
 	INT3;
 #endif
 
+	/* S173h (BOB-PO-2): the pool for this resolution band is EXHAUSTED. The authors guarded this
+	   with INT3 because it should not happen -- but this port builds -DNDEBUG and compat INT3 is a
+	   no-op anyway, so the failure is doubly silent: the caller (LANDSCAP.CPP's tile loop) stores
+	   HTEXTNULL, skips Render2Surface, and the tile can only ever draw untextured. Measured: 33 of
+	   289 cached tiles sit at HTEXTNULL permanently. Count the failures per band so "is the pool
+	   exhausted?" is a number rather than an inference. */
+	extern long g_bobLandTexFail[8];
+	if (reqRez < 8) g_bobLandTexFail[reqRez]++;
+
 	tHndl = NULL_LAND_TEXT_REF;
 	return DDERR_GENERIC;
 

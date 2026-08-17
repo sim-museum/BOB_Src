@@ -574,3 +574,38 @@ black terrain, then non-deterministic geometry, then InfiniteStrip, then a capac
 cloud layer. What moved it forward every time was measuring the state that would *distinguish* the
 candidates rather than looking harder at the picture — and being willing to write down that the
 previous round's answer was wrong.
+
+### BOB-PO-2 — two more eliminations, including one seductive coincidence
+
+**Untextured tiles: measured, and they are not the cause.** `BOB_TRACE_TILES` now also counts cache
+entries whose `textHandle == HTEXTNULL` (such a tile is skipped by `Render2Surface` and can only draw
+untextured):
+
+```
+call   0: noTexture=261/289      call 120: noTexture=33/289
+call  60: noTexture=144/289      call 180+: noTexture=33/289   (plateau, permanent)
+```
+
+Tiles get textured quickly up to call ~120, then **33 of 289 stay untextured forever**.
+
+`MAX_LAND_TEXTURES = 256` and the tile grid is `_wholeAreaSizeMIN` 17 × 17 = **289**. And
+**289 − 256 = 33**. That is a very persuasive arithmetic match for "the texture pool is too small by
+exactly the number of black tiles", and `Lib3D::AllocateLandscapeTexture`'s exhaustion path even
+returns `NULL_LAND_TEXT_REF` behind an `INT3` that this port compiles out (`-DNDEBUG`) and that is a
+no-op on Linux anyway — a doubly silent failure of precisely this port's signature kind.
+
+**It is a coincidence.** Counting the failures directly (`texAllocFail` per band, incremented on the
+exhaustion path) gives **0 for the whole run, every band**. The allocator never fails. Those 33
+tiles are never *requested* a texture — `stillWaiting=0` — so they are idle cache slots, not denied
+ones. Recorded at length because the arithmetic was good enough to act on, and the counter is what
+stopped it: **a number that fits is not a mechanism that fired.**
+
+**Eliminated so far:** InfiniteStrip geometry; the screen wipe; tile-creation capacity; RTT
+composition; cloud-layer altitude; texture-pool exhaustion; untextured tiles.
+
+**What is left:** the terrain polygons are drawn over a correct light-blue backdrop, with textures
+successfully allocated and composited, and they are still black — so the remaining variable is what
+they are *shaded* with. `Render2Surface` runs under `SetObjectLighting(useLightFlag)` and the strip
+sets `LF_VERTEX`; terrain vertex lighting arriving near-zero and ramping over ~13 s fits every
+measurement taken. That is the next thing to dump, in the same style: the light state handed to the
+terrain draw, sampled across frames.
