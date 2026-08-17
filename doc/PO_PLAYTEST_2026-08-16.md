@@ -1004,3 +1004,42 @@ GATE 5 reports 13/14 rather than 14/14, and a flapping gate teaches people to ig
 Worth fixing for that reason alone, and worth remembering as a method point: **an A/B against gold
 is only meaningful once you know the value is stable.** I have been careful about control arms all
 session and still skipped that check here, because the single sample happened to agree with gold.
+
+## BOB-PO-14/15 — the Directives dialog has no accept tick, and the campaign has no exit X
+
+PO, playing the campaign after S173: *"no way to click on check mark to accept directives. Also no
+'X' at upper right to exit campaign"*. The clock runs and the Directives dialog appears (both S173
+fixes working); what is missing is the way out of it.
+
+**Gold has three glyphs on every dialog's title band** — `?` `✓` `✗` in red, at the right-hand end
+(gold #17, zoomed): help, **accept**, close. Ours draws the red "Directives" caption and none of the
+three. That is the PO's missing check mark exactly.
+
+**Why they are absent — and it is NOT simply an unhosted control.** Two independent gaps:
+
+1. **`RTitle` is not in the CLSID router.** `SRC/RTITLE` exists as a full OCX project, and every
+   dialog template carries an `IDJ_TITLE` control, but `bob_ole_create_control` hosts eight types
+   (RListBox, RCombo, RStatic, RButton, REdit, RRadio, REdtBt, RSpinBut) and RTitle is not one of
+   them. Same shape as MA's S140 (RScrlBar absent from the table -> 8 scrollbars never drawn).
+2. **But hosting it would not produce the glyphs.** `CRTitleCtrl::OnDraw` in this source drop is the
+   **unmodified ClassWizard stub** — *"TODO: Replace the following code with your own drawing
+   code"* — it fills white and draws the caption, nothing more. And `RDIALOG.CPP`'s own title-bar
+   code, which *does* create a tick (`IDOK`), a close (`IDCANCEL`) and a help button with
+   `IDB_TICK`/`IDB_CLOSE`/`IDB_HELP` bitmaps, is **entirely commented out** (lines ~437-465, and the
+   title paint at ~1395-1421).
+
+So the shipped game draws these from code this source drop does not contain — the same
+source-vs-shipped skew already recorded for the toolbar icon assignment (S90). Hosting RTitle is
+therefore necessary but not sufficient; the glyphs have to be drawn by the port.
+
+**The fix, and it is well-specified by the dead code itself:** draw `ICON_RED_QUESTION` /
+`ICON_TICK` / `ICON_CROSS` (iconnum.g indices 32/33/34 — below the 35 boundary, so their numbering
+was never affected by the S173 parser fix) at the right of an OOB dialog's title band, and route
+clicks to the ids the commented-out original used: **tick -> IDOK, cross -> IDCANCEL**. Both walks
+must gain them together — that lesson is already booked twice this sprint.
+
+**The campaign exit X (BOB-PO-15)** is confirmed in gold as a large red X on a dark plate at the top
+of the right-hand ruler column, above "0 Nm". Ours draws the ruler and no plate. Not yet traced to a
+control: `IDDT_SCALE` (the scale bar) and `IDDT_SPACEBAR` are both **empty templates**, and
+`IDDT_SYSTEM` holds only THUMBNAIL/ZOOMIN/FILES. So the X belongs to something else — identifying
+its owner is the first step, not designing a fix.
