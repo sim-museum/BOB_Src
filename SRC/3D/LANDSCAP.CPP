@@ -7506,6 +7506,35 @@ void LandScape::InfiniteStrip( const ANGLES pitch, const ANGLES roll)
 	g_lpLib3d->SetFogColour(fogCol.all );
 	g_lpLib3d->Wipe( fogCol.all );
 
+#if BOB_LINUX
+	/* S173f (BOB-PO-2): the horizon strip's INPUT STATE, once per run at a chosen call index.
+	   The distant ground renders black and its large quads move between two runs whose camera is
+	   identical to within one foot (HUD: Alt 9648 vs 9649ft), so the question is whether the
+	   numbers feeding this geometry are stable -- measure the state, not the picture. Everything
+	   below decides where the bands sit (fvy, cloud_height_*, layerAltitude*) and what colour they
+	   are (fogCol/skyBase, from currentLighting); a black band means fogCol came out black.
+	   BOB_TRACE_HORIZON=<call index>, default off, one line, no per-frame cost. */
+	{
+		static long s_hzCall = 0;
+		static long s_hzWant = -2;
+		if (s_hzWant == -2) { const char* e = getenv("BOB_TRACE_HORIZON"); s_hzWant = e ? atol(e) : -1; }
+		long call = s_hzCall++;
+		if (s_hzWant >= 0 && call == s_hzWant) {
+			fprintf(stderr,
+				"[horizon] call=%ld viewer_y=%ld fvy=%.9f view_dist=%ld CEILING_ALT=%ld\n"
+				"[horizon]   layer0 AltBase=%ld AltTop=%ld cloud_h_bottom=%.9f cloud_h_top=%.9f\n"
+				"[horizon]   sunProportion=%.9f sunx=%.9f suny=%.9f viewx=%.9f viewy=%.9f\n"
+				"[horizon]   fogCol=%06lx skyBase=%06lx pitch=%ld roll=%ld\n",
+				call, (long)viewer_y, fvy, (long)view_dist, (long)CEILING_ALT,
+				(long)layerAltitudeBottom, (long)layerAltitudeTop, cloud_height_bottom, cloud_height_top,
+				sunProportion, sunx, suny, viewx, viewy,
+				(unsigned long)(fogCol.all & 0xffffff), (unsigned long)(skyBase.all & 0xffffff),
+				(long)pitch, (long)roll);
+			fflush(stderr);
+		}
+	}
+#endif
+
 	double toTopY;
 	if ( layerAltitudeBottom <= 0  || viewer_y<layerAltitudeBottom )
 	{ // view below cloud layer

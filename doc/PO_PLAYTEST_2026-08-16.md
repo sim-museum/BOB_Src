@@ -463,3 +463,38 @@ path; this is about *positions* in the main view. The test that would settle it 
 horizon strip's vertex coordinates over two runs and see whether they differ — the same
 "measure the state, not the picture" move that settled the clock. That is the next step, and it is
 now cheap, because the scenario is reachable in one command.
+
+### BOB-PO-2 — the InfiniteStrip hypothesis is REFUTED (S173f)
+
+Measured rather than argued. `BOB_TRACE_HORIZON=<call index>` dumps the horizon strip's whole input
+state once per run; two runs, frame 500, call 450:
+
+```
+run 1  viewer_y=308854 fvy=0.168883421  layer0 AltBase=0 AltTop=0  fogCol=90b8e8 skyBase=77a9e2  pitch=1164
+run 2  viewer_y=308860 fvy=0.168886702  layer0 AltBase=0 AltTop=0  fogCol=90b8e8 skyBase=77a9e2  pitch=1163
+```
+
+Three conclusions, in order of how much they change the search:
+
+1. **`fogCol` is `90b8e8` — light blue, not black.** `InfiniteStrip` does
+   `g_lpLib3d->Wipe(fogCol.all)`, so the frame is cleared to light blue. The black ground is
+   therefore **not** the background showing through where terrain failed to draw: something is
+   actively drawing black over the lower screen. That inverts the natural reading of the symptom.
+2. **The horizon inputs are stable.** Same `fogCol`, same `skyBase`, same layer data across runs.
+   The only differences are sim-timing noise — `viewer_y` differs by 6 units of 308,857 (0.002%),
+   pitch by one, `sunProportion` in the sixth decimal. Nothing there can move 20% of ground pixels.
+   **So `InfiniteStrip` is not the source of the non-determinism**, and the prior-art link flagged
+   last session is refuted for the main view. Good: it was the cheapest hypothesis to kill, and
+   killing it removes the whole horizon/sky-math branch from the search.
+3. **`layer0 AltBase=0 AltTop=0`** — the cloud layer's altitudes are both zero, so
+   `cloud_height_top`/`cloud_height_bottom` are `0.000000000`. The band-selection branch
+   (`layerAltitudeBottom <= 0 || viewer_y < layerAltitudeBottom`) then *always* takes "view below
+   cloud layer", so it does not crash — but a sky layer with zero extent is almost certainly not
+   what the mission data means, and it is the same shape as this port's other silent-default bugs.
+   Logged as its own question, not merged into BOB-PO-2.
+
+**Where this points next:** the landscape tile draw itself, not the backdrop. Since the wipe is light
+blue and the lower screen is black, the far terrain is being drawn *with black* (unlit / untextured /
+wrong material) rather than skipped. The next measurement is the same shape as this one — dump what
+the land draw is handed (per-tile colour/texture/light state) for two runs and compare — rather than
+another look at the picture.
