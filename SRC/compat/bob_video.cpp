@@ -1716,6 +1716,59 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 			"[cloudz] WORLD/terrain(isRTT) n=%ld z[%.4f..%.4f] scrY[%.0f..%.0f]  COCKPIT/overlay n=%ld z[%.4f..%.4f] scrY[%.0f..%.0f]\n",
 			world.n,world.zlo,world.zhi,world.ylo,world.yhi, cock.n,cock.zlo,cock.zhi,cock.ylo,cock.yhi);
 	}
+	/* S173l (BOB-PO-2): bucket quads by whether their BOUND TEXTURE is black.
+	   Forced by elimination: the frame is cleared to fogCol (measured 0x90b8e8, light blue), every
+	   InfiniteStrip band is light blue, and per-quad diffuse means run 100-173 -- yet a large screen
+	   region is pure black. colour = texture * diffuse, so the texture is what must be black. This
+	   turns that inference into an observation: sample each bound texture's system-memory bits once
+	   (cached by surface), classify it black / dark / normal, and count quads drawn with each.
+	   BOB_TRACE_TEXBLACK=<n> reports every nth quad; default off. */
+	{
+		static long s_tbEvery = -2;
+		if (s_tbEvery == -2) { const char* e = getenv("BOB_TRACE_TEXBLACK"); s_tbEvery = e ? atol(e) : -1; }
+		if (s_tbEvery > 0 && L.hasTex && count >= 3) {
+			GLSurface7* t = g_devTex[0];
+			static const void* keys[512]; static int vals[512]; static int nkeys = 0;
+			int cls = -1;
+			if (t && t->bits && t->w > 0 && t->h > 0) {
+				for (int i = 0; i < nkeys; i++) if (keys[i] == (const void*)t) { cls = vals[i]; break; }
+				if (cls < 0) {
+					/* mean over a sparse sample of texels; 16bpp and 32bpp both handled coarsely */
+					unsigned long acc = 0; int n = 0;
+					const unsigned char* b = (const unsigned char*)t->bits;
+					size_t px = (size_t)t->w * t->h, step = px > 4096 ? px / 4096 : 1;
+					int bpp = t->bpp ? t->bpp : 16;
+					for (size_t i = 0; i < px; i += step) {
+						if (bpp >= 32) { const unsigned char* q = b + i*4; acc += q[0]+q[1]+q[2]; }
+						else           { unsigned short v = ((const unsigned short*)b)[i];
+						                 acc += ((v>>11)&0x1f)*8 + ((v>>5)&0x3f)*4 + (v&0x1f)*8; }
+						n++;
+					}
+					int mean = n ? (int)(acc / (unsigned long)(3*n)) : 0;
+					cls = mean < 8 ? 0 : (mean < 32 ? 1 : 2);
+					if (nkeys < 512) { keys[nkeys] = (const void*)t; vals[nkeys] = cls; nkeys++; }
+				}
+			}
+			static long cnt[4] = {0,0,0,0}, calls = 0;
+			cnt[cls < 0 ? 3 : cls]++;
+			/* which surfaces are the black ones? histogram their dimensions -- the difference
+			   between "some texture is black" and "the NxN landscape tile textures are black",
+			   which is the actionable form. */
+			static int bw[16], bh[16]; static long bn[16]; static int nbd = 0;
+			if (cls == 0 && t) {
+				int found = -1;
+				for (int i = 0; i < nbd; i++) if (bw[i] == t->w && bh[i] == t->h) { found = i; break; }
+				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; }
+				if (found >= 0) bn[found]++;
+			}
+			if (++calls % s_tbEvery == 0) {
+				fprintf(stderr, "[texblack] quads: blackTex=%ld darkTex=%ld normalTex=%ld noTex=%ld (surfaces seen=%d)\n",
+					cnt[0], cnt[1], cnt[2], cnt[3], nkeys);
+				for (int i = 0; i < nbd; i++)
+					fprintf(stderr, "[texblack]   blackTex dims %dx%d quads=%ld\n", bw[i], bh[i], bn[i]);
+			}
+		}
+	}
 	if (getenv("BOB_TRACE_COL") && is2D && L.hasCol && count>=3) {
 		int tw=g_devTex[0]?g_devTex[0]->w:0;
 		unsigned d=*(const unsigned*)(base+L.colOff);

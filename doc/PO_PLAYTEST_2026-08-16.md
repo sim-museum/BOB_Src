@@ -722,3 +722,42 @@ plumbing, not research.
 - the fact that the backdrop, wipe, lighting, render targets and texture allocation are all
   **correct**, which is worth as much as a positive finding: it means the defect is in what the
   terrain draw does with them.
+
+### BOB-PO-2 — ROOT CAUSE CANDIDATE (S173l): the low-resolution land textures are black
+
+Asking the draw path directly, as the previous entry said to. Three measurements, each forced by
+the one before:
+
+1. **The frame is cleared light blue.** `[clear] col=0x0090b8e8 flags=1` — that is `fogCol`. So
+   uncovered pixels cannot read black.
+2. **Vertex colours are fine.** `BOB_TRACE_COL` per texture-width bucket: mean diffuse 100–173
+   across every bucket (`tex256w` 4258 quads at (173,173,174), `tex64w` 411 at (101,100,100), …).
+   Nothing is drawn with a black vertex colour.
+3. Since colour = texture × diffuse, the **texture** must be black — so classify the bound texture
+   per quad (`BOB_TRACE_TEXBLACK`, sampling each surface's bits once and caching by surface):
+
+```
+quads: blackTex=12582  darkTex=108  normalTex=287304  noTex=6   (126 distinct surfaces)
+  blackTex dims 128x128 quads=2869
+  blackTex dims  64x64  quads=9713
+```
+
+**The black textures are 64×64 and 128×128 — the LOW-RESOLUTION landscape tiles.** The 256×256 land
+texture is not among them, which matches the RTT dumps: the 256 I captured was a proper water
+surface in the turkey shoot and proper farmland in the familiarisation arm.
+
+**And `BOB_DUMP_RTT` dumps exactly one surface.** The FBO render-to-texture path — recorded in
+CLAUDE.md as the change that took ground from 51% to 99% non-black — appears to cover only one
+texture size. `Render2Surface` renders each tile at `7-rez`, so the 64 and 128 tiles are rendered
+into targets that are not FBO-backed, their output goes nowhere, and they stay black. Quads drawn
+with them are black regardless of correct geometry, correct vertex colour and a correct clear.
+
+This also retro-explains the whole earlier muddle. Which parts of the screen use low-rez tiles
+depends on view distance, altitude and attitude — so the black region moved when the aircraft
+pitched, differed between the sea and land arms, differed between two runs at slightly different
+positions, and shrank as the aircraft climbed and more of the view fell to the 256 tiles. Every one
+of those observations was real; none of them was the cause.
+
+**Next (a fix, not a measurement):** confirm that only one land-texture size gets an FBO, then give
+the other sizes the same RTT treatment. The A/B is already defined — `BOB_NO_FBO_RTT` reverts the
+existing path, and `blackTex` counts give a numeric pass/fail rather than an impression.
