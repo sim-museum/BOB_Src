@@ -2891,6 +2891,19 @@ int RDialog::RMessageBox(CString TitleID, CString MessageID, UINT Button0ID, UIN
 		main->m_wndSystemBox->InDialAncestor()->EnableWindow(TRUE);
 #endif #ifndef	BOB_DEMO_VER
 	messageboxopen=false;
+#if BOB_LINUX
+	/* S179 (PO: fast-forward at 300x -> a modal -> the campaign silently returned to the main menu).
+	   The modal machinery reports that a box opened and closed, but never WHICH question was asked
+	   or WHAT was answered -- and the answer matters enormously: CMainFrame::OnBye reads rv<2 as
+	   "quit", which is exactly how a campaign can end without the player choosing to end it (the
+	   S165 class). Print the question and the answer, unconditionally: a message box is a rare,
+	   player-visible event, so this cannot flood, and it is the one line that would have told us
+	   what happened instead of leaving "it hung" as the only description. */
+	fprintf(stderr, "[msgbox] \"%s\" / \"%s\" -> returned %d (buttons %u/%u/%u)\n",
+		(const char*)TitleID, (const char*)MessageID, retval,
+		(unsigned)Button0ID, (unsigned)Button1ID, (unsigned)Button2ID);
+	fflush(stderr);
+#endif
 	return retval;
 
 }

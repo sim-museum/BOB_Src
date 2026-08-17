@@ -84,6 +84,7 @@ static void gl_bind_thread(void)
 	g_glOwner = me;
 }
 static int g_scrW = 1024, g_scrH = 768;     /* current display-mode size */
+static int g_bootW = 0, g_bootH = 0;        /* S182: the mode the window was created at */
 /* S162: the mode in force before the game first changed it — what the front end must get back
    when a flight ends (the 3D view runs 800x600; the front end lays out at 1024x768). */
 static int g_origScrW = 0, g_origScrH = 0;
@@ -153,6 +154,7 @@ static void ensure_window(int w, int h)
 		g_scrW, g_scrH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!g_win) { fprintf(stderr, "[vid] SDL_CreateWindow failed: %s\n", SDL_GetError()); return; }
 	g_mainThread = (unsigned long)SDL_ThreadID();   /* S172: only this thread may resize it */
+	g_bootW = g_scrW; g_bootH = g_scrH;             /* S182: ChangeDisplaySettings(NULL) restores this */
 	g_ctx = SDL_GL_CreateContext(g_win);
 	if (!g_ctx) { fprintf(stderr, "[vid] SDL_GL_CreateContext failed: %s\n", SDL_GetError()); return; }
 	SDL_GL_MakeCurrent(g_win, g_ctx);
@@ -172,6 +174,47 @@ static void ensure_window(int w, int h)
    instead of 0x0 (which made the front-end pick resolution 0 and size every panel to nothing). */
 extern "C" void bob_gdi_ensure_window(void) { ensure_window(g_scrW, g_scrH); }
 extern "C" void bob_gdi_screen_size(int* w, int* h) { if (w) *w = g_scrW; if (h) *h = g_scrH; }
+
+/* S182 (PO: "setting campaign resolution at 1920x1080 has no effect").
+
+   SaveDataLoad::ChangeMode DOES consume the setting: it walks EnumDisplaySettings looking for a
+   mode whose dmPelsWidth equals ui_horizontalres[modepoint], picks the one closest to 4:3, and
+   calls ChangeDisplaySettings to apply it. S177 implemented the enumeration half, so the search
+   now finds 1920x1080 -- and then handed it to
+
+       static inline LONG ChangeDisplaySettings(LPDEVMODE, DWORD) { return 0; }
+
+   which reports DISP_CHANGE_SUCCESSFUL and drops the mode on the floor. The same shape as every
+   other bug this port has hit: a stub returns the plausible answer, the caller believes it, and
+   the work silently never happens. Half a pair implemented, the other half still a stub -- and
+   because the stub SUCCEEDS, nothing anywhere reports a problem.
+
+   ensure_window already does the real work (SDL_SetWindowSize, borderless when the mode fills the
+   desktop, off-thread resizes deferred to the main thread) and bob_gdi_dc_bits reallocates the
+   framebuffer on any size change, so this only has to route to it. CDS_TEST validates against the
+   real mode list without applying, which is what the low-colour-depth probe loop expects. */
+extern "C" int bob_change_display_mode(int w, int h, int test)
+{
+	if (w <= 0 || h <= 0) {                 /* ChangeDisplaySettings(NULL,0) = back to boot mode */
+		w = g_bootW ? g_bootW : 1024;
+		h = g_bootH ? g_bootH : 768;
+	}
+	if (test) {
+		if (!SDL_WasInit(SDL_INIT_VIDEO)) return 0;
+		int disp = 0;
+		if (g_win) { int d = SDL_GetWindowDisplayIndex(g_win); if (d >= 0) disp = d; }
+		int n = SDL_GetNumDisplayModes(disp);
+		for (int i = 0; i < n; i++) {
+			SDL_DisplayMode m;
+			if (SDL_GetDisplayMode(disp, i, &m) == 0 && m.w == w && m.h == h) return 1;
+		}
+		return 0;
+	}
+	if (w == g_scrW && h == g_scrH) return 1;
+	fprintf(stderr, "[vid] ChangeDisplaySettings %dx%d -> %dx%d\n", g_scrW, g_scrH, w, h);
+	ensure_window(w, h);
+	return 1;
+}
 
 /* S162 (user-reported QS-3): put the display back to the mode the front end uses.
    The 3D view runs 800x600; the front end lays out at 1024x768 and draws its menu row at y=710,

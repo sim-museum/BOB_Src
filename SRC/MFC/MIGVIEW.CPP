@@ -3810,6 +3810,9 @@ void CMIGView::LaunchMap(bool firsttime)
 
 ///	Persons4::StartUpMapWorld();		//do whenever we go to the map screen
 	m_pfullpane->DestroyWindow();
+#if BOB_LINUX
+	fprintf(stderr, "[fullpane] LEAVE page=0 (LaunchMap firsttime=%d)\n", (int)firsttime);
+#endif
 	m_currentpage=0;
 	m_pfullpane=NULL;
 	CMainFrame* main=(CMainFrame*)AfxGetMainWnd();
@@ -3828,10 +3831,50 @@ void CMIGView::LaunchMap(bool firsttime)
 
 #endif
 
+#if BOB_LINUX
+extern "C" int g_bob_map_active;   /* S180: defined in FULLPSYS.CPP; cleared on page entry */
+#endif
 void CMIGView::LaunchFullPane(FullScreen * startscreen,SaveData::ResUI reqres)
 {
 //	Persons4::ShutDownMapWorld();		//do whenever we come off the map screen
 	m_currentpage=1;					//no.. only if going somewhere nasty.
+#if BOB_LINUX
+	/* S180 (BOB-PO-14, the "apparent hang" the PO has now reported five times). THE FIX.
+
+	   S178 gated the map paint on the game's page state so the port would stop drawing a stale
+	   strategic map over a full-screen page. That half was right. The other half was never written:
+	   nothing told the port to start drawing the PAGE instead. bob_frontend_tick paints the map
+	   under `g_bob_map_active && onMapPage` and the front end under the fall-through below it -- so
+	   with map_active still 1 and the page no longer 0, NEITHER branch ran. The window kept its last
+	   map frame forever: no repaint, no clock (correctly gated on m_currentpage), every toolbar
+	   handler returning early on the same gate. That is precisely "apparent hang", and it was
+	   entirely a port-side rendering-ownership bug, not a game-logic one.
+
+	   My own S178 comment said "g_bob_map_active, which LaunchMap sets and NOTHING CLEARS" and I
+	   still only implemented the suppress side. The BOB_CAMPAIGN_FLY scaffold clears the flag by
+	   hand at FULLPSYS.CPP:996 before its own LaunchFullPane -- which is why the scaffold reached
+	   the briefing happily while every real click path hung. A scaffold compensating for a missing
+	   production hook is the tell we keep re-learning: the harness passed BECAUSE it patched around
+	   the defect.
+
+	   LaunchMap sets the flag back to 1, so the pair is now symmetric and both directions are
+	   exercised by ordinary play. BOB_NO_PAGE_HANDOFF=1 reverts to the S178 behaviour for A/B. */
+	{
+		static int noHandoff = -1;
+		if (noHandoff < 0) noHandoff = getenv("BOB_NO_PAGE_HANDOFF") ? 1 : 0;
+		if (!noHandoff) {
+			g_bob_map_active = 0;   /* map no longer owns the screen -- the front-end tick paints */
+		}
+	}
+	/* S180: name the CALLER, not the symptom. Every "apparent hang" the PO has reported ends with
+	   m_currentpage==1 -- every toolbar/titlebar handler then returns early, so the whole map UI
+	   goes inert and the clock stops. Which call site put us here is the entire question, and
+	   guessing from click coordinates has been wrong twice. Print the return address; addr2line
+	   resolves it to a file:line offline. Unconditional: one line per page entry, and a page entry
+	   is exactly the event we keep failing to attribute. */
+	fprintf(stderr, "[fullpane] ENTER page=1 startscreen=%p reqres=%d caller=%p\n",
+		(void*)startscreen, (int)reqres, __builtin_return_address(0));
+#endif
 	CMainFrame* main=(CMainFrame*)AfxGetMainWnd();
 #ifndef	BOB_DEMO_VER
 //	if (!main->m_bHideToolbars)

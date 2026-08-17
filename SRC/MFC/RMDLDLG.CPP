@@ -373,6 +373,11 @@ void  bob_gdi_present(void);
 void  bob_gdi_screen_size(int* w, int* h);
 int   bob_ole_draw_panel(CWnd*, int, int);
 int   bob_gdi_dump_to(const char*);
+void  bob_gdi_setdibits_origin(int x, int y);
+void  bob_gdi_get_setdibits_origin(int* x, int* y);
+void  bob_gdi_setdibits_clip(int x0, int y0, int x1, int y1);
+void  bob_gdi_get_setdibits_clip(int* x0, int* y0, int* x1, int* y1);
+int   bob_dlg_dialog_size(int dlgId, int* w, int* h);
 }
 
 int RMdlDlg::DoModal()
@@ -381,12 +386,29 @@ int RMdlDlg::DoModal()
 
 	int sw = 800, sh = 600;
 	bob_gdi_screen_size(&sw, &sh);
-	/* The dialog's art positions itself from OnGetXYOffset(), which is 0 here, so the panel is
-	   drawn at the origin the host gives it. Centre it on a nominal message-box size; the art
-	   decides its own extent within that. */
-	const int dw = 400, dh = 200;
+	/* S181 (PO: "Caught Naping dialog too big"). The size is the TEMPLATE's, not a guess.
+
+	   OnPaint blits the whole background bitmap -- ~780x585 for FIL_D_BLANK -- at OnGetXYOffset(),
+	   which is 0. On Windows that lands in the dialog's own DC and is clipped to its client rect,
+	   so the player sees a 272x104-DLU panel showing the top-left corner of a larger shared art
+	   sheet. Our CDC is the entire framebuffer with no origin and no clip, so the bitmap covered
+	   most of the screen from (0,0) while the title, message and buttons were drawn centred --
+	   captured in doc/img_modal_oversized.png: art at the top-left, controls floating mid-screen.
+
+	   The old `const int dw = 400, dh = 200` was a nominal guess that happened to be close to the
+	   real 272x104 DLU (= 408x169 px) but had no relationship to it, and nothing clipped to it
+	   anyway. Take the template size and enforce it, which is what the missing window did.
+	   BOB_NO_MODAL_CLIP=1 reverts. */
+	int dluW = 272, dluH = 104;                    /* IDDS_MODAL_DIALOG's template, as a fallback */
+	bob_dlg_dialog_size(RMdlDlg::IDD, &dluW, &dluH);
+	const int dw = dluW * 6 / 4;                   /* MS Sans Serif 8pt base units ~ (6,13) */
+	const int dh = dluH * 13 / 8;                  /* -- the same conversion bob_ole.cpp uses */
 	int ox = (sw - dw) / 2; if (ox < 0) ox = 0;
 	int oy = (sh - dh) / 2; if (oy < 0) oy = 0;
+	static int noClip = -1;
+	if (noClip < 0) noClip = getenv("BOB_NO_MODAL_CLIP") ? 1 : 0;
+	fprintf(stderr, "[modal] template %dx%d DLU -> %dx%d px at (%d,%d)%s\n",
+		dluW, dluH, dw, dh, ox, oy, noClip ? " (clip DISABLED)" : "");
 
 	m_bobModalDone = 0;
 	/* No answer must never mean "quit" or "act". 2 is Retry/Cancel for the three-button form and
@@ -402,7 +424,22 @@ int RMdlDlg::DoModal()
 	while (!m_bobModalDone && ++guard < BOB_MODAL_MAX_ITERS)
 	{
 		bob_modal_pump();
+		/* Stand in for the window the dialog does not have: shift its DC to the dialog origin and
+		   clip to the dialog rect, so OnPaint's full-sheet blit shows only this dialog's part of
+		   it. Restored immediately -- the origin/clip are global to the GDI layer and leaving them
+		   set would misplace whatever paints next (the S173 lesson). */
+		int sox = 0, soy = 0, cx0 = 0, cy0 = 0, cx1 = 0, cy1 = 0;
+		if (!noClip) {
+			bob_gdi_get_setdibits_origin(&sox, &soy);
+			bob_gdi_get_setdibits_clip(&cx0, &cy0, &cx1, &cy1);
+			bob_gdi_setdibits_origin(ox, oy);
+			bob_gdi_setdibits_clip(ox, oy, ox + dw, oy + dh);
+		}
 		OnPaint();                              /* the dialog's own background art */
+		if (!noClip) {
+			bob_gdi_setdibits_origin(sox, soy);
+			bob_gdi_setdibits_clip(cx0, cy0, cx1, cy1);
+		}
 		bob_ole_draw_panel(this, ox, oy);       /* its buttons and message text */
 		bob_gdi_present();
 		/* BOB_MODAL_SHOT=<path>: capture the modal once it has settled. BOB_SHOT counts ticks

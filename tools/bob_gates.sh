@@ -60,11 +60,27 @@ run bobfrag       120 BOB_BOBFRAG=1
 # Assert on the ANSWER, per button: three distinct codes is the only thing that proves a loop ran.
 echo "### GATE 1c: modal message box (Save=0 Yes=1 Cancel=2)"
 modal_ok=1
-for bx in "390 Save 0" "518 Yes 1" "647 Cancel 2"; do
+# S181: these coordinates are DERIVED from IDDS_MODAL_DIALOG, not fitted to the screen.
+#   dialog 272x104 DLU at 1024x768 -> 408x169 px, centred at (308,299)
+#   IDC_OK/IDC_CANCEL/IDC_RETRY: DLU x=13/98/183, y=70, 80x18  (px = DLU*6/4 horiz, *13/8 vert)
+#   -> centres (387,426) (515,426) (642,426)
+# They used to be y=411, x=390/518/647 -- fitted to the layout BEFORE the modal was clipped to its
+# template (the box drew its whole 780x585 art sheet from the origin). So this gate was pinned to
+# the buggy geometry, and the S181 fix made it fail: a gate that encodes a defect passes only while
+# the defect survives. Assert the geometry line too, so a future layout change fails LOUDLY here
+# rather than by three silently-missed clicks.
+geom=$(cd "$GD" && timeout -k 5 120 env BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
+       SDL_VIDEODRIVER=dummy BOB_TEST_MODAL=60 BOB_TEST_MODAL_EXIT=1 \
+       BOB_CLICKXY="100,387,426" "$BOB" 2>&1 | grep -a -m1 "\[modal\] template" | tr -d '\r')
+case "$geom" in
+  *"272x104 DLU -> 408x169 px at (308,299)"*) echo "  geometry: $geom" ;;
+  *) echo "  geometry CHANGED -> $geom"; echo "  (button coords below are derived from the old template; re-derive them)"; modal_ok=0 ;;
+esac
+for bx in "387 Save 0" "515 Yes 1" "642 Cancel 2"; do
   set -- $bx
   got=$(cd "$GD" && timeout -k 5 200 env BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
         SDL_VIDEODRIVER=dummy BOB_TEST_MODAL=60 BOB_TEST_MODAL_EXIT=1 \
-        BOB_CLICKXY="100,$1,411;200,$1,411;400,$1,411" "$BOB" 2>&1 |
+        BOB_CLICKXY="100,$1,426;200,$1,426;400,$1,426" "$BOB" 2>&1 |
         grep -a "RMessageBox returned" | sed "s/.*returned \\([0-9-]*\\).*/\\1/")
   if [ "$got" = "$3" ]; then echo "  $2 -> $got"; else echo "  $2 -> $got (EXPECTED $3)"; modal_ok=0; fi
 done

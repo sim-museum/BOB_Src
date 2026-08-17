@@ -82,6 +82,22 @@ static int isBoundary(const char* p) {
 }
 
 static int g_curDlgId = -1;   /* the dialog whose CONTROL statements we're currently parsing */
+/* S181: the DIALOG statement's OWN size, in DLU.
+
+   The parser recorded every CONTROL rect but threw away the `IDDS_MODAL_DIALOG DIALOG 0,0,272,104`
+   line it was already matching to set g_curDlgId. On Windows that size is what clips the dialog:
+   a child window's DC stops at its client rect, so RMdlDlg::OnPaint blitting a 780x585 background
+   through it shows only a 272x104-DLU window onto that art. With no window and no clip, the port
+   splatted the whole bitmap across the screen from the origin -- the PO's "Caught Naping dialog
+   too big". Keep the size so the modal can clip to it. */
+struct DlgSz { int dlgId, w, h; };
+static DlgSz g_dlgsz[128]; static int g_ndlgsz = 0;
+static void storeDlgSize(int dlgId, int w, int h) {
+    if (dlgId <= 0 || w <= 0 || h <= 0) return;
+    for (int i = 0; i < g_ndlgsz; i++) if (g_dlgsz[i].dlgId == dlgId) { g_dlgsz[i].w = w; g_dlgsz[i].h = h; return; }
+    if (g_ndlgsz < (int)(sizeof g_dlgsz / sizeof *g_dlgsz))
+        { g_dlgsz[g_ndlgsz].dlgId = dlgId; g_dlgsz[g_ndlgsz].w = w; g_dlgsz[g_ndlgsz].h = h; g_ndlgsz++; }
+}
 
 /* Parse one accumulated CONTROL statement: pull the id (token after the caption)
    and the last four integers outside quotes (x,y,w,h). */
@@ -150,7 +166,12 @@ static void parseRc(const char* path) {
             const char* p = line; while (*p && isspace((unsigned char)*p)) p++;
             /* "<SYM> DIALOG[EX] ..." starts a new dialog -> remember its id for the CONTROLs within */
             const char* dp = strstr(p, " DIALOG");
-            if (dp) { char dsym[SYM_LEN]; if (sscanf(p, " %47[A-Za-z0-9_]", dsym) == 1) g_curDlgId = symLookup(dsym); }
+            if (dp) { char dsym[SYM_LEN]; if (sscanf(p, " %47[A-Za-z0-9_]", dsym) == 1) g_curDlgId = symLookup(dsym);
+                /* "<SYM> DIALOG[EX] [DISCARDABLE] x, y, cx, cy" -- take the last four integers */
+                int dx, dy, dcx, dcy;
+                const char* np = dp; while (*np && *np != '0' && !isdigit((unsigned char)*np)) np++;
+                if (sscanf(np, "%d , %d , %d , %d", &dx, &dy, &dcx, &dcy) == 4)
+                    storeDlgSize(g_curDlgId, dcx, dcy); }
             inControl = (strncmp(p, "CONTROL", 7) == 0 &&
                          (isspace((unsigned char)p[7]) || p[7] == 0));
         }
@@ -716,6 +737,15 @@ extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz) {
     return 0;
 }
 
+/* S181: the dialog's own template size in DLU (0 if the template is unknown). */
+extern "C" int bob_dlg_dialog_size(int dlgId, int* w, int* h) {
+    load();
+    for (int i = 0; i < g_ndlgsz; i++) if (g_dlgsz[i].dlgId == dlgId) {
+        if (w) *w = g_dlgsz[i].w; if (h) *h = g_dlgsz[i].h;
+        return 1;
+    }
+    return 0;
+}
 extern "C" int bob_dlg_lookup(int ctrlId, int* x, int* y, int* w, int* h) {
     load();
     for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == ctrlId) {

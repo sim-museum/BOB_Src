@@ -1323,9 +1323,16 @@ extern "C" int bob_ole_draw_toolbar(CWnd*, int, int, int);
 extern "C" int bob_ole_draw_toolbar_ids(CWnd*, int, int, int, const int*, int);
 extern "C" int bob_ole_draw_panel(CWnd*, int, int);   /* S173: the clock panel, drawn whole */
 extern "C" void bob_gdi_setdibits_origin(int, int);
+/* S183: last-drawn system-box rect, so the click walk mirrors the paint walk exactly. */
+static int g_sysboxX = 0, g_sysboxY = 0, g_sysboxW = 0, g_sysboxH = 0;
+extern "C" int bob_dlg_dialog_size(int dlgId, int* w, int* h);
+extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
 extern "C" void bob_map_paint_toolbars(int sw, int sh)
 {
 	CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
+	{ static int e = 0; if (!e) { e = 1;
+		fprintf(stderr, "[sysbox] paint walk entered: mf=%p sysbox=%p\n",
+			(void*)mf, (void*)(mf ? mf->m_wndSystemBox : 0)); } }
 	if (!mf) return;
 	const int band = 128, by = sh - band;   /* == TELETYPE.CPP FOOTER_BAND_H */
 	/* misc map-tool row (thumbnail / files / zoom / mapfilters / replay) -- upper row, right of the log */
@@ -1377,6 +1384,34 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 		((TeleType*)CMainFrame::toolbars[TB_REPORT])->Refresh(true);
 		bob_ole_draw_toolbar_ids((CWnd*)CMainFrame::toolbars[TB_REPORT], 6, sh - 128 + 5, 100, 0, 0);
 	}
+	/* S183 (BOB-PO-15: "no X at upper right to exit campaign"). The system box was never drawn.
+
+	   It is not one of CMainFrame::toolbars[], so every walk in this file skipped it -- and it is
+	   the ONLY way out of a campaign: CSystemBox::OnClickedFiles -> CMainFrame::OnBye -> the Quit
+	   Game modal -> ExitCampaign + LaunchFullPane(title). With nothing painting it there was no X,
+	   and with nothing hit-testing it there was no exit at all; the PO's only way out was to kill
+	   the window. CMainFrame::Initialise creates it (MAINFRM.CPP:382) and the game positions it top
+	   right (MAINFRM.CPP:461, `rect.right - systemrect.right - bs, rect.top + bs`) through
+	   MoveWindow, which is a no-op here -- so the position has to come from the template, as the
+	   clock and event log already do.
+
+	   IDDT_SYSTEM is 34x50 DLU: IDC_FILES is the 34x30 button on top (the exit), with THUMBNAIL and
+	   ZOOMIN beneath. Drawn as a whole panel so no control can be lost to a hand-written id list,
+	   and so every one gets a recorded screen rect for the click walk below. */
+	if (mf->m_wndSystemBox) {
+		int dw = 34, dh = 50;
+		bob_dlg_dialog_size(IDDT_SYSTEM, &dw, &dh);
+		int px = dw * 6 / 4, py = dh * 13 / 8;      /* the shared DLU->px conversion */
+		int ox = sw - px - 8; if (ox < 0) ox = 0;
+		int drawn = bob_ole_draw_panel((CWnd*)mf->m_wndSystemBox, ox, 8);
+		g_sysboxX = ox; g_sysboxY = 8; g_sysboxW = px; g_sysboxH = py;
+		static int said = 0;
+		if (!said) { said = 1;
+			fprintf(stderr, "[sysbox] panel %dx%d DLU -> %dx%d px at (%d,8): %d controls drawn\n",
+				dw, dh, px, py, ox, drawn); }
+	}
+	else { static int said0 = 0; if (!said0) { said0 = 1;
+		fprintf(stderr, "[sysbox] m_wndSystemBox is NULL -- nothing to draw\n"); } }
 }
 
 /* S92: a click at (cx,cy) on the map -> hit-test the footer toolbar buttons (their last-drawn rects)
@@ -1505,6 +1540,24 @@ extern "C" int bob_map_click_toolbars(int cx, int cy)
 	   the test agreeing. TB_REPORT's OnClickedLine1..3 open their message's dialog, and close it
 	   when clicked again (BOB-PO-11). */
 	if (bob_tbclick(TB_REPORT, "event log", cx, cy)) return 1;
+	/* S183: the system box, mirroring the paint above -- the rule this file keeps re-learning is
+	   that adding a panel to the paint walk and not to the click walk produces something that looks
+	   right and cannot be used (S173d). Hit-testing is bob_ole_click against the rects recorded at
+	   paint time, so it cannot drift from what was drawn. */
+	{
+		CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
+		if (mf && mf->m_wndSystemBox && g_sysboxW > 0) {
+			if (bob_ole_click((CWnd*)mf->m_wndSystemBox, cx, cy)) {
+				fprintf(stderr, "[sysbox] click (%d,%d) consumed\n", cx, cy);
+				return 1;
+			}
+			if (cx >= g_sysboxX && cx < g_sysboxX + g_sysboxW &&
+			    cy >= g_sysboxY && cy < g_sysboxY + g_sysboxH) {
+				fprintf(stderr, "[sysbox] click (%d,%d) inside panel but hit no control\n", cx, cy);
+				return 1;    /* swallowed, like the OOB dialogs -- don't select a unit underneath */
+			}
+		}
+	}
 	return 0;
 }
 #endif
@@ -1545,13 +1598,45 @@ static void bob_oob_paint_title_glyphs(RDialog* n, int ox, int oy);   /* S174 */
 #else
 #define bob_oob_paint_title_glyphs(a,b,c) ((void)0)
 #endif
+extern "C" void bob_gdi_setdibits_clip(int x0, int y0, int x1, int y1);
+/* S184 (generalises S181). A dialog's art is a SHEET, usually larger than the dialog, and on
+   Windows the dialog's own DC clips the blit to its client rect. This port paints with a
+   screen-wide CDC, so it set an origin and no clip -- and any dialog whose art exceeds its template
+   painted straight over its neighbours and off the screen edge. S181 fixed that for the modal
+   message box; the OOB tree walks below had the identical shape, which is why a campaign dialog on
+   the map came out huge with its text running past x=1024 (captured in doc/img_oob_unclipped.png).
+
+   RDialog::MY_IID is the template id, so the size comes from the same parser the modal uses. When
+   the template is unknown the clip is left off, i.e. exactly today's behaviour -- this can only
+   ever shrink what a dialog paints, never move it. BOB_NO_OOB_CLIP=1 reverts. */
+static int bob_oob_clip_begin(RDialog* n, int ox, int oy)
+{
+	static int noClip = -1;
+	if (noClip < 0) noClip = getenv("BOB_NO_OOB_CLIP") ? 1 : 0;
+	if (noClip) return 0;
+	int dw = 0, dh = 0;
+	if (!bob_dlg_dialog_size(n->MY_IID, &dw, &dh) || dw <= 0 || dh <= 0) return 0;
+	int px = dw * 6 / 4, py = dh * 13 / 8;      /* the shared DLU->px conversion */
+	{
+		static int seen[64]; static int nseen = 0; int known = 0;
+		for (int i = 0; i < nseen; i++) if (seen[i] == n->MY_IID) { known = 1; break; }
+		if (!known && nseen < 64) { seen[nseen++] = n->MY_IID;
+			fprintf(stderr, "[oobclip] dialog iid=%d (%s) -> %dx%d DLU = %dx%d px at (%d,%d)\n",
+				n->MY_IID, typeid(*n).name(), dw, dh, px, py, ox, oy); }
+	}
+	bob_gdi_setdibits_clip(ox, oy, ox + px, oy + py);
+	return 1;
+}
+static void bob_oob_clip_end(int on) { if (on) bob_gdi_setdibits_clip(0, 0, 0, 0); }
 static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
 	for (; n; n = n->fchild) {   /* descend containers to the art leaf (the selected tab page) */
 		if (n->artnum) {
 			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+			int clipped = bob_oob_clip_begin(n, ox, oy);
 			bob_gdi_setdibits_origin(ox, oy);
 			n->DoPaint(&dc);                       /* the tab-page background art */
 			bob_gdi_setdibits_origin(0, 0);
+			bob_oob_clip_end(clipped);
 			bob_ole_draw_panel((CWnd*)n, ox, oy);  /* S113b: its hosted OOB controls (squadron RListBox/RStatic) */
 			bob_oob_paint_title_glyphs(n, ox, oy);  /* S174: ? / tick / X on the title band */
 		}
@@ -1567,9 +1652,11 @@ static void bob_oob_paint_tree_deep(RDialog* n, int ox, int oy) {
 	for (; n; n = n->sibling) {
 		if (n->artnum) {
 			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+			int clipped = bob_oob_clip_begin(n, ox, oy);
 			bob_gdi_setdibits_origin(ox, oy);
 			n->DoPaint(&dc);
 			bob_gdi_setdibits_origin(0, 0);
+			bob_oob_clip_end(clipped);
 		}
 		bob_ole_draw_panel((CWnd*)n, ox, oy);      /* hosted controls regardless of artnum */
 		bob_oob_paint_title_glyphs(n, ox, oy);     /* S174: ? / tick / X on the title band */
@@ -1640,9 +1727,26 @@ extern "C" int bob_close_logged_dialog(void* dlgp)
 		CRToolBar* t = CMainFrame::toolbars[tb];
 		if (!t || !t->dialoglinks.loggedchild) continue;
 		for (int i = 0; i < t->dialoglinks.MAX_CHILD_DIALS; i++) {
-			if (t->dialoglinks.loggedchild[i] != d) continue;
-			fprintf(stderr, "[dlgclose] toolbar %d child %d closed via EndDialog\n", tb, i);
-			t->CloseLoggedChild(d);
+			/* S179b: match the dialog OR any DESCENDANT of it. The title glyphs are painted for
+			   every node of an OOB dialog tree (the panel-wrapper rule again -- the controls, and
+			   hence the title band, live on a CONTAINED dialog), so the node a glyph belongs to is
+			   usually not the toolbar's top-level logged child. Matching only the root meant the
+			   close silently found nothing and the glyph did nothing at all. */
+			RDialog* root = t->dialoglinks.loggedchild[i];
+			if (!root) continue;
+			int owns = (root == d);
+			if (!owns) {
+				/* shallow descendant walk, same depth bound as the click walk */
+				for (RDialog* c = root->fchild; c && !owns; c = c->sibling) {
+					if (c == d) { owns = 1; break; }
+					for (RDialog* g = c->fchild; g; g = g->sibling)
+						if (g == d) { owns = 1; break; }
+				}
+			}
+			if (!owns) continue;
+			fprintf(stderr, "[dlgclose] toolbar %d child %d closed (root=%p, asked=%p)\n",
+				tb, i, (void*)root, (void*)d);
+			t->CloseLoggedChild(root);
 			return 1;
 		}
 	}
@@ -1654,8 +1758,9 @@ extern "C" int bob_oob_click_title_glyph(int cx, int cy)
 	for (int i = 0; i < g_nTitleGlyph; i++) {
 		BobTitleGlyph& e = g_titleGlyph[i];
 		if (cx < e.x || cx >= e.x + e.w || cy < e.y || cy >= e.y + e.h) continue;
-		fprintf(stderr, "[titleglyph] (%d,%d) -> %s on dialog %p\n",
-			cx, cy, e.cmd == IDOK ? "IDOK (accept)" : "IDCANCEL (close)", (void*)e.dlg);
+		fprintf(stderr, "[titleglyph] (%d,%d) -> %s on dialog %p (%s)\n",
+			cx, cy, e.cmd == IDOK ? "IDOK (accept)" : "IDCANCEL (close)", (void*)e.dlg,
+			typeid(*e.dlg).name());
 		/* S174: accept runs the dialog's own OnOK (so it commits whatever it commits), then the
 		   dialog is closed the way the rest of this port closes a logged child.
 		   NOT via EndDialog: afxwin.h records (S154) that real dialog teardown is deliberately
@@ -1664,7 +1769,23 @@ extern "C" int bob_oob_click_title_glyph(int cx, int cy)
 		   exactly that loop, EndDialog -> close -> OnCancel -> EndDialog. CloseLoggedChild is the
 		   game's own API and is already what TeleType's line-toggle and CMainFrame use.
 		   OnCancel is a documented no-op here, so the cross just closes. */
-		if (e.cmd == IDOK) e.dlg->OnOK();
+		/* S179: the tick used to run the dialog's OnOK. That was too strong a verb to hand every
+		   dialog: OnOK means "confirm and PROCEED", and what it proceeds to differs per dialog --
+		   the PO's session shows two [titleglyph] IDOK clicks immediately followed by LaunchMain,
+		   i.e. accepting a campaign dialog left the campaign and returned to the front end, which
+		   read to the player as "clicked Fly, it hung". My own regression, from wiring one glyph to
+		   a verb I had not checked per dialog.
+		   Default now: both glyphs CLOSE, which is the behaviour the player can always undo.
+		   BOB_TITLE_TICK_OK=1 restores OnOK for whoever verifies it dialog by dialog. */
+		/* S179b: accept is RESTORED as the default. Disabling it made the tick inert, and on the
+		   Directives dialog accept is the whole point -- it is how the player commits directives and
+		   moves the campaign on, which is what the PO asked for in the first place. The risk it
+		   carries is real (an OnOK on some other dialog left the campaign), so the trace above now
+		   names the dialog CLASS on every glyph click: the next time it misbehaves we will know
+		   which dialog rather than guessing. BOB_TITLE_TICK_OK=0 disables accept. */
+		static int tickOk = -1;
+		if (tickOk < 0) { const char* e2 = getenv("BOB_TITLE_TICK_OK"); tickOk = e2 ? atoi(e2) : 1; }
+		if (e.cmd == IDOK && tickOk) e.dlg->OnOK();
 		bob_close_logged_dialog((void*)e.dlg);
 		return 1;
 	}

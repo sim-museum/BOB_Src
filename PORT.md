@@ -1,5 +1,126 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S180-S183 (2026-08-16): the Fly "hang" was a rendering handoff that was never written
+
+> **BOB-PO-14** — the PO reported an apparent hang five times: *"clicked FLY, dead parrot"*,
+> *"appears hung"*, *"it's now definitely an ex-parrot"*. Each time the window kept its last map
+> frame, the clock stopped, and every toolbar button did nothing.
+>
+> **Root cause, and it was mine.** S178 gated the map paint on the game's own page state so the port
+> would stop drawing a stale strategic map over a full-screen page. That half was right. The other
+> half was never written — nothing told the port to start drawing *the page*:
+>
+> ```c
+> if (g_bob_map_active && onMapPage) { ...paint the map...; return; }
+> if (!g_bobActiveFP) return;                 /* the front-end / full-pane path */
+> ```
+>
+> `LaunchFullPane` sets `m_currentpage=1` and leaves `g_bob_map_active` at 1, so `onMapPage` is false
+> and the first branch is skipped — while the second is still gated behind the map branch. **Neither
+> painted.** The clock and the accel handlers are correctly gated on `m_currentpage`, so they stopped
+> too, and the result was indistinguishable from a hang. The game was fine throughout; the port had
+> simply stopped drawing.
+>
+> My own S178 comment says *"`g_bob_map_active`, which `LaunchMap` sets and **nothing clears**"*, and
+> I implemented only the suppress side anyway.
+>
+> **Why no test caught it.** `BOB_CAMPAIGN_FLY` — the scaffold that drives this exact seam — cleared
+> the flag *by hand* before its own `LaunchFullPane` (`FULLPSYS.CPP:996`). The harness had patched
+> around the missing production hook, so it reached the briefing happily for 40 sprints while every
+> real click path hung. **The scaffold passed *because* of the defect.** That compensating line is
+> now deleted, so the harness exercises the production handoff and a regression fails the gate.
+>
+> **A/B, same frozen binary, prediction stated first** (`[pagegate]` = map paint suppressed with
+> nothing drawn in its place):
+>
+> | arm | `[pagegate]` lines |
+> |---|---|
+> | S180 on (default) | **0** |
+> | `BOB_NO_PAGE_HANDOFF=1` | **49** |
+>
+> Both arms reach `LaunchFullPane(bobfrag, UIR_FRAG)` and paint `artnum=27917`; only the control arm
+> then goes dark. `BOB_NO_PAGE_HANDOFF=1` reverts.
+>
+> **A correction to my own diagnosis.** I twice blamed the wrong click. The `[fullpane]` trace now
+> prints the caller's return address on page entry, because inferring the culprit from click
+> coordinates was wrong both times.
+>
+> ---
+>
+> ### S180b: `FIL_x*` filenames carry a marker `x` that nothing substituted
+>
+> `[fileman] missing file 6a04=...\artwork\axart\buxtton1.bmp` looked like a 1999 typo. It is a
+> **rule**: every `FIL_x<NAME>` entry in `MASTER.FIL` has a stray `x` wedged in at a position that
+> moves line to line, and deleting it names a file that exists — **6 for 6** against the shipped art:
+>
+> | MASTER.FIL | on disk |
+> |---|---|
+> | `buxtton1.bmp` | `button1.bmp` |
+> | `butxton2.bmp` | `button2.bmp` |
+> | `xtitleb.bmp` / `txitleb.bmp` | `titleb.bmp` |
+> | `gripx.bmp` | `grip.bmp` |
+> | `xb_all1.bmp` | `b_all1.bmp` |
+> | `bx_all2.bmp` | `b_all2.bmp` |
+>
+> Implemented as a retry *after* the literal name fails, and only when removing exactly one `x` names
+> an existing file — so it cannot change any path that resolves today. Every substitution is logged.
+> The map toolbar had been quietly missing its button art, degrading through `makefileblock`'s
+> empty-block path, so nothing ever crashed. `BOB_NO_MARKER_X` reverts.
+>
+> ---
+>
+> ### S181: the message box drew its whole art sheet over the screen
+>
+> **PO: "Caught Naping dialog too big."** `RMdlDlg::OnPaint` blits the entire background bitmap
+> (~780x585 for `FIL_D_BLANK`) at `OnGetXYOffset()`, which is 0. On Windows that lands in the
+> dialog's own DC and is **clipped to its client rect** — the player sees a 272x104-DLU panel showing
+> one corner of a larger shared sheet. Our `CDC` is the whole framebuffer with no origin and no clip,
+> so the bitmap covered the screen from (0,0) while the title, message and buttons drew centred.
+> Evidence: `doc/img_modal_oversized.png` -> `doc/img_modal_clipped.png`.
+>
+> The old size was `const int dw = 400, dh = 200` — a guess that happened to sit near the real
+> 272x104 DLU (= 408x169 px) and had no relationship to it. The template parser now keeps the
+> `DIALOG` statement's own size (it was already matching that line to set `g_curDlgId` and throwing
+> the rect away), and the modal sets the GDI origin + clip around `OnPaint`, restoring both
+> immediately. `BOB_NO_MODAL_CLIP` reverts.
+>
+> **This broke GATE 1c, correctly.** The gate clicked `y=411, x=390/518/647` — coordinates fitted to
+> the *unclipped* layout. A gate pinned to a defect passes only while the defect survives. The
+> coordinates are now **derived** from `IDDS_MODAL_DIALOG` (buttons at DLU x=13/98/183, y=70, 80x18
+> -> centres (387,426) (515,426) (642,426)), and the gate asserts the geometry line as well, so a
+> future layout change fails loudly instead of as three silently-missed clicks.
+>
+> ---
+>
+> ### S182: `ChangeDisplaySettings` was a stub that reported success
+>
+> **PO: "setting campaign resolution at 1920x1080 has no effect."** `SaveDataLoad::ChangeMode` does
+> consume the setting — it walks `EnumDisplaySettings` for a mode matching
+> `ui_horizontalres[modepoint]`, picks the one closest to 4:3, and applies it through:
+>
+> ```c
+> static inline LONG ChangeDisplaySettings(LPDEVMODE, DWORD) { return 0; /*DISP_CHANGE_SUCCESSFUL*/ }
+> ```
+>
+> S177 fixed the enumeration half, so the search *found* 1920x1080 and then handed it to a stub that
+> reports success and drops it. The same shape as most of this port's bugs: **a stub returns the
+> plausible answer, the caller believes it, and the work silently never happens** — and because the
+> stub succeeds, nothing reports a problem. `ensure_window` already does the real resize
+> (thread-checked, deferred off-thread) and `bob_gdi_dc_bits` reallocates the framebuffer on any size
+> change, so the fix routes to them; `CDS_TEST` validates against the real mode list without applying.
+>
+> ---
+>
+> ### S183: the campaign had no exit because the system box was never drawn
+>
+> **BOB-PO-15: "no X at upper right to exit campaign."** `CSystemBox` is not one of
+> `CMainFrame::toolbars[]`, so every paint and click walk in `MAINFRM.CPP` skipped it — and it is the
+> **only** way out: `OnClickedFiles` -> `CMainFrame::OnBye` -> the Quit Game modal -> `ExitCampaign`
+> + `LaunchFullPane(title)`. Nothing painted it, so there was no X; nothing hit-tested it, so there
+> was no exit at all. The game positions it top-right through `MoveWindow`, which is a no-op here, so
+> the position comes from the template (`IDDT_SYSTEM`, 34x50 DLU; `IDC_FILES` is the 34x30 button on
+> top). Added to **both** walks in the same change — the rule this file keeps re-learning (S173d).
+
 > ## S173d (2026-08-16): `GetWindowRect` answered with the whole screen — one open dialog ate every map click
 >
 > BOB-PO-11, *"clicking red icon at bottom again does not dismiss dialog"*. S173c's lead — the event

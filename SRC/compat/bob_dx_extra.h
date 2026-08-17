@@ -61,7 +61,23 @@ typedef struct _devicemodeA {
     DWORD dmDisplayFrequency;
 } DEVMODE, *LPDEVMODE;
 #endif
-static inline LONG ChangeDisplaySettings(LPDEVMODE, DWORD) { return 0; /*DISP_CHANGE_SUCCESSFUL*/ }
+/* S182: was `{ return 0; }` -- report success, change nothing. SaveDataLoad::ChangeMode finds the
+   requested UI resolution via EnumDisplaySettings (fixed in S177) and applies it through here, so
+   with this stub the PO's 1920x1080 campaign-resolution choice was located, accepted, and
+   discarded. Routes to the real SDL resize now (bob_video.cpp: bob_change_display_mode). */
+#ifndef CDS_FULLSCREEN
+#define CDS_FULLSCREEN 0x00000004
+#endif
+#ifndef CDS_TEST
+#define CDS_TEST       0x00000002
+#endif
+extern "C" int bob_change_display_mode(int w, int h, int test);
+static inline LONG ChangeDisplaySettings(LPDEVMODE dm, DWORD flags) {
+    int w = dm ? (int)dm->dmPelsWidth  : 0;
+    int h = dm ? (int)dm->dmPelsHeight : 0;
+    int ok = bob_change_display_mode(w, h, (flags & CDS_TEST) ? 1 : 0);
+    return ok ? 0 /*DISP_CHANGE_SUCCESSFUL*/ : -1 /*DISP_CHANGE_FAILED*/;
+}
 /* S177: was `return FALSE` -- "no display modes" -- which ended TwoDPref's enumeration loop on its
    first call and left every UI-resolution combo in the game empty (see bob_enum_display_mode). */
 extern "C" int bob_enum_display_mode(unsigned idx, int* w, int* h, int* bpp, int* hz);

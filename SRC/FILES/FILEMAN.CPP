@@ -1004,10 +1004,52 @@ string	fileman::namenumberedfile(FileNum	MyFile)
 }
 
 //////////////////////////////////////////////////////////////////////
+#if defined(BOB_LINUX)
+/* S180b: the FIL_x* marker-x rule.
+
+   MASTER.FIL spells a whole family of entries with a stray 'x' wedged into the filename at a
+   position that moves from line to line -- buxtton1.bmp, butxton2.bmp, xtitleb.bmp, txitleb.bmp,
+   gripx.bmp, xb_all1.bmp, bx_all2.bmp -- and every one of them is tagged FIL_x<NAME> in the enum.
+   None of those files exists. Delete the single marker 'x' and every one of them resolves against
+   the shipped artwork: button1, button2, titleb, grip, b_all1, b_all2 (checked 6 for 6 against
+   artwork/AXART). So the 'x' is a placeholder the retail build substitutes away, and the port never
+   implemented the substitution -- the map toolbar has been quietly missing its button art ever
+   since, degrading through makefileblock()'s empty-block path so nothing ever crashed.
+
+   Fires only AFTER the literal name has failed to open, and only when removing exactly one 'x'
+   names a file that actually exists, so it cannot change any path that resolves today. Every
+   substitution is logged once so the rule stays auditable rather than becoming folklore. */
+static FILE* bob_open_marker_x(const char* name)
+{
+	if (!name) return NULL;
+	const char* base = name;
+	for (const char* q = name; *q; q++) if (*q=='/' || *q=='\\') base = q+1;
+	char buf[1024];
+	size_t len = strlen(name);
+	if (len >= sizeof buf) return NULL;
+	for (size_t i = (size_t)(base-name); i < len; i++) {
+		if (name[i] != 'x' && name[i] != 'X') continue;
+		memcpy(buf, name, i);
+		memcpy(buf+i, name+i+1, len-i-1);
+		buf[len-1] = 0;
+		FILE* f = fopen(buf, "rb");
+		if (f) {
+			fprintf(stderr, "[fileman] marker-x: '%s' -> '%s' (FIL_x placeholder substituted)\n",
+				base, buf + (base-name));
+			return f;
+		}
+	}
+	return NULL;
+}
+#endif
+
 FILE*	fileman::easyopennumberedfile(FileNum	MyFile)
 {
 string	name=namenumberedfile(MyFile);
 		FILE* rv=fopen(name,"rb");
+#if defined(BOB_LINUX)
+		if (!rv && !getenv("BOB_NO_MARKER_X")) rv = bob_open_marker_x((const char*)name);
+#endif
 		return(rv);
 
 }

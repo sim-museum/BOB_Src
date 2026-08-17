@@ -682,6 +682,18 @@ extern "C" void bob_frontend_tick(void)
 	static int noPageGate = -1;
 	if (noPageGate < 0) noPageGate = getenv("BOB_NO_PAGE_GATE") ? 1 : 0;
 	int onMapPage = noPageGate || !RDialog::m_pView || RDialog::m_pView->m_currentpage == 0;
+	/* S179: report when the gate SUPPRESSES the map. Adding the gate also silenced the clock
+	   diagnostic, because the clock is driven from inside this block -- so the session after it went
+	   quiet exactly when something interesting happened, and "no STUCK line" looked like health
+	   rather than like the instrument being switched off. A suppressed map is itself the state worth
+	   knowing: the game is on a full-screen page the port may or may not be rendering. */
+	if (g_bob_map_active && !onMapPage) {
+		static long supp = 0;
+		if ((supp++ % 600) == 0)
+			fprintf(stderr, "[pagegate] map paint suppressed: m_currentpage=%d (frame %ld) -- game is "
+				"on a full-screen page; clock drive is not running\n",
+				(int)RDialog::m_pView->m_currentpage, supp);
+	}
 	if (g_bob_map_active && onMapPage && RDialog::m_pView && !Inst3d::InThe3D()) {
 		int sw = 1024, sh = 768; bob_gdi_screen_size(&sw, &sh);
 		CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1; dc.m_bobVpX = 0; dc.m_bobVpY = 0;
@@ -981,7 +993,12 @@ extern "C" void bob_frontend_tick(void)
 								fprintf(stderr,"[campfly] wrote live Package.dat (pre-fly, mirrors OnClickedFrag2)\n"); }
 						}
 						fprintf(stderr,"[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=%d hisquad=0\n", hipack);
-						g_bob_map_active = 0;                 /* leave map mode -> front-end paint path */
+						/* S180: the manual `g_bob_map_active = 0` that used to sit here is GONE.
+						   LaunchFullPane now does it for every caller. Keeping it would leave this
+						   scaffold patching around the production hook -- which is exactly why the
+						   scaffold reached the briefing for 40 sprints while the PO's real clicks
+						   hung on the same seam. With it removed, this harness exercises the real
+						   handoff, so a regression here fails the gate instead of hiding. */
 						RDialog::m_pView->LaunchFullPane(&RFullPanelDial::bobfrag, SaveData::UIR_FRAG);
 						if (getenv("BOB_CAMPFLY_SHOT")) g_campfly_shot = 12;  /* dump bobfrag after it settles */
 						if (getenv("BOB_CAMPFLY_GO"))   g_campfly_go   = 12;  /* then Fly -> campaign flight */
