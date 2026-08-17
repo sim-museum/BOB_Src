@@ -1351,11 +1351,13 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 		TitleBar* tb = (TitleBar*)CMainFrame::toolbars[TB_TITLE];
 		tb->Redraw(false);        /* the game's own clock update: DATETIME string + TimeColour +
 		                             the pressed states that show which accel rate is live */
-		const int px = 0, py = sh - 91;              /* dluY(56)=91; bottom-left, as gold */
-		bob_gdi_setdibits_origin(px, py);            /* the console art is PANEL-aligned; each
-		                                                control clips its own piece out of it */
-		bob_ole_draw_panel((CWnd*)tb, px, py);
-		bob_gdi_setdibits_origin(0, 0);
+		/* 1:1 DLU->px, like the other two toolbars. Measured against gold rather than assumed:
+		   gold's four buttons sit on a ~34px pitch for a 37-DLU template spacing, i.e. essentially
+		   one pixel per DLU. bob_ole_draw_panel's 1.5x config-panel scale made the panel 313px wide
+		   against gold's ~250 and inflated the LCD text with it (the text height is derived from the
+		   box height, so a stretched box is a stretched font). Passing nids=0 draws ALL eight
+		   template controls, which is the point -- the id list is what lost IDC_CONTROL. */
+		bob_ole_draw_toolbar_ids((CWnd*)tb, 0, sh - 56, 100, 0, 0);
 	}
 }
 

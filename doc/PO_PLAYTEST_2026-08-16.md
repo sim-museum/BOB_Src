@@ -118,3 +118,38 @@ Three defects, one chain, and each layer was individually plausible enough to st
 that kept it moving was refusing to accept a *rendered* clock as evidence of a *running* one:
 the scaffold drew the right string from the right variables, so every screenshot showed a clock,
 and only `x0` — a value, not a picture — said it was stopped. **Measure the state, not the picture.**
+
+## BOB-PO-1 (debrief font) — attempted in S173b, REVERTED, and why
+
+The diagnosis in the round-1 table is right about the mechanism and wrong about the fix.
+
+Implemented: `bob_dlg_getfont` deferring to `RFullPanelDial::OnGetGlobalFont`, i.e. the game's own
+rule `g_AllFonts[fontnum][m_currentres]` instead of the hardcoded 2× face `[3]`. Then measured
+before shipping, and backed it out. Two reasons, in order of weight:
+
+1. **The screen I could measure says the current face is right.** Cropping our `config-gfx` and
+   gold's Display-Driver page to the *same rect at the same scale*, our label text and gold's are
+   near-identical in size. The change would have selected `[2]` (5/3×) and made the whole front-end
+   ~17% smaller than gold — a regression on a screen the PO has already accepted as usable, traded
+   for an improvement I could not observe.
+2. **The screen that motivated it is unreachable headlessly.** The turkey-shoot debrief has no
+   capture recipe (see the five negative attempts above), so "did this fix the debrief?" had no
+   answer available. Shipping an unverifiable change that provably degrades a verified one is the
+   wrong trade.
+
+**What the evidence actually points at.** The faces are `[0]=1× [1]=4/3 [2]=5/3 [3]=2×`, and
+`MIG.CPP` creates `[1]`,`[2]`,`[3]` **only under `FI_4VER`**. A font without that flag therefore has
+*only* `[0]`. So on one screen, controls using an `FI_4VER` font get `[3]`=2× and their neighbours
+using a plain font fall back to `[0]`=1× — which is exactly the PO's report, "values at roughly
+double the size of the labels beside them". The defect is the **2× cliff between neighbours**, not
+a global scale error, and no choice of a single global face fixes it.
+
+Also worth recording: the campaign clock's text was oversized for the same *visible* reason and had
+a completely different cause — its box was being drawn at the config-panel's 1.5× DLU scale instead
+of the toolbar's 1:1, and the text height is derived from the box height. Fixing the geometry fixed
+the text with no font change at all. **Two screens with the same symptom did not share a cause**,
+which is the strongest argument against treating "font too large" as one bug.
+
+**Next step (needs a harness, not a guess):** a headless route to the debrief, then dump which
+`fontnum` each control on it asks for and which faces exist for those numbers. That turns this from
+a scale argument into a table.

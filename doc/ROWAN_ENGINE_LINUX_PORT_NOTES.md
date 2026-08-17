@@ -3043,3 +3043,80 @@ who calls an API; only a comparison against the original tells you whether the r
 Verify against gold, not against your own references: MA discovered (its S143) that four of its
 five committed parity references had encoded a defect, because they were captured from the port
 itself.
+
+## §8-BoB173 — ⭐ A table parser that SKIPS entries must still COUNT them (BoB S173) **[ENGINE]**
+
+**The bug, in one line.** Resolving a sprite name to its sheet index:
+
+```c
+while (fgets(line, sizeof line, f)) {
+    const char* p = line; while (*p==' '||*p=='\t') p++;
+    if (strncmp(p, "ICON_", 5) != 0) continue;   /* <-- skips, BEFORE the counter */
+    ...
+    s_icons[s_nicons].val = 0x10000 + (*idx);
+    (*idx)++;
+}
+```
+
+`iconnum.g` is a bare enumerator list — 94 members, of which only 62 begin `ICON_`. The other 32
+are `B_ICON_CITY`, `B_ICON_TOWN`, … map markers. They are **real enum members that consume real
+values**. Skipping them without counting shifted every icon after the first one down by up to 32,
+so `ICON_PAUSE` (true index 79) resolved to sheet page 47.
+
+**Why it survived so long.** The shift starts at index 35. Everything the port had used up to that
+point — the whole strategic-map toolbar set (`ICON_THUMB`=0 … `ICON_MISSIONS`=14), `ICON_TICK`=33,
+`ICON_CROSS`=34 — is below the boundary and rendered **correctly**. A numbering error that begins
+one third of the way into a table does not read as "the resolver is broken". It reads as "some
+art is wrong", which invites per-symptom patching: BoB's S94 had already responded by writing a
+hand-maintained id→icon reconstruction table, which is a workaround built on top of the real bug
+and which quietly encodes the wrong assumption that these faces were *missing* rather than
+*mis-addressed*.
+
+**The general rule.** When you parse a positional table — enum members, resource entries, columns,
+struct fields — **filtering by name and assigning by position are different jobs.** Filter what you
+*record*; never filter what you *count*. If a parser's loop can `continue` before its index
+increments, the index is only correct until the first entry the filter rejects.
+
+Check for it by **validating the resolver against a known-far entry**, not a near one. Any test
+using an early symbol passes on a broken parser. Take the last symbol in the file, compute its
+index by hand, and assert.
+
+**Sister-port check (MA): done, NOT APPLICABLE.** MA has no `iconnum*.g` equate files and no
+page resolver — its `GETFILE.CPP` carries only the `F_GRAFIX.G` name→number lookup, which reads an
+explicit `NAME =0xHHHH` value per line and so never derives anything from position. Nothing to fix;
+recorded here so this is not re-investigated. The *rule* still applies to any future positional
+parser in either port.
+
+**Related:** §8-MA97 (art *named* after a control is not necessarily the art *for* it) — that note
+warned the name→art mapping lies; this one is the arithmetic underneath it lying too.
+
+## §8-BoB173b — the clipping half of a blit pair, and scaffolds that look like the feature **[ENGINE]**
+
+Two smaller lessons from the same sprint, both of the port's standing "one half of a pair" class.
+
+**1. A panel-aligned blit needs a clip, and on Windows the WINDOW was the clip.** `RBUTTONC.CPP`
+draws a control's background by blitting the *parent's* artwork at a negative offset
+(`parentrect.left - rect.left`) so one shared image lines up across every control, then relies on
+the control's window to clip it to that control's rect. **The source says nothing about clipping,
+because Windows did it.** A port with no windows gets the offset right and the clip missing, and
+every control paints the whole panel over its neighbours. The host draw path had set the *text*
+viewport per control and never the DIB origin/clip — so captions landed correctly and bitmaps did
+not, which reads as "the art is wrong" rather than "the art is unclipped".
+
+Adding the clip recovered text on three unrelated front-end screens that had been sitting under
+black overpaint for many sprints (`phaseselect`, `entername`, `bobfrag` — tab rows, phase
+description, the unit table, the Back/Begin/Fly menu row). None of those had ever been reported as
+a clipping problem.
+
+**2. A scaffold that looks like the feature suppresses the report that would have found it.** The
+strategic map's clock was a hand-filled rectangle plus a `TextOut` of a string composed with the
+*same format the real control uses*. It therefore showed the right date, the right time and the
+right accel rate, drawn from the right variables — and it could never grow the four transport
+buttons the design puts under it, nor give any control a drawn rect to hit-test. The campaign was
+unplayable (the map starts paused by design and waits for a button that could not be clicked) while
+every screenshot showed a working clock.
+
+The tell was available the whole time and was a **value, not a picture**: `x0`. Prefer an assertion
+on engine state (`MMC.curraccelrate`, `time=`) over "the screen looks right", and **always run the
+control arm** — here, the identical recipe with the click removed, which is what turned "the clock
+reads x1" into "the clock advanced 220s that it does not advance without the click".

@@ -298,7 +298,15 @@ extern "C" int bob_ole_draw_toolbar_ids(CWnd* dialog, int ox, int oy, int pxPer1
         CDC dc; dc.m_hDC = (HDC)1; dc.m_bobScreen = true;
         dc.m_bobVpX = sx; dc.m_bobVpY = sy; dc.m_bobTextH = 12;
         bob_gdi_setdibits_origin(sx, sy);      /* button art (SetDIBitsToDevice) -> screen pos */
+        /* S173: clip to the button rect, as the control's window did on Windows. Icon faces are
+           button-sized so this is a no-op for them, but a control whose art is a PANEL-sized file
+           (the clock row's controls all name FIL_TELEBACK, a 500x500 plate) otherwise paints over
+           everything to its right. Same pair as in bob_ole_draw_panel. */
+        int clipSave[4];
+        bob_gdi_get_setdibits_clip(&clipSave[0], &clipSave[1], &clipSave[2], &clipSave[3]);
+        bob_gdi_setdibits_clip(sx, sy, sx + w, sy + h);
         host->draw(&dc, w, h);
+        bob_gdi_setdibits_clip(clipSave[0], clipSave[1], clipSave[2], clipSave[3]);
         bob_gdi_setdibits_origin(0, 0);
         host->sx = sx; host->sy = sy; host->sw = w; host->sh = h;
         n++;
