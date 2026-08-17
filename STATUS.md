@@ -7,7 +7,54 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> ## Latest (S164–S169, 2026-08-16): the message map is ON by default, and a cross-port census
+> ## Latest (S180–S191, 2026-08-16/17): the Fly "hang" was a rendering handoff that was never written
+>
+> One continuous night of Product-Owner-driven work. The PO reported an apparent hang **five times**
+> (*"clicked FLY, dead parrot"*, *"it's now definitely an ex-parrot"*). Root cause was ours, and it
+> was half of a change I had made the sprint before.
+>
+> | # | What | Result |
+> |---|---|---|
+> | **S180** | `LaunchFullPane` set the game's page state but never handed the screen to the front-end painter — so `bob_frontend_tick` painted **neither** the map nor the page | window froze on its last frame; clock + toolbars correctly gated off with it. **A/B on one frozen binary: 0 suppression events with the fix, 49 with `BOB_NO_PAGE_HANDOFF=1`** |
+> | S180b | `MASTER.FIL`'s `FIL_x*` entries carry a marker `x` at a shifting position that nothing substituted | `buxtton1→button1` and 5 more, **6 for 6** against the shipped art; retry-on-miss only |
+> | S181 | `RMdlDlg` blitted its whole ~780×585 art **sheet** from the origin (Windows clips it to the dialog's own DC) | template size now kept by the `.rc` parser; modal clips to it. **GATE 1c had been pinned to the buggy layout** — coordinates re-derived from `IDDS_MODAL_DIALOG`, geometry now asserted |
+> | S182 | `ChangeDisplaySettings` was `{ return 0; }` — reports `DISP_CHANGE_SUCCESSFUL`, discards the mode | the PO's **1920×1080** was found (S177) and thrown away; routed to the real SDL resize |
+> | S183 | `CSystemBox` is not in `toolbars[]`, so no walk drew or clicked it — and it is the **only** route to `OnBye → ExitCampaign` | the campaign had no exit at all; added to paint **and** click walks in one edit. Gold confirms it is the red X at upper right |
+> | S184 | Same missing clip as S181 on the OOB tree walks | `InterceptOffered` (the dialog the PO clicks FLY on) painted past `x=1024`; now clipped to its template |
+> | S185 | Text sized from each control's **box** (`h−4`), not from the font the game selected | a 14px font rendered at 36px. **Shrink-only** adoption (the one contrary case is a 48px ART font in a 26px box). Also **un-truncated** captions the controls' own shrink logic had been cutting |
+> | S186 | OOB dialogs centred on a magic `340`px | centred on the real template width; first attempt measured the **wrapper** (the panel-wrapper rule, 5th time in that file) |
+> | S187 | `BOB_MAP_CLICK` fired after 6 map paints, so it could only click dialogs that exist immediately | settle count is now a third field |
+> | S187b | `SDL_CreateWindow` failure logged ~181× per map paint under dummy SDL | **345,600 lines → 35** in the same run |
+> | **S188** | The click walk mirrored the paint walk's **set** but not its **order** | a click could pass **through** the dialog covering it. A/B: old order → `consumed by toolbar 1 ctrl id=21` (dialog beneath); top-down → `SWALLOWED` by the one on top |
+> | S189/S190 | *"fast forward did nothing, then went to 300x"* | **not a defect.** `>>` hands the clock to automatic control: 1× while any dialog is open, 300× idle, 20–40× with raids inbound. Traced inside `MoveAllSAGs`: `reqacceltype=5` with a dialog open, `=2` (300×) without |
+> | S191 | Census instead of a fourth per-kind special case | the classifier knew **5 of 9** R* types. `BOB_TRACE_CENSUS` over 20+ dialogs found **exactly two gaps** in the whole exercised surface |
+>
+> **The scaffold was passing *because* of the bug.** `BOB_CAMPAIGN_FLY` cleared the map-active flag
+> **by hand** before its own `LaunchFullPane`, so it reached the briefing happily for ~40 sprints
+> while every real click path froze. That compensating line is deleted; the harness now exercises
+> the production handoff. A scaffold that sets engine state immediately before calling a public
+> entry point is documenting a missing line, not preparing a fixture.
+>
+> **Verified end to end on the final binary** (real GL): map → intercept authorised → briefing →
+> **Fly → `InThe3D=1`**, with **0** `[pagegate]` events. Gates green on every commit: 14/14 recipes,
+> GATE 1c PASS, GATE 3 dummy==GL byte-identical, GATE 4 98.7% non-black, GATE 4b `blackTex=0`,
+> binary unchanged across each run.
+>
+> **Two findings I would rather record than gloss:**
+> - I predicted the S188 click-through at the Fly button and **both arms agreed** — I had aimed
+>   outside the actual overlap. A null result from a probe aimed at the wrong pixel is not evidence
+>   of absence; printing the real drawn bounds gave the discriminating target.
+> - My own `[accel] band` sampler reported a constant for a whole run and I nearly read that as
+>   "the band never moves". It sampled once per map paint while the value changes far faster.
+> - The backlog claimed listboxes/edits/spin buttons were "presumably still missing". **Wrong** —
+>   all hosted. The one type that genuinely is not is **RTabs** (the OOB tab bar).
+>
+> **Open after this session:** BOB-PO-18 (delete `g_bob_map_active`; MA's dispatch is the reference
+> design and cannot express the S180 bug), BOB-PO-19 (OOB dialogs overlap — no layout engine),
+> BOB-PO-21 (host RTabs; MA S60 is the reference, but `CRTabsCtrl` draws via `CBitmap` + memory-DC
+> `BitBlt`, not the DIB path every current host uses).
+
+> ## Previously (S164–S169, 2026-08-16): the message map is ON by default, and a cross-port census
 >
 > Six sprints applying (and checking) what the sister MiG Alley port learned, plus closing the
 > blocker S158/S159 stopped on.
