@@ -595,13 +595,52 @@ public:
         int code = m_bobCurFont ? (m_bobCurFont->m_face + (m_bobCurFont->m_italic ? 4 : 0)) : 0;
         bob_gdi_set_face(code);
     }
+    /* S185 measurement (BOB_TRACE_FONTH, default-off): the box-derived text height this DC is
+       about to use vs the height of the font the game actually selected. The note below asserts
+       the real font is "tiny in our enlarged boxes" -- that was never measured, and the PO's
+       oversized intercept dialog says the opposite is now true somewhere. One line per distinct
+       (box,font) pair so it cannot flood. */
+    void bobTraceFontH(CFont* f) const {
+        if (!getenv("BOB_TRACE_FONTH")) return;
+        extern int g_bobFontHCtrl, g_bobFontHDlg;
+        static int seen[256][3]; static int n = 0;
+        int fh = f ? f->m_height : 0;
+        for (int i = 0; i < n; i++)
+            if (seen[i][0] == m_bobTextH && seen[i][1] == fh && seen[i][2] == g_bobFontHCtrl) return;
+        if (n < 256) { seen[n][0] = m_bobTextH; seen[n][1] = fh; seen[n][2] = g_bobFontHCtrl; n++; }
+        fprintf(stderr, "[fonth] dlg=%d ctrl=%d  box-derived textH=%d  real CFont m_height=%d  face=%d\n",
+                g_bobFontHDlg, g_bobFontHCtrl, m_bobTextH, fh, f ? f->m_face : -1);
+    }
     CFont* SelectObject(CFont* f) {
-        /* NOTE: we deliberately do NOT adopt f->m_height here. The front-end panels
-           are drawn scaled-up (template DLU rects x resolution), but the game's fonts
-           are sized for native DLU, so the real font is tiny in our enlarged boxes
-           (it shrank both combos and the tab bar). Text stays sized to the template
-           box height (m_bobTextH) for coherent scaling. Adopting f->m_height needs a
-           matching DPI/scale pass on the layout -- deferred. */
+        bobTraceFontH(f);
+        /* S185. The note that used to sit here said we deliberately ignore f->m_height because
+           "the real font is tiny in our enlarged boxes". That was never measured, and measurement
+           (BOB_TRACE_FONTH) contradicts it: the game's selected fonts are 14/16/18/26/42/48 px --
+           ordinary sizes -- and in the dialogs the PO actually plays through it is the BOX-derived
+           height that is far too big. bob_ole.cpp sizes text from the control's box (h-4), so
+           InterceptOffered's 230x25 DLU message control asked for a 36px font where the game had
+           selected 14, and "Is it OK to scramble against this raid?" rendered ~700px wide inside a
+           345px control -- straight past the dialog and over the map (doc/img_oob_unclipped.png).
+
+           Measured, one line per (dialog, control, box, font):
+
+             dlg=1103 ctrl=1370   box 36  real 14      <- the message that overflowed
+             dlg=1103 ctrl=1674   box 28  real 14      <- the Fly button
+             dlg=1034 (Directives) box 12-18 real 14   <- already about right
+             dlg=1040/1191         box 26  real 48     <- the one case that must NOT be adopted
+
+           So: SHRINK ONLY. Adopt the game's font when it is smaller than the box-derived height;
+           keep today's value when it is larger. That fixes every overflow (the game's font is
+           authoritative and text that fits its own control cannot paint over a neighbour) while
+           refusing the one direction the evidence does not support -- an ART-face 48px font
+           selected into a 26px box, which is exactly what a naive adopt would blow up.
+
+           BOB_NO_FONT_ADOPT=1 restores the box-derived height for A/B. */
+        if (f && f->m_height > 0 && m_bobTextH > 0 && f->m_height < m_bobTextH) {
+            static int noAdopt = -1;
+            if (noAdopt < 0) noAdopt = getenv("BOB_NO_FONT_ADOPT") ? 1 : 0;
+            if (!noAdopt) m_bobTextH = f->m_height;
+        }
         CFont* old = m_bobCurFont; m_bobCurFont = f;
         return old; }
     /* S65: do NOT cache the caller's CPen*. The map route plotting

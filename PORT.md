@@ -1,5 +1,57 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S185-S186 (2026-08-17): dialog text was sized to the control box, not to the font
+>
+> Chasing the PO's oversized intercept dialog into `bob_ole.cpp` found `m_bobTextH = boxheight - 4`
+> -- every control's font derived from its own box. `InterceptOffered`'s message control is 230x25
+> DLU, so it asked for a **36px** font where the game had selected **14**, and *"Is it OK to scramble
+> against this raid?"* rendered ~700px wide inside a 345px control: straight past the dialog and over
+> the map.
+>
+> `CDC::SelectObject(CFont*)` carried a note saying we deliberately ignore `f->m_height` because
+> "the real font is tiny in our enlarged boxes". **That was never measured, and it is wrong.**
+> `BOB_TRACE_FONTH` reports the box-derived height against the font the game actually selected:
+>
+> | dialog | control | box-derived | real font |
+> |---|---|---|---|
+> | InterceptOffered | message static | 36 | 14 |
+> | InterceptOffered | Fly / Cancel / OK | 28 | 14 |
+> | RAFDirectives | (all) | 12-18 | 14 |
+> | GameOptions / SimPrefs | headings | 26 | **48** |
+>
+> The game's fonts are 14/16/18/26/42/48 px -- ordinary sizes, and `g_AllFonts` already holds four
+> per-resolution variants (x1, x4/3, x5/3, x2). So the premise was backwards for the dialogs the PO
+> plays through. But the last row is real too, and a naive "adopt `m_height`" would put a 48px
+> ART-face font in a 26px box.
+>
+> **Rule: shrink only.** Adopt the game's font when it is *smaller* than the box-derived height;
+> keep today's value when it is larger. That fixes every overflow -- text that fits its own control
+> cannot paint over a neighbour -- while refusing the one direction the evidence does not support.
+> `BOB_NO_FONT_ADOPT=1` reverts.
+>
+> **Verified as an improvement, not merely a change.** 12 of the 14 gate captures move (mainmenu and
+> sideselect have no hosted-font controls and are byte-identical), all inside text bounding boxes.
+> On `config-control` (`doc/img_font_boxsized.png` -> `doc/img_font_adopted.png`):
+>
+> - *"4 axes, 1 hat(s), 12 Buttons"* was a giant label overflowing its row; now a normal label.
+> - *"First Joystick Axis 0 & Axis 1..."* was **truncated with an ellipsis** and now reads in full.
+>
+> That second one is the strongest evidence available: the R* controls' own Shrink logic had been
+> truncating captions because the font it was handed was too big. Gates: 14/14 recipes, GATE 1c
+> PASS, GATE 3 dummy==GL byte-identical, GATE 4 98.7% non-black, GATE 4b blackTex=0.
+>
+> ### S186: OOB dialogs were centred on a magic 340px
+>
+> The three OOB paint walks all positioned dialogs at `(sw - 340) / 2` -- a stand-in for "how wide is
+> this dialog", written before the template parser could answer. `InterceptOffered` is 400px, so it
+> sat 30px right of centre and further over the Directives panel beside it. Now centred on its own
+> template width.
+>
+> First attempt put it at 362 instead of 312: I measured the **wrapper's** template, not the
+> dialog's. The panel-wrapper rule (§8-BoB155) for the fifth time in this file -- the controls, the
+> title band and the real template all live on a CONTAINED dialog. Centring now takes the widest
+> template in the subtree, which is the same node `bob_oob_clip_begin` clips to. Measured: `(312,40)`.
+
 > ## S180-S183 (2026-08-16): the Fly "hang" was a rendering handoff that was never written
 
 > **BOB-PO-14** — the PO reported an apparent hang five times: *"clicked FLY, dead parrot"*,

@@ -1792,6 +1792,39 @@ extern "C" int bob_oob_click_title_glyph(int cx, int cy)
 	return 0;
 }
 #endif
+/* S186: centre an OOB dialog on its OWN width. The three walks below all used `(sw - 340) / 2` --
+   a magic number standing in for "how wide is this dialog", written before the template parser
+   could answer that. It is wrong for every dialog that is not 340px: InterceptOffered is 400px
+   (267 DLU), so it sat 30px right of centre and further over the Directives panel beside it.
+   Falls back to the old constant when the template is unknown, so no dialog can end up worse
+   placed than it already was. */
+/* The logged child is a WRAPPER -- the panel-wrapper rule (section 8-BoB155) that this file has
+   now hit five times: the controls, the title band and the real template all live on a CONTAINED
+   dialog. Centring on the wrapper's own template put InterceptOffered at 362 instead of 312,
+   because the wrapper measures 200 DLU and the dialog inside it measures 267. Take the WIDEST
+   template in the subtree, which is what will actually be painted at this origin -- the same node
+   bob_oob_clip_begin clips to. */
+static int bob_oob_widest(RDialog* n, int depth)
+{
+	int best = 0;
+	for (; n; n = n->sibling) {
+		int dw = 0, dh = 0;
+		if (bob_dlg_dialog_size(n->MY_IID, &dw, &dh) && dw > best) best = dw;
+		if (n->fchild && depth < 4) {
+			int c = bob_oob_widest(n->fchild, depth + 1);
+			if (c > best) best = c;
+		}
+	}
+	return best;
+}
+static int bob_oob_centre_x(RDialog* d, int sw)
+{
+	int px = 340;
+	int dw = d ? bob_oob_widest(d, 0) : 0;
+	if (dw > 0) px = dw * 6 / 4;
+	int x = (sw - px) / 2;
+	return x < 0 ? 0 : x;
+}
 extern "C" int bob_map_paint_oob(int sw, int sh) {
 #if BOB_LINUX
 	g_nTitleGlyph = 0;   /* rebuilt every paint, so the hit rects cannot outlive the drawn ones */
@@ -1804,7 +1837,7 @@ extern "C" int bob_map_paint_oob(int sw, int sh) {
 	if (tb)
 		for (int slot = 0; slot < CMainToolbar::MAX_ID; slot++) {
 			RDialog* child = tb->LoggedChild(slot);
-			if (child) { bob_oob_paint_tree(child, (sw - 340) / 2, 40); n++; }
+			if (child) { bob_oob_paint_tree(child, bob_oob_centre_x(child, sw), 40); n++; }
 		}
 	/* S137: the misc toolbar (TB_MISC) also logs OOB dialogs -- notably the LW/RAF Directives
 	   (gold #18). Render its open logged children too; the Directives dialog is wide (~740px per
@@ -1825,7 +1858,7 @@ extern "C" int bob_map_paint_oob(int sw, int sh) {
 	if (tbr)
 		for (int slot = 0; slot < tbr->dialoglinks.MAX_CHILD_DIALS; slot++) {
 			RDialog* child = tbr->LoggedChild(slot);
-			if (child) { bob_oob_paint_tree(child, (sw - 340) / 2, 40); n++; }
+			if (child) { bob_oob_paint_tree(child, bob_oob_centre_x(child, sw), 40); n++; }
 		}
 	return n;
 }

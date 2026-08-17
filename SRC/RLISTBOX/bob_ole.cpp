@@ -179,6 +179,7 @@ static int dluY(int d) { return d * 13 / 8; }
    the panel's screen origin (ox,oy). Returns the count drawn. */
 extern "C" void bob_gdi_setdibits_clip(int, int, int, int);
 extern "C" void bob_gdi_get_setdibits_clip(int*, int*, int*, int*);
+int g_bobFontHCtrl = 0, g_bobFontHDlg = 0;   /* S185 measurement only */
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
     if (bob_ole_trace()) {
@@ -275,6 +276,7 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         int textH = hpx > 4 ? hpx - 4 : hpx;
         if (hpx > oneLineBox * 9 / 5) textH = oneLineBox - 4;   /* multi-line area -> one-line font */
         dc.m_bobTextH = textH;
+        g_bobFontHCtrl = host->ctrlId; g_bobFontHDlg = host->dlgId;   /* S185: name the control in [fonth] */
         /* S173: clip this control's art blit to its own rect.
            RBUTTONC.CPP OnDraw blits the shared PANEL artwork into the control's DC offset by
            (parentrect.left-rect.left) and lets the control's WINDOW clip it, so each control shows
