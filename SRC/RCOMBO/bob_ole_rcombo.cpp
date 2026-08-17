@@ -9,6 +9,8 @@
 #include "../RLISTBOX/bob_ole_host.h"
 #include <cstdarg>
 #include <cstdio>
+#include <fcntl.h>              /* S173 diag: BOB_DUMP_ART writes via open(), not the fopen macro */
+#include <unistd.h>
 
 extern int g_bobListFontH;
 
@@ -144,7 +146,25 @@ extern "C" void* bob_dlg_getfile(int filenum) {
         delete s_lastfb; s_lastfb = new fileblock((FileNum)filenum);
         void* d = getdata(*s_lastfb);
         static int t=0; if(bob_ole_trace()&&t<40){t++; unsigned char* b=(unsigned char*)d;
-            fprintf(stderr,"[ole] getfile 0x%x -> %p %s\n",filenum,d, (d&&b[0]=='B'&&b[1]=='M')?"BM":"(notBM)");}
+            int bm = d && b[0]=='B' && b[1]=='M';
+            /* S173: the SIZE too. Whether a shared art file is a per-control icon or one
+               panel-sized image decides how it must be placed, and that is not answerable from
+               the file NUMBER -- the clock panel's controls all name FIL_TELEBACK. */
+            fprintf(stderr,"[ole] getfile 0x%x -> %p %s%s",filenum,d, bm?"BM":"(notBM)", bm?"":"\n");
+            if (bm) fprintf(stderr," %dx%d %dbpp\n", *(int*)(b+18), *(int*)(b+22), *(short*)(b+28));}
+        /* S173 diag: BOB_DUMP_ART=0xNNNN writes the raw BMP out, so a layout question about a
+           shared art file is answered by looking at the image instead of inferring from ids. */
+        { const char* da = getenv("BOB_DUMP_ART");
+          if (da && d && (int)strtol(da,0,0) == filenum) {
+              unsigned char* b=(unsigned char*)d;
+              unsigned sz = *(unsigned*)(b+2);
+              char pth[256]; snprintf(pth,sizeof pth,"/tmp/art_%x.bmp",filenum);
+              /* open(), not fopen: fopen is #defined to fopen_nocase, the drive_c path redirect,
+                 and this is a host path. GETFILE.CPP documents the same trap. */
+              int fd = open(pth, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+              if (fd >= 0) { ssize_t wr = write(fd, b, sz); close(fd);
+                  fprintf(stderr,"[ole] dumped art 0x%x (%u of %u bytes) -> %s\n",
+                          filenum,(unsigned)wr,sz,pth);} } }
         return d;
     }
     return NULL;

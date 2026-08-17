@@ -1320,6 +1320,8 @@ LRESULT CMainFrame::DefWindowProc(UINT message, WPARAM wParam, LPARAM lParam)
    on the footer band; env-gated (BOB_MAP_BUTTONS) while the layout is tuned. */
 extern "C" int bob_ole_draw_toolbar(CWnd*, int, int, int);
 extern "C" int bob_ole_draw_toolbar_ids(CWnd*, int, int, int, const int*, int);
+extern "C" int bob_ole_draw_panel(CWnd*, int, int);   /* S173: the clock panel, drawn whole */
+extern "C" void bob_gdi_setdibits_origin(int, int);
 extern "C" void bob_map_paint_toolbars(int sw, int sh)
 {
 	CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
@@ -1332,13 +1334,28 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 	   mission-folder strip in the wine reference) */
 	if (CMainFrame::toolbars[TB_MAIN])
 		bob_ole_draw_toolbar((CWnd*)CMainFrame::toolbars[TB_MAIN], 468, by + 72, 100);
-	/* S94: the accel/time controls (Pause/Play/Fastforward) from the TitleBar, drawn just above the
-	   parchment date box (left column). Their template rects are at DLU x 68/105/142 y30; place the
-	   toolbar origin so they land as a compact row at ~x240, above the date box. Draw ONLY those three
-	   (the TitleBar also hosts DATETIME/DATE, which bob_map_paint_titlebar renders separately). */
+	/* S173 (PO: "time is stopped at 0x"). The clock panel is drawn WHOLE, from its own template.
+	   S94 hand-placed three of its buttons as a free-floating row and left the rest to a scaffold
+	   that hand-filled a parchment rectangle (bob_map_paint_titlebar). Two things followed. The
+	   panel looked nothing like gold; and IDC_CONTROL -- a FOURTH transport button, at DLU x26,
+	   sitting between the end cap and Pause -- was never drawn at all, because a hand-written id
+	   list can only contain the ids someone thought to put in it.
+	   IDDT_TITLEBAR is a complete 209x56 DLU design: end cap, DATE + DATETIME plate, then
+	   CONTROL/PAUSE/PLAY/FASTFORWARD in a row at y30, end cap. Drawing it as a panel takes all of
+	   that geometry from the resource, so the row cannot drift from the art and no control can be
+	   omitted by oversight. It also gives every button a recorded screen rect, which is what
+	   bob_ole_click hit-tests -- the reason the map's accel row could not be clicked, and so the
+	   reason the campaign clock could never leave ACCEL_PAUSED (LaunchMap starts paused by
+	   design and waits for exactly these buttons). */
 	if (CMainFrame::toolbars[TB_TITLE]) {
-		static const int accel[] = { 1838 /*PAUSE*/, 1842 /*PLAY*/, 1845 /*FASTFORWARD*/ };
-		bob_ole_draw_toolbar_ids((CWnd*)CMainFrame::toolbars[TB_TITLE], 172, sh - 88, 100, accel, 3);
+		TitleBar* tb = (TitleBar*)CMainFrame::toolbars[TB_TITLE];
+		tb->Redraw(false);        /* the game's own clock update: DATETIME string + TimeColour +
+		                             the pressed states that show which accel rate is live */
+		const int px = 0, py = sh - 91;              /* dluY(56)=91; bottom-left, as gold */
+		bob_gdi_setdibits_origin(px, py);            /* the console art is PANEL-aligned; each
+		                                                control clips its own piece out of it */
+		bob_ole_draw_panel((CWnd*)tb, px, py);
+		bob_gdi_setdibits_origin(0, 0);
 	}
 }
 

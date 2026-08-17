@@ -129,13 +129,25 @@ static void bob_icons_loadfile(const char* path, int* idx) {
     char line[256];
     while (fgets(line, sizeof line, f)) {
         const char* p = line; while (*p==' '||*p=='\t') p++;
-        if (strncmp(p, "ICON_", 5) != 0) continue;
+        /* S173: count EVERY enumerator, name only the ICON_* ones.
+           This used to `continue` on any line not starting with "ICON_" -- before the counter --
+           and iconnum.g holds 94 enumerators of which only 62 have that prefix: the 32 B_ICON_*
+           map-marker entries (B_ICON_CITY, B_ICON_TOWN, ...) are real enum members that consume
+           real values. Skipping them without counting shifted every icon after index 34 down by
+           however many B_ICON_* preceded it, so ICON_PAUSE (79) resolved to page 47 and the
+           strategic map's transport buttons drew round gold map tokens.
+           The first 35 icons are unaffected, which is why the map toolbars looked right and hid
+           this: a numbering bug that starts one third of the way into a table reads as "some art
+           is wrong" rather than "the resolver is wrong". Both files are pure `NAME,` lines and
+           neither assigns an explicit value, so plain sequential counting is exact. */
         int n = 0; char nm[48];
         while ((isalnum((unsigned char)p[n]) || p[n]=='_') && n < 47) { nm[n]=p[n]; n++; }
         nm[n] = 0;
-        if (n < 5) continue;
-        if (s_nicons < 512) { strncpy(s_icons[s_nicons].name, nm, 47); s_icons[s_nicons].name[47]=0;
-            s_icons[s_nicons].val = 0x10000 + (*idx); s_nicons++; }
+        if (n == 0) continue;                       /* blank / punctuation-only line: not a member */
+        if (strncmp(nm, "ICON_", 5) == 0 && s_nicons < 512) {
+            strncpy(s_icons[s_nicons].name, nm, 47); s_icons[s_nicons].name[47]=0;
+            s_icons[s_nicons].val = 0x10000 + (*idx); s_nicons++;
+        }
         (*idx)++;
     }
     fclose(f);

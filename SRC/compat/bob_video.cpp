@@ -829,6 +829,25 @@ extern "C" void bob_gdi_present(void) {
    origin around host->draw() and reset it after. */
 static int g_sdibOrgX = 0, g_sdibOrgY = 0;
 extern "C" void bob_gdi_setdibits_origin(int x, int y) { g_sdibOrgX = x; g_sdibOrgY = y; }
+/* S173: read it back, so a nested drawer can set a per-control origin and RESTORE the caller's
+   rather than zeroing it. bob_ole_draw_panel runs inside callers that have already set the PANEL
+   origin for the dialog background art; resetting to (0,0) after each control would silently
+   misplace whatever that caller draws next. */
+extern "C" void bob_gdi_get_setdibits_origin(int* x, int* y) { if (x) *x = g_sdibOrgX; if (y) *y = g_sdibOrgY; }
+/* S173: a clip rect for the DIB blit -- the other half of the pair above.
+   RBUTTONC.CPP's transparent path blits the PARENT's panel-sized artwork into the control's DC at a
+   negative offset (parentrect.left-rect.left), so every control shows the piece of one shared image
+   that falls in its own rect. On Windows the control's window did the clipping and the source says
+   nothing about it. With no window there is no clip, so each control painted the WHOLE console over
+   its neighbours -- the clock panel came out as one grey slab. Empty rect (x1<=x0) = no clipping. */
+static int g_sdibClipX0 = 0, g_sdibClipY0 = 0, g_sdibClipX1 = 0, g_sdibClipY1 = 0;
+extern "C" void bob_gdi_setdibits_clip(int x0, int y0, int x1, int y1) {
+	g_sdibClipX0 = x0; g_sdibClipY0 = y0; g_sdibClipX1 = x1; g_sdibClipY1 = y1;
+}
+extern "C" void bob_gdi_get_setdibits_clip(int* x0, int* y0, int* x1, int* y1) {
+	if (x0) *x0 = g_sdibClipX0; if (y0) *y0 = g_sdibClipY0;
+	if (x1) *x1 = g_sdibClipX1; if (y1) *y1 = g_sdibClipY1;
+}
 extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, unsigned numScan,
                                  const void* bits, const void* bmi) {
 	xDest += g_sdibOrgX; yDest += g_sdibOrgY;
@@ -885,14 +904,17 @@ extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, uns
 			src = rle; srcPitch = biWidth; topDown = 0; avail = absH;
 		}
 	}
+	const int clipOn = g_sdibClipX1 > g_sdibClipX0 && g_sdibClipY1 > g_sdibClipY0;
 	for (int imgY=0; imgY<absH; imgY++) {
 		int srcRow = topDown ? imgY : (absH-1-imgY);
 		if (srcRow >= avail) continue;
 		int dy = yDest + imgY; if (dy<0 || dy>=fbh) continue;
+		if (clipOn && (dy < g_sdibClipY0 || dy >= g_sdibClipY1)) continue;
 		const unsigned char* srow = src + (size_t)srcRow*srcPitch;
 		unsigned* drow = fb + (size_t)dy*fbw;
 		for (int x=0; x<biWidth; x++) {
 			int dx = xDest + x; if (dx<0||dx>=fbw) continue;
+			if (clipOn && (dx < g_sdibClipX0 || dx >= g_sdibClipX1)) continue;
 			unsigned b,g,r;
 			if (biBitCount==8)  { const unsigned char* e=pal+(size_t)srow[x]*4; b=e[0]; g=e[1]; r=e[2]; }
 			else if (biBitCount==24){ const unsigned char* p=srow+x*3; b=p[0]; g=p[1]; r=p[2]; }

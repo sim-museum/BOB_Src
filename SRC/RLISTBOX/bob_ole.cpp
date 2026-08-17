@@ -161,6 +161,8 @@ static int dluY(int d) { return d * 13 / 8; }
 
 /* Draw every hosted control owned by `dialog` at its template position, offset by
    the panel's screen origin (ox,oy). Returns the count drawn. */
+extern "C" void bob_gdi_setdibits_clip(int, int, int, int);
+extern "C" void bob_gdi_get_setdibits_clip(int*, int*, int*, int*);
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
     if (bob_ole_trace()) {
@@ -257,7 +259,18 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         int textH = hpx > 4 ? hpx - 4 : hpx;
         if (hpx > oneLineBox * 9 / 5) textH = oneLineBox - 4;   /* multi-line area -> one-line font */
         dc.m_bobTextH = textH;
+        /* S173: clip this control's art blit to its own rect.
+           RBUTTONC.CPP OnDraw blits the shared PANEL artwork into the control's DC offset by
+           (parentrect.left-rect.left) and lets the control's WINDOW clip it, so each control shows
+           only the piece of one image that lands in its rect. We have no windows, so the art stayed
+           panel-aligned (the caller's origin, correct) but unclipped -- each control painted the
+           whole console over its neighbours and the clock panel came out as a single grey slab.
+           Clip, restore, and leave the ORIGIN alone: panel-aligned is what composes the image. */
+        int clipSave[4];
+        bob_gdi_get_setdibits_clip(&clipSave[0], &clipSave[1], &clipSave[2], &clipSave[3]);
+        bob_gdi_setdibits_clip(sx, sy, sx + dluX(r.w), sy + hpx);
         host->draw(&dc, dluX(r.w), hpx);
+        bob_gdi_setdibits_clip(clipSave[0], clipSave[1], clipSave[2], clipSave[3]);
         host->sx = sx; host->sy = sy; host->sw = dluX(r.w); host->sh = hpx;  /* for click hit-test */
         if (bob_ole_trace()) fprintf(stderr, "[ole] draw panel ctrl id=%d at (%d,%d) %dx%d\n", host->ctrlId, sx, sy, dluX(r.w), hpx);
         n++;

@@ -463,23 +463,11 @@ extern "C" void bob_map_paint_titlebar(int sw, int sh)
 	dc.FillSolidRect(0, by,     sw, bandH, RGB(90, 66, 28));   /* dark wooden band */
 	dc.FillSolidRect(0, by,     sw, 2,     RGB(150,110, 50));  /* top bevel highlight */
 	dc.FillSolidRect(0, sh - 2, sw, 2,     RGB(40, 28, 12));   /* bottom shadow */
-	/* the parchment date box, bottom-left (matches the wine reference) */
-	const int boxX = 6, boxW = 224, boxH = 28, boxY = sh - boxH - 5;
-	dc.FillSolidRect(boxX, boxY, boxW, boxH, RGB(222,220,206));
-	dc.m_penColor = RGB(40,28,12); dc.m_penHasColor = true;    /* sunken border */
-	dc.MoveTo(boxX, boxY); dc.LineTo(boxX+boxW, boxY); dc.LineTo(boxX+boxW, boxY+boxH);
-	dc.LineTo(boxX, boxY+boxH); dc.LineTo(boxX, boxY);
-	/* the faithful clock string + its TimeColour (the same the TitleBar pushes to IDC_DATETIME) */
-	CString s = CSprintf("%s %s x%i",
-		GetDateName(MMC.currdate, DATE_LONG), GetTimeName(MMC.currtime), MMC.curraccelrate);
-	COLORREF col = RGB(60,60,60);
-	switch (MMC.TimeColour()) {
-	case Campaign::TC_RED:    col = RGB(200,0,0);   break;
-	case Campaign::TC_YELLOW: col = RGB(150,150,0); break;
-	case Campaign::TC_BLUE:   col = RGB(0,0,200);   break;
-	default: break;
-	}
-	dc.SetTextColor(col);
-	dc.TextOut(boxX + 8, boxY + (boxH - dc.m_bobTextH)/2, s);
+	/* S173: the clock itself is NO LONGER hand-drawn here. This used to fill a parchment rectangle
+	   and TextOut a string it composed with the same format Redraw() uses -- a copy of the real
+	   panel's output that could never grow the four transport buttons the design puts under it, and
+	   that hid their absence behind something clock-shaped. bob_map_paint_toolbars now draws the
+	   genuine IDDT_TITLEBAR panel (art, LCD plate, CONTROL/PAUSE/PLAY/FASTFORWARD) at this band's
+	   left end. What stays here is the band the panel sits on, which is map furniture, not clock. */
 }
 #endif

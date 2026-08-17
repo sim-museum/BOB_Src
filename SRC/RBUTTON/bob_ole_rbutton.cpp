@@ -61,8 +61,13 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
             {1835,"ICON_ASSETS"},{1837,"ICON_REVIEW"},{1841,"ICON_MISSIONS"},{1844,"ICON_AIRCRAFT"},
             {1848,"ICON_HOSTILES"},{1001,"ICON_THUMB"},{1003,"ICON_SAVE"},{1004,"ICON_ZOOM"},
             {1005,"ICON_ZOOM"},{1006,"ICON_MAPFILTERS"},{1007,"ICON_DIRECTIVES"},{1055,"ICON_REPLAY"},
-            /* TitleBar accel/time controls (S94) */
-            {1838,"ICON_PAUSE"},{1842,"ICON_PLAY"},{1845,"ICON_FFORWARD"},
+            /* TitleBar accel/time controls (S94; S173 adds the fourth).
+               S94's NAMES were right -- iconnum.g really does hold FFCTRL/PAUSE/PLAY/FFORWARD as a
+               consecutive family, which is exactly gold's >| || |> >> -- but they rendered as round
+               gold map tokens because bob_icon_pagenum mis-numbered every icon past index 34 (see
+               GETFILE.CPP: the 32 B_ICON_* enumerators were skipped without being counted).
+               ICON_FFCTRL is IDC_CONTROL, the leftmost button, which no id list here ever named. */
+            {1836,"ICON_FFCTRL"},{1838,"ICON_PAUSE"},{1842,"ICON_PLAY"},{1845,"ICON_FFORWARD"},
         };
         int forced = 0;
         for (unsigned k = 0; k < sizeof kBtnIcon/sizeof kBtnIcon[0]; k++)
