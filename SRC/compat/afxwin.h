@@ -52,6 +52,7 @@ extern "C" void bob_gdi_set_face(int kind);   /* S131: 0=ART 1=SANS 2=SERIF 3=MO
 extern "C" void bob_gdi_line(int x0, int y0, int x1, int y1, unsigned color);
 extern int g_bobListFontH;   /* live R* list font pixel height (bob_ole.cpp); shared so the control's
                                 Shrink/GetTextExtent and OnDraw/ExtTextOut agree on size */
+extern "C" void bob_ole_census(int dlgId);   /* S191: template-control census (bob_ole.cpp) */
 extern int g_bobDlgIDD;      /* IDD of the dialog currently being created (CDialog::Create), so each
                                 hosted control knows its dialog -> (dialog,control) DLGINIT caption */
 extern "C" void bob_dialog_destroy_trace(class CWnd* dlg);  /* S155: BOB_TRACE_DESTROY -- who gets
@@ -1869,6 +1870,7 @@ inline BOOL CDialog::Create(UINT nID, CWnd* parent) {
         bob_ole_host_template_statics(this, (int)nID);
         OnInitDialog();          /* run the dialog's init -> populates the controls
                                     (e.g. CSDetail fills its driver/resolution combos) */
+        bob_ole_census((int)nID);   /* S191: which template controls got no host */
         g_bobDlgIDD = savedIDD;
     }
     return TRUE;

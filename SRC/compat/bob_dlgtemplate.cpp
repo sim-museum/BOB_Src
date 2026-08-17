@@ -29,7 +29,28 @@
 
 /* control-class kind (S124): known only for PE-sourced entries (the .rc text parse
    doesn't capture the class); drives template-driven static hosting. */
-enum { K_UNKNOWN = 0, K_RSTATIC, K_RCOMBO, K_RLISTBOX, K_RBUTTON, K_REDIT };
+/* S191: the template classifier knew 5 of the NINE R* control types the resources actually use.
+   Census of SRC/MFC/BOB.RC by CLSID: RStatic 621, RButton 388, RSpinBut 109, RCombo 147,
+   RListBox 55, REdtBt 16, REdit 20, RRadio 12, RTabs 1. The four it did not know were classified
+   K_UNKNOWN and therefore invisible to every template pass -- and bob_ole.cpp's own comment calls
+   RSpinBut "the 8th and LAST R* type", which RTabs (IDJ_TABCTRL on IDDS_EMPTYPAGE) contradicts.
+   Naming them all is the precondition for auditing which are actually hosted at runtime. */
+enum { K_UNKNOWN = 0, K_RSTATIC, K_RCOMBO, K_RLISTBOX, K_RBUTTON, K_REDIT,
+       K_RSPINBUT, K_RRADIO, K_REDTBT, K_RTABS };
+static const char* kindName(int k) {
+    switch (k) {
+        case K_RSTATIC:  return "RStatic";
+        case K_RCOMBO:   return "RCombo";
+        case K_RLISTBOX: return "RListBox";
+        case K_RBUTTON:  return "RButton";
+        case K_REDIT:    return "REdit";
+        case K_RSPINBUT: return "RSpinBut";
+        case K_RRADIO:   return "RRadio";
+        case K_REDTBT:   return "REdtBt";
+        case K_RTABS:    return "RTabs";
+        default:         return "UNKNOWN";
+    }
+}
 
 struct Sym  { char name[SYM_LEN]; int id; };
 struct CR   { int id, dlgId, x, y, w, h; unsigned char pe, kind; };
@@ -603,6 +624,10 @@ static int classifyClass(const char* cls) {
     if (!strncasecmp(cls+1, "48814009", 8)) return K_RLISTBOX;
     if (!strncasecmp(cls+1, "78918646", 8)) return K_RBUTTON;
     if (!strncasecmp(cls+1, "499E2BE6", 8)) return K_REDIT;
+    if (!strncasecmp(cls+1, "C3270E66", 8)) return K_RSPINBUT;   /* S191 */
+    if (!strncasecmp(cls+1, "5363BA22", 8)) return K_RRADIO;
+    if (!strncasecmp(cls+1, "461A1FE3", 8)) return K_REDTBT;
+    if (!strncasecmp(cls+1, "4A1E1986", 8)) return K_RTABS;
     return K_UNKNOWN;
 }
 static void peItemCb(void*, int dlgId, int ctrlId, int x, int y, int w, int h, const char* cls) {
@@ -746,6 +771,24 @@ extern "C" int bob_dlg_dialog_size(int dlgId, int* w, int* h) {
     }
     return 0;
 }
+/* S191: enumerate EVERY template control of a dialog with its kind, so a caller can audit what is
+   hosted instead of asking one kind at a time. The three existing bob_dlg_enum_statics/buttons/
+   combos calls are the same query with a constant folded in, added one at a time as each kind was
+   discovered missing (S124, S136, S176) -- which is why the next missing kind was always found by a
+   player rather than by us. */
+extern "C" int bob_dlg_enum_all(int dlgId, int* ids, int* kinds, int maxn) {
+    load();
+    int n = 0;
+    for (int i = 0; i < g_nrects && n < maxn; i++) {
+        if (g_rects[i].dlgId != dlgId) continue;
+        if (g_pe && !g_rects[i].pe) continue;     /* installed build's template wins, as elsewhere */
+        ids[n] = g_rects[i].id;
+        kinds[n] = g_rects[i].kind;
+        n++;
+    }
+    return n;
+}
+extern "C" const char* bob_dlg_kind_name(int k) { return kindName(k); }
 extern "C" int bob_dlg_lookup(int ctrlId, int* x, int* y, int* w, int* h) {
     load();
     for (int i = 0; i < g_nrects; i++) if (g_rects[i].id == ctrlId) {

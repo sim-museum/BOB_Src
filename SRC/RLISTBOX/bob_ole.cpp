@@ -180,6 +180,50 @@ static int dluY(int d) { return d * 13 / 8; }
 extern "C" void bob_gdi_setdibits_clip(int, int, int, int);
 extern "C" void bob_gdi_get_setdibits_clip(int*, int*, int*, int*);
 int g_bobFontHCtrl = 0, g_bobFontHDlg = 0;   /* S185 measurement only */
+/* S191 (BOB_TRACE_CENSUS, default-off): after a dialog is built, list the template controls that
+   got NO host, by control type.
+
+   The port has found missing template control kinds three times, each after a player noticed the
+   consequence: S124 (statics), S136 (buttons), S176 (combos -- the PO's "the campaign resolution
+   dropdown is missing"). Each fix added another `bob_ole_host_template_<kind>` and left the next
+   kind to be discovered the same way. The templates use NINE R* types; nothing enumerated the
+   other six, and nothing ever said so, because an unhosted control is silent by construction --
+   it simply is not drawn and cannot be clicked, which looks like a design with fewer widgets.
+
+   This asks the question directly and for every kind at once, so the remaining gaps come from a
+   census rather than from a bug report. */
+extern "C" int bob_dlg_enum_all(int dlgId, int* ids, int* kinds, int maxn);
+extern "C" const char* bob_dlg_kind_name(int k);
+extern "C" void bob_ole_census(int dlgId)
+{
+    if (!getenv("BOB_TRACE_CENSUS")) return;
+    static int seen[256]; static int nseen = 0;
+    for (int i = 0; i < nseen; i++) if (seen[i] == dlgId) return;   /* one report per dialog */
+    if (nseen < 256) seen[nseen++] = dlgId;
+
+    int ids[256], kinds[256];
+    int n = bob_dlg_enum_all(dlgId, ids, kinds, 256);
+    if (n <= 0) return;
+    int missByKind[16]; for (int k = 0; k < 16; k++) missByKind[k] = 0;
+    int hosted = 0, missing = 0;
+    for (int i = 0; i < n; i++) {
+        bool have = false;
+        for (auto& kv : hosts())
+            if (kv.second->ctrlId == ids[i] && kv.second->dlgId == dlgId) { have = true; break; }
+        if (have) hosted++;
+        else { missing++; int k = kinds[i]; if (k < 0 || k > 15) k = 0; missByKind[k]++; }
+    }
+    fprintf(stderr, "[census] dlg IDD=%d: %d template controls, %d hosted, %d MISSING",
+            dlgId, n, hosted, missing);
+    if (missing) {
+        fprintf(stderr, " {");
+        for (int k = 0; k < 16; k++) if (missByKind[k])
+            fprintf(stderr, " %s=%d", bob_dlg_kind_name(k), missByKind[k]);
+        fprintf(stderr, " }");
+    }
+    fprintf(stderr, "\n");
+}
+
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
     if (bob_ole_trace()) {

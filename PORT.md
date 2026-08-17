@@ -1,5 +1,62 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S191 (2026-08-17): a census instead of a fourth special case
+>
+> The port has found missing template control kinds three times, each after a player noticed the
+> consequence — S124 (statics), S136 (buttons), S176 (combos: the PO's *"the campaign resolution
+> dropdown is missing"*). Each fix added another `bob_ole_host_template_<kind>` pass and left the
+> next kind to be found the same way. An unhosted control is silent by construction: it is not
+> drawn and cannot be clicked, which looks like a design with fewer widgets.
+>
+> **The classifier knew 5 of 9 types.** CLSID census of `SRC/MFC/BOB.RC`:
+>
+> | type | uses | classified before |
+> |---|---|---|
+> | RStatic | 621 | yes |
+> | RButton | 388 | yes |
+> | RCombo | 147 | yes |
+> | RSpinBut | **109** | **no** |
+> | RListBox | 55 | yes |
+> | REdit | 20 | yes |
+> | REdtBt | 16 | **no** |
+> | RRadio | 12 | **no** |
+> | RTabs | 1 | **no** |
+>
+> The CLSID *router* handles eight of these, so they are hosted when a dialog `DDX_Control`-binds
+> them; only the unbound-template path was blind. `bob_ole.cpp`'s own comment calls RSpinBut *"the
+> 8th and LAST R* control type"* — RTabs (`IDJ_TABCTRL` on `IDDS_EMPTYPAGE`) makes nine, and it has
+> no host at all.
+>
+> **What replaced the guessing.** `bob_dlg_enum_all(dlgId, ids, kinds, n)` — one query with the kind
+> as data instead of three functions with it folded in — plus `BOB_TRACE_CENSUS`, which reports per
+> dialog, once, how many template controls got no host and of which type.
+>
+> **Result, measured across the config screens, the campaign map and an open OOB dialog — 20+
+> dialogs:**
+>
+> ```
+> [census] dlg IDD=1034: 45 template controls, 45 hosted, 0 MISSING     (RAF Directives)
+> [census] dlg IDD=1103:  7 template controls,  7 hosted, 0 MISSING     (InterceptOffered)
+> [census] dlg IDD=1026:  2 template controls,  1 hosted, 1 MISSING { UNKNOWN=1 }
+> [census] dlg IDD=130:   1 template controls,  0 hosted, 1 MISSING { RTabs=1 }
+> ```
+>
+> **Exactly two gaps in the whole exercised surface**, and this is the useful part — the backlog item
+> read *"other unbound template control kinds (listboxes, edits, spin buttons, tickboxes) are
+> presumably still missing"*, and that presumption was **wrong**. They are all hosted. What is
+> actually missing is:
+>
+> 1. `IDDS_EMPTYPAGE`/`IDJ_TABCTRL` — **RTabs**, genuinely unhosted. This is the OOB tab bar
+>    (CLAUDE.md's long-standing "OOB polish: selected-tab"). MA hosts it (MA S60, same CLSID
+>    `4a1e1986`) and BoB ships `SRC/RTABS/RTABSCTL.CPP` unbuilt, so it is a known-reference
+>    cross-port — but a real one: `CRTabsCtrl` draws through `CBitmap` + memory-DC `BitBlt`
+>    (`m_TabUpDC`/`m_TabDownDC`), not the DIB blit every current host uses. Booked, not rushed.
+> 2. `IDD_BASES_LUFTFLOTTE`/`IDJ_PANEL0` — a plain Win32 `PUSHBUTTON` placeholder with no CLSID at
+>    all, hence `UNKNOWN`. Not an OCX; the OOB tree paints over that area anyway.
+>
+> A negative result from a census is worth more than a positive one from a bug report: it bounds
+> what is left.
+
 > ## S189 (2026-08-17): "fast forward did nothing, then went to 300x" is CORRECT behaviour
 >
 > The PO reported this twice and I had it on the defect list. It is not a defect. Fast-forward does
