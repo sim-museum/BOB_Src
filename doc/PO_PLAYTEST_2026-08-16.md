@@ -421,3 +421,45 @@ uninitialised read is in.
 (`RenderMirrorLandscape`), which is dormant by default. Whether the main view's distant strip shares
 that derivation is a question, not a conclusion; it is the first place to look precisely because the
 geometry involved is the same horizon backdrop.
+
+### BOB-PO-2 — discriminator 2 settled: the distant terrain is NON-DETERMINISTIC geometry
+
+Frame 500, streaming settled, two identical runs:
+
+| region | pixels differing >8 | of |
+|---|---|---|
+| sky    | 1,428  | 216,000 (0.7%)  |
+| ground | 49,650 | 240,000 (**20.7%**) |
+
+The variance did not settle — it **doubled** (10% at frame 220). Before reading anything into that,
+the obvious confound: by frame 500 the two aircraft could simply be somewhere different, which would
+change the ground for an entirely innocent reason. The HUD answers it —
+
+```
+run 1:  Alt 9648ft  Hdg 0  Speed 296Kts  Power 90
+run 2:  Alt 9649ft  Hdg 0  Speed 296Kts  Power 90
+```
+
+**One foot** of altitude, same heading, same speed. A 1 ft camera shift at 9,600 ft cannot move 20%
+of ground pixels, and the sky — same camera, same frame — moves 0.7%. So the ground content genuinely
+differs with the camera held still. Streaming lag is out.
+
+**What differs is large flat QUADS, not tile textures** (`doc/img_distant_terrain_variance.png`, run 1
+above, run 2 below): run 1 carries a wide black band across the lower ground and a light grey
+parallelogram at the right; run 2 has neither, and a dark parallelogram elsewhere. Big polygons
+appearing, moving and vanishing between runs. Also present in both: cloud-like grey material
+rendering **below** the horizon.
+
+That changes the leading hypothesis. "Tiles at wrong angles" reads like texture/LOD; what the
+evidence shows is **geometry with unstable coordinates** — and this port already has a diagnosed
+instance of exactly that, in exactly this geometry. `PORT.md`: `LandScape::InfiniteStrip`
+(LANDSCAP.CPP:7427) builds the horizon strip from `cloud_height_*` values derived from
+`MissManCampSky().Layer[0].AltBase/AltTop` and double-precision sky math, and in the mirror path that
+derivation was measured producing garbage texcoords (`v ~ -2.4e24`). The corroboration here is the
+cloud material below the horizon: the same sky-layer data feeding the same backdrop.
+
+**Still a hypothesis, not a conclusion.** The mirror finding was about *texcoords* in a *dormant*
+path; this is about *positions* in the main view. The test that would settle it is to dump the
+horizon strip's vertex coordinates over two runs and see whether they differ — the same
+"measure the state, not the picture" move that settled the clock. That is the next step, and it is
+now cheap, because the scenario is reachable in one command.
