@@ -97,6 +97,22 @@ except Exception as e:
     print(f"  flight measure failed: {e}")
 PY
 
+# ── GATE 4b (S173v): terrain tiles must not come out black ─────────────────────────────────────
+# BOB-PO-2 was a D3D->GL viewport origin that was never flipped: correct for a full-size viewport
+# and wrong for every smaller one, so the landscape tile compositor read its scratch target's
+# top-left corner while GL had rendered into the bottom-left, and 64x64/128x128 tiles uploaded
+# black. It survived nine eliminated mechanisms precisely because nothing asserted on it. Assert on
+# the NUMBER, not the picture: BOB_TRACE_TEXBLACK counts quads drawn with an all-black texture, and
+# the correct answer is zero. Needs real GL (the tiles are composited in an FBO).
+echo "### GATE 4b: terrain tiles textured (blackTex must be 0)"
+tb=$(cd "$GD" && timeout -k 5 400 env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_QM_INDEX=11 \
+      BOB_AUTOFLY=view40 BOB_TRACE_TEXBLACK=20000 BOB_DUMP_FRAME=300 \
+      BOB_DUMP_PATH=/dev/null BOB_EXIT_AFTER_DUMP=1 "$BOB" 2>&1 |
+      grep -a "quads: blackTex=" | tail -1 | sed "s/.*blackTex=\\([0-9]*\\).*/\\1/")
+if [ -z "$tb" ]; then echo "  blackTex: NO SAMPLE (run failed?)"
+elif [ "$tb" = "0" ]; then echo "  blackTex=0 — PASS"
+else echo "  blackTex=$tb — FAIL (expected 0; terrain tiles are uploading black)"; fi
+
 if [ -n "$BASE" ] && [ -d "$BASE" ]; then
   echo "### GATE 5: A/B vs $BASE"
   python3 - "$BASE" "$OUT" <<'PY'
