@@ -3193,3 +3193,46 @@ does **not** swallow. Letting a click through to the map is recoverable; eating 
 already answers from the control's paint-recorded geometry
 (`r->left = m_maX; r->top = m_maY; r->right = m_maX + m_maW; …`). BoB should have copied that when it
 copied the surrounding shim.
+
+## §8-BoB173e — ⭐ The D3D→GL viewport origin flip: correct for full-screen, wrong for everything else (BoB S173) **[ENGINE]**
+
+```c
+/* wrong */ glViewport(vp->dwX, vp->dwY, vp->dwWidth, vp->dwHeight);
+/* right */ glViewport(vp->dwX, targetH - vp->dwY - vp->dwHeight, vp->dwWidth, vp->dwHeight);
+```
+
+DirectDraw/Direct3D measure a viewport's Y from the **top** of the render target. OpenGL measures it
+from the **bottom**. Passing `dwY` through unchanged is exactly right whenever the viewport covers
+the whole target — `H - 0 - H == 0` — and wrong by `H - h` for every smaller one.
+
+**That is what makes it dangerous.** A port spends its first year rendering full-screen, so this
+line is correct for everything anyone looks at, and it stays correct until some subsystem renders a
+*sub-region* into a target. In BoB that subsystem was the landscape tile compositor: it renders each
+terrain tile into a corner of a 256×256 scratch render target with a w×h viewport, then reads the
+**top-left** w×h rect back out. GL had put the pixels in the bottom-left, the read-back saw untouched
+memory, and the tile was uploaded black. The 256×256 tiles were fine — their viewport covers the
+whole target, so both corners are the same region — and *that* asymmetry is the tell: **when a
+defect tracks the size of a thing rather than its identity, suspect a coordinate convention.**
+
+**Cost of not spotting it:** the symptom (black patches in terrain, moving with altitude and view
+angle, varying between runs) survived nine eliminated mechanisms, a falsified fix, an arithmetic
+coincidence that fit perfectly, a confound in the measurement method, an inverted description of the
+geometry, and a retraction that had to be reversed. None of that was wasted — each step removed a
+real candidate — but the whole chase collapsed the moment the question changed from *what is in the
+source* to **where in the source it is**:
+
+```
+src corner means (raw565): topLeft=0 bottomLeft=10667   <- names the bug in one line
+```
+
+**Generalise it:** when a copy or read-back comes out empty, sample the *other* corner before
+theorising about the contents. Origin conventions differ between DirectDraw (top-left), OpenGL
+(bottom-left), BMP rows (bottom-up) and this engine's surfaces (top-down), and a port crosses all
+four. Three separate places in this compat already flip rows for exactly this reason; the viewport
+was the one that did not.
+
+**Sister-port check (MA): SAME CODE, LATENT — action required.** `~/ma/SRC/compat/bob_video.cpp`
+`DEV_SetViewport` is byte-identical and unflipped. MA's flight path is the DX5/6 software
+rasteriser, so its D3D7 device may never set a sub-viewport and the bug may never fire — but the
+line is wrong there too, and the fix is safe by construction (identical output for any full-size
+viewport). Apply it with MA's own gate run; do not assume BoB's gate covers it.
