@@ -34,11 +34,30 @@
 > `[tbclick] (160,754) consumed by accel row ctrl id=1845` -> `[accel] Fastforward -> type=5 rate=1`.
 > The button works and the rate really is 1.
 >
-> **What I did NOT demonstrate:** the 1 -> 300 transition, because in every headless run a dialog
-> stayed open. `BOB_MAP_CLOSEDLG` cannot hold them shut (the campaign re-opens Directives itself)
-> and `BOB_MAP_NODIRECTIVES` flip-flops — `open-index 6 -> 5 -> 6 -> 5` for eight passes — which is
-> the exact failure S143 warned about when a scaffold routes through a *toggle*. The evidence for
-> that half is the PO's own session reaching 300x. Stated rather than glossed.
+> **Demonstrated (S190), after a false start.** My first two attempts to clear the dialogs failed:
+> `BOB_MAP_CLOSEDLG` cannot hold them shut (the campaign re-opens Directives itself) and
+> `BOB_MAP_NODIRECTIVES` flip-flops `open-index 6 -> 5 -> 6 -> 5` for eight passes. I logged that as
+> a scaffold bug and it is not one — the Directives <-> DirectiveResults cancel loop is **faithful**
+> (each `OnCancel` opens the other; the player must ISSUE orders), and S143's own note says so. The
+> exit is `OnOK`, which S144's `BOB_MAP_ACCEPTDIR` already drives: RAFDirectives OK ->
+> RAFDirectiveResults OK -> `open-index=-1`.
+>
+> With the dialogs genuinely closed, a trace inside `MoveAllSAGs` itself shows the band request:
+>
+> ```
+> [sagmove] call #1:   reqacceltype=5 (AnyDialogsOpen=1) curracceltype=4
+> [sagmove] call #157: reqacceltype=2 (AnyDialogsOpen=0) curracceltype=4   <- 300x requested
+> [sagmove] call #248: reqacceltype=5 (AnyDialogsOpen=1) curracceltype=3
+> ```
+>
+> Dialogs closed -> `NONRAIDSPD` (300x); dialog open -> `DIALOGSPEED` (1x); and `curracceltype` is
+> seen at 3 and 4 (40x / 20x) as raids come and go. The model is confirmed end to end.
+>
+> **And it corrects my own instrument.** The `[accel] band now` sampler reported only `type=5 rate=1`
+> for the whole run and I nearly read that as "the band never moves". It samples once per MAP PAINT,
+> and the band changes far faster than that — every sample happened to land on a 1x moment. A
+> low-rate sampler on a fast-changing value reports a constant and looks like evidence. The
+> authoritative reading comes from inside the function that sets it.
 >
 > **One contributing port-side factor, now fixed elsewhere.** Because the rate is pinned to 1x while
 > `AnyDialogsOpen()` is true, the ability to *close* a dialog is load-bearing for fast-forward. Until

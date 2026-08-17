@@ -957,6 +957,22 @@ void	SAGairgrp::MoveAllSAGs(WorldStuff&)
 	Campaign::AccelType	reqacceltype=Campaign::ACCEL_NONRAIDSPD	;
 	if (Campaign::AnyDialogsOpen())
 		reqacceltype=Campaign::ACCEL_DIALOGSPEED;
+#if BOB_LINUX
+	/* S190: does this run at all, and what band does it ask for? The acceleration band never left
+	   DIALOGSPEED in any headless run even after the directives were accepted and open-index went
+	   to -1, which leaves two possibilities that look identical from outside: MoveAllSAGs is not
+	   being reached by the port's clock drive, or it is reached and keeps asking for DIALOGSPEED.
+	   Those need different fixes, so report which. BOB_TRACE_CLOCK; one line per distinct request. */
+	if (getenv("BOB_TRACE_CLOCK")) {
+		static int lastReq = -99; static long calls = 0;
+		calls++;
+		if ((int)reqacceltype != lastReq) {
+			lastReq = (int)reqacceltype;
+			fprintf(stderr, "[sagmove] call #%ld: reqacceltype=%d (AnyDialogsOpen=%d) curracceltype=%d\n",
+				calls, (int)reqacceltype, (int)Campaign::AnyDialogsOpen(), (int)MMC.curracceltype);
+		}
+	}
+#endif
 
 	GroundDetection	*DetectLW,*DetectRAF;
 	RAFDetectRAF	RAFDetectRAFinst;
