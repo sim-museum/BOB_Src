@@ -1439,6 +1439,14 @@ extern "C" int bob_map_click_toolbars(int cx, int cy)
 	if (CMainFrame::toolbars[TB_TITLE] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_TITLE], cx, cy)) return 1;  /* accel row */
 	if (CMainFrame::toolbars[TB_MISC] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MISC], cx, cy)) return 1;
 	if (CMainFrame::toolbars[TB_MAIN] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MAIN], cx, cy)) return 1;
+	/* S173d: THE CLICK WALK MUST MIRROR THE PAINT WALK (the port's own rule, booked after the OOB
+	   dialogs painted perfectly and ignored every click). S173c added a fourth toolbar to
+	   bob_map_paint_toolbars and this list still had three, so the event log's six line controls
+	   got drawn rects that nothing ever hit-tested against -- which is precisely the state the
+	   whole S173 chain was about. Caught by predicting the toggle test's result from this list and
+	   the test agreeing. TB_REPORT's OnClickedLine1..3 open their message's dialog, and close it
+	   when clicked again (BOB-PO-11). */
+	if (CMainFrame::toolbars[TB_REPORT] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_REPORT], cx, cy)) return 1;
 	return 0;
 }
 #endif

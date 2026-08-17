@@ -226,3 +226,25 @@ unverifiable change that looks like progress. Noted in case a later screen does 
 Next place to look for the real cause: whatever draws the in-flight/map cursor sprite (the
 `AU_UI_X`/`AU_UI_Y` UI cursor in `ANALOGUE.CPP`) — two *sprites*, rather than one sprite plus the OS
 pointer. Needs the M view, which is not currently reachable headlessly.
+
+## BOB-PO-6 (numpad-Enter does not show the instrument panel) — checked against the SHIPPED keymap
+
+Not a broken key-delivery path, and probably not a port defect at all.
+
+- **Delivery is fine.** `sdl_to_dik` maps `SDL_SCANCODE_KP_ENTER -> 0x9C` (`DIK_NUMPADENTER`), so the
+  key reaches DirectInput. `KEYMAPS.H:656` defines `Raw_J_enter = DIK_NUMPADENTER`.
+- **Nothing is bound to it.** Its only `KeyMap` entry in the source is **dead-coded**:
+  `//Dead KeyMap(DROPBOMB, J_enter, norm)`.
+- **The installed game agrees.** `KEYBOARD/keys.xml` — the shipped keymap, a better oracle than the
+  source drop — contains **no `J_enter` mapping at all**, while other keypad keys are present
+  (`J_delete`, `J_insert`, `J_lockscr`, `J_move*`, `J_pageup/down`, `J_sysreq`). Plain `enter` is
+  `PADLOCKTOG`.
+- **The panel toggles are elsewhere:** `INFOPANEL` = `i`, `HUDTOGGLE` = `h`.
+
+So numpad-Enter does nothing in this build by design. Worth asking the PO to confirm on `i`
+before any binding is invented — adding one would be changing the game's controls, not porting them.
+
+One part still unexplained and worth a look: the PO reports numpad-Enter *does* something ("super
+zoomed in view of cockpit"). An unbound key should be inert, so either another key is being
+delivered for that scancode or a view/zoom action has a fallthrough. That, unlike the binding, would
+be a genuine port bug.
