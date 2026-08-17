@@ -3142,3 +3142,54 @@ pattern the waiter cannot contain — or just `grep -v $$`.
 
 **And prefer waiting on the artefact anyway.** `until [ -f /tmp/x.ppm ]` cannot self-match, does not
 care how the job was launched, and stays correct if the job is restarted by hand.
+
+## §8-BoB173d — ⭐ `GetWindowRect` returning the WHOLE SCREEN made one open dialog eat every click (BoB S173) **[ENGINE]**
+
+The compat had:
+
+```c
+void GetWindowRect(LPRECT r) const { if (r) {
+    int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
+```
+
+Plausible, total, and wrong for every caller that asks *where* a window is rather than *how big the
+screen is*. It went unnoticed for many sprints because nothing consequential asked — until S156 added
+the rule *"a click landing on an open dialog but hitting no control is swallowed, so the dialog's
+background does not select the map behind it"*:
+
+```c
+CRect r; d->GetWindowRect(r);
+if (cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom) return 1;   /* swallow */
+```
+
+With that stub the test is `cx>=0 && cx<1024 && cy>=0 && cy<768` — **true for every pixel**. From the
+moment *any* dialog was open, every click on the strategic map was discarded before reaching the
+time controls, either icon row, the event log or unit selection. Measured, not inferred — once the
+swallow trace was ungated it printed its own rect: `inside dialog 3/6 (0,0)-(1024,768) -- SWALLOWED`.
+
+**Three lessons, in order of transferability.**
+
+1. **A geometry stub is dangerous in proportion to how reasonable its answer looks.** Returning the
+   screen rect is defensible for a full-screen game and produces no error, no warning and no visibly
+   wrong pixel. It only shows up as *behaviour*: a UI that goes inert under a condition nobody
+   thought to test (here: "with something open"). Grep the compat for functions that answer a
+   geometric question with a constant, and ask what would happen if a caller believed them.
+2. **Derive hit and swallow regions from the PAINT, never from a window query.** Both ports already book
+   *"the click walk must mirror the paint walk"*; this is the same rule for *regions* rather than
+   for *controls*. The fix unions the dialog subtree's paint-recorded control rects
+   (`bob_ole_drawn_bounds`) over the same nodes the click walk visits, so the swallow region and the
+   hit region come from one traversal of one set of rects and cannot drift from what the player sees.
+3. **Make the discarding path say so.** The swallow's trace was gated behind `BOB_TRACE_OLE`, which
+   is unusable for click questions (per-control-per-frame; it once wrote 70 MB and starved a run past
+   its timeout). So the single most consequential thing that dispatch does — *throwing a click away*
+   — was the one thing it never reported, and "the click never arrived" was indistinguishable from
+   "it arrived and the handler declined". Those are opposite bugs. Per-click traces are cheap:
+   print them unconditionally.
+
+**Choose the safe default when the data is missing.** If a dialog drew nothing hit-testable, the fix
+does **not** swallow. Letting a click through to the map is recoverable; eating it is not.
+
+**Sister-port check (MA): done, NOT AFFECTED — and MA is the model.** MA's `CWnd::GetWindowRect`
+already answers from the control's paint-recorded geometry
+(`r->left = m_maX; r->top = m_maY; r->right = m_maX + m_maW; …`). BoB should have copied that when it
+copied the surrounding shim.

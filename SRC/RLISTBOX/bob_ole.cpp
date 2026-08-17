@@ -377,6 +377,29 @@ extern "C" int bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int
    rects bob_ole_click hit-tests against. Used to answer "is there any clickable target under
    this button's pixels?", which distinguishes a click that never arrives from one that arrives
    and finds no handler. */
+/* S173d: the union of a dialog's last-DRAWN control rects, or 0 if it drew nothing hit-testable.
+   Exists because CWnd::GetWindowRect in this compat answers with the WHOLE SCREEN for every window
+   (afxwin.h: left=top=0, right/bottom = bob_gdi_screen_size). Any caller asking "is this click
+   inside that dialog?" therefore gets "yes" for every pixel — which turned S156's
+   swallow-clicks-that-land-on-an-open-dialog rule into swallow-EVERY-click-once-anything-is-open.
+   Same principle as the hit-testing next door: the rect comes from the paint, so it cannot drift
+   from what the player sees. */
+extern "C" int bob_ole_drawn_bounds(CWnd* dialog, int* x0, int* y0, int* x1, int* y1) {
+    int l = 1 << 30, t = 1 << 30, r = -(1 << 30), b = -(1 << 30), n = 0;
+    for (auto& kv : hosts()) {
+        OleHost* h = kv.second;
+        if (h->parentDlg != dialog) continue;
+        if (h->sw <= 0 || h->sh <= 0) continue;          /* not drawn -> contributes nothing */
+        if (h->sx < l) l = h->sx;
+        if (h->sy < t) t = h->sy;
+        if (h->sx + h->sw > r) r = h->sx + h->sw;
+        if (h->sy + h->sh > b) b = h->sy + h->sh;
+        n++;
+    }
+    if (!n) return 0;
+    if (x0) *x0 = l; if (y0) *y0 = t; if (x1) *x1 = r; if (y1) *y1 = b;
+    return 1;
+}
 extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog) {
     int n = 0;
     for (auto& kv : hosts()) {

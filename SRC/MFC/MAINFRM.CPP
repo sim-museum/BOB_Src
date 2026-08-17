@@ -1399,6 +1399,26 @@ extern "C" int bob_ole_click(CWnd*, int, int);
    (the panel-wrapper rule, section 8-BoB155 -- the controls live on the CONTAINED dialog). */
 extern "C" int bob_ole_click(CWnd*, int, int);
 extern "C" int bob_ole_last_click_id;
+/* S173d: drawn bounds of a dialog SUBTREE — the union over the same nodes bob_oob_click_tree
+   walks, so the swallow region and the hit-test region are built from one traversal of one set of
+   paint-recorded rects. (The panel-wrapper rule again: the controls live on the CONTAINED dialog,
+   so a parent's own bounds are usually empty and the children carry the geometry.) */
+extern "C" int bob_ole_drawn_bounds(CWnd*, int*, int*, int*, int*);
+static int bob_oob_drawn_bounds(RDialog* d, int depth, int* x0, int* y0, int* x1, int* y1)
+{
+	if (!d || depth > 4) return 0;
+	int got = bob_ole_drawn_bounds((CWnd*)d, x0, y0, x1, y1);
+	for (RDialog* c = d->fchild; c; c = c->sibling) {
+		int cx0, cy0, cx1, cy1;
+		if (!bob_oob_drawn_bounds(c, depth + 1, &cx0, &cy0, &cx1, &cy1)) continue;
+		if (!got) { *x0 = cx0; *y0 = cy0; *x1 = cx1; *y1 = cy1; got = 1; continue; }
+		if (cx0 < *x0) *x0 = cx0;
+		if (cy0 < *y0) *y0 = cy0;
+		if (cx1 > *x1) *x1 = cx1;
+		if (cy1 > *y1) *y1 = cy1;
+	}
+	return got;
+}
 static int bob_oob_click_tree(RDialog* d, int cx, int cy, int depth)
 {
 	if (!d || depth > 4) return 0;
@@ -1421,11 +1441,29 @@ extern "C" int bob_map_click_oob(int cx, int cy)
 					cx, cy, tb, i, bob_ole_last_click_id);
 				return 1;
 			}
-			/* inside the dialog but on no control -> swallow (do not select the map beneath) */
-			CRect r; d->GetWindowRect(r);
-			if (cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom) {
-				if (getenv("BOB_TRACE_OLE"))
-					fprintf(stderr, "[oobclick] (%d,%d) inside dialog %d/%d, no control -- swallowed\n", cx, cy, tb, i);
+			/* inside the dialog but on no control -> swallow (do not select the map beneath).
+			   S173d: the bound comes from what the dialog DREW, not from GetWindowRect. The compat
+			   CWnd::GetWindowRect answers with the WHOLE SCREEN for every window (afxwin.h:
+			   left=top=0, right/bottom=bob_gdi_screen_size), so this test read
+			   `cx>=0 && cx<1024 && cy>=0 && cy<768` -- true for every pixel. One open OOB dialog
+			   therefore swallowed EVERY map click: the accel row, both icon rows, the event log and
+			   unit selection all went dead the moment anything was open, which is what the PO hit
+			   ("clicking red icon at bottom again does not dismiss dialog"). A stub that returns a
+			   plausible value and silently reroutes the work -- this port's signature bug.
+			   No drawn bounds (nothing hit-testable) -> do NOT swallow: letting the click through
+			   is the recoverable failure, eating it is not. */
+			int bx0, by0, bx1, by1;
+			int subtree = bob_oob_drawn_bounds(d, 0, &bx0, &by0, &bx1, &by1);
+			if (subtree && cx >= bx0 && cx < bx1 && cy >= by0 && cy < by1) {
+				CRect r(bx0, by0, bx1, by1);
+				/* S173d: was gated behind BOB_TRACE_OLE, which is unusable for answering a click
+				   question -- it fires per-control-per-frame and once wrote a 70 MB log that
+				   starved a run past its timeout. So the single most consequential thing this
+				   dispatch does, DISCARDING a click, was the one thing it never reported. A
+				   swallow is per-click and rare; print it always. */
+				fprintf(stderr, "[oobclick] (%d,%d) inside dialog %d/%d (%d,%d)-(%d,%d), "
+					"no control -- SWALLOWED\n", cx, cy, tb, i,
+					(int)r.left, (int)r.top, (int)r.right, (int)r.bottom);
 				return 1;
 			}
 		}
@@ -1433,12 +1471,26 @@ extern "C" int bob_map_click_oob(int cx, int cy)
 	return 0;
 }
 
+/* S173d: report WHICH toolbar control consumed a map click. The OOB-dialog walk has had
+   `[oobclick]` since S156, but this dispatch -- the one that serves the accel row, the two icon
+   rows and now the event log -- had no trace at all, so "did the click land?" could only be
+   inferred from a side effect (a dialog count, a clock advancing). That is a weak oracle: it cannot
+   distinguish "the click never arrived" from "it arrived and the handler chose to do nothing",
+   which are opposite bugs. One line, only when a control takes it. */
+static int bob_tbclick(int tb, const char* what, int cx, int cy)
+{
+	if (!CMainFrame::toolbars[tb]) return 0;
+	if (!bob_ole_click((CWnd*)CMainFrame::toolbars[tb], cx, cy)) return 0;
+	fprintf(stderr, "[tbclick] (%d,%d) consumed by %s (TB_%d) ctrl id=%d\n",
+		cx, cy, what, tb, bob_ole_last_click_id);
+	return 1;
+}
 extern "C" int bob_map_click_toolbars(int cx, int cy)
 {
 	if (!AfxGetMainWnd()) return 0;
-	if (CMainFrame::toolbars[TB_TITLE] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_TITLE], cx, cy)) return 1;  /* accel row */
-	if (CMainFrame::toolbars[TB_MISC] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MISC], cx, cy)) return 1;
-	if (CMainFrame::toolbars[TB_MAIN] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_MAIN], cx, cy)) return 1;
+	if (bob_tbclick(TB_TITLE, "accel row", cx, cy)) return 1;
+	if (bob_tbclick(TB_MISC,  "map tools", cx, cy)) return 1;
+	if (bob_tbclick(TB_MAIN,  "OOB row",   cx, cy)) return 1;
 	/* S173d: THE CLICK WALK MUST MIRROR THE PAINT WALK (the port's own rule, booked after the OOB
 	   dialogs painted perfectly and ignored every click). S173c added a fourth toolbar to
 	   bob_map_paint_toolbars and this list still had three, so the event log's six line controls
@@ -1446,7 +1498,7 @@ extern "C" int bob_map_click_toolbars(int cx, int cy)
 	   whole S173 chain was about. Caught by predicting the toggle test's result from this list and
 	   the test agreeing. TB_REPORT's OnClickedLine1..3 open their message's dialog, and close it
 	   when clicked again (BOB-PO-11). */
-	if (CMainFrame::toolbars[TB_REPORT] && bob_ole_click((CWnd*)CMainFrame::toolbars[TB_REPORT], cx, cy)) return 1;
+	if (bob_tbclick(TB_REPORT, "event log", cx, cy)) return 1;
 	return 0;
 }
 #endif
@@ -1530,6 +1582,18 @@ extern "C" int bob_map_paint_oob(int sw, int sh) {
 		for (int slot = 0; slot < CMiscToolbar::LISTLEN; slot++) {
 			RDialog* child = tbm->LoggedChild(slot);
 			if (child) { bob_oob_paint_tree_deep(child, 44, 20); n++; }  /* dense nested grid */
+		}
+	/* S173d: TB_REPORT logs one too. The event log's OnClickedLine1..3 open the clicked message's
+	   dialog via LogChild(0, IntellMessages::Make(...)), and once the click actually reached them
+	   (this sprint) that dialog opened and drew NOTHING -- `dialogs=7 ... dlg=1087:0/15` -- because
+	   this walk knew about two toolbars and the game logs children on three. The paint walk and the
+	   click walk have to agree about the SET as well as the geometry; S173d had to fix the same
+	   omission on the click side an hour earlier. Anchored like the TB_MAIN dialogs. */
+	CRToolBar* tbr = CMainFrame::toolbars[TB_REPORT];
+	if (tbr)
+		for (int slot = 0; slot < tbr->dialoglinks.MAX_CHILD_DIALS; slot++) {
+			RDialog* child = tbr->LoggedChild(slot);
+			if (child) { bob_oob_paint_tree(child, (sw - 340) / 2, 40); n++; }
 		}
 	return n;
 }

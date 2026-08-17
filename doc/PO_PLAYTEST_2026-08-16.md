@@ -248,3 +248,91 @@ One part still unexplained and worth a look: the PO reports numpad-Enter *does* 
 zoomed in view of cockpit"). An unbound key should be inert, so either another key is being
 delivered for that scancode or a view/zoom action has a fallthrough. That, unlike the binding, would
 be a genuine port bug.
+
+## BOB-PO-11 — ROOT CAUSE: one open dialog disabled every click on the map
+
+The S173c lead (undrawn log lines) was real but **not sufficient**: adding `TB_REPORT` to the click
+walk changed nothing, and a three-arm test said so — one click, two clicks and no click all produced
+an identical `dialogs=6`. The prediction that the fourth toolbar would restore the toggle was wrong,
+and the test is what said so rather than a second guess.
+
+The actual cause is one line in the compat layer:
+
+```c
+void GetWindowRect(LPRECT r) const { if (r) {
+    int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
+```
+
+`CWnd::GetWindowRect` answers with **the whole screen, for every window**. S156's rule — *a click
+that lands on an open OOB dialog but hits no control is swallowed, so a dialog's background does not
+select the map behind it* — implements that test as
+
+```c
+CRect r; d->GetWindowRect(r);
+if (cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom) return 1;   /* swallow */
+```
+
+which reads `cx >= 0 && cx < 1024 && cy >= 0 && cy < 768`: **true for every pixel on the screen.**
+So from the moment *any* OOB dialog is open, every map click is discarded before reaching the accel
+row, the two icon rows, the event log, or unit selection. The whole map goes dead, and the only way
+back is a route that does not go through this dispatch.
+
+That is the PO's report exactly — *"clicking red icon at bottom again does not dismiss dialog"* — and
+it is not specific to the red icon or to dismissing: **nothing** is clickable once a dialog is open.
+It also explains why the log-line arms did nothing: the campaign opens the LW Directives dialog
+(`dlg=1032`) by itself once the clock starts, so by tick 1000 every click was already being eaten.
+
+The Play click in S173 worked only because it happened at tick 900, before that dialog appeared —
+a sobering detail: the earlier fix verified green on a recipe that got in just ahead of this bug.
+
+**Fix (S173d).** The swallow region comes from what the dialog *drew* — the union of its subtree's
+paint-recorded control rects (`bob_ole_drawn_bounds`, unioned over the same nodes
+`bob_oob_click_tree` walks), so the swallow region and the hit-test region are built from one
+traversal of one set of rects and cannot drift from what the player sees. If a dialog drew nothing
+hit-testable, the click is **not** swallowed: letting it through is the recoverable failure, eating
+it is not.
+
+**Known limitation of that fix, stated rather than discovered later.** The union is over the
+*controls* a dialog drew, not over its background art, so a dialog whose art extends past its
+outermost control has a margin where a click still falls through to the map instead of being
+swallowed. That is a narrower miss than the old behaviour by a wide margin — a few pixels of border
+versus the entire screen — and it errs in the recoverable direction. Tightening it properly means
+recording the art's drawn extent at `DoPaint` time alongside the controls', which is the same
+paint-records-its-own-geometry idiom and worth doing when a symptom actually points at it.
+
+Also: the swallow's own trace was gated behind `BOB_TRACE_OLE`, which is unusable for click
+questions (per-control-per-frame; it once wrote 70 MB and starved a run). So the single most
+consequential thing this dispatch does — *discarding* a click — was the one thing it never reported.
+It is unconditional now, and the toolbar dispatch gained a `[tbclick]` line, because "did the click
+land?" and "did the handler decline?" are opposite bugs that a dialog count cannot tell apart.
+
+### BOB-PO-11 — verified
+
+Three arms, identical coordinates, with the swallow fixed:
+
+| arm | clicks reaching the log | result |
+|---|---|---|
+| one click  | `[tbclick] (200,657) consumed by event log (TB_2) ctrl id=1291` | `dialogs=7`, new `dlg=1087` — **opened** |
+| two clicks | consumed twice, id=1291 | `dialogs=6`, `dlg=1087` gone — **closed** |
+
+`OnClickedLine1`'s open→close toggle end to end, and `1291` is `IDC_LINE1` — the trace names the
+control rather than leaving it inferred, which is why it was worth adding.
+
+The first arm also exposed the next omission immediately: `dlg=1087:**0/15**`. The dialog opened and
+drew nothing, because `bob_map_paint_oob` walked `TB_MAIN` and `TB_MISC` while the game logs children
+on **three** toolbars. The paint walk and the click walk have to agree about the *set* as well as the
+geometry — the same omission this sprint had already fixed on the click side an hour earlier, which
+is a fair sign the rule deserves to be checked as a pair every time either side gains a member.
+
+With `TB_REPORT` added to the paint walk too, `dlg=1087` goes **0/15 -> 14/15** and the dialog it
+opens is the **Messages** panel: the filter tickboxes (Flight / Engagements / Spotting / Target /
+Management, drawn with the red ticks the S173 icon-numbering fix restored) over a Time / Location /
+Message table with the clicked entry highlighted —
+
+```
+06:30  Creil        Aircraft Quota Allocated     <- the clicked line, in red
+06:30  Colombert    Aircraft Quota Allocated
+```
+
+which is what clicking an event-log line is supposed to open. Feature restored end to end: the line
+draws, takes the click, opens its dialog, the dialog paints, and a second click closes it.
