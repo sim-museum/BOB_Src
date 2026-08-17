@@ -927,3 +927,49 @@ defect.
 **Next:** instrument the copy path actually taken (`PerformSlowCopy` / `PerformVSlowCopy` — both
 Lock the source, which is where the 20 `Lock readback 256x256` lines come from) and check what it
 writes for a 64×64 destination. That is one trace at a known call site.
+
+## BOB-PO-2 — FIXED (S173v): the D3D→GL viewport origin was never flipped
+
+```c
+/* before */ glViewport(vp->dwX, vp->dwY, vp->dwWidth, vp->dwHeight);
+/* after  */ glViewport(vp->dwX, targetH - vp->dwY - vp->dwHeight, vp->dwWidth, vp->dwHeight);
+```
+
+DirectDraw measures viewport Y from the **top** of the render target; GL measures it from the
+**bottom**. The compat passed `dwY` straight through. For a full-size viewport the two agree
+(`H - 0 - H == 0`), so this was invisible for the entire life of the port, and it broke exactly one
+thing: the landscape tile compositor renders each tile into a corner of a 256×256 scratch target
+with a small viewport, then `PerformSlowCopy` reads the **top-left** w×h rect back out. Without the
+flip GL had put those pixels in the **bottom-left**, so the copy read untouched memory and the tile
+came out black. The 256×256 tile was immune because its viewport covers the whole target and both
+corners coincide — which is precisely why the 256 land texture always looked right while the 64×64
+and 128×128 ones were black.
+
+**Evidence** (each prediction stated before its run):
+
+| | before | after |
+|---|---|---|
+| scratch RT corners, 64×64 dst | `topLeft=0  bottomLeft=10667` | `topLeft=10667  bottomLeft=0` |
+| quads drawn with a black texture | 12,529 | **0** |
+| near-black below the horizon, frame 300 | 17.6% | **0.0%** |
+
+`doc/img_terrain_fixed.png` — continuous cloud and sea below the horizon, no black bands, no
+black quads.
+
+**Gate: 13/14 byte-identical**, modal PASS, dummy==GL byte-identical, flight frame-150 98.7%. The
+single differing screen is `config-control`, in a 96×16 region, and it moves **toward gold**: that
+Dead Zone combo now reads "Small", which is what gold shows (with "Low" to its right). Checked
+against gold rather than assumed, because a broad change to every viewport set is exactly where a
+quiet regression would hide.
+
+**What it took, recorded because the ratio matters.** Nine mechanisms were eliminated by
+measurement (InfiniteStrip, the wipe, tile capacity, RTT composition, cloud altitude, texture-pool
+exhaustion, clouds, multiplicative blending, colour keys, the silent bpp guard), plus one falsified
+fix, one arithmetic coincidence, one confound in my own method, one inverted geographic claim, and
+one retraction that itself had to be reversed. The step that converged it was measuring **where in
+the source the pixels were**, rather than reasoning about what the source contained:
+`topLeft=0 bottomLeft=10667` named the bug in one line.
+
+**Same class as this sprint's other two fixes** — `GetWindowRect` answering with the whole screen,
+and an enum parser that skipped without counting. A plausible value that silently reroutes work,
+invisible until one consumer depends on the part that is wrong.

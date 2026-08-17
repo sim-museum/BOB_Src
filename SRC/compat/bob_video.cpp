@@ -1574,7 +1574,26 @@ static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCO
 	return D3D_OK;
 }
 static HRESULT DEV_SetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7 vp) {
-	if (g_win && vp) glViewport(vp->dwX, vp->dwY, vp->dwWidth, vp->dwHeight);
+	/* S173v (BOB-PO-2): flip the viewport ORIGIN. DirectDraw measures dwY from the TOP of the
+	   render target; GL measures it from the BOTTOM. This passed dwY straight through, which is
+	   identical for a full-size viewport (H-0-H == 0) and wrong for every smaller one -- so it went
+	   unnoticed for the whole port and broke exactly one thing: the landscape tile compositor.
+	   It renders each tile into a corner of a 256x256 scratch target with a w*h viewport, then
+	   PerformSlowCopy reads the TOP-left w*h rect back out. Without the flip GL put the pixels in
+	   the BOTTOM-left, so the copy read untouched memory and the tile came out black -- measured:
+	   `src corner means topLeft=0 bottomLeft=10667` for a 64x64 destination. The 256x256 tile was
+	   immune because its viewport covers the whole target and both corners coincide, which is why
+	   the 256 land texture always looked right while the 64x64 and 128x128 ones were black.
+	   BOB_NO_VP_FLIP=1 reverts. */
+	if (g_win && vp) {
+		int th = g_curRT ? g_curRT->h : g_scrH;
+		int y = (int)vp->dwY;
+		static int noFlip = -1;
+		if (noFlip < 0) noFlip = getenv("BOB_NO_VP_FLIP") ? 1 : 0;
+		if (!noFlip) y = th - (int)vp->dwY - (int)vp->dwHeight;
+		if (y < 0) y = 0;
+		glViewport(vp->dwX, y, vp->dwWidth, vp->dwHeight);
+	}
 	return D3D_OK;
 }
 static HRESULT DEV_GetViewport(IDirect3DDevice7*, LPD3DVIEWPORT7 v) {

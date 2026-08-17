@@ -2461,7 +2461,55 @@ inline HRESULT Lib3D::PerformSlowCopy(LPDIRECTDRAWSURFACE7 pDst,LPDIRECTDRAWSURF
 
 	DWORD lPitch=ddsdSrc.lPitch*scale; // this does the y scaling
 
+#if BOB_LINUX
+	/* S173u (BOB-PO-2): this routine converts pixel formats using ONLY the masks that
+	   GetSurfaceDesc reports. If the SOURCE masks are zero, then
+	       rmask = dst.dwRBitMask & MagicRotate(shift, 0) == 0
+	   for every channel, MaskAndRot() returns 0, and the copy writes BLACK into every destination
+	   pixel while reporting success -- which is exactly the observed defect: the tile textures are
+	   black, no copy is skipped, and every other stage measures correct. Print both formats once. */
+	if (getenv("BOB_TRACE_SLOWCOPY")) {
+		static int nsc = 0;
+		if (nsc++ < 4)
+			fprintf(stderr,"[slowcopy] src %lux%lu bits=%lu R=0x%lx G=0x%lx B=0x%lx | dst %lux%lu bits=%lu R=0x%lx G=0x%lx B=0x%lx\n",
+				(unsigned long)ddsdSrc.dwWidth,(unsigned long)ddsdSrc.dwHeight,
+				(unsigned long)ddsdSrc.ddpfPixelFormat.dwRGBBitCount,
+				(unsigned long)ddsdSrc.ddpfPixelFormat.dwRBitMask,
+				(unsigned long)ddsdSrc.ddpfPixelFormat.dwGBitMask,
+				(unsigned long)ddsdSrc.ddpfPixelFormat.dwBBitMask,
+				(unsigned long)ddsdDst.dwWidth,(unsigned long)ddsdDst.dwHeight,
+				(unsigned long)ddsdDst.ddpfPixelFormat.dwRGBBitCount,
+				(unsigned long)ddsdDst.ddpfPixelFormat.dwRBitMask,
+				(unsigned long)ddsdDst.ddpfPixelFormat.dwGBitMask,
+				(unsigned long)ddsdDst.ddpfPixelFormat.dwBBitMask);
+	}
+#endif
 	DoLocks( pDst, pSrc, &ddsdSrc, &ddsdDst );
+#if BOB_LINUX
+	/* S173v (BOB-PO-2): WHERE in the scratch RT did the tile actually land? The copy reads the
+	   source's TOP-left rect (0,0)-(w,h). GL renders a w*h viewport at the framebuffer's
+	   BOTTOM-left, and the compat's readback flips rows to top-down -- so a sub-full-size tile's
+	   pixels would end up at the BOTTOM of the flipped image while this copy reads the top.
+	   The 256x256 tile is immune because its viewport covers the whole RT. Sample both corners and
+	   compare: top black + bottom non-black confirms it. */
+	if (getenv("BOB_TRACE_SLOWCOPY") && ddsdSrc.lpSurface && ddsdSrc.ddpfPixelFormat.dwRGBBitCount==16) {
+		static int nsx = 0;
+		if (nsx++ < 4) {
+			const UWord* sb = (const UWord*)ddsdSrc.lpSurface;
+			DWORD sp = ddsdSrc.lPitch/2, dw = ddsdDst.dwWidth, dh = ddsdDst.dwHeight;
+			unsigned long topAcc=0, botAcc=0; int n=0;
+			for (DWORD y=0; y<dh && y<ddsdSrc.dwHeight; y++)
+				for (DWORD x=0; x<dw && x<ddsdSrc.dwWidth; x++) {
+					topAcc += sb[(size_t)y*sp + x];
+					botAcc += sb[(size_t)(ddsdSrc.dwHeight-1-y)*sp + x];
+					n++;
+				}
+			fprintf(stderr,"[slowcopy]   src corner means (raw565): topLeft=%lu bottomLeft=%lu over %d texels (dst %lux%lu)\n",
+				n?topAcc/(unsigned long)n:0, n?botAcc/(unsigned long)n:0, n,
+				(unsigned long)dw,(unsigned long)dh);
+		}
+	}
+#endif
 
 //	pSrc->Lock(NULL,&ddsdSrc,DDLOCK_SURFACEMEMORYPTR|DDLOCK_WAIT,NULL);
 //	pDst->Lock(NULL,&ddsdDst,DDLOCK_SURFACEMEMORYPTR|DDLOCK_WAIT,NULL);
@@ -7651,6 +7699,25 @@ HRESULT Lib3D::UploadTexture(/*const UWord& ht*/)
 //	}
 
 
+#if BOB_LINUX
+	/* S173t (BOB-PO-2): WHICH copy path, and to what destination? The landscape tile textures at
+	   64x64/128x128 come out black while the 256x256 is correct, and BOB_TRACE_BLTSKIP showed the
+	   Blt path never rejects a copy -- so the first thing to establish is whether these tiles even
+	   go through Blt. The choice is made from DDCAPS that the compat's DD_GetCaps returns ZEROED,
+	   so it is not a choice anyone has verified. One line per upload, gated. */
+	if (getenv("BOB_TRACE_UPLOAD")) {
+		static long nup = 0;
+		DDSURFACEDESC2 dsd; ZeroMemory(&dsd,sizeof(dsd)); dsd.dwSize=sizeof(dsd);
+		if (pdst) pdst->GetSurfaceDesc(&dsd);
+		if (++nup % 200 == 1)
+			fprintf(stderr,"[upload] #%ld path=%s dst=%lux%lu rect=(%ld,%ld)-(%ld,%ld) type=%d inst=%d\n",
+				nup, (flags&F_VSLOWCOPY)?"VSLOW":((flags&F_SLOWCOPY)?"SLOW":"BLT"),
+				(unsigned long)dsd.dwWidth,(unsigned long)dsd.dwHeight,
+				outRect?(long)outRect->left:-1, outRect?(long)outRect->top:-1,
+				outRect?(long)outRect->right:-1, outRect?(long)outRect->bottom:-1,
+				(int)hCurrentRenderTarget.getType(), (int)hCurrentRenderTarget.getInstance());
+	}
+#endif
 	if (flags&F_VSLOWCOPY)
 	{
 		PerformVSlowCopy(pdst,psrc,outRect);
