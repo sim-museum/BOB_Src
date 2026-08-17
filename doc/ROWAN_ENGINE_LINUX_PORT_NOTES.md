@@ -3120,3 +3120,25 @@ The tell was available the whole time and was a **value, not a picture**: `x0`. 
 on engine state (`MMC.curraccelrate`, `time=`) over "the screen looks right", and **always run the
 control arm** — here, the identical recipe with the click removed, which is what turned "the clock
 reads x1" into "the clock advanced 220s that it does not advance without the click".
+
+## §8-BoB173c — `pgrep -f` in a wait loop self-matches and waits forever (BoB S173) **[PROCESS]**
+
+Both ports already book *"never `pkill -f <pat>` where `<pat>` matches the test command's own line —
+it self-kills the shell"*. Same trap, two more disguises, both hit in one sprint:
+
+1. **A wait loop that never ends.** A chained script began
+   `while pgrep -f toggle_test.sh >/dev/null; do sleep 10; done` — wait for the running test to
+   release the binary, then rebuild. It waited forever: the script's *own* command line contains the
+   string `toggle_test.sh`, so `pgrep -f` matched itself. This fails **silently** — no error, no
+   output, just a job that looks like it is still waiting on something legitimate. Worse than the
+   self-kill, which at least announces itself.
+2. **The self-kill again**, in a command whose only purpose was to clean up after (1):
+   `pkill -f toggle_after.sh` from a shell whose command line contained that name. Exit 144.
+
+**Rules.** Match on the *executable*, not the full line: `pgrep -x bob`, `pkill -x bob`. To wait on
+a specific job, wait on its **PID** (captured with `$!`) or on the artefact it produces
+(`until [ -f out.ppm ]`), never on a name that appears in your own argv. If you must use `-f`, add a
+pattern the waiter cannot contain — or just `grep -v $$`.
+
+**And prefer waiting on the artefact anyway.** `until [ -f /tmp/x.ppm ]` cannot self-match, does not
+care how the job was launched, and stays correct if the job is restarted by hand.
