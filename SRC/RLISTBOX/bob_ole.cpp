@@ -99,6 +99,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
    are never erased; draw/click filter by parentDlg). */
 extern "C" int bob_dlg_enum_statics(int dlgId, int* ids, int maxn);
 extern "C" int bob_dlg_enum_buttons(int dlgId, int* ids, int maxn);
+extern "C" int bob_dlg_enum_combos(int dlgId, int* ids, int maxn);   /* S176 */
 void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
     if (!dlg || dlgId <= 0) return;
     int ids[96];
@@ -122,6 +123,21 @@ void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
         if (!bob_ole_create_control(w, (const GUID*)&CLSID_RButton, dlg, (UINT)ids[i])) { delete w; continue; }
         if (bob_ole_trace()) fprintf(stderr, "[ole] template button id=%d hosted for dlg IDD=%d\n", ids[i], dlgId);
     }
+    /* S176: and the template COMBOS the game never binds -- e.g. the GFX screen's Campaign
+       Resolution, which is in the installed template but absent from this source drop's .rc and
+       from the dialog class, so nothing created it and the row rendered as a label with no
+       dropdown. BOB_NO_TEMPLATE_COMBOS reverts. */
+    static int noCbo = -1; if (noCbo < 0) noCbo = getenv("BOB_NO_TEMPLATE_COMBOS") ? 1 : 0;
+    if (!noCbo) {
+        n = bob_dlg_enum_combos(dlgId, ids, 96);
+        for (int i = 0; i < n; i++) {
+            if (bob_ole_find_wrapper(dlg, ids[i])) continue;     /* DDX-bound already */
+            CWnd* w = new CWnd;
+            if (!bob_ole_create_control(w, (const GUID*)&CLSID_RCombo, dlg, (UINT)ids[i])) { delete w; continue; }
+            if (bob_ole_trace()) fprintf(stderr, "[ole] template combo id=%d hosted for dlg IDD=%d\n", ids[i], dlgId);
+        }
+    }
+
 }
 
 /* ---- dialog-template positioning ------------------------------------------
@@ -384,6 +400,19 @@ extern "C" int bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int
    swallow-clicks-that-land-on-an-open-dialog rule into swallow-EVERY-click-once-anything-is-open.
    Same principle as the hit-testing next door: the rect comes from the paint, so it cannot drift
    from what the player sees. */
+/* S174: the last-DRAWN screen rect of one named control on a dialog. Used to place the title
+   band's ?/tick/X glyphs from IDJ_TITLE's actual drawn extent, so they cannot drift from the band
+   they sit on -- the same paint-records-its-own-geometry rule the hit-testing already follows. */
+extern "C" int bob_ole_drawn_rect(CWnd* dialog, int ctrlId, int* x, int* y, int* w, int* h) {
+    for (auto& kv : hosts()) {
+        OleHost* ho = kv.second;
+        if (ho->parentDlg != dialog || ho->ctrlId != ctrlId) continue;
+        if (ho->sw <= 0 || ho->sh <= 0) return 0;
+        if (x) *x = ho->sx; if (y) *y = ho->sy; if (w) *w = ho->sw; if (h) *h = ho->sh;
+        return 1;
+    }
+    return 0;
+}
 extern "C" int bob_ole_drawn_bounds(CWnd* dialog, int* x0, int* y0, int* x1, int* y1) {
     int l = 1 << 30, t = 1 << 30, r = -(1 << 30), b = -(1 << 30), n = 0;
     for (auto& kv : hosts()) {

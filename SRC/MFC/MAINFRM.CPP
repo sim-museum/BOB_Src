@@ -82,6 +82,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include <afxpriv.h>
 #include "migview.h"
 #include "fileman.h"
+#include "uiicons.h"   /* S174: IconsUI/IconDescUI for the title-band glyphs */
 //TEMPCODE DAW 13/04/00 #include "smack.h"
 #include "winmove.h"
 #include	"stub3d.h"	//Inst3d
@@ -1427,9 +1428,14 @@ static int bob_oob_click_tree(RDialog* d, int cx, int cy, int depth)
 		if (bob_oob_click_tree(c, cx, cy, depth + 1)) return 1;
 	return 0;
 }
+extern "C" int bob_oob_click_title_glyph(int, int);
 extern "C" int bob_map_click_oob(int cx, int cy)
 {
 	if (getenv("BOB_NO_OOB_CLICK")) return 0;
+	/* S174: the title band's tick/X are painted OVER a full-width title RButton, so they must be
+	   hit-tested before the control walk or that button swallows them -- which is exactly what the
+	   PO's session showed (`[oobclick] ... ctrl id=21` for clicks aimed at the check mark). */
+	if (bob_oob_click_title_glyph(cx, cy)) return 1;
 	for (int tb = 0; tb < TB_TOTAL; tb++) {
 		CRToolBar* t = CMainFrame::toolbars[tb];
 		if (!t || !t->dialoglinks.loggedchild) continue;
@@ -1534,6 +1540,11 @@ extern "C" void bob_probe_oob(void) {
    at a fixed base offset here. First increment: the panel background (its FIL_D_GROUPS art). */
 extern "C" void bob_gdi_setdibits_origin(int, int);
 extern "C" int  bob_ole_draw_panel(CWnd*, int, int);
+#if BOB_LINUX
+static void bob_oob_paint_title_glyphs(RDialog* n, int ox, int oy);   /* S174 */
+#else
+#define bob_oob_paint_title_glyphs(a,b,c) ((void)0)
+#endif
 static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
 	for (; n; n = n->fchild) {   /* descend containers to the art leaf (the selected tab page) */
 		if (n->artnum) {
@@ -1542,6 +1553,7 @@ static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
 			n->DoPaint(&dc);                       /* the tab-page background art */
 			bob_gdi_setdibits_origin(0, 0);
 			bob_ole_draw_panel((CWnd*)n, ox, oy);  /* S113b: its hosted OOB controls (squadron RListBox/RStatic) */
+			bob_oob_paint_title_glyphs(n, ox, oy);  /* S174: ? / tick / X on the title band */
 		}
 	}
 }
@@ -1560,10 +1572,109 @@ static void bob_oob_paint_tree_deep(RDialog* n, int ox, int oy) {
 			bob_gdi_setdibits_origin(0, 0);
 		}
 		bob_ole_draw_panel((CWnd*)n, ox, oy);      /* hosted controls regardless of artnum */
+		bob_oob_paint_title_glyphs(n, ox, oy);     /* S174: ? / tick / X on the title band */
 		if (n->fchild) bob_oob_paint_tree_deep(n->fchild, ox, oy);
 	}
 }
+#if BOB_LINUX
+/* S174 (BOB-PO-14): the dialog title band's ? / tick / X glyphs.
+   PO, on the Directives dialog: "no way to click on check mark to accept directives". Gold draws
+   three red glyphs at the right-hand end of every dialog's title band -- help, ACCEPT, close -- and
+   this port drew none of them, because the code that made them is commented out in this source drop
+   (RDIALOG.CPP ~437: m_tick->IDOK, m_close->IDCANCEL, m_help, with IDB_TICK/IDB_CLOSE/IDB_HELP) and
+   CRTitleCtrl::OnDraw is still the ClassWizard stub. The ids the dead code used are the spec.
+
+   Placement comes from the drawn rect of IDJ_TITLE, which is a full-width RButton (0,0,486,17 in
+   IDD_LWDIRECTIVES) -- so the glyphs sit at its right end and the band's own height sets their size.
+   That same full-width button is why drawing alone is not enough: it covers the glyph positions and
+   consumed the PO's clicks (`[oobclick] (767,37) ... ctrl id=21`), so the glyph hit-test has to run
+   BEFORE the general control walk. Paint order and hit order have to agree. */
+extern "C" int bob_ole_drawn_rect(CWnd*, int, int*, int*, int*, int*);
+extern "C" int bob_icon_pagenum(const char*);
+struct BobTitleGlyph { RDialog* dlg; int x, y, w, h, cmd; };
+static BobTitleGlyph g_titleGlyph[16];
+static int g_nTitleGlyph = 0;
+
+static void bob_oob_paint_title_glyphs(RDialog* n, int /*ox*/, int /*oy*/)
+{
+	int tx, ty, tw, th;
+	if (!bob_ole_drawn_rect((CWnd*)n, IDJ_TITLE, &tx, &ty, &tw, &th)) return;
+	if (tw <= 0 || th <= 0) return;
+	int sz = th > 4 ? th - 2 : th;              /* glyph box, inset in the band */
+	if (sz > 20) sz = 20;
+	int gap = sz / 4 + 2;
+	int cy = ty + (th - sz) / 2;
+	/* right-to-left: X (close), tick (accept), ? (help) -- gold's order left-to-right is ? tick X */
+	struct { const char* icon; int cmd; } g[3] = {
+		{ "ICON_CROSS",         IDCANCEL },
+		{ "ICON_TICK",          IDOK     },
+		{ "ICON_RED_QUESTION",  0        },   /* help: drawn for fidelity, no handler in this port */
+	};
+	int cx = tx + tw - gap - sz;
+	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+	for (int i = 0; i < 3; i++) {
+		int pv = bob_icon_pagenum(g[i].icon);
+		if (pv) {
+			IconDescUI ic = IconsUI(pv);
+			CPoint pt(cx, cy);
+			ic.MaskIcon(&dc, pt);
+		}
+		if (g_nTitleGlyph < 16 && g[i].cmd) {
+			BobTitleGlyph& e = g_titleGlyph[g_nTitleGlyph++];
+			e.dlg = n; e.x = cx; e.y = cy; e.w = sz; e.h = sz; e.cmd = g[i].cmd;
+		}
+		cx -= sz + gap;
+	}
+}
+
+/* Hit-test the glyphs FIRST (see above: the title button covers them). tick -> IDOK,
+   cross -> IDCANCEL, routed through the dialog's own handlers. */
+/* S174: close a MODELESS dialog that is a logged child of one of the map toolbars. Called from
+   CDialog::EndDialog, which the game reaches via RDialog::OnOK/OnCancel. Returns 1 if it owned and
+   closed the dialog, 0 otherwise (so the modal path is untouched). */
+extern "C" int bob_close_logged_dialog(void* dlgp)
+{
+	if (!dlgp || !AfxGetMainWnd()) return 0;
+	RDialog* d = (RDialog*)dlgp;
+	for (int tb = 0; tb < TB_TOTAL; tb++) {
+		CRToolBar* t = CMainFrame::toolbars[tb];
+		if (!t || !t->dialoglinks.loggedchild) continue;
+		for (int i = 0; i < t->dialoglinks.MAX_CHILD_DIALS; i++) {
+			if (t->dialoglinks.loggedchild[i] != d) continue;
+			fprintf(stderr, "[dlgclose] toolbar %d child %d closed via EndDialog\n", tb, i);
+			t->CloseLoggedChild(d);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+extern "C" int bob_oob_click_title_glyph(int cx, int cy)
+{
+	for (int i = 0; i < g_nTitleGlyph; i++) {
+		BobTitleGlyph& e = g_titleGlyph[i];
+		if (cx < e.x || cx >= e.x + e.w || cy < e.y || cy >= e.y + e.h) continue;
+		fprintf(stderr, "[titleglyph] (%d,%d) -> %s on dialog %p\n",
+			cx, cy, e.cmd == IDOK ? "IDOK (accept)" : "IDCANCEL (close)", (void*)e.dlg);
+		/* S174: accept runs the dialog's own OnOK (so it commits whatever it commits), then the
+		   dialog is closed the way the rest of this port closes a logged child.
+		   NOT via EndDialog: afxwin.h records (S154) that real dialog teardown is deliberately
+		   off by default because it once recursed to a stack overflow (S108's per-slot guard) and
+		   leaked 181,424 hosted controls -- and routing close through EndDialog would reintroduce
+		   exactly that loop, EndDialog -> close -> OnCancel -> EndDialog. CloseLoggedChild is the
+		   game's own API and is already what TeleType's line-toggle and CMainFrame use.
+		   OnCancel is a documented no-op here, so the cross just closes. */
+		if (e.cmd == IDOK) e.dlg->OnOK();
+		bob_close_logged_dialog((void*)e.dlg);
+		return 1;
+	}
+	return 0;
+}
+#endif
 extern "C" int bob_map_paint_oob(int sw, int sh) {
+#if BOB_LINUX
+	g_nTitleGlyph = 0;   /* rebuilt every paint, so the hit rects cannot outlive the drawn ones */
+#endif
 	/* S116: render whichever OOB info dialog is open (any main-toolbar logged child), so a real
 	   toolbar-button click (S92) that opened one actually shows it. Renders each open child's tree
 	   (background art via DoPaint + hosted controls via bob_ole_draw_panel) at a fixed panel origin. */
