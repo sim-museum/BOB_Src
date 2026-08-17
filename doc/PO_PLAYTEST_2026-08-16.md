@@ -609,3 +609,38 @@ they are *shaded* with. `Render2Surface` runs under `SetObjectLighting(useLightF
 sets `LF_VERTEX`; terrain vertex lighting arriving near-zero and ramping over ~13 s fits every
 measurement taken. That is the next thing to dump, in the same style: the light state handed to the
 terrain draw, sampled across frames.
+
+### BOB-PO-2 — a confound in my own measurement, checked; and lighting eliminated
+
+**Lighting does not ramp.** Sampling the strip's colours every 100 calls for a whole run gives
+`grHorizCol=a2c3ec midCol=99beea fogCol=90b8e8` — *identical at every sample*. So the "brightening"
+is not the lighting model converging. That was the last hypothesis I had named, and it is dead too.
+
+**A confound in my own numbers, found and corrected.** The earlier convergence table measured a
+*fixed screen band* (rows 55–93%). But pitch changes markedly during the run (1492 at call 200 →
+1164 at call 450) and the horizon moves with it, so that band contained different content at
+different times — "black fell to 0%" could have meant "sky moved into my window". Re-measured with
+the horizon **detected per frame** (steepest brightness drop) and only the region below it:
+
+| frame | horizon row | below-horizon mean RGB | near-black |
+|---|---|---|---|
+| 220 | 313 | (26, 29, 30) | 34.2% |
+| 300 | 324 | (34, 39, 40) | 17.6% |
+| 500 | 348 | (49, 52, 54) | 14.2% |
+| 800 | 374 | (49, 55, 56) | **0.0%** |
+
+The horizon does move (313 → 374), so the confound was real; correcting for it leaves the
+conclusion standing. Pure-black patches genuinely go to zero, and the residual is dark sea
+(mean ~50), not black.
+
+**But "resolved" and "left the view" are still not separated.** Nothing about the tiles changes
+after call ~120 — the build queue is idle, no texture allocation ever fails, the untextured count is
+pinned at 33, and the lighting is constant. So it is entirely possible the black patches are
+specific *places* that render black, and that flying away from them is what removes them, rather
+than anything getting fixed. That would also explain the run-to-run differences: slightly different
+flight paths put different tiles in view.
+
+**The discriminator** is a camera that does not move: hold position (or dump the same world region
+from two attitudes) and see whether a given patch stays black. That separates "black tiles get
+repaired" from "black tiles go off-screen", and those have completely different fixes. It is the
+next thing to run, and it is cheap.

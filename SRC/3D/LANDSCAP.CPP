@@ -7571,7 +7571,7 @@ void LandScape::InfiniteStrip( const ANGLES pitch, const ANGLES roll)
 		static long s_hzWant = -2;
 		if (s_hzWant == -2) { const char* e = getenv("BOB_TRACE_HORIZON"); s_hzWant = e ? atol(e) : -1; }
 		long call = s_hzCall++;
-		if (s_hzWant >= 0 && call == s_hzWant) {
+		if (s_hzWant > 0 && (call % s_hzWant) == 0) {
 			fprintf(stderr,
 				"[horizon] call=%ld viewer_y=%ld fvy=%.9f view_dist=%ld CEILING_ALT=%ld\n"
 				"[horizon]   layer0 AltBase=%ld AltTop=%ld cloud_h_bottom=%.9f cloud_h_top=%.9f\n"
@@ -7624,7 +7624,7 @@ void LandScape::InfiniteStrip( const ANGLES pitch, const ANGLES roll)
 			static long s_bCall = 0, s_bWant = -2;
 			if (s_bWant == -2) { const char* e = getenv("BOB_TRACE_HORIZON"); s_bWant = e ? atol(e) : -1; }
 			long bc = s_bCall++;
-			if (s_bWant >= 0 && bc == s_bWant) {
+			if (s_bWant > 0 && (bc % s_bWant) == 0) {
 				fprintf(stderr, "[horizon]   bands: grHorizCol=%06lx midCol=%06lx fogCol=%06lx"
 					" (horizonColSun=%02x%02x%02x horizonColShade=%02x%02x%02x)\n",
 					(unsigned long)(grHorizCol.all & 0xffffff), (unsigned long)(midCol.all & 0xffffff),
