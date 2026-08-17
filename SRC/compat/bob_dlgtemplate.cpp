@@ -678,6 +678,22 @@ extern "C" int bob_dlg_enum_buttons(int dlgId, int* ids, int maxn) {
     return n;
 }
 
+/* S176 (PO: "the campaign resolution dropdown is missing"): the PE template's RCombo ids.
+   Third instance of one gap. On Windows the dialog manager creates EVERY template item; this port
+   creates them from DDX_Control bindings, so any template control the game does not bind is simply
+   absent. S124 fixed that for STATICS (the Sim-Config label column) and S136 for BUTTONS
+   (IDC_RETURNTOPLAYER) -- each completing one KIND and leaving the rest. Combos were never done, so
+   every unbound template combo in the whole front end is missing, of which the GFX screen's
+   Campaign Resolution is the one a player happens to notice. Same filter, K_RCOMBO. */
+extern "C" int bob_dlg_enum_combos(int dlgId, int* ids, int maxn) {
+    load();
+    int n = 0;
+    for (int i = 0; i < g_nrects && n < maxn; i++)
+        if (g_rects[i].dlgId == dlgId && g_rects[i].pe && g_rects[i].kind == K_RCOMBO)
+            ids[n++] = g_rects[i].id;
+    return n;
+}
+
 extern "C" int bob_load_string(void* h, unsigned id, char* buf, int maxlen);   /* bob_resources.cpp */
 
 extern "C" int bob_dlg_caption(int dlgId, int ctrlId, char* out, int outsz) {
