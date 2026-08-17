@@ -3647,6 +3647,37 @@ bool LandScape::ManageHighLandTextures(SLong px,SLong pz)
 //DeadCode JON 2Aug00 			currResList->oldestAge = currResList->nextOldestAge;
 	}
 
+#if BOB_LINUX
+	/* S173h (BOB-PO-2): how fast do tiles actually get built?
+	   Measured: the ground starts 35% black and converges to 0% by ~frame 800 (~13s), which is the
+	   PO's "tiles update too slowly". The loop above is bounded by currResList->freeTiles -- a
+	   CACHE-CAPACITY budget, not a frame timer -- so the question is whether that budget is the
+	   game's own pacing or a port-side shortfall. This reports, per call: how many tiles were
+	   actually built, how many were still WAITING (a non-empty newTile list stopped by freeTiles==0
+	   is the signature of a capacity stall), and the per-rez free counts.
+	   BOB_TRACE_TILES=<n> prints every nth call; off by default. */
+	{
+		static long s_tCall = 0, s_tEvery = -2;
+		if (s_tEvery == -2) { const char* e = getenv("BOB_TRACE_TILES"); s_tEvery = e ? atol(e) : -1; }
+		long call = s_tCall++;
+		if (s_tEvery > 0 && (call % s_tEvery) == 0) {
+			int made = 0, waiting = 0;
+			char freebuf[128]; int fp = 0;
+			for (int r = 0; r < 8; r++) {
+				TileResList* rl = &tileResList[r];
+				int w = 0;
+				for (UWord o = rl->newTile; o != NULLTILEOFFSET && w < 4096; o = (tileCacheGrid+o)->nextLink) w++;
+				waiting += w;
+				fp += snprintf(freebuf + fp, sizeof(freebuf) - fp, "%s%d", r ? "," : "", (int)rl->freeTiles);
+				if (fp >= (int)sizeof(freebuf) - 8) break;
+			}
+			(void)made;
+			fprintf(stderr, "[tiles] call=%ld stillWaiting=%d freeTiles/rez=[%s]\n", call, waiting, freebuf);
+			fflush(stderr);
+		}
+	}
+#endif
+
 #ifdef DEBUG_GRID
 //DeadCode MS 15Aug00 	Mono_Text.Print((UByte*)"MHLT: debug2 ");
 	for ( i = 0; i< gS; i++ )
@@ -7562,6 +7593,29 @@ void LandScape::InfiniteStrip( const ANGLES pitch, const ANGLES roll)
 
 		midCol = grHorizCol;
 		midCol.interpRGB( fogCol, 0.5 );
+
+#if BOB_LINUX
+		/* S173h: the BAND colours, which the first horizon trace did not capture. The screen shows a
+		   hard horizontal edge with pure black below it, and the strip's ground bands are the only
+		   thing drawn there -- so the question is simply whether one of these colours is black.
+		   Same gate as the state dump above (BOB_TRACE_HORIZON=<call index>). */
+		{
+			static long s_bCall = 0, s_bWant = -2;
+			if (s_bWant == -2) { const char* e = getenv("BOB_TRACE_HORIZON"); s_bWant = e ? atol(e) : -1; }
+			long bc = s_bCall++;
+			if (s_bWant >= 0 && bc == s_bWant) {
+				fprintf(stderr, "[horizon]   bands: grHorizCol=%06lx midCol=%06lx fogCol=%06lx"
+					" (horizonColSun=%02x%02x%02x horizonColShade=%02x%02x%02x)\n",
+					(unsigned long)(grHorizCol.all & 0xffffff), (unsigned long)(midCol.all & 0xffffff),
+					(unsigned long)(fogCol.all & 0xffffff),
+					currentLighting.horizonColSun.red(), currentLighting.horizonColSun.green(),
+					currentLighting.horizonColSun.blue(),
+					currentLighting.horizonColShade.red(), currentLighting.horizonColShade.green(),
+					currentLighting.horizonColShade.blue());
+				fflush(stderr);
+			}
+		}
+#endif
 
 
 		R3DCOLOUR cloudCol;

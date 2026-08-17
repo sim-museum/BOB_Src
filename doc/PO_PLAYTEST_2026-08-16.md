@@ -542,3 +542,35 @@ compositor, which calls `UploadTexture`) and whatever budgets how many tiles it 
 The question to answer first is whether the pacing is the game's own design (a deliberate
 per-frame budget, tuned for 1999 hardware and now mis-scaled) or something the port added — because
 those have opposite fixes.
+
+### BOB-PO-2 — four hypotheses eliminated; the terrain itself is drawn black (S173h)
+
+Each of these was killed by a measurement, not by argument:
+
+| hypothesis | killed by |
+|---|---|
+| `InfiniteStrip` horizon geometry (the prior-art link) | its inputs are stable across runs and its colours are all light blue |
+| The screen wipe showing through where terrain failed | `Wipe(fogCol)` and `fogCol=90b8e8` — light blue, not black |
+| Tile-cache capacity stall | `stillWaiting=0` from call ~120 onward; nothing is queued for building |
+| Broken render-target composition | sea RTT is a proper water surface, land RTT is fully detailed farmland |
+| Cloud-layer altitude (`layer0 AltBase=0 AltTop=0`) | **correct**: the turkey shoot is `weather=0`, and `Cloud::SetCloud` calls `NullCloud()` when cover is 0. Retracted as a lead. |
+
+What is left is forced. The frame is cleared to light blue; every backdrop band is light blue
+(`grHorizCol=a2c3ec`, `midCol=99beea`, `fogCol=90b8e8`); and a large region is nevertheless **pure
+black with straight-edged, polygon-shaped internal structure** (native-resolution crop: a hard
+horizontal boundary with parallelogram quads inside it). Nothing can produce that except geometry
+drawn *over* the backdrop. **The terrain polygons are being drawn black**, and they brighten to
+correct over ~13 seconds.
+
+Since tile *creation* is idle throughout (`stillWaiting=0`, `freeTiles` all zero — a full,
+steady-state cache), the thing converging is not which tiles exist. The two candidates left are what
+the terrain polygons are *shaded* with (vertex lighting arriving dark and ramping) and what they are
+*textured* with (a landscape texture handle not yet bound, sampling black). Both are directly
+measurable in the same style as everything above — dump the per-tile light/texture state across
+frames — and that is the next step.
+
+**Method note.** Five rounds of this investigation each produced a confident-looking wrong answer:
+black terrain, then non-deterministic geometry, then InfiniteStrip, then a capacity stall, then the
+cloud layer. What moved it forward every time was measuring the state that would *distinguish* the
+candidates rather than looking harder at the picture — and being willing to write down that the
+previous round's answer was wrong.
