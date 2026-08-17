@@ -1,5 +1,72 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+> ## S173 (2026-08-16, Sprint 173): the campaign clock could not be started — three layers, one frozen campaign
+>
+> PO, round 2: *"time is stopped at 0x ... not mission dialog appears (for German side)"*. That is one
+> defect, not three — it also accounts for round 1's *"missing initial Luftwaffe dialog"*. A campaign
+> whose clock never advances fires no day/period events, so no directives dialog ever appears.
+>
+> `RFullPanelDial::LaunchMap` starts the strategic map **paused on purpose** (S94) — the real game
+> freezes until the player presses an accel button. Those buttons were unreachable, so "waits for the
+> player" became "waits forever". Three independently-plausible layers:
+>
+> 1. **A hand-written id list.** `bob_map_paint_toolbars` drew three named ids at a hand-placed row.
+>    `IDDT_TITLEBAR` is a complete 209x56 DLU design with **four** buttons — `IDC_CONTROL` at DLU x26
+>    was in no list and so was never drawn at all. Now drawn from the template, so the geometry comes
+>    from the resource and no control can be omitted by oversight.
+> 2. **A scaffold standing in for the panel.** `bob_map_paint_titlebar` filled a parchment rectangle
+>    and `TextOut`'d a clock string composed with the same format `TitleBar::Redraw()` uses. It looked
+>    like a clock, so nothing looked missing — but it could never grow the buttons, and the real
+>    controls had no drawn rect, which is what `bob_ole_click` hit-tests.
+> 3. **A mis-numbered icon table.** `bob_icon_pagenum` parsed `iconnum.g` with
+>    `if (strncmp(p,"ICON_",5)) continue;` **before** the index counter — but 32 of that file's 94
+>    enumerators are `B_ICON_*` map markers, real enum members consuming real values. `ICON_PAUSE`
+>    (79) resolved to page 47, so the buttons that *were* drawn showed round gold map tokens. The
+>    first 35 icons are unaffected, which is why the map toolbars looked right and hid it.
+>
+> Plus the missing half of an art pair: the panel draw path set the **text** viewport but never the
+> DIB origin/clip, so art-bearing controls drew captions in the right place and bitmaps somewhere
+> else, unclipped over their neighbours. `RBUTTONC.CPP` relies on the control's *window* to clip a
+> panel-aligned blit; with no windows there was no clip. Added `bob_gdi_setdibits_clip`.
+>
+> **Evidence — identical recipes one click apart, control arm included:**
+>
+> | arm | tick | campaign clock |
+> |---|---|---|
+> | no click | 1100 | `time=23400` — unchanged from tick 850 |
+> | Play clicked at 900 | 1100 | `time=23620`, panel reads **x1**, Play lit, Pause released, and `dlg=1032` (LW Directives) appears |
+>
+> **Unlooked-for win from the clip.** Gate 5 came back 10/14 with four screens changed, all verified
+> *toward* gold: `phaseselect`, `entername` and `bobfrag` recovered text that had been sitting under
+> unclipped black overpaint for many sprints (tab row, phase description, the unit table, the
+> Back/Begin/Fly menu row), and `config-control` now draws gold's red tick + empty square tickboxes
+> instead of wrong circles (an index>=35 icon, corrected by layer 3).
+>
+> **S173b** drew the clock panel at 1:1 DLU->px like the other map toolbars (measured: gold's four
+> buttons sit on a ~34px pitch for 37-DLU spacing), which also fixed its oversized LCD text — the text
+> height derives from the box height, so a stretched box was a stretched font. It also **built,
+> measured and reverted** a fix for BOB-PO-1 (the debrief font): deferring to the game's own
+> `OnGetGlobalFont` selects the 5/3x face and would have made the whole front-end ~17% smaller than
+> gold, on a screen the PO has accepted, in exchange for an improvement unobservable because the
+> debrief has no headless recipe. The real finding is recorded instead: `[1..3]` exist only for
+> `FI_4VER` fonts, so plain-font controls fall back to `[0]`=1x beside `FI_4VER` neighbours on `[3]`=2x
+> — a **2x cliff between neighbours**, which no single global face fixes.
+>
+> **S173c** found the same pattern a third time in the same band: `dlg=1065:0/8`. `IDDT_TELETYPE` (the
+> event log) had all eight controls hosted and none drawn, with `bob_map_paint_teletype` re-walking
+> `Node_Data.intel` using the very calls `TeleType::Refresh` uses — two implementations of one thing,
+> and the port drew the copy. Now drawn from the template; with the clock running it renders
+> `Creil / Aircraft Quota Allocated` in gold's light-grey two-column layout, against the scaffold's
+> black inset with amber and blue text.
+>
+> **Method.** The scaffold drew the right string from the right variables, so every screenshot showed
+> a clock. Only `x0` — a value, not a picture — said it was stopped. *Measure the state, not the
+> picture*, and always run the control arm.
+>
+> Gates: S173 14/14 recipes exit 0, modal PASS, dummy==GL byte-identical, flight 98.7%; S173b and
+> S173c each 14/14 byte-identical against the prior baseline. Shared lessons: §8-BoB173 (a table
+> parser that skips entries must still count them) and §8-BoB173b, mirrored to MA.
+
 > ## S171 (2026-08-16, Sprint 171): the map ruler's labels were running off the edge of the screen — `SetTextAlign` was a no-op
 >
 > Comparing our campaign map against the **Wine gold capture** (`gold standard/bob/`, the method MA
