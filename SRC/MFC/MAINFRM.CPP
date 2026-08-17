@@ -1359,6 +1359,23 @@ extern "C" void bob_map_paint_toolbars(int sw, int sh)
 		   template controls, which is the point -- the id list is what lost IDC_CONTROL. */
 		bob_ole_draw_toolbar_ids((CWnd*)tb, 0, sh - 56, 100, 0, 0);
 	}
+	/* S173c: the event log, same story as the clock and the same fix. IDDT_TELETYPE is a real
+	   317x56 DLU panel (three two-column log lines + end caps) whose controls the game already
+	   fills -- TeleType::Refresh -> FillTextLines(IDC_LINE1..3/IDC_ITEM1..3), driven from the map's
+	   own update (MAPDLG.CPP). All eight were hosted and NONE were drawn (`dlg=1065:0/8`), because
+	   bob_map_paint_teletype hand-rendered the log instead, on the stated belief that "those
+	   controls' OnDraw doesn't run headlessly" -- true when it was written, false since the OCX
+	   hosting landed. The scaffold even re-walked Node_Data.intel with the same
+	   MessageTitleToText/GetTargName calls Refresh uses, so the port carried two implementations of
+	   one thing and drew the copy. */
+	if (CMainFrame::toolbars[TB_REPORT]) {
+		/* Same shape as the clock above: drive the game's own populate pass, then draw. Refresh()
+		   is normally called from the map's update (MAPDLG.CPP) on a new message; force it here so
+		   the panel is filled on the first paint too, rather than showing three empty lines until
+		   the next intel item happens to arrive. */
+		((TeleType*)CMainFrame::toolbars[TB_REPORT])->Refresh(true);
+		bob_ole_draw_toolbar_ids((CWnd*)CMainFrame::toolbars[TB_REPORT], 6, sh - 128 + 5, 100, 0, 0);
+	}
 }
 
 /* S92: a click at (cx,cy) on the map -> hit-test the footer toolbar buttons (their last-drawn rects)

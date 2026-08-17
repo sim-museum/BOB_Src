@@ -959,7 +959,10 @@ extern "C" void bob_frontend_tick(void)
 		   TitleBar). BOB_NO_TITLEBAR reverts. */
 		if (!getenv("BOB_NO_TITLEBAR")) {
 			bob_map_paint_titlebar(sw, sh);
-			bob_map_paint_teletype(sw, sh);   /* event-log pane on the same footer band */
+			/* S173c: the log is drawn by bob_map_paint_toolbars now, from the real IDDT_TELETYPE
+			   controls. BOB_TELETYPE_SCAFFOLD=1 restores the hand-rendered pane for A/B. */
+			if (getenv("BOB_TELETYPE_SCAFFOLD"))
+				bob_map_paint_teletype(sw, sh);
 		}
 		if (!getenv("BOB_NO_BUTTONS"))        /* S89-91: footer toolbar button rows (now default-on) */
 			bob_map_paint_toolbars(sw, sh);

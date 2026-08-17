@@ -153,3 +153,56 @@ which is the strongest argument against treating "font too large" as one bug.
 **Next step (needs a harness, not a guess):** a headless route to the debrief, then dump which
 `fontnum` each control on it asks for and which faces exist for those numbers. That turns this from
 a scale argument into a table.
+
+## BOB-PO-11 (red icon does not dismiss the dialog) — mechanism found, S173c
+
+The footer event log is the third instance of the S173 pattern in the same band. `IDDT_TELETYPE`
+is a real 317×56 DLU panel — three two-column log lines (`IDC_ITEM1..3` + `IDC_LINE1..3`) between
+two end caps — and all eight controls were hosted and **none drawn** (`dlg=1065:0/8`).
+`bob_map_paint_teletype` hand-rendered the log instead, on the stated belief that "those controls'
+OnDraw doesn't run headlessly" — true when written, false since the OCX hosting landed. It even
+re-walked `Node_Data.intel` with the same `MessageTitleToText`/`GetTargName` calls
+`TeleType::Refresh` uses, so the port carried two implementations of one thing and drew the copy.
+
+**Why this is very likely the PO's report.** The log lines' handler is a **toggle**:
+
+```c
+void TeleType::OnClickedLine1() {
+    Refresh();
+    if (makertn)
+        if (!LoggedChild(0)) LogChild(0, makertn(messages[3]));  /* open  */
+        else                 CloseLoggedChild(0);                /* close */
+}
+```
+
+Click a line, its dialog opens; click **again**, it closes. The PO's wording was "clicking red icon
+at bottom **again** does not dismiss dialog". With those six controls never drawn they had no
+recorded screen rect, and `bob_ole_click` hit-tests exactly those rects — so the *first* click could
+open a dialog by some other route while the *second* had nothing to land on. Drawing the panel
+gives all six their rects.
+
+Stated as a lead, not a fix: the PO says "red icon", and the log lines are not red icons, so this
+may instead be one of the red Luftwaffe cards on the right of the same band. What is now true
+either way is that the log lines are drawn and clickable, which they were not before. The
+open→close→open assertion is the test to run against `dialogs=N`.
+
+**Appearance, checked against gold rather than assumed.** Gold's log is a **light grey** plate with
+dark two-column text. The scaffold drew a black-brown inset with amber text and blue place names —
+wrong on every count. The real controls take `FIL_TELEBACK`, which the S173 art dump showed is a
+uniform light-grey 500×500 plate: the same art the clock's LCD uses, and the colour gold shows.
+
+**Empty is not broken.** At tick 850 with the campaign paused, the panel draws three blank lines —
+and so did the scaffold: `[teletype] intel.latest=0 wrap=0 shown=0`. There are simply no intel
+messages until the clock runs, which is BOB-PO-9's territory. Recorded because a blank panel is
+exactly the kind of thing that gets "fixed" twice.
+
+**Verified with the clock running** (Play clicked, tick 1100): the real controls render the log in
+gold's layout — light-grey plate, place name in the left column, message in the right, dark text:
+
+```
+Creil          Aircraft Quota Allocated
+Colombert      Aircraft Quota Allocated
+```
+
+against gold's `…werp / Aircraft Quota Allocated`. Two lines rather than three because only two
+messages exist at that point. `dlg=1065:8/8` in the same run (was `0/8`).
