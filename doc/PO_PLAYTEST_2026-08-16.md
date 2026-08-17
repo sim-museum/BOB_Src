@@ -883,3 +883,47 @@ diagnostics (`BOB_TRACE_HORIZON`, `BOB_TRACE_TILES`, `BOB_TRACE_TEXBLACK`, `BOB_
 `BOB_DUMP_RTT`, `BOB_TRACE_COL`); and the confirmed-correct list — clear colour, backdrop bands,
 lighting, vertex RGB, texture allocation, tile queue, and the 256×256 land composition. The defect
 lives in what remains after all of those.
+
+### BOB-PO-2 — the quads DO paint; four more eliminations (S173q–s)
+
+Executing the two named steps rather than inventing a hypothesis.
+
+**Step 1, vertex alpha — and it reverses the S173o retraction.** These surfaces have no alpha
+channel and no colour key, so under `SRC_ALPHA/ONE_MINUS_SRC_ALPHA` the source alpha can only come
+from the vertex:
+
+```
+blackTex 128x128 ... meanVertexAlpha=255      <- fully opaque
+blackTex  64x64  ... meanVertexAlpha=127-132  <- ~half opaque
+```
+
+So they **are** visible and they **do** paint the dark region. "Blended, therefore harmless" was
+wrong — blending *enabled* is not transparency. The original direction was right.
+
+**Step 2, what these surfaces are:** `caps=0x401008` = `MIPMAP | TEXTURE | COMPLEX`, `isMip=0`, i.e.
+top-level **mipmapped texture** surfaces at 64×64 and 128×128 — the landscape tile textures
+(`UploadTexture` ends with `UpdateMipMaps`). Consistent with the original size split.
+
+**Eliminated this round:**
+
+| candidate | measurement |
+|---|---|
+| clouds | `BOB_NOCLOUDS` arm: 9,687 vs 9,690 black quads, picture identical (17.8% vs 17.9%, same horizon row) |
+| multiplicative blending | `blendFunc src=0x302 dst=0x303` — ordinary `SRC_ALPHA/ONE_MINUS_SRC_ALPHA` |
+| missing colour key | `colourKeyed=0` **and** `alphaMask=0x0` — nothing to key |
+| the silent bpp guard in `SURF_Blt` | `BOB_TRACE_BLTSKIP`: **zero** skipped blits in a whole run |
+
+That last one also explains why the S173n fix did nothing: `UploadTexture` chooses between
+`PerformVSlowCopy`, `PerformSlowCopy` and `Blt`, and with no skips recorded the tile copies are
+evidently not failing in `SURF_Blt` at all.
+
+**A finding worth its own line.** `DD_GetCaps` in the compat **zeroes the entire `DDCAPS`**. The
+game uses those caps to choose its copy path — `if ((ddcaps.dwCaps&DDCAPS_BLTFOURCC)==0)` then
+compare `texFmt[TF_LANDINIT]`'s masks against the destination's — so a real decision about how the
+landscape gets copied is being driven by a stub's empty answer. That is this port's signature shape
+(a plausible value that silently reroutes work), independent of whether it turns out to cause this
+defect.
+
+**Next:** instrument the copy path actually taken (`PerformSlowCopy` / `PerformVSlowCopy` — both
+Lock the source, which is where the 20 `Lock readback 256x256` lines come from) and check what it
+writes for a 64×64 destination. That is one trace at a known call site.

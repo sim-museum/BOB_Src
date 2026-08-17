@@ -995,6 +995,17 @@ static HRESULT SURF_Blt(IDirectDrawSurface7* This, LPRECT, IDirectDrawSurface7* 
 		   how those textures are filled, and the readback was pure cost. Left as a comment because
 		   the reasoning is sound and someone will think of it again; rtt_readback() is still
 		   factored out and used by SURF_Lock. */
+		/* S173s (BOB-PO-2): this guard drops the copy SILENTLY when the formats differ. The
+		   landscape upload blits one scratch render target into every tile texture, and the black
+		   tiles are 64x64/128x128 mipmapped textures (caps=0x401008) while the 256x256 is fine --
+		   so a bpp mismatch skipping the copy would leave exactly those black. Report it rather
+		   than guess: BOB_TRACE_BLTSKIP counts and describes the skips. */
+		if (getenv("BOB_TRACE_BLTSKIP") && !(s->bits && d->bits && d->bpp==s->bpp)) {
+			static long nskip = 0;
+			if (++nskip % 500 == 1)
+				fprintf(stderr, "[bltskip] #%ld dst %dx%d bpp%d  src %dx%d bpp%d  (dstBits=%d srcBits=%d)\n",
+					nskip, d->w, d->h, d->bpp, s->w, s->h, s->bpp, d->bits?1:0, s->bits?1:0);
+		}
 		if (s->bits && d->bits && d->bpp==s->bpp) {
 			int bpp=(s->bpp+7)/8;
 			if (d->w==s->w && d->h==s->h) memcpy(d->bits,s->bits,(size_t)d->w*d->h*bpp);
@@ -1799,11 +1810,12 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 			/* which surfaces are the black ones? histogram their dimensions -- the difference
 			   between "some texture is black" and "the NxN landscape tile textures are black",
 			   which is the actionable form. */
-			static int bw[16], bh[16], bbpp[16]; static unsigned bamask[16]; static long bn[16], bblend[16], bckey[16]; static int nbd = 0;
+			static int bw[16], bh[16], bbpp[16]; static unsigned bamask[16];
+			static long bn[16], bblend[16], bckey[16], balpha[16], bacount[16]; static unsigned bcaps[16]; static int bmip[16]; static int nbd = 0;
 			if (cls == 0 && t) {
 				int found = -1;
 				for (int i = 0; i < nbd; i++) if (bw[i] == t->w && bh[i] == t->h) { found = i; break; }
-				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; bblend[found] = 0; bckey[found] = 0; bbpp[found] = 0; bamask[found] = 0; }
+				if (found < 0 && nbd < 16) { found = nbd++; bw[found] = t->w; bh[found] = t->h; bn[found] = 0; bblend[found] = 0; bckey[found] = 0; bbpp[found] = 0; bamask[found] = 0; balpha[found] = 0; bacount[found] = 0; bcaps[found] = 0; bmip[found] = 0; }
 				/* S173o: is this black-textured quad ALPHA-BLENDED? A black texture drawn with
 				   blending is what a shadow looks like, and the tile compositor calls
 				   RenderObjectShadow -- so "black texture" may be entirely legitimate rather than
@@ -1814,18 +1826,36 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				   from a colour key being applied at upload. No key + no alpha = opaque black. */
 				if (found >= 0) { bn[found]++; if (g_devAlphaBlend) bblend[found]++;
 				                  if (t->ckeyOn) bckey[found]++; bbpp[found] = t->bpp;
-				                  bamask[found] = (unsigned)t->desc.ddpfPixelFormat.dwRGBAlphaBitMask; }
+				                  bamask[found] = (unsigned)t->desc.ddpfPixelFormat.dwRGBAlphaBitMask;
+				                  /* S173r: what KIND of surface did the game ask for? The creation
+				                     caps name the subsystem without needing a caller tag:
+				                     TEXTURE=0x1000 3DDEVICE=0x2000 SYSTEMMEMORY=0x800
+				                     VIDEOMEMORY=0x4000 MIPMAP=0x400000 ALLOCONLOAD=0x4000000. */
+				                  bcaps[found] = (unsigned)t->desc.ddsCaps.dwCaps;
+				                  bmip[found] = t->isMip;
+				                  /* S173q: the VERTEX ALPHA. These surfaces have no alpha channel
+				                     (alphaMask=0) and no colour key, and are drawn SRC_ALPHA /
+				                     ONE_MINUS_SRC_ALPHA -- so the source alpha can only come from
+				                     the vertex diffuse. alpha 0 => invisible (harmless); alpha 255
+				                     => opaque black painted over the terrain. This one byte splits
+				                     the whole question. */
+				                  if (L.hasCol) { unsigned dc = *(const unsigned*)(base + L.colOff);
+				                                  balpha[found] += (dc >> 24) & 0xff; bacount[found]++; } }
 				if (g_devAlphaBlend) bob_texblack_note_blend((unsigned)g_srcBlend, (unsigned)g_dstBlend);
 			}
 			if (++calls % s_tbEvery == 0) {
 				fprintf(stderr, "[texblack] quads: blackTex=%ld darkTex=%ld normalTex=%ld noTex=%ld (surfaces seen=%d)\n",
 					cnt[0], cnt[1], cnt[2], cnt[3], nkeys);
-				for (int i = 0; i < nbd; i++)
-					/* alphaMask decides the question my RGB-only classifier could not: a 1555
-					   surface whose texels are all 0x0000 is FULLY TRANSPARENT, and reads as
-					   "black" to an RGB sample. Amask 0 => no alpha => genuinely opaque black. */
-					fprintf(stderr, "[texblack]   blackTex dims %dx%d bpp=%d alphaMask=0x%x quads=%ld (blended=%ld colourKeyed=%ld)\n",
-						bw[i], bh[i], bbpp[i], bamask[i], bn[i], bblend[i], bckey[i]);
+				/* alphaMask decides the question my RGB-only classifier could not: a 1555 surface
+				   whose texels are all 0x0000 is FULLY TRANSPARENT and reads as "black" to an RGB
+				   sample. Amask 0 => no alpha => genuinely opaque black (confirmed: vertex alpha
+				   255 on the 128s, ~130 on the 64s, so these DO paint). */
+				for (int i = 0; i < nbd; i++) {
+					fprintf(stderr, "[texblack]   blackTex dims %dx%d bpp=%d alphaMask=0x%x quads=%ld (blended=%ld colourKeyed=%ld) meanVertexAlpha=%ld\n",
+						bw[i], bh[i], bbpp[i], bamask[i], bn[i], bblend[i], bckey[i],
+						bacount[i] ? balpha[i]/bacount[i] : -1);
+					fprintf(stderr, "[texblack]     -> caps=0x%x isMip=%d\n", bcaps[i], bmip[i]);
+				}
 				bob_texblack_dump_blend();
 			}
 		}
