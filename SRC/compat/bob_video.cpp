@@ -849,6 +849,45 @@ extern "C" void bob_gdi_present(void) {
    framebuffer corner. The OCX-draw drivers (bob_ole_draw_toolbar) set this to the control's screen
    origin around host->draw() and reset it after. */
 static int g_sdibOrgX = 0, g_sdibOrgY = 0;
+/* S177 (PO: "I want to set the campaign resolution to 1920x1080"): real display-mode enumeration.
+   TwoDPref::OnInitDialog builds the whole UI-resolution table by walking EnumDisplaySettings and
+   validating each mode with ChangeDisplaySettings(CDS_TEST). The compat had
+       static inline BOOL EnumDisplaySettings(...) { return FALSE; }
+   i.e. "there are no display modes" -- a plausible answer that ends the loop on its first call, so
+   maxpossmodes stayed 1 and every UI resolution combo in the game was left with a single
+   uninitialised entry. That is why Campaign Resolution rendered blank on the GFX tab and listed
+   "0x2322" on the 2D tab: horres was never assigned. The port's signature bug shape -- a stub whose
+   plausible value silently empties a feature.
+   Answer from SDL's real mode list for display 0. Returns 0 when the index is past the end (the
+   loop's terminator) or when there is no video subsystem (headless), which reproduces the old
+   behaviour exactly in that case rather than inventing modes. */
+extern "C" int bob_enum_display_mode(unsigned idx, int* w, int* h, int* bpp, int* hz)
+{
+	if (!SDL_WasInit(SDL_INIT_VIDEO)) return 0;
+	/* Enumerate the display the GAME WINDOW is on, not display 0. This box has two monitors
+	   (X screen 3840x1080); display 0 is the secondary, whose mode list tops out at 1024x768 and
+	   contains sizes the primary does not have at all (928x580, 864x486). Enumerating it offered
+	   the player a resolution list belonging to the wrong monitor, with 1920x1080 absent from a
+	   display that has it. Falls back to 0 before the window exists. */
+	int disp = 0;
+	if (g_win) { int d = SDL_GetWindowDisplayIndex(g_win); if (d >= 0) disp = d; }
+	int n = SDL_GetNumDisplayModes(disp);
+	if (n <= 0 || (int)idx >= n) return 0;
+	SDL_DisplayMode m;
+	/* ASCENDING order, because the game assumes the Windows convention. TwoDPref finds the 1024
+	   entry and then lists everything from there FORWARD (`indcount=res1024res-1; while
+	   (++indcount<maxreses)`), which only yields the larger modes if the list ascends.
+	   SDL enumerates largest-first, so with a straight pass-through the "1024 and up" list became
+	   "1024 and down": the combo offered 1024x768 downwards and 1920x1080 -- SDL's mode [0] -- was
+	   never reachable, which is exactly what the PO could not select. Reverse the index. */
+	if (SDL_GetDisplayMode(disp, n - 1 - (int)idx, &m) != 0) return 0;
+	if (w)   *w = m.w;
+	if (h)   *h = m.h;
+	if (bpp) *bpp = SDL_BITSPERPIXEL(m.format);
+	if (hz)  *hz = m.refresh_rate;
+	return 1;
+}
+
 extern "C" void bob_gdi_setdibits_origin(int x, int y) { g_sdibOrgX = x; g_sdibOrgY = y; }
 /* S173: read it back, so a nested drawer can set a per-control origin and RESTORE the caller's
    rather than zeroing it. bob_ole_draw_panel runs inside callers that have already set the PANEL

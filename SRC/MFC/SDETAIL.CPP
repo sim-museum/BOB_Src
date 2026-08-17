@@ -167,6 +167,12 @@ int	ironlevels;
 //Author		Paul.   
 //Date			Wed 9 Dec 1998
 //------------------------------------------------------------------------------
+#if BOB_LINUX
+/* S177: the mode list the Campaign Resolution combo was filled from, so the selection handler can
+   map an index back to a width without re-enumerating (uiModes is local to OnInitDialog). */
+static int g_bobMapResW[64], g_bobMapResH[64], g_bobMapResN = 0;
+#endif
+
 BOOL CSDetail::OnInitDialog()
 {
 //DEADCODE PD 03/12/99 	static char modeString[32];
@@ -228,6 +234,39 @@ BOOL CSDetail::OnInitDialog()
 		combo->AddString(rezStr);
 	}
 	combo->SetIndex(selected);
+
+#if BOB_LINUX
+	/* S177 (PO: "I want to set the campaign resolution to 1920x1080"). Gold's GFX screen shows a
+	   populated Campaign Resolution next to 3D Resolution; this drop's CSDetail fills only
+	   IDC_CBO_RESOLUTIONS and never touches IDC_CBO_MAPSCREEN, so the row rendered as a label with
+	   an empty box (the control itself was missing entirely until S176 hosted unbound template
+	   combos). The 2D tab's TwoDPref DOES populate the same control id from its own enumeration --
+	   so the value has a real home, Save_Data.ui_horizontalres[UIR_MAP], and a real handler there.
+	   Fill it here from the SAME uiModes list the 3D Resolution combo above uses, in the same
+	   format, so the GFX screen offers what gold offers. Selection is applied in
+	   OnTextChangedCboMapscreen below. */
+	{
+		/* GETDLGITEM expands to a MEMBER (m_IDC_*), which only exists for DDX-bound controls; this
+		   one is bound on the 2D tab, not here, so reach it through GetDlgItem -> the hosted
+		   wrapper (the same route S124's template statics use). */
+		CRCombo* mapcombo = (CRCombo*)GetDlgItem(IDC_CBO_MAPSCREEN);
+		if (mapcombo) {
+			mapcombo->Clear();
+			int msel = 0;
+			g_bobMapResN = 0;
+			for (int k = 0; k < uiModes.numModes && k < 64; k++) {
+				char s[64];
+				sprintf(s, "%d x %d x %d", uiModes.mode[k].width, uiModes.mode[k].height, uiModes.mode[k].bpp);
+				mapcombo->AddString(s);
+				g_bobMapResW[g_bobMapResN] = uiModes.mode[k].width;
+				g_bobMapResH[g_bobMapResN] = uiModes.mode[k].height;
+				g_bobMapResN++;
+				if (Save_Data.ui_horizontalres[SaveData::UIR_MAP] == uiModes.mode[k].width) msel = k;
+			}
+			mapcombo->SetIndex(msel);
+		}
+	}
+#endif
 
 //DEADCODE PD 03/12/99 	//fill in display drivers field
 //DEADCODE PD 03/12/99 
@@ -461,7 +500,23 @@ BEGIN_EVENTSINK_MAP(CSDetail, CDialog)
     //{{AFX_EVENTSINK_MAP(CSDetail)
 	ON_EVENT(CSDetail, IDC_CBO_DISPLAYDRIVERS, 1 /* TextChanged */, OnTextChangedCboDisplaydrivers, VTS_BSTR VTS_I2)
 	//}}AFX_EVENTSINK_MAP
+#if BOB_LINUX
+	ON_EVENT(CSDetail, IDC_CBO_MAPSCREEN, 1 /* TextChanged */, OnTextChangedCboMapscreen, VTS_BSTR VTS_I2)   /* S177 */
+#endif
 END_EVENTSINK_MAP()
+
+#if BOB_LINUX
+/* S177: apply a Campaign Resolution choice. Writes the same field the 2D tab's handler writes
+   (ui_horizontalres[UIR_MAP]) so the two screens agree and the existing save path persists it. */
+void CSDetail::OnTextChangedCboMapscreen(LPCTSTR, short index)
+{
+	if (index < 0 || index >= g_bobMapResN) return;
+	Save_Data.ui_horizontalres[SaveData::UIR_MAP] = (SWord)g_bobMapResW[index];
+	fprintf(stderr, "[campres] Campaign Resolution -> %d x %d (UIR_MAP=%d)\n",
+		g_bobMapResW[index], g_bobMapResH[index],
+		(int)Save_Data.ui_horizontalres[SaveData::UIR_MAP]);
+}
+#endif
 
 //������������������������������������������������������������������������������
 //Procedure		OnTextChangedCboDisplaydrivers

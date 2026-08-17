@@ -669,7 +669,20 @@ extern "C" void bob_frontend_tick(void)
 	   panel and switched to the map view (m_mapdlg); drive its terrain render
 	   (CMIGView::UpdateBitmaps) onto the framebuffer with a screen DC, then present. Map coords
 	   are full-window, so the DC viewport is (0,0). Keeps the window live (no idle->SDL_QUIT). */
-	if (g_bob_map_active && RDialog::m_pView && !Inst3d::InThe3D()) {
+	/* S178 (PO: clicked FLY -> "dead parrot"). The map paint was gated on our OWN flag,
+	   g_bob_map_active, which CMIGView::LaunchMap sets and nothing clears. LaunchFullPane -- what
+	   Fly, the mission folder and the day review all go through -- sets the GAME's page state
+	   m_currentpage=1 without touching that flag, so the port kept painting the strategic map while
+	   the game had moved to a full-screen page. The player saw an unchanged map that ignored every
+	   transport button and whose clock had stopped, because the clock and the accel handlers are
+	   correctly gated on m_currentpage. Measured: `[clock] STUCK for 2400 paints: m_currentpage=1
+	   ... Master_3d.currinst=(nil)` -- a page was up, and no flight had started.
+	   Follow the game's own notion of which page is showing, so the render and the state agree.
+	   BOB_NO_PAGE_GATE=1 reverts. */
+	static int noPageGate = -1;
+	if (noPageGate < 0) noPageGate = getenv("BOB_NO_PAGE_GATE") ? 1 : 0;
+	int onMapPage = noPageGate || !RDialog::m_pView || RDialog::m_pView->m_currentpage == 0;
+	if (g_bob_map_active && onMapPage && RDialog::m_pView && !Inst3d::InThe3D()) {
 		int sw = 1024, sh = 768; bob_gdi_screen_size(&sw, &sh);
 		CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1; dc.m_bobVpX = 0; dc.m_bobVpY = 0;
 		CRect rc(0, 0, sw, sh);

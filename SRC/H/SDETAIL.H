@@ -72,6 +72,9 @@ protected:
 	afx_msg void OnDestroy();
 	afx_msg void OnTimer(UINT nIDEvent);
 	afx_msg void OnTextChangedCboDisplaydrivers(LPCTSTR text, short index);
+#if BOB_LINUX
+	afx_msg void OnTextChangedCboMapscreen(LPCTSTR text, short index);   /* S177: Campaign Resolution */
+#endif
 	DECLARE_EVENTSINK_MAP()
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()

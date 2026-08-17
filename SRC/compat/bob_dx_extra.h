@@ -62,7 +62,20 @@ typedef struct _devicemodeA {
 } DEVMODE, *LPDEVMODE;
 #endif
 static inline LONG ChangeDisplaySettings(LPDEVMODE, DWORD) { return 0; /*DISP_CHANGE_SUCCESSFUL*/ }
-static inline BOOL EnumDisplaySettings(const char*, DWORD, LPDEVMODE) { return FALSE; }
+/* S177: was `return FALSE` -- "no display modes" -- which ended TwoDPref's enumeration loop on its
+   first call and left every UI-resolution combo in the game empty (see bob_enum_display_mode). */
+extern "C" int bob_enum_display_mode(unsigned idx, int* w, int* h, int* bpp, int* hz);
+static inline BOOL EnumDisplaySettings(const char*, DWORD iMode, LPDEVMODE dm) {
+    if (!dm) return FALSE;
+    int w = 0, h = 0, bpp = 0, hz = 0;
+    if (!bob_enum_display_mode((unsigned)iMode, &w, &h, &bpp, &hz)) return FALSE;
+    dm->dmPelsWidth  = (DWORD)w;
+    dm->dmPelsHeight = (DWORD)h;
+    dm->dmBitsPerPel = (DWORD)(bpp > 0 ? bpp : 32);
+    dm->dmDisplayFrequency = (DWORD)(hz > 0 ? hz : 60);
+    dm->dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+    return TRUE;
+}
 
 // ---- Shell AppBar API (TwoDPref auto-hide taskbar probing) ------------------
 #ifndef ABM_GETSTATE
