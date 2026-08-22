@@ -2056,6 +2056,17 @@ void	LWDirectivesResults::LaunchDirectiveMissions()
 			Node_Data.SetRAFReadiness();
 			Directives::RAF::SessionAI();
 			RAFDirectivesResults::AutoRAFPatrols();
+#if defined(BOB_LINUX)
+			/* S192: as the LUFTWAFFE player this is the only place the campaign can acquire the
+			   player's own raids, and its two branches fail in ways that look identical from the
+			   map -- either AutoLWPackages() ran and produced nothing, or the Directives dialog
+			   was supposed to open and did not. Print which branch, and the flags that chose it. */
+			if (getenv("BOB_TRACE_LWDIR"))
+				fprintf(stderr, "[lwdir] LW player: germanisauto=%d directivespopup=%d -> %s\n",
+					(int)Todays_Packages.germanisauto, (int)MMC.directivespopup,
+					Todays_Packages.germanisauto ? "AutoLWPackages()"
+					  : (!MMC.directivespopup ? "OpenDirectivetoggle(NULL)" : "NOTHING (popup already up)"));
+#endif
 			if (Todays_Packages.germanisauto)
 			{
 				AutoLWPackages();

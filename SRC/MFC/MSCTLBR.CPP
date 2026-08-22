@@ -377,9 +377,30 @@ void CMiscToolbar::OpenRAFDirectiveResultsToggle(RAFDirectivesResults* dirres)
 
 void CMiscToolbar::OpenDirectivetoggle(LWDirectivesResults* dirres) 
 {
+#if defined(BOB_LINUX)
+	/* S192: this is a TOGGLE, and as the Luftwaffe player the campaign calls it once per period
+	   (LWDIRECT.CPP LaunchDirectiveMissions) -- so whether the player ends up with a Directives
+	   dialog depends on the PARITY of the call count, and "no dialog" can mean opened-then-closed
+	   just as easily as never-opened. Say which happened, and whether Make() produced anything. */
+	if (getenv("BOB_TRACE_LWDIR")) {
+		RDialog* had = LoggedChild(DIRECTIVES);
+		fprintf(stderr, "[lwdir] OpenDirectivetoggle: had=%p -> %s\n",
+		        (void*)had, had ? "CLOSE" : "open");
+	}
+#endif
 	if (!LoggedChild(DIRECTIVES))
-		LogChild(DIRECTIVES,LWDirectives::Make(dirres)
-							);
+	{
+		RDialog* d = LWDirectives::Make(dirres);
+#if defined(BOB_LINUX)
+		if (getenv("BOB_TRACE_LWDIR"))
+			fprintf(stderr, "[lwdir]   LWDirectives::Make(%p) -> %p\n", (void*)dirres, (void*)d);
+#endif
+		LogChild(DIRECTIVES,d);
+#if defined(BOB_LINUX)
+		if (getenv("BOB_TRACE_LWDIR"))
+			fprintf(stderr, "[lwdir]   after LogChild: LoggedChild(DIRECTIVES)=%p\n", (void*)LoggedChild(DIRECTIVES));
+#endif
+	}
 	else
 		CloseLoggedChild(DIRECTIVES);
 

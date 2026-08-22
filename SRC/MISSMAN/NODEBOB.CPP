@@ -7675,6 +7675,14 @@ void	NodeData::StartOfDay()
 			SetRAFPeriodStatus(Squadron::BAD_WEATHER);
 		else
 		{
+#if defined(BOB_LINUX)
+			/* S192: say whether the Luftwaffe's raids were launched for this period. As the LW
+			   player the campaign has nothing to fly until LaunchDirectiveMissions() runs, and
+			   the two ways of getting no mission -- bad weather, or the launcher running and
+			   producing nothing -- are indistinguishable from the map. Print which. */
+			if (getenv("BOB_TRACE_LWDIR"))
+				fprintf(stderr, "[lwdir] LaunchDirectiveMissions (site A) currtime=%d\n", (int)MMC.currtime);
+#endif
 			LWDirectivesResults::LaunchDirectiveMissions();
 		}
 	}
@@ -7786,9 +7794,19 @@ void	NodeData::FourHourPeriod(bool	endofday)
 		}else
 		{
 			if (GotBadWeatherPeriod())
+			{
+#if defined(BOB_LINUX)
+				if (getenv("BOB_TRACE_LWDIR"))
+					fprintf(stderr, "[lwdir] BAD WEATHER -- no LW raids this period (currtime=%d)\n", (int)MMC.currtime);
+#endif
 				SetRAFPeriodStatus(Squadron::BAD_WEATHER);
+			}
 			else
 			{
+#if defined(BOB_LINUX)
+				if (getenv("BOB_TRACE_LWDIR"))
+					fprintf(stderr, "[lwdir] LaunchDirectiveMissions (site B) currtime=%d\n", (int)MMC.currtime);
+#endif
 				LWDirectivesResults::LaunchDirectiveMissions();
 
 

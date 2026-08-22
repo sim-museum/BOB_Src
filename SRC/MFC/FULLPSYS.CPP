@@ -934,7 +934,7 @@ extern "C" void bob_frontend_tick(void)
 					   no packages yet (squadrons sit at airfields until scrambled via the mission
 					   folder) -- so the LW side has flyable packages first. */
 					bool lwPlayer = ((int)Todays_Packages.localplayer == (int)NAT_LUF);
-					int found = -1, nNonSpare = 0, nMine = 0;
+					int found = -1, foundSq = 0, nNonSpare = 0, nMine = 0;
 					for (int p = 0; p < Profile::MAX_PACKS; p++) {
 						Profile& pk = Todays_Packages.pack[p];
 						if (pk.packagestatus == Profile::PS_SPARE) continue;
@@ -945,7 +945,27 @@ extern "C" void bob_frontend_tick(void)
 						if (getenv("BOB_TRACE_CAMPFLY") && logScan)
 							fprintf(stderr,"[campfly] pack %d: method=%d status=%d squads=%d%s\n",
 								p,(int)pk.attackmethod,(int)pk.packagestatus,(int)(ULong)pk.squadlist, mine?" MINE":"");
-						if (found < 0 && mine && (int)(ULong)pk.squadlist >= 1) found = p;
+						/* S192: a package of the player's own is only FLYABLE once one of its
+						   squadrons has actually spawned in the world -- `instance` is 0 until the
+						   raid's takeoff time. The enemy-raid branch below has always checked this
+						   ("NewPackage on a 0 instance SIGSEGVs"); the player's-own branch never
+						   did, because on the RAF side the package the scaffold picks is an
+						   interception it has just authorised and is live by construction.
+						   As the LUFTWAFFE the packages come from MakeLWPackages and sit on the
+						   ground until their scheduled takeoff -- so the scan committed to a raid
+						   that did not exist yet, and the flight died in PERSONS3.CPP with
+						   "Cant remove seenac": the player's aircraft was in no AI list because no
+						   aircraft had been created. Measured A/B: RAF reached InThe3D=1 while LW
+						   hit the fatal, same campaign, same binary.
+						   Prefer a squadron that is live, and remember WHICH -- hisquad was
+						   hardcoded to 0 below, which is only right when squadron 0 is the live one. */
+						if (found < 0 && mine && (int)(ULong)pk.squadlist >= 1) {
+							int ns = (int)(ULong)pk.squadlist;
+							for (int sq = 0; sq < ns; sq++)
+								if ((unsigned)pk[sq].instance != 0) { found = p; foundSq = sq; break; }
+							if (found < 0 && getenv("BOB_TRACE_CAMPFLY") && logScan)
+								fprintf(stderr,"[campfly] pack %d is MINE but no squadron has launched yet\n", p);
+						}
 					}
 					/* If the player has no own package yet (the usual RAF case), AUTHORISE AN
 					   INTERCEPTION against the first enemy raid -- the exact action
@@ -996,7 +1016,8 @@ extern "C" void bob_frontend_tick(void)
 					if (hipack >= 0) {
 						cf_done = true;                       /* committed -- stop scanning */
 						Todays_Packages.hipack = (char)hipack;
-						Todays_Packages.hisquad = 0;
+						/* S192: the LIVE squadron, not always 0 (see the scan above). */
+						Todays_Packages.hisquad = (char)((hipack == found) ? foundSq : 0);
 						/* R4.5 (S42) diagnostic, default-off: intercept but DON'T fly -- stay in map mode so
 						   BOB_MAP_TIMER keeps ticking the freshly-scrambled interception SAGs. If the S39
 						   GetCruiseAt clamp (BOB_TRACE_SAG) fires on them PRE-flight, the garbage `type` is a

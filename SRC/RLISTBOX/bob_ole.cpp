@@ -568,7 +568,22 @@ extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* p
         if (dialog && h->parentDlg != dialog) continue;
         if (h->sw <= 0 || h->sh <= 0) continue;          /* not drawn (hidden / off-template) */
         int lx = h->sw / 2;
-        if (col > 0 || h->colAtX(h->sw - 1) > 0) {       /* multi-column: find the column's span */
+        /* S192: decide "is this a multi-column list" by probing the WHOLE width, not just the last
+           pixel. The old test was `col > 0 || colAtX(sw-1) > 0`, so for **col 0** it depended
+           entirely on what the control answers for its rightmost pixel -- and the campaign PHASE
+           bar answers 0 there. The span search was skipped and `lx` stayed at the control's CENTRE,
+           which on that four-column bar is a different phase: a recipe asking for "Convoys" (col 0)
+           silently selected "Critical Period", and the capture looked like a working screen with
+           the wrong content in it.
+           That is MA's S85/S162 failure mode -- a recipe that quietly addresses something else --
+           and the fix is the same shape: ask the control, over its whole width, instead of trusting
+           one sample. A genuinely single-column control still lands on its centre, because then
+           column 0's span IS the whole width. */
+        int multi = (col > 0);
+        if (!multi)
+            for (int t = 0; t < h->sw && !multi; t++)
+                if (h->colAtX(t) > 0) multi = 1;
+        if (multi) {                                     /* multi-column: find the column's span */
             int start = -1, end = -1;
             for (int t = 0; t < h->sw; t++) {
                 if (h->colAtX(t) == col) { if (start < 0) start = t; end = t; }

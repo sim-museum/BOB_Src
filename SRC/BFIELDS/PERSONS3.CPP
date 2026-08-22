@@ -3428,10 +3428,27 @@ void Persons3::FinishSetPiece()
 
 	Persons2::PlayerSeenAC->AddToList();
 	
+#if defined(BOB_LINUX)
+	/* S192: this guard kills the LUFTWAFFE campaign flight and not the RAF one -- measured A/B,
+	   same campaign, same scaffold, same binary: RAF reaches InThe3D=1, LW dies here. The three
+	   terms fail in different ways and the message names none of them, so print all three plus the
+	   aircraft's identity before the verdict. */
+	if (getenv("BOB_TRACE_SEENAC"))
+		fprintf(stderr,"[seenac] formpos=%d expandedsag=%d ac=%p ghost=%p\n",
+			(int)Persons2::PlayerSeenAC->formpos,
+			(int)Persons2::PlayerSeenAC->fly.expandedsag,
+			(void*)Persons2::PlayerSeenAC, (void*)Persons2::PlayerGhostAC);
+#endif
 	if(		(!Persons2::PlayerSeenAC->formpos)
 		&&	(!Persons2::PlayerSeenAC->fly.expandedsag) 
 		&&	(!Art_Int.Remove(Persons2::PlayerSeenAC))		) //CSB 04/02/00
+	{
+#if defined(BOB_LINUX)
+		if (getenv("BOB_TRACE_SEENAC"))
+			fprintf(stderr,"[seenac] Art_Int.Remove FAILED -- the seen aircraft is not in the AI list\n");
+#endif
 		_Error.SayAndQuit("Cant remove seenac");
+	}
 
 // remove ghost from sectorlist and add seen
 
