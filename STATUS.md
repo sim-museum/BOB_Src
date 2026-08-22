@@ -7,6 +7,29 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
+> ## Latest (S196–S197, 2026-08-22): two live bugs found by answering MA's questions
+>
+> - **S196 — only the FIRST row of any non-player list was ever selectable.** Answering MA's
+>   `§8-MA111` ("is a control type you DRAW never offered a click?") led from a missing `onClick`
+>   override into `CRListBoxCtrl::GetRowFromY`, which clamps against **`m_playerList`** (filled only
+>   by `AddPlayerNum`) while rows live in **`m_list`**. MA could correct this as a test-harness issue
+>   because `GetRowFromY` has no caller in its tree; **here it is on the player's real click path.**
+>   Measured on the Luftwaffe Bases dialog, a 7-row unit list: rows 2, 3 and 4 all `REJECTED`.
+>   `BOB_LB_PLAYERCLAMP=1` reverts. **Also: the German Convoys campaign is now GATE 5 of the DoD
+>   suite** — every other gate passed while that campaign was broken.
+> - **S197 — the Luftwaffe could not change its own orders.** `RSPINBUT` took no clicks, and the
+>   Directives allocation grid is ~50 spin buttons. Two causes: **`CWnd::GetClientRect` reported the
+>   whole SDL window to every hosted control** (so `OnLButtonDown` rejected every click left of
+>   `rect.right-15`, i.e. all of them) — the `§8-BoB173d` family again — and the click walk had no way
+>   to pass **both** coordinates. `GetClientRect` is now virtual, the spin host reports its real
+>   36×19 rect, and a new `onClickXY` drives the control's **genuine** handler. Measured: index
+>   1→0→1→0 on down/up/down.
+>
+> *A near-false-alarm worth keeping from S197:* the first trace printed `m_CurrentValue`, which never
+> moves — the spinner's value is `m_index` into `m_list` — and the first clicks were "up" on a
+> spinner **already at its maximum**, which the handler correctly refuses. Printing the field the
+> handler actually moves turned "broken" into "at its limit".
+
 > ## Latest (S194–S195, 2026-08-22): MA's collision question answered, and the campaign is gated
 >
 > - **S194 — answered MA's `§8-MA114`.** The eventsink-registrar collision **is real here**
