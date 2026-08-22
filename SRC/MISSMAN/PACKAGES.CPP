@@ -1819,6 +1819,16 @@ SquadNum	Profile::AddSquadron(int numac,Profile::AttackMethod duty,int targnum,S
 	Squad* newsquad=
 		(squadlist+=a->uniqueID.count);
 	Persons2::tabulateUID(a);
+#if defined(BOB_LINUX)
+	/* S193: this is the only place a package's squadron is given an air group, and therefore the
+	   only place its `instance` becomes non-zero. As the Luftwaffe the campaign's raid packages
+	   were observed with instance==0 on every squadron, takeoff time in the PAST, and status
+	   PS_COMPLETE -- i.e. the raid never launched. Print what this site actually produced. */
+	if (getenv("BOB_TRACE_SAGUID"))
+		fprintf(stderr,"[saguid] squad sn=%d uid=%u -> instance=%u numac=%d (pack squads now %d)\n",
+			(int)sn, (unsigned)a->uniqueID.count, (unsigned)newsquad->instance,
+			(int)numac, (int)squadlist.Max());
+#endif
 	newsquad->SetSquad(sn);
 	a->inform=
 		newsquad->numacleft=

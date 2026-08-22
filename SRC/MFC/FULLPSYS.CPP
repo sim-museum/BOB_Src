@@ -963,8 +963,17 @@ extern "C" void bob_frontend_tick(void)
 							int ns = (int)(ULong)pk.squadlist;
 							for (int sq = 0; sq < ns; sq++)
 								if ((unsigned)pk[sq].instance != 0) { found = p; foundSq = sq; break; }
-							if (found < 0 && getenv("BOB_TRACE_CAMPFLY") && logScan)
+							if (found < 0 && getenv("BOB_TRACE_CAMPFLY") && logScan) {
 								fprintf(stderr,"[campfly] pack %d is MINE but no squadron has launched yet\n", p);
+								/* S193: print the SCHEDULE, not just the fact. "Not launched" can mean
+								   the takeoff time is still ahead, is in the past and was missed, or was
+								   never set -- three different bugs that look identical from the map. */
+								for (int sq = 0; sq < ns && sq < 8; sq++)
+									fprintf(stderr,"[campfly]   pack %d sq %d: instance=%u takeofftime=%d (currtime=%d, %s)\n",
+										p, sq, (unsigned)pk[sq].instance, (int)pk[sq].takeofftime, (int)MMC.currtime,
+										(int)pk[sq].takeofftime > (int)MMC.currtime ? "future"
+										  : ((int)pk[sq].takeofftime ? "PAST" : "unset"));
+							}
 						}
 					}
 					/* If the player has no own package yet (the usual RAF case), AUTHORISE AN

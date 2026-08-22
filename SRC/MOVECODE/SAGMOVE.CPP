@@ -1267,6 +1267,23 @@ void	SAGairgrp::SAGDecisionWaitTakeOff(int p,int s)
 	{
 		int a,b;
 		SquadNum sq;
+#if defined(BOB_LINUX)
+		/* S193: this is where a Luftwaffe raid is CANCELLED instead of taking off. Measured on the
+		   Convoys campaign: the Ju87 package reaches its takeoff time, every squadron is completed
+		   here, and PackageComplete() then zeroes every instance and marks the package PS_COMPLETE
+		   -- which is exactly the state the campaign map shows (raid never launches, nothing to
+		   fly). The Me109 exemption means the escort would launch and the bombers would not.
+		   Print the decision and its inputs; "the raid never launched" and "the raid was cancelled
+		   for fuel" look identical from the map. */
+		if (getenv("BOB_TRACE_FUEL")) {
+			int fa=0, fb=0;
+			int ac = (int)Todays_Packages[p][s].Squadron().AcType();
+			bool fuelok = Todays_Packages[p].CalcFuel(s,-3,UID_NULL,fa,fb);
+			fprintf(stderr,"[fuel] pack %d sq %d actype=%d %s CalcFuel=%d (a=%d b=%d) takeoff=%d currtime=%d\n",
+				p, s, ac, ac==(int)PT_ME109 ? "ME109(exempt)" : "checked", (int)fuelok, fa, fb,
+				(int)Todays_Packages[p][s].takeofftime, (int)MMC.currtime);
+		}
+#endif
 		if (Todays_Packages[p][s].Squadron().AcType()!=PT_ME109 && !Todays_Packages[p].CalcFuel(s,-3,UID_NULL,a,b))  //JIM 25Oct00
 		{
 			sq=Todays_Packages[p][s].squadnum;
