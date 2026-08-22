@@ -1996,7 +1996,34 @@ short CRListBoxCtrl::GetRowFromY(long y)
     pdc->SelectObject(pOldFont);
 	ReleaseDC(pdc);
 	short row=(short)((y+m_lVertScrollPos)/tm.tmHeight);
+#if defined(BOB_LINUX)
+	/* S196, from MA note (MA S166): this clamps against m_playerList, which is populated ONLY by
+	   AddPlayerNum -- the multiplayer / player-log screens -- while ROWS come from AddString into
+	   m_list. On every other listbox it therefore answers -1 for any row past the first. The
+	   control's own OnLButtonDown clamps against m_list and is correct: two opinions about "how many
+	   rows do I have" inside one control.
+	   MA could correct it outright because GetRowFromY had no caller in its game tree. HERE IT IS ON
+	   THE PLAYER'S CLICK PATH -- bob_ole_click -> OleHost::rowAtY -> GetRowFromY -- so the symptom
+	   would be "list rows below the first do not select". Measure before changing: report every call
+	   that is about to answer -1 while m_list plainly has rows. */
+	long _rows = 0;
+	for (POSITION _cp = m_list.GetHeadPosition(); _cp; ) {
+		CList<char*,char*>* _col = m_list.GetNext(_cp);
+		if (_col && _col->GetCount() > _rows) _rows = _col->GetCount();
+	}
+	if (getenv("BOB_TRACE_LBROW") && row > m_playerList.GetCount())
+		fprintf(stderr,"[lbrow] y=%ld -> row=%d (playerList=%d, m_list has %ld rows) -> %s\n",
+		        (long)y, (int)row, (int)m_playerList.GetCount(), _rows,
+		        getenv("BOB_LB_PLAYERCLAMP") ? "REJECTED (old clamp)" : (row < _rows ? "kept" : "out of range"));
+	/* MEASURED before the fix, on the Luftwaffe Bases dialog (a 7-row unit list):
+	     [lbrow] y=79 -> row=4 REJECTED (playerList=0, but m_list has 7 rows)
+	     [lbrow] y=61 -> row=3 REJECTED ...   [lbrow] y=43 -> row=2 REJECTED ...
+	   i.e. only row 0 was ever selectable. BOB_LB_PLAYERCLAMP=1 restores the original guard. */
+	if (getenv("BOB_LB_PLAYERCLAMP")) { if (row>m_playerList.GetCount()) row=-1; }
+	else if (row >= _rows) row = -1;      // genuinely beyond the last row
+#else
 	if (row>m_playerList.GetCount()) row=-1; // selected beyond the end
+#endif
 	return row;
 }
 

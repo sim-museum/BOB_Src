@@ -129,6 +129,17 @@ if [ -z "$tb" ]; then echo "  blackTex: NO SAMPLE (run failed?)"
 elif [ "$tb" = "0" ]; then echo "  blackTex=0 — PASS"
 else echo "  blackTex=$tb — FAIL (expected 0; terrain tiles are uploading black)"; fi
 
+# S196: the German Convoys campaign, end to end. It belongs in the DoD set because S192-S195
+# established that EVERY gate above passed while that campaign was broken -- the front end, the
+# modal, a quick-mission flight and the terrain all say nothing about whether a campaign can be
+# started, planned, launched and flown. Nested inside this suite's single lock, like its siblings.
+echo "### GATE 5: German (Luftwaffe) Convoys campaign end to end"
+# absolute path: this suite cd's into the game directory in its subshells, so a $(dirname $0)
+# relative path resolves against whatever the last cd left behind (measured: "No such file").
+bash /home/admin/bob/tools/bob_convoy_campaign.sh 2>&1 | sed 's/^/  /'
+cg=${PIPESTATUS[0]}
+if [ "$cg" = "0" ]; then echo "  campaign: PASS"; else echo "  campaign: FAIL (exit=$cg)"; fi
+
 if [ -n "$BASE" ] && [ -d "$BASE" ]; then
   echo "### GATE 5: A/B vs $BASE"
   python3 - "$BASE" "$OUT" <<'PY'
