@@ -988,7 +988,18 @@ public:
     CWnd* GetLastActivePopup() const { return NULL; }
     /* Front-end needs real window geometry (else it picks resolution 0 and sizes panels to
        nothing). Report the live SDL window size from the video backend (bob_gdi_screen_size). */
-    void GetClientRect(LPRECT r) const { if (r) {
+    /* S197: a HOSTED CONTROL must report ITS OWN rect, not the whole window.
+       The window-sized answer below is right for the front-end panels that need real window
+       geometry, and wrong for every OCX control hosted inside one -- and the controls' own
+       handlers do real work with it. CRSpinButCtrl::OnLButtonDown is the case that exposed it:
+       it rejects any click left of `rect.right-15` (the arrow strip) and picks up-vs-down from
+       `point.y < rect.bottom/2`, so with a 1024x768 rect every spin click was rejected outright,
+       and any that got through would always have meant "down". The Luftwaffe Directives grid is
+       built from ~50 of these, so the player could not change their own orders.
+       Same family as §8-BoB173d, where GetWindowRect returning the whole screen made one open
+       dialog eat every click. Virtual, with the old behaviour as the default, so only hosts that
+       know their drawn rect override it. */
+    virtual void GetClientRect(LPRECT r) const { if (r) {
         int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
     void GetWindowRect(LPRECT r) const { if (r) {
         int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }

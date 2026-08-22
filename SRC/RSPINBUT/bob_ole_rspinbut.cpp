@@ -55,6 +55,32 @@ struct HostRSpinBut : public CRSpinButCtrl, public OleHost {
         if (bob_ole_trace()) fprintf(stderr,
             "[ole] RSpinBut dlg=%d id=%d stream: FontNum=%ld\n", dlgId, ctrlId, (long)m_FontNum);
     }
+    /* S197: report OUR drawn rect, not the whole window (see the note on CWnd::GetClientRect).
+       CRSpinButCtrl::OnLButtonDown measures the arrow strip from `rect.right-15` and picks
+       up-vs-down from `rect.bottom/2`; with the window-sized default every spin click was
+       rejected before it began. */
+    void GetClientRect(LPRECT r) const override {
+        if (!r) return;
+        r->left = r->top = 0;
+        r->right  = sw > 0 ? sw : 16;
+        r->bottom = sh > 0 ? sh : 16;
+    }
+    /* S197 (answering §8-MA111 in the affirmative for this type): a spin button now takes its own
+       click. Drive the control's GENUINE OnLButtonDown -- it owns the arrow-strip test, the
+       up/down split and the repeat timer, and it calls OnTimer itself to apply the change. The
+       host supplies only the geometry that handler asks for, which is what was missing. */
+    int onClickXY(int localX, int localY) override {
+        /* the control's VALUE is m_index into m_list (OnTimer moves that, not m_CurrentValue --
+           which is a separate price/value field). Report both, plus the list size, because an
+           empty list makes both of OnTimer's guards false and the spinner cannot move at all. */
+        long bi = m_index, bv = m_CurrentValue;
+        OnLButtonDown(0, CPoint(localX, localY));
+        if (bob_ole_trace())
+            fprintf(stderr, "[ole] RSpinBut id=%d click local=(%d,%d) rect=%dx%d state=%d list=%d index %ld -> %ld (value %ld -> %ld)\n",
+                    ctrlId, localX, localY, sw, sh, (int)m_SpinState, (int)m_list.GetCount(),
+                    bi, (long)m_index, bv, (long)m_CurrentValue);
+        return (m_index != bi) || (m_CurrentValue != bv);
+    }
     void draw(CDC* pdc, int w, int h) override {
         g_bobListFontH = pdc->m_bobTextH;
         m_bDrawing = FALSE;                  /* trap (1): static, latches if a draw ever bails */

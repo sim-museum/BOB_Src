@@ -504,6 +504,19 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
                cursor and fire its genuine Selected(index) event (dispid 1, VTS_I4) via the
                general eventsink so the dialog's handler runs (e.g. CSQuick1::OnSelectedRradio
                -> QuickMissionParameters -> LaunchDial(QuickParameters), the QS page switch). */
+            /* S197: offer the point to a control that needs BOTH coordinates before the
+               coordinate-free onClick(). The spin button is the case: its arrows are the right
+               ~15px and up-vs-down is decided by Y. */
+            if (h->onClickXY(x - h->sx, y - h->sy)) {
+                CWnd* par = (CWnd*)h->parentDlg;
+                if (par && h->ctrlId) {
+                    bob_evtA0 = h->curIndex(); bob_evtA1 = 0; bob_evtP = 0;
+                    bob_evt_fire((void*)par, &typeid(*par), h->ctrlId, 2 /*TextChanged*/);
+                }
+                if (bob_ole_trace())
+                    fprintf(stderr, "[ole] click (%d,%d) -> ctrl id=%d took it by position\n", x, y, h->ctrlId);
+                return 1;
+            }
             int bn = h->onButtonClick(x - h->sx);
             if (bn >= 0 && h->ctrlId) {
                 bob_evtA0 = bn; bob_evtA1 = 0;

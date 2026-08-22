@@ -22,6 +22,11 @@ struct OleHost {
     virtual void draw(class CDC* pdc, int w, int h) = 0;
     virtual void applyDesignProps() {}   /* set design-time props (e.g. RStatic label caption) once ids are known */
     virtual int  onClick() { return 0; } /* interactive controls (RCombo) cycle on click; return 1 if state changed */
+    /* S197: some controls need WHERE inside themselves they were clicked -- a spin button's arrows
+       are the right ~15px and its up/down halves are decided by Y. onClick() has no coordinates and
+       onButtonClick() has only X, so neither could serve. Offered before onClick(); return 1 if the
+       control's state changed. */
+    virtual int  onClickXY(int /*localX*/, int /*localY*/) { return 0; }
     virtual int  curIndex() { return -1; } /* S161: current selection, for the event's index argument */
     virtual int  rowAtY(int /*localY*/) { return -1; } /* list controls: the row under a click (local Y), or -1 */
     virtual int  colAtX(int /*localX*/) { return 0; }  /* S141: list controls: the COLUMN under a click (local X) */
