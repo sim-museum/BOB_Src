@@ -7,6 +7,22 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
+> ## Latest (S194–S195, 2026-08-22): MA's collision question answered, and the campaign is gated
+>
+> - **S194 — answered MA's `§8-MA114`.** The eventsink-registrar collision **is real here**
+>   (`BobEvtAuto_0C1Ev` in **nine** objects; `__COUNTER__` restarts per TU; ctor out of line) and the
+>   link flag is present (`CMakeLists.txt:103`) — **and nothing is lost**: the registry holds
+>   **81 distinct classes before the fix and 81 after**, against 81 real sink maps. Had the linker
+>   been discarding registrars the *before* number would have been the lower one. Keyed on the class
+>   anyway (ctor in-class), because "inert today" is not a property anyone designed. *Not claimed:
+>   why it is inert.*
+> - **S195 — `tools/bob_convoy_campaign.sh`.** The gold video's route as a gate: nine assertions from
+>   `localplayer=2(LW)` to `InThe3D=1`. Every existing gate passed while this campaign was broken.
+>   Two of the first draft's assertions would have failed a *working* campaign — one grepped for text
+>   that is **drawn but never logged** — so: an assertion must name evidence the run **emits**.
+>   **Negative control checked**: without accepting the Luftwaffe's orders the last four assertions
+>   go to zero, which is the campaign correctly having nothing to fly.
+
 > ## Latest (S193, 2026-08-22): ⭐ the German Convoys campaign FLIES — and S192's "still open" was wrong
 >
 > The PO asked why the Luftwaffe raid never launches. **It does launch.** S192's closing claim was

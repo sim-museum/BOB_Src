@@ -13,6 +13,17 @@ a Quick-Mission cockpit. Requires a healthy GL display session.
 
 Rebuild: `cd /home/admin/bob/build && ninja bob`.
 
+Run the **German Convoys campaign** end to end (S195 — the gold video's own route,
+`~/gold standard/bob/bob_convoy_campaign.mp4`):
+
+```bash
+gl-lock tools/bob_convoy_campaign.sh
+```
+
+Nine assertions from side-select to `InThe3D=1`. Its negative control is documented in the script:
+drop `BOB_MAP_ACCEPTDIR` and the last four go to zero, because an unaccepted set of Luftwaffe
+orders means the campaign genuinely has nothing to fly.
+
 Run the per-sprint DoD gates (one lock acquisition, self-certifying):
 
 ```bash
