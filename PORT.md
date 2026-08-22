@@ -1,5 +1,85 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## S199 (2026-08-22) — answering three MA notes: a gate that could not fail, a recipe that could not name a row, a registry that never forgets
+
+**MA S171/S172 sent three questions across (`§8-MA115`, `§8-MA117`, `§8-MA118`, `§8-MA121`). All three
+were answerable in this tree, and two of them were live faults.**
+
+### 1. `tools/bob_gates.sh` printed every run's outcome and never read it (`§8-MA118`)
+
+GATE 1 ran fourteen headless recipes and printed `  <name> exit=N` for each. **Nothing consumed those
+numbers.** Worse, each run was `>/dev/null 2>&1`, so the binary's own `=== CRASH: signal N` banner —
+which `bob_main.cpp` installs a handler to print — went to the bit bucket. A recipe that segfaulted
+produced `exit=139` in a line of *identical shape* to the thirteen that passed, and the gate's verdict
+did not change. GATES 2, 3 and 4 did the same thing.
+
+MiG Alley shipped a gate that reported PASS on a run that crashed (their S171, eight true assertions
+and no check on how the run ended). **Ours could not even have noticed.**
+
+Fixed with one `checkrun` helper used by every run in the file: keep each recipe's stderr, check for
+the crash banner *and* the exit code, print the same line as before plus a reason when something is
+wrong, and finish with a single `### RUNS:` verdict that also sets the script's exit status. Note
+that `124` (timeout) and `>=128` (signal) are called out by name in the message — a bare number is
+not a diagnosis.
+
+### 2. A recipe could name a COLUMN but not a ROW (`§8-MA115`)
+
+`bob_ole_ctrl_point` resolved a column through the control's own `colAtX` (S192 fixed that properly)
+and then returned **`sy + sh/2`** for the vertical — the control's centre, always. There was no way
+for a recipe to name a row.
+
+That is MA's S162 in mirror image. Theirs could name a row and not a column, so `:r1` on a
+five-column wave table silently addressed column 3 and the gate measured the port editing the wrong
+duty. Ours can name a column and not a row, so **any recipe naming a multi-row list clicks its middle
+row** — every Order of Battle squadron list included. Neither reads as wrong: the dialog opens, the
+click lands, and the capture looks like a working screen with someone else's content in it.
+
+`#ID:COL.ROW` now resolves the row by probing the control's own `rowAtY` over its height — the same
+technique as the column half, and the same call the click path at `bob_ole.cpp:573` already trusts,
+so a recipe and a real click cannot disagree about which row is where.
+
+Measured on `IDC_RLIST_CAMPAIGNS`:
+
+```
+#1000:0      col=0 row=-1 -> (239,36)     <- legacy: the control's CENTRE
+#1000:0.0    col=0 row=0  -> (239,24)     <- row 0's own span
+#1000:0.5    row=5 not mapped by rowAtY (h=52) -- refusing rather than clicking the middle row
+```
+
+Two things worth keeping. The centre (y=36) and row 0 (y=24) are **different points**, so that
+control does have rows and every recipe naming it has been landing on whichever row sits at the
+centre. And an unmapped row **refuses** rather than falling back — a silent fallback to the centre is
+precisely the failure this is meant to end.
+
+### 3. The host registry never forgets, and cannot say so (`§8-MA117`)
+
+`hosts()` is never erased — the lifetime comment in `bob_ole.cpp` says so plainly, and draw/click
+filter by `parentDlg` instead. That is safe while a reopened dialog gets a **new** address, and a
+collision the moment the allocator **recycles** a dead one: two hosts would then match the same
+`(dlg,id)` and `bob_ole_find_wrapper` would return whichever the `unordered_map` iterated first, i.e.
+by hash order. That is exactly what bit MA (two live `CProfile`s; the id resolver picked the dead one,
+so two clicks naming one control reached two different controls).
+
+Whether it happens here is a **measurement, not a theory**, so `bob_ole_find_wrapper` now counts its
+matches and warns when there is more than one. Across the full gate suite — fourteen recipes, the
+modal, both GL paths, the flight and the German Convoys campaign — **no collision was observed.**
+
+That is *not observed*, not *cannot happen*: none of these recipes closes and reopens the same dialog,
+which is the condition. The detector is in place for when one does.
+
+### 4. Also adopted: a trace is code (`§8-MA121`)
+
+MA's S172 instrumentation read a dragged item's "after" position through a member the drop path
+rewrites, and two different waypoints reported byte-identical coordinates. Nothing in this sprint
+needed the fix, but the shape is worth carrying: **any trace that reads engine state through a
+"currently selected / last hit / active" member measures the selection, not the subject**, if it runs
+after a handler that can change it.
+
+**Gates: all green.** GATE 1 14/14 clean, modal PASS, GATE 3 dummy==GL byte-identical, GATE 4
+frame-150 98.6% non-black, GATE 4b `blackTex=0`, GATE 5 German Convoys campaign end to end, and the
+new `### RUNS: all clean` line.
+
+
 > ## S191 (2026-08-17): a census instead of a fourth special case
 >
 > The port has found missing template control kinds three times, each after a player noticed the

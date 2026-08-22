@@ -48,9 +48,31 @@ static OleHost* findHost(CWnd* w) { auto& m = hosts(); auto it = m.find(w); retu
    reach the hosted control -- the config's SG2C_DISPLAY populate pass does
    GetDlgItem(IDC_CBO_x)->SetList/SetIndex to fill each combo. */
 extern "C" CWnd* bob_ole_find_wrapper(CWnd* dlg, int id) {
+    /* S199 (answering MA note MA117): hosts are never erased -- see the lifetime comment
+       below -- so a dialog that is destroyed and reopened leaves its old entries behind with
+       a dangling parentDlg. That is harmless while the new dialog gets a NEW address, and a
+       collision the moment the allocator RECYCLES the old one: two hosts would then match the
+       same (dlg,id) and this function would return whichever the unordered_map happens to
+       iterate first -- i.e. by hash order. MiG Alley hit exactly this (its S171): two live
+       copies of one dialog, and the id resolver picked the DEAD one, so two clicks naming one
+       control reached two different controls.
+       Whether it happens here is a MEASUREMENT, not a theory -- so measure it. Counting is
+       cheap next to the draw walk, and a silent wrong-control is exactly the failure this
+       port keeps rediscovering. */
+    CWnd* found = NULL;
+    int n = 0;
     for (auto& kv : hosts())
-        if (kv.second->parentDlg == dlg && kv.second->ctrlId == id) return kv.first;
-    return NULL;
+        if (kv.second->parentDlg == dlg && kv.second->ctrlId == id) { if (!n) found = kv.first; n++; }
+    if (n > 1) {
+        static int warned = 0;
+        if (warned < 20) {
+            warned++;
+            fprintf(stderr, "[ole] WARNING dlg=%p id=%d matches %d hosts -- a reopened dialog "
+                            "reused a dead one's address; the wrapper returned is hash-order "
+                            "luck (see MA117)\n", (void*)dlg, id, n);
+        }
+    }
+    return found;
 }
 
 extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* parent, UINT id) {
@@ -574,7 +596,22 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
    port's `f,#ID[:COL]` recipe grammar (MA S62/S63): fixed pixel coordinates in test recipes
    silently break the moment a font or layout change moves a row, and they broke MA's entire
    regression gate at once. Returns 1 and fills (*px,*py) if the control is drawn. */
+/* S199 (answering MA note MA115): this resolved a COLUMN and always returned the control's
+   vertical CENTRE -- there was no way for a recipe to name a ROW. That is MA's S162 failure in
+   mirror image: their recipes could name a row and not a column, so `:r1` on a five-column
+   wave table silently addressed column 3; ours can name a column and not a row, so any recipe
+   naming a multi-row list (every Order of Battle squadron list) silently clicks its MIDDLE
+   ROW. Neither reads as wrong: the dialog opens, the click lands, the capture looks right and
+   the content is someone else's.
+   Recipe form `#ID:COL.ROW` (e.g. `#1000:0.3`); `#ID:COL` keeps the centre row as before.
+   Resolved by probing the control's OWN rowAtY over its height -- the same technique the
+   column half uses with colAtX, and the same one the click path already trusts (line ~573),
+   so a recipe and a real click cannot disagree about which row is where. */
+extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int* px, int* py);
 extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py) {
+    return bob_ole_ctrl_point_rc(dialog, id, col, -1, px, py);
+}
+extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int* px, int* py) {
     for (auto& kv : hosts()) {
         OleHost* h = kv.second;
         if (h->ctrlId != id) continue;
@@ -605,10 +642,25 @@ extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* p
             if (start < 0) return 0;                     /* no such column */
             lx = (start + end) / 2;
         }
+        int ly = h->sh / 2;
+        if (row >= 0) {                              /* S199: find the row's vertical span */
+            int rstart = -1, rend = -1;
+            for (int t = 0; t < h->sh; t++) {
+                if (h->rowAtY(t) == row) { if (rstart < 0) rstart = t; rend = t; }
+                else if (rstart >= 0) break;
+            }
+            if (rstart < 0) {
+                if (bob_ole_trace())
+                    fprintf(stderr, "[ole] ctrl_point id=%d row=%d not mapped by rowAtY (h=%d) "
+                                    "-- refusing rather than clicking the middle row\n", id, row, h->sh);
+                return 0;
+            }
+            ly = (rstart + rend) / 2;
+        }
         if (px) *px = h->sx + lx;
-        if (py) *py = h->sy + h->sh / 2;
-        if (bob_ole_trace()) fprintf(stderr, "[ole] ctrl_point id=%d col=%d -> (%d,%d) rect=(%d,%d,%d,%d)\n",
-            id, col, h->sx + lx, h->sy + h->sh / 2, h->sx, h->sy, h->sw, h->sh);
+        if (py) *py = h->sy + ly;
+        if (bob_ole_trace()) fprintf(stderr, "[ole] ctrl_point id=%d col=%d row=%d -> (%d,%d) rect=(%d,%d,%d,%d)\n",
+            id, col, row, h->sx + lx, h->sy + ly, h->sx, h->sy, h->sw, h->sh);
         return 1;
     }
     return 0;

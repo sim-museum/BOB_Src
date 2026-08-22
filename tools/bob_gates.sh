@@ -32,10 +32,36 @@ echo "### binary $BOB md5=$HASH_BEFORE"
 cd "$GD" || exit 1
 E="BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy"
 
+# S199 (answering MA note MA118): this sweep PRINTED `exit=N` for all 14 recipes and NOTHING
+# EVER READ THEM -- and stderr went to /dev/null, so the binary's own "=== CRASH: signal N"
+# banner was discarded too. A recipe that segfaulted printed `exit=139` in a line of identical
+# shape to the thirteen that passed, and the gate's verdict did not change. MiG Alley shipped
+# a gate that reported PASS on a run that crashed (its S171); this one could not even have
+# noticed. Keep each recipe's stderr, assert the exit code, and say which one failed.
+# S199: one checker for every run in this file. `exit=N` printed and never read was not a
+# GATE 1 problem -- GATES 2, 3 and 4 did the same. Prints the same "<label> exit=N" line the
+# old code did (other tooling reads it), appends a reason only when something is wrong, and
+# counts it. Pass the stderr file so a crash banner survives /dev/null.
+gates_fail=0
+checkrun() {   # $1 = label, $2 = rc, $3 = stderr file (may be missing)
+  local label="$1" rc="$2" errf="${3:-}" note=""
+  if [ -n "$errf" ] && [ -s "$errf" ] && grep -aq "=== CRASH: signal" "$errf"; then
+    note="  <-- CRASHED: $(grep -a '=== CRASH: signal' "$errf" | head -1 | sed 's/^=== //;s/ ===$//')"
+    gates_fail=$((gates_fail+1))
+  elif [ "$rc" -ne 0 ]; then
+    note="  <-- FAIL (exit $rc$([ "$rc" -ge 124 ] && echo '; 124=timeout, >=128=signal'))"
+    gates_fail=$((gates_fail+1))
+  fi
+  echo "  $label exit=$rc$note"
+}
 echo "### GATE 1: 14-recipe headless sweep"
+g1_fail=0
 run() { local name="$1"; local shot="$2"; shift 2
-  timeout -k 5 240 env $E "$@" BOB_SHOT="$shot" BOB_SHOT_PATH="$OUT/$name.ppm" "$BOB" >/dev/null 2>&1
-  echo "  $name exit=$?"; }
+  timeout -k 5 240 env $E "$@" BOB_SHOT="$shot" BOB_SHOT_PATH="$OUT/$name.ppm" "$BOB" \
+      >"$OUT/$name.out" 2>"$OUT/$name.err"
+  local rc=$? before=$gates_fail
+  checkrun "$name" "$rc" "$OUT/$name.err"
+  [ "$gates_fail" -ne "$before" ] && g1_fail=$((g1_fail+1)); return 0; }
 run mainmenu       40
 run config-gfx     70 BOB_CONFIGSCREEN=gfx
 run config-gfx2    70 BOB_CONFIGSCREEN=gfx2
@@ -50,6 +76,8 @@ run sideselect    250 BOB_AUTOCLICK=1
 run phaseselect   380 BOB_AUTOCLICK=1,1
 run entername     520 BOB_AUTOCLICK=1,1,1
 run bobfrag       120 BOB_BOBFRAG=1
+if [ "$g1_fail" -eq 0 ]; then echo "  GATE 1: PASS (14/14 clean exits, no crash banners)"
+else echo "  GATE 1: FAIL ($g1_fail of 14 recipes crashed or exited non-zero)"; fi
 
 # ── GATE 1c (S165): the game's own confirmation box answers what the player clicked ────────────
 # CDialog::DoModal was `return -1` and EndDialog a no-op, so RDialog::RMessageBox always reported
@@ -87,21 +115,21 @@ done
 [ $modal_ok -eq 1 ] && echo "  modal: PASS" || echo "  modal: FAIL"
 
 echo "### GATE 2: safe default (BOB_NO_RUN)"
-timeout -k 5 120 env BOB_NO_RUN=1 "$BOB" >/dev/null 2>&1; echo "  default exit=$?"
+timeout -k 5 120 env BOB_NO_RUN=1 "$BOB" >/dev/null 2>"$OUT/default.err"; checkrun default $? "$OUT/default.err"
 
 echo "### GATE 3: phase select dummy vs real GL"
 timeout -k 5 300 env $E BOB_AUTOCLICK=1,1,#1000:1 BOB_SHOT=520 \
-  BOB_SHOT_PATH="$OUT/gl_dummy.ppm" "$BOB" >/dev/null 2>&1; echo "  dummy exit=$?"
+  BOB_SHOT_PATH="$OUT/gl_dummy.ppm" "$BOB" >/dev/null 2>"$OUT/gl_dummy.err"; checkrun dummy $? "$OUT/gl_dummy.err"
 timeout -k 5 300 env DISPLAY=:0 BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
-  BOB_AUTOCLICK=1,1,#1000:1 BOB_SHOT=520 BOB_SHOT_PATH="$OUT/gl_real.ppm" "$BOB" >/dev/null 2>&1
-echo "  realGL exit=$?"
+  BOB_AUTOCLICK=1,1,#1000:1 BOB_SHOT=520 BOB_SHOT_PATH="$OUT/gl_real.ppm" "$BOB" >/dev/null 2>"$OUT/gl_real.err"
+checkrun realGL $? "$OUT/gl_real.err"
 cmp -s "$OUT/gl_dummy.ppm" "$OUT/gl_real.ppm" && echo "  dummy==GL BYTE-IDENTICAL" || echo "  dummy!=GL DIFFERS"
 
 echo "### GATE 4: flight frame-150 (real GL)"
 rm -f "$OUT/flight.ppm"
 timeout -k 5 300 env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_DUMP_FRAME=150 \
-  BOB_DUMP_PATH="$OUT/flight.ppm" BOB_EXIT_AFTER_DUMP=1 "$BOB" >/dev/null 2>&1
-echo "  flight exit=$?"
+  BOB_DUMP_PATH="$OUT/flight.ppm" BOB_EXIT_AFTER_DUMP=1 "$BOB" >/dev/null 2>"$OUT/flight.err"
+checkrun flight $? "$OUT/flight.err"
 python3 - "$OUT/flight.ppm" <<'PY'
 import sys
 try:
@@ -171,4 +199,10 @@ if [ "$HASH_BEFORE" != "$HASH_AFTER" ]; then
   exit 2
 fi
 echo "### binary unchanged (md5=$HASH_AFTER) — gate valid"
+# S199: one line that says whether ANY run in this file crashed or exited non-zero. Without it
+# the outcome of every run was printed and never judged, so a crashed recipe looked like a
+# passing one unless a human read the numbers.
+if [ "$gates_fail" -eq 0 ]; then echo "### RUNS: all clean (no crashes, no non-zero exits)"
+else echo "### RUNS: $gates_fail run(s) CRASHED or exited non-zero — see the notes above"; fi
 echo "### DONE"
+[ "$gates_fail" -eq 0 ] || exit 1

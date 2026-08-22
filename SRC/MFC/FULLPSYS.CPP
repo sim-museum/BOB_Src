@@ -179,6 +179,7 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy);
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
 extern "C" int bob_ole_ctrl_point(CWnd* dialog, int id, int col, int* px, int* py);  /* S141 */
+extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int* px, int* py);  /* S199 */
 extern "C" void bob_ole_dump_template_membership(int dlgId);  /* S146 (SP.8 probe) */
 extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog);       /* S160: hit-test target dump */
 extern "C" void bob_gdi_restore_mode(void);                   /* S162: back to the front-end mode */
@@ -1428,15 +1429,22 @@ extern "C" void bob_frontend_tick(void)
 			   Attack), and it follows MA S62/S63's rule that a drive recipe must never
 			   encode fixed pixels. */
 			if (p && *p=='#') {
-				int cid = atoi(p+1), ccol = 0;
+				/* S199: `#ID:COL` gained an optional `.ROW` -- `#ID:COL.ROW`. Without it a recipe
+				   naming a multi-row list clicked its MIDDLE ROW and looked correct (MA note MA115,
+				   their S162 in mirror image: they could name a row and not a column). */
+				int cid = atoi(p+1), ccol = 0, crow = -1;
 				const char* c = strchr(p+1, ':');
-				if (c && (!strchr(p,',') || c < strchr(p,','))) ccol = atoi(c+1);
+				if (c && (!strchr(p,',') || c < strchr(p,','))) {
+					ccol = atoi(c+1);
+					const char* dot = strchr(c+1, '.');
+					if (dot && (!strchr(p,',') || dot < strchr(p,','))) crow = atoi(dot+1);
+				}
 				for (int d=0; d<3 && !got; d++) {
 					RDialog* pd = g_bobActiveFP->pdial[d];
-					if (pd && bob_ole_ctrl_point((CWnd*)pd, cid, ccol, &cx, &cy)) got=true;
+					if (pd && bob_ole_ctrl_point_rc((CWnd*)pd, cid, ccol, crow, &cx, &cy)) got=true;
 				}
-				if (got) { seq++; fprintf(stderr,"[frontend] autoclick step #%d:%d -> (%d,%d)\n", cid, ccol, cx, cy); }
-				else fprintf(stderr,"[frontend] autoclick step #%d:%d -- control not drawn yet, retrying\n", cid, ccol);
+				if (got) { seq++; fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -> (%d,%d)\n", cid, ccol, crow, cx, cy); }
+				else fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -- control not drawn yet (or no such row), retrying\n", cid, ccol, crow);
 			}
 			else if (p && *p) {
 				int n=atoi(p);

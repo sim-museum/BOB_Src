@@ -3588,11 +3588,13 @@ MA's, and MA's later S94 correction found the opposite again in a different file
 | §8-BoB194 | answering MA114: the before/after count, not the symbol table, settles a "do you have this too?" | **adopted (process), MA S170** — the rule was applied to this sprint's own first result: the spinner "not moving" was read as a broken host until the LIST COUNT (2 entries, index at maximum) showed the control refusing correctly. A delivered click is not a working control. | origin (fixed S194) |
 | §8-BoB196 | ⭐ MA's S166 listbox clamp is LIVE in BoB on the real click path; and RSPINBUT drawn-and-inert | **half N/A, half worse — MA S170.** MA's spin type was not drawn-and-inert, it was **never hosted at all**: no CLSID branch, so every `InvokeHelper` was a silent no-op. Hosted in S170. The clamp half stands as fixed in S166. | origin (fixed S196) |
 | §8-BoB197 | ⭐ a shared accessor on a per-window object lies to every control (`GetClientRect`) — **and MA hosts no spin type at all, which its own EPIC K step 8 needs** | **applied S170.** Accessor half stays N/A (MA's `CWnd::GetClientRect` already reads the per-window `m_maW/m_maH`, re-checked). Spin half **fixed**: `ma_olespin.cpp` hosts RSpinBut, and EPIC K step 8 now runs end to end (Mission Folder Flights 2→3). BoB's warning that a spinner at its limit refuses correctly is what stopped MA publishing a wrong cause. | origin (fixed S197) |
-| §8-MA115 | ⭐ a recipe that addresses a ROW addresses a CELL — and picks the middle column | origin (fixed S170) | *awaiting — does a BoB recipe name a column?* |
+| §8-MA115 | ⭐ a recipe that addresses a ROW addresses a CELL — and picks the middle column | origin (fixed S170) | **CONFIRMED IN MIRROR IMAGE, BoB S199.** BoB could name a COLUMN and not a ROW: `bob_ole_ctrl_point` always returned `sy + sh/2`, so any recipe naming a multi-row list clicked its middle row. `#ID:COL.ROW` added, resolved through the control's own `rowAtY`; an unmapped row REFUSES rather than falling back to the centre. Measured: `#1000:0` → y=36 (centre), `#1000:0.0` → y=24 (row 0) — different points, so that control has rows and every prior recipe landed on whichever sat at the centre. |
 | §8-MA116 | the click-type filter is an allowlist — four silent failures now (S87/S140/S163/S170) | origin (S170) | *awaiting — answered in advance by §8-BoB196 (type-agnostic walk); confirm* |
-| §8-MA117 | ⭐ a teardown destroys a SUBTREE; the registry lost exactly one window (two live copies of one dialog) | origin (fixed S171) | *awaiting — close+reopen one OOB dialog and count hosts for a known id* |
-| §8-MA118 | ⭐ a gate reported PASS on a run that SEGFAULTED — assert on how the run ENDED | origin (fixed S171) | *awaiting — does a thread crash change `exit=` in bob_gates.sh?* |
+| §8-MA117 | ⭐ a teardown destroys a SUBTREE; the registry lost exactly one window (two live copies of one dialog) | origin (fixed S171) | **LATENT, DETECTOR ADDED, BoB S199.** BoB's `hosts()` is never erased BY DESIGN (draw/click filter by `parentDlg`), which is safe until the allocator RECYCLES a dead dialog's address — then two hosts match one `(dlg,id)` and `find_wrapper` returns by hash order. `bob_ole_find_wrapper` now counts matches and warns. **No collision observed** across the full suite — but none of those recipes closes and reopens a dialog, so this is *not observed*, not *cannot happen*. |
+| §8-MA118 | ⭐ a gate reported PASS on a run that SEGFAULTED — assert on how the run ENDED | origin (fixed S171) | **WORSE HERE, FIXED BoB S199.** `bob_gates.sh` PRINTED `exit=N` for all 14 GATE-1 recipes and **nothing ever read them**; stderr went to `/dev/null` so the crash banner was discarded too. GATES 2/3/4 the same. One `checkrun` helper now checks banner + exit code for every run and the script ends with a `### RUNS:` verdict that sets its exit status. |
 | §8-MA119 | the same engine file a year apart: BoB already carries the empty-list fix MA lacks (`RDH 29/10/99`) | origin (fixed S171, host-side) | **N/A for BoB — already fixed in BoB's game source**; the transferable half is *read the other port's copy before theorising* |
+| §8-MA120 | ⭐ a workaround's comment records the hazard as it was THAT DAY — re-check before designing around it | origin (S172) | *awaiting — both trees are full of dated avoidance notes* |
+| §8-MA121 | ⭐ a trace is code; prefer oracles that can be IMPOSSIBLE, not merely wrong | origin (fixed S172) | **adopted as a rule, BoB S199** — no instance found needing the fix this sprint; recorded so any future trace reading through a "currently selected / last hit" member is written against it. |
 
 **Rows marked *not yet assessed* are MA's own debt** and are named rather than quietly omitted —
 that is the whole point of the table. They are the top of MA's next cross-port slot.
@@ -4101,3 +4103,59 @@ Two things generalise:
    sprint's residual as "never driven", and drawn empty by the global paint pass. A commented-out
    `ASSERT` in shipped 1999 code is a **map of the preconditions nobody checks at runtime**; grep
    for them when you first host a type.
+
+## §8-MA120 — ⭐ a workaround's comment records the hazard as it was THAT DAY **[ENGINE]**
+
+**MA S172.** MiG Alley's map clicks were driven by calling the map dialog's own handlers — down and
+up **in the same tick** — with a comment explaining exactly why:
+
+> *Down+Up in the same tick keeps `m_bDragging` FALSE, which also avoids `CMapDlg::OnMouseMove` — it
+> dereferences `GetDC()` unchecked.*
+
+That was accurate when written (S95). By the time a story needed real dragging, compat's
+`CWnd::GetDC` had grown a real static `CDC` and the hazard no longer existed — so the engine's entire
+press-move-release chain (`OnMouseMove` recomputing the dragged item's world position, `OnDragItem`
+clamping it into the theatre and recalculating the route and fuel) had been sitting intact and
+unreachable for seventy sprints.
+
+The workaround was correct, well-commented, and by then unnecessary. Nothing announced that.
+
+**The rule: when a story finally needs the path a workaround was written to avoid, re-check the
+hazard before designing around it.** A dated note explaining why something is avoided is evidence
+about the past, not a standing property of the code. Both these ports are full of them.
+
+Cheap discipline: when a workaround's stated hazard is a *specific* call (`X derefs Y unchecked`),
+that is a one-line grep to re-validate, and it is worth doing before building anything on top of the
+avoidance.
+
+## §8-MA121 — ⭐ a trace is code, and it can be wrong in a way the thing it measures cannot **[PROCESS]**
+
+**MA S172.** Instrumenting waypoint drags, the "after" world position was read back through the
+dialog's `m_buttonid` member. But the drop path (`OnLButtonUp` → `OnDragItem` → recalc → repaint) is
+free to change that member, so the **second** drag reported the **first** waypoint's coordinates:
+
+```
+released ... world (72208160,57594405) -> (71183770,59535093)   <- Initial Point
+released ... world (57230421,58018282) -> (71183770,59535093)   <- Egress
+```
+
+Two different waypoints, **byte-identical** final coordinates. The drags were correct; the
+measurement was not.
+
+It was caught only because the collision was *impossible* rather than merely surprising. Had the
+stale read produced a plausible number — a nearby waypoint, a slightly-off delta — it would have gone
+into the gate as the oracle, and the gate would then have asserted the instrument's bug forever.
+
+Two things generalise:
+
+1. **Read the subject through a handle you captured, not through a member the operation may rewrite.**
+   Capture the uid/pointer *before* the operation and use it afterwards.
+2. **Prefer oracles that can be impossible, not merely wrong.** Two independent items reporting the
+   same value, a count that exceeds its own maximum, a percentage over 100 — these announce
+   themselves. This port's own history is mostly the other kind: S164 compared counts to answer a set
+   question, S192 read a zeroed instance count as "never launched", S171 read a truncated recipe as
+   "the values never changed". Each was plausible.
+
+**For BoB:** the same shape applies to any trace that reads engine state through a "currently
+selected / last hit / active" member — `m_buttonid`, hover ids, current-page indices. If the trace
+runs after a handler that can change the selection, it is measuring the selection, not the subject.
