@@ -7,6 +7,45 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
+> ## Latest (S193, 2026-08-22): ⭐ the German Convoys campaign FLIES — and S192's "still open" was wrong
+>
+> The PO asked why the Luftwaffe raid never launches. **It does launch.** S192's closing claim was
+> wrong and this corrects it.
+>
+> The Convoys raid is planned, launches on time, flies and completes:
+> `[saguid] squad sn=42 uid=4608 -> instance=4608` (groups created with **live** uids) ·
+> `[fuel] pack 6 sq 0 actype=8 checked CalcFuel=1` (Ju87s pass the fuel gate; the Me109 escort is
+> exempt by `AcType`) · `takeoff=28300` = **07:51**.
+>
+> What I had been looking at afterwards was the **wreckage of a completed sortie**.
+> `Profile::PackageComplete()` sets `PS_COMPLETE` and **zeroes every squadron's `instance`**
+> (`PACKAGES.CPP:5324`) — so a finished raid is indistinguishable from one that never flew if all you
+> read is `instance == 0`. With a fast map clock and a late scan start, the campaign ran the whole
+> sortie before the first scan, so every scan saw a corpse.
+>
+> Scanning from the start with a slower clock (`BOB_CAMPAIGN_FLY=30 BOB_MAP_TIMER=8`):
+> `LaunchFullPane(bobfrag)` → `StartFlying` → **`Launch3d done; InThe3D=1`**, and the real-GL capture
+> is a **Bf 109 cockpit over the Channel** — Revi gunsight, `Alt 6996ft Hdg 254 Speed 167Kts` —
+> gold's t≈87 frame.
+>
+> **The German Convoys campaign works end to end, matching gold at every step:** Luftwaffe → Convoys
+> (10th July – August 11th) → Begin → strategic map → **Luftwaffe Directives** (Convoys: 3 Ju87 +
+> Me109/Me110) → accept → raid launches → briefing → Fly → cockpit.
+>
+> **The lesson:** `instance == 0` means "no air group", and **two opposite histories produce it** —
+> not yet launched, and already finished. One number was read and the wrong history inferred. The fix
+> was to print the state that *distinguishes* them (`status=PS_COMPLETE`, takeoff time in the **past**)
+> rather than the single flag. *A value that several histories share cannot answer a question about
+> history.*
+>
+> New default-off diagnostics: `BOB_TRACE_SAGUID` (the uid each air group gets at creation — proves a
+> later zero is a **clearing**, not a failure) and `BOB_TRACE_FUEL` (the takeoff decision: AcType, the
+> Me109 exemption, `CalcFuel`'s verdict). The campfly scan now prints each package's per-squadron
+> takeoff time as future/**PAST**/unset, which is what made the corpse visible as a corpse.
+>
+> Gates: full suite — 14-recipe sweep all `exit=0`, modal PASS, phase select **dummy==GL
+> byte-identical**, flight frame-150 98.7 % non-black, `blackTex=0`, binary hash verified.
+
 > ## Latest (S192, 2026-08-22): the German convoy campaign — two fixes, and the blocker named
 >
 > The PO asked for the **Convoys** campaign to be run for the **German** side against the new gold
