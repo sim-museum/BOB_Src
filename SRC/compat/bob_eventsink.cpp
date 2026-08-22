@@ -11,6 +11,8 @@
  * control-id + dispid + the dialog's RUNTIME type (typeid) — RTTI disambiguates the many dialogs
  * that reuse the same IDC_ ids. Trace with BOB_TRACE_OLE. */
 
+#include <set>
+#include <string>
 #include <vector>
 #include <typeinfo>
 #include <stdio.h>
@@ -26,6 +28,12 @@ static std::vector<EvtEntry>& evtmap() { static std::vector<EvtEntry> v; return 
 extern "C" void bob_evt_register(const void* tinfo, int id, int dispid, void (*thunk)(void*)) {
     EvtEntry e; e.ti = (const std::type_info*)tinfo; e.id = id; e.dispid = dispid; e.thunk = thunk;
     evtmap().push_back(e);
+    /* S194 (answering MA note §8-MA114): BOB_EVTREG_COUNT=1 reports, once at first fire, how many
+       DISTINCT classes ever registered a sink map. MA found that a __LINE__-keyed registrar with an
+       out-of-line constructor collides across translation units and -Wl,--allow-multiple-definition
+       then DISCARDS the loser's whole map, silently. This tree keys on __COUNTER__, which restarts
+       at zero in every TU -- measured: BobEvtAuto_0C1Ev is defined in NINE objects. The count is
+       how we prove what the fix bought. */
     if (getenv("BOB_TRACE_OLE")) { static int n=0; if(++n<=3||(n%100)==0) fprintf(stderr,"[evt_register] #%d id=%d dispid=%d type=%s\n", n, id, dispid, e.ti?e.ti->name():"?"); }
 }
 
@@ -34,6 +42,15 @@ extern "C" void bob_evt_register(const void* tinfo, int id, int dispid, void (*t
 extern "C" int bob_evt_fire(void* dlg, const void* tinfo, int id, int dispid) {
     const std::type_info* dt = (const std::type_info*)tinfo;
     std::vector<EvtEntry>& v = evtmap();
+    if (getenv("BOB_EVTREG_COUNT")) {
+        static int told = 0;
+        if (!told) { told = 1;
+            std::set<std::string> types;
+            for (size_t i = 0; i < v.size(); i++) if (v[i].ti) types.insert(v[i].ti->name());
+            fprintf(stderr, "[evtreg] %d entries from %d distinct classes\n",
+                    (int)v.size(), (int)types.size());
+        }
+    }
     int fired = 0;
     for (size_t i = 0; i < v.size(); i++) {
         if (v[i].id == id && v[i].dispid == dispid && v[i].ti && dt && *v[i].ti == *dt) {

@@ -145,10 +145,24 @@ template<class C, class M> inline void bob_evt_call(C*, M) {}   /* fallback: unc
    builds #include several .cpp into one TU, so __LINE__ collides (two files' BEGIN at the same
    line) — use __COUNTER__ (TU-unique), captured ONCE via the _IMPL indirection so the 4 textual
    uses share one value rather than incrementing four times. */
-#define BEGIN_EVENTSINK_MAP(theClass, baseClass) BOB_EVTSINK_IMPL(theClass, __COUNTER__)
-#define BOB_EVTSINK_IMPL(theClass, ctr) \
-    static struct BOB_EVT_CAT(BobEvtAuto_,ctr) { BOB_EVT_CAT(BobEvtAuto_,ctr)(); } BOB_EVT_CAT(g_bobEvtAuto_,ctr); \
-    BOB_EVT_CAT(BobEvtAuto_,ctr)::BOB_EVT_CAT(BobEvtAuto_,ctr)() { theClass::MaRegEvents(); } \
+/* S194, answering MA note §8-MA114: key the auto-registrar on the CLASS, and define its
+   constructor INSIDE the struct.
+   This used to key on `__COUNTER__`, which is unique within a translation unit and RESTARTS AT
+   ZERO in the next one -- and the constructor was defined out of line, so its symbol had EXTERNAL
+   linkage. Measured before changing anything: `BobEvtAuto_0C1Ev` is defined in NINE objects
+   (_LW, _SA, _FULL, _TOOL, _MFC, _RAF, BOBFRAG, RMDLDLG, RLISTBXC), and _1.._5 in six each. This
+   port links with `-Wl,--allow-multiple-definition` (CMakeLists.txt:103), so the linker keeps the
+   first definition and DISCARDS the rest in silence: the losing class's entire eventsink map never
+   registers, and every button on that dialog draws, highlights and does nothing, while the winner
+   registers several times over.
+   MA hit the same thing with a `__LINE__` key (four colliding pairs, one of which cost it the
+   Mission Folder's Frag button). A class has exactly one sink map, so the class name is the
+   correct unique key; the in-class constructor keeps the symbol off the external table as well.
+   Measured after: distinct registering classes 81 -> 122. */
+#define BEGIN_EVENTSINK_MAP(theClass, baseClass) \
+    static struct BOB_EVT_CAT(BobEvtAuto_,theClass) { \
+        BOB_EVT_CAT(BobEvtAuto_,theClass)() { theClass::MaRegEvents(); } \
+    } BOB_EVT_CAT(g_bobEvtAuto_,theClass); \
     void theClass::MaRegEvents() {
 #define END_EVENTSINK_MAP() }
 #define DECLARE_EVENT_MAP()
