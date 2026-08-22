@@ -7,6 +7,40 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
+> ## Latest (S192, 2026-08-22): the German convoy campaign — two fixes, and the blocker named
+>
+> The PO asked for the **Convoys** campaign to be run for the **German** side against the new gold
+> video (`~/gold standard/bob/bob_convoy_campaign.mp4`, 185 s) and fixed where it diverges.
+>
+> **Confirmed against gold, step by step:** side select → **Luftwaffe** (t≈16) · phase select →
+> **Convoys** (t≈18) · Begin → *"Commander Bob / Luftwaffe Convoys / 10th July - August 11th"* ·
+> strategic map at **10 July 06:30** with sectors and the LW toolbars · **Luftwaffe Directives**
+> with **Convoys: 3 Ju87 + Me109/Me110 escort** (t≈63) · accept → a raid package exists ·
+> briefing → Fly → `Launch3d`.
+>
+> | Fix | What |
+> |---|---|
+> | **1** | **The phase selector could not address column 0**, so a recipe asking for *Convoys* silently selected *Critical Period*. `bob_ole_ctrl_point` decided "is this multi-column" from the control's **rightmost pixel only**; that bar answers 0 there, so the span search was skipped and the click went to the control's **centre**. The capture looked like a working screen with the wrong content in it. Now the test probes the whole width. |
+> | **2** | **The campaign-fly scaffold committed to a Luftwaffe package that had not taken off**, and the flight died with `*** FATAL: Cant remove seenac`. A package is only flyable once a squadron has spawned (`instance != 0`); the enemy-raid branch always checked this, the player's-own branch never did — harmless for the RAF (its package is an interception just authorised, live by construction), fatal for the LW (raids sit on the ground until takeoff). `hisquad` was also hardcoded to 0. |
+>
+> **A/B that settled it** — same campaign, same scaffold, same binary: RAF → `Launch3d done; InThe3D=1`;
+> LW → `FATAL`. And at the guard itself: RAF `expandedsag=167062832` (non-zero, so it short-circuits),
+> LW `formpos=0 expandedsag=0` — all three terms fail.
+>
+> **⚠ Still open, and it is what stops the campaign short of gold's cockpit:** as the Luftwaffe the day
+> produces **one** package from the **three** Convoy missions the directives allocate, and its squadron
+> **never launches** — `own=-1` on every scan from 06:30 to 21:00, then the day rolls. The RAF side of
+> the same campaign reaches `InThe3D=1`, so this is **Luftwaffe-specific**, and it is not scaffold
+> timing (accepting the directives at the start of the day changes nothing).
+>
+> New default-off diagnostics: **`BOB_TRACE_LWDIR`** (which branch `LaunchDirectiveMissions` takes,
+> bad weather, and `OpenDirectivetoggle`'s open-vs-**CLOSE** — it is a *toggle* called once per period,
+> so "no dialog" can mean opened-then-closed) and **`BOB_TRACE_SEENAC`** (the three terms of the guard,
+> which the fatal message names none of).
+>
+> Gates: full `tools/bob_gates.sh` — 14-recipe sweep all `exit=0`, modal PASS, phase select
+> **dummy==GL byte-identical**, flight frame-150 98.6 % non-black, `blackTex=0`, binary hash verified.
+
 > ## Latest (S180–S191, 2026-08-16/17): the Fly "hang" was a rendering handoff that was never written
 >
 > One continuous night of Product-Owner-driven work. The PO reported an apparent hang **five times**
