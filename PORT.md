@@ -1,6 +1,6 @@
 # Rowan's Battle of Britain — Linux Native Port
 
-## S201–S202 (2026-08-23) — ⭐ the AI never fights: measured, narrowed, not yet explained
+## S201–S203 (2026-08-23) — ⭐ the AI never fights, and the chain is now traced end to end
 
 The S200 dogfight crash passed every gate because none of them reaches combat. Building the soak
 gate to close that turned up something bigger.
@@ -55,6 +55,45 @@ intercept geometry or the transition itself is at fault is **still unknown**.
 The movecode histogram's first version sat between two `case` labels, after a `break`, where it is
 unreachable — and produced a confident **zero** that was really "never executed". Dead
 instrumentation reports exactly what a dead subsystem reports.
+
+### S203: the chain, traced to the end
+
+Working backwards from `AUTO_COMBAT`, each link measured rather than read:
+
+```
+AUTO_COMBAT  <- ArtInt::SetEngage        (0 calls)
+             <- AUTO_PRECOMBAT           (0 ticks)
+             <- AUTOSAG_PRECOMBAT        set only when a squadron's package status is
+                                         PS_DETAILRAID (17) or PS_ENEMYSIGHTED (18)
+             <- PS_DETAILRAID            set in SAGExecuteWaypoint, at the IP waypoint,
+                                         ONLY when method == AM_INTERCEPT
+             <- an INTERCEPTOR squadron  which requires the raid to have been DETECTED
+```
+
+And the measurement that ends it. Across all 39 waypoint executions of the soak:
+
+```
+[sagwp] ... method=0  detected=0  attackmethod=0     (AM_INTERCEPT = 1)   x39
+```
+
+**`detected=0` for the entire raid, all the way to the target area, and no squadron anywhere
+has `method=AM_INTERCEPT`.** The raid's own status progresses correctly — `14 PS_FORMING →
+15 PS_INCOMING → 16 PS_TARGETAREA`, 33 executions sitting in the target area — so the raid is
+flying its mission properly. **What never happens is the RAF response:** the raid is never
+detected, so no interceptors are ever tasked, so nothing is ever in the one state that can
+start a fight.
+
+So "the AI never fights" is **not an ACM bug at all**. The manoeuvre code is fine and unreached;
+the campaign's **detection/interception** side is inert. That is a different subsystem, a
+different fix, and a much better-posed question than the one this started with.
+
+### A correction inside the same sprint
+
+An intermediate reading said the raid was **stuck at `PS_FORMING`** — from a histogram inside
+`SAGDecisionFollowWP`, which runs **once** in 600 seconds. The status genuinely advances; the
+function watching it does not. Measuring in a place the subject rarely visits reports the
+subject's first value forever. Caught before it was published, by instrumenting
+`SAGExecuteWaypoint` — which runs 39 times — and seeing 14 → 15 → 16 immediately.
 
 
 ## S200 (2026-08-22) — ⭐ the dogfight crash: a one-past-the-end read of the cloud layers

@@ -1852,6 +1852,22 @@ int DEBUGWPACTION;
 void	SAGairgrp::SAGExecuteWaypoint(int p,int s)
 {	
 	info_waypoint* wp=Persons2::ConvertPtrUID(wpref);
+#if defined(BOB_LINUX)
+	/* S203: does the raid ever EXECUTE a waypoint? The squadron is stuck at PS_FORMING (14) for
+	   the whole 600s soak and combat needs it to reach PS_DETAILRAID (17) / PS_ENEMYSIGHTED
+	   (18). This function is what advances PS_FORMING -> PS_INCOMING, on reaching the Bomb/Esc
+	   Rendezvous waypoint. If it never runs, the raid never progresses and nothing can ever
+	   fight. BOB_TRACE_SAGWP=1. */
+	if (getenv("BOB_TRACE_SAGWP")) {
+		static long _wp = 0;
+		fprintf(stderr,"[sagwp] execute #%ld pack=%d squad=%d wpuid=%d status=%d method=%d "
+		               "detected=%d attackmethod=%d (AM_INTERCEPT=%d)\n",
+		        ++_wp, p, s, (int)wp->uid.Evaluate(), (int)Todays_Packages[p][s].status,
+		        (int)Todays_Packages[p][s].method, (int)Todays_Packages[p][s].squaddetected,
+		        (int)Todays_Packages[p].attackmethod, (int)Profile::AM_INTERCEPT);
+		fflush(stderr);
+	}
+#endif
 	UniqueID nextwpuid=wp->NextWP(s,Todays_Packages[p][s].WaveNum());
 	DEBUGWPACTION=-wp->uid.Evaluate();
 	switch (wp->uid.Evaluate())
@@ -2229,6 +2245,25 @@ void	SAGairgrp::SAGDecisionFollowWP(int p,int s)
 
 		Squad_Diary.SetLandingTime(Todays_Packages[p][s].diaryentry);	//use view time
 	}
+#if defined(BOB_LINUX)
+	/* S203: THE combat gate. A squadron enters AUTOSAG_PRECOMBAT -- which is what feeds
+	   AUTO_PRECOMBAT down to individual aircraft, and thence SetEngage and AUTO_COMBAT -- only
+	   when its package status is PS_DETAILRAID or PS_ENEMYSIGHTED. S201/S202 measured that NO
+	   aircraft ever reaches combat or pre-combat in 1.46M dispatches, and every transition into
+	   them sits behind this one condition. So: which statuses DO occur? Histogram them rather
+	   than guess which of the two is missing. BOB_TRACE_SAGSTATUS=1. */
+	if (getenv("BOB_TRACE_SAGSTATUS")) {
+		static long _st[64]; static long _n = 0;
+		_st[((int)Todays_Packages[p][s].status) & 63]++;
+		if ((_n++ % 2000) == 0) {
+			fprintf(stderr,"[sagstatus] after %ld decisions:", _n);
+			for (int _i = 0; _i < 64; _i++) if (_st[_i]) fprintf(stderr," %d=%ld", _i, _st[_i]);
+			fprintf(stderr,"  (PS_DETAILRAID=%d PS_ENEMYSIGHTED=%d)\n",
+			        (int)Profile::PS_DETAILRAID, (int)Profile::PS_ENEMYSIGHTED);
+			fflush(stderr);
+		}
+	}
+#endif
 	if (	Todays_Packages[p][s].status==Profile::PS_DETAILRAID
 		||	Todays_Packages[p][s].status==Profile::PS_ENEMYSIGHTED	)
 	{
