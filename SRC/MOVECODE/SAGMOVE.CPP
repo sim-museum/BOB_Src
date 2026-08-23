@@ -773,6 +773,29 @@ struct LWDetectLW:GroundDetection
 		if (unseen)
 			rv=true;
 		
+#if BOB_LINUX
+		/* S204: LWDetectLW is the branch the LW RAID takes (attackmethod >= AM_LWPACKS), and it is
+		   the only one that can reach SetRAFIntercept from the detection side. S203 concluded "the
+		   raid is never detected" from samples that all carried attackmethod=0 -- the RAF PATROL
+		   packages, not the raid. Count what actually happens here: how often the branch runs, how
+		   often ground radar SAW the raid, and how often the first-detection block that calls
+		   SetRAFIntercept is reached. Each guard gets its own counter, so a zero names the guard
+		   that stopped it instead of leaving the whole branch as a suspect. */
+		if (getenv("BOB_TRACE_DETECT")) {
+			static long runs=0, sawIt=0, hadUnseen=0, firstDet=0, calledSRI=0;
+			runs++;
+			if (seen != UID_NULL) sawIt++;
+			if (unseen) hadUnseen++;
+			if (seen != UID_NULL && Todays_Packages[p].raidnumentries[re].prevpositions[0].Y==-1) {
+				firstDet++;
+				if (!Todays_Packages[p].raidnumentries[re].raidintercepted) calledSRI++;
+			}
+			if (runs % 100 == 0 || runs == 1)
+				fprintf(stderr,"[lwdetectlw] runs=%ld groundradar-saw=%ld unseen-spotter=%ld "
+				               "first-detection=%ld would-call-SetRAFIntercept=%ld\n",
+				        runs,sawIt,hadUnseen,firstDet,calledSRI), fflush(stderr);
+		}
+#endif
 		Todays_Packages[p][s].playercansee=true;
 		Todays_Packages[p][s].squaddetected=true;	//thios is so map always shows as active.
 		if (as->target.Evaluate()!=ENABLE_COMPLEX_VAL && as->target.Evaluate()!=0)									//JIM 8Oct00
@@ -990,6 +1013,84 @@ void	SAGairgrp::MoveAllSAGs(WorldStuff&)
 		DetectRAF=&LWDetectRAFinst;
 	}
 
+#if BOB_LINUX
+	/* S204: the package census. S203 measured `attackmethod=0` on every waypoint execution and
+	   concluded "the raid is never detected". attackmethod 0 is AM_RAF/AM_PATROL (PACKAGE.H:96) —
+	   an RAF package — in a run of the GERMAN campaign, which is either the answer or a sign the
+	   39 samples were all RAF patrols and the LW raid was never sampled at all. Guessing which
+	   costs another sprint; counting does not. Dump every live package ONCE, with the detector
+	   branch each one takes, then a per-branch call histogram at intervals.
+	   BOB_TRACE_DETECT=1. */
+	/* S204b: re-dump WHENEVER THE PICTURE CHANGES, not once. The first cut dumped a single
+	   census at the first call and reported six packages, all attackmethod=0 (AM_PATROL), all
+	   packagestatus=8 (PS_PLANNED) — i.e. the state before anything had taken off, held out as
+	   the answer. That is §8-BoB203's own trap: measuring where the subject rarely goes reports
+	   its first value forever, and I walked into it while writing the note about it. Fingerprint
+	   the live set and re-dump on any change, capped so a churning campaign cannot flood the log. */
+	if (getenv("BOB_TRACE_DETECT")) {
+		static unsigned long lastFp = 0; static int dumps = 0; static long calls = 0;
+		calls++;
+		unsigned long fp = 0; int live = 0;
+		for (int p=0;p<Profile::MAX_PACKS;p++) {
+			int sq = 0;
+			for (int s=0,ms=Todays_Packages[p].squadlist;s<ms;s++)
+				if (Todays_Packages[p][s].instance) sq++;
+			if (!sq) continue;
+			live++;
+			fp = fp*131 + (unsigned)p*7 + (unsigned)Todays_Packages[p].attackmethod*29
+			   + (unsigned)Todays_Packages[p].packagestatus*3 + (unsigned)sq;
+			/* ...and the SQUADRON statuses. Without these the fingerprint is blind to exactly the
+			   transition being hunted: a package sits at PS_FORMING while its squadrons move
+			   underneath it, and the census would report the first arrangement forever. */
+			for (int s2=0,ms2=Todays_Packages[p].squadlist;s2<ms2;s2++)
+				if (Todays_Packages[p][s2].instance)
+					fp = fp*17 + (unsigned)Todays_Packages[p][s2].status;
+		}
+		if (fp != lastFp && dumps < 40) {
+			lastFp = fp; dumps++;
+			fprintf(stderr,"[detect] CENSUS #%d at call %ld: localplayer=%d (NAT_RAF=%d) "
+			               "AM_LWPACKS=%d AM_INTERCEPT=%d — %d live package(s)\n",
+			        dumps,calls,(int)Todays_Packages.localplayer,(int)NAT_RAF,
+			        (int)Profile::AM_LWPACKS,(int)Profile::AM_INTERCEPT,live);
+			for (int p=0;p<Profile::MAX_PACKS;p++) {
+				int sq = 0;
+				for (int s=0,ms=Todays_Packages[p].squadlist;s<ms;s++)
+					if (Todays_Packages[p][s].instance) sq++;
+				if (!sq) continue;
+				fprintf(stderr,"[detect]   pack=%-3d attackmethod=%-3d packagestatus=%-3d "
+				               "livesquads=%-3d raidentries=%d branch=%s\n",
+				        p,(int)Todays_Packages[p].attackmethod,
+				        (int)Todays_Packages[p].packagestatus,sq,
+				        Todays_Packages[p].raidnumentries?1:0,
+				        Todays_Packages[p].attackmethod>=Profile::AM_LWPACKS
+				          ? (Todays_Packages.localplayer==NAT_RAF?"RAFDetectLW":"LWDetectLW")
+				          : (Todays_Packages.localplayer==NAT_RAF?"RAFDetectRAF":"LWDetectRAF"));
+			}
+			/* When a package sits at PS_FORMING it is because NOT EVERY squadron has reached the
+			   rendezvous: SAGExecuteWaypoint promotes to PS_INCOMING only on
+			   squadlist.AllInStatus(PS_INCOMING). The package-level status cannot say WHICH
+			   squadron holds it, and "the raid is stuck" is not actionable -- "squadron 3 of 7 is
+			   still at PS_TAKINGOFF" is. Break the LW packs out per squadron. */
+			for (int p=0;p<Profile::MAX_PACKS;p++) {
+				if (Todays_Packages[p].attackmethod < Profile::AM_LWPACKS) continue;
+				int ms = Todays_Packages[p].squadlist;
+				for (int s=0;s<ms;s++) {
+					if (!Todays_Packages[p][s].instance) continue;
+					SAGairgrp* as = Persons2::ConvertPtrUID(Todays_Packages[p][s].instance);
+					fprintf(stderr,"[detect]     LWpack=%d squad=%-2d status=%-3d method=%-3d "
+					               "detected=%d numacleft=%-3d alt=%.0f\n",
+					        p,s,(int)Todays_Packages[p][s].status,
+					        (int)Todays_Packages[p][s].method,
+					        (int)Todays_Packages[p][s].squaddetected,
+					        (int)Todays_Packages[p][s].numacleft,
+					        as ? (double)as->World.Y : -1.0);
+				}
+			}
+			fflush(stderr);
+		}
+	}
+#endif
+
 	{for (int p=0;p<Profile::MAX_PACKS;p++)
 		if (Todays_Packages[p].raidnumentries)
 			for (int r=0;Todays_Packages[p].raidnumentries[r].squadliststart!=Profile::RNEC_LISTVALISLASTREC;r++)
@@ -1020,6 +1121,37 @@ void	SAGairgrp::MoveAllSAGs(WorldStuff&)
 						changeaccel=DetectLW->SetDetectionLevel(p,s,re,as);
 					else
 						changeaccel=DetectRAF->SetDetectionLevel(p,s,re,as);
+#if BOB_LINUX
+					/* S204: how often is each branch taken, and does detection ever flip on?
+					   §8-BoB203: a counter reading zero has two causes that look identical, so
+					   count BOTH branches — a zero next to a large number is a fact; a zero on
+					   its own is not. Reported every 20000 dispatches. */
+					if (getenv("BOB_TRACE_DETECT")) {
+						static long nLW = 0, nRAF = 0, nDet = 0, nAccel = 0, tick = 0;
+						if (Todays_Packages[p].attackmethod>=Profile::AM_LWPACKS) nLW++; else nRAF++;
+						if (Todays_Packages[p][s].squaddetected) nDet++;
+						if (changeaccel) nAccel++;
+						/* Report at 200 and 2000 as well as every 20000: the first cut only
+						   printed every 20000 and a 240s probe never reached it, so the probe
+						   said "no dispatches — the detection loop never ran" about a loop that
+						   was running fine. A zero that is really "below my reporting threshold"
+						   is the same lie as a zero that is really "my counter never ran". */
+						++tick;   /* NB increment FIRST: with `|| ++tick % 20000` the increment
+						             sits behind a short-circuit and never runs once an earlier
+						             test matches, so the counter latches at 200 and reprints
+						             forever. */
+						/* MoveAllSAGs runs ~0.4x/s, so a 420s probe makes only ~1000 dispatches
+						   in total. At the first cut's 20000 interval the probe printed nothing
+						   and read as "the detection loop never ran"; at 200/2000 it printed once
+						   and stopped. Report every 500. */
+						if (tick % 500 == 0) {
+							fprintf(stderr,"[detect] dispatches=%ld LWbranch=%ld RAFbranch=%ld "
+							               "squaddetected=%ld changeaccel=%ld\n",
+							        tick,nLW,nRAF,nDet,nAccel);
+							fflush(stderr);
+						}
+					}
+#endif
 					if (changeaccel) //ACCEL_RECONNSPD,ACCEL_RAIDSPD
 						if (Todays_Packages[p].attackmethod<=Profile::AM_RECON)
 							if (reqacceltype<Campaign::ACCEL_RECONNSPD)

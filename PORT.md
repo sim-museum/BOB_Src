@@ -1,5 +1,69 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-23 — S204: the AI never fights because the LW raid never flies a waypoint
+
+**This corrects S203.** S203 concluded *"the raid is never detected, so no interceptor is ever
+tasked"*. That was measured on the wrong packages. Its trace sampled `attackmethod` on all 39
+waypoint executions of the soak and found 0 every time — and `attackmethod=0` is `AM_RAF`/
+`AM_PATROL` (PACKAGE.H:96), i.e. an **RAF patrol**. Every sample it drew was a patrol. The LW raid
+was never in the sample at all, so nothing S203 said about "the raid" was about the raid.
+
+The census fixed that, after being wrong itself in the same way: the first version dumped **once**,
+at the first `MoveAllSAGs` call, and reported six packages all at `PS_PLANNED` — the state before
+anything had taken off — held out as the answer. `§8-BoB203` is the note about exactly this trap and
+I walked into it while writing it. It now re-dumps whenever the live set changes, squadron statuses
+included in the fingerprint.
+
+### What is actually there (German Convoys campaign, 700 s)
+
+| pack | attackmethod | squadrons | detector branch |
+|---|---|---|---|
+| 0–5 | 0 = `AM_PATROL` | 1 each | `LWDetectRAF` |
+| **6** | **11 = `AM_DIVEBOMB`** | **7** | **`LWDetectLW`** |
+
+Pack 6 is the raid the player flies in. It is real, it has seven squadrons, and it takes the branch
+that can reach `SetRAFIntercept`. So the interception machinery is wired up correctly.
+
+### The chain, each link measured
+
+| link | measured |
+|---|---|
+| pack 6 package status | `PS_PLANNED` → `PS_TAKINGOFF` → **`PS_FORMING`, and stops** |
+| its 7 squadrons | all reach `PS_FORMING` **together** — nothing is lagging |
+| their altitude | bombers ~127 300 cm = **4 177 ft**; escorts ~36 000–46 000 cm = **~1 200 ft** |
+| `GroundVisible` coordinates | in bounds, 0 of 800 out of range |
+| the radar grid | **loads and works** — 794 of 800 lookups return high-level radar cover |
+| high-radar height bands | `(v%16 + 4) × FT_1000`, and `FT_1000 = 30480` cm ⇒ **4 000 – 19 000 ft** |
+| `LWDetectLW` runs | **700** |
+| …of which ground radar saw the raid | **0** |
+| …reaching the first-detection block | **0** |
+| `SetRAFIntercept` calls | **0** |
+| **waypoint executions by an LW pack** | **0** — all 39 in the run belong to `attackmethod=0` |
+
+### The finding
+
+**The LW raid's squadrons never execute a single waypoint.** Everything downstream follows from
+that one fact and needs no separate explanation: they never reach the Bomb/Esc Rendezvous, so they
+never leave `PS_FORMING`; never leaving `PS_FORMING` they never climb to cruise; at 4 177 ft they
+sit at the very bottom of the radar's 4 000–19 000 ft bands, so `trg.Y > bandbase` is false and
+`GroundVisible` returns `UID_NULL` — 700 times out of 700, with `failedspotter` untouched, which is
+exactly the signature observed. No detection, no `SetRAFIntercept`, no `AM_INTERCEPT` squadron,
+nothing ever in a state that can start a fight.
+
+The RAF radar network is **not** broken; it is looking at aircraft that are below it and going
+nowhere. The detection code is not broken either. Both were suspects only because the measurement
+stopped short of them.
+
+### Next
+
+One question, well posed: **why does a `PS_FORMING` LW squadron never execute a waypoint?**
+`SAGExecuteWaypoint` is reached from the `MoveSAG`/`DecideSAG` path; something in the forming logic
+holds these squadrons indefinitely. That is where the next probe goes.
+
+⚠️ Nothing here is a fix. This entry adds no behaviour and changes no game logic — it is
+env-gated instrumentation (`BOB_TRACE_DETECT`, `BOB_TRACE_GROUNDVIS`) plus `tools/bob_detect_probe.sh`,
+which asserts nothing and cannot go red. It answers a question.
+
 ## S201–S203 (2026-08-23) — ⭐ the AI never fights, and the chain is now traced end to end
 
 The S200 dogfight crash passed every gate because none of them reaches combat. Building the soak

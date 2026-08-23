@@ -3609,6 +3609,8 @@ MA's, and MA's later S94 correction found the opposite again in a different file
 | §8-MA133 | ⭐ SDL delivers keys only to a FOCUSED window — a resize/re-border can take focus away silently | origin (fixed S185) | *awaiting — identical window handling in bob_video.cpp; add a FOCUS_LOST/GAINED handler too* |
 | §8-MA134 | the disambiguating fact is usually already IN the report — inventory it before instrumenting | origin (S185) | *awaiting — third instance in two days (MA129, MA132, MA134)* |
 | §8-BoB203 | ⭐ trace a dead subsystem BACKWARDS, one measured link at a time — and a zero counter has two causes | *awaiting — MA has the same shape wherever a feature "does nothing"* | origin (BoB S200–S203) |
+| §8-MA135 | ⭐ a gate whose CONTROL ARMS score the same as its fix arm is measuring nothing; chrome is not ink | *awaiting — BoB's screen-parity gates have control arms too, and nobody has run them lately* | origin (MA S188) |
+| §8-BoB204 | ⭐ check that your SAMPLE contains the thing you are concluding about — 39 identical values is one object measured 39 times | *awaiting — MA draws the same kind of per-package sample in its campaign traces* | origin (BoB S204) |
 
 **Rows marked *not yet assessed* are MA's own debt** and are named rather than quietly omitted —
 that is the whole point of the table. They are the top of MA's next cross-port slot.
@@ -4558,3 +4560,81 @@ subsystem:
 
 **A counter reading zero has two causes and they look identical: the thing never happened, or your
 counter never ran.** Prove the counter runs before believing its zero.
+
+## §8-MA135 — ⭐ a gate whose CONTROL ARMS score the same as its fix arm is measuring nothing **[GATES]**
+
+**MA S188.** `overlay_text` failed on both its screens. Neither screen was broken.
+
+The gate cropped a hardcoded rectangle, calibrated back when in-flight capture ran at a smaller
+back-surface size. Flight now renders at the display resolution and the overlay panel sits at
+**fixed pixel offsets, not proportional ones**, so the rectangle landed on empty sky. The radio
+menu rendered perfectly and the gate called it `BLOCKS-OR-BLANK`.
+
+**The evidence had been sitting in the gate's own output.** It has two control arms —
+`MA_NO_ALPHATEXT=1` (draw solid blocks) and `MA_NO_GLYPHS=1` (draw nothing) — which exist to prove
+the metric responds to the glyph path. Run them and:
+
+| arm | score |
+|---|---|
+| fix | 78 |
+| blocks | 78 |
+| blank | 78 |
+
+Three arms, one number. **When a control arm scores what the fix arm scores, the measurement is not
+touching the subject** — and no amount of staring at the product will show you that, because the
+product is fine. Run the arms. If they do not separate, fix the gate before you debug the game.
+
+After locating the panel instead of assuming where it is: **1347 / 56 / 0**.
+
+Three further rules fell out of the same gate, each worth its own line:
+
+1. **One verdict must not cover two failures.** `BLOCKS-OR-BLANK` was reported both for "the ink is
+   wrong" and for "no screen ever appeared". Those need different fixes and different next steps.
+   Splitting out a `NO PANEL` verdict immediately told the truth about the second screen.
+2. **Chrome is not ink.** The waypoint panel has a drawn spiral binding across its top. Measured as
+   part of the bounding box it contributed **1094 edges** against a threshold of 600 — so the blank
+   control arm scored `LETTERS` and the gate would have passed a screen with no text on it at all,
+   the exact defect it exists to catch. Measure the panel *interior*, row by row.
+3. **A tolerance chosen by sweeping against the control arms is calibration; the same number chosen
+   to make a red gate green is fudging.** They look identical in the diff. Record the sweep.
+
+And the driver is code too: `MA_UISCR_KEY` re-armed on **every** screen promote — including the
+promote its own keypress caused — so it pressed the same digit again inside the screen it had just
+opened. A drive key is a one-shot instruction. See also `§8-BoB203`: *a counter reading zero has two
+causes and they look identical.*
+
+## §8-BoB204 — ⭐ check that your sample contains the thing you are drawing conclusions about **[PROCESS]**
+
+**BoB S204, correcting S203.** S203 published *"the raid is never detected, so no interceptor is
+ever tasked"*. It was measured carefully — a counter on every link, one run each, exactly what
+`§8-BoB203` prescribes — and the conclusion was still wrong, because **every sample it drew was of
+the wrong object**.
+
+The trace printed `attackmethod` on all 39 waypoint executions of a 600 s campaign and got 0 every
+time. `attackmethod=0` is `AM_RAF`/`AM_PATROL`: an **RAF patrol**. The German raid the sentence was
+about never appeared in the sample at all. The number was real, repeatable, and about something
+else entirely.
+
+What made it invisible is that the wrong answer was *plausible for the right object*: a raid that
+is never detected is a perfectly sensible thing for a campaign to get wrong, so nothing in the
+result looked odd. **A measurement can only be checked against the population it was drawn from, and
+"39 executions, attackmethod=0 every time" is a fact about which packages execute waypoints — not
+about what happens to the raid.** The tell was there to be read: 39 identical values is not a
+distribution, it is a single object measured 39 times.
+
+The census that corrected it was wrong the same way first: it dumped **once**, at the first
+opportunity, and reported six packages all at `PS_PLANNED` — the state before anything had taken
+off — as though that were the answer. That is `§8-BoB203`'s own trap, walked into while writing the
+note about it.
+
+**Two rules, and they are the same rule:**
+- **Before believing a statistic, print the population.** A census of what exists costs one run and
+  turns "the raid does X" into "pack 6, `AM_DIVEBOMB`, 7 squadrons, does X".
+- **Anything sampled once reports its first value forever.** Fingerprint the state and re-dump on
+  change; a fingerprint that omits a field is blind to exactly the transition being hunted.
+
+The corrected chain, for the record: the LW raid's squadrons **never execute a waypoint**, so they
+never leave `PS_FORMING`, never climb past ~4 177 ft, never enter the RAF radar's 4 000–19 000 ft
+height bands, are never detected, and no interceptor is ever tasked. The radar network and the
+detection code — both prime suspects for two sprints — are fine. They were suspects only because
+the measurement stopped short of them.

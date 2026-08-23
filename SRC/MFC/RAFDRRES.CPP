@@ -541,6 +541,49 @@ void	PackageList::SplitExistingResponsesTo(int targpack,int newraidind)
 void RAFDirectivesResults::SetRAFIntercept(int pack,int raid,bool afteregress)
 {
 #ifndef	BOB_DEMO_VER
+#if BOB_LINUX
+	/* S204: this is the ONLY route by which the RAF is ever tasked to intercept, and its first
+	   statement is an early-out on a bool. Every caller in the detection path passes
+	   afteregress=false, so a zero-initialised `interceptbeforetarget` turns the whole function
+	   into a no-op and nothing in the game ever says so. Count the calls, and count WHERE they
+	   leave: an early-out is invisible from outside, which is how a subsystem stays inert for
+	   twenty sprints. BOB_TRACE_DETECT=1. */
+	if (getenv("BOB_TRACE_DETECT")) {
+		static long calls = 0, earlyout = 0, unsanctioned = 0, sanctionedn = 0;
+		static bool dumped = false;
+		calls++;
+		if (!dumped) {
+			dumped = true;
+			fprintf(stderr,"[intercept] FIRST CALL pack=%d raid=%d afteregress=%d\n",
+			        pack,raid,(int)afteregress);
+			fprintf(stderr,"[intercept]   raf.current.interceptbeforetarget=%d convoylevel=%.3f "
+			               "autoscramble=%d gameside=%d (SIDE_LW=%d)\n",
+			        (int)MMC.directives.raf.current.interceptbeforetarget,
+			        (double)MMC.directives.raf.current.convoylevel,
+			        (int)MMC.autoscramble,(int)RFullPanelDial::gameside,
+			        (int)RFullPanelDial::SIDE_LW);
+			fprintf(stderr,"[intercept]   sanctioned: ANTISWEEP=%d ANTISINGLE=%d ANTIUNESC=%d "
+			               "ANTIESC=%d ANTIBIG=%d\n",
+			        (int)MMC.directives.raf.current.sanctioned[Directives::RAF::ANTISWEEP],
+			        (int)MMC.directives.raf.current.sanctioned[Directives::RAF::MissTypes::ANTISINGLE],
+			        (int)MMC.directives.raf.current.sanctioned[Directives::RAF::MissTypes::ANTIUNESC],
+			        (int)MMC.directives.raf.current.sanctioned[Directives::RAF::MissTypes::ANTIESC],
+			        (int)MMC.directives.raf.current.sanctioned[Directives::RAF::MissTypes::ANTIBIG]);
+			fflush(stderr);
+		}
+		if (afteregress==MMC.directives.raf.current.interceptbeforetarget) {
+			earlyout++;
+			if (earlyout==1 || earlyout%50==0) {
+				fprintf(stderr,"[intercept] EARLY-OUT #%ld of %ld calls "
+				               "(afteregress=%d == interceptbeforetarget=%d) — no RAF tasked\n",
+				        earlyout,calls,(int)afteregress,
+				        (int)MMC.directives.raf.current.interceptbeforetarget);
+				fflush(stderr);
+			}
+		}
+		(void)unsanctioned; (void)sanctionedn;
+	}
+#endif
 
 	if (afteregress==MMC.directives.raf.current.interceptbeforetarget)
 		return;

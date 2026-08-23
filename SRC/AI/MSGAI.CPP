@@ -185,6 +185,27 @@ AirStrucPtr	ArtInt::CollideAgainstList[COLLIDEAGAINSTLISTSIZE];
 int		ArtInt::GroundVisible(Coords3D& trg, int* failedspotter)
 {	
 	*failedspotter=UID_NULL;
+#if BOB_LINUX
+	/* S204: this function is the far end of the "the AI never fights" chain. Measured over a 700s
+	   German campaign: LWDetectLW ran 700 times and GroundVisible returned UID_NULL on every one
+	   of them, leaving failedspotter at UID_NULL too. The RAF's whole radar-and-observer network
+	   reports nothing, anywhere, ever -- so no raid is ever first-detected, SetRAFIntercept is
+	   never called, no squadron is ever tasked AM_INTERCEPT, and nothing is ever in a state that
+	   can start a fight.
+	   Only two exits produce (0, UID_NULL): the bounds check below, and v==1 "uncovered area".
+	   Those are completely different faults -- bad world coordinates versus a radar grid that
+	   reads as empty -- so name which one, and print the coordinates and the grid value that
+	   produced it. One line per distinct outcome; BOB_TRACE_GROUNDVIS=1. */
+	if (getenv("BOB_TRACE_GROUNDVIS")) {
+		static long calls=0, oob=0; calls++;
+		bool bad = (!&trg || trg.X < 0 || trg.X > 8*8*8*256*512 || trg.Z < 0 || trg.Z > 8*8*8*256*512);
+		if (bad) oob++;
+		if (calls == 1 || calls % 200 == 0)
+			fprintf(stderr,"[groundvis] call %ld: trg=(%.0f,%.0f,%.0f) out-of-bounds=%ld/%ld "
+			               "(limit=%d)\n", calls, (double)trg.X,(double)trg.Y,(double)trg.Z,
+			        oob, calls, 8*8*8*256*512), fflush(stderr);
+	}
+#endif
 	if ( !&trg || trg.X < 0 || trg.X > 8*8*8*256*512 || trg.Z < 0 || trg.Z > 8*8*8*256*512)
 		return 0; // the target is null!
 	// get the grid data
@@ -192,6 +213,23 @@ int		ArtInt::GroundVisible(Coords3D& trg, int* failedspotter)
 	Grid_Base* radarGrid = (Grid_Base*) Grid_Base::gridfiles[Grid_Base::GF_RADAR].getdata();
 
 	int v = radarGrid->getWorld( trg.X, trg.Z );
+#if BOB_LINUX
+	/* What the radar grid actually says. A grid that failed to load, or that decodes wrongly under
+	   -fpack-struct, would read as one constant value everywhere -- and v==1 is "uncovered area,
+	   invisible", which is indistinguishable from a working grid over open sea unless you look at
+	   the DISTRIBUTION. So histogram the values rather than sampling one. */
+	if (getenv("BOB_TRACE_GROUNDVIS")) {
+		static long n=0, v0=0, v1=0, vlow=0, vhigh=0; static bool gridnull=false;
+		n++;
+		if (v==0) v0++; else if (v==1) v1++; else if (v<32) vlow++; else vhigh++;
+		if (!gridnull && !radarGrid) { gridnull=true;
+			fprintf(stderr,"[groundvis] THE RADAR GRID POINTER IS NULL\n"); fflush(stderr); }
+		if (n==1 || n % 200 == 0)
+			fprintf(stderr,"[groundvis] grid values over %ld calls: v=0 spotter-corps:%ld  "
+			               "v=1 uncovered:%ld  v<32 low-radar:%ld  v>=32 high-radar:%ld\n",
+			        n,v0,v1,vlow,vhigh), fflush(stderr);
+	}
+#endif
 	switch (v)
 	{
 	case 0: // we are over uk - spotter corps

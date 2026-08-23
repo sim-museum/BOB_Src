@@ -21,11 +21,20 @@
 #
 # ⚠️ ALL THREE ARE CURRENTLY **ZERO**, and that is the finding, not a gate bug. Measured over
 # 1,460,001 movecode dispatches of the campaign raid: movecodes 0/1/5/39 are in play and
-# AUTO_COMBAT (=AutoMoveCodeMask=63) never appears once. The aircraft fly their waypoints and never
-# engage. Whether that is detection, spawn placement, intercept geometry or the AUTO_COMBAT
-# transition itself is NOT yet known -- an earlier attempt to answer it with BOB_TRACE_SEENAC was
-# wrong, because that trace is an S192 guard about the player's seen-aircraft and not a detection
-# counter at all.
+# AUTO_COMBAT (=AutoMoveCodeMask=63) never appears once.
+#
+# S204 traced why, and the answer is upstream of everything this gate can see: THE LW RAID NEVER
+# EXECUTES A WAYPOINT. Its seven squadrons take off, reach PS_FORMING together, and stay there --
+# so they never reach the Bomb/Esc Rendezvous, never climb past ~4,177 ft, never enter the RAF
+# radar's 4,000-19,000 ft height bands, are never detected, and no interceptor is ever tasked.
+# GroundVisible returned UID_NULL 700 times out of 700 for exactly that reason. The radar grid and
+# the detection code are both fine. See PORT.md 2026-08-23 (S204) and tools/bob_detect_probe.sh.
+#
+# NB the line above used to say the aircraft "fly their waypoints and never engage". They do not
+# fly their waypoints; that was an assumption, and it was wrong. Two earlier attempts to explain
+# this were also wrong and are recorded rather than deleted: BOB_TRACE_SEENAC is an S192 guard
+# about the player's seen-aircraft, not a detection counter; and S203's "the raid is never
+# detected" was measured on samples that were all RAF PATROL packages, never the raid.
 #
 # So this gate does NOT fail on zero combat: a gate that always fails is noise, and asserting a
 # property the port has never had would be asserting a wish. It fails on a CRASH or a DEAD SIM, and
