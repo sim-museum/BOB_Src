@@ -753,7 +753,36 @@ extern "C" void bob_frontend_tick(void)
 		   Plane_Type_Translate[bad ptype]) -- the R4.5 uninit-SAG grind, a distinct onion layer.
 		   In real play the returned map is PAUSED (the player reviews, then advances), so not
 		   driving it is faithful; the post-mission sim fix is deferred to R4.5. */
+		/* S205: BOB_MAP_PLAY=<paints> presses PLAY once, <paints> map paints after the map comes
+		   up, by driving the genuine TitleBar::OnClickedPlay -- not by poking curracceltype.
+		   WHY: the PO reported "no mission spreadsheet when entering the campaign; there are no
+		   German missions". Measured, real GL, no scaffold: LaunchDirectiveMissions is NEVER
+		   CALLED, so the LW player is never asked for directives, DirectiveResults::OnOK never
+		   runs, MakeLWPackages never builds the day's raids -- and the map is empty of German
+		   missions exactly as reported. With BOB_MAP_TIMER=8 (a TEST SCAFFOLD every gate sets) it
+		   is called and the dialog appears, which is why the whole suite is green.
+		   The open question that decides whether this is a defect at all: the map starts PAUSED and
+		   the campaign clock is what starts the first period, so does simply pressing PLAY -- what
+		   a player does -- start the day? This hook answers that with the player's own button.
+		   Diagnostic, default off. */
+		if (getenv("BOB_MAP_PLAY")) {
+			static int paints = 0, done = 0;
+			if (!done && ++paints > atoi(getenv("BOB_MAP_PLAY"))) {
+				done = 1;
+				CMainFrame* mf = (CMainFrame*)AfxGetMainWnd();
+				fprintf(stderr,"[mapplay] pressing PLAY (m_currentpage=%d curracceltype=%d currtime=%d)\n",
+					(int)RDialog::m_pView->m_currentpage,(int)MMC.curracceltype,(int)MMC.currtime);
+				if (mf) mf->m_titlebar.ClickPlay();   /* the public route to OnClickedPlay */
+				fprintf(stderr,"[mapplay] after PLAY: curracceltype=%d rate=%d\n",
+					(int)MMC.curracceltype,(int)MMC.curraccelrate);
+				fflush(stderr);
+			}
+		}
 		extern int g_campfly_flown;
+		/* S205: did the scaffold drive the clock this paint? The live drive below used to be an
+		   `else if` chained to the BOB_TRACE_CLOCK diagnostic -- see the note there -- so this
+		   needs an explicit flag rather than relying on statement adjacency. */
+		bool droveThisPaint = false;
 		if (getenv("BOB_MAP_TIMER") && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))) {
 			/* BOB_POSTMISSION_FF (R4.5 diagnostic, default-off): override the post-mission/post-fly
 			   g_campfly_flown guard so BOB_MAP_TIMER advances the world AFTER a flown mission returns
@@ -771,6 +800,7 @@ extern "C" void bob_frontend_tick(void)
 				fprintf(stderr,"[mapdrive] m_currentpage=%d curracceltype=%d currtime=%d\n",
 					(int)RDialog::m_pView->m_currentpage, (int)MMC.curracceltype, (int)MMC.currtime); }
 			for (int z = 0; z < ff; z++) RDialog::m_pView->m_mapdlg.bob_drive_timer();
+			droveThisPaint = true;
 		}
 		/* S189: sample the acceleration BAND on every map paint, whichever drive is in use.
 		   The PO reported "fast forward did nothing, then went to 300x", and [accel] only printed
@@ -797,8 +827,33 @@ extern "C" void bob_frontend_tick(void)
 		   WM_TIMER would. This is the faithful map behaviour (the day starts running on Play). Same
 		   post-mission safety guard as BOB_MAP_TIMER (the post-fly SAG grind is the R4.5 layer).
 		   BOB_MAP_TIMER (headless) takes precedence; skip if it already ran this paint. */
-		else if (MMC.curracceltype != MMC.ACCEL_PAUSED && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))) {
-			int reps = MMC.curracceltype >= MMC.ACCEL_RAIDSPD ? 8 : 1;   /* fast-forward vs normal */
+		/* S205: THIS WAS AN `else if` -- AND ITS `if` WAS THE DIAGNOSTIC ABOVE, NOT THE DRIVE.
+		   The BOB_TRACE_CLOCK block that precedes it is a self-contained `if`, so `else if` bound
+		   to THAT: setting BOB_TRACE_CLOCK=1 silently disabled the live clock drive entirely. The
+		   campaign clock stopped whenever the clock diagnostic was switched on, which is as close
+		   to a perfect measurement trap as this code has produced -- and it cost this sprint a
+		   wrong conclusion ("pressing PLAY does not start the day"), reached from a run whose
+		   PLAY could not possibly have worked.
+		   The S189 comment above warns about the mirror image of this ("adding a gate switched off
+		   the diagnostic"). The lesson generalises and it did not: an `else` binds to whatever `if`
+		   happens to be adjacent, so control flow that matters must not be expressed by adjacency.
+		   Now an explicit flag, and the diagnostic cannot reach it. */
+		/* S205 (PO: "no mission spreadsheet when entering the campaign; there are no German
+		   missions"): DRIVE THE TIMER EVEN WHILE PAUSED.
+		   The engine implements the pause INSIDE OnTimer -- the running branch does
+		   `MMC.accumulator += MMC.curraccelrate` and a paused rate of 0 simply never advances the
+		   clock -- while the DAY-START branch (`currtime == MORNINGPERIODSTART`) ignores the rate
+		   completely and only needs OnTimer to be called twice. On Windows WM_TIMER fires whether
+		   or not the player has pressed Play, so the day begins by itself moments after the map
+		   comes up. This port called OnTimer only when NOT paused, so the day never began at all:
+		   no StartOfDay, no period, no LaunchDirectiveMissions, no directives dialog, and -- as the
+		   PO reported -- no German missions on the map.
+		   Suppressing the whole call is not how the engine expresses "paused"; the rate is. Drive
+		   it every paint and let the accumulator do its job. BOB_NO_PAUSED_TIMER=1 reverts. */
+		if (!droveThisPaint && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))
+		    && (MMC.curracceltype != MMC.ACCEL_PAUSED || !getenv("BOB_NO_PAUSED_TIMER"))) {
+			int reps = MMC.curracceltype == MMC.ACCEL_PAUSED ? 1
+			         : (MMC.curracceltype >= MMC.ACCEL_RAIDSPD ? 8 : 1);   /* fast-forward vs normal */
 			/* S175 (PO: "clock is not running, even though time is supposed to be 1x", and the accel
 			   buttons do nothing). The clock is driven from here, but the advance itself lives inside
 			   the map's OnTimer behind THREE gates that this loop cannot see:

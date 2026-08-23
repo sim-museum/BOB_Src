@@ -1513,6 +1513,38 @@ void CMapDlg::OnTimer(UINT nIDEvent)
 //DeadCode DAW 10Aug00 	MemoryDiagnostics();
 //DeadCode CSB 11Sep00 	Mono_Text.Print(UByteP("Timer("));
 
+#if BOB_LINUX
+	/* S205: WHICH gate is shut? The PO reported "no mission spreadsheet when entering the
+	   campaign; there are no German missions", and the chain behind it is:
+	     no clock tick -> no period start -> LaunchDirectiveMissions never runs -> the LW player is
+	     never asked for directives -> DirectiveResults::OnOK never runs -> MakeLWPackages never
+	     builds the day's raids -> no German missions.
+	   Three gates can swallow the tick and from outside they are indistinguishable. Name the one
+	   that is shut, with the values.
+	   (An earlier draft of this comment said the clock did not move "even after pressing PLAY".
+	   That was measured through BOB_TRACE_CLOCK, which at the time disabled the live clock drive
+	   via a stray `else if` -- see S205 in FULLPSYS.CPP. Pressing PLAY does start the day.)
+	   BOB_TRACE_CLOCK=1; one line per DISTINCT state so it cannot flood. */
+	if (getenv("BOB_TRACE_CLOCK")) {
+		static int lp=-1, lm=-1, li=-1, lt=-1;
+		int cp = (int)m_view->m_currentpage;
+		int mb = (int)RDialog::messageboxopen;
+		int ci = Master_3d.currinst ? 1 : 0;
+		int at = (MMC.currtime==MORNINGPERIODSTART) ? 1 : 0;
+		if (cp!=lp || mb!=lm || ci!=li || at!=lt) {
+			lp=cp; lm=mb; li=ci; lt=at;
+			fprintf(stderr,"[maptimer] currentpage=%d messageboxopen=%d currinst=%d "
+			               "currtime=%d MORNINGPERIODSTART=%d accumulator=%d rate=%d -> %s\n",
+			        cp, mb, ci, (int)MMC.currtime, (int)MORNINGPERIODSTART,
+			        (int)MMC.accumulator, (int)MMC.curraccelrate,
+			        cp!=0 ? "BLOCKED: a full-screen page is up"
+			          : (mb ? "BLOCKED: a message box is open"
+			              : (ci ? "BLOCKED: a 3D instance exists (Master_3d.currinst)"
+			                    : (at ? "day-start branch" : "running branch"))));
+			fflush(stderr);
+		}
+	}
+#endif
 	if (m_view->m_currentpage==0)
 	{
 		if (RDialog::messageboxopen==false && !Master_3d.currinst)

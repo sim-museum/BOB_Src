@@ -1,5 +1,65 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-23 — S205: the campaign day never began, so there were no German missions
+
+**PO, from play:** *"in BoB german campaign, no mission spreadsheet dialog is shown when entering
+campaign. There are no german missions."* Correct on both counts, and the cause is one line.
+
+### The chain
+
+    no clock tick -> no StartOfDay -> no period -> LaunchDirectiveMissions never runs
+      -> the LW player is never asked for directives -> DirectiveResults::OnOK never runs
+      -> LWDirectivesResults::MakeLWPackages never builds the day's raids
+      -> NO GERMAN MISSIONS
+
+### Why no clock tick
+
+`CMapDlg::OnTimer` is where the campaign clock lives, and **the engine implements PAUSE inside
+it**: the running branch does `MMC.accumulator += MMC.curraccelrate`, and a paused rate of 0 simply
+never advances the clock. The DAY-START branch (`currtime == MORNINGPERIODSTART`) ignores the rate
+entirely and only needs `OnTimer` to be called twice. On Windows `WM_TIMER` fires whether or not the
+player has pressed Play, so the day begins by itself moments after the map appears.
+
+This port drove `OnTimer` **only while not paused**. The map starts paused. So the day never began
+at all. Suppressing the call is not how the engine expresses "paused" — the rate is.
+
+**Fixed:** drive the timer every map paint and let the accumulator do its job.
+`BOB_NO_PAUSED_TIMER=1` reverts. A/B with no Play press and no scaffold — the PO's exact situation:
+
+| arm | result |
+|---|---|
+| fix | `LaunchDirectiveMissions` runs, Directives dialog opens, painted **1** |
+| `BOB_NO_PAUSED_TIMER=1` | *"the day never started"*, painted **0** |
+
+### ⚠️ Why the whole gate suite was green through all of this
+
+**Every gate sets `BOB_MAP_TIMER`, a TEST SCAFFOLD that drives the clock itself.** GATE 5, the
+combat soak, the detection probe — all of them. Measured, real GL, no scaffold:
+`LaunchDirectiveMissions` is never called at all. The campaign flow in this port had only ever run
+under a scaffold, and `doc/scaffold-audit.md` exists precisely to catch that class of thing. It did
+not catch this one. **A capability that only works when a test harness is present is not a
+capability.**
+
+### And a measurement trap that cost this sprint a wrong answer
+
+Mid-investigation I concluded *"pressing PLAY does not start the day"* — measured, repeatable, and
+wrong. The run had `BOB_TRACE_CLOCK=1` set, and the live clock drive was written as
+
+    if (getenv("BOB_TRACE_CLOCK")) { ...report the accel band... }
+    else if (MMC.curracceltype != MMC.ACCEL_PAUSED && ...) { ...drive the clock... }
+
+The `else` bound to the **diagnostic**, not to the scaffold branch above it. **Switching on the
+clock diagnostic switched off the clock.** The S189 comment sitting on that very block warns about
+the mirror image ("adding a gate switched off the diagnostic that would have explained the gate")
+— the lesson was written down and still did not generalise, because the hazard is not about gates
+or diagnostics: it is that `else` binds to whatever `if` is adjacent. Control flow that matters must
+not be expressed by adjacency. Now an explicit `droveThisPaint` flag.
+
+### Still open (unchanged by this)
+
+`OpenDirectivetoggle` is a **toggle** called once per period. With the clock now running, a second
+period closes a dialog the player left open. S192 flagged the parity risk; it is real and not yet
+fixed — presenting a dialog at period start should open it, never close it.
 ## 2026-08-23 — S204: the AI never fights because the LW raid never flies a waypoint
 
 **This corrects S203.** S203 concluded *"the raid is never detected, so no interceptor is ever
