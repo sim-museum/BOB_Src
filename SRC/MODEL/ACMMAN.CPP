@@ -4274,7 +4274,23 @@ Bool	ACMAirStruc::M_ShootTooEarly()
 void	ACMAirStruc::DefenceManoeuvre()
 {
 	if(Math_Lib.rnd(255) < ai.combatskill)
+#if defined(BOB_LINUX)
+		/* S200: OFF-BY-ONE, and it crashes the game. `Atmosphere::Layer` is `Cloud Layer[3]`
+		   (SKY.H:74) -- three layers, and SKY.CPP only ever touches Layer[0..2] -- but this loop
+		   runs i = 0..3 and dereferences `&...Layer[i]`, reading ONE PAST THE END. It is the only
+		   indexed access to Layer[] in the tree and the only `i <= 3` loop in this file.
+		   Reported from play: BoB exited during a dogfight in the German Convoys campaign.
+		   SIGSEGV, fault_addr=0x8a4c000 (page-aligned -- consistent with reading just past the
+		   end of the block into an unmapped page), on the sim thread:
+		     ACMAirStruc::DefenceManoeuvre -> SelectTailToNoseManoeuvre -> mobileitem::MoveItem
+		       -> MoveList -> MoveAll -> DosMove
+		   On Windows the same read landed in adjacent members of a large global and was silently
+		   harmless; the port's allocation puts the end of the block against a page boundary.
+		   BOB_KEEP_CLOUD_OVERRUN=1 restores the original bound for A/B. */
+		for(SWord i = 0; i <= (getenv("BOB_KEEP_CLOUD_OVERRUN") ? 3 : 2); i++)
+#else
 		for(SWord i = 0; i <= 3; i++)
+#endif
 		{
 			PCLOUD cloud = &MissManCampSky().Layer[i];
 			if(cloud->Cover >= 128)

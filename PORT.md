@@ -1,5 +1,64 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## S200 (2026-08-22) — ⭐ the dogfight crash: a one-past-the-end read of the cloud layers
+
+**Reported from play:** *"bob window exited during dogfight (in convoy campaign, flying German
+side)."* Captured, symbolised, and it is a genuine off-by-one in the game's own AI.
+
+```
+=== CRASH: signal 11 (tid 168729) fault_addr=0x8a4c000 ===
+  ACMAirStruc::DefenceManoeuvre()
+  ACMAirStruc::SelectTailToNoseManoeuvre()
+  FirstField<unsigned char, AutoMoveCodeTypeSelect, 5>::operator AutoMoveCodeTypeSelect()
+  mobileitem::MoveItem / MoveList / MoveAll / DosMove
+```
+
+`ACMMAN.CPP:4277`:
+
+```c
+for(SWord i = 0; i <= 3; i++)
+{
+    PCLOUD cloud = &MissManCampSky().Layer[i];
+    if(cloud->Cover >= 128)
+```
+
+and `SKY.H:74`:
+
+```c
+Cloud Layer[3];
+```
+
+**Three layers, indices 0..2, and the loop runs to 3.** It is the only indexed access to `Layer[]`
+anywhere in the tree, and the only `i <= 3` loop in that file; `SKY.CPP` only ever touches
+`Layer[0]`, `Layer[1]`, `Layer[2]`, which confirms three is the intended count.
+
+`fault_addr=0x8a4c000` is page-aligned — exactly what reading just past the end of a block into an
+unmapped page looks like. On Windows the same read landed in adjacent members of a large global and
+was silently harmless, which is why the bug shipped; the port's allocation happens to put the end of
+that block against a page boundary.
+
+Fixed under `BOB_LINUX` with `BOB_KEEP_CLOUD_OVERRUN=1` to restore the original bound for A/B.
+
+### The gates could not have caught this, and that is the more important finding
+
+The full suite passes **with and without** the fix, because **nothing in it exercises sustained air
+combat**. GATE 5 drives the German Convoys campaign all the way to a Bf 109 cockpit and stops there —
+it proves you can *reach* a dogfight, never that you can survive one. Every combat manoeuvre, every
+`ACMAirStruc` decision branch, is unguarded territory.
+
+So this crash was found the only way it could be: by a person flying the game. That is not a
+sustainable way to find AI bugs, and the honest conclusion is that **the suite's coverage stops at
+the cockpit door**. A combat-soak gate — fly the campaign mission, let the AI engage, run for N
+thousand model ticks, assert no crash banner — is the missing piece, and it would have caught this
+in minutes.
+
+Logged as the next piece of work rather than quietly fixed and forgotten.
+
+**Gates after the fix:** GATE 1 14/14 clean, modal PASS, GATE 3 dummy==GL byte-identical, GATE 4
+frame-150 98.6% non-black, GATE 4b `blackTex=0`, GATE 5 German Convoys end to end, `### RUNS: all
+clean`.
+
+
 ## S199 (2026-08-22) — answering three MA notes: a gate that could not fail, a recipe that could not name a row, a registry that never forgets
 
 **MA S171/S172 sent three questions across (`§8-MA115`, `§8-MA117`, `§8-MA118`, `§8-MA121`). All three
