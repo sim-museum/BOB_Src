@@ -165,6 +165,15 @@ echo "### GATE 5: German (Luftwaffe) Convoys campaign end to end"
 # absolute path: this suite cd's into the game directory in its subshells, so a $(dirname $0)
 # relative path resolves against whatever the last cd left behind (measured: "No such file").
 bash /home/admin/bob/tools/bob_convoy_campaign.sh 2>&1 | sed 's/^/  /'
+
+echo "### GATE 6: combat soak (S201)"
+# The dogfight crash (S200) passed every gate in this file because none of them flies long
+# enough to hit a crash in the sim, and none reaches combat at all. GATE 6 soaks the campaign
+# for its full run and asserts crash-freedom over ~1.45M movecode dispatches; it also reports
+# combat activity, which is currently ZERO and is a known gap, not a gate failure.
+bash /home/admin/bob/tools/bob_combat_soak.sh 2>&1 | sed 's/^/  /'
+cs=${PIPESTATUS[0]}
+if [ "$cs" = "0" ]; then echo "  soak: PASS"; else echo "  soak: FAIL (exit=$cs)"; gates_fail=$((gates_fail+1)); fi
 cg=${PIPESTATUS[0]}
 if [ "$cg" = "0" ]; then echo "  campaign: PASS"; else echo "  campaign: FAIL (exit=$cg)"; fi
 

@@ -1039,6 +1039,25 @@ if((entry == Persons2::PlayerGhostAC->follower) || (entry == Persons2::PlayerSee
 //DeadCode CSB 13/07/99			INT3;
 #endif
 
+#if defined(BOB_LINUX)
+	/* S201: what are the aircraft actually DOING? Neither the quick mission nor the campaign
+	   raid ever enters AUTO_COMBAT, and "no combat happened" has several very different causes
+	   (no enemies spawned, enemies never intercept, the AI never switches mode). A histogram of
+	   the movecodes in play answers it in one run instead of three guesses.
+	   NB this sits BEFORE the switch: my first attempt put it between two `case` labels, after a
+	   `break`, where it is unreachable -- and it produced a confident "zero" that was really
+	   "never executed". BOB_TRACE_MOVECODE=1. */
+	if (getenv("BOB_TRACE_MOVECODE")) {
+		static long _mc[64]; static long _n = 0;
+		_mc[((int)entry->movecode) & 63]++;
+		if ((_n++ % 4000) == 0) {
+			fprintf(stderr,"[movecode] after %ld dispatches:", _n);
+			for (int _i = 0; _i < 64; _i++) if (_mc[_i]) fprintf(stderr," %d=%ld", _i, _mc[_i]);
+			fprintf(stderr,"  (AUTO_COMBAT=%d AUTO_FOLLOWWP=%d)\n", (int)AUTO_COMBAT, (int)AUTO_FOLLOWWP);
+			fflush(stderr);
+		}
+	}
+#endif
 	switch (entry->movecode)
 	{
 	case AUTO_TRACKINGBOGIE:
@@ -1106,6 +1125,16 @@ if((entry == Persons2::PlayerGhostAC->follower) || (entry == Persons2::PlayerSee
 		((AirStrucPtr) *entry)->Move().AutoTakeOff();
 		break;
 	case AUTO_COMBAT:
+#if defined(BOB_LINUX)
+		/* S201: the combat-soak metric. `DefenceManoeuvre` (S200) additionally needs an enemy
+		   inside DANGERRANGE, so counting it answers "did anyone get shot at" -- too narrow to
+		   tell whether the AI ran at all. THIS is the gate: an aircraft in AUTO_COMBAT is
+		   running the whole ACM decision tree every tick. BOB_TRACE_ACM=1. */
+		if (getenv("BOB_TRACE_ACM")) {
+			static long _ac = 0;
+			if ((_ac++ % 200) == 0) { fprintf(stderr,"[acm] AirCombat ticks=%ld\n", _ac); fflush(stderr); }
+		}
+#endif
 		((AirStrucPtr) *entry)->AirCombat();
 		break;
 	case AUTO_NOPPILOT:
