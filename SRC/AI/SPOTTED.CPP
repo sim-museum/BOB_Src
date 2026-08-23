@@ -3088,6 +3088,19 @@ void	ArtInt::PrepareForCombat(AirStrucPtr caller)
 //------------------------------------------------------------------------------
 void	ArtInt::SetEngage(AirStrucPtr caller,AirStrucPtr trg,MANOEUVRE manoeuvre,ANGLES   desiredhdg,ANGLES   desiredpitch, bool surprised)
 {
+#if defined(BOB_LINUX)
+	/* S202: does the AI ever decide to ENGAGE? S201 measured zero AUTO_COMBAT ticks across
+	   1.46M movecode dispatches, so combat never starts -- but "never starts" has several
+	   causes and this is the gate between deciding and doing. Count entries and whether the
+	   target is usable. BOB_TRACE_ENGAGE=1. */
+	if (getenv("BOB_TRACE_ENGAGE")) {
+		static long _se = 0;
+		if ((_se++ % 50) == 0)
+			fprintf(stderr,"[engage] SetEngage calls=%ld caller=%p trg=%p manoeuvre=%d\n",
+			        _se, (void*)caller, (void*)trg, (int)manoeuvre);
+		fflush(stderr);
+	}
+#endif
 #ifndef	NDEBUG
  	if(caller->classtype->aerobaticfactor == AEROBATIC_LOW)
  		INT3;				 	//TRYING TO PUT A HEAVY BOMBER INTO COMBAT

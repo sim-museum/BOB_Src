@@ -1,5 +1,62 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## S201–S202 (2026-08-23) — ⭐ the AI never fights: measured, narrowed, not yet explained
+
+The S200 dogfight crash passed every gate because none of them reaches combat. Building the soak
+gate to close that turned up something bigger.
+
+### GATE 6: combat soak
+
+`tools/bob_combat_soak.sh` runs the German Convoys campaign for its full 600 s and asserts:
+
+1. **the sim actually soaked** — ≥200k movecode dispatches, so the gate cannot "pass" on a run that
+   never got airborne (S171's failure mode of asserting on a prefix of a log);
+2. **no crash banner** over that soak — the property that would have caught S200.
+
+It *reports* combat activity and deliberately does **not** assert on it. A gate that always fails is
+noise, and asserting a property the port has never demonstrated is asserting a wish.
+
+### The finding
+
+```
+[movecode] after 1,456,001 dispatches: 0=449112  1=112879  5=240800  39=657210
+                                        (AUTO_COMBAT=63, AUTO_PRECOMBAT=32)
+```
+
+**Neither 63 nor 32 ever appears.** The aircraft fly waypoints (`AUTO_FOLLOWWP`), sit as spares
+(`AUTO_SPAREAC`) and taxi, for 1.46 million dispatches, and **not one ever enters combat or even
+pre-combat**. The quick-mission boot is the same shape: 228,001 dispatches, codes 1/5/15/16/41, no
+32 and no 63.
+
+Narrowed by direct counting:
+
+| measurement | result |
+|---|---|
+| `AUTO_COMBAT` movecode ticks | **0** |
+| `AirCombat()` entries | **0** |
+| `DefenceManoeuvre()` calls | **0** |
+| `ArtInt::SetEngage()` calls | **0** |
+| `AUTO_PRECOMBAT` movecode ticks | **0** |
+
+The transitions into both `AUTO_PRECOMBAT` and `AUTO_COMBAT` live *inside* `SetEngage`
+(`SPOTTED.CPP:3252/3303`), and `SetEngage` is never called. So the break is **at or above target
+selection**, not in the manoeuvre code. The entire `ACMAirStruc` decision tree — every manoeuvre,
+every engagement rule — is code this port has never executed.
+
+### One wrong turn, withdrawn
+
+`BOB_TRACE_SEENAC` reported a single event across the whole run, which looked like "aircraft never
+spot each other". **That trace is an S192 guard about the player's seen-aircraft, not a detection
+counter** — the wrong instrument, and the inference is withdrawn. Whether detection, spawn placement,
+intercept geometry or the transition itself is at fault is **still unknown**.
+
+### Also worth keeping
+
+The movecode histogram's first version sat between two `case` labels, after a `break`, where it is
+unreachable — and produced a confident **zero** that was really "never executed". Dead
+instrumentation reports exactly what a dead subsystem reports.
+
+
 ## S200 (2026-08-22) — ⭐ the dogfight crash: a one-past-the-end read of the cloud layers
 
 **Reported from play:** *"bob window exited during dogfight (in convoy campaign, flying German
