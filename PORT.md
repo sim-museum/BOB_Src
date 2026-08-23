@@ -54,6 +54,22 @@ in minutes.
 
 Logged as the next piece of work rather than quietly fixed and forgotten.
 
+**And it is now measured, not inferred.** Two runs:
+
+1. Convoy gate with `BOB_KEEP_CLOUD_OVERRUN=1` (the bug deliberately restored): **PASSES, no
+   crash.** So the fix is right by inspection but **unreproduced** -- reading `Layer[3]` only
+   faults when the block happens to end against a page boundary.
+2. Convoy gate with `BOB_TRACE_ACM=1`, counting `DefenceManoeuvre` entries: **zero.**
+
+The gate flies to its 600-second timeout and **never once enters the combat AI**. It is not
+that the soak is too short or the page layout was lucky -- the aircraft never engages. That is
+a much bigger hole than "no combat gate": the entire `ACMAirStruc` decision tree, every
+manoeuvre selection, is code this project has never executed under test.
+
+*A fix I cannot reproduce is worth stating as exactly that.* The change is still correct --
+`Layer[3]` on a three-element array is wrong whether or not it faults today, and the backtrace
+names that function -- but the honest label is "unambiguous by inspection, not reproduced".
+
 **Gates after the fix:** GATE 1 14/14 clean, modal PASS, GATE 3 dummy==GL byte-identical, GATE 4
 frame-150 98.6% non-black, GATE 4b `blackTex=0`, GATE 5 German Convoys end to end, `### RUNS: all
 clean`.

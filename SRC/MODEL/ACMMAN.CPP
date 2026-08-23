@@ -4273,6 +4273,17 @@ Bool	ACMAirStruc::M_ShootTooEarly()
 //------------------------------------------------------------------------------
 void	ACMAirStruc::DefenceManoeuvre()
 {
+#if defined(BOB_LINUX)
+	/* S200: does anything in the gate suite ever REACH the combat AI? The cloud-layer overrun
+	   fixed here crashed a real dogfight, and the full suite passes with AND without the fix --
+	   so either the gates reach combat and got lucky with page layout, or they never reach it at
+	   all. Those need different work (a longer soak vs. a gate that actually engages), so count
+	   rather than assume. BOB_TRACE_ACM=1. */
+	if (getenv("BOB_TRACE_ACM")) {
+		static long _dm = 0;
+		if ((_dm++ % 100) == 0) { fprintf(stderr,"[acm] DefenceManoeuvre calls=%ld\n", _dm); fflush(stderr); }
+	}
+#endif
 	if(Math_Lib.rnd(255) < ai.combatskill)
 #if defined(BOB_LINUX)
 		/* S200: OFF-BY-ONE, and it crashes the game. `Atmosphere::Layer` is `Cloud Layer[3]`
