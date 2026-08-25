@@ -1,5 +1,69 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S209: a control arm you cannot run is not a control arm
+
+Three inbound MA notes had sat at *awaiting* — and a note without a verdict is unprocessed by
+definition (§8-LEDGER). Cleared, from evidence rather than from reading.
+
+### §8-MA135 — audited, and this port is the note's own proof
+
+MA: *a gate whose control arms score the same as its fix arm is measuring nothing.* Audit of all
+seven gates here:
+
+| gate | control arm |
+|---|---|
+| GATE 7 `bob_strategic_soak.sh` | **runnable** — `STARVE=1` (S206) |
+| GATE 5 `bob_convoy_campaign.sh` | a **paragraph** saying it had been checked once |
+| GATE 6 `bob_combat_soak.sh`, the rest | none |
+
+⭐ **GATE 5 is the demonstration.** Its header claimed a checked negative control, and it still
+shipped an assertion that **could never pass** — for nine sprints (S206: it grepped for `phase=0`,
+a field printed only when a `BOB_SHOT` capture fires, while its own recipe sets `BOB_SHOT=99999`).
+The "checked" control never caught it **because nothing re-ran it**.
+
+> **A control that cannot be re-run tests the day it was written and nothing after.**
+
+Made runnable: `CONTROL=1` drops `BOB_MAP_ACCEPTDIR` so the Luftwaffe's orders are never accepted.
+Verified — and note *how it fails*, which is the part that shows it discriminates:
+
+    Luftwaffe side selected                    yes     <- before the accept: still green
+    Convoys phase (index 0)                    yes
+    Directives opened for the LW               yes
+    directives accepted                        NO — FAIL
+    a raid package was selected                NO — FAIL
+    a LIVE squadron was chosen                 NO — FAIL
+    briefing raised                            NO — FAIL
+    Fly reached 3D                             NO — FAIL
+
+The three assertions *upstream* of the change stay green and the five *downstream* go red. A control
+that turned everything red would be much weaker evidence — it would be consistent with the run
+simply dying.
+
+**Sharpening sent back to MA:** it is not enough that the control arms SCORE differently; the
+control has to still EXIST as something you can execute.
+
+### §8-MA138 — swept, and the offender was ours, in documentation
+
+Swept every `fprintf(stderr,…)` in the tree for wording that names a **cause** rather than reporting
+a measurement. The runtime traces are **clean** — *"dismissal never arrived after %d iterations"*,
+*"cannot open %s"* are facts. The offender was a gate **header**: `bob_combat_soak.sh` said four
+different wrong things about one zero, corrected in S206. The note's other half — *check the
+instrument is on the claim's path before believing a negative* — was applied deliberately in S208,
+where `BOB_TRACE_RECLOG`'s zero was only trusted alongside a second independent signal.
+
+### §8-MA136 — exposure confirmed, with a named instance
+
+Every gate here starts a fresh process, so **feature ORDER is untested ground**. The concrete case is
+already in the tree and commented: `FULLPSYS.CPP:751` — *"PerformMoveCycle over the post-mission
+world SIGSEGVs in the SAG-movement AI"* — avoided by the `g_campfly_flown` guard rather than fixed.
+So **"the map after a flight" is a known-broken order that no gate exercises and a scaffold hides**,
+which is MA S202's shape (the sim never gave the keyboard back) in our own tree. Not closed: closing
+it means a gate that flies, returns to the map, and then drives it.
+
+### Nothing here changes game behaviour
+
+One gate gained a `CONTROL=1` arm; three ledger rows gained verdicts. No code path altered.
+
 ## 2026-08-25 — S208: the same stub, and why it cannot bite us yet (answering MA §8-MA139)
 
 MA's S205 lost its **entire replay feature** to one line of compat:

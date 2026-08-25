@@ -27,16 +27,27 @@
 # (S193: with a fast map clock the whole sortie ran before the first scan and every scan saw a
 # corpse -- PS_COMPLETE with its instances zeroed by Profile::PackageComplete). BOB_CAMPAIGN_FLY=30
 # with BOB_MAP_TIMER=8 keeps the airborne window wide in paint terms.
-# NEGATIVE CONTROL, checked -- a gate that has never been seen to fail is not evidence. Run the
-# same drive WITHOUT BOB_MAP_ACCEPTDIR (i.e. never accept the Luftwaffe's orders) and the last four
-# assertions all go to zero: no hipack, no playersquadron, no InThe3D=1. That is the campaign
-# correctly having nothing to fly, and it is what this gate exists to distinguish from a break.
+# NEGATIVE CONTROL -- now RUNNABLE, was prose. CONTROL=1 runs the same drive WITHOUT
+# BOB_MAP_ACCEPTDIR (i.e. never accept the Luftwaffe's orders) and the last four assertions must go
+# to zero: no hipack, no playersquadron, no InThe3D=1. That is the campaign correctly having
+# nothing to fly, and it is what this gate exists to distinguish from a break.
+#
+# S209: this control used to be a PARAGRAPH saying it had been checked once. That is not a control
+# arm, and this gate is the proof: for NINE SPRINTS it shipped an assertion that could never pass
+# (S206 -- it grepped for `phase=0`, a field printed only when a BOB_SHOT capture fires, while the
+# recipe sets BOB_SHOT=99999), and the "checked" control never caught it because nothing re-ran it.
+# A control that cannot be re-run tests the day it was written and nothing after.
+# Answering MA's §8-MA135, whose claim this sharpens: it is not enough for the control arms to
+# SCORE differently -- they have to still EXIST as something you can execute.
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
 OUT="${OUT:-/tmp/bob_convoy_gate}"
 TMO="${TMO:-600}"
+CONTROL="${CONTROL:-0}"
+ACCEPT="BOB_MAP_ACCEPTDIR=40"
+[ "$CONTROL" = "1" ] && ACCEPT=""
 mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 
@@ -46,7 +57,7 @@ echo "German (Luftwaffe) Convoys campaign — end to end"
 ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env \
     BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy \
     BOB_AUTOCLICK="1,1,#1000:0,1,1" \
-    BOB_MAP_ACCEPTDIR=40 BOB_CAMPAIGN_FLY=30 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=8 \
+    $ACCEPT BOB_CAMPAIGN_FLY=30 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=8 \
     BOB_TRACE_CAMPFLY=1 BOB_TRACE_LWDIR=1 \
     BOB_SHOT=99999 BOB_SHOT_PATH="$OUT/convoy.ppm" "$BOB" ) >"$log" 2>&1
 pkill -x "$(basename "$BOB")" 2>/dev/null
@@ -77,6 +88,18 @@ chk "Fly reached 3D"                 "InThe3D=1"
 if grep -aq "FATAL" "$log"; then say "no fatal error" "FATAL present — FAIL"; fail=1; else say "no fatal error" "yes"; fi
 
 echo "----------------------------------------"
+if [ "$CONTROL" = "1" ]; then
+  # inverted: the control is healthy when the gate goes RED
+  if [ "$fail" -ne 0 ]; then
+    echo "CONTROL OK: with the LW orders never accepted, the campaign has nothing to fly and this"
+    echo "            gate fails -- so it is discriminating, not just passing."
+    exit 0
+  else
+    echo "CONTROL BROKEN: passed even with the orders never accepted. This gate does not test what"
+    echo "                it claims; see the header."
+    exit 1
+  fi
+fi
 if [ "$fail" -eq 0 ]; then
   echo "PASS: the German Convoys campaign reaches 3D (log $log)"
 else
