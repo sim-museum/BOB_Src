@@ -221,6 +221,34 @@ screen sweep with the gold shots as the fixed oracle.*
 | SP.7 | **Audit one-shot drive counters + absolute `BOB_SHOT` timing (MA note 29 §3).** `if (++n == N)` / `static int done` on a function-local static fires **once per process**, which capped MA's campaign at one flyable mission and read for the port's whole life as a *game* limitation. BoB has at least `bob_oob_open_directives`'s `static int done` and every `BOB_AUTOCLICK`/map-drive counter. Sweep them; make per-occurrence hooks re-arm on the state transition that ends the occurrence. **Same note, second half — felt directly in S142:** an absolute `BOB_SHOT=<tick>` cannot be aimed at something whose arrival time varies; adding 85 spinners slowed the run enough that the capture tick moved. Arm the capture **from the drive** (fire N ticks after the dialog opens) instead of from an absolute idle count. *(S142)* | 5 | ☐ |
 | SP.3 | **Flight / map parity** — ◐ **BOTH CAPTURED + VERDICTED (S123).** Cockpit vs gold: CLOSE (structure/instruments/HUD readout match; prop-blur + HUD style deviations named). Strategic map vs gold: CLOSE (terrain/sectors/icons/footer/toolbars/clock match; raid-stacks/routes absent in the fresh-day capture, ruler art plain, Directives dialog = GAP). Remaining: LW Directives dialog reachability, raid-day capture, deviation fixes. | 13 | ◐ |
 
+### Release P — "Mine the patch changelists and the docs for bugs we still have" *(PO-added 2026-08-25)*
+
+> **PO:** *"check the ~/sgl/TUE patch changelists for ma and bob, and check whether any bug fixes
+> listed in these patch changelists are bugs that need to be fixed in the ma or bob linux
+> codebase"* … *"do the same with any bugs mentioned in ~/sgl/TUE ma or bob documentation, either
+> that distributed with the games or provided later by the user communities"*.
+
+⭐ **The point that gives this teeth: WE COMPILE THE SOURCE, THE ORACLE IS A PATCHED BINARY.** Our
+parity oracle is the **BDG 0.99** build (`boblang.dll`, S124), and the BDG patch line runs 0.70 →
+0.99 with a documented fix history — `DOC/BDG_99_patch_manual_summary.md` already names *"0.98:
+fixed crash issues"* and *"0.97 to 0.973: bug fixes, including texture corruption and waypoint
+errors"*. Every bug those patches fixed **in the EXE** is by default **still live here** (we build
+the pre-patch sources) while being **absent from the gold shots**. So this is both a list of
+already-diagnosed bugs we have never looked for, **and** a reason some recorded parity deviations
+may be patch differences rather than port defects.
+
+| # | Story | Pts | Acceptance criterion | Status |
+|---|---|---|---|---|
+| P1 | Establish what patch level our SOURCE is. | 3 | Written answer with evidence: does `SRC/` already contain the 0.9x fixes, or is it the pre-patch tree? **Do this first** — it decides whether the list is long or empty. | 🔨 **NEW — do first.** |
+| P0 | Inventory the corpus, extract every named bug/fix. | 5 | A table in `doc/patch-bugs.md`: source → version → symptom → implication. Sources: `DOC/BDG_99_patch_manual_summary.md`, `DOC/BDG Patch Battle of Britain Manual_1.pdf`, `DOC/patch 0.99Manual.pdf`, `DOC/Patch 0.98 manual.pdf`, `DOC/BattleOfBritainOnlineDocumentation.txt`, `DOC/GettingStartedAndTroubleshootingGuide.pdf`, `DEBUG/THU_graphics_glitches.txt`. | 🔨 **NEW** |
+| P2 | Triage each: live / already-fixed / N/A / data-only. | 8 | Every row gets a verdict **from evidence** (a grep, a run, `git log -L`), never from the description. Patch items shipping only DATA (art, missions, `bdg.txt`) are N/A to a source port and marked so. | 🔨 **NEW** |
+| P3 | Fix the live ones, highest-impact first. | 13 | Each fix gated or measured like any other item. | 🔨 **NEW** |
+| P4 | Re-examine screen-parity verdicts in the light of P1. | 5 | Any deviation explained by a patch difference is re-marked with the item cited. **An oracle we mis-attribute is worse than no oracle** — and `doc/screen-parity.md` currently reads 18 CLOSE / 1 GAP on that assumption. | 🔨 **NEW** |
+
+**Release P total: 34 pts.** P1 first, then P0 → P2 → P3/P4.
+⭐ **`DEBUG/THU_graphics_glitches.txt` is worth reading on day one** — a community-recorded list of
+*graphics glitches*, which is exactly the class our parity gates argue about.
+
 ### Icebox (environment-blocked — not schedulable until the environment changes)
 | ID | Story | Why parked |
 |---|---|---|
