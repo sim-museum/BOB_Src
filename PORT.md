@@ -1,5 +1,67 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-24 — S207: row 7 of the briefing roster could not be clicked (answering MA §8-MA137)
+
+MA's S203 note arrived the same day: *their* title menu drew 199 px of rows inside a 100 px
+listbox while every hit test bounded clicks by the rect, so its lower rows — one of them **Replay**
+— were painted and unclickable by any route. They asked whether we have it, since we host the same
+`R*` listboxes and `bob_ole_click` bounds by the hosted rect.
+
+**We do.** Measured, not read:
+
+    [extent] OVERFLOW dlg=1164 ctrl=1481 rect=(27,88 673x139) contentH=162 (+23px)
+             -- rows 0..6 fit the rect, content has 0..7, so row(s) 7..7 were UNCLICKABLE
+
+`IDD_BOBFRAG` / `IDC_RLIST_UNITDETAILS` — **the mission briefing's unit-details roster**, a control
+the player picks from. Eight rows are drawn; the eighth refuses every click.
+
+### Reading the code would have got this wrong
+
+The obvious answer is that we are immune: S173 **clips each control's draw to its own rect**
+(`bob_gdi_setdibits_clip`) precisely so a panel-sized art file cannot paint over its neighbours. If
+paint is clipped to the rect then paint and hit test agree by construction, and MA's note is N/A.
+
+That clip is on the **`SetDIBitsToDevice` path** — it bounds the *art blit* and says nothing about
+row **text**, which is drawn through the CDC primitives. So the tidy argument for N/A was about a
+different code path than the question. **The two notes that looked most obviously N/A in S196–S198
+were the two that paid**, and this is the third. The probe (`contentH()` on `OleHost`, compared
+against the hosted rect at draw time) took ten minutes and answered it outright.
+
+### Both halves were broken, and only one is obvious
+
+| | bounded by | consequence |
+|---|---|---|
+| `bob_ole_click` | `h->sh` | a real click on row 7 is refused |
+| `bob_ole_ctrl_point_rc` | `h->sh` | a **recipe** naming row 7 hits S199's refusal branch: *"row not mapped by rowAtY"* |
+
+So the row was unreachable by a player **and** unnameable by a test — which is why nothing has ever
+failed over it. Exactly MA's shape: their resolver produced the right coordinate and the hit test
+threw it away; ours refuses to produce the coordinate at all. Two ports, one fault, opposite halves
+visible first.
+
+**Fixed:** new `OleHost::hitH` records the height paint actually covered
+(`contentH()` = the control's own `GetListHeight()`, the metric `OnDraw` lays rows out with, so it
+tracks any font change). `bob_ole_click` and the recipe resolver's row scan both use it.
+`BOB_NO_DRAWH=1` reverts. A/B on one binary, one env var apart:
+
+| arm | result |
+|---|---|
+| fix | `hit-tested to 162` |
+| `BOB_NO_DRAWH=1` | `hit-tested to 139` |
+
+**`hitH` is deliberately separate from `sh`.** `sh` also builds the dialog's *swallow* region
+(`bob_ole_drawn_bounds`), and widening that would change which clicks the map stops seeing —
+a much larger blast radius than making a drawn row answer. Widening only the per-control hit test
+cannot move a pixel; it can only make something already on screen respond.
+
+### Say it in rows, not pixels
+
+The probe's first version reported *"23 px of rows are painted outside the rect"*. True, and not
+actionable — nobody can tell from that whether it matters. It now probes the control's own
+`rowAtY` and reports **"rows 0..6 fit the rect, content has 0..7, so row 7 was UNCLICKABLE"**,
+which names the defect in the units the player experiences it in. A diagnostic should answer the
+question that gets asked next.
+
 ## 2026-08-24 — S206: ⭐ the raid was never stuck. The tape ran out.
 
 **This withdraws S204.** *"The LW raid's squadrons never execute a single waypoint"* is true of

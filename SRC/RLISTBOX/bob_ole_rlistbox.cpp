@@ -84,6 +84,10 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
     }
     /* R4.4: map a click's local Y (relative to the control's drawn top) to a list row. */
     int rowAtY(int localY) override { return (int)(short)GetRowFromY(localY); }
+    /* S207 (§8-MA137): the control's OWN layout metric -- GetCount()*rowH + shadow, from the same
+       TEXTMETRIC OnDraw lays rows out with. Compared against the hosted rect it answers whether
+       this port has MA's paint-vs-click extent disagreement. */
+    int contentH() override { return (int)GetListHeight(); }
     /* S141: map a click's local X to a list COLUMN via the genuine control's own
        GetColFromX (walks m_sizeList, the authored/Shrink-computed column widths) --
        the second half of the Select(row,column) event. Multi-COLUMN listboxes are how

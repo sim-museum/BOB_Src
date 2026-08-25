@@ -12,6 +12,11 @@ struct OleHost {
     int         dlgId  = 0;      /* the owning dialog's IDD -> (dialog,control) DLGINIT caption */
     class CWnd* parentDlg = NULL;/* owning dialog (for per-panel draw) */
     int         sx=0, sy=0, sw=0, sh=0;  /* last-drawn screen rect, for click hit-testing */
+    /* S207 (§8-MA137): the height this control's paint actually COVERS, which for a list is not
+       its rect. Separate from sh on purpose: sh also builds the dialog's swallow region
+       (bob_ole_drawn_bounds), and widening THAT would change which clicks the map stops seeing.
+       This one is read by the per-control hit test alone. <=0 -> fall back to sh. */
+    int         hitH = 0;
     int         visible = 1;     /* SP.2 (S123): runtime ShowWindow state -- the game hides
                                     off-page/disabled controls (e.g. CSQuick1's IDC_DISABLEDEMO)
                                     via CWnd::ShowWindow(SW_HIDE); hidden hosts aren't drawn. */
@@ -29,6 +34,13 @@ struct OleHost {
     virtual int  onClickXY(int /*localX*/, int /*localY*/) { return 0; }
     virtual int  curIndex() { return -1; } /* S161: current selection, for the event's index argument */
     virtual int  rowAtY(int /*localY*/) { return -1; } /* list controls: the row under a click (local Y), or -1 */
+    /* S207, answering MA's §8-MA137: how tall is the content this control would LAY OUT, as
+       opposed to the rect it is hosted in? MA found its title menu drawing 199px of rows inside a
+       100px listbox while every hit test bounded clicks by the rect, so the lower rows -- one of
+       them Replay -- were painted and unclickable by any route. We host the same R* listboxes.
+       -1 = the control has no notion of content height (the honest answer for a button), which is
+       NOT the same as 0 and must not be compared against a rect. */
+    virtual int  contentH() { return -1; }
     virtual int  colAtX(int /*localX*/) { return 0; }  /* S141: list controls: the COLUMN under a click (local X) */
     virtual int  onButtonClick(int /*localX*/) { return -1; } /* multi-button controls (RRadio tabs): select the button at local X + return its index, or -1 */
 };

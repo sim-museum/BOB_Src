@@ -356,6 +356,46 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         host->draw(&dc, dluX(r.w), hpx);
         bob_gdi_setdibits_clip(clipSave[0], clipSave[1], clipSave[2], clipSave[3]);
         host->sx = sx; host->sy = sy; host->sw = dluX(r.w); host->sh = hpx;  /* for click hit-test */
+        /* S207, answering MA's §8-MA137: does anything we host LAY OUT more content than the rect
+           we hit-test? MA's title menu drew 199px of rows inside a 100px listbox and its lower
+           rows -- Replay among them -- could not be clicked by any route. We clip the art blit to
+           the rect (S173), but that clip is on the SetDIBitsToDevice path and says nothing about
+           row TEXT, so reading the code was not going to answer this. Measure it.
+           FILTERED, not capped: only an actual overflow prints, so a clean tree is silent and a
+           dirty one cannot be starved by whatever draws first (§8-MA83). Deduped per control. */
+        {
+            int ch = host->contentH();
+            /* S207: hit-test what paint covered. MA's §8-MA137, measured true here: IDD_BOBFRAG's
+               IDC_RLIST_UNITDETAILS lays out 162px of rows in a 139px box, so its bottom rows were
+               painted and refused every click. Widening the per-control hit test cannot move a
+               pixel -- it only makes drawn rows answer. BOB_NO_DRAWH=1 reverts. */
+            host->hitH = (ch > hpx && !getenv("BOB_NO_DRAWH")) ? ch : hpx;
+            if (ch > 0 && ch > hpx) {
+                static int seen[64]; static int nseen = 0;
+                int key = host->dlgId * 10000 + host->ctrlId, dup = 0;
+                for (int k = 0; k < nseen; k++) if (seen[k] == key) { dup = 1; break; }
+                if (!dup && nseen < 64) {
+                    seen[nseen++] = key;
+                    /* Say it in ROWS, not pixels: "23px overflow" is not actionable, "row 6 of 7
+                       could not be clicked" is. Probe the control's own rowAtY, which is what both
+                       the hit test and the recipe resolver use. */
+                    int lastInRect = -1, lastInContent = -1;
+                    for (int t = 0; t < ch; t++) {
+                        int rr = host->rowAtY(t);
+                        if (rr < 0) continue;
+                        if (rr > lastInContent) lastInContent = rr;
+                        if (t < hpx && rr > lastInRect) lastInRect = rr;
+                    }
+                    fprintf(stderr, "[extent] OVERFLOW dlg=%d ctrl=%d rect=(%d,%d %dx%d) "
+                                    "contentH=%d (+%dpx) -- rows 0..%d fit the rect, content has "
+                                    "0..%d, so row(s) %d..%d were UNCLICKABLE; hit-tested to %d\n",
+                            host->dlgId, host->ctrlId, sx, sy, dluX(r.w), hpx, ch, ch - hpx,
+                            lastInRect, lastInContent, lastInRect + 1, lastInContent,
+                            host->hitH);
+                    fflush(stderr);
+                }
+            }
+        }
         if (bob_ole_trace()) fprintf(stderr, "[ole] draw panel ctrl id=%d at (%d,%d) %dx%d\n", host->ctrlId, sx, sy, dluX(r.w), hpx);
         n++;
     }
@@ -393,6 +433,8 @@ extern "C" int bob_ole_draw_toolbar_ids(CWnd* dialog, int ox, int oy, int pxPer1
         bob_gdi_setdibits_clip(clipSave[0], clipSave[1], clipSave[2], clipSave[3]);
         bob_gdi_setdibits_origin(0, 0);
         host->sx = sx; host->sy = sy; host->sw = w; host->sh = h;
+        { int ch = host->contentH();                       /* S207: see OleHost::hitH */
+          host->hitH = (ch > h && !getenv("BOB_NO_DRAWH")) ? ch : h; }
         n++;
     }
     if (bob_ole_trace()) fprintf(stderr, "[ole] draw_toolbar dialog=%p off=(%d,%d) drew=%d\n", (void*)dialog, ox, oy, n);
@@ -520,7 +562,9 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (h->parentDlg != dialog) continue;
         if (bob_ole_trace()) fprintf(stderr, "[ole]   hit? id=%d rect=(%d,%d,%d,%d) click=(%d,%d)\n", h->ctrlId, h->sx, h->sy, h->sw, h->sh, x, y);
         if (h->sw <= 0 || h->sh <= 0) continue;
-        if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh) {
+        /* S207 (§8-MA137): bound by what paint COVERED, not by the template rect. See OleHost::hitH. */
+        int hitH = (h->hitH > 0) ? h->hitH : h->sh;
+        if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + hitH) {
             bob_ole_last_click_id = h->ctrlId;   /* S156: report the hit control to the caller */
             /* S129: a multi-button control (RRadio tab row) -- select the button under the
                cursor and fire its genuine Selected(index) event (dispid 1, VTS_I4) via the
@@ -644,15 +688,21 @@ extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int
         }
         int ly = h->sh / 2;
         if (row >= 0) {                              /* S199: find the row's vertical span */
+            /* S207 (§8-MA137): scan the height paint COVERED. Bounded by h->sh this loop could
+               never find a row living past the rect, so it took the S199 refusal branch and the
+               recipe reported "row not mapped" -- the mirror of the hit test refusing the click.
+               Both halves have to know how tall the content is or the rows stay unaddressable.
+               The default (row<0) stays h->sh/2 so existing recipes keep their click point. */
+            int scanH = (h->hitH > h->sh) ? h->hitH : h->sh;
             int rstart = -1, rend = -1;
-            for (int t = 0; t < h->sh; t++) {
+            for (int t = 0; t < scanH; t++) {
                 if (h->rowAtY(t) == row) { if (rstart < 0) rstart = t; rend = t; }
                 else if (rstart >= 0) break;
             }
             if (rstart < 0) {
                 if (bob_ole_trace())
-                    fprintf(stderr, "[ole] ctrl_point id=%d row=%d not mapped by rowAtY (h=%d) "
-                                    "-- refusing rather than clicking the middle row\n", id, row, h->sh);
+                    fprintf(stderr, "[ole] ctrl_point id=%d row=%d not mapped by rowAtY (h=%d scanH=%d) "
+                                    "-- refusing rather than clicking the middle row\n", id, row, h->sh, scanH);
                 return 0;
             }
             ly = (rstart + rend) / 2;
@@ -793,6 +843,8 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
        panels, and this host belongs to the RFullPanelDial itself. It exists so hit rects can come
        from the paint (S156 / MA §8-MA84 trap 1: store what paint did, never re-derive it). */
     host->sx = x; host->sy = y; host->sw = w; host->sh = h;
+    { int ch = host->contentH();                           /* S207: see OleHost::hitH */
+      host->hitH = (ch > h && !getenv("BOB_NO_DRAWH")) ? ch : h; }
     if (bob_ole_trace()) fprintf(stderr, "[ole] OnDraw %p at (%d,%d) %dx%d h=%d\n", (void*)wrapper, x, y, w, h, textH);
     return 1;
 }

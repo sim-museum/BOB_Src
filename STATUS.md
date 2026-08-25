@@ -7,7 +7,22 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> ## Latest (S206, 2026-08-24): ⭐ the campaign's strategic layer runs end to end
+> ## Latest (S207, 2026-08-24): row 7 of the mission briefing could not be clicked
+>
+> Answering MA's `§8-MA137`, which arrived the same day. `IDD_BOBFRAG`/`IDC_RLIST_UNITDETAILS` —
+> **the briefing's unit-details roster** — is a 673x139 control laying out **162 px** of rows:
+> *rows 0..6 fit, the content has 0..7, so row 7 refused every click.* Both halves were broken:
+> `bob_ole_click` bounded the click by the rect, and `bob_ole_ctrl_point_rc` refused to even name
+> the row, so it was unreachable by a player **and** unnameable by a test — which is why nothing
+> ever failed over it. Fixed with `OleHost::hitH` (the height paint covered, from the control's own
+> `GetListHeight()`); `BOB_NO_DRAWH=1` reverts, A/B on one binary: `hit-tested to 162` vs `139`.
+>
+> ⚠️ **Nearly filed N/A by reading.** S173 clips each control's draw to its own rect — so paint and
+> hit test "agree by construction". But that clip is on the `SetDIBitsToDevice` **art** path and
+> does not bound row **text**: the argument for N/A was about a different code path than the
+> question. Third time an inbound MA note that looked N/A has paid.
+
+> ## Earlier (S206, 2026-08-24): ⭐ the campaign's strategic layer runs end to end
 >
 > **S204's "the LW raid never executes a waypoint" is WITHDRAWN.** It was true of every soak this
 > port has run and false of the game: the soaks all flew, and in 3D flight the strategic clock
