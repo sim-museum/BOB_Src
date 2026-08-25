@@ -1358,6 +1358,44 @@ Bool	Replay::ReplayRead(UByte* dest, ULong size)
 {
 	LPASPRIMARYVALUES lpas;
 
+#if defined(BOB_LINUX)
+	/* S241 -- CROSS-PORTED FROM MiG Alley S236, WHERE THIS WAS A LIVE, PO-REPRODUCED HANG.
+	   The guard below is `playbackfilepos + size > playbackfileend`. Both operands are 32-bit, so a
+	   large `size` makes the SUM WRAP; the wrapped value compares small, the guard says "fine", and
+	   the copy below reads `size` bytes out of a buffer that does not contain them.
+
+	   In MiG Alley this hung the PO's session: the main thread sat in memcpy under
+	   ReplayRead <- BackupSmokeInfo <- LoadBlockHeader <- PreScanReplayFile with a size of ~1.9 GB,
+	   and the process reached VmData 2.2 GB inside a 32-bit address space, from a 417 KB file. Not
+	   a deadlock -- a multi-gigabyte copy, page-faulting. Proof it was overflow, by elimination:
+	   ~40 KB remained and ~1.9 GB was asked for, and no two valid pointers into one buffer satisfy
+	   `pos + 1.9GB <= pos + 40KB` unless the addition wraps.
+
+	   BoB's line is CHARACTER-FOR-CHARACTER the same, in the same function, in the same engine -- so
+	   it is the same defect whether or not anyone has tripped it here yet. Fixed BEFORE a report,
+	   because the two ports share this code and MA has already paid for the lesson.
+
+	   FIX: compare against bytes REMAINING -- a difference of two pointers into one buffer, which
+	   cannot overflow, where a sum can. BOB_NO_READ_OVERFLOW_FIX=1 restores the old arithmetic. */
+	if (!getenv("BOB_NO_READ_OVERFLOW_FIX"))
+	{
+		if (!playbackfilepos || !playbackfileend || playbackfilepos > playbackfileend
+		    || size > (ULong)(playbackfileend - playbackfilepos))
+		{
+			static int _warned = 0;
+			if (_warned < 8) { _warned++;
+				fprintf(stderr,"[replay] ReplayRead REFUSED: asked for %lu bytes with %ld remaining"
+				               " -- the file does not contain this. (S241/MA-S236: the old check"
+				               " summed pointer+size and OVERFLOWED.)\n",
+				        (unsigned long)size,
+				        (playbackfilepos && playbackfileend) ? (long)(playbackfileend - playbackfilepos) : -1L);
+				fflush(stderr); }
+			PlaybackPaused=TRUE;
+			return FALSE;
+		}
+	}
+	else
+#endif
 	if (playbackfilepos+size>playbackfileend)
 	{
 		PlaybackPaused=TRUE;
@@ -5622,6 +5660,26 @@ bool	Replay::BackupSmokeInfo()
 	if (!ReplayRead((UByte*)&smokesize,sizeof(ULong)))
 		return false;
 
+#if defined(BOB_LINUX)
+	/* S241: `smokesize` comes straight off the replay file and is used as BOTH an allocation
+	   size and a copy length, unchecked. Even with ReplayRead now overflow-safe, the
+	   `new UByte[smokesize]` below would still attempt the allocation FIRST -- in MA that alone
+	   reached VmData 2.2 GB. A block cannot exceed the bytes left in the file. */
+	if (!getenv("BOB_NO_BLOCKSIZE_BOUND"))
+	{
+		long _avail = (playbackfilepos && playbackfileend && playbackfileend >= playbackfilepos)
+		              ? (long)(playbackfileend - playbackfilepos) : -1L;
+		if (_avail < 0 || (long)smokesize > _avail)
+		{
+			fprintf(stderr,"[replay] BackupSmokeInfo REFUSED: block claims %lu bytes but only %ld"
+			               " remain -- refusing to allocate.\n",(unsigned long)smokesize,_avail);
+			fflush(stderr);
+			PlaybackPaused=TRUE;
+			return false;
+		}
+	}
+#endif
+
 	delete [] backupsmoke;
 	backupsmoke=NULL;
 
@@ -5643,6 +5701,26 @@ bool	Replay::BackupCloudInfo()
 
 	if (!ReplayRead((UByte*)&cloudsize,sizeof(ULong)))
 		return false;
+
+#if defined(BOB_LINUX)
+	/* S241: `cloudsize` comes straight off the replay file and is used as BOTH an allocation
+	   size and a copy length, unchecked. Even with ReplayRead now overflow-safe, the
+	   `new UByte[cloudsize]` below would still attempt the allocation FIRST -- in MA that alone
+	   reached VmData 2.2 GB. A block cannot exceed the bytes left in the file. */
+	if (!getenv("BOB_NO_BLOCKSIZE_BOUND"))
+	{
+		long _avail = (playbackfilepos && playbackfileend && playbackfileend >= playbackfilepos)
+		              ? (long)(playbackfileend - playbackfilepos) : -1L;
+		if (_avail < 0 || (long)cloudsize > _avail)
+		{
+			fprintf(stderr,"[replay] BackupCloudInfo REFUSED: block claims %lu bytes but only %ld"
+			               " remain -- refusing to allocate.\n",(unsigned long)cloudsize,_avail);
+			fflush(stderr);
+			PlaybackPaused=TRUE;
+			return false;
+		}
+	}
+#endif
 
 	delete [] backupcloud;
 	backupcloud=NULL;
