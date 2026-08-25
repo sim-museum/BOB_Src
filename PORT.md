@@ -1,5 +1,51 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S230: the BDG-oracle audit (P5) — first two candidates come back CLEAN, and I have to retract part of S228
+
+**S228 warned that a parity delta against the BDG oracle might be a BDG *feature* rather than a port
+defect, and opened P5 to audit which fixes were made against it. Audited the two concrete cases S228
+itself cited. Both are clean — and the check refutes S228's own gloss on them.**
+
+**THE PREDICTION, and it was falsifiable on purpose:** if those controls were BDG additions, they
+would appear in the installed build's PE resources but be **absent from Rowan's original `.rc`**.
+
+**THE RESULT — refuted, in one grep:**
+- `IDC_FIGHTERSWEEPS` — **present in `SRC/MFC/BOB.RC`** (5 hits: the `CONTROL` entry at :4640, its
+  DLGINIT bag at :18118, and three string-table entries incl. `IDS_L_FIGHTERSWEEP "Fighter Sweep"`).
+  Its ids are defined in Rowan's own `RESOURCE.H` (`IDC_FIGHTERSWEEP 1103`, …).
+- `IDC_RSTATICDATE` — **present in `BOB.RC` three times** (:826, :3580, :3719).
+
+**So both are ROWAN's, not BDG's.** They are leftovers of a feature **Rowan cut from the game logic
+but left in the resources** — which the code says out loud at `LWDIRECT.CPP:1626`:
+`INT3; //This should not happen. Patrols removed.`
+
+**✅ WHAT THIS MEANS FOR THE PORT — a good result:** the S144.2 sweep-row suppression and the #16
+date-heading deferral were **not** chasing BDG features. Those fixes stand, and the reasoning behind
+them was sound. The first two P5 candidates are clean.
+
+**⚠️ WHAT IT MEANS FOR S228 — I over-claimed, hours after writing a sprint about over-claiming.**
+S228 rendered a careful earlier note (*"controls stayed in the BDG dialog template"* — true) as
+*"controls **BDG added**"* — a different and **false** claim I never checked. Corrected in place
+above. The tell was that the stronger version made the argument *land better*, which is exactly when
+a claim deserves the most checking, not the least.
+
+**WHAT STILL STANDS FROM S228, unaffected:**
+- **Verified:** `bdg.txt` (`VERSION = 3`, live tunables) is in the run directory and **no source file
+  reads it** — `grep -rain '"bdg' SRC/` returns nothing. BDG 0.99 is a patched-EXE release; our
+  source is pre-BDG. That is a fact about lineage and it is unchanged.
+- **Verified, and a genuine lineage symptom:** BDG's `settings.cfg` is *rejected outright*
+  (`successfulLoad=0`, `SAVEGAME.CPP:280`) — original-source code does not understand BDG's format.
+- The **risk** that some delta is a BDG feature remains real and still unquantified. What changed is
+  that **the two examples offered to make it concrete were both wrong**, so the risk is now
+  *unillustrated* rather than *demonstrated*. P5 stays open; the remaining S124→S158 parity fixes are
+  unaudited.
+
+⭐ **Lesson, and it is the same one twice in a day:** *the strong form of a claim is not free.* S229
+asserted a pass-signal without checking it was absent on failure; S228 asserted authorship of a
+control without checking whose resource file it lived in. Both were one grep from the truth. **The
+audit that found this was one I opened myself in the sprint that got it wrong** — which is the
+argument for opening them.
+
 ## 2026-08-25 — S228: ⚠️ OUR PORT HAS A MIXED LINEAGE — the code is pre-BDG, the oracle is BDG
 
 **Mining the community/shipped docs for live bugs (PO backlog EPIC M) turned up something bigger than
@@ -24,8 +70,9 @@ code lineage our source is not. This is not hypothetical; two entries already sh
 - `SRC/MISSMAN/SAVEGAME.CPP:280` (my own comment): *"installed BDG 0.99 build's settings.cfg is
   rejected outright (`successfulLoad=0`)"* — the BDG save format is not what original-source code
   expects. That is the lineage gap, already biting, already written down, not previously named.
-- PORT.md (S124-era): *"controls stayed in the BDG dialog template and our DDX/template hosting
-  faithfully drew them"* — **we faithfully rendered controls BDG added.**
+- ~~PORT.md (S124-era): *"controls stayed in the BDG dialog template…"* — we faithfully rendered
+  controls BDG added.~~ **⚠️ RETRACTED SAME DAY by S230's audit — see below.** Those controls are in
+  **Rowan's own `SRC/MFC/BOB.RC`**. They are not BDG additions and I never checked before writing it.
 
 **⭐ THIS IS THE SAME LESSON THE PO GAVE MA TODAY, ONE ARTIFACT OVER.** For MiG Alley it was
 Windows-recorded `.cam` files: *an input older than the code, from another platform, is not an oracle
