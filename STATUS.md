@@ -7,7 +7,40 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> ## Latest (S196–S197, 2026-08-22): two live bugs found by answering MA's questions
+> ## Latest (S206, 2026-08-24): ⭐ the campaign's strategic layer runs end to end
+>
+> **S204's "the LW raid never executes a waypoint" is WITHDRAWN.** It was true of every soak this
+> port has run and false of the game: the soaks all flew, and in 3D flight the strategic clock
+> advances at roughly real time (it is driven from the map paint, which does not run in flight).
+> The raid needed ~21 strategic frames to reach its rendezvous and got ~10 per soak — killed two
+> thirds of the way there, every time. A truncated run and a stuck one log identically.
+>
+> Same binary, recipe the only variable:
+>
+> | | flight recipe (S204's) | map-only |
+> |---|---|---|
+> | LW-raid waypoint executions | 0 | **37** |
+> | highest LW squadron status | 14 `PS_FORMING` | **19 `PS_OUTGOING`** |
+> | `SetRAFIntercept` | never | **called** |
+> | AM_INTERCEPT packages | 0 | **52 sightings** |
+>
+> The German Convoys raid flies BombRendezvous → DogLeg → IP → target → egress, climbing 656 →
+> 15,000 ft; `RAFDirectivesResults::SetRAFIntercept` — the only route by which the RAF is ever
+> tasked, and a measured 0 calls for the port's whole life — is reached; and the RAF builds
+> interceptor packages that reach `PS_ENEMYSIGHTED`. **New GATE 7** (`tools/bob_strategic_soak.sh`)
+> asserts all of it, with a `STARVE=1` negative control that reproduces S204's zeros on the same
+> binary. **Still open:** aircraft-level combat (the ACM tree) — reaching it needs a flight timed to
+> the interception, which no recipe yet produces.
+>
+> ⚠️ Also fixed: `bob_gates.sh` printed **`campaign: PASS` unconditionally** for GATE 5, the PO's
+> gold-standard campaign gate — `${PIPESTATUS[0]}` was being read two commands and one `if` after
+> the pipeline that produced it. **With that fixed GATE 5 came up RED**, and `git log -L` shows it
+> had been unpassable since the commit that created it (S195): its "Convoys phase" assertion greps
+> for a field printed only when a `BOB_SHOT` capture fires, and the gate's recipe sets
+> `BOB_SHOT=99999`. Re-keyed to `[campphase]`, emitted where the choice commits; the campaign
+> itself was fine (`whichcamp=0`) and GATE 5 is now **9/9**.
+
+> ## Earlier (S196–S197, 2026-08-22): two live bugs found by answering MA's questions
 >
 > - **S196 — only the FIRST row of any non-player list was ever selectable.** Answering MA's
 >   `§8-MA111` ("is a control type you DRAW never offered a click?") led from a missing `onClick`

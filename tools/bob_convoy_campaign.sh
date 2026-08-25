@@ -60,7 +60,14 @@ chk() { if grep -aq "$2" "$log"; then say "$1" "yes"; else say "$1" "NO — FAIL
 # throttle can skip when the raid is found immediately. Both would have failed a working campaign.
 # An assertion has to name evidence the run emits, not evidence a human can see.
 chk "Luftwaffe side selected"        "localplayer=2(LW)"
-chk "Convoys phase (index 0)"        "phase=0"
+# S206: WAS `chk "Convoys phase (index 0)" "phase=0"`, keyed on the [shot-state] banner -- which
+# only prints when a BOB_SHOT capture fires, and this recipe sets BOB_SHOT=99999 so it never does.
+# The assertion could not pass on the day it was written (S195) and the gate has been red ever
+# since; bob_gates.sh printed "campaign: PASS" unconditionally (clobbered ${PIPESTATUS}) so it was
+# never seen. Now keyed on [campphase], emitted unconditionally by FULLPANE.CPP where the choice is
+# actually made. See the header rule above: name evidence the RUN EMITS -- and check that the
+# recipe you ship actually emits it.
+chk "Convoys phase (index 0)"        "\[campphase\] whichcamp=0"
 chk "Directives opened for the LW"   "OpenDirectivetoggle(NULL)"
 chk "directives accepted"            "\[directives\] accept"
 chk "a raid package was selected"    "hipack=[0-9]"

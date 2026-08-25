@@ -2256,6 +2256,29 @@ void	SAGairgrp::SAGExecuteWaypoint(int p,int s)
 
 void	SAGairgrp::SAGMovementFollowWP(int p,int s,int sparesecs)
 {
+#if defined(BOB_LINUX)
+	/* S206: the S204 question -- WHY does a PS_FORMING Luftwaffe squadron never execute a
+	   waypoint? This function is the only caller of SAGExecuteWaypoint, and it reaches it only
+	   when GetValidEscortee() says NULL *and* CruiseToWp() reports spare seconds (i.e. arrived).
+	   So exactly three things can hold a squadron here forever:
+	     (a) it is always flying as an escort            -> escortee != NULL every frame
+	     (b) it has no waypoint at all                   -> wpref == 0, CruiseToWp returns 0 at once
+	     (c) it flies but never arrives                  -> travel <= Range every frame
+	   (a) and (b) are indistinguishable from (c) at the package level, which is why "the raid is
+	   stuck" survived two sprints. Print the three inputs and the distance, per squadron.
+	   Filtered to LW packs (not capped): emitted on any CHANGE of shape, plus a progress sample
+	   every Nth call so a Range that is NOT converging is visible as a trend, not a snapshot.
+	   BOB_TRACE_FOLLOWWP=<N> (N>1 sets the sample period, default 500; any value enables).
+	   The answer it gave: none of (a)(b)(c) -- d2wp shrinks by exactly `moved` every frame. The
+	   raid navigates correctly and the RUN was too short (~10 frames of the ~23 it needs). See
+	   PORT.md S206 and tools/bob_strategic_soak.sh. */
+	const char* _e206 = getenv("BOB_TRACE_FOLLOWWP");
+	const bool _t206 = _e206!=NULL
+	                  && Todays_Packages[p].attackmethod>=Profile::AM_LWPACKS;
+	const long _every206 = (_e206 && atol(_e206)>1) ? atol(_e206) : 500;
+	const double _x0=(double)World.X, _y0=(double)World.Y, _z0=(double)World.Z;
+	const int _wpref0=(int)wpref;
+#endif
 	//Need to work out whether I am in an escort role and in position
 	assert(wpref==0 || wpref>10);
 	info_airgrp* escortee=GetValidEscortee(p,s);
@@ -2283,6 +2306,44 @@ void	SAGairgrp::SAGMovementFollowWP(int p,int s,int sparesecs)
 		FlyAsEscort(escortee,p,s);
 	assert (wpref || Todays_Packages[p][s].method<Profile::AM_RETURNESCORT);
 //DeadCode JIM 24Sep00 	Mono_Text.Print(UByteP(")FWP"));
+#if defined(BOB_LINUX)
+	if (_t206)
+	{
+		struct _S206 { int key; unsigned long fp; long calls; };
+		static _S206 _tab[64]; static int _n206=0;
+		const int _key=p*128+s;
+		_S206* e=NULL;
+		for (int i=0;i<_n206;i++) if (_tab[i].key==_key) { e=&_tab[i]; break; }
+		if (!e && _n206<64) { e=&_tab[_n206++]; e->key=_key; e->fp=~0UL; e->calls=0; }
+		if (e)
+		{
+			e->calls++;
+			info_waypoint* _wp=Persons2::ConvertPtrUID(wpref);
+			const int _wpuid = _wp ? (int)_wp->uid.Evaluate() : 0;
+			unsigned long _fp = (unsigned long)(escortee!=NULL)
+			                  + 3UL*(unsigned long)(unsigned)movecode.Evaluate()
+			                  + 97UL*(unsigned long)(unsigned)Todays_Packages[p][s].status
+			                  + 1009UL*(unsigned long)(unsigned)wpref
+			                  + 40009UL*(unsigned long)(unsigned)(_wpuid+4096);
+			if (_fp!=e->fp || (e->calls%_every206)==0)
+			{
+				e->fp=_fp;
+				const double _dx=(double)World.X-_x0, _dy=(double)World.Y-_y0, _dz=(double)World.Z-_z0;
+				fprintf(stderr,"[followwp] p=%d s=%d call=%ld esc=%d move=%d st=%d meth=%d "
+				               "wpref=%d->%d wpuid=%d Range=%ld vel=%d spare=%d "
+				               "moved=%.0f alt=%.0fft d2wp=%.0f\n",
+				        p,s,e->calls,(int)(escortee!=NULL),(int)movecode.Evaluate(),
+				        (int)Todays_Packages[p][s].status,(int)Todays_Packages[p][s].method,
+				        _wpref0,(int)wpref,_wpuid,(long)Range,(int)vel.Evaluate(),sparesecs,
+				        _dx*_dx+_dy*_dy+_dz*_dz>0.0 ? sqrt(_dx*_dx+_dy*_dy+_dz*_dz) : 0.0,
+				        (double)World.Y/30.48,
+				        sqrt(((double)despos.X-(double)World.X)*((double)despos.X-(double)World.X)
+				            +((double)despos.Z-(double)World.Z)*((double)despos.Z-(double)World.Z)));
+				fflush(stderr);
+			}
+		}
+	}
+#endif
 }
 
 void	SAGairgrp::FlyAsEscort(info_airgrp* escortee,int p,int s)

@@ -1,5 +1,162 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-24 — S206: ⭐ the raid was never stuck. The tape ran out.
+
+**This withdraws S204.** *"The LW raid's squadrons never execute a single waypoint"* is true of
+every soak this port has ever run and false of the game. Given the game time it needs, the German
+Convoys raid flies its entire route, the RAF is tasked to intercept it, and interceptor packages
+appear — on the **same binary** that measures zero under the old recipe.
+
+### The measurement
+
+S204 left one question: *why does a `PS_FORMING` LW squadron never execute a waypoint?*
+`SAGairgrp::SAGMovementFollowWP` is the only caller of `SAGExecuteWaypoint`, and it reaches it only
+when `GetValidEscortee()` returns NULL **and** `CruiseToWp()` reports spare seconds (arrived). So
+exactly three things can hold a squadron at `PS_FORMING` forever, and they are indistinguishable
+from the package status that S204 was reading:
+
+| | | |
+|---|---|---|
+| (a) | always flying as an escort | `escortee != NULL` every frame |
+| (b) | no waypoint at all | `wpref == 0`, `CruiseToWp` returns 0 at once |
+| (c) | flies but never arrives | `travel <= Range` every frame |
+
+`BOB_TRACE_FOLLOWWP=<n>` prints the three inputs and the distance, per squadron, filtered to LW
+packs. The first sample settled it:
+
+    [followwp] p=6 s=0 call=1  esc=0 st=14 wpuid=-14 Range=2537407 vel=5500 moved=0      d2wp=2538720
+    [followwp] p=6 s=0 call=10 esc=0 st=14 wpuid=-14 Range=1659741 vel=5500 moved=109988 d2wp=1558264
+
+Not (a), not (b), not (c). `d2wp` is **shrinking** — 2,538,720 → 1,558,264 cm in nine frames, ~110,000
+cm per frame, exactly matching `moved`. Squadron 0 of pack 6 is navigating correctly toward
+`wpuid=-14` = `SGR_WPP_BombRendezvous`, the waypoint that promotes `PS_FORMING` → `PS_INCOMING`.
+
+**The finding is in the call counter.** `call=10` after 420 s. At ~110,000 cm/frame over 2,537,407
+cm the squadron needs **~23 frames**. It gets ten. Every soak was killed with the raid two thirds
+of the way to its rendezvous.
+
+### Why the runs were short in GAME time
+
+The campaign clock is driven from `CMapDlg::OnTimer`, and the port drives that from the **map
+paint** — many times a second while the strategic map is up. In 3D flight the map tick does not run
+at all (it is guarded on `!InThe3D`) and the strategic sim advances at roughly real time. Every
+soak set `BOB_CAMPAIGN_FLY`, so every soak spent its wall clock in the cockpit.
+
+Measured, same binary, the recipe the only variable:
+
+| | flight recipe (S204's) | map-only |
+|---|---|---|
+| wall clock | 420 s | 300 s |
+| `MoveAllSAGs` dispatches | 1,500 | **9,500** |
+| LW-raid waypoint executions | **0** | **37** |
+| highest LW squadron status | 14 `PS_FORMING` | **19 `PS_OUTGOING`** |
+| `SetRAFIntercept` | never | **called** |
+| AM_INTERCEPT packages in the census | 0 | **52 sightings** |
+
+### What the game actually does, once it has the time
+
+Predicted before the run: ~23 SAG frames to the rendezvous, status 14 → 15, `SetRAFIntercept`
+reached. Measured: **21–22 frames**, and then the whole route —
+
+    [sagwp] execute #36 pack=6 squad=0 wpuid=-14 status=14   BombRendezvous
+    [sagwp] execute #44 pack=6 squad=0 wpuid=-15 status=15   -> PS_INCOMING
+    [sagwp] execute #53 pack=6 squad=0 wpuid=-16 status=15   DogLeg
+    [sagwp] execute #58 pack=6 squad=0 wpuid=-17 status=15   IP    -> PS_TARGETAREA
+    [sagwp] execute #68 pack=6 squad=0 wpuid=-25 status=19   egress, PS_OUTGOING
+
+climbing 656 → 15,000 ft and descending home; and on the RAF side,
+
+    [intercept] FIRST CALL pack=6 raid=0 afteregress=0
+    [intercept]   raf.current.interceptbeforetarget=1 ... (so it does NOT early-out)
+    [detect] pack=7 attackmethod=1 packagestatus=18 ...   <- AM_INTERCEPT, PS_ENEMYSIGHTED
+    [detect] pack=8 attackmethod=1 packagestatus=18 ...
+
+`RAFDirectivesResults::SetRAFIntercept` — the only route by which the RAF is ever tasked, and a
+measured **0 calls** for the port's whole life — is reached, and the RAF creates interceptor
+packages that reach `PS_ENEMYSIGHTED`. **The strategic layer of the campaign works.**
+
+Aircraft-level `AUTO_COMBAT` stays 0 here, and that is correct rather than disappointing: those
+movecodes belong to **expanded** SAGs near the player, and a map-only run has no player aircraft.
+Whether the ACM tree works is still open — it needs a flight *timed to the interception*, which no
+recipe yet produces. That is S207.
+
+### GATE 7 — and its control, which caught an overspecific claim in its own header
+
+`tools/bob_strategic_soak.sh` asserts the five properties above plus crash-freedom, and is wired
+into `bob_gates.sh`. `STARVE=1` re-runs S204's flight recipe and must go red on the same binary:
+`0 / 14 / no / 0`, S204's numbers reproduced exactly.
+
+**The first control was wrong and is recorded rather than deleted.** It starved the run by dropping
+`BOB_MAP_TIMER` from 8 to 1 — and the gate **passed anyway** (39 waypoint executions in 90 s). The
+clock is driven once per paint and paints are frequent; the multiplier hardly matters. *Being on the
+map* is what matters. The control refuted a mechanism I had already written into the gate header,
+before it was published. **The treatment tests the change; only the control tests the premise** —
+and here the premise under test was my own explanation.
+
+### ⚠️ A false PASS found while wiring GATE 7 in
+
+`bob_gates.sh` read GATE 5's exit status like this:
+
+    bash bob_convoy_campaign.sh | sed 's/^/  /'      # GATE 5
+    echo "### GATE 6: ..."                            # <- clobbers PIPESTATUS
+    bash bob_combat_soak.sh   | sed 's/^/  /'         # GATE 6
+    cs=${PIPESTATUS[0]}                               # soak: correct
+    if [ "$cs" = "0" ]; then echo ... ; fi            # <- clobbers PIPESTATUS again
+    cg=${PIPESTATUS[0]}                               # "GATE 5" = that if's echo => 0, ALWAYS
+    if [ "$cg" = "0" ]; then echo "  campaign: PASS"
+
+**`campaign: PASS` was printed unconditionally**, whatever the PO's gold-standard campaign gate did,
+and GATE 5 never contributed to `gates_fail`. `${PIPESTATUS[@]}` is clobbered by the *next command*,
+an `echo` or an `if` included. Fixed: every pipeline's status is captured on the very next line.
+Same family as MA S191's false PASS, and the same lesson as S205's `else`-by-adjacency: **a status
+that is read at a distance from what produced it is not that status.**
+
+### ⭐ And with that fixed, GATE 5 was RED — and had been since the day it was written
+
+Run clean on the final binary, GATE 5 fails one of its nine assertions:
+
+    Convoys phase (index 0)                    NO — FAIL
+
+It asserted the phase by grepping the log for `phase=0`. That field lives in the `[shot-state]`
+banner, which is printed **only when a `BOB_SHOT` capture fires** — and the gate's own recipe sets
+`BOB_SHOT=99999`, so it never fires. `git log -L` on the recipe line: `BOB_SHOT=99999` has been
+there since `e186da2` (S195), the commit that created the gate. **The assertion has never once been
+able to pass.** The gate was born red and the clobbered `${PIPESTATUS}` printed PASS over it, so
+nine sprints of "the convoy campaign is gated" rested on eight assertions, not nine.
+
+The gate's own header states the rule it broke:
+
+> *An assertion has to name evidence the run emits, not evidence a human can see.*
+
+A banner tied to an unrelated capture hook is that same mistake one layer down: it **is** emitted by
+the program, just never by this recipe. Fixed at the source — `FULLPANE.CPP` now prints
+`[campphase] whichcamp=%d` unconditionally where `whichcamp=campnum` actually commits the choice,
+and the assertion keys on that. Unconditional on purpose: the whole failure was an assertion whose
+evidence could be switched off by the recipe that needed it.
+
+**Predicted before the re-run:** the campaign itself is fine and the phase really is 0 — S198
+verified the column-0 addressing fix — so this is a broken assertion, not a broken campaign.
+**Measured:** `[campphase] whichcamp=0 (0=Convoys)`, GATE 5 **9/9 PASS**. Correct, and worth
+stating plainly: *the fix found nothing wrong with the game.* What it found was that the port's
+flagship campaign gate had been reporting on itself.
+
+### Nothing here changes game behaviour
+
+No fix was needed and none was made. The diff is env-gated instrumentation
+(`BOB_TRACE_FOLLOWWP=<n>`, default off), one new gate, one gate-runner bug fix, and the retraction
+of a wrong finding from three documents that were asserting it as fact.
+
+### The shape worth carrying
+
+That comment block in `bob_combat_soak.sh` has now said **four** different things about one zero:
+"they fly their waypoints and never engage" (assumed), "they never spot each other" (wrong
+instrument), "the raid is never detected" (sampled the wrong packages), "the raid never executes a
+waypoint" (true of the recipe, false of the game). Four explanations, none of them a fact about the
+game, each more confident than the last because each was measured. What settled it was not a fifth
+explanation but a **second arm**: the same binary on a recipe that could produce the thing.
+
+**A zero measured through one recipe is a fact about the recipe until a second recipe disagrees.**
+
 ## 2026-08-23 — S205: the campaign day never began, so there were no German missions
 
 **PO, from play:** *"in BoB german campaign, no mission spreadsheet dialog is shown when entering

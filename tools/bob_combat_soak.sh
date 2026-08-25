@@ -19,22 +19,34 @@
 # WHAT IT REPORTS BUT DOES NOT ASSERT
 #   3. combat activity — AUTO_COMBAT movecode ticks, AirCombat() entries, DefenceManoeuvre calls.
 #
-# ⚠️ ALL THREE ARE CURRENTLY **ZERO**, and that is the finding, not a gate bug. Measured over
-# 1,460,001 movecode dispatches of the campaign raid: movecodes 0/1/5/39 are in play and
-# AUTO_COMBAT (=AutoMoveCodeMask=63) never appears once.
+# ⚠️ ALL THREE ARE CURRENTLY **ZERO**. Measured over 1,460,001 movecode dispatches of the
+# campaign raid: movecodes 0/1/5/39 are in play and AUTO_COMBAT (=AutoMoveCodeMask=63) never
+# appears once. S206: that is a REACH limit of this recipe, not a verdict on the combat code.
 #
-# S204 traced why, and the answer is upstream of everything this gate can see: THE LW RAID NEVER
-# EXECUTES A WAYPOINT. Its seven squadrons take off, reach PS_FORMING together, and stay there --
-# so they never reach the Bomb/Esc Rendezvous, never climb past ~4,177 ft, never enter the RAF
-# radar's 4,000-19,000 ft height bands, are never detected, and no interceptor is ever tasked.
-# GroundVisible returned UID_NULL 700 times out of 700 for exactly that reason. The radar grid and
-# the detection code are both fine. See PORT.md 2026-08-23 (S204) and tools/bob_detect_probe.sh.
+# S204 traced why and concluded: THE LW RAID NEVER EXECUTES A WAYPOINT. **S206 WITHDRAWS THAT.**
+# The raid was not stuck; this recipe runs out of wall clock before the raid arrives. In 3D flight
+# the strategic sim advances at roughly real time, and the lead Ju87 squadron needs ~21 SAG frames
+# to reach its Bomb Rendezvous but gets ~10 per soak -- it is two thirds of the way there when the
+# timeout kills it, every time. Measured on ONE binary: this recipe yields 0 LW waypoint
+# executions / highest status 14 (PS_FORMING) / no SetRAFIntercept; the same binary on a map-only
+# recipe yields 37 / status 19 / SetRAFIntercept reached / 52 AM_INTERCEPT package sightings.
+# Same code, opposite result, the recipe the only variable. See GATE 7
+# (tools/bob_strategic_soak.sh), whose STARVE=1 control is exactly this recipe.
 #
-# NB the line above used to say the aircraft "fly their waypoints and never engage". They do not
-# fly their waypoints; that was an assumption, and it was wrong. Two earlier attempts to explain
-# this were also wrong and are recorded rather than deleted: BOB_TRACE_SEENAC is an S192 guard
-# about the player's seen-aircraft, not a detection counter; and S203's "the raid is never
-# detected" was measured on samples that were all RAF PATROL packages, never the raid.
+# So the zeros below are about THIS RECIPE'S REACH, not about the ACM tree. What is still genuinely
+# unknown is whether aircraft-level combat works -- that needs a flight timed to the interception,
+# which no recipe here yet produces. Do not read a zero in this gate as evidence about combat code.
+#
+# THE HISTORY OF THIS COMMENT IS THE LESSON. It has now said three different things about the
+# same zero, and it was wrong every time until it stopped explaining and started measuring:
+#   v1  "the aircraft fly their waypoints and never engage"  -- assumed, wrong
+#   v2  "BOB_TRACE_SEENAC shows they never spot each other"  -- wrong instrument (an S192 guard
+#                                                               about the PLAYER's seen-aircraft)
+#   v3  "the raid is never detected"    (S203)               -- sampled RAF patrols, never the raid
+#   v4  "the raid never executes a waypoint" (S204)          -- true of this recipe, false of the
+#                                                               game; the tape ran out (S206)
+# Four explanations of one number, none of which was a fact about the game. What finally settled
+# it was a SECOND ARM: the same binary on a recipe that gives the raid the game time it needs.
 #
 # So this gate does NOT fail on zero combat: a gate that always fails is noise, and asserting a
 # property the port has never had would be asserting a wish. It fails on a CRASH or a DEAD SIM, and
@@ -102,6 +114,8 @@ else
   echo "  ⚠ COMBAT NOT REACHED: no aircraft entered AUTO_COMBAT (63) in this run."
   echo "    The ACM decision tree is still untested code. This is a known gap (S201), not a"
   echo "    gate failure — see the header. Do not delete this line to make the output tidy."
+  echo "    S206: this recipe cannot produce combat — the flight consumes the wall clock the"
+  echo "    raid needs. GATE 7 shows the raid flying and the RAF tasked on the same binary."
 fi
 
 echo "----------------------------------------"

@@ -1725,6 +1725,19 @@ void	RFullPanelDial::ChangeCamp(int campnum)
 //TEMPCODE RDH 03/04/00 	else
 //TEMPCODE RDH 03/04/00 	{
 		whichcamp=campnum;
+#if defined(BOB_LINUX)
+		/* S206: WHICH campaign phase did the player actually pick? GATE 5 asserted this by grepping
+		   for `phase=` in the [shot-state] banner -- which is emitted only when a BOB_SHOT capture
+		   fires, and the gate sets BOB_SHOT=99999 so it never fires. That assertion has therefore
+		   been unpassable since the gate was written (S195), and the gate runner printed
+		   "campaign: PASS" unconditionally (a clobbered ${PIPESTATUS}), so nobody ever saw it red.
+		   The gate's own header says an assertion must name evidence the RUN EMITS, not evidence a
+		   human can see; a banner tied to an unrelated capture hook is the same mistake one layer
+		   down. Emit it HERE, where the choice is actually made, unconditionally -- the whole point
+		   is that it cannot be switched off by the recipe that needs it. */
+		fprintf(stderr,"[campphase] whichcamp=%d (0=Convoys)\n", whichcamp);
+		fflush(stderr);
+#endif
 		File_Man.DiscardDirList(FileNum(FIL_VID_PHASE1BEGINS+whichcamp));
 		File_Man.ExistNumberedFile(FileNum(FIL_VID_PHASE1BEGINS+whichcamp));
 //	MCIWndClose(g_hwndMCIWnd);

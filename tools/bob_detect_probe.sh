@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # tools/bob_detect_probe.sh — S204: WHY is the raid never detected?
 #
+# ⚠️ S206: READ THIS FIRST. The premise below — "the raid is never detected", "the LW pack never
+# executes a waypoint" — is a property of THIS PROBE'S RECIPE, not of the game. The recipe sets
+# BOB_CAMPAIGN_FLY, and in 3D flight the strategic clock advances at roughly real time, so the raid
+# is still ~1/3 short of its Bomb Rendezvous when the timeout fires. Run the same drive WITHOUT the
+# flight (tools/bob_strategic_soak.sh, GATE 7) and the raid executes 37 waypoints, reaches
+# PS_OUTGOING, is detected, and SetRAFIntercept is called. This probe is still useful for the
+# census and the intercept-gate readout; just do not read its zeros as findings. See §8-BoB206.
+#
 # S203 established that no aircraft in this port ever fights, and that the manoeuvre code is fine
 # and simply unreached: across all 39 waypoint executions of the combat soak the raid reported
 # `detected=0` and no squadron ever carried `method=AM_INTERCEPT`. That located the dead link but

@@ -164,18 +164,35 @@ else echo "  blackTex=$tb — FAIL (expected 0; terrain tiles are uploading blac
 echo "### GATE 5: German (Luftwaffe) Convoys campaign end to end"
 # absolute path: this suite cd's into the game directory in its subshells, so a $(dirname $0)
 # relative path resolves against whatever the last cd left behind (measured: "No such file").
+# S206: ${PIPESTATUS[@]} IS CLOBBERED BY THE NEXT COMMAND, INCLUDING AN `echo` OR AN `if`. This
+# block used to read GATE 5's status AFTER running GATE 6 and after an intervening `if`, so `cg`
+# was the exit status of that `if`'s echo -- ZERO, always. "campaign: PASS" was printed
+# unconditionally, whatever the PO's gold-standard campaign gate actually did, and GATE 5 never
+# contributed to gates_fail. Capture every pipeline's status on the very next line, always.
 bash /home/admin/bob/tools/bob_convoy_campaign.sh 2>&1 | sed 's/^/  /'
+cg=${PIPESTATUS[0]}
+if [ "$cg" = "0" ]; then echo "  campaign: PASS"; else echo "  campaign: FAIL (exit=$cg)"; gates_fail=$((gates_fail+1)); fi
 
 echo "### GATE 6: combat soak (S201)"
 # The dogfight crash (S200) passed every gate in this file because none of them flies long
-# enough to hit a crash in the sim, and none reaches combat at all. GATE 6 soaks the campaign
-# for its full run and asserts crash-freedom over ~1.45M movecode dispatches; it also reports
-# combat activity, which is currently ZERO and is a known gap, not a gate failure.
+# enough to hit a crash in the sim. GATE 6 soaks the campaign for its full run and asserts
+# crash-freedom over ~1.45M movecode dispatches; it also REPORTS aircraft-level combat activity.
+# S206: that report reads zero because this recipe flies, and a flight leaves the strategic sim
+# advancing at roughly real time -- the raid it would have to meet is still forming when the soak
+# ends. The zero is about the RECIPE'S REACH, not about the ACM tree. GATE 7 below covers the
+# strategic half on a recipe that can actually produce it.
 bash /home/admin/bob/tools/bob_combat_soak.sh 2>&1 | sed 's/^/  /'
 cs=${PIPESTATUS[0]}
 if [ "$cs" = "0" ]; then echo "  soak: PASS"; else echo "  soak: FAIL (exit=$cs)"; gates_fail=$((gates_fail+1)); fi
-cg=${PIPESTATUS[0]}
-if [ "$cg" = "0" ]; then echo "  campaign: PASS"; else echo "  campaign: FAIL (exit=$cg)"; fi
+
+echo "### GATE 7: strategic soak -- the raid flies and the RAF is tasked (S206)"
+# The property S204 measured as zero and concluded was broken. It is not: give the campaign the
+# game time it needs (stay on the map) and the raid flies its whole route, SetRAFIntercept is
+# reached and RAF AM_INTERCEPT packages appear. Has a negative control: STARVE=1 reruns S204's
+# own flight recipe and must go red on the same binary.
+bash /home/admin/bob/tools/bob_strategic_soak.sh 2>&1 | sed 's/^/  /'
+ss=${PIPESTATUS[0]}
+if [ "$ss" = "0" ]; then echo "  strategic: PASS"; else echo "  strategic: FAIL (exit=$ss)"; gates_fail=$((gates_fail+1)); fi
 
 if [ -n "$BASE" ] && [ -d "$BASE" ]; then
   echo "### GATE 5: A/B vs $BASE"

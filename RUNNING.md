@@ -31,10 +31,18 @@ gl-lock tools/bob_gates.sh <outdir> [baseline-dir]
 ```
 
 It runs the 14-recipe headless sweep, the safe-default check, dummy-vs-real-GL `cmp`, the flight
-frame, and an A/B against `baseline-dir` — then **hashes `build/bob` before and after and exits 2
-if the binary changed under it**. Do not rebuild while a gate is queued or running: treat "queued"
-as "running" (S148 lost a sweep to a mid-run rebuild, and the mixed-binary result looked exactly
-like a regression).
+frame, GATE 5 (the German Convoys campaign end to end), GATE 6 (the combat soak) and **GATE 7 (the
+strategic soak, S206)**, and an A/B against `baseline-dir` — then **hashes `build/bob` before and
+after and exits 2 if the binary changed under it**. Do not rebuild while a gate is queued or
+running: treat "queued" as "running" (S148 lost a sweep to a mid-run rebuild, and the mixed-binary
+result looked exactly like a regression).
+
+**GATE 7 — `tools/bob_strategic_soak.sh`** is the one with a negative control. Plain, it asserts
+that the German raid flies its route and the RAF is tasked to intercept it; `STARVE=1` re-runs the
+old flight-based recipe, on which the same binary measures zero, and the gate must go **red**. That
+difference *is* the S206 finding: the raid was never stuck, the runs were too short. Do not add an
+aircraft-level combat assertion to it — a map-only run has no player aircraft, so those movecodes
+cannot appear there whatever the code does.
 
 ## Check progress
 
