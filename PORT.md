@@ -1,5 +1,70 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S210: ⭐ the campaign clock died after every flown mission, behind a guard for a bug fixed in S39
+
+Chasing §8-MA136's named instance — *"the map after a flight" is a known-broken order that no gate
+exercises and a scaffold hides* (S209) — turned up a **player-visible defect**, not a test gap.
+
+### The guard, and what it was protecting against
+
+Both the scaffold clock drive and the **live accel** drive carried the same condition:
+
+```c
+(!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))
+```
+
+with a comment explaining it: *"PerformMoveCycle over the post-mission world SIGSEGVs in the
+SAG-movement AI (GetCruiseAt -> Plane_Type_Translate[bad ptype])"*.
+
+**That crash was fixed in S39.** `GetCruiseAt` has clamped an out-of-range `ptype` ever since. The
+guard was never revisited.
+
+### Measured, then removed — not the other way round
+
+Campaign drive → fly → return, guard overridden:
+
+| | |
+|---|---|
+| `MoveAllSAGs` dispatches on the reloaded post-mission world | **~2,500** (2000 → 4500) |
+| `changeaccel` | 116 → 842 |
+| crashes | **0** |
+| times the S39 clamp had to fire | **0** — the garbage `ptype` did not even occur |
+
+⚠️ The first two attempts at this measurement proved nothing and are recorded rather than deleted:
+one had no execution traces at all, and one **timed out still airborne** (`InThe3D=1` was its last
+line) because the tracing overhead pushed the flight past the budget — so every dispatch it counted
+was *pre*-flight. **A "no crash" from a path that never ran is the trap this port keeps booking**;
+the third run pinned the flight-close line number first and counted only what came after it.
+
+### It was never only a scaffold limitation
+
+The `BOB_MAP_TIMER` branch is test-only, but **the live-accel path carried the identical guard**. So
+a **player** who flew a campaign mission and returned to the map had a **frozen campaign clock for
+the rest of the session** — no time advance, no raids, nothing. Exactly S205's shape (a port-side
+guard suppressing the engine's own clock), and invisible for the same reason: **no gate flies and
+then drives the map.**
+
+### Fixed, with the A/B on one binary
+
+Guard lifted in both paths; `BOB_POSTMISSION_GUARD=1` restores it and is the control arm.
+
+| arm | post-flight dispatch samples |
+|---|---|
+| fix (default now) | **24** |
+| `BOB_POSTMISSION_GUARD=1` | **0** — the run simply stops at flight close |
+
+Zero crashes in either.
+
+### The shape worth keeping
+
+**A guard added for a bug is a claim about the code that stops being true the moment the bug is
+fixed — and nothing re-checks it.** S39 fixed the crash and left the guard; twelve releases of work
+went past it. Sibling of S209's *"a control that cannot be re-run tests the day it was written"*:
+both are assertions frozen at the moment they were written, still being trusted long after.
+
+**Grep-able form for both ports:** every defensive guard should name the defect it protects against
+*and the way to re-test it*, or it becomes permanent.
+
 ## 2026-08-25 — S209: a control arm you cannot run is not a control arm
 
 Three inbound MA notes had sat at *awaiting* — and a note without a verdict is unprocessed by

@@ -783,7 +783,21 @@ extern "C" void bob_frontend_tick(void)
 		   `else if` chained to the BOB_TRACE_CLOCK diagnostic -- see the note there -- so this
 		   needs an explicit flag rather than relying on statement adjacency. */
 		bool droveThisPaint = false;
-		if (getenv("BOB_MAP_TIMER") && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))) {
+		/* S210: the `!g_campfly_flown` half of this condition is GONE, and with it the same half of
+		   the live-accel drive below. It existed because "PerformMoveCycle over the post-mission
+		   world SIGSEGVs in the SAG-movement AI (GetCruiseAt -> Plane_Type_Translate[bad ptype])".
+		   THAT CRASH WAS FIXED IN S39 -- GetCruiseAt has clamped an out-of-range ptype ever since --
+		   and the guard was never revisited, so for dozens of sprints it went on suppressing the
+		   campaign clock after any flown mission.
+		   Measured before removing it: campaign drive -> fly -> return, with the guard overridden,
+		   ~2,500 MoveAllSAGs dispatches on the reloaded post-mission world (dispatches 2000 -> 4500,
+		   changeaccel 116 -> 842) and ZERO crashes; the S39 clamp did not even have to fire.
+		   *** This was NOT only a test-scaffold limitation. The live-accel path below carried the
+		   same guard, so a PLAYER who flew a campaign mission and returned to the map had a FROZEN
+		   CLOCK for the rest of the session -- S205's shape exactly (a port-side guard suppressing
+		   the engine's own clock), and equally invisible because no gate flies and then drives the
+		   map. BOB_POSTMISSION_GUARD=1 restores the old behaviour, and is this fix's control arm. */
+		if (getenv("BOB_MAP_TIMER") && (!getenv("BOB_POSTMISSION_GUARD") || !g_campfly_flown)) {
 			/* BOB_POSTMISSION_FF (R4.5 diagnostic, default-off): override the post-mission/post-fly
 			   g_campfly_flown guard so BOB_MAP_TIMER advances the world AFTER a flown mission returns
 			   to the map (the map tick only runs when !InThe3D, so this is dormant during flight) --
@@ -850,7 +864,9 @@ extern "C" void bob_frontend_tick(void)
 		   PO reported -- no German missions on the map.
 		   Suppressing the whole call is not how the engine expresses "paused"; the rate is. Drive
 		   it every paint and let the accumulator do its job. BOB_NO_PAUSED_TIMER=1 reverts. */
-		if (!droveThisPaint && (!g_campfly_flown || getenv("BOB_POSTMISSION_FF"))
+		/* S210: see the note above -- the post-mission guard is lifted here too, and this is the
+		   half a PLAYER feels: fly a mission, come back to the map, and the clock used to stay dead. */
+		if (!droveThisPaint && (!getenv("BOB_POSTMISSION_GUARD") || !g_campfly_flown)
 		    && (MMC.curracceltype != MMC.ACCEL_PAUSED || !getenv("BOB_NO_PAUSED_TIMER"))) {
 			int reps = MMC.curracceltype == MMC.ACCEL_PAUSED ? 1
 			         : (MMC.curracceltype >= MMC.ACCEL_RAIDSPD ? 8 : 1);   /* fast-forward vs normal */
