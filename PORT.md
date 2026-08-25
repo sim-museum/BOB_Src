@@ -1,5 +1,56 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S228: ⚠️ OUR PORT HAS A MIXED LINEAGE — the code is pre-BDG, the oracle is BDG
+
+**Mining the community/shipped docs for live bugs (PO backlog EPIC M) turned up something bigger than
+a bug: our BoB port compares itself against a binary it is not built from.**
+
+**THE FINDING, and it is verified rather than inferred:**
+- The run directory the game reads contains **`bdg.txt`** — `VERSION = 3`, plus live tunables
+  (`FOV_*`, `LABELCOLOUR_FRIENDLY/ENEMY`, `EYE_Z_POS_SPITFIRE`, `NEAR_CLIP_COCKPIT`,
+  `PERIPHERAL_VISION_RANGE`, `TRACKVIEWRANGE`, `MINIDUMPLOG_TYPE` …).
+- **No source file in this repo opens it.** `grep -rain '"bdg' SRC/ --include=*.CPP --include=*.cpp
+  --include=*.H --include=*.h` returns **nothing**. The four files that matched a loose `bdg` grep are
+  false positives (unrelated identifiers, and one comment I wrote myself).
+- So **BDG 0.99 is a patched-EXE community release** (`INSTALL/RR ROWANBOB GRAPHICS MOD/bob_v099.exe`,
+  61 MB), and **we compile Rowan's ORIGINAL, pre-BDG source** while running against **BDG-era data and
+  BDG PE resources**.
+
+**CONSEQUENCE 1 — THE PARITY ORACLE IS CONFOUNDED.** S124 made the *installed build's* PE resources
+(`boblang.dll` = BDG 0.99) the default layout source **and the parity oracle** (`BOB_NO_PE_RSRC`
+reverts to the source-checkout `.rc`). That means **a difference against the oracle can be a BDG
+feature rather than a port defect** — and any "fix" chasing such a difference makes our port match a
+code lineage our source is not. This is not hypothetical; two entries already show it:
+- `SRC/MISSMAN/SAVEGAME.CPP:280` (my own comment): *"installed BDG 0.99 build's settings.cfg is
+  rejected outright (`successfulLoad=0`)"* — the BDG save format is not what original-source code
+  expects. That is the lineage gap, already biting, already written down, not previously named.
+- PORT.md (S124-era): *"controls stayed in the BDG dialog template and our DDX/template hosting
+  faithfully drew them"* — **we faithfully rendered controls BDG added.**
+
+**⭐ THIS IS THE SAME LESSON THE PO GAVE MA TODAY, ONE ARTIFACT OVER.** For MiG Alley it was
+Windows-recorded `.cam` files: *an input older than the code, from another platform, is not an oracle
+— it is a second unknown* (ma S227). Here the second unknown is **the reference binary itself**.
+Generalised: **before trusting any oracle, establish that it shares a lineage with the code under
+test.** Both ports had this and neither had named it.
+
+**WHAT I AM *NOT* DOING:** implementing BDG. The port's goal is faithful-to-Rowan-2000. The action is
+to **label the oracle**, not chase it — a parity delta must now be classified *BDG-feature* vs
+*port-defect* before any fix is written. Backlog **P5**: audit which S124→S158 parity fixes were made
+against BDG-only UI, since those matched the wrong reference.
+
+**ALSO FOUND (community bug reports, same doc sweep)** — `DEBUG/THU_graphics_glitches.txt`, a THU
+user-community Wine guide, documents a **real, reproducible defect in BOTH sims**:
+> *"2D campaign screen icons often become unresponsive or disappear in Mig Alley… every time icons
+> become unresponsive, drag the edge of the canvas."* … *"Icons can disappear in the Battle of
+> Britain 2D campaign window too."*
+
+**The workaround is the diagnosis.** *Resizing the canvas restores the icons* — i.e. the hit-test
+mapping goes **stale relative to the presented canvas** and a resize recomputes it. That is exactly
+MiG Alley **S209b**'s rule, which I learned by breaking the mouse: *whatever rectangle the present
+stretches into, the inverse mapping must use the same rectangle.* Independent corroboration that this
+is a genuine engine-level bug class — it was reported by players against the **original Windows
+build**, so it is not port-introduced. Logged as **P6** for BoB and cross-referenced into MA.
+
 ## 2026-08-25 — S210: ⭐ the campaign clock died after every flown mission, behind a guard for a bug fixed in S39
 
 Chasing §8-MA136's named instance — *"the map after a flight" is a known-broken order that no gate
