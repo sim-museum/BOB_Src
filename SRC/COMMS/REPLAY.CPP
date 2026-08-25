@@ -146,6 +146,17 @@ Bool	Replay::OpenRecordLog()
 		SetEndOfFile(recordstorage);
 	}
 
+#if defined(BOB_LINUX)
+	/* S208 (MA ss8-MA139): does this port EVER open a replay record log? MA's replay was dead for
+	   its whole life because this file accumulated every flight. Same code here -- but "the same
+	   code exists" is not a verdict, and the last three inbound MA notes were each decided by
+	   measurement rather than by reading. Say whether we get here at all, and with what.
+	   BOB_TRACE_RECLOG=1. */
+	if (getenv("BOB_TRACE_RECLOG"))
+		fprintf(stderr,"[reclog] OpenRecordLog: file='%s' handle=%s ResetFileFlag(was)=%d\n",
+		        &rfilename[0], recordstorage==INVALID_HANDLE_VALUE?"INVALID":"ok",
+		        (int)ResetFileFlag);
+#endif
 	if (recordstorage!=INVALID_HANDLE_VALUE)
 	{
 		SetFilePointer(recordstorage, 0, NULL, FILE_END); // get to end of file

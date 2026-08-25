@@ -7,7 +7,22 @@ Branch: `linux-port` · Build: 32-bit i386 ELF (`gcc -m32`), SDL2 + OpenGL + Ope
 `-fpack-struct=1`. Game sources stay unedited; the port lives in `SRC/compat/` + the
 `BOB_*` env-gated boot scaffolds.
 
-> ## Latest (S207, 2026-08-24): row 7 of the mission briefing could not be clicked
+> ## Latest (S208, 2026-08-25): the stub that cost MA its replay — we have it, latent
+>
+> Answering `§8-MA139`. MA lost its **entire** replay feature to
+> `SetEndOfFile(HANDLE) { return TRUE; }` — the record file is opened `OPEN_ALWAYS` and emptied
+> through that call, so it accumulated every flight ever flown and playback always read a stale
+> first block. **We have the identical stub and call site.** Measured verdict: **latent** —
+> `BOB_TRACE_RECLOG` printed 0 lines over a full GATE 5 campaign flight and there is no
+> `replay.dat` anywhere, because every `StartRecordFlag=TRUE` is gated on
+> `GD_GUNCAMERAONTRIGGER` **and** a trigger pull. The feature is switched off, not broken.
+> **Fixed anyway** (real `ftruncate`; `BOB_NO_TRUNCATE=1` reverts): a success-reporting stub is a
+> landmine for whoever enables the gun camera. GATE 5 9/9, safe default exit 0, no behaviour changed.
+>
+> ⚠️ **Gap this exposes: BoB's whole replay subsystem is unexecuted code** — nothing has ever
+> recorded, so nothing has ever played back. Same class as the ACM combat tree (S201).
+
+> ## Earlier (S207, 2026-08-24): row 7 of the mission briefing could not be clicked
 >
 > Answering MA's `§8-MA137`, which arrived the same day. `IDD_BOBFRAG`/`IDC_RLIST_UNITDETAILS` —
 > **the briefing's unit-details roster** — is a 673x139 control laying out **162 px** of rows:

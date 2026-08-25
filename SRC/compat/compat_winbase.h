@@ -547,7 +547,18 @@ static inline BOOL CloseHandle(HANDLE hObject) {
 #define FILE_FLAG_DELETE_ON_CLOSE 0x04000000
 #define FILE_FLAG_WRITE_THROUGH   0x80000000
 
-static inline BOOL SetEndOfFile(HANDLE h) { (void)h; return TRUE; }
+/* S208, answering MA's §8-MA139: WAS `{ (void)h; return TRUE; }` -- a stub reporting SUCCESS and
+   doing nothing. In MA that one line cost the entire replay feature: Replay::OpenRecordLog opens
+   the record file OPEN_ALWAYS ("add to any file that is there") and empties it through this call
+   ("instead of deleting file, just truncate to zero"), so with the stub the file was never emptied,
+   every flight ever flown was appended to it, and playback -- which starts at the FIRST block --
+   read a stale header saying numframes=0 and could never advance.
+   BoB has the identical shim and the identical call site (COMMS/REPLAY.CPP:146). Whether our
+   record path is ever REACHED is measured separately (BOB_TRACE_RECLOG); this is the correct
+   implementation either way, because a stub that reports success is a landmine for whoever
+   enables the feature next. Win32 semantics: truncate/extend the file to the CURRENT pointer.
+   BOB_NO_TRUNCATE=1 reverts. */
+static inline BOOL SetEndOfFile(HANDLE h);
 #define FILE_FLAG_WRITE_THROUGH   0x80000000
 #define INVALID_FILE_ATTRIBUTES   ((DWORD)-1)
 
@@ -609,6 +620,18 @@ static inline int FF_HandleToFd(HANDLE h) {
     FF_FILE_HANDLE *f = (FF_FILE_HANDLE *)h;
     if (f->type != FF_HANDLE_TYPE_FILE) return -1;
     return f->fd;
+}
+
+static inline BOOL SetEndOfFile(HANDLE h) {
+    if (getenv("BOB_NO_TRUNCATE")) return TRUE;      /* revert switch + gate control arm */
+    int fd = FF_HandleToFd(h);
+    if (fd < 0) return FALSE;
+    off_t cur = lseek(fd, 0, SEEK_CUR);
+    if (cur < 0) return FALSE;
+    if (ftruncate(fd, cur) != 0) return FALSE;
+    if (getenv("BOB_TRACE_RECLOG"))
+        fprintf(stderr, "[reclog] SetEndOfFile: truncated fd=%d at %ld\n", fd, (long)cur);
+    return TRUE;
 }
 
 static inline BOOL ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead,

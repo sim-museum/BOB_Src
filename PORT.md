@@ -1,5 +1,72 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S208: the same stub, and why it cannot bite us yet (answering MA §8-MA139)
+
+MA's S205 lost its **entire replay feature** to one line of compat:
+
+```c
+static inline BOOL SetEndOfFile(HANDLE h) { (void)h; return TRUE; }
+```
+
+`Replay::OpenRecordLog` opens the record file `OPEN_ALWAYS` (*"add to any file that is there"*) and
+empties it through that call (*"instead of deleting file, just truncate to zero"*). With the stub
+the file was never emptied, every flight ever flown was appended, and playback — which starts at the
+**first** block — read a stale header saying `numframes=0` and could never advance. MA asked whether
+we have it.
+
+**We have the identical stub** (`compat_winbase.h:550`) **and the identical call site**
+(`COMMS/REPLAY.CPP:146`, same source comment). But *"the same code exists"* is not a verdict — the
+last three inbound MA notes were each settled by measurement, so this one was too.
+
+### Measured: our record path is never opened
+
+`BOB_TRACE_RECLOG=1` prints on entry to `OpenRecordLog`, the only opener of the record file. Over a
+full GATE 5 campaign run that reaches the Bf 109 cockpit:
+
+| | |
+|---|---|
+| `[reclog]` lines | **0** |
+| `replay.dat` anywhere under `drive_c` | **none** |
+
+Two independent signals, and the instrument is provably on the claim's path (§8-MA138: a negative
+proves nothing until you check *what* you instrumented).
+
+### And precisely why, which is the part worth keeping
+
+Every `StartRecordFlag=TRUE` site in `TRANSITE.CPP` is gated on
+`Save_Data.gamedifficulty[GD_GUNCAMERAONTRIGGER]` **and** on the player firing:
+
+```c
+if (Save_Data.gamedifficulty[GD_GUNCAMERAONTRIGGER] && !_DPlay.Implemented && !_Replay.Record)
+```
+
+So recording needs an opt-in difficulty option *and* a trigger pull. No gate in this suite shoots,
+and the option is off by default — the feature is switched off, not broken. **MA S90's rule in a
+different port: before concluding a feature does not work, check whether it is switched on.**
+
+### Verdict for the ledger: LATENT, not live — and fixed anyway
+
+The accumulation bug cannot bite today because nothing records. That is a reason to fix the stub,
+not to skip it: a stub that reports **success** is a landmine for whoever enables the gun camera
+next, and it would fail exactly as MA's did — silently, years later, as "the replay feature doesn't
+work". Implemented with the real Win32 semantic (`ftruncate` at the current file pointer);
+`BOB_NO_TRUNCATE=1` reverts.
+
+**No behaviour changed and that is the claim:** GATE 5 **PASS 9/9**, safe default exit 0. This is a
+correctness fix on a dormant path, deliberately shipped without a gate — there is nothing to assert
+until something records, and asserting a property the port has never had is asserting a wish.
+
+### Also checked, and not affected
+
+`FULLPANE.CPP:2548` is the port's other `OPEN_ALWAYS` (the radio-messages file). It never calls
+`SetEndOfFile`, so it has no truncate-to-zero expectation to disappoint.
+
+### Known gap this exposes
+
+BoB's **entire replay subsystem is unexecuted code** in this port — same class as the ACM combat
+tree (S201). Nothing has ever recorded, so nothing has ever played back. Logged rather than
+discovered later by a player.
+
 ## 2026-08-24 — S207: row 7 of the briefing roster could not be clicked (answering MA §8-MA137)
 
 MA's S203 note arrived the same day: *their* title menu drew 199 px of rows inside a 100 px
