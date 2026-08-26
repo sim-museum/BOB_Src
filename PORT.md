@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S277: BoB has the same two-present-path hazard MA's PO-67 just demonstrated
+
+**MA's PO-67 was caught live under gdb (MA S276): the app kept painting normally while the display
+was fed from the `gdi-canvas` present path (black) and the content sat on `legacy-2d`.** Checked
+whether BoB can do the same. **It can.**
+
+**Both ports have TWO 2D present routines, and NEITHER arbitrates between them:**
+
+| | BoB | MiG Alley |
+|---|---|---|
+| DirectDraw path | `present_surface()` — called from the DDraw flip (`bob_video.cpp:1147`) | `ma_ddraw_present()` |
+| GDI path | `bob_gdi_present()` — called **directly from game paint code** (`fullpsys.cpp:534`, `:1192`, `rmdldlg.cpp:444`) | `ma_gl_blit_bgra()`, driven from `ma_gdi.cpp:900` |
+
+⭐ **Both routines end in `SDL_GL_SwapWindow()` with no guard against the other**, so **the last one
+to run wins the frame.** What the player sees is decided by *call order*, not by which surface
+actually holds the current screen. That is the same "two things disagreeing about one fact" family as
+the four `OnGetFile` copies (S248/S249) and the two `WM_GETFILE` handlers — one layer down, in the
+renderer, where the disagreement is invisible until a frame comes out black.
+
+**BoB's exposure is LATENT so far** — no black-screen report here, and its `present_surface` at least
+checks `g_devRendered` to distinguish a 3D frame from a 2D one, which MA's GDI path has no equivalent
+of. **I am not claiming BoB exhibits the bug**; I am recording that the structure permits it and that
+MA has now demonstrated the structure failing.
+
+**Lead handed to MA's PO-67:** its GDI present is driven by `ma_gdi.cpp:900` —
+`if (g_canvas && g_cw > 0 && g_ch > 0) ma_gl_blit_bgra(g_canvas, g_cw, g_ch)`. In the PO's black
+state that runs every frame with `g_canvas` non-null and correctly sized, **while
+`RFullPanelDial::OnPaint` is demonstrably painting** (the backtrace shows it). So either the panel
+paints into a *different* surface than `g_canvas`, or it paints a region that excludes the sampled
+centre. **Those need different fixes, and one trace of the paint's target and rect separates them.**
+
 ## 2026-08-25 — S274: a 57 MB export was two bugs, not a tuning problem
 
 **Set out to add a sampling option because one sortie produced 57 MB. Found two defects instead.**
