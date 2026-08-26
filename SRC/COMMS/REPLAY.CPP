@@ -292,7 +292,7 @@ void	Replay::ClosePlaybackLog()
 extern "C" {
 	int  bob_acmi_enabled(void);
 	int  bob_acmi_begin(const char* title);
-	void bob_acmi_time(double seconds);
+	int  bob_acmi_time(double seconds);
 	void bob_acmi_object_ias(unsigned long id, double u, double v, double alt,
 	                         double roll, double pitch, double yaw,
 	                         const char* name, const char* type, const char* color, int isPlayer,
@@ -406,14 +406,49 @@ Bool	Replay::StoreDeltas()
 			{ static int _o=0; if(!_o && getenv("BOB_TRACE_ACMI")){_o=1;
 			  fprintf(stderr,"[acmi] rate %.1f Hz (RateDivider=%d)\n",_hz,(int)_DPlay.RateDivider);
 			  fflush(stderr);} }
-			bob_acmi_time((double)replayframecount / _hz);
+			/* S274: ONLY EMIT WHEN THE CLOCK ACTUALLY MOVED.
+			   Measured: 512 time markers but 3,948 samples PER OBJECT -- each aircraft written
+			   ~7.7 times against the same timestamp, because StoreDeltas runs more often than
+			   replayframecount advances. bob_acmi_time() suppressed the duplicate MARKERS (it
+			   requires monotonic time) while the object lines were written regardless, so the file
+			   carried ~7.7x redundant samples saying nothing new. That -- not the frame rate -- is
+			   what made a sortie 57 MB. The AI decimation added earlier this sprint was treating
+			   the symptom; it is kept as a real separate saving, but this is the cause. */
+			if (!bob_acmi_time((double)replayframecount / _hz))
+				goto acmi_done;
 			AirStrucPtr _ac = *AirStruc::ACList;
 			unsigned long _id = 0;
 			while (_ac && _id < 256)
 			{
 				_id++;
-				const int _isPlayer = (_ac == gac) ? 1 : 0;
-				const int _friendly = (gac && _ac->nationality == gac->nationality) ? 1 : 0;
+				/* S274b: identify the player by the game's OWN notion of the controlled aircraft.
+				   `gac` is Persons2::PlayerGhostAC, and comparing against it matched NOTHING here
+				   -- measured: zero `Pilot=Player` samples across 511 markers, so the export could
+				   not say which aircraft was the player AND the player's track was being decimated
+				   like an AI's. For a debrief tool "which one is me" is not a nicety.
+				   Manual_Pilot.ControlledAC2 is what BoB's own code compares against when it needs
+				   the player (TRANSITE.CPP:1106, :1181, MSGAI's friend/foe test). Accept either, so
+				   this works whichever the world is using. */
+				const int _isPlayer = (_ac == gac || _ac == Manual_Pilot.ControlledAC2) ? 1 : 0;
+				const AirStrucPtr _me = Manual_Pilot.ControlledAC2 ? Manual_Pilot.ControlledAC2 : gac;
+				const int _friendly = (_me && _ac->nationality == _me->nationality) ? 1 : 0;
+				/* S274: DECIMATE THE AI TRACKS. A campaign sortie put 148 objects in the world and
+				   emitting every one at the full 25 Hz produced a 57 MB file for a single flight --
+				   valid, and unusable: the point of this feature is that a player can open their
+				   debrief, and a 57 MB text file is a poor way to deliver that.
+				   The PLAYER keeps every frame, because their own track is what a debrief is about.
+				   AI aircraft drop to every 5th frame (5 Hz), which is ample for seeing where a
+				   formation went and cuts the file roughly 4x. Tacview interpolates between
+				   samples, so the tracks stay continuous rather than gappy.
+				   BOB_ACMI_AIEVERY=1 restores full rate for everyone -- named so the trade is the
+				   user's to reverse, not a silent quality decision baked in. */
+				{
+					static long _aiEvery = -1;
+					if (_aiEvery < 0) _aiEvery = getenv("BOB_ACMI_AIEVERY")
+					                             ? atol(getenv("BOB_ACMI_AIEVERY")) : 5;
+					if (_aiEvery > 1 && !_isPlayer && (replayframecount % _aiEvery) != 0)
+						{ _ac = *_ac->nextmobile; continue; }
+				}
 				bob_acmi_object_ias(_id,
 				                    (double)_ac->World.X / _cm,
 				                    (double)_ac->World.Z / _cm,
@@ -429,6 +464,7 @@ Bool	Replay::StoreDeltas()
 				_ac = *_ac->nextmobile;
 			}
 		}
+		acmi_done: ;
 	}
 #endif
 

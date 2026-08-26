@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S274: a 57 MB export was two bugs, not a tuning problem
+
+**Set out to add a sampling option because one sortie produced 57 MB. Found two defects instead.**
+
+| | size | player track | AI track |
+|---|---|---|---|
+| before | **59,379,985** | not identified at all | full rate |
+| after | **1,577,233** | **100% of markers** | 20% (1 in 5) |
+
+**Bug 1 — ~7.7x REDUNDANT SAMPLES.** Measured 512 time markers but **3,948 samples per object**:
+every aircraft was written ~7.7 times against the *same* timestamp, because `StoreDeltas` runs more
+often than `replayframecount` advances. `bob_acmi_time()` correctly suppressed the duplicate
+*markers* (it requires monotonic time) while the object lines were written regardless. **That, not
+the frame rate, is what made the file enormous** — most of those 57 MB said nothing new.
+⭐ *The decimation I added first was treating the symptom.* It is kept, because it is a real and
+separate saving, but the sprint's own first answer was the wrong one and the measurement corrected it.
+
+**Bug 2 — THE PLAYER WAS NOT IDENTIFIED, AND WAS BEING DECIMATED.** `Pilot=Player` appeared **zero
+times in 511 markers**: `_ac == gac` (`Persons2::PlayerGhostAC`) matches nothing here, so the export
+could not say which aircraft was the player *and* the player's own track was thinned like an AI's.
+**For a debrief tool, "which one is me" is not a nicety.** Fixed by accepting
+`Manual_Pilot.ControlledAC2` — what BoB's own code compares against when it needs the player
+(`TRANSITE.CPP:1106`, `:1181`). Now 511/511.
+
+- **Caught only because I checked the claim rather than the file size.** The 12 MB decimated file
+  looked like a success; it was a smaller file with the same two bugs in it. **A number moving in the
+  right direction is not evidence the right thing happened.**
+- `BOB_ACMI_AIEVERY=1` restores full AI rate — the fidelity trade stays the user's to reverse.
+
 ## 2026-08-25 — S270: BoB is immune to MA's S269 double-free, for the third time by the same structural reason
 
 **MA S269 found a latent double-free:** of four hand-written copies of `OnReleaseLastFile`,

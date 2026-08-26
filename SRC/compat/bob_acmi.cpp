@@ -64,12 +64,13 @@ int bob_acmi_begin(const char* title)
 
 /* Advance the timeline. ACMI requires time markers to be MONOTONIC; emit one only when the time
    actually moves forward, so a repeated or stale call cannot corrupt the file. */
-void bob_acmi_time(double seconds)
+int bob_acmi_time(double seconds)
 {
-    if (!g_acmi) return;
-    if (seconds <= g_acmi_lastT) return;
+    if (!g_acmi) return 0;
+    if (seconds <= g_acmi_lastT) return 0;   /* S274: caller uses this to skip duplicate samples */
     fprintf(g_acmi, "#%.2f\r\n", seconds);
     g_acmi_lastT = seconds;
+    return 1;
 }
 
 /* One object's state at the current time marker.
