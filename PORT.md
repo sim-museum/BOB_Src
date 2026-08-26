@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S252: the LPTSTR thunk gap, cross-ported from MA — LATENT here, not live
+
+**MiG Alley S251 traced a data-destroying bug to a missing template overload.** `afxwin.h` had
+`bob_evt_call` thunks for `int/long/short/(int,int)/(long,long)/LPCSTR` and then a **silent fallback
+for everything else**. `OnTextChangedSavename(LPTSTR)` is `void(C::*)(char*)` — **`LPCSTR` covered,
+`LPTSTR` not** — so the handler was discarded without a word, the replay save never learned the typed
+name, kept the previous one, and **overwrote that file**. It happened twice on the PO's machine before
+anyone found it. **18 MA handlers take `LPTSTR`** (save name, pilot Name, radio message lines).
+
+**BoB has the same 18-handler exposure and the same missing thunk** — verified: `grep afx_msg void
+On.*(LPTSTR` returns **18**, and the thunk list ends at `LPCSTR` plus BoB's own `(LPCTSTR,short)`
+delta.
+
+**⚠️ BUT IT IS LATENT HERE, AND I AM NOT CLAIMING A FIX.** BoB **hosts no edit controls** — its
+dialogs host only RCombo / RListBox / RStatic (`CLAUDE.md`, and there is no `CT_EDIT` anywhere in
+`SRC/compat/`). Nothing fires these events, so nothing is being dropped today. **This changes no
+observable behaviour.** Smoke-tested: builds, runs, no crash banner.
+
+**Why close it anyway.** The fallback's own comment reads *"uncovered signature compiles, doesn't
+fire"* — the danger is precisely that it is **correct and silent**. The day someone hosts an REdit
+here, the handler will vanish and the symptom will look like anything except a missing template
+overload; MA spent three attempts on it (two aimed at plumbing that does not carry the water) before
+finding the real cause. ⭐ **A gap that costs one line to close and a week to diagnose should be
+closed while it is still understood.**
+
+**This is the fourth MA→BoB or BoB→MA carry in two days** (S241 the `ReplayRead` overflow, S249 the
+`OnGetFile` twins found *by* a BoB sprint, S250 the route audit, now this). The alternation keeps
+earning: three of the four were found in one port and mattered in the other.
+
 ## 2026-08-25 — S230: the BDG-oracle audit (P5) — first two candidates come back CLEAN, and I have to retract part of S228
 
 **S228 warned that a parity delta against the BDG oracle might be a BDG *feature* rather than a port

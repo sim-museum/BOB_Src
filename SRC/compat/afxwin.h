@@ -137,6 +137,21 @@ template<class C> inline void bob_evt_call(C* c, void (C::*f)(LPCSTR))    { (c->
 /* BoB delta over MA: the SController combo handlers are OnTextChanged*(LPCTSTR, short) — the args
    are unused stubs (the handler reads the combo's new GetIndex), so empty text + 0 is faithful. */
 template<class C> inline void bob_evt_call(C* c, void (C::*f)(LPCTSTR,short)) { (c->*f)((LPCTSTR)(bob_evtP?bob_evtP:""),(short)bob_evtA0); }
+/* S252 -- CROSS-PORTED FROM MiG Alley S251, WHERE THIS WAS A LIVE, DATA-DESTROYING BUG.
+   In MA, `OnTextChangedSavename(LPTSTR)` fell through to the fallback below and was never called:
+   LPCSTR was covered, LPTSTR (char*) was not. The replay save therefore never learned the name the
+   player typed, kept the previous one, and OVERWROTE THAT FILE -- twice on the PO's machine before
+   it was found. 18 handlers in MA take LPTSTR (save name, pilot Name, radio message lines).
+
+   BoB has the SAME 18-handler exposure and the SAME missing thunk. The difference is that BoB
+   hosts no edit controls today (its dialogs host only RCombo/RListBox/RStatic), so nothing fires
+   these events and the gap is LATENT, not live. This changes no observable behaviour here.
+
+   Adding it anyway, for one reason: the fallback's own comment says "compiles, doesn't fire" -- so
+   the day someone hosts an REdit in BoB, the handler will be silently dropped and the symptom will
+   look like anything except a missing template overload. A gap that costs one line to close and a
+   week to diagnose should be closed while it is understood. */
+template<class C> inline void bob_evt_call(C* c, void (C::*f)(LPTSTR))    { (c->*f)((LPTSTR)bob_evtP); }
 template<class C, class M> inline void bob_evt_call(C*, M) {}   /* fallback: uncovered signature compiles, doesn't fire */
 #define BOB_EVT_CAT2(a,b) a##b
 #define BOB_EVT_CAT(a,b) BOB_EVT_CAT2(a,b)
