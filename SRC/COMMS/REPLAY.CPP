@@ -394,7 +394,18 @@ Bool	Replay::StoreDeltas()
 			   still wrong. */
 			const double _vel = getenv("BOB_ACMI_VELPERMS") ? atof(getenv("BOB_ACMI_VELPERMS")) : 10000.0;
 			const double _ang = 360.0 / 65536.0;
-			const double _hz  = (_DPlay.RateDivider > 0) ? (100.0 / (double)_DPlay.RateDivider) : 20.0;
+			/* S272: 25 Hz, MEASURED -- not MA's 100/RateDivider formula, which does not apply here.
+			   BoB reports RateDivider=1, so that formula gave 100 Hz and made the timeline 4x too
+			   fast: IAS (from vel_) and speed derived from successive positions disagreed by a
+			   ratio of 0.2414, i.e. position-derived speed was ~4x IAS.
+			   ANCHORED BY GROUND TRUTH THE PO SUPPLIED: their cockpit HUD reads "Speed 177Kts,
+			   Alt 5123ft". 177 kt = 91 m/s and the exported IAS peaks at 104 m/s -- same order, so
+			   IAS is about right and the TIME AXIS was the wrong half. 100/4 = 25 Hz.
+			   BOB_ACMI_HZ overrides without a rebuild. */
+			const double _hz  = getenv("BOB_ACMI_HZ") ? atof(getenv("BOB_ACMI_HZ")) : 25.0;
+			{ static int _o=0; if(!_o && getenv("BOB_TRACE_ACMI")){_o=1;
+			  fprintf(stderr,"[acmi] rate %.1f Hz (RateDivider=%d)\n",_hz,(int)_DPlay.RateDivider);
+			  fflush(stderr);} }
 			bob_acmi_time((double)replayframecount / _hz);
 			AirStrucPtr _ac = *AirStruc::ACList;
 			unsigned long _id = 0;
