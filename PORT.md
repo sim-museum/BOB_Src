@@ -1,5 +1,49 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S260: BoB's recorder WORKS when armed (78 KB recording) — and S258's evidence was invalid
+
+**Result first: arm the recorder and BoB records a real flight.** `VIDEOS/replay.dat` = **77,968
+bytes** from one `BOB_BOOT_FRONTEND` sortie, with `[reclog] OpenRecordLog: file='...\videos\
+replay.dat' handle=ok`. **R1 is a preference-plumbing story, not a repair** — exactly the outcome
+S258 predicted, now measured.
+
+**The corrected A/B:**
+
+| configuration | arming branch taken | `[reclog]` | recording |
+|---|---|---|---|
+| default | **0** | 0 | none |
+| `BOB_GUNCAM=1` | **1** | 2 | **77,968 bytes** |
+
+**⚠️ S258's CONCLUSION SURVIVES; ITS EVIDENCE DOES NOT.** S258 reported "no `[reclog]`, therefore the
+recorder never arms". That trace is gated on **`BOB_TRACE_RECLOG=1`, which I never set** — so "no
+`[reclog]`" meant *"I did not turn the trace on"*, not *"the code did not run"*. The conclusion
+happened to be right (the branch genuinely is not taken by default, now measured directly), but it
+was right by luck. **Two independent lines of S258's evidence were sound** — the flight-reach checks,
+and the absence of any recorded file — which is the only reason the sprint was not simply wrong.
+
+- ⭐ **Fifth instrument failure this week, and the first one that produced a CORRECT conclusion from
+  invalid evidence** — which is the more dangerous shape, because nothing about the result invites a
+  second look. The others: a screen capture that could not see GL windows (MA S233), an `fopen` trace
+  that could not see the archive path (MA S246), a dispatcher audited by reading a file that does not
+  enumerate what it dispatches (S254), a detector on the wrong path (S256).
+- **AND A SIXTH, in this same sprint:** my `find` for the recorded file missed it **twice** — the
+  `-newermt X -iname A -o -newermt X -iname B` form groups the way `find` chooses rather than the way
+  I meant, and the directory is `VIDEOS`, not `Videos`. I reported "no file" twice while a 78 KB
+  recording sat on disk. *Two searches that cannot find a thing are not evidence the thing is
+  absent.*
+- **The gun camera has TWO settings**, matching MiG Alley's manual (Off / Trigger / On):
+  `GD_GUNCAMERAONTRIGGER` (three sites in `Transite.cpp`, all weapon-fire paths) and
+  `GD_GUNCAMERAATSTART` (`Winmove.cpp`, the `prefscheck` path). Both default off, so neither arms in
+  an automated flight — nothing fires, and nothing visits prefs.
+- **`BOB_GUNCAM=1` is a labelled TEST HOOK, not a fix.** It arms `StartRecordFlag` directly, so it
+  exercises the real recorder (`OpenRecordLog` → `StoreSuperHeader` → `StoreDeltas` → blocks) but
+  **skips the preference plumbing that decides whether to arm**. Those are separate claims and the
+  second is still untested.
+
+**R1 next:** plumb `GD_GUNCAMERAATSTART` through the port's preferences so a player can turn the gun
+camera on, then play the recording back. **R2 (Tacview) is much closer than 8 points suggested** —
+the recording exists, and `ma_acmi.cpp` takes plain C types.
+
 ## 2026-08-25 — S256: the P6 detector was in the wrong function, and my positive control could not fire it
 
 **Two findings, one of them about the instrument and one about the control that was supposed to

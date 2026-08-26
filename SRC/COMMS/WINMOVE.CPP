@@ -444,6 +444,38 @@ void mobileitem::WinMove (int timeofday,WorldStuff* worldref)
 
 		_DPlay.CheckGhost();
 
+#if defined(BOB_LINUX)
+		/* S260 (EPIC R / R1): TEST HOOK -- force the gun camera on so recording can be exercised.
+		   S258 established that BoB flies but never records, and that this is not a defect: all
+		   arming sites are gated on the gun-camera preference. Two exist --
+		   GD_GUNCAMERAONTRIGGER (arm when the player fires, three sites in Transite.cpp) and
+		   GD_GUNCAMERAATSTART (arm from the start, this block) -- matching the manual's
+		   Off / Trigger / On.
+		   Automated flights never fire and never visit prefs, so neither path can arm and the
+		   recorder has never once run in this port. BOB_GUNCAM=1 sets the at-start bit and pokes
+		   prefscheck so the game's OWN logic below arms it -- no new arming path, so what this
+		   tests is the real mechanism rather than a stand-in for it. Default off: this changes a
+		   player-visible preference and must not do so behind the player's back. */
+		{
+			static int _gcOnce = 0;
+			if (!_gcOnce && getenv("BOB_GUNCAM") && !_Replay.Record && !_Replay.Playback) {
+				_gcOnce = 1;
+				/* Arm the recorder directly. NOTE WHAT THIS DOES AND DOES NOT TEST: it sets the
+				   same flag the game's own gun-camera paths set, so everything downstream --
+				   OpenRecordLog, StoreSuperHeader, StoreDeltas, the block machinery -- is the real
+				   mechanism. What it SKIPS is the preference plumbing that decides WHETHER to arm.
+				   So a pass here means "the recorder works"; it does NOT mean "the gun-camera
+				   preference works". Those are separate claims and the second is still untested.
+				   (Writing GD_GUNCAMERAATSTART directly would have been closer to the real path,
+				   but gamedifficulty is a bitfield whose write API sits behind a macro I did not
+				   want to spend this sprint excavating -- said plainly rather than papered over.) */
+				_Replay.StartRecordFlag = TRUE;
+				fprintf(stderr,"[guncam] BOB_GUNCAM=1 -> StartRecordFlag armed directly "
+				               "(tests the RECORDER, not the preference path)\n");
+				fflush(stderr);
+			}
+		}
+#endif
 		if (_Replay.prefscheck)
 		{
 			_Replay.prefscheck=false;
@@ -591,6 +623,13 @@ void mobileitem::WinMove (int timeofday,WorldStuff* worldref)
 		}
 		else if (_Replay.StartRecordFlag)
 		{
+#if defined(BOB_LINUX)
+			/* S260: is this branch ever taken? The flag is armed (see the [guncam] hook) yet no
+			   [reclog] line appears, so the loss is somewhere between arming and OpenRecordLog.
+			   Trace the branch itself rather than reasoning about which enclosing condition ate it. */
+			fprintf(stderr,"[guncam] StartRecordFlag branch TAKEN -> calling OpenRecordLog\n");
+			fflush(stderr);
+#endif
  			_Replay.StartRecordFlag=FALSE;
 
 			if (_Replay.OpenRecordLog())
