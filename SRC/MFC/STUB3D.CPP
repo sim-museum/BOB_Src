@@ -558,8 +558,20 @@ Inst3d::Inst3d()
 	   As with BOB_GUNCAM: this tests the READER, not the UI path that decides to play. Two
 	   separate claims; a pass here says nothing about the second. */
 	if (getenv("BOB_PLAYBACK") && !_Replay.Record) {
-		_Replay.Playback = TRUE;
-		fprintf(stderr,"[playback] BOB_PLAYBACK=1 -> Playback forced; exercising the READER only\n");
+		/* S266: OPEN THE LOG FIRST. S264's hook set Playback=TRUE and nothing else, so
+		   playbackfilestart/end were never mapped and the reader refused every read with
+		   "-1 remaining" -- it proved the reader was reachable and safe, not that it could read a
+		   recording. OpenPlaybackLog (Replay.cpp:196) is what does the CreateFile/MapViewOfFile,
+		   and on the shipping path it is called from Winmove.cpp:1546. Call it here so the block
+		   scan runs against the real recording.
+		   Still a hook, and still narrower than the UI path: it exercises the READER, not the
+		   menu flow that chooses a file. */
+		Bool _opened = _Replay.OpenPlaybackLog();
+		fprintf(stderr,"[playback] BOB_PLAYBACK=1 -> OpenPlaybackLog()=%d file='%s'\n",
+		        (int)_opened, &_Replay.pfilename[0]);
+		if (_opened) _Replay.Playback = TRUE;
+		else fprintf(stderr,"[playback] open FAILED -- not forcing Playback (a forced flag with no "
+		                    "mapped file is what made S264 test the wrong thing)\n");
 		fflush(stderr);
 	}
 #endif

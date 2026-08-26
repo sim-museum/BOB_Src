@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S266: BoB reads back its own recording
+
+**R1's playback half, with the step S264 identified.** S264's hook forced `Playback=TRUE` but never
+mapped the file, so every read refused with `-1 remaining`. This one calls **`OpenPlaybackLog()`
+first** — the `CreateFile`/`MapViewOfFile` the shipping path invokes from `Winmove.cpp:1546`.
+
+Recorded **70,111 bytes**, then played it back:
+
+```
+[playback] OpenPlaybackLog()=1  file='...\videos\replay.dat'
+REFUSED: 0    crash: 0    'Error reading playback log': 0
+```
+
+⭐ **The zero that matters is the last one.** `STUB3D.CPP` emits *"Error reading playback log"*
+whenever `LoadFinalPlaybackData()` leaves `Playback` false. Its absence means the call **kept**
+`Playback` true — i.e. `PreScanReplayFile()` walked the block index and `LoadBlockHeader()` succeeded.
+**BoB parsed its own recording.** And with S241's bounds guards live, a malformed read would have
+refused loudly rather than passing quietly, so `REFUSED: 0` is a positive signal here rather than an
+absence of information.
+
+**What this does and does not establish.** It establishes the **reader** works end to end on real
+data: record 70 KB, map it, prescan it, load a block. It does **not** establish that the UI path can
+choose and play a replay, nor that the 3D view visibly moves — MiG Alley's PO-61 was precisely a case
+where the reader was fine and the *transport* was not. Those are the R1 residuals.
+
+**Contrast with MA, which is the encouraging part:** MiG Alley needed roughly a dozen sprints to get
+here, and two genuine memory bugs plus a 32-bit overflow had to be found on the way. BoB reached the
+same point in three sprints — because **S241 cross-ported the overflow fix before anyone tripped it**,
+and S226's `nextmobile` lesson meant the chain question never had to be re-derived.
+
 ## 2026-08-25 — S264: BoB's playback reader is reachable and fails SAFE — but the file is never loaded
 
 **R1's playback half, driven for the first time.** `BOB_PLAYBACK=1` forces `_Replay.Playback` so the
