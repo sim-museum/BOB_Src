@@ -1,5 +1,34 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S262: a gate for BoB's recorder, with both arms watched
+
+**`tools/bob_replay_record.sh`.** Flies, arms the gun camera, and asserts: the flight launched, the
+recorder armed, `OpenRecordLog` succeeded, and a substantial recording exists.
+
+```
+POSITIVE  flight launched yes | recorder armed yes | OpenRecordLog ok | 81,362 bytes   -> PASS
+CONTROL   flight launched yes | recorder armed NO  | OpenRecordLog NO | 0 bytes        -> CONTROL OK
+```
+
+**⭐ THE CONTROL IS THE POINT HERE, not a formality.** BoB's *default* behaviour is "no recording",
+so a gate that only ever runs armed cannot distinguish *"recording works"* from *"my assertions never
+fire"*. Note the control still shows **flight launched: yes** — the reach assertion is independent of
+the recording ones, so a future failure says *which* half broke.
+
+**This gate exists because S258 answered this question wrong.** It read `[reclog]`, a trace gated on
+`BOB_TRACE_RECLOG` that was never set, and concluded the recorder never armed. The conclusion
+happened to be right; the evidence was meaningless. **A gate with its flags baked in cannot repeat
+that mistake.** The `VIDEOS` path is spelled uppercase in the script for the same reason — S260 lost
+two `find` searches to assuming `Videos`.
+
+**Honest scope, stated in the script itself:** `BOB_GUNCAM=1` arms `StartRecordFlag` directly, so the
+gate exercises the real recorder while **skipping the gun-camera preference that decides whether to
+arm**. A pass means *"the recorder works"*, **not** *"the preference works"*. Those are separate
+claims and the second is still untested.
+
+**R1 remaining:** playback. `LoadFinalPlaybackData` -> `PreScanReplayFile` exists and MA's overflow
+fix is already cross-ported here (S241), but nothing has driven it yet.
+
 ## 2026-08-25 — S260: BoB's recorder WORKS when armed (78 KB recording) — and S258's evidence was invalid
 
 **Result first: arm the recorder and BoB records a real flight.** `VIDEOS/replay.dat` = **77,968
