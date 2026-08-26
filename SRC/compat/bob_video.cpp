@@ -799,6 +799,34 @@ static void brighten_pass()
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
 }
 /* g_frameNo defined above (moved up for the BOB_AUTOQUIT frame timer) */
+/* S256 (P6): the S232 rect check, moved OUT of present_surface into a helper both present paths
+   call. IT HAD BEEN IN THE WRONG FUNCTION SINCE S232 AND ITS ZERO MEANT NOTHING.
+   present_surface() is the DirectDraw/3D path; the 2D FRONT END -- which is exactly where the
+   reported symptom lives ("2D campaign screen icons often become unresponsive", THU) -- presents
+   through bob_gdi_present() instead and never reached the check. A positive control exposed it: the
+   detector stayed at 0 even after xdotool forcibly resized the window, which is not a result about
+   the window, it is a result about the detector.
+   Same lesson as this week's other three instrument failures (a screen capture that could not see
+   GL windows, an fopen trace that could not see the archive path, a dispatcher audited by reading a
+   file that does not enumerate what it dispatches): VALIDATE THE INSTRUMENT ON A CASE WHOSE ANSWER
+   YOU ALREADY KNOW, then trust it on the case you do not. */
+static void bob_check_present_rect(const char* where)
+{
+	if (!g_win) return;
+	int _ww = 0, _wh = 0, _dw = 0, _dh = 0;
+	SDL_GetWindowSize(g_win, &_ww, &_wh);
+	SDL_GL_GetDrawableSize(g_win, &_dw, &_dh);
+	if (_ww != g_scrW || _wh != g_scrH || _dw != g_scrW || _dh != g_scrH) {
+		static int _warned = 0;
+		if (_warned < 8) { _warned++;
+			fprintf(stderr,"[vid] PRESENT/CLICK RECT MISMATCH in %s: mode=%dx%d window=%dx%d drawable=%dx%d"
+			               " -- the canvas is presented into the MODE rect but clicks are mapped"
+			               " against the WINDOW rect, so hit-testing is offset (P6/MA-S209b)\n",
+			        where, g_scrW,g_scrH,_ww,_wh,_dw,_dh);
+			fflush(stderr); }
+	}
+}
+
 static void present_surface(GLSurface7* s)
 {
 	g_frameNo++;
@@ -808,43 +836,6 @@ static void present_surface(GLSurface7* s)
 			g_frameNo,g_surfMade,g_surfFreed,g_surfMade-g_surfFreed,g_glTexMade,g_glTexDeleted,g_glTexLeakedOnFree);
 	gl_bind_thread();
 
-	/* S232 (P6) -- THE PRESENT RECT AND THE CLICK RECT MUST BE THE SAME RECT.
-	   The present stretches the canvas into a glViewport(0,0,g_scrW,g_scrH) -- a rect of the
-	   DISPLAY-MODE size, anchored at GL's bottom-left. The click mapping (pump_events) converts
-	   window coords with  g_clickX = e.button.x * g_scrW / lw , i.e. it assumes the canvas fills
-	   the WHOLE WINDOW. Those two agree only while the window is exactly g_scrW x g_scrH. If a
-	   window manager clamps the window (a desktop smaller than the requested mode is the usual
-	   way), the image occupies a sub-rect while clicks are still computed against the full window
-	   -- and every hit-test is off by the difference, vertically inverted as well, since GL's
-	   origin is bottom-left and the mouse's is top-left.
-
-	   THIS IS NOT A SPECULATIVE HAZARD. MiG Alley shipped exactly this bug and the PO caught it
-	   within minutes (MA S209b: "whatever rectangle the present stretches into, the inverse
-	   mapping must use the same rectangle"). And the user community documented the SYMPTOM against
-	   the ORIGINAL WINDOWS BUILD -- THU_graphics_glitches.txt: "2D campaign screen icons often
-	   become unresponsive or disappear... every time icons become unresponsive, drag the edge of
-	   the canvas", and "Icons can disappear in the Battle of Britain 2D campaign window too".
-	   Dragging the edge RESTORES them because the resize re-syncs the two rects.
-
-	   MEASURE BEFORE FIXING. I do not yet know whether the divergence occurs on this machine, and
-	   S229/S230 are two fresh reminders of what asserting an unverified story costs. So: report it
-	   when it actually happens, once, unconditionally (not env-gated -- a warning that fires only
-	   on the broken state is exactly what should never be off). If this line never prints, the
-	   rects agree here and P6 is latent rather than live. */
-	if (g_win) {
-		int _ww = 0, _wh = 0, _dw = 0, _dh = 0;
-		SDL_GetWindowSize(g_win, &_ww, &_wh);
-		SDL_GL_GetDrawableSize(g_win, &_dw, &_dh);
-		if (_ww != g_scrW || _wh != g_scrH || _dw != g_scrW || _dh != g_scrH) {
-			static int _warned = 0;
-			if (_warned < 4) { _warned++;
-				fprintf(stderr,"[vid] PRESENT/CLICK RECT MISMATCH: mode=%dx%d window=%dx%d drawable=%dx%d"
-				               " -- the canvas is presented into the MODE rect but clicks are mapped"
-				               " against the WINDOW rect, so hit-testing is offset (P6/MA-S209b)\n",
-				        g_scrW,g_scrH,_ww,_wh,_dw,_dh);
-				fflush(stderr); }
-		}
-	}
 
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
@@ -907,6 +898,7 @@ extern "C" int bob_gdi_dump_to(const char* path) {
 }
 
 extern "C" void bob_gdi_present(void) {
+	bob_check_present_rect("bob_gdi_present");   /* S256: the 2D front-end path, where the symptom lives */
 	if (getenv("BOB_BLIT_TEST")) bob_blit_selftest();   /* R6.1: blit the icon sheet (verify screen blit) */
 	if (g_gdiFB && getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection
 	                                              (before the window check, so it works headless) */

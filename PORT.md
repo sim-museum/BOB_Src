@@ -1,5 +1,43 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S256: the P6 detector was in the wrong function, and my positive control could not fire it
+
+**Two findings, one of them about the instrument and one about the control that was supposed to
+validate it. Neither is the finding I set out to get, and the detector is still unvalidated.**
+
+**FINDING 1 — the S232 detector has been in the wrong function since I wrote it.** I put the
+present-rect check in `present_surface()`, the **DirectDraw/3D** path. The **2D front end** — which
+is exactly where the reported symptom lives (*"2D campaign screen icons often become unresponsive or
+disappear"*, THU_graphics_glitches.txt) — presents through **`bob_gdi_present()`**, a separate
+function that never reached the check. **So its zero meant nothing for four sprints.** Fixed:
+factored into `bob_check_present_rect()` and called from **both** paths.
+
+**FINDING 2 — and the positive control FAILED TO CREATE THE CONDITION, so the detector is STILL
+unvalidated.** I drove `xdotool windowsize 1400 900` at the live window to force a mismatch. The
+geometry came back **unchanged at 1024x768**: the resize was refused. **Neither port creates its
+window with `SDL_WINDOW_RESIZABLE`** (verified in both `bob_video.cpp` files —
+`SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN` and nothing else). So the run proves only that *no mismatch
+occurred*, not that *the detector would report one*.
+
+- ⭐ **The right reading of a silent detector is "did the condition happen, and could I have seen
+  it?" — two questions, and I had only answered neither.** The first run answered neither (wrong
+  function). The second answered the first but not the second (no condition). Reporting "P6 does not
+  occur in BoB" after either would have been a fabricated result.
+- **This is the fourth instrument failure this week**, and the pattern is identical every time: a
+  screen capture that could not see GL windows (MA S233), an `fopen` trace that could not see the
+  archive path (MA S246), a dispatcher audited by reading a file that does not enumerate what it
+  dispatches (S254), and now a detector on the wrong path plus a control that could not trigger it.
+  **Three of the four were caught only by a control arm.** The one that was not (S233) cost three
+  conclusions.
+- **Corollary worth keeping, for MA rather than BoB:** since neither port's window is user-resizable,
+  **a WM/user resize is NOT how MA's 1920x1080 divergence arose** in the PO's PO-67 session --
+  something in MA's own code resized it (`ensure_window` calls `SDL_SetWindowSize` on mode change).
+  That narrows PO-67 without touching it.
+
+**STATUS: P6 remains undemonstrated in BoB.** The detector now sits on the right paths; the next step
+is a condition it can actually see — drive a mode change through `ChangeDisplaySettings` rather than
+asking the window manager to do something the window does not permit.
+
 ## 2026-08-25 — S252: the LPTSTR thunk gap, cross-ported from MA — LATENT here, not live
 
 **MiG Alley S251 traced a data-destroying bug to a missing template overload.** `afxwin.h` had
