@@ -1,5 +1,35 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S280: BoB's export is CORRECT — the PO's "no motion" was a view-scale artefact
+
+**PO, on `bob-campaign.acmi` in Tacview: *"the timer goes for 20 sec, but I don't see motion, though
+there is a slow motion of the z axis"*.** Checked it against ground truth from the PO's own cockpit
+HUD (`Alt 5123ft, Speed 177Kts`).
+
+**The export is right. Both quantities check out:**
+
+| measure | exported | PO's HUD |
+|---|---|---|
+| altitude | 1551–1709 m, median **5423 ft** | 5123 ft (a different moment in the flight) |
+| speed | 1857 m over 20.4 s = **176.9 kt** | **177 Kts** |
+| theatre extent | **395 x 293 km** | southern England is ~400 km across |
+
+**Why it looks static:** the file spans 264 nm of objects, so at Tacview's default zoom the player's
+**1.8 km of travel over 20 seconds is sub-pixel.** Selecting the player object and letting the camera
+follow it shows the track. Nothing to fix in the exporter.
+
+- ⚠️ **AND MY FIRST MEASUREMENT SAID THE OPPOSITE.** Taking the median altitude across *all 148
+  objects* gave **0 m**, which read exactly like "altitude is broken". It was: **most of those
+  objects are parked at airfields**, so the median describes the car park, not the flight. Filtering
+  to `Pilot=Player` turned 0 m into 5423 ft. ⭐ *An aggregate over a population that is mostly not the
+  thing you are asking about is not a measurement of that thing* — and it produced a confident wrong
+  answer in one step, exactly like this week's instrument failures, from arithmetic rather than
+  tooling.
+- **The player-marking fix (S274b) is what made the correct measurement possible at all** — without
+  `Pilot=Player` there was no way to isolate the flight from the car park.
+- **Two independent HUD readings now anchor BoB's units**: altitude (cm -> m) and speed (the 25 Hz
+  rate from S272). Neither came from reading a comment.
+
 ## 2026-08-25 — S277: BoB has the same two-present-path hazard MA's PO-67 just demonstrated
 
 **MA's PO-67 was caught live under gdb (MA S276): the app kept painting normally while the display
