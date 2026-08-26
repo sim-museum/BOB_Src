@@ -460,6 +460,8 @@ void mobileitem::WinMove (int timeofday,WorldStuff* worldref)
 			static int _gcOnce = 0;
 			if (!_gcOnce && getenv("BOB_GUNCAM") && !_Replay.Record && !_Replay.Playback) {
 				_gcOnce = 1;
+				const char* _gcEnv = getenv("BOB_GUNCAM");
+				const int _gcPref = (_gcEnv && _gcEnv[0]=='p');
 				/* Arm the recorder directly. NOTE WHAT THIS DOES AND DOES NOT TEST: it sets the
 				   same flag the game's own gun-camera paths set, so everything downstream --
 				   OpenRecordLog, StoreSuperHeader, StoreDeltas, the block machinery -- is the real
@@ -469,9 +471,27 @@ void mobileitem::WinMove (int timeofday,WorldStuff* worldref)
 				   (Writing GD_GUNCAMERAATSTART directly would have been closer to the real path,
 				   but gamedifficulty is a bitfield whose write API sits behind a macro I did not
 				   want to spend this sprint excavating -- said plainly rather than papered over.) */
+				/* S287: BOB_GUNCAM=pref sets the PREFERENCE and lets the game arm itself.
+				   The note above was right that forcing the flag tests only the recorder -- but
+				   wrong about why the preference was left alone: it claimed the write API sat
+				   behind a macro needing excavation. It does not. GameDifficultyField is
+				   MakeField<> (SRC/H/BITFIELD.H) and setting a bit is `|=`. That wrong assumption,
+				   written down as if it were a finding, is the only reason this stayed untested
+				   for several sprints. Cheap to check, and I did not check it.
+				   The two modes now test different claims, which is the point of keeping both:
+				     BOB_GUNCAM=1     -> forces StartRecordFlag: "the recorder works"
+				     BOB_GUNCAM=pref  -> sets GD_GUNCAMERAATSTART only: "the SHIPPING path works",
+				                         i.e. the game's own code at :510 decides to arm, including
+				                         the aerobaticfactor test that the direct arm skips. */
+				if (_gcPref) {
+					Save_Data.gamedifficulty |= GD_GUNCAMERAATSTART;
+					fprintf(stderr,"[guncam] BOB_GUNCAM=pref -> GD_GUNCAMERAATSTART set; the GAME "
+					               "decides whether to arm (tests the shipping path)\n");
+				} else {
 				_Replay.StartRecordFlag = TRUE;
 				fprintf(stderr,"[guncam] BOB_GUNCAM=1 -> StartRecordFlag armed directly "
 				               "(tests the RECORDER, not the preference path)\n");
+				}
 				fflush(stderr);
 			}
 		}

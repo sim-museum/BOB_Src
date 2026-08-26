@@ -240,8 +240,28 @@ void CRCombo::SetIndex(long row)
 long CRCombo::GetIndex()
 {
 	long result;
+#if defined(BOB_LINUX)
+	/* S289: this returned an UNINITIALISED long whenever nothing answered the dispatch.
+	   bob_ole_invoke is `if (h) h->dispatch(...)` -- with no registered OLE host for the control it
+	   never writes pvRet, and this function hands the caller whatever was on the stack.
+	   That matters because of who calls it: SETFIELD in SG2COMBO.H does `val = rcombo->GetIndex()`
+	   and then writes val's BITS into Save_Data.gamedifficulty. So an unanswered dispatch does not
+	   fail visibly -- it silently sets or clears real preferences, including
+	   GD_GUNCAMERAATSTART, the one that decides whether a sortie is recorded at all.
+	   Sentinel first, verdict second: BOB_TRACE_COMBO=1 reports whether anything answered. The
+	   fallback to 0 is NOT the fix, it is damage control -- deterministic beats random -- and 0 is
+	   itself a guess ("first item"), which is why it is traced rather than left silent. */
+	result = -0x5EED;
+	InvokeHelper(0xc, DISPATCH_METHOD, VT_I4, (void*)&result, NULL);
+	if (getenv("BOB_TRACE_COMBO"))
+		fprintf(stderr, "[combo] GetIndex -> %ld%s\n", result,
+		        result == -0x5EED ? "   *** NOBODY ANSWERED: value would have been stack garbage" : "");
+	if (result == -0x5EED) result = 0;
+	return result;
+#else
 	InvokeHelper(0xc, DISPATCH_METHOD, VT_I4, (void*)&result, NULL);
 	return result;
+#endif
 }
 
 void CRCombo::Clear()

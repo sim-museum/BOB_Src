@@ -157,6 +157,12 @@
 	int val;\
 	CRCombo* rcombo=GetDlgItem(whatcombo);\
 	val=rcombo->GetIndex();\
+	/* S291: this is the SETTINGS WRITE-BACK -- every Sim Config combo lands in Save_Data here.
+	   R1 needed to know whether the Gun Camera combo actually writes GD_GUNCAMERAATSTART, and the
+	   honest way to answer that is to watch the write rather than infer it from the rendered text
+	   (the combo showing "On" tells you what was DRAWN, not what was STORED). BOB_TRACE_SETFIELD=1. */\
+	if (getenv("BOB_TRACE_SETFIELD"))\
+		fprintf(stderr, "[setfield] combo id=%d -> val=%d\n", (int)(whatcombo), val);\
 	whatbit;\
 }
 

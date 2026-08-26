@@ -92,6 +92,49 @@ static int g_traceVid = 0;
 
 #define VLOG(...) do{ if(g_traceVid) fprintf(stderr,"[vid] " __VA_ARGS__); }while(0)
 
+/* S293 (PO-73): GRAB THE 3D FRAME. The PO reported a grey box drifting past the cockpit and it has
+   sat unexamined because nothing here can photograph a 3D frame: BOB_SHOT lives in the front-end
+   system (FULLPSYS.CPP) and captures the 2D canvas, so a mid-flight shot silently produces no file
+   at all -- the same blind spot as S233, where ffmpeg's x11grab could not see a GL window either.
+   An instrument that cannot see its subject has been this project's most expensive recurring
+   mistake, so build the one that can: read the default framebuffer just before the swap.
+   BOB_SHOT3D=N grabs frame N (counted in swaps), BOB_SHOT3D_PATH names the file, and
+   BOB_SHOT3D_EVERY=M grabs every Mth frame instead -- a box that DRIFTS needs a sequence, not a
+   single still, which is the whole difficulty of the report. */
+static void bob_shot3d_maybe(void)
+{
+    static long want = -2, every = 0, n = 0;
+    if (want == -2) {
+        const char* e = getenv("BOB_SHOT3D");
+        want = e ? atol(e) : -1;
+        const char* v = getenv("BOB_SHOT3D_EVERY");
+        every = v ? atol(v) : 0;
+    }
+    if (want < 0 && every <= 0) return;
+    long f = ++n;
+    if (!(f == want || (every > 0 && (f % every) == 0))) return;
+    int w = 0, h = 0;
+    SDL_GL_GetDrawableSize(g_win, &w, &h);
+    if (w <= 0 || h <= 0) return;
+    unsigned char* px = (unsigned char*)malloc((size_t)w * h * 3);
+    if (!px) return;
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px);
+    const char* base = getenv("BOB_SHOT3D_PATH");
+    char path[512];
+    if (every > 0) snprintf(path, sizeof(path), "%s.%04ld.ppm", base ? base : "/tmp/bob3d", f);
+    else           snprintf(path, sizeof(path), "%s", base ? base : "/tmp/bob3d.ppm");
+    FILE* o = fopen(path, "wb");
+    if (o) {
+        fprintf(o, "P6\n%d %d\n255\n", w, h);
+        for (int y = h - 1; y >= 0; y--) fwrite(px + (size_t)y * w * 3, 1, (size_t)w * 3, o);
+        fclose(o);
+        fprintf(stderr, "[shot3d] frame %ld -> %s (%dx%d)\n", f, path, w, h);
+    }
+    free(px);
+}
+
+
 /* S172 (cross-port from MA S155, both halves):
    (1) A resize keeps the window's old top-left, so a larger mode spills off the screen instead of
        being centred -- the PO's "1920x1080 is not centered on the screen, as it is in MA". Re-centre
@@ -177,7 +220,7 @@ static void ensure_window(int w, int h)
 	glViewport(0, 0, g_scrW, g_scrH);
 	glClearColor(0.05f, 0.05f, 0.10f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
 }
 
 /* GDI/front-end bridge: the MFC front-end (RDialog::DoPaint -> SetDIBitsToDevice) and its
@@ -840,8 +883,8 @@ static void present_surface(GLSurface7* s)
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
 	if (g_curRT && load_fbo_funcs()) { p_glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0,0,g_scrW,g_scrH); g_curRT=NULL; } /* safety: never present with an FBO bound */
-	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
-	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); SDL_GL_SwapWindow(g_win); } return; }
+	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win); } return; }
+	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -865,7 +908,7 @@ static void present_surface(GLSurface7* s)
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	present_dbg("2d-blit");
-	SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
 }
 
 /* ===================== GDI 2D front-end paint pipeline =====================
@@ -926,7 +969,7 @@ extern "C" void bob_gdi_present(void) {
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
-	SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
 }
 /* Decode a DIB (BITMAPINFO `bmi` + `bits`) into the GDI framebuffer at (xDest,yDest).
    Handles 8-bit palettized and 24/32-bit; honours bottom-up (biHeight>0) vs top-down. */
@@ -2173,6 +2216,102 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 			}
 		}
 	}
+	/* S297 (PO-73): FIND THE GREY BLOB. S295 reproduced it and established the one fact that
+	   narrows the search: it is SCREEN-LOCKED -- two frames 12 degrees of yaw apart put it at the
+	   same screen coordinates (~x18..118, y50..73 of 800x600), which world geometry cannot do.
+	   So log draws whose screen bbox lands in that region and is blob-sized, with a backtrace to
+	   name the game-side caller. Reports the bound texture too, because "grey" is what this
+	   renderer shows for untextured geometry and the presence or absence of a texture splits the
+	   remaining hypotheses. BOB_TRACE_BLOB=1. */
+	if ((getenv("BOB_TRACE_BLOB") || getenv("BOB_BLOB_HILITE")) && count >= 3) {
+		float miny=1e9f,maxy=-1e9f,minx=1e9f,maxx=-1e9f;
+		/* S301: SEE THE 3D DRAWS TOO. The S297 probe compared RAW vertex positions against a
+		   SCREEN rectangle, which is only meaningful when is2D=1; for 3D draws those positions
+		   are model/world space, so no 3D draw could match the test however it landed on screen.
+		   S299 then cleared the 2D candidates by experiment (hilited magenta, blob stayed grey),
+		   which leaves the culprit among exactly the draws the probe could not see. Project
+		   through the LIVE matrices rather than assuming a space. */
+		GLfloat _mv[16], _pr[16]; GLint _vp[4];
+		const bool _proj = !is2D;
+		if (_proj) { glGetFloatv(GL_MODELVIEW_MATRIX,_mv); glGetFloatv(GL_PROJECTION_MATRIX,_pr);
+		             glGetIntegerv(GL_VIEWPORT,_vp); }
+		for (DWORD i=0;i<count;i++){ const float* q=(const float*)(base+(size_t)i*L.stride+L.posOff);
+			float _sx, _sy;
+			if (_proj) {
+				float e[4], c[4];
+				for (int r=0;r<4;r++) e[r] = _mv[r]*q[0]+_mv[4+r]*q[1]+_mv[8+r]*q[2]+_mv[12+r];
+				for (int r=0;r<4;r++) c[r] = _pr[r]*e[0]+_pr[4+r]*e[1]+_pr[8+r]*e[2]+_pr[12+r]*e[3];
+				if (c[3] <= 0.0f) continue;   /* behind the eye */
+				_sx = _vp[0] + _vp[2]*(c[0]/c[3]*0.5f+0.5f);
+				_sy = _vp[1] + _vp[3]*(1.0f-(c[1]/c[3]*0.5f+0.5f));  /* GL y is bottom-up */
+			} else { _sx = q[0]; _sy = q[1]; }
+			if(_sy<miny)miny=_sy; if(_sy>maxy)maxy=_sy;
+			if(_sx<minx)minx=_sx; if(_sx>maxx)maxx=_sx; }
+		float bw=maxx-minx, bh=maxy-miny;
+		/* the blob's rect, in the frame's own pixel scale, with generous slack */
+		float sx=(float)g_scrW/800.0f, sy=(float)g_scrH/600.0f;
+		/* S303: POSITIVE CONTROL for the projection. S301 added 3D-vertex projection and got zero
+		   3D hits -- a null worth nothing until something proves the maths produces real screen
+		   coordinates. This logs the projected bbox of 3D draws REGARDLESS of region, so the
+		   numbers can be sanity-checked against the viewport: a working projection puts most
+		   visible geometry inside roughly 0..g_scrW / 0..g_scrH, while a broken one yields
+		   values that are wild, constant, or all-clipped. Without this the probe could report
+		   "no 3D draw is there" forever while computing nonsense -- the failure this project
+		   has now logged four separate times. BOB_TRACE_PROJ=1. */
+		if (_proj && getenv("BOB_TRACE_PROJ")) {
+			static int _pn=0;
+			if (_pn++ < 8)
+				fprintf(stderr,"[proj] 3D draw -> scr[%.0f..%.0f, %.0f..%.0f] verts=%lu "
+				               "viewport=%dx%d\n",
+				        minx,maxx,miny,maxy,(unsigned long)count,(int)g_scrW,(int)g_scrH);
+		}
+		/* S303: TEST CONTAINMENT, NOT SIZE. The size window assumed the drawn primitive was about
+		   as big as the visible ellipse. For an alpha-textured billboard that is false -- the
+		   quad can be far larger than its opaque part, so a size filter rejects exactly the
+		   shape most likely to be responsible. And S303 established there are no 3D draws here
+		   at all (is2D is never false), so the culprit MUST be a 2D draw this test was failing
+		   to match. Match anything whose box covers the blob's centre, excluding only draws so
+		   large they are plainly the sky or terrain. */
+		const float _bx = 68.0f*sx, _by = 62.0f*sy;   /* the blob's centre, measured S295 */
+		if (minx<1e8f && minx<=_bx && maxx>=_bx && miny<=_by && maxy>=_by &&
+		    bw < 0.9f*(float)g_scrW && bh < 0.9f*(float)g_scrH) {
+			/* S299: HILITE THE SUSPECT. S297 named a plausible caller (FlushAsBackground ->
+			   RenderTPolyList) but did NOT prove any logged quad IS the blob -- the quads are
+			   textured and the blob shows no texture detail. Promoting a plausible caller to a
+			   conclusion is what produced S295's retraction, so settle it by experiment instead:
+			   paint the candidates magenta and photograph the frame. If the ellipse turns magenta
+			   the identity is proven; if it stays grey, the blob is drawn somewhere this probe
+			   never looks and that whole path is eliminated. Either outcome is worth a run --
+			   which is what makes it the right next step rather than more reading.
+			   BOB_BLOB_HILITE=1 (BOB_TRACE_BLOB need not be set). */
+			/* S303b: BISECT BY TEXTURE. Containment alone hilited the whole sky -- the cloud
+			   billboards are large quads that cover the blob's centre, so "the centre turned
+			   magenta" proved only that SOMETHING big covers it. Log each DISTINCT texture drawn
+			   over that point, then hilite one at a time: BOB_BLOB_TEX=<glTex> narrows the paint
+			   to a single texture, so the run that turns the ELLIPSE magenta while leaving the
+			   clouds alone names the culprit. */
+			{
+				static unsigned seen[32]; static int nseen=0;
+				unsigned gt = t ? (unsigned)t->glTex : 0u;
+				bool isnew = true;
+				for (int k=0;k<nseen;k++) if (seen[k]==gt) { isnew=false; break; }
+				if (isnew && nseen<32) { seen[nseen++]=gt;
+					fprintf(stderr,"[blobtex] NEW texture over the blob: glTex=%u %dx%d bpp=%d "
+					               "quad %.0fx%.0f\n", gt, t?t->w:0, t?t->h:0, t?t->bpp:0, bw, bh); }
+				const char* want = getenv("BOB_BLOB_TEX");
+				if (want) { if (gt == (unsigned)atoi(want)) garbageHi = true; }
+				else if (getenv("BOB_BLOB_HILITE")) garbageHi = true;
+			}
+			static int bn=0;
+			if (bn++ < 4) {
+				fprintf(stderr,"[blob] quad scr[%.0f..%.0f,%.0f..%.0f] %.0fx%.0f verts=%lu is2D=%d "
+				               "hasTex=%d tex=%p glTex=%u\n",
+				        minx,maxx,miny,maxy,bw,bh,(unsigned long)count,(int)is2D,(int)L.hasTex,
+				        (void*)t,(unsigned)(t?t->glTex:0));
+				void* bt[24]; int nb=backtrace(bt,24); backtrace_symbols_fd(bt,nb,2);
+			}
+		}
+	}
 	/* BOB_TEX_REPLACE: show texture only (ignore the software-lit/fogged vertex colour)
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
 	static int texMode = -2;
@@ -2864,7 +3003,7 @@ extern "C" int bob_render_smoketest(void)
 		dev->SetTexture(0,tex);
 		dev->DrawPrimitiveVB((D3DPRIMITIVETYPE)6,vb,0,4,0); /* TRIANGLEFAN */
 		dev->EndScene();
-		SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
+		bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
 	}
 	unsigned char mid[3]={0,0,0};
 	glReadPixels(400,300,1,1,GL_RGB,GL_UNSIGNED_BYTE,mid);

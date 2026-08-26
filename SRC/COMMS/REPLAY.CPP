@@ -302,6 +302,42 @@ extern "C" {
 }
 #endif
 
+#if defined(BOB_LINUX)
+/* S282: name the aircraft type in the .acmi so Tacview draws a Spitfire as a Spitfire.
+   phrasename is an offset from a base in the generated radio-phrase enum, not an opaque id.
+   The base here is PHRASE_ONE_AIRCRAFT (SRC/H/RADIO.G:1331) -- NOT the plural PHRASE_NAMED_ACS
+   block MA uses. Two independent call sites in this tree fix that: TRANSITE.CPP:3058 and :15391
+   compare `classtype->phrasename == PHRASE_HE111`, and OVERLAY.CPP:9651 converts one to its
+   EXCLAIM form with `phrasename - PHRASE_ONE_AIRCRAFT + PHRASE_ONE_AIRCRAFT_EXCLAIM`. Both are
+   only correct if an aircraft's phrasename lives in the singular block. The two games differing
+   here is exactly why this is measured per-game rather than shared.
+   Spelled numerically because the enumerators sit inside a USE_* #ifdef and are not visible in
+   this TU; 0x2700 is PHRASE_ONE_AIRCRAFT itself, which is.
+   Anything outside the block stays "AC-<id>" -- an honest unknown beats a plausible wrong name on
+   a debrief. BOB_TRACE_ACMI_TYPE=1 prints unrecognised ids so a miss is diagnosable without a
+   rebuild, which is what the base being game-specific makes likely. */
+static const char* _acmi_type_name(AirStrucPtr ac)
+{
+	static char buf[32];
+	if (!ac || !ac->classtype) return "Aircraft";
+	unsigned long pn = (unsigned long)ac->classtype->phrasename;
+	static const char* const _names[] = {
+		"Spitfire",   /* PHRASE_SPITFIRE1A  */  "Spitfire",  /* PHRASE_SPITFIRE1B  */
+		"Hurricane",  /* PHRASE_HURRICANE1A */  "Hurricane", /* PHRASE_HURRICANE1B */
+		"Bf-109",     /* PHRASE_BF109       */  "Bf-110",    /* PHRASE_BF110       */
+		"Ju-87",      /* PHRASE_JU87        */  "Ju-88",     /* PHRASE_JU88        */
+		"He-111",     /* PHRASE_HE111       */  "Do-17",     /* PHRASE_DO17        */
+		"Defiant"     /* PHRASE_DEFIANT     */
+	};
+	if (pn > 0x2700 && (pn - 0x2700) <= (sizeof(_names)/sizeof(_names[0])))
+		return _names[pn - 0x2700 - 1];
+	if (getenv("BOB_TRACE_ACMI_TYPE"))
+		fprintf(stderr, "[acmi-type] unrecognised phrasename %lu (0x%lx)\n", pn, pn);
+	snprintf(buf, sizeof(buf), "AC-%lu", pn);
+	return buf;
+}
+#endif
+
 Bool	Replay::StoreDeltas()
 {
 	SLong	rval;
@@ -429,6 +465,44 @@ Bool	Replay::StoreDeltas()
 				   Manual_Pilot.ControlledAC2 is what BoB's own code compares against when it needs
 				   the player (TRANSITE.CPP:1106, :1181, MSGAI's friend/foe test). Accept either, so
 				   this works whichever the world is using. */
+				/* S285: DO NOT EXPORT AIRCRAFT THAT ARE NOT IN THE WORLD.
+				   The PO opened a campaign export and reported "junkers and spitfires superimposed
+				   and stationary". Measured: 118 of 148 objects sat at exactly the reference
+				   origin (World.X/Y/Z all zero) for the entire recording -- BoB's campaign tracks
+				   far more aircraft than are instantiated in the local 3D area, and the ones that
+				   are not yet placed have a zero position that this walk was faithfully exporting.
+				   Two filters, in the order the game itself would apply them:
+				     (1) Status.deadtime -- the liveness test 3dcode.cpp:6245 uses before drawing
+				         an aircraft on the map. Using the game's own predicate rather than
+				         inventing one is the point.
+				     (2) an exactly-zero world position. Kept as a separate arm because (1) tests
+				         "destroyed", not "never placed", and those are different states; a
+				         campaign aircraft still sitting in the strategic model is alive AND has no
+				         position. Exactly (0,0,0) with zero altitude is not a place an aircraft
+				         flies through, so rejecting it costs no real track.
+				   Counted separately and reported under BOB_TRACE_ACMI so the two are never
+				   conflated -- if (1) alone were enough, (2)'s count would be zero and it could go.
+				   BOB_ACMI_ALL=1 exports everything again, which is also how the old files can be
+				   reproduced for comparison.
+				   NOTE the _id++ above stays OUTSIDE this skip: object ids must keep referring to
+				   the same aircraft across frames, so a skipped aircraft still consumes its id. */
+				{
+					static long _all = -1;
+					if (_all < 0) _all = getenv("BOB_ACMI_ALL") ? 1 : 0;
+					static long _nDead = 0, _nZero = 0, _nKept = 0;
+					const int _dead = _ac->Status.deadtime ? 1 : 0;
+					const int _zero = (_ac->World.X == 0 && _ac->World.Y == 0
+					                   && _ac->World.Z == 0) ? 1 : 0;
+					if (_dead) _nDead++; else if (_zero) _nZero++; else _nKept++;
+					if (!_all && (_dead || _zero))
+					{
+						static long _rep = 0;
+						if (getenv("BOB_TRACE_ACMI") && ((_rep++ % 20000) == 0))
+							fprintf(stderr, "[acmi] filtered: dead=%ld unplaced=%ld kept=%ld\n",
+							        _nDead, _nZero, _nKept);
+						_ac = *_ac->nextmobile; continue;
+					}
+				}
 				const int _isPlayer = (_ac == gac || _ac == Manual_Pilot.ControlledAC2) ? 1 : 0;
 				const AirStrucPtr _me = Manual_Pilot.ControlledAC2 ? Manual_Pilot.ControlledAC2 : gac;
 				const int _friendly = (_me && _ac->nationality == _me->nationality) ? 1 : 0;
@@ -456,7 +530,7 @@ Bool	Replay::StoreDeltas()
 				                    (double)_ac->roll.a  * _ang,
 				                    (double)_ac->pitch.a * _ang,
 				                    (double)_ac->hdg.a   * _ang,
-				                    _isPlayer ? "Player" : "Aircraft",
+				                    _acmi_type_name(_ac),
 				                    "Air+FixedWing",
 				                    _friendly ? "Blue" : "Red",
 				                    _isPlayer,

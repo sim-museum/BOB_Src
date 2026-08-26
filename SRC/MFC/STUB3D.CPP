@@ -475,6 +475,21 @@ Inst3d::Inst3d()
 		_Replay.DeleteReplayLog(); // want new log every time we enter non-playback 3D//AMM 07Oct98
 	}
 
+#if defined(BOB_LINUX)
+	/* S287: BOB_GUNCAM=pref must set the preference BEFORE the game reads it, three lines below.
+	   The first attempt set it from the move loop -- i.e. during flight, long after this point --
+	   and produced no recording. That looked exactly like "the shipping preference path is broken"
+	   and I nearly reported it as such: same recipe, same reach into interactive 3D, negative
+	   control clean, only the arming mode differing. What saved it was asking where the preference
+	   is actually READ before believing a null result, and the answer was "earlier than the hook
+	   wrote it". The measurement was testing the hook's placement, not the game's behaviour. */
+	if (const char* _gc = getenv("BOB_GUNCAM"))
+		if (_gc[0] == 'p') {
+			Save_Data.gamedifficulty |= GD_GUNCAMERAATSTART;
+			fprintf(stderr, "[guncam] BOB_GUNCAM=pref: GD_GUNCAMERAATSTART set at 3D entry, "
+			                "before the game's own read below\n");
+		}
+#endif
 	if (Save_Data.gamedifficulty[GD_GUNCAMERAATSTART] && !_DPlay.Implemented && !_Replay.Playback)			//AMM 05Jan99
 	{
 		_Replay.Record=TRUE;
