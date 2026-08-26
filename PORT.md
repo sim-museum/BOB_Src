@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S268: BoB writes a Tacview .acmi (EPIC R / R2) — output real, units NOT yet verified
+
+**BoB now produces a `.acmi`: 307,473 bytes from one sortie**, with a valid header, the theatre
+origin moved to southern England, `ReferenceTime` at the Battle's opening date, and monotonic time
+markers.
+
+**The port was a rename plus two constants, exactly as designed.** MA's writer was built to take
+**plain C types and know nothing about the game's structures** so that the game side walks its own
+world and hands over numbers. That paid off here: `bob_acmi.cpp` is MA's file with the symbols
+renamed and the theatre origin/epoch changed.
+
+**⚠️ BUT MA'S CONSTANTS DID NOT TRANSFER, AND ASSUMING THEY WOULD WAS WRONG.**
+- The member is **`vel_`**, not `vel` — the **compiler** caught that.
+- Its unit is **1/10000 m/s** (`worldinc.h:776`: *"micrometers / cs"*, and `TRANSITE.CPP:2109`
+  divides by 10000) — **not MA's 25 units per m/s**. The engines forked here. Had the name matched,
+  I would have shipped MA's divisor and produced a 400x-wrong speed that still looked like a number.
+
+**⚠️ TWO THINGS ARE NOT VERIFIED, AND R2 IS NOT DONE:**
+1. **Only ONE object was exported.** The walk over `*AirStruc::ACList` / `*ac->nextmobile` found just
+   the player. Either `BOB_BOOT_FRONTEND` builds a world with one aircraft, or the chain differs here.
+   MA's equivalent produced 40 on a 20-aircraft mission, so this needs a real mission to settle.
+2. **The speed cross-check is INCONCLUSIVE, not passing.** It returned a ratio of 0.357 — but the
+   sample IAS is **0.39 m/s (1 kt)**, i.e. the aircraft is essentially stationary, so the ratio is
+   noise divided by noise. ⭐ *A cross-check run on a stationary aircraft cannot validate a speed
+   unit* — reporting 0.357 as "the units are wrong" would be as unfounded as reporting 1.0 as "the
+   units are right".
+
+**Next:** run the export on a mission where the aircraft is moving and more than one exists — the
+campaign-fly recipe rather than the boot scaffold — and only then compare IAS against
+position-derived speed the way MA's S261 did.
+
 ## 2026-08-25 — S266: BoB reads back its own recording
 
 **R1's playback half, with the step S264 identified.** S264's hook forced `Playback=TRUE` but never

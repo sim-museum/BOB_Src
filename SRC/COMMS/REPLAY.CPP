@@ -285,6 +285,23 @@ void	Replay::ClosePlaybackLog()
 //Procedure		StoreDeltas
 //Date			Wed 29 Apr 1998
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+/* EPIC R / R2: Tacview ACMI export. Declared here rather than in a header because the writer
+   (SRC/compat/bob_acmi.cpp) takes plain C types and knows nothing about the game's structures.
+   BOB_ACMI=0 disables. */
+extern "C" {
+	int  bob_acmi_enabled(void);
+	int  bob_acmi_begin(const char* title);
+	void bob_acmi_time(double seconds);
+	void bob_acmi_object_ias(unsigned long id, double u, double v, double alt,
+	                         double roll, double pitch, double yaw,
+	                         const char* name, const char* type, const char* color, int isPlayer,
+	                         double ias);
+	int  bob_acmi_active(void);
+	int  bob_acmi_save_as(const char* camname);
+}
+#endif
+
 Bool	Replay::StoreDeltas()
 {
 	SLong	rval;
@@ -349,6 +366,60 @@ Bool	Replay::StoreDeltas()
 // check for collision etc
 
 	_DPlay.MakeExtraPacket(&output,TRUE);
+
+#if defined(BOB_LINUX)
+	/* EPIC R / R2: tee live state to the Tacview export, one sample per recorded frame, so the
+	   .acmi timeline matches the recording frame for frame. ADDITIVE -- the ReplayWrite below is
+	   untouched, so the recording stays byte-identical (this epic's control, exactly as in MA).
+
+	   UNITS ARE MA'S, AND MA MEASURED THEM RATHER THAN READING THEM (S255/S261): positions are
+	   centimetres, angles are 16-bit binary (65536 = 360 deg), and velocity is 25 units per m/s --
+	   NOT the 10 the source comment implies, which MA proved with an independent cross-check
+	   against speed derived from successive positions. The engines are the same, so the same
+	   constants are the starting hypothesis HERE TOO -- but they are a hypothesis until BoB's own
+	   numbers are cross-checked the same way. BOB_ACMI_CMPERM / BOB_ACMI_VELPERMS override without
+	   a rebuild, precisely so that check is cheap. */
+	if (bob_acmi_enabled() && gac)
+	{
+		if (!bob_acmi_active())
+			bob_acmi_begin("Battle of Britain sortie");
+		{
+			const double _cm  = getenv("BOB_ACMI_CMPERM")  ? atof(getenv("BOB_ACMI_CMPERM"))  : 100.0;
+			/* NOT MA's 25. BoB's velocity member is `vel_`, documented at worldinc.h:776 as
+			   "micrometers / cs = 1/10000 m/s", and TRANSITE.CPP:2109 divides by 10000 to get m/s
+			   -- two independent sources agreeing. The engines forked here, which is why assuming
+			   MA's constant would have been wrong: the compiler caught the NAME difference and the
+			   header caught the UNIT one. Cross-checked below anyway against position-derived
+			   speed, because S261 is exactly the case where a comment agreed with itself and was
+			   still wrong. */
+			const double _vel = getenv("BOB_ACMI_VELPERMS") ? atof(getenv("BOB_ACMI_VELPERMS")) : 10000.0;
+			const double _ang = 360.0 / 65536.0;
+			const double _hz  = (_DPlay.RateDivider > 0) ? (100.0 / (double)_DPlay.RateDivider) : 20.0;
+			bob_acmi_time((double)replayframecount / _hz);
+			AirStrucPtr _ac = *AirStruc::ACList;
+			unsigned long _id = 0;
+			while (_ac && _id < 256)
+			{
+				_id++;
+				const int _isPlayer = (_ac == gac) ? 1 : 0;
+				const int _friendly = (gac && _ac->nationality == gac->nationality) ? 1 : 0;
+				bob_acmi_object_ias(_id,
+				                    (double)_ac->World.X / _cm,
+				                    (double)_ac->World.Z / _cm,
+				                    (double)_ac->World.Y / _cm,
+				                    (double)_ac->roll.a  * _ang,
+				                    (double)_ac->pitch.a * _ang,
+				                    (double)_ac->hdg.a   * _ang,
+				                    _isPlayer ? "Player" : "Aircraft",
+				                    "Air+FixedWing",
+				                    _friendly ? "Blue" : "Red",
+				                    _isPlayer,
+				                    (double)_ac->vel_ / _vel);
+				_ac = *_ac->nextmobile;
+			}
+		}
+	}
+#endif
 
 	if (!ReplayWrite((UByte*)&output,sizeof(REPLAYPACKET)))
 		return FALSE;
