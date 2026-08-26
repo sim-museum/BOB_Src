@@ -1,5 +1,36 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S270: BoB is immune to MA's S269 double-free, for the third time by the same structural reason
+
+**MA S269 found a latent double-free:** of four hand-written copies of `OnReleaseLastFile`,
+`CRToolBar`'s was the only one missing `m_pfileblock = NULL;` after the delete — so two releases in a
+row would free an already-freed block, and `WM_RELEASELASTFILE` is sent by *every drawn control*.
+
+**Ran the same body-diff here. BoB has no such copy to get wrong:**
+
+```c
+void DIALCLASS::OnReleaseLastFile()      // RDIALMSG.CPP:139 -- the ONLY definition
+{
+	delete m_pfileblock;
+	m_pfileblock=NULL;                   // the line MA's CRToolBar copy was missing
+}
+```
+
+`#include`d three times with `DIALCLASS` redefined as `CMIGView`, `RDialog`, `RMdlDlg` — **all three
+get the safe version by construction.**
+
+- ⭐ **THIRD TIME THE SAME SHAPE HAS DECIDED IT.** S249: MA had four `OnGetFile` copies and two were
+  still narrow after I "fixed" it; BoB had one. S252: the `LPTSTR` thunk gap was live in MA and
+  merely latent here. Now S269/S270. **Not one of these was a cleverness difference — it is the
+  difference between one implementation instantiated per class and four maintained by hand.**
+- **The audit method transferred even though the bug did not.** The same script, pointed at BoB's
+  `build.ninja` and sources, gave a clean answer in one run. *A negative result from a method that
+  has already found a positive elsewhere is worth something*; a negative from an unvalidated method
+  is worth nothing (S250).
+- **Recommendation carried to MA's backlog (N3):** collapse MA's four hand-written copies onto BoB's
+  macro-include. It is the one change that makes this bug class structurally impossible rather than
+  repeatedly survivable — and MA has now paid for it three times.
+
 ## 2026-08-25 — S268: BoB writes a Tacview .acmi (EPIC R / R2) — output real, units NOT yet verified
 
 **BoB now produces a `.acmi`: 307,473 bytes from one sortie**, with a valid header, the theatre
