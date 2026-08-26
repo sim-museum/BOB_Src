@@ -1,5 +1,37 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-25 — S264: BoB's playback reader is reachable and fails SAFE — but the file is never loaded
+
+**R1's playback half, driven for the first time.** `BOB_PLAYBACK=1` forces `_Replay.Playback` so the
+3D-entry path in `STUB3D.CPP:559` calls `LoadFinalPlaybackData()` -> `PreScanReplayFile()`. Recorded
+**77,940 bytes**, then played it back.
+
+**Result:** the reader runs, **no crash, no "Error reading playback log"** — and refuses cleanly:
+
+```
+[replay] ReplayRead REFUSED: asked for 4 bytes with -1 remaining
+```
+
+- ⭐ **THE S241 GUARD IS DOING EXACTLY ITS JOB, ON A PATH NOBODY HAD EVER RUN.** That fix was
+  cross-ported from MA *pre-emptively* — before any BoB bug report, on the grounds that the ports
+  share the code. The first time BoB's reader was ever driven, it hit the guard and **refused instead
+  of overflowing**. Fixing it while it was understood, rather than waiting for a report, is what made
+  this run a diagnostic instead of a hang.
+- **`-1 remaining` is the sentinel for "the playback buffer was never loaded"** — so the recording is
+  not being mapped in. `Replay::OpenPlaybackLog()` (`REPLAY.CPP:196`, which does the
+  `MapViewOfFile`) is called from `WINMOVE.CPP:1546`, on the UI path. **My hook set the flag but
+  skipped the open**, so it tested less than intended: it proved the reader is *reachable and safe*,
+  not that it can *read a recording*.
+- **Said plainly because it matters:** `BOB_PLAYBACK=1` is a shallower hook than `BOB_GUNCAM=1`. The
+  gun-camera hook armed a flag the game's own code then acted on; this one forces a state the game
+  would normally reach *after* opening the file. **A hook that skips a step tests a different thing
+  than you meant.**
+
+**R1 next, and now precisely specified:** drive `OpenPlaybackLog()` before forcing `Playback`, so
+`playbackfilestart/end` are mapped and the block scan runs against the real 77 KB recording. Then the
+S241 guards, the block arithmetic and `BackupSmokeInfo`/`BackupCloudInfo` bounds all get exercised on
+real data for the first time.
+
 ## 2026-08-25 — S262: a gate for BoB's recorder, with both arms watched
 
 **`tools/bob_replay_record.sh`.** Flies, arms the gun camera, and asserts: the flight launched, the

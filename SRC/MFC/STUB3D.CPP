@@ -548,6 +548,21 @@ Inst3d::Inst3d()
 		_Replay.Record=FALSE;
 	}
 
+#if defined(BOB_LINUX)
+	/* S264 (EPIC R / R1, playback half): TEST HOOK. Playback is entered only when
+	   _Replay.Playback is already TRUE here, which the replay UI sets (MenuViewPlayback,
+	   Fullpane.cpp). Nothing in an automated flight sets it, so LoadFinalPlaybackData -- and with
+	   it PreScanReplayFile, the block scan, and the S241 overflow guards -- has never once run in
+	   this port. BOB_PLAYBACK=1 sets the flag so the reader is exercised against whatever
+	   VIDEOS/replay.dat currently holds.
+	   As with BOB_GUNCAM: this tests the READER, not the UI path that decides to play. Two
+	   separate claims; a pass here says nothing about the second. */
+	if (getenv("BOB_PLAYBACK") && !_Replay.Record) {
+		_Replay.Playback = TRUE;
+		fprintf(stderr,"[playback] BOB_PLAYBACK=1 -> Playback forced; exercising the READER only\n");
+		fflush(stderr);
+	}
+#endif
 	if (_Replay.Record)											//AMM 14Jun99
 	{															//AMM 14Jun99
 		_Replay.lastRpmLeft = _Replay.lastRpmRight = 65535;		//RJS 21Jun00
