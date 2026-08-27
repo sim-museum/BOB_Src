@@ -1,6 +1,6 @@
 # Battle of Britain — Linux port status
 
-Last updated: 2026-08-27 (sprint 307)
+Last updated: 2026-08-27 (sprint 308)
 
 ## What works
 
@@ -18,7 +18,7 @@ Last updated: 2026-08-27 (sprint 307)
 
 | id | what | next step |
 |---|---|---|
-| PO-73 | Grey elliptical blob floating in the cockpit view | **IDENTIFIED (S307): it is the aircraft SHADOW sprite, drawn against the sky.** `glTex=43`, 128×128, 4444, a flat 40%-alpha dark ellipse — the texture's alpha channel *is* the blob's outline. Skipping that one draw removes the ellipse and nothing else. Not a texturing defect at all. Next: find why the shadow's `World.Y` is not on the terrain — `ThreeDee::do_object_shad` (SRC/3D/3DCODE.CPP:2656) just reads `tempitemptr->World`, so the snap-to-ground happens upstream. |
+| PO-73 | Grey elliptical blob floating in the cockpit view | **The DRAW is pinned (S307): `glTex=43`** — 128×128, 4444, a flat 40%-alpha dark ellipse whose alpha channel is the blob's exact outline. Skipping that one draw removes the ellipse and nothing else. **S307's guess that it is the aircraft shadow is WITHDRAWN (S308)**: `do_object_shad`, the only route a `SHADOW_OBJECT` takes into the draw list, is entered **0 times** — no shadow is drawn in this scene. Next: name the texture by its source. The draw is queued on the deferred transparent list (`Lib3D::EndScene` → `RenderTPolyList`), so the stack at draw time cannot say who queued it — instrument the T-poly *insertion*, or log the game texture id/filename at surface creation. |
 | — | ~~`upload_texture` may be failing silently~~ | **Closed (S306).** It no longer can: the early return counts and traces itself (`BOB_TRACE_TEXFAIL`), and a summary prints at every frame dump so zero is a measured number. |
 | R1 | Recording chain proven in two halves | The UI→preference and preference→recording links were measured in SEPARATE runs (committing the setting writes no file, so it cannot be staged). One continuous UI→flight→recording session would close it. |
 | — | Combat is never reached in any recipe | Known since S206: the flight consumes the wall clock the raid needs. The ACM tree remains untested code. |
@@ -144,3 +144,50 @@ plainly not an ellipse. And rather than trust a bisect on a metric that had alre
 all 30 candidates were skipped **individually**: exactly one, `glTex=43`, collapsed the component
 from 1781 px to 9. Thirty runs took under two minutes, which is the other lesson — the bisect was
 optimising a cost that was never the problem.
+
+
+## S308 — the shadow reading was wrong; the texture identification was not
+
+S307 called `glTex=43` "the aircraft shadow sprite". **Withdrawn.** Two independent checks:
+
+- `ThreeDee::Add_Shadow` returns immediately for the player's aircraft. Traced:
+  `detail=1 dopiloted=0 isPlayer=1` on every call, and the gate is
+  `if (dopiloted || (ac != Manual_Pilot.ControlledAC2))`.
+- `ThreeDee::do_object_shad` — the **only** route by which a `SHADOW_OBJECT` enters the draw list
+  (`3DCODE.CPP:1853` is its sole live caller) — is entered **0 times** in a 300-frame run.
+
+No shadow is drawn in this scene, so the ellipse cannot be one.
+
+**What was actually wrong with S307 was the kind of evidence, not the care taken over it.** The
+draw was identified by *measurement*: skip `glTex=43` and the ellipse vanishes while the sky and
+clouds do not. That still stands. The name "aircraft shadow" came from *looking at the texture* —
+a dark flat ellipse at 40% alpha certainly resembles a shadow blob — and an interpretation of art
+is not a measurement of a code path. The two sat in the same sentence and the second inherited the
+first's confidence.
+
+The check that broke it was cheap and available at the time: ask whether any shadow is drawn at
+all. Worth remembering that "what does this look like" and "what code puts it there" are separate
+questions, and only the second one names a defect.
+
+Cross-check that the game's own shadow art is not this texture either: `MASKMAP/shadow.pcx` is
+128×128 solid black with `shadow_trans.pcx` as its mask, and that mask is a **mottled, cloud-shaped
+blob** — not the clean flat ellipse in `glTex=43`.
+
+### Where the draw comes from
+
+`BOB_BLOB_BT=<glTex>` (new) backtraces the draw:
+
+```
+draw_fvf -> DEV_DrawPrimitiveVB -> Lib3D::RenderTPolyList -> Lib3D::EndScene
+         -> ThreeDee::render3d -> ThreeDee::render -> View3d::drawloop
+```
+
+It is flushed from the **deferred transparent-polygon list** at end of scene, which is why the
+stack names no game object: by then the queuer is long gone. Naming it needs an instrument at
+**insertion** time, or a texture-id/filename recorded at surface creation.
+
+A screen-locked-vs-world-locked test was attempted and is **inconclusive**, recorded so it is not
+re-run blind: with the aircraft near-stationary the whole frame is pixel-identical across frames
+150/300/450, and with `BOB_AUTOFLY=view40` panning the view the detector's window floods with
+terrain (largest dark component becomes the full 171×56 window). The discriminator needs a
+detector that tracks the ellipse across a moving background, not a fixed window.

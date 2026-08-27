@@ -2398,6 +2398,17 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				   follows whichever half holds the biggest transparent quad.
 				   Dropping the draw leaves every other draw untouched, so the question becomes
 				   "did the ellipse disappear", which the alpha cannot confound. */
+				/* S308: BOB_BLOB_BT=<glTex> prints a backtrace for that draw. S307 named the
+				   ellipse "the aircraft shadow" from the TEXTURE'S APPEARANCE -- a dark flat
+				   ellipse at 40% alpha certainly looks like a shadow blob. That is an inference
+				   about the art, not a measurement of the draw, and Add_Shadow turns out to
+				   return immediately for the player's aircraft (dopiloted=0, isPlayer=1), so the
+				   inference cannot be right as stated. Ask the stack who actually draws it. */
+				if (const char* bt = getenv("BOB_BLOB_BT")) {
+					if (gt == (unsigned)atoi(bt)) { static int _b=0; if (_b++ < 2) {
+						fprintf(stderr,"[blobbt] draw of glTex=%u:\n", gt); fflush(stderr);
+						void* fr[32]; int nf = backtrace(fr,32); backtrace_symbols_fd(fr,nf,2); } }
+				}
 				if (const char* skip = getenv("BOB_BLOB_SKIP")) {
 					for (const char* q = skip; *q; ) {
 						while (*q==' '||*q==',') q++;

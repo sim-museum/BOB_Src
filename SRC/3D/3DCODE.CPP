@@ -1770,6 +1770,14 @@ void ThreeDee::Add_Sun(rotitem* vp,WorldStuff *worldptr)
 //------------------------------------------------------------------------------
 void ThreeDee::Add_Shadow(AirStrucPtr	ac, bool dopiloted)
 {
+	/* S308: the [shadow] trace below produced NOTHING, which says nothing until the gates on the
+	   way to it are shown. Report each gate separately rather than guessing which one closed. */
+	const bool _trs = getenv("BOB_TRACE_SHADOW") != 0;
+	static int _tn = 0;
+	if (_trs && _tn < 12) { _tn++;
+		fprintf(stderr,"[shadow] Add_Shadow: detail=%d dopiloted=%d isPlayer=%d acY=%ld\n",
+		        (int)Save_Data.detail_3d[DETAIL3D_AIRCRAFTSHADOWS], (int)dopiloted,
+		        (int)(ac == Manual_Pilot.ControlledAC2), (long)ac->World.Y); }
 	if (!Save_Data.detail_3d[DETAIL3D_AIRCRAFTSHADOWS])
 		return;
 
@@ -1845,6 +1853,20 @@ void ThreeDee::Add_Shadow(AirStrucPtr	ac, bool dopiloted)
 							pMigLand->GetShadowAngles(shaditem->World,newhdg,newpitch,newroll);
 
 							shaditem->World.Y += 16;
+							/* S308: PO-73 is this shadow, and it renders against the SKY. The
+							   placement reads sane here (shadpos.Y = GroundHeight), so the
+							   question is whether GroundHeight itself is. Print the inputs, not
+							   the conclusion: the aircraft's world Y, the ground height it was
+							   given, the resulting shadow Y, and the sun. BOB_TRACE_SHADOW=1. */
+							if (getenv("BOB_TRACE_SHADOW")) { static int _sn=0; if (_sn++ < 12)
+								fprintf(stderr,"[shadow] ac.Y=%ld ground=%ld hOff=%ld "
+								               "shad=(%ld,%ld,%ld) sun.Y=%ld off=(%.0f,%.0f)\n",
+								        (long)acworld.Y, (long)ac->fly.pModel->GroundHeight,
+								        (long)heightOffGround,
+								        (long)shaditem->World.X,(long)shaditem->World.Y,
+								        (long)shaditem->World.Z,
+								        (long)mobileitem::currworld->sunpos.Y,
+								        (double)xoffset,(double)zoffset); }
 							shaditem->hdg = newhdg;
 							shaditem->pitch = newpitch;
 							shaditem->roll = newroll;
@@ -2656,6 +2678,10 @@ void ThreeDee::do_object(itemptr tempitemptr)
 //------------------------------------------------------------------------------
 void ThreeDee::do_object_shad(rotitem* tempitemptr, itemptr	owner)
 {
+	/* S308: the ONLY route by which a SHADOW_OBJECT enters the draw list. If this never runs,
+	   no shadow is drawn at all -- which decides whether PO-73's ellipse can be one. */
+	if (getenv("BOB_TRACE_SHADOW")) { static int _dn=0; if (_dn++ < 6)
+		fprintf(stderr,"[shadow] do_object_shad ENTERED (shadow object queued)\n"); }
 #ifndef	_ONLYPILOTED_
 	btree::ObjectRec*	objectRec = &bt->objectRec;
 	ShapeDescPtr		sdptr = SHAPESTUFF.GetShapePtr(tempitemptr->shape);
