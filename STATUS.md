@@ -1,6 +1,6 @@
 # Battle of Britain — Linux port status
 
-Last updated: 2026-08-27 (sprint 306)
+Last updated: 2026-08-27 (sprint 307)
 
 ## What works
 
@@ -18,7 +18,7 @@ Last updated: 2026-08-27 (sprint 306)
 
 | id | what | next step |
 |---|---|---|
-| PO-73 | Grey elliptical blob floating in the cockpit view | **The never-uploaded-texture hypothesis is REFUTED (S306)** — 0 upload bails in the very frame that contains the blob, under a working positive control. Remaining routes to an untextured draw: the garbage-dimension guard setting `t=0` (`BOB_TRACE_GARBAGE`), a draw with `t==NULL`, or one with `hasTex=0`. Take those next; the blob is not a texture that failed to upload. |
+| PO-73 | Grey elliptical blob floating in the cockpit view | **IDENTIFIED (S307): it is the aircraft SHADOW sprite, drawn against the sky.** `glTex=43`, 128×128, 4444, a flat 40%-alpha dark ellipse — the texture's alpha channel *is* the blob's outline. Skipping that one draw removes the ellipse and nothing else. Not a texturing defect at all. Next: find why the shadow's `World.Y` is not on the terrain — `ThreeDee::do_object_shad` (SRC/3D/3DCODE.CPP:2656) just reads `tempitemptr->World`, so the snap-to-ground happens upstream. |
 | — | ~~`upload_texture` may be failing silently~~ | **Closed (S306).** It no longer can: the early return counts and traces itself (`BOB_TRACE_TEXFAIL`), and a summary prints at every frame dump so zero is a measured number. |
 | R1 | Recording chain proven in two halves | The UI→preference and preference→recording links were measured in SEPARATE runs (committing the setting writes no file, so it cannot be staged). One continuous UI→flight→recording session would close it. |
 | — | Combat is never reached in any recipe | Known since S206: the flight consumes the wall clock the raid needs. The ACM tree remains untested code. |
@@ -28,7 +28,9 @@ Last updated: 2026-08-27 (sprint 306)
 `BOB_DUMP_FRAME=N` (**3D frame grab — use this, it predates and works**) · `BOB_TRACE_PRESENT` ·
 `BOB_TRACE_BLOB` + `BOB_BLOB_HILITE` + `BOB_BLOB_TEX=<glTex>` (find/paint a suspect draw) ·
 `BOB_TRACE_PROJ` · `BOB_DUMP_HITTARGETS` (dump menu + control rects; never guess pixels) ·
-`BOB_TRACE_TEXFAIL` (+ `BOB_TEXFAIL_EVERY=N` positive control) ·
+`BOB_TRACE_TEXFAIL` (+ `BOB_TEXFAIL_EVERY=N` positive control) · `BOB_BLOB_SKIP=<set>` (omit
+draws by texture — **use this, not `BOB_BLOB_TEX` hilite**) · `BOB_GLTEX_ONLY=<n>` (dump one
+texture + its alpha) · `tools/bob_blob_bisect.sh` ·
 `BOB_TRACE_SETFIELD` (settings write-back) · `BOB_TRACE_COMBO` · `BOB_TRACE_GARBAGE` ·
 `BOB_AUTOCLICK` (menu indices and `#id` control clicks) · `BOB_GUNCAM=1|pref`.
 
@@ -100,3 +102,45 @@ not merely unsupported.
 
 The frame-dump summary line prints the count unconditionally, so a future run reports zero as a
 number rather than as the absence of a log line.
+
+
+## S307 — PO-73 named: it is the aircraft shadow
+
+`glTex=43`: 128×128, `Amask=0xf000`, a **dark ellipse at a flat alpha of 102/255**, transparent
+everywhere else. 1943 opaque-ish texels against an on-screen ellipse of 1781 px on a 125×125 quad —
+about 1:1, so the sprite is drawn at native size. Dark, flat, elliptical, ~40% blended: a shadow
+blob. Skipping that single draw removes the ellipse and leaves the sky and clouds untouched.
+
+So PO-73 is not a texturing defect. The sprite is doing exactly what it was authored to do; it is
+in the wrong **place**. `ThreeDee::do_object_shad` (`SRC/3D/3DCODE.CPP:2656`) only reads
+`tempitemptr->World` and offsets it by the viewer, so whatever should pin the shadow to the terrain
+happens upstream of it. That is the next thread.
+
+### Why the previous instrument could not have found this
+
+`BOB_BLOB_HILITE` paints a suspect draw by `glDisable(GL_TEXTURE_2D)` + a flat colour. **That
+discards the texture's alpha.** A transparent cloud billboard therefore paints as an *opaque*
+magenta rectangle, so every alpha draw over the region scores 100% whether or not it is the
+culprit. Measured: hiliting `{11}` alone filled the whole test box. S303b read this as "containment
+alone hilited the whole sky" and treated it as a targeting problem, but it is not — **the probe
+changes the thing it is measuring**, and no amount of narrowing the region fixes that.
+
+`BOB_BLOB_SKIP` omits the draw instead. Every other draw renders normally, so the question becomes
+"did the ellipse disappear", which alpha cannot confound.
+
+### The bisect that lied, and what it cost
+
+`tools/bob_blob_bisect.sh` first scored "is the box magenta". Every round said yes, so it discarded
+nothing on evidence and simply walked to the last candidate, reporting `glTex=116` — **a
+confident, specific, wrong answer produced entirely by the search's own default.** A bisect with no
+positive signal does not fail loudly; it returns whichever element it happened to end on.
+
+The second scorer counted dark pixels. Skipping the cloud layer *raised* the count from 1781 to
+9575 (the sky behind is darker), so "fewer dark pixels" was confounded too.
+
+What worked was scoring the **shape**: the largest connected dark component. The ellipse is
+`113×21, aspect 5.4, fill 0.96`; a cloud-removal flood is `171×56, fill 1.27` — a filled rectangle,
+plainly not an ellipse. And rather than trust a bisect on a metric that had already misled twice,
+all 30 candidates were skipped **individually**: exactly one, `glTex=43`, collapsed the component
+from 1781 px to 9. Thirty runs took under two minutes, which is the other lesson — the bisect was
+optimising a cost that was never the problem.

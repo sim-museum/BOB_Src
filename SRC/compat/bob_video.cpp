@@ -1710,14 +1710,29 @@ static void upload_texture(GLSurface7* s) {
 	}
 	if (getenv("BOB_DUMP_GLTEX")) { static int g=0; int cap=atoi(getenv("BOB_DUMP_GLTEX")); if(cap<=0)cap=10;
 		int onlyAlpha = getenv("BOB_GLTEX_ALPHA")!=0;
-		if (g<cap && s->w>=8 && s->h>=8 && s->w<2048 && s->h<2048 && (!onlyAlpha || hasAlpha)) {
+		/* S307: BOB_GLTEX_ONLY=<name> dumps ONE texture object. Without it the dump runs in upload
+		   order and the trace never said which glTex a file came from, so a texture named by a
+		   bisect could not be looked at -- which is the whole point of having named it. */
+		const char* only = getenv("BOB_GLTEX_ONLY");
+		int wanted = !only || (unsigned)atoi(only) == (unsigned)s->glTex;
+		if (wanted && g<cap && s->w>=8 && s->h>=8 && s->w<2048 && s->h<2048 && (!onlyAlpha || hasAlpha)) {
 			int w=s->w,h=s->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*4);
 			glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,buf);
 			char path[64]; snprintf(path,sizeof(path),"/tmp/bobgl_%d.ppm",g);
 			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
 			if(fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h); if(write(fd,hdr,n)<0){}
 				for(int i=0;i<w*h;i++){ unsigned char rgb[3]={buf[i*4],buf[i*4+1],buf[i*4+2]}; if(write(fd,rgb,3)<0){} }
-				close(fd); fprintf(stderr,"[gltex] #%d %dx%d alpha=%d Amask=0x%04x -> %s\n",g,w,h,hasAlpha,(unsigned)pf.dwRGBAlphaBitMask,path); }
+				close(fd);
+				/* S307: the alpha channel decides what the sprite's SHAPE is, so dump it as a
+				   greyscale image next to the colour -- an opaque ellipse in a 128x128 sprite is
+				   invisible in the RGB dump but obvious here. */
+				char apath[64]; snprintf(apath,sizeof(apath),"/tmp/bobgl_%d_alpha.ppm",g);
+				int af=::open(apath,O_WRONLY|O_CREAT|O_TRUNC,0644);
+				if(af>=0){ char ah[64]; int an=snprintf(ah,sizeof(ah),"P6\n%d %d\n255\n",w,h); if(write(af,ah,an)<0){}
+					for(int i=0;i<w*h;i++){ unsigned char a=buf[i*4+3]; unsigned char g3[3]={a,a,a}; if(write(af,g3,3)<0){} }
+					close(af); }
+				fprintf(stderr,"[gltex] #%d glTex=%u %dx%d alpha=%d Amask=0x%04x -> %s (+%s)\n",
+				        g,(unsigned)s->glTex,w,h,hasAlpha,(unsigned)pf.dwRGBAlphaBitMask,path,apath); }
 			free(buf); g++;
 		}
 	}
@@ -2238,6 +2253,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   (e.g. w=7340032 h=0 bpp=0 glTex=0xffffffff) is a corrupt/uninitialised surface; its
 	   glTex is invalid so GL samples garbage -> rainbow. Treat it as untextured. */
 	bool garbageHi=false;
+	bool blobSkip=false;
 	/* S306: UPLOAD BEFORE THE PROBE READS glTex, not after.
 	   The upload used to happen ~130 lines below, at bind time, while the [blobtex] probe read
 	   t->glTex up here. So on the FIRST draw of any texture the probe saw glTex=0 -- for healthy
@@ -2359,8 +2375,37 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 					               "quad %.0fx%.0f%s\n", gt, t?t->w:0, t?t->h:0, t?t->bpp:0, bw, bh,
 					        gt==0u ? "  <-- NEVER UPLOADED: draws untextured" : ""); }
 				const char* want = getenv("BOB_BLOB_TEX");
-				if (want) { if (gt == (unsigned)atoi(want)) garbageHi = true; }
+				/* S307: BOB_BLOB_TEX takes a SET, not one name -- "11,43,49". S303b's
+				   one-at-a-time bisect needs a real-GL flight per candidate, and there are ~20
+				   textures over the blob, so a linear sweep is 20 runs. Halving the set each
+				   time is 5. atoi() on a list would silently read only the first entry and every
+				   run after the first would test the wrong thing, so parse it properly. */
+				if (want) {
+					for (const char* q = want; *q; ) {
+						while (*q==' '||*q==',') q++;
+						if (!*q) break;
+						if ((unsigned)strtoul(q,0,10) == gt) { garbageHi = true; break; }
+						while (*q && *q!=',') q++;
+					}
+				}
 				else if (getenv("BOB_BLOB_HILITE")) garbageHi = true;
+				/* S307: SKIP, don't hilite -- BOB_BLOB_SKIP=<same set syntax>.
+				   The hilite is DESTRUCTIVE: it does glDisable(GL_TEXTURE_2D) and a flat colour,
+				   which throws away the texture's ALPHA. A transparent cloud billboard therefore
+				   paints as an OPAQUE magenta rectangle, so every alpha draw covering the region
+				   scores 100% whether or not it is the culprit. That is why S303b's containment
+				   hilite "turned the whole sky magenta", and why a bisect built on hiliting
+				   follows whichever half holds the biggest transparent quad.
+				   Dropping the draw leaves every other draw untouched, so the question becomes
+				   "did the ellipse disappear", which the alpha cannot confound. */
+				if (const char* skip = getenv("BOB_BLOB_SKIP")) {
+					for (const char* q = skip; *q; ) {
+						while (*q==' '||*q==',') q++;
+						if (!*q) break;
+						if ((unsigned)strtoul(q,0,10) == gt) { blobSkip = true; break; }
+						while (*q && *q!=',') q++;
+					}
+				}
 			}
 			static int bn=0;
 			if (bn++ < 4) {
@@ -2417,7 +2462,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 
 	GLenum mode = (prim==1)?GL_POINTS : (prim==2)?GL_LINES : (prim==6)?GL_TRIANGLE_FAN :
 	              (prim==5)?GL_TRIANGLE_STRIP : GL_TRIANGLES;
-	glDrawArrays(mode, 0, count);
+	if (!blobSkip) glDrawArrays(mode, 0, count);   /* S307: BOB_BLOB_SKIP omits this draw */
 	if (garbageHi) glColor3f(1.f,1.f,1.f);   /* reset so the magenta doesn't bleed to later draws */
 
 	glDisableClientState(GL_VERTEX_ARRAY);
