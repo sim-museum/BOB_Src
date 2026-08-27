@@ -819,7 +819,12 @@ static void present_dbg(const char* path)
 		int fd=::open(dpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
 		if (fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h);
 			if (write(fd,hdr,n)<0){} for (int y=h-1;y>=0;y--) if(write(fd,buf+y*w*3,w*3)<0){}
-			close(fd); fprintf(stderr,"[present] dumped frame %d to %s (%dx%d) glErr=%d\n",frames,dpath,w,h,(int)glGetError()); }
+			close(fd); fprintf(stderr,"[present] dumped frame %d to %s (%dx%d) glErr=%d\n",frames,dpath,w,h,(int)glGetError());
+			/* S306: report the count unconditionally at the dump, so "no texture failed to upload"
+			   is a NUMBER that was measured rather than the absence of a log line. */
+			{ extern unsigned long g_texUploadBailed;
+			  fprintf(stderr,"[texfail] summary: %lu uploads bailed before creating a texture\n",
+			          g_texUploadBailed); } }
 		else fprintf(stderr,"[present] dump open failed errno path\n");
 		free(buf);
 		if (getenv("BOB_EXIT_AFTER_DUMP")) { fflush(stderr); _exit(0); }
@@ -1612,8 +1617,49 @@ static GLenum gl_blend(DWORD d) {        /* D3DBLEND -> GL (D3DBLEND enum is 1-b
 static GLenum g_srcBlend=GL_SRC_ALPHA, g_dstBlend=GL_ONE_MINUS_SRC_ALPHA;
 
 /* Upload a (16-bit / 32-bit) DDraw texture surface to its GL texture. */
+/* S306: how many times upload_texture bailed before creating a texture name, and how many draws
+   then bound texture 0. Both were silent; a texture that never uploads is invisible in the log and
+   shows up only as an unexplained shape on screen. */
+unsigned long g_texUploadBailed = 0;
+
 static void upload_texture(GLSurface7* s) {
-	if (!s || !s->bits || s->w<=0 || s->h<=0) return;
+	/* S306: THIS EARLY RETURN IS THE SILENT FAILURE named in STATUS.md.
+	   It returns BEFORE glGenTextures, so s->glTex stays 0 -- and the callers do
+	       if (t->texDirty || !t->glTex) upload_texture(t);
+	       glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, t->glTex);
+	   which binds texture object 0. Object 0 has no image, so it is INCOMPLETE, and GL specifies
+	   that sampling an incomplete texture behaves as though texturing were disabled: the fragment
+	   keeps its raw primitive colour and the draw renders as a flat untextured shape. Every such
+	   draw binds the same object 0, so they all share one appearance -- which is what a single
+	   unexplained grey shape looks like (PO-73's leading hypothesis).
+	   Whether or not it is PO-73, returning without a texture and without a word is a defect. */
+	/* S306 POSITIVE CONTROL. BOB_TEXFAIL_EVERY=N forces every Nth upload down the bail path, so
+	   the run can show (a) that [texfail] fires at all and (b) what a never-uploaded texture
+	   actually LOOKS like on screen. Without this, "zero texfails" is indistinguishable from a
+	   trace that cannot fire -- the null-result failure this project has logged repeatedly.
+	   It is a test hook: it makes the defect happen, it does not detect one.
+
+	   Selection is by SURFACE IDENTITY, not call count: a count-based hook bails one CALL, and
+	   because the caller retries on every draw while glTex is still 0, the very next draw uploads
+	   it and the frame comes out unchanged -- which is exactly what the first version of this
+	   control did (two arms, byte-identical frames). Keying on the pointer makes the chosen
+	   surfaces stay broken, which is what the real defect would do. */
+	static int _ffEvery = -1;
+	if (_ffEvery == -1) { const char* e = getenv("BOB_TEXFAIL_EVERY"); _ffEvery = e ? atoi(e) : 0; }
+	const bool _forced = (_ffEvery > 0 && s &&
+	                      ((((unsigned long)(size_t)s) >> 4) % (unsigned long)_ffEvery) == 0);
+	if (_forced || !s || !s->bits || s->w<=0 || s->h<=0) {
+		g_texUploadBailed++;
+		if (_forced && getenv("BOB_TRACE_TEXFAIL")) { static int n=0; if (n++ < 8)
+			fprintf(stderr,"[texfail] FORCED (BOB_TEXFAIL_EVERY=%d) on %dx%d bpp%d\n",
+			        _ffEvery, s?s->w:0, s?s->h:0, s?s->bpp:0); }
+		if (getenv("BOB_TRACE_TEXFAIL")) { static int n=0; if (n++ < 24)
+			fprintf(stderr,"[texfail] no upload: %s%s%s -> glTex stays %u (binds object 0)\n",
+			        _forced ? "FORCED" : (!s ? "surface=NULL" : (!s->bits ? "bits=NULL" : "bad dims")),
+			        "", "",
+			        (unsigned)(s ? s->glTex : 0u)); }
+		return;
+	}
 	if (getenv("BOB_TRACE_TEXPIX")) { static int n=0; if(n++<24) {
 		/* sample centre + corner pixels to see if the texture has real content */
 		unsigned px0=0,pxc=0; if(s->bpp==16){ unsigned short* p=(unsigned short*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
@@ -2192,6 +2238,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   (e.g. w=7340032 h=0 bpp=0 glTex=0xffffffff) is a corrupt/uninitialised surface; its
 	   glTex is invalid so GL samples garbage -> rainbow. Treat it as untextured. */
 	bool garbageHi=false;
+	/* S306: UPLOAD BEFORE THE PROBE READS glTex, not after.
+	   The upload used to happen ~130 lines below, at bind time, while the [blobtex] probe read
+	   t->glTex up here. So on the FIRST draw of any texture the probe saw glTex=0 -- for healthy
+	   textures too, because they had simply not been uploaded YET. The probe's suspect and the
+	   frame's evidence came from different instants, which is exactly the defect STATUS.md
+	   records as the next step ("make suspect and evidence come from the SAME frame").
+	   Uploading here makes glTex==0 at the probe mean what it appears to mean: this texture was
+	   never uploaded at all. The bind-time call below is now a no-op guard. */
+	if (t && (t->texDirty || !t->glTex)) upload_texture(t);
 	if (t && (t->w<=0 || t->w>4096 || t->h<=0 || t->h>4096 || t->bpp<=0 || t->bpp>32)) {
 		if (getenv("BOB_TRACE_GARBAGE")) { static int n=0; if(n++<6)
 			fprintf(stderr,"[garbage] skipped tex w=%d h=%d bpp=%d glTex=%u\n",t->w,t->h,t->bpp,(unsigned)t->glTex); }
@@ -2296,8 +2351,13 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				bool isnew = true;
 				for (int k=0;k<nseen;k++) if (seen[k]==gt) { isnew=false; break; }
 				if (isnew && nseen<32) { seen[nseen++]=gt;
+					/* S306: glTex==0 here now means NEVER UPLOADED (the upload ran above), so
+					   say so rather than leaving a bare 0 to be read as "not yet". Such a draw
+					   is untextured on screen -- the shape PO-73 is looking for.
+					   BOB_BLOB_TEX=0 hilites exactly these, since atoi("0")==0 matches. */
 					fprintf(stderr,"[blobtex] NEW texture over the blob: glTex=%u %dx%d bpp=%d "
-					               "quad %.0fx%.0f\n", gt, t?t->w:0, t?t->h:0, t?t->bpp:0, bw, bh); }
+					               "quad %.0fx%.0f%s\n", gt, t?t->w:0, t?t->h:0, t?t->bpp:0, bw, bh,
+					        gt==0u ? "  <-- NEVER UPLOADED: draws untextured" : ""); }
 				const char* want = getenv("BOB_BLOB_TEX");
 				if (want) { if (gt == (unsigned)atoi(want)) garbageHi = true; }
 				else if (getenv("BOB_BLOB_HILITE")) garbageHi = true;
