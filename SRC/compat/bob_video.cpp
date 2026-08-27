@@ -2371,9 +2371,24 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 					   say so rather than leaving a bare 0 to be read as "not yet". Such a draw
 					   is untextured on screen -- the shape PO-73 is looking for.
 					   BOB_BLOB_TEX=0 hilites exactly these, since atoi("0")==0 matches. */
+					/* S309: report the GAME's identity for the texture, not just the GL name.
+					   uniqueTextID's top bits are TextIdType (0x0000 loaded / 0x8000 landscape /
+					   0xC000 plain) and the low 11 bits are the loader index -- enough to say
+					   what kind of thing this is and to look it up in the loader's table. */
+					extern unsigned short g_lib3d_uniqueTextID;
+					extern unsigned char  g_lib3d_isMasked;
+					extern unsigned long  g_lib3d_isLand;
+					extern const void*    g_lib3d_map0;
+					unsigned tid = g_lib3d_uniqueTextID;
+					const char* kind = (tid==0xFFFF) ? "NULL" :
+					                   ((tid&0xC000)==0xC000) ? "plain" :
+					                   ((tid&0x8000)==0x8000) ? "landscape" : "loaded";
 					fprintf(stderr,"[blobtex] NEW texture over the blob: glTex=%u %dx%d bpp=%d "
-					               "quad %.0fx%.0f%s\n", gt, t?t->w:0, t?t->h:0, t?t->bpp:0, bw, bh,
-					        gt==0u ? "  <-- NEVER UPLOADED: draws untextured" : ""); }
+					               "quad %.0fx%.0f  uniqueTextID=0x%04x (%s idx=%u) masked=%u "
+					               "isLand=%lu map0=%p%s\n", gt, t?t->w:0, t?t->h:0, t?t->bpp:0, bw, bh,
+					        tid, kind, tid & 0x07FFu, (unsigned)g_lib3d_isMasked,
+					        (unsigned long)g_lib3d_isLand, g_lib3d_map0,
+					        gt==0u ? "  <-- NEVER UPLOADED" : ""); }
 				const char* want = getenv("BOB_BLOB_TEX");
 				/* S307: BOB_BLOB_TEX takes a SET, not one name -- "11,43,49". S303b's
 				   one-at-a-time bisect needs a real-GL flight per candidate, and there are ~20
@@ -2474,6 +2489,12 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	GLenum mode = (prim==1)?GL_POINTS : (prim==2)?GL_LINES : (prim==6)?GL_TRIANGLE_FAN :
 	              (prim==5)?GL_TRIANGLE_STRIP : GL_TRIANGLES;
 	if (!blobSkip) glDrawArrays(mode, 0, count);   /* S307: BOB_BLOB_SKIP omits this draw */
+	/* S309: invalidate the game-side texture id after every draw. Only RenderTPolyList sets it,
+	   so without this a draw arriving by any OTHER path silently reports its predecessor's id --
+	   which the first version did, printing one id for five different textures. Better to say
+	   "unknown" than to say something plausible and wrong. */
+	{ extern unsigned short g_lib3d_uniqueTextID; extern const void* g_lib3d_map0;
+	  g_lib3d_uniqueTextID = 0xFFFF; g_lib3d_map0 = 0; }
 	if (garbageHi) glColor3f(1.f,1.f,1.f);   /* reset so the magenta doesn't bleed to later draws */
 
 	glDisableClientState(GL_VERTEX_ARRAY);

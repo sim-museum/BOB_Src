@@ -15035,6 +15035,17 @@ void Lib3D::RenderPlainPolyList(SPolygon *pHead)
 //Date			Fri 7 Jan 2000
 //
 //------------------------------------------------------------------------------
+/* S309: see the assignment inside RenderTPolyList. Written just before the draw, read by the GL
+   backend's blob probe, so a draw can be traced back to the game's own texture identity. */
+extern "C" { unsigned short g_lib3d_uniqueTextID = 0xFFFF;
+             unsigned char  g_lib3d_isMasked = 0;
+             unsigned long  g_lib3d_isLand = 0;
+             /* S309: the material's level-0 ImageMap. uniqueTextID is only a texture-manager SLOT
+                (LIB3D.CPP:6595 hands out sequential j), so it names nothing in the game's art.
+                The MAPDESC pointer does: ImageMap::LoadImageMap records ptr -> (dir,file), and
+                that pair IS the ImageMapNumber the art is addressed by. */
+             const void*    g_lib3d_map0 = 0; }
+
 void Lib3D::RenderTPolyList(SPolygon *pHead)
 {
 #ifdef _NOT_IN_SAMPLE
@@ -15141,6 +15152,19 @@ void Lib3D::RenderTPolyList(SPolygon *pHead)
 			 	curmat=pCur->material;
 				InlineSetCurrentMaterial(curmat, ULong(pCur->material.materialFlags)+IS_ALPHA );
 			}
+			/* S309: PER POLY, not per material change -- the material only updates when
+			   SameTransMat says it differs, so writing it inside that branch leaves the previous
+			   poly's id standing for every poly that reuses the material. First version did
+			   exactly that and reported one id (0x07b2) for five different glTex values.
+			   Carry the material's uniqueTextID down to the GL layer. PO-73's draw is
+			   flushed from this deferred list, so at bind time the backend knows only an opaque
+			   glTex number and nothing that maps back to game data. uniqueTextID does: its type
+			   bits say where the texture came from (TIT_LOADED / TIT_LANDSCAPE / TIT_PLAIN) and
+			   its low 11 bits are the loader's index. */
+			g_lib3d_uniqueTextID = (unsigned short)pCur->material.uniqueTextID;
+			g_lib3d_isMasked     = (unsigned char)pCur->material.isMasked;
+			g_lib3d_isLand       = (unsigned long)pCur->material.isLand;
+			g_lib3d_map0         = (const void*)pCur->material.p[0];
 #ifndef DO_INDEXED_VB
 			verttot=pCur->vertexcount; // actually draw the fans/poly's
  			lastError=pD3DDEV7->DrawPrimitiveVB(D3DPT_TRIANGLEFAN,lpD3DVB7,vertcnt,verttot,0);

@@ -1,6 +1,6 @@
 # Battle of Britain — Linux port status
 
-Last updated: 2026-08-27 (sprint 308)
+Last updated: 2026-08-27 (sprint 309)
 
 ## What works
 
@@ -18,7 +18,7 @@ Last updated: 2026-08-27 (sprint 308)
 
 | id | what | next step |
 |---|---|---|
-| PO-73 | Grey elliptical blob floating in the cockpit view | **The DRAW is pinned (S307): `glTex=43`** — 128×128, 4444, a flat 40%-alpha dark ellipse whose alpha channel is the blob's exact outline. Skipping that one draw removes the ellipse and nothing else. **S307's guess that it is the aircraft shadow is WITHDRAWN (S308)**: `do_object_shad`, the only route a `SHADOW_OBJECT` takes into the draw list, is entered **0 times** — no shadow is drawn in this scene. Next: name the texture by its source. The draw is queued on the deferred transparent list (`Lib3D::EndScene` → `RenderTPolyList`), so the stack at draw time cannot say who queued it — instrument the T-poly *insertion*, or log the game texture id/filename at surface creation. |
+| PO-73 | ~~Grey elliptical blob floating in the cockpit view~~ | **CLOSED (S309) — NOT A DEFECT.** It is the game's own **threat indicator**: `COverlay::DoThreat()`, texture `MskMap16/THREAT01.X8`, gated on `Save_Data.gamedifficulty[GD_HUDINSTACTIVE]`. Position and size match the source constants to within a pixel. It reads as a blank grey ellipse because it has no contacts to plot — the player is alone in this scene. **For the PO:** it is switched off with the HUD-instruments difficulty setting. |
 | — | ~~`upload_texture` may be failing silently~~ | **Closed (S306).** It no longer can: the early return counts and traces itself (`BOB_TRACE_TEXFAIL`), and a summary prints at every frame dump so zero is a measured number. |
 | R1 | Recording chain proven in two halves | The UI→preference and preference→recording links were measured in SEPARATE runs (committing the setting writes no file, so it cannot be staged). One continuous UI→flight→recording session would close it. |
 | — | Combat is never reached in any recipe | Known since S206: the flight consumes the wall clock the raid needs. The ACM tree remains untested code. |
@@ -191,3 +191,55 @@ re-run blind: with the aircraft near-stationary the whole frame is pixel-identic
 150/300/450, and with `BOB_AUTOFLY=view40` panning the view the detector's window floods with
 terrain (largest dark component becomes the full 171×56 window). The discriminator needs a
 detector that tracks the ellipse across a moving background, not a fixed window.
+
+
+## S309 — PO-73 closed: the blob is the threat indicator, working correctly
+
+`COverlay::DoThreat()` (`SRC/3D/OVERLAY.CPP:7756`) — *"display threat indicator in the top left
+corner of the screen"* — draws a squashed disc that plots nearby aircraft as sticks, from
+`MskMap16/THREAT01.X8`. Its constants, at a 640 reference with `SCX = w/640`, `SCY = h/640`:
+
+```
+TOP_LEFT_X = 10, TOP_LEFT_Y = 10, RADIUS = 50, Y_RADIUS = 10
+centre = (sRADIUS + sTOP_LEFT_X, sRADIUS + sTOP_LEFT_Y)      // from baseStickX/baseStickY
+```
+
+| at 800×600 | intended | measured |
+|---|---|---|
+| centre | (75.0, 71.9) | (75.5, 71) |
+| width | 2·sRADIUS = 125 | quad 125 |
+| height | 2·sY_RADIUS = 18.75 | 21 |
+
+Nothing is misplaced, mis-scaled, or mis-textured. It looks like a featureless grey ellipse because
+it has **no contacts to draw on it** — the same run shows only the player's aircraft in the world.
+It is gated on `Save_Data.gamedifficulty[GD_HUDINSTACTIVE]`, so the PO can switch it off with the
+HUD-instruments difficulty setting.
+
+### How it was finally named
+
+The draw is flushed from the deferred transparent list, so nothing at bind time knows what it is.
+The chain that closed the gap, each link a small instrument:
+
+1. `BOB_BLOB_SKIP=43` — skipping that draw removes the ellipse and nothing else (S307).
+2. `g_lib3d_uniqueTextID`, carried from `RenderTPolyList` to the GL backend. Useful for its *type*
+   bits, but its index is only a texture-manager slot (`LIB3D.CPP:6595` hands out sequential `j`),
+   so it names nothing in the game's art. Worth recording: this looked like the answer and was not.
+3. `g_lib3d_map0` — the material's `MAPDESC*`. That pointer *is* identity: `BOB_TRACE_IMAGEMAP`
+   logs every imagemap as it is created with its `(dir, file)` and `FileNum`, so the pointer seen
+   at draw time resolves to `ImageMapNumber=0x020d, FileNum=39693`, whose load opens
+   `MskMap16/THREAT01.X8`. The pairing rule (each trace immediately precedes its `fopen`) was
+   checked across **all 241** loads before being relied on, not assumed from one example.
+4. `THREAT01NO` appears exactly once in the source, in `DoThreat`.
+
+### Two stale-global bugs in the instrument, both caught by disagreement with what was known
+
+- `uniqueTextID` was first written only inside `if (!SameTransMat(...))`, so any poly reusing a
+  material kept its predecessor's id. It reported **one id for five different `glTex` values** —
+  visibly impossible, which is the only reason it was caught.
+- The global was never invalidated, so draws arriving by other paths reported the last T-poly's id
+  instead of "unknown". Now reset after every draw: five of the seven textures over the blob
+  correctly report `NULL`, and only the two that really pass through `RenderTPolyList` carry an id.
+
+A global written on one path and read on all of them will always answer, and a plausible wrong
+answer is worse than no answer here — this is the same failure as the S307 identification, in a
+different medium.
