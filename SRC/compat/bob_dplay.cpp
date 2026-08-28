@@ -57,7 +57,7 @@ static const char* dp_host(void) { const char* e = getenv("BOB_DPLAY_HOST"); ret
 /* Wire framing. Deliberately tiny and self-describing: the whole point of the GPL-era design is
  * that a peer update is a few dozen bytes. */
 enum { DPMAGIC = 0x424f4250 };            /* 'BOBP' */
-enum { MSG_PROBE = 1, MSG_OFFER = 2, MSG_JOIN = 3, MSG_DATA = 4 };
+enum { MSG_PROBE = 1, MSG_OFFER = 2, MSG_JOIN = 3, MSG_DATA = 4, MSG_ASSIGN = 5 };
 struct WireHdr { unsigned int magic, kind, from, to; };
 
 static const int MAXQ = 64;
@@ -74,6 +74,7 @@ class BobDPlay4 : public IDirectPlay4
     int  isHost;
     DPID nextPid;
     DPID myPid;
+    DPID assignedPid;      /* R6.3: what the host gave us (client side); 0 until it answers */
     struct sockaddr_in peer; /* host: last client seen. client: the host. */
     int  havePeer;
     char sessName[128];
@@ -109,7 +110,20 @@ class BobDPlay4 : public IDirectPlay4
                 DPT("probe from a client -> offered session \"%s\"\n", sessName);
             } else if (h->kind == MSG_JOIN && isHost) {
                 peer = from; havePeer = 1;
-                DPT("client joined from %s:%d\n", inet_ntoa(from.sin_addr), (int)ntohs(from.sin_port));
+                /* R6.3: THE HOST OWNS THE ID SPACE. Before this, each object started nextPid at
+                   DPID_SERVERPLAYER independently, so host and client both allocated pid 1 -- the
+                   packets still crossed (R6.2 passed) but every player was indistinguishable, and
+                   the Aggrgtor addresses its packets BY pid. Found by reading the R6.2 trace, not
+                   by a failure: a two-node echo cannot expose an id collision. */
+                DPID given = nextPid++;
+                WireHdr ah; ah.magic = DPMAGIC; ah.kind = MSG_ASSIGN;
+                ah.from = (unsigned)DPID_SERVERPLAYER; ah.to = (unsigned)given;
+                sendto(fd, &ah, sizeof(ah), 0, (struct sockaddr*)&from, fl);
+                DPT("client joined from %s:%d -> assigned pid %u\n",
+                    inet_ntoa(from.sin_addr), (int)ntohs(from.sin_port), (unsigned)given);
+            } else if (h->kind == MSG_ASSIGN && !isHost) {
+                assignedPid = (DPID)h->to;
+                DPT("host assigned us pid %u\n", (unsigned)assignedPid);
             } else if (h->kind == MSG_DATA) {
                 qpush(h->from, h->to, buf + sizeof(WireHdr), (unsigned)(n - sizeof(WireHdr)));
                 DPT("received %d data bytes from pid %u\n", (int)(n - sizeof(WireHdr)), h->from);
@@ -135,7 +149,7 @@ class BobDPlay4 : public IDirectPlay4
         return 1;
     }
 public:
-    BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0),
+    BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0), assignedPid(0),
                   havePeer(0), qh(0), qt(0) {
         memset(&peer, 0, sizeof(peer)); memset(sessName, 0, sizeof(sessName));
         memset(&sessGuid, 0, sizeof(sessGuid));
@@ -189,6 +203,8 @@ public:
             WireHdr h; h.magic = DPMAGIC; h.kind = MSG_JOIN; h.from = 0; h.to = 0;
             sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&peer, sizeof(peer));
             DPT("Open(JOIN) -> host %s:%d\n", dp_host(), dp_port());
+            for (int i = 0; i < 40 && assignedPid == 0; i++) { pump(); usleep(25000); }  /* R6.3 */
+            if (assignedPid == 0) DPT("host did not assign a pid (joining anyway)\n");
             return DP_OK;
         }
         UNIMPL("Open(other flags)");
@@ -239,7 +255,8 @@ public:
     }
 
     HRESULT STDMETHODCALLTYPE CreatePlayer(LPDPID pid, LPDPNAME nm, HANDLE, LPVOID, DWORD, DWORD) override {
-        myPid = nextPid++;
+        /* R6.3: a client uses the id the HOST gave it; only the host mints ids. */
+        myPid = (!isHost && assignedPid != 0) ? assignedPid : nextPid++;
         if (pid) *pid = myPid;
         DPT("CreatePlayer \"%s\" -> pid %u\n",
             (nm && nm->lpszShortNameA) ? nm->lpszShortNameA : "(unnamed)", (unsigned)myPid);

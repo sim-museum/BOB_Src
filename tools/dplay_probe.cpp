@@ -41,6 +41,8 @@ int main(int argc, char** argv) {
         nm.dwSize = sizeof(nm); nm.lpszShortNameA = (char*)"host";
         dp->CreatePlayer(&pid, &nm, 0, 0, 0, 0);
         printf("  [probe] hosting as pid %u; waiting for a packet\n", (unsigned)pid);
+        if (pid != DPID_SERVERPLAYER) { printf("FAIL: host pid is %u, expected %u\n",
+                                               (unsigned)pid, (unsigned)DPID_SERVERPLAYER); }
         for (int i = 0; i < 200; i++) {          /* ~20 s */
             DPID f = 0, t = 0; char buf[512]; DWORD n = sizeof(buf);
             if (dp->Receive(&f, &t, 0, buf, &n) == DP_OK) {
@@ -66,6 +68,12 @@ int main(int argc, char** argv) {
     DPID pid = 0; DPNAME nm; memset(&nm, 0, sizeof(nm));
     nm.dwSize = sizeof(nm); nm.lpszShortNameA = (char*)"client";
     dp->CreatePlayer(&pid, &nm, 0, 0, 0, 0);
+    /* R6.3: the host owns the id space -- a client must NOT mint its own. */
+    printf("  [probe] client pid = %u\n", (unsigned)pid);
+    if (pid == DPID_SERVERPLAYER) {
+        printf("FAIL: client got pid %u, the same as the host -- ids are not unique\n", (unsigned)pid);
+        dp->Close(); dp->Release(); return 1;
+    }
     const char* msg = "hello from the client";
     HRESULT r = dp->Send(pid, DPID_SERVERPLAYER, 0, (LPVOID)msg, (DWORD)strlen(msg) + 1);
     printf("  [probe] Send -> %s\n", r == DP_OK ? "DP_OK" : "FAILED");
