@@ -2200,6 +2200,41 @@ R3 tail (effects/mirror, pilot-gated), R4.2+ campaign, R5 control & sim, R6 fron
 
 ---
 
+### Release 6 — Multiplayer (PO 2026-08-28)
+
+> PO: *"get multiplayer working"*. Already declared **in scope** by the §1 vision
+> (*"multiplayer is in scope"*, 2026-06-17); this makes it a release with stories.
+
+**This is a BACKEND gap, not a feature to write.** The game's own multiplayer code is present and
+compiled: `class DPlay` (shared with MiG Alley), the `Aggrgtor` packet layer
+(`SRC/COMMS/Aggrgtor.cpp` — `allpackets.player[n].IDCode`, `PIDC_PACKETERROR`,
+`PIDC_DUMMYPACKET`, `ReservePackets[n].GetTemp()/GetCurr()`), and a **populated multiplayer UI**:
+`LOCKER.CPP` fills `RESCOMBO(DEATHMATCH0,8)` (:184) and `RESCOMBO(TEAMPLAY0,8)` (:187) and reads
+`_DPlay.GameIndex` (:264). The main menu's **item 2 is "Multi-Player"** (`BOB_DUMP_MENU`, S316)
+and it navigates. What is missing is the transport underneath.
+
+⭐ **CROSS-PORT — WRITE THE SHIM ONCE.** MiG Alley has the *same* `DPlay` class and the *same*
+`Aggrgtor`, and its PO-76 records the precise gap found there: `dplay.h` vendors the full
+`IDirectPlay4` (DX6) COM interface and **nothing defines `DirectPlayCreate`**. Whichever port
+implements the socket-backed vtable first, the other adopts it — as with RLE8 decode and the D3D7
+refcount fix. Keep `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` == `~/ma/port/BOB_PORT_LESSONS.md` in
+sync.
+
+| ID | Story | Pts | ☐ |
+|---|---|---|---|
+| R6.1 | **Connectivity gate FIRST, before any UI work.** Two `bob` processes on localhost reach `StartCommsSession()==TRUE` and exchange one packet. A gate, with a negative control (no peer ⇒ must still degrade gracefully, not hang). | 8 | ☐ |
+| R6.2 | **`IDirectPlay4` over sockets in `SRC/compat/`** — enumerate one "Internet TCP/IP" service provider, create/enumerate/join a session, player create/destroy, `Send`/`Receive`. Same shape as the DirectInput→SDL and DirectSound→OpenAL shims. | 13 | ☐ |
+| R6.3 | **The lobby screens work** — Multi-Player (menu item 2) → select service → host/join, with the `DEATHMATCH0`/`TEAMPLAY0` game-type combos already populated by `LOCKER.CPP` driving `_DPlay.GameIndex`. | 8 | ☐ |
+| R6.4 | **Two clients fly the same mission** — the `Aggrgtor` packet layer carries positions both ways; measure and RECORD packet rate and observed desync. | 13 | ☐ |
+| R6.5 | **Soak + drop-out** — a peer leaving mid-mission must not crash or hang the survivor. ASan-clean over the soak. | 8 | ☐ |
+
+⚠️ **Do not start at the UI.** The lobby renders and navigates already; it is the transport that
+returns FALSE. Starting at the screens would produce motion without progress — the R1 lesson
+(S313–S317), where three real defects sat underneath a harness that looked like a navigation
+problem.
+
+---
+
 ## 11. Risk Register
 
 | Risk | Likelihood | Impact | Mitigation |
