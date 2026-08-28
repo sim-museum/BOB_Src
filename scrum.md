@@ -2213,9 +2213,24 @@ compiled: `class DPlay` (shared with MiG Alley), the `Aggrgtor` packet layer
 `_DPlay.GameIndex` (:264). The main menu's **item 2 is "Multi-Player"** (`BOB_DUMP_MENU`, S316)
 and it navigates. What is missing is the transport underneath.
 
-⭐ **CROSS-PORT — WRITE THE SHIM ONCE.** MiG Alley has the *same* `DPlay` class and the *same*
-`Aggrgtor`, and its PO-76 records the precise gap found there: `dplay.h` vendors the full
-`IDirectPlay4` (DX6) COM interface and **nothing defines `DirectPlayCreate`**. Whichever port
+⚠️ **THE GAP, CORRECTED (S323).** An earlier note in MA's PO-76 said "nothing defines
+`DirectPlayCreate`" — true but IRRELEVANT, because **the game never calls it**.
+`DPlay::CreateDPlayInterface()` (`SRC/COMMS/Comms.cpp:807`) builds the object through **COM**:
+
+```c
+res = CoCreateInstance( CLSID_DirectPlay, NULL, CLSCTX_INPROC_SERVER,
+                        IID_IDirectPlay4A, (LPVOID*)&lpDP4 );
+```
+
+and compat's `CoCreateInstance` (`SRC/compat/objbase.h`) is a blanket stub — `*ppv = NULL;
+return E_NOINTERFACE;` for **every** CLSID. So: `CoCreateInstance → E_NOINTERFACE` ⇒
+`CreateDPlayInterface() FALSE` ⇒ `UIMultiPlayInit() FALSE` ⇒ `StartCommsSession() FALSE` ⇒ the
+not-connected box. **The single entry point to implement is `CoCreateInstance(CLSID_DirectPlay)`
+returning a socket-backed `IDirectPlay4A`**; the vendored `dplay.h` is exactly the vtable to fill.
+
+⭐ **CROSS-PORT — WRITE THE SHIM ONCE.** MiG Alley has the *same* `DPlay` class, the *same*
+`Aggrgtor`, **the same `CoCreateInstance(CLSID_DirectPlay, …, IID_IDirectPlay4A)` call and the same
+blanket stub** — verified in both trees. Whichever port
 implements the socket-backed vtable first, the other adopts it — as with RLE8 decode and the D3D7
 refcount fix. Keep `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` == `~/ma/port/BOB_PORT_LESSONS.md` in
 sync.
