@@ -566,6 +566,22 @@ extern "C" HRESULT bob_com_create_instance(REFCLSID rclsid, REFIID riid, LPVOID*
 		*ppv = (void*)(IDirectMusicLoader*)new BobLoader();
 		return S_OK;
 	}
+	/* R6.1: CLSID_DirectPlay -- the single entry point multiplayer was missing. The engine's own
+	   DPlay::CreateDPlayInterface() asks for it here and, getting E_NOINTERFACE, reports
+	   "not connected". Served by SRC/compat/bob_dplay.cpp. Value-compared rather than including
+	   DPLAY.H (which drags the whole DirectX header in for one GUID):
+	     CLSID_DirectPlay = d1eb6d20-8923-11d0-9d97-00a0c90a43cb   (DPLAY.H:46)
+	   BOB_NO_DPLAY=1 restores the old E_NOINTERFACE, which is the negative control for the R6.1
+	   gate: with it set the lobby must still degrade gracefully, exactly as before. */
+	{
+		static const GUID kDPlay = { 0xd1eb6d20, 0x8923, 0x11d0,
+		                             { 0x9d,0x97,0x00,0xa0,0xc9,0x0a,0x43,0xcb } };
+		if (memcmp(&rclsid, &kDPlay, sizeof(GUID)) == 0) {
+			if (getenv("BOB_NO_DPLAY")) return E_NOINTERFACE;
+			extern HRESULT bob_dplay_create(void** ppv);
+			return bob_dplay_create((void**)ppv);
+		}
+	}
 	return E_NOINTERFACE;
 }
 

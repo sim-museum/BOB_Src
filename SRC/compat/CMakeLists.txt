@@ -18,6 +18,7 @@ add_library(bob_compat STATIC
     openal_dsound.cpp     # DirectSound -> OpenAL audio backend
     bob_dlgtemplate.cpp   # runtime .rc dialog-template parser (control positions)
     bob_music.cpp         # DirectMusic (game music path) -> FluidSynth
+    bob_dplay.cpp         # R6.1: DirectPlay (CLSID_DirectPlay -> IDirectPlay4A) -> sockets
     bob_eventsink.cpp     # S33: general OCX-event routing (ON_EVENT -> dialog handler via RTTI)
 )
 target_include_directories(bob_compat PUBLIC ${BOB_SRC}/compat ${BOB_SRC}/H)
