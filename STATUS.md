@@ -333,3 +333,32 @@ a fabricated 0 stored.
 They test different code. A front-end boot yields **0** unanswered dispatches, and that zero only
 means something because the injector yields **28** — measured, not assumed. Using the first hook to
 "prove" the second is how a control quietly stops controlling anything.
+
+
+## S312 — the same fix for `getprop`, and an honest note that it is defensive
+
+`bob_ole_getprop` has the identical shape to `bob_ole_invoke` (`if (h) h->getprop(...)`, caller's
+buffer untouched otherwise), and the R* controls' property getters declare `result` uninitialised at
+**206** sites: VT_I4 154, VT_BOOL 45, VT_I2 6, VT_CY 1. Same treatment — zero by VARTYPE, raise the
+same flag.
+
+**Not 219, which is what my first audit said.** The other 13 are `VT_BSTR` and pass a **`CString`**,
+not a raw BSTR: `CString result; GetProperty(DISPID_CAPTION, VT_BSTR, &result);`. That is a
+default-constructed object — already valid and empty, so never a hazard — and zeroing four bytes of
+one would null its internal pointer and corrupt it. The script counted them because it looked for an
+`=` and a default constructor is an initialiser it could not see. The router leaves `VT_BSTR` alone.
+
+### ⚠️ This one is defensive, and says so
+
+The invoke fix had a demonstrated victim: S289's `GetIndex` silently corrupted `GD_GUNCAMERAATSTART`,
+and the three-arm A/B reproduces it on demand. This one has no such demonstration. With
+`BOB_OLE_FORCE_NOHOST=1` — every host lookup forced to miss — the unanswered branch **never fired**,
+on a title boot or a settings-screen boot. So the count was moved ahead of the `if`, to separate
+"the branch never ran" from "the function is never called":
+
+**`bob_ole_getprop` is called 0 times** on the front-end and Sim Config paths.
+
+So the 206 sites are unreachable on everything currently exercised. The fix costs nothing and closes
+the hole if those paths ever wake up, but it is **not** evidence of a bug that was happening — and
+the difference matters, because a defensive change described as a fix inflates what the port is
+known to have solved.

@@ -858,8 +858,39 @@ extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vt
 extern "C" void bob_ole_setprop(CWnd* self, DISPID id, VARTYPE /*vt*/, va_list ap) {
     OleHost* h = findHost(self); if (h) h->setprop(id, ap);
 }
-extern "C" void bob_ole_getprop(CWnd* self, DISPID id, VARTYPE /*vt*/, void* pvRet) {
-    OleHost* h = findHost(self); if (h) h->getprop(id, pvRet);
+/* S312 (bob): the SAME hazard as bob_ole_invoke, at 206 more call sites. Every `Get*` property
+   wrapper in the R* controls declares a local `result` and hands whatever GetProperty left there
+   back to its caller; with no registered host, `if (h) h->getprop(...)` left it untouched. Same
+   treatment: zero by the caller's VARTYPE and raise the same flag.
+
+   !! VT_BSTR IS DELIBERATELY NOT ZEROED. Those 13 sites pass a `CString`, not a raw BSTR
+   (`CString result; GetProperty(DISPID_CAPTION, VT_BSTR, &result);`). It is a default-constructed
+   C++ object -- already valid and empty, so not a hazard at all -- and memset-ing four bytes of one
+   would null its internal pointer and corrupt it. The audit script counted them as uninitialised
+   because it looked for an `=`; a default constructor is an initialiser it could not see. So the
+   real figure is 206, not the 219 the first pass reported: VT_I4 154, VT_BOOL 45, VT_I2 6, VT_CY 1.
+   Anything not listed below is left alone rather than guessed at. */
+extern "C" void bob_ole_getprop(CWnd* self, DISPID id, VARTYPE vt, void* pvRet) {
+    OleHost* h = findHost(self);
+    /* S312: count EVERY call, answered or not. The unanswered branch below never fired in a title
+       boot or a settings-screen boot even with BOB_OLE_FORCE_NOHOST=1, and "the branch never ran"
+       and "the function is never called" are different claims with different consequences. */
+    if (getenv("BOB_TRACE_OLE_UNANSWERED"))
+        fprintf(stderr, "[ole] getprop-called dispid=0x%x host=%s\n", (unsigned)id, h ? "yes" : "NO");
+    if (h) { g_bob_ole_unanswered = 0; h->getprop(id, pvRet); return; }
+    g_bob_ole_unanswered = 1; g_bob_ole_unanswered_n++;
+    if (pvRet) {
+        switch (vt) {
+            case VT_I2:   *(short*)pvRet = 0; break;
+            case VT_I4:
+            case VT_BOOL: *(long*)pvRet  = 0; break;
+            case VT_CY:   memset(pvRet, 0, 8); break;   /* CY is a POD 64-bit union */
+            default: break;   /* VT_BSTR (a CString) and anything unknown: do not touch */
+        }
+    }
+    if (getenv("BOB_TRACE_OLE_UNANSWERED"))
+        fprintf(stderr, "[ole] getprop dispid=0x%x NOBODY ANSWERED (vt=%d) -> returned 0\n",
+                (unsigned)id, (int)vt);
 }
 
 /* Drive the genuine control's OnDraw onto the front-end framebuffer at screen (x,y),
