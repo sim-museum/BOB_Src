@@ -20,7 +20,8 @@ Last updated: 2026-08-27 (sprint 309)
 |---|---|---|
 | PO-73 | ~~Grey elliptical blob floating in the cockpit view~~ | **CLOSED (S309) — NOT A DEFECT.** It is the game's own **threat indicator**: `COverlay::DoThreat()`, texture `MskMap16/THREAT01.X8`, gated on `Save_Data.gamedifficulty[GD_HUDINSTACTIVE]`. Position and size match the source constants to within a pixel. It reads as a blank grey ellipse because it has no contacts to plot — the player is alone in this scene. **For the PO:** it is switched off with the HUD-instruments difficulty setting. |
 | — | ~~`upload_texture` may be failing silently~~ | **Closed (S306).** It no longer can: the early return counts and traces itself (`BOB_TRACE_TEXFAIL`), and a summary prints at every frame dump so zero is a measured number. |
-| R1 | Recording chain proven in two halves | The UI→preference and preference→recording links were measured in SEPARATE runs (committing the setting writes no file, so it cannot be staged). One continuous UI→flight→recording session would close it. |
+| R1 | Recording chain proven in two halves | **S313: the UI half now measured INSIDE the combined process** — `tools/bob_r1_continuous.sh` gets `[setfield] combo id=1075 -> val=2` in the same run that then tries to fly, so the join is no longer an inference across two processes on that side. The flight does not launch: `BOB_BOOT_FRONTEND` skips the menus entirely, and `BOB_FRONTEND`+`BOB_STARTFLYING=click` wants `BOB_AUTOCLICK` to be *only* the fly navigation while pre-flighting on a hard-coded 30-tick timer. **Next: a delay knob on that pre-flight.** |
+| — | Strategic map segfaults from the post-Sim-Config screen | Found by S313 taking a wrong menu index: `CMapDlg::InvalidateAnotherItem` → `Persons2::ConvertPtrUID` (`Persons2.cpp:251`), signal 11, fault_addr=0x4800. Different subsystem from the S310–S312 OLE work. Not investigated. |
 | — | Combat is never reached in any recipe | Known since S206: the flight consumes the wall clock the raid needs. The ACM tree remains untested code. |
 
 ## Instruments
@@ -362,3 +363,46 @@ So the 206 sites are unreachable on everything currently exercised. The fix cost
 the hole if those paths ever wake up, but it is **not** evidence of a bug that was happening — and
 the difference matters, because a defensive change described as a fix inflates what the port is
 known to have solved.
+
+
+## S313 — R1: the gate exists, one half moved, and the blocker is named
+
+`tools/bob_r1_continuous.sh` runs the session STATUS has wanted for many sprints: one process, Sim
+Config → Gun Camera → Fly → `replay.dat`, with **no arming hook of any kind**. `BOB_GUNCAM=1` arms
+the recorder directly and `BOB_GUNCAM=pref` sets the preference just before the game reads it — both
+skip the UI, which is exactly what R1 is about.
+
+**What moved:** assertion 1 passes. `[setfield] combo id=1075 -> val=2` now happens *in the same
+process that then attempts the flight*. That half had only ever been measured in a run of its own,
+and the join between halves was explicitly recorded as an inference. Half of that inference is gone.
+
+**Where it stops, and why it is not a product defect:** the two halves use boot modes that do not
+compose. `bob_replay_record` uses `BOB_BOOT_FRONTEND=1`, which stands up a Quick Mission directly
+and never passes through a menu — so it *cannot* visit Sim Config. The alternative,
+`BOB_FRONTEND` + `BOB_STARTFLYING=click`, says plainly what it wants:
+
+```
+[startfly] navigate to Fly by clicks (use BOB_AUTOCLICK=0,1,2)
+```
+
+It expects the click list to be *only* the navigation to Fly, and it runs its pre-flight on a
+hard-coded timer (`if (++sf_t < 30) return;`). Prepending five clicks for the preference changes
+which screen Continue returns to — **artnum 27917 with the harness, 28937 without** — and menu
+indices are per-screen.
+
+### The wrong-index run found a crash
+
+Appending `0` for Quick Shots opened the **strategic map** instead, which segfaulted:
+
+```
+CRASH: signal 11  fault_addr=0x4800
+  Persons2::ConvertPtrUID (Persons2.cpp:251)
+  CMapDlg::InvalidateAnotherItem (MapDlg.cpp:1187)
+  CMIGApp::OnIdle
+```
+
+Logged as its own line. It is in a different subsystem from the S310–S312 OLE dispatch work, but I
+have not run an older binary to prove that, so it is recorded as *found*, not as *pre-existing*.
+
+**Two things driving the same menus do not compose by concatenating their click lists** — and the
+failure mode is not an error but a click landing somewhere plausible.
