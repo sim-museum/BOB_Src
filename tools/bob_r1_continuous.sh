@@ -66,8 +66,12 @@ REC="$GD/VIDEOS/replay.dat"     # uppercase VIDEOS (S260)
 # Sim Config -> Views -> cycle Gun Camera twice -> Continue, THEN the harness's own fly navigation
 # (it prints "use BOB_AUTOCLICK=0,1,2"). BOB_STARTFLYING_DELAY pushes the pre-flight past the
 # preference trip so the two do not interleave -- see S314 in FULLPSYS.CPP.
-CLICKS="${CLICKS:-6,3,#1075,#1075,6,0,1,2}"
-[ "$CONTROL" = 1 ] && CLICKS="6,3,6,0,1,2"
+# S316: was "...,6,0,1,2" -- try indices until one is Fly. BOB_DUMP_MENU=1 enumerates screen 27917
+# as exactly three items -- 0 "Back", 1 "Sim Config", 2 "Fly" -- so index 0 LEAVES the screen on the
+# first click (its onselect ran LaunchMap, which is how S314 met the S315 segfault) and 1/2 then
+# address whatever Back navigated to. Fly is index 2; click it directly.
+CLICKS="${CLICKS:-6,3,#1075,#1075,6,2}"
+[ "$CONTROL" = 1 ] && CLICKS="6,3,6,2"
 
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running (pid $(pgrep -x bob|tr '\n' ' '))"; exit 2; }

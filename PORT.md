@@ -1,5 +1,58 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-28 — S316: the R1 navigation blocker, answered by an instrument that runs on the path
+
+**The blocker.** `BOB_AUTOCLICK` addresses menu items by INDEX, and an index only means something on
+the screen that is showing. The harness ended its list `...,6,0,1,2` — *try 0, then 1, then 2, one of
+them is Fly*. The instrument that should have said which is which, `BOB_DUMP_HITTARGETS`, prints
+**nothing** on this route: its dump sits behind a block the `BOB_FRONTEND` + `BOB_STARTFLYING` path
+never reaches. **The one path that needed the answer was the one path that could not produce it** —
+and a silent instrument reads as "nothing to see".
+
+**`BOB_DUMP_MENU=1` (new)** dumps from inside `bob_draw_menu`, which every front-end paint runs.
+Per screen: artwork FileNum, resolution, item count, and per item the resolved STRING, rect, click
+centre, `nextscreen`, `onselect`.
+
+| screen | items |
+|---|---|
+| 28937 main | 0 Quick Shots · 1 Campaigns · 2 Multi-Player · 3 Load Game · 4 Replay · 5 PC Config · **6 Sim Config** · 7 Credits · 8 Quit · 9 Website |
+| 27911 / 27914 config | 0 Flight · 1 Game · 2 Mission · **3 Views** · 4 Geschwader List · 5 PC · **6 Continue** |
+| **27917 QM** | **0 Back · 1 Sim Config · 2 Fly** |
+
+**So index 0 on 27917 is BACK.** It leaves the screen on the first click — and its `onselect` ran
+`LaunchMap`, which is exactly how S314 met the S315 segfault. `1` and `2` then addressed whatever
+Back had navigated to. `Fly` is index 2 and must be clicked directly. The dump also *confirms* the
+rest of the list was always right (main 6 → Sim Config, 27911 3 → Views, 6 → Continue → 27917).
+
+**Corrected navigation reaches 3D:**
+
+```
+click (210,447) -> item 6  Sim Config -> 27911
+click (318,37)  -> item 3  Views      -> 27914
+click (502,37)  -> item 6  Continue   -> 27917
+click (258,737) -> item 2  Fly        -> [startfly] Rtestsh1 up -> Launch3d(wasrunning=0)
+```
+
+**⚠️ AND IT EXPOSES THE NEXT BLOCKER, previously hidden behind this one:**
+
+```
+*** FATAL: SRC/BFIELDS/Persons3.cpp:3384   "No player A/C set up on entering 3d!"
+```
+
+`Manual_Pilot.ControlledAC2` is NULL. The pre-flight says so itself — `QM left to CSQuick1
+(currquickmiss=-1)` — so the Sim Config → Continue route lands on the QM screen with **no mission
+selected**, and Fly launches with no player aircraft. R1's next step is to select a Quick Mission
+before Fly, not to touch the navigation again.
+
+- ⚠️ **The first version of this probe was silent where it mattered.** It sat at the end of
+  `bob_draw_menu`'s VERTICAL branch; the config tab rows are HORIZ, which `return`s earlier. It
+  dumped the main menu perfectly and nothing else — i.e. it was silent on precisely the screens it
+  was written to enumerate. Same early-exit trap as julia's `JM_BOUNDARY_TEST`/`JM_OVERHANG_EXIT`
+  diagnostics. It is now called from all three exits.
+- **Noted, not chased:** "Geschwader List" has a **32px** hit rect against "Continue"'s 110px — far
+  too narrow for that label. The rect-vs-text mismatch family (cf. MA's PO-67/S320), now seen in BoB.
+
+
 ## 2026-08-25 — S280: BoB's export is CORRECT — the PO's "no motion" was a view-scale artefact
 
 **PO, on `bob-campaign.acmi` in Tacview: *"the timer goes for 20 sec, but I don't see motion, though

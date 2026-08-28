@@ -355,6 +355,45 @@ static bool bob_on_sideselect() {
 /* Draw the screen's menu items (textlists) with the game's font, centred in the left column
    to match the wine reference. Records each item's rect for click hit-testing. Bring-up:
    bypasses the OLE RListBox layout/highlight. */
+/* S316 (R1 blocker): ENUMERATE THE MENU WHERE IT IS ACTUALLY BUILT.
+   BOB_AUTOCLICK addresses menu items by INDEX, and an index only means something on the screen
+   that is showing -- S314 lost a run to exactly this (an appended "0" meant Quick Shots on the
+   main menu and the STRATEGIC MAP on 27917, which then segfaulted; see S315). The instrument that
+   was supposed to answer "what IS index 0 here" is BOB_DUMP_HITTARGETS, and on this path it prints
+   NOTHING: its dump sits behind a block the BOB_FRONTEND + BOB_STARTFLYING route never reaches, so
+   the one path that needs the answer is the one path that cannot produce it.
+   This dumps from inside bob_draw_menu, which every front-end paint runs -- including that route.
+   Fires once per screen so a soak does not drown in it. BOB_DUMP_MENU=1.
+   *** CALLED FROM ALL THREE EXITS. *** The first version was placed only at the end of the
+   VERTICAL branch, and the HORIZ branch -- which is what the config TAB ROWS are, i.e. exactly the
+   27911/27914/27917 screens this was written to enumerate -- returns before reaching it. It dumped
+   the main menu perfectly and was silent on every screen that mattered, which reads as "nothing to
+   see". Same early-exit trap as the julia JM_BOUNDARY_TEST / JM_OVERHANG_EXIT diagnostics: a probe
+   placed after a return is not a probe. */
+static void bob_dump_menu(RFullPanelDial* self, FullScreen* scr)
+{
+	if (!getenv("BOB_DUMP_MENU") || !scr) return;
+	static FullScreen* lastScr = 0;
+	static int lastN = -1;
+	if (scr == lastScr && g_bobMenuN == lastN) return;
+	lastScr = scr; lastN = g_bobMenuN;
+	fprintf(stderr, "[menu] screen=%p artnum=%d res=%d items=%d%s\n",
+	        (void*)scr, (int)scr->resolutions[self->m_currentres].artwork,
+	        (int)self->m_currentres, g_bobMenuN,
+	        (scr->listalign & FullScreen::HORIZ) ? " HORIZ" : " VERT");
+	for (int i = 0; i < g_bobMenuN && i < 10; i++) {
+		CString s2; const char* txt = "(null)";
+		if (scr->textlists[i].text) { s2.LoadString(scr->textlists[i].text); txt = (const char*)(LPCSTR)s2; }
+		fprintf(stderr, "[menu]   %d \"%s\" rect=(%d,%d %dx%d) centre=(%d,%d) next=%p onselect=%d\n",
+		        i, txt ? txt : "(null)",
+		        g_bobMenuRect[i].x, g_bobMenuRect[i].y, g_bobMenuRect[i].w, g_bobMenuRect[i].h,
+		        g_bobMenuRect[i].x + g_bobMenuRect[i].w / 2,
+		        g_bobMenuRect[i].y + g_bobMenuRect[i].h / 2,
+		        (void*)scr->textlists[i].nextscreen,
+		        scr->textlists[i].onselect ? 1 : 0);
+	}
+}
+
 static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 {
 	g_bobActiveFP = self; g_bobMenuN = 0;
@@ -430,6 +469,7 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 				rx += wids[i] + gap;
 			}
 			g_bobMenuN = n;
+			bob_dump_menu(self, scr);   /* S316: BOTH horiz exits, not just the vertical one */
 			return;
 		}
 		for (int i = 0; i < n; i++) {
@@ -442,6 +482,7 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 			x += w + gap;
 		}
 		g_bobMenuN = n;
+		bob_dump_menu(self, scr);       /* S316 */
 		return;
 	}
 	int cx = useXY ? lx : resW / 4;                         /* column centre (title: 210 @1024) */
@@ -458,6 +499,7 @@ static void bob_draw_menu(RFullPanelDial* self, FullScreen* scr, int resW)
 		g_bobMenuRect[i].x=x; g_bobMenuRect[i].y=y; g_bobMenuRect[i].w=w; g_bobMenuRect[i].h=step;
 		g_bobMenuN = i+1;
 	}
+	bob_dump_menu(self, scr);
 }
 extern "C" void bob_gdi_setdibits_origin(int, int);
 /* S133 (probe, BOB_TRACE_OOBTREE): dump the nested RDialog child tree of a panel so we can
@@ -1471,7 +1513,13 @@ extern "C" void bob_frontend_tick(void)
 				fprintf(stderr,"[startfly] forced LaunchScreen(quickmissionflight)\n");
 				g_bobActiveFP->LaunchScreen(&RFullPanelDial::quickmissionflight);  /* fires StartFlying */
 			} else {
-				fprintf(stderr,"[startfly] navigate to Fly by clicks (use BOB_AUTOCLICK=0,1,2)\n");
+				/* S316: the old hint here said "use BOB_AUTOCLICK=0,1,2" -- try indices 0,1,2 until one is
+				   Fly. BOB_DUMP_MENU=1 enumerates screen 27917 and shows why that cannot work:
+				     0 "Back"  1 "Sim Config"  2 "Fly"
+				   Index 0 is BACK. It leaves the screen on the first click (and its onselect ran
+				   LaunchMap straight into the S315 segfault), so 1 and 2 then address a DIFFERENT
+				   screen. Fly is index 2 and must be clicked directly. */
+				fprintf(stderr,"[startfly] navigate to Fly by clicks (Fly is index 2 on this screen; BOB_DUMP_MENU=1 lists them)\n");
 			}
 			if (!clickMode) return;
 		}
