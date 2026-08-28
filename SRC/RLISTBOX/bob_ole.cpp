@@ -814,8 +814,46 @@ extern "C" int bob_ole_state_summary(char* out, int outsz) {
     return ndlg;
 }
 
+/* S311 (bob): an UNANSWERED dispatch used to leave the caller's return buffer untouched.
+   `if (h) h->dispatch(...)` writes nothing when the control has no registered host, and an audit of
+   every value-returning wrapper in this port found **31 call sites** that declare `result`
+   uninitialised and hand it straight back to their caller -- CRListBox::GetCount, GetRowFromY,
+   GetColFromX, GetListHeight, CRTabs::SelectTab, the CRSpinBut setters, and the rest. S289 found
+   one of them (CRCombo::GetIndex) the hard way, after it silently corrupted a real preference.
+   The other 30 were the same defect waiting for the same conditions.
+   Patching 31 sites means inventing 31 default values. Fixing the ROUTER means one behaviour:
+   when nobody answers, ZERO the return buffer and RAISE A FLAG. Zero is not claimed to be the right
+   answer -- there isn't one -- but a deterministic zero beats whatever was on the stack, and the
+   flag lets the callers that can do better (the settings write-back declines to store anything)
+   do better. BOB_TRACE_OLE_UNANSWERED=1 reports each one. */
+int g_bob_ole_unanswered = 0;          /* set by the LAST invoke; read immediately by the caller */
+unsigned long g_bob_ole_unanswered_n = 0;   /* cumulative, for gates */
+
 extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vtRet, void* pvRet, const BYTE* /*pInfo*/, va_list ap) {
-    OleHost* h = findHost(self); if (h) h->dispatch(id, vtRet, pvRet, ap);
+    /* S311 POSITIVE CONTROL. A front-end boot produces ZERO unanswered dispatches, so the branch
+       below never runs and its trace never prints -- which is indistinguishable from a trace that
+       cannot print. BOB_OLE_FORCE_NOHOST=1 makes every lookup miss.
+       (BOB_COMBO_FORCE_UNANSWERED, added a sprint earlier, does NOT exercise this code: it forces
+       the flag inside CRCombo::GetIndex and never reaches the router. Two hooks, two different
+       claims -- worth keeping straight, because using the first to "prove" the second is exactly
+       how a control stops controlling anything.) */
+    OleHost* h = getenv("BOB_OLE_FORCE_NOHOST") ? (OleHost*)0 : findHost(self);
+    if (h) { g_bob_ole_unanswered = 0; h->dispatch(id, vtRet, pvRet, ap); return; }
+    g_bob_ole_unanswered = 1; g_bob_ole_unanswered_n++;
+    if (pvRet) {
+        /* Size by the VARTYPE the caller declared -- these wrappers pass `short` for VT_I2 and a
+           4-byte long/BOOL for VT_I4/VT_BOOL. Writing 4 bytes into a `short` would corrupt the
+           stack next to it, so this must match, not approximate. */
+        switch (vtRet) {
+            case VT_I2:   *(short*)pvRet = 0; break;
+            case VT_I4:
+            case VT_BOOL: *(long*)pvRet  = 0; break;
+            default: break;   /* unknown width: leave it rather than guess how much to write */
+        }
+    }
+    if (getenv("BOB_TRACE_OLE_UNANSWERED"))
+        fprintf(stderr, "[ole] dispid=0x%x NOBODY ANSWERED (vtRet=%d) -> returned 0\n",
+                (unsigned)id, (int)vtRet);
 }
 extern "C" void bob_ole_setprop(CWnd* self, DISPID id, VARTYPE /*vt*/, va_list ap) {
     OleHost* h = findHost(self); if (h) h->setprop(id, ap);

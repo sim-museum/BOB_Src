@@ -242,6 +242,7 @@ void CRCombo::SetIndex(long row)
    write-back. One flag suffices because the write-back reads it immediately after the call it
    belongs to, in the same statement sequence. */
 int g_bob_combo_unanswered = 0;   /* declared in SG2COMBO.H without a linkage spec - see there */
+extern int g_bob_ole_unanswered;  /* S311: raised by bob_ole_invoke when no host answered */
 #endif
 
 long CRCombo::GetIndex()
@@ -258,11 +259,17 @@ long CRCombo::GetIndex()
 	   Sentinel first, verdict second: BOB_TRACE_COMBO=1 reports whether anything answered. The
 	   fallback to 0 is NOT the fix, it is damage control -- deterministic beats random -- and 0 is
 	   itself a guess ("first item"), which is why it is traced rather than left silent. */
+	/* S311: ask the ROUTER whether anyone answered, instead of relying on a sentinel surviving.
+	   bob_ole_invoke now zeroes the return buffer on an unanswered dispatch (so that the other 30
+	   value-returning wrappers stop reading the stack), which would have overwritten -0x5EED and
+	   silently disabled the guard below. A sentinel only works while nothing else writes that slot;
+	   a flag from the code that knows the answer does not have that failure mode. */
 	result = -0x5EED;
 	InvokeHelper(0xc, DISPATCH_METHOD, VT_I4, (void*)&result, NULL);
+	int unanswered = g_bob_ole_unanswered || (result == -0x5EED);
 	if (getenv("BOB_TRACE_COMBO"))
 		fprintf(stderr, "[combo] GetIndex -> %ld%s\n", result,
-		        result == -0x5EED ? "   *** NOBODY ANSWERED: value would have been stack garbage" : "");
+		        unanswered ? "   *** NOBODY ANSWERED: value would have been stack garbage" : "");
 	/* S310 (bob): tell the CALLER that nobody answered, instead of only guessing for it.
 	   The 0 below is still a guess and still wrong; what was missing was any way for the one caller
 	   that matters to know it is being handed one. SETFIELD's write-back now reads this flag and
@@ -273,9 +280,9 @@ long CRCombo::GetIndex()
 	   stack garbage: 0". So the guard's correct behaviour is unobservable without forcing the
 	   condition, and an unobservable guard is indistinguishable from no guard at all.
 	   BOB_COMBO_FORCE_UNANSWERED=1 makes every GetIndex report unanswered. */
-	if (getenv("BOB_COMBO_FORCE_UNANSWERED")) result = -0x5EED;
-	g_bob_combo_unanswered = (result == -0x5EED) ? 1 : 0;
-	if (result == -0x5EED) result = 0;
+	if (getenv("BOB_COMBO_FORCE_UNANSWERED")) unanswered = 1;
+	g_bob_combo_unanswered = unanswered;
+	if (unanswered) result = 0;
 	return result;
 #else
 	InvokeHelper(0xc, DISPATCH_METHOD, VT_I4, (void*)&result, NULL);

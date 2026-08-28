@@ -29,7 +29,9 @@ Last updated: 2026-08-27 (sprint 309)
 `BOB_TRACE_BLOB` + `BOB_BLOB_HILITE` + `BOB_BLOB_TEX=<glTex>` (find/paint a suspect draw) ·
 `BOB_TRACE_PROJ` · `BOB_DUMP_HITTARGETS` (dump menu + control rects; never guess pixels) ·
 `BOB_TRACE_TEXFAIL` (+ `BOB_TEXFAIL_EVERY=N` positive control) ·
-`BOB_COMBO_FORCE_UNANSWERED=1` (forces the unanswered-dispatch path so the guard is observable) · `BOB_BLOB_SKIP=<set>` (omit
+`BOB_COMBO_FORCE_UNANSWERED=1` (forces GetIndex's guard) · `BOB_OLE_FORCE_NOHOST=1` +
+`BOB_TRACE_OLE_UNANSWERED=1` (forces and reports unanswered dispatches at the ROUTER — a different
+claim from the previous hook, see S311) · `BOB_BLOB_SKIP=<set>` (omit
 draws by texture — **use this, not `BOB_BLOB_TEX` hilite**) · `BOB_GLTEX_ONLY=<n>` (dump one
 texture + its alpha) · `tools/bob_blob_bisect.sh` ·
 `BOB_TRACE_SETFIELD` (settings write-back) · `BOB_TRACE_COMBO` · `BOB_TRACE_GARBAGE` ·
@@ -280,3 +282,54 @@ env var to turn the description into a measurement.
 
 Both forced arms make the gate go **red**, which is correct: preferences that fail to store are a
 failure, and the guard converts a silent corruption into a loud one.
+
+
+## S311 — the same defect at 30 more call sites, fixed once at the router
+
+S310 fixed `CRCombo::GetIndex`. The obvious next question is whether it was alone. It was not:
+auditing every value-returning `InvokeHelper` in the port — does the local `result` get initialised
+before the call? — gives **31 sites, and 30 of them are unguarded**:
+
+| file | count | examples |
+|---|---|---|
+| `RLISTBOX.CPP` (both twins) | 22 | `GetCount`, `GetRowFromY`, `GetColFromX`, `GetListHeight`, `GetString` |
+| `RSPINBUT.CPP` | 4 | the price/value option setters |
+| `RTABS.CPP` | 3 | `CalculateHeight`, `CalcWidestWord`, `SelectTab` |
+| `RCOMBO1.CPP` / `RCOMBO.CPP` | 2 | `GetListbox` |
+
+`GetRowFromY` and `GetColFromX` are what the port's own click resolution uses to turn a pixel into a
+menu row or a tab column. S289 found one of these the hard way, after it silently corrupted a
+preference; the rest were the same defect waiting for the same conditions.
+
+**Patching 31 sites means inventing 31 default values.** The root is one line —
+`if (h) h->dispatch(...)` leaves `pvRet` untouched when a control has no host — so the fix is there:
+zero the return buffer, sized by the caller's `VARTYPE`, and raise a flag. Zero is not claimed to be
+right; there is no right answer. It is *deterministic*, and the flag lets callers that can do better
+do better — the settings write-back declines to store anything at all.
+
+⚠️ Sized by `VARTYPE` deliberately: these wrappers pass a `short` for `VT_I2` and a 4-byte
+`long`/`BOOL` for `VT_I4`/`VT_BOOL`. Writing four bytes into a `short` would corrupt whatever sits
+next to it on the stack — trading a read hazard for a write one.
+
+### The change would have silently disabled S310
+
+S310 detected "nobody answered" with a sentinel: set `result = -0x5EED`, call, see if it survived.
+The router now writes 0 into that same slot, so the sentinel would never survive, `GetIndex` would
+report *answered* every time, and the guard added one sprint earlier would quietly stop working —
+with every gate still green, because the healthy path never exercises it. `GetIndex` now reads the
+router's flag instead. **A sentinel only works while nothing else writes that slot**, and the thing
+that broke it was a fix for the same underlying defect.
+
+Re-verified after the rewire, all three arms unchanged: healthy → 0 unanswered and the gun-camera
+preference stored 2 (PASS); forced fault with the guard → write skipped; forced fault without it →
+a fabricated 0 stored.
+
+### Two hooks, two different claims
+
+- `BOB_COMBO_FORCE_UNANSWERED=1` forces the flag **inside `CRCombo::GetIndex`** and never reaches
+  the router.
+- `BOB_OLE_FORCE_NOHOST=1` makes every host lookup **in the router** miss.
+
+They test different code. A front-end boot yields **0** unanswered dispatches, and that zero only
+means something because the injector yields **28** — measured, not assumed. Using the first hook to
+"prove" the second is how a control quietly stops controlling anything.
