@@ -1,88 +1,297 @@
-/* SRC/compat/bob_dplay.cpp -- R6.1: a real DirectPlay object, so StartCommsSession() can succeed.
+/* SRC/compat/bob_dplay.cpp -- DirectPlay over UDP sockets (R6.1 object, R6.2 transport).
  *
- * WHY THIS FILE EXISTS. Multiplayer is not missing game code -- the engine's own DPlay class and
- * Aggrgtor packet layer are present and compiled, and the lobby screens render and navigate. What
- * was missing is the OBJECT underneath, and the gap is one call:
+ * WHY THIS FILE EXISTS. Multiplayer was never missing game code: the engine's DPlay class and
+ * Aggrgtor packet layer are compiled in, and the lobby screens render and navigate. What was
+ * missing was the OBJECT, and the gap was ONE call --
  *
  *     DPlay::CreateDPlayInterface()  (SRC/COMMS/Comms.cpp:807)
- *       -> CoCreateInstance(CLSID_DirectPlay, NULL, CLSCTX_INPROC_SERVER,
- *                           IID_IDirectPlay4A, (LPVOID*)&lpDP4)
+ *       -> CoCreateInstance(CLSID_DirectPlay, ..., IID_IDirectPlay4A, &lpDP4)
  *
- * and compat's CoCreateInstance was a blanket `*ppv=NULL; return E_NOINTERFACE;` for EVERY CLSID.
- * So CreateDPlayInterface() -> FALSE -> UIMultiPlayInit() -> FALSE -> StartCommsSession() -> FALSE
- * -> the not-connected box, exactly as the game intends when there is no DirectPlay.
+ * -- against a compat CoCreateInstance that answered E_NOINTERFACE for every CLSID.
+ * (Both backlogs first recorded the gap as a missing `DirectPlayCreate`. True, and irrelevant:
+ * the game never calls it. Corrected in ma S323 / bob R6-S318.)
  *
- * (An earlier note in both backlogs said the gap was a missing `DirectPlayCreate`. True, and
- * irrelevant: the game never calls it. Verified in BOTH ports -- MiG Alley makes the identical
- * CoCreateInstance call with the identical IID.)
+ * WHAT IS IMPLEMENTED, AND WHY EXACTLY THIS SET. Not chosen from the header -- OBSERVED. Every
+ * unimplemented method logs itself under BOB_TRACE_DPLAY=1, so walking the UI made the game name
+ * what it needs:
  *
- * SCOPE OF THIS STEP -- deliberately the smallest thing that can be gated. StartCommsSession() is:
+ *     Multi-Player  -> CoCreateInstance, EnumConnections            (R6.1)
+ *     Join Game     -> InitializeConnection, EnumSessions           (R6.2)
+ *     Back          -> CancelMessage, Close, Release  (ref -> 0, no leak)
  *
- *     if (!UIMultiPlayInit()) return FALSE;   // -> CreateDPlayInterface()
- *     UIAssignServices();                     // -> lpDP4->EnumConnections(...)
- *     return TRUE;
+ * IDirectPlay4 is declared with DECLARE_INTERFACE_, which this compat layer expands to a C++
+ * abstract class, so this SUBCLASSES it and the compiler lays out the 53-entry vtable. The 36
+ * still-unimplemented overrides are GENERATED from SRC/H/DPLAY.H, never typed: hand-ordering COM
+ * function pointers is a silent-corruption trap.
  *
- * so ONLY QueryInterface/AddRef/Release + EnumConnections need to be real. Every other method is a
- * logged DPERR_UNSUPPORTED. Open/Send/Receive come next, with a two-process packet gate.
+ * THE TRANSPORT is deliberately plain UDP on one socket, in the spirit of what DirectPlay's
+ * TCP/IP provider did: a host binds a port; clients discover it with a broadcast-style probe and
+ * then exchange datagrams. The game's own Aggrgtor already handles sequencing, reserve packets and
+ * loss -- duplicating that here would be building a second protocol beside the one the game ships.
  *
- * IDirectPlay4 is declared with DECLARE_INTERFACE_, which compat expands to a C++ abstract class
- * (objbase.h: `struct iface : public baseiface`, STDMETHOD -> `virtual ... = 0`). So this SUBCLASSES
- * it and lets the compiler lay the vtable out -- the same pattern as the D3D7 GLSurface7/GLDD7
- * objects. Hand-ordering 53 function pointers would be a silent-corruption trap.
- *
- * BOB_TRACE_DPLAY=1 logs every call, including the unimplemented ones -- so "multiplayer does
- * nothing" is always attributable to a named method rather than guessed at.
+ * BOB_DPLAY_PORT   override the port (default 47624, DirectPlay's classic port)
+ * BOB_DPLAY_HOST   client: where to look for a host (default 127.0.0.1)
+ * BOB_TRACE_DPLAY  log every call, including the unimplemented ones
+ * BOB_NO_DPLAY     restore E_NOINTERFACE -- the negative control for tools/bob_mp_connect.sh
  */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "DPLAY.H"
 
 static int dp_trace(void) { static int t = -1; if (t < 0) t = getenv("BOB_TRACE_DPLAY") ? 1 : 0; return t; }
+#define DPT(...) do { if (dp_trace()) { fprintf(stderr, "[dplay] " __VA_ARGS__); } } while (0)
 #define UNIMPL(n) do { if (dp_trace()) fprintf(stderr, "[dplay] %s: not implemented yet\n", (n)); } while (0)
 
-/* The one service provider we advertise. The game copies the name into its lobby list and
- * InitializeConnection()s the blob we hand back, so the blob must stay valid for the run. */
+static int dp_port(void) { const char* e = getenv("BOB_DPLAY_PORT"); int p = e ? atoi(e) : 0; return p > 0 ? p : 47624; }
+static const char* dp_host(void) { const char* e = getenv("BOB_DPLAY_HOST"); return (e && *e) ? e : "127.0.0.1"; }
+
+/* Wire framing. Deliberately tiny and self-describing: the whole point of the GPL-era design is
+ * that a peer update is a few dozen bytes. */
+enum { DPMAGIC = 0x424f4250 };            /* 'BOBP' */
+enum { MSG_PROBE = 1, MSG_OFFER = 2, MSG_JOIN = 3, MSG_DATA = 4 };
+struct WireHdr { unsigned int magic, kind, from, to; };
+
+static const int MAXQ = 64;
+struct QMsg { unsigned int from, to, len; char data[1024]; };
+
 static GUID  g_tcpGuid = { 0x36E95EE0, 0x8577, 0x11cf, { 0x96,0x0c,0x00,0x80,0xc7,0x53,0x4e,0x82 } };
 static char  g_tcpName[] = "Internet TCP/IP Connection For DirectPlay";
-static DWORD g_tcpBlob[16];   /* opaque connection blob; identity is all the game needs of it */
+static DWORD g_tcpBlob[16];
 
 class BobDPlay4 : public IDirectPlay4
 {
-    int ref;
+    int  ref;
+    int  fd;                 /* the one UDP socket */
+    int  isHost;
+    DPID nextPid;
+    DPID myPid;
+    struct sockaddr_in peer; /* host: last client seen. client: the host. */
+    int  havePeer;
+    char sessName[128];
+    GUID sessGuid;
+    QMsg q[MAXQ]; int qh, qt;
+
+    void qpush(unsigned f, unsigned t, const char* d, unsigned n) {
+        int nx = (qt + 1) % MAXQ;
+        if (nx == qh) { DPT("queue full, dropping a packet\n"); return; }
+        q[qt].from = f; q[qt].to = t; q[qt].len = n > sizeof(q[qt].data) ? sizeof(q[qt].data) : n;
+        memcpy(q[qt].data, d, q[qt].len); qt = nx;
+    }
+    int qcount() const { return (qt - qh + MAXQ) % MAXQ; }
+
+    /* Drain the socket: answer discovery probes, absorb joins, queue data. Called from every path
+     * the game pumps (Receive / GetMessageCount / EnumSessions) so a host answers probes while it
+     * is simply sitting in its own message loop. */
+    void pump() {
+        if (fd < 0) return;
+        char buf[2048];
+        for (;;) {
+            struct sockaddr_in from; socklen_t fl = sizeof(from);
+            ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);
+            if (n < (ssize_t)sizeof(WireHdr)) break;
+            WireHdr* h = (WireHdr*)buf;
+            if (h->magic != DPMAGIC) continue;
+            if (h->kind == MSG_PROBE && isHost) {
+                char out[sizeof(WireHdr) + sizeof(sessName)];
+                WireHdr* oh = (WireHdr*)out;
+                oh->magic = DPMAGIC; oh->kind = MSG_OFFER; oh->from = 0; oh->to = 0;
+                memcpy(out + sizeof(WireHdr), sessName, sizeof(sessName));
+                sendto(fd, out, sizeof(out), 0, (struct sockaddr*)&from, fl);
+                DPT("probe from a client -> offered session \"%s\"\n", sessName);
+            } else if (h->kind == MSG_JOIN && isHost) {
+                peer = from; havePeer = 1;
+                DPT("client joined from %s:%d\n", inet_ntoa(from.sin_addr), (int)ntohs(from.sin_port));
+            } else if (h->kind == MSG_DATA) {
+                qpush(h->from, h->to, buf + sizeof(WireHdr), (unsigned)(n - sizeof(WireHdr)));
+                DPT("received %d data bytes from pid %u\n", (int)(n - sizeof(WireHdr)), h->from);
+            }
+        }
+    }
+    int mksock(int bindIt) {
+        fd = socket(AF_INET, SOCK_DGRAM, 0);
+        if (fd < 0) return 0;
+        int on = 1;
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+        setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+        fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+        if (bindIt) {
+            struct sockaddr_in a; memset(&a, 0, sizeof(a));
+            a.sin_family = AF_INET; a.sin_addr.s_addr = htonl(INADDR_ANY); a.sin_port = htons(dp_port());
+            if (bind(fd, (struct sockaddr*)&a, sizeof(a)) != 0) {
+                DPT("bind(%d) failed: %s\n", dp_port(), strerror(errno));
+                close(fd); fd = -1; return 0;
+            }
+            DPT("host bound to UDP %d\n", dp_port());
+        }
+        return 1;
+    }
 public:
-    BobDPlay4() : ref(1) {}
+    BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0),
+                  havePeer(0), qh(0), qt(0) {
+        memset(&peer, 0, sizeof(peer)); memset(sessName, 0, sizeof(sessName));
+        memset(&sessGuid, 0, sizeof(sessGuid));
+    }
+    ~BobDPlay4() { if (fd >= 0) close(fd); }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID* ppvObj) override {
-        (void)riid;
-        if (!ppvObj) return E_POINTER;
-        *ppvObj = (LPVOID)this; ref++;
-        if (dp_trace()) fprintf(stderr, "[dplay] QueryInterface -> self (ref=%d)\n", ref);
-        return DP_OK;
+        (void)riid; if (!ppvObj) return E_POINTER;
+        *ppvObj = (LPVOID)this; ref++; return DP_OK;
     }
     ULONG STDMETHODCALLTYPE AddRef() override { return (ULONG)++ref; }
     ULONG STDMETHODCALLTYPE Release() override {
-        int r = --ref;
-        if (dp_trace()) fprintf(stderr, "[dplay] Release -> ref=%d\n", r);
+        int r = --ref; DPT("Release -> ref=%d\n", r);
         if (r <= 0) { delete this; return 0; }
         return (ULONG)r;
     }
 
-    /* The only other method StartCommsSession() reaches: UIAssignServices() calls this and the
-     * game builds its service list from the callback. One provider, TCP/IP. */
-    HRESULT STDMETHODCALLTYPE EnumConnections(LPCGUID lpguidApp,
-                                              LPDPENUMCONNECTIONSCALLBACK cb,
-                                              LPVOID ctx, DWORD flags) override {
-        (void)lpguidApp; (void)flags;
-        if (dp_trace()) fprintf(stderr, "[dplay] EnumConnections -> 1 provider\n");
+    HRESULT STDMETHODCALLTYPE EnumConnections(LPCGUID, LPDPENUMCONNECTIONSCALLBACK cb,
+                                              LPVOID ctx, DWORD) override {
+        DPT("EnumConnections -> 1 provider\n");
         if (cb) {
             DPNAME nm; memset(&nm, 0, sizeof(nm));
-            nm.dwSize = sizeof(nm);
-            nm.lpszShortNameA = g_tcpName;
-            nm.lpszLongNameA  = g_tcpName;
+            nm.dwSize = sizeof(nm); nm.lpszShortNameA = g_tcpName; nm.lpszLongNameA = g_tcpName;
             cb(&g_tcpGuid, (LPVOID)g_tcpBlob, sizeof(g_tcpBlob), &nm, 0, ctx);
         }
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE InitializeConnection(LPVOID lpConnection, DWORD) override {
+        (void)lpConnection;
+        DPT("InitializeConnection (TCP/IP provider selected)\n");
+        return DP_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE Open(LPDPSESSIONDESC2 d, DWORD flags) override {
+        if (flags & DPOPEN_CREATE) {
+            isHost = 1;
+            if (d && d->lpszSessionNameA) { strncpy(sessName, d->lpszSessionNameA, sizeof(sessName)-1); }
+            else strncpy(sessName, "Battle of Britain", sizeof(sessName)-1);
+            if (d) sessGuid = d->guidInstance;
+            if (!mksock(1)) return DPERR_CANTCREATEPLAYER;
+            DPT("Open(CREATE) session \"%s\"\n", sessName);
+            return DP_OK;
+        }
+        if (flags & DPOPEN_JOIN) {
+            isHost = 0;
+            if (!mksock(0)) return DPERR_NOCONNECTION;
+            memset(&peer, 0, sizeof(peer));
+            peer.sin_family = AF_INET; peer.sin_port = htons(dp_port());
+            peer.sin_addr.s_addr = inet_addr(dp_host());
+            havePeer = 1;
+            WireHdr h; h.magic = DPMAGIC; h.kind = MSG_JOIN; h.from = 0; h.to = 0;
+            sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&peer, sizeof(peer));
+            DPT("Open(JOIN) -> host %s:%d\n", dp_host(), dp_port());
+            return DP_OK;
+        }
+        UNIMPL("Open(other flags)");
+        return DPERR_UNSUPPORTED;
+    }
+    HRESULT STDMETHODCALLTYPE Close() override {
+        DPT("Close\n");
+        if (fd >= 0) { close(fd); fd = -1; }
+        isHost = 0; havePeer = 0; qh = qt = 0;
+        return DP_OK;
+    }
+
+    /* Probe for a host and report what answers. With no host running, no callback fires and this
+     * returns DP_OK with an empty list -- which is the honest answer, not an error. */
+    HRESULT STDMETHODCALLTYPE EnumSessions(LPDPSESSIONDESC2 d, DWORD timeout,
+                                           LPDPENUMSESSIONSCALLBACK2 cb, LPVOID ctx, DWORD) override {
+        (void)d;
+        if (fd < 0 && !mksock(0)) return DPERR_NOCONNECTION;
+        struct sockaddr_in to; memset(&to, 0, sizeof(to));
+        to.sin_family = AF_INET; to.sin_port = htons(dp_port()); to.sin_addr.s_addr = inet_addr(dp_host());
+        WireHdr h; h.magic = DPMAGIC; h.kind = MSG_PROBE; h.from = 0; h.to = 0;
+        sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&to, sizeof(to));
+        DPT("EnumSessions: probing %s:%d\n", dp_host(), dp_port());
+
+        int found = 0;
+        unsigned waitms = timeout ? (timeout > 2000 ? 2000 : timeout) : 400;
+        for (unsigned t = 0; t < waitms; t += 20) {
+            char buf[2048]; struct sockaddr_in from; socklen_t fl = sizeof(from);
+            ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);
+            if (n >= (ssize_t)sizeof(WireHdr)) {
+                WireHdr* rh = (WireHdr*)buf;
+                if (rh->magic == DPMAGIC && rh->kind == MSG_OFFER) {
+                    DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd));
+                    sd.dwSize = sizeof(sd);
+                    sd.lpszSessionNameA = buf + sizeof(WireHdr);
+                    sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
+                    sd.dwFlags = 0;
+                    DWORD tmo = waitms;
+                    found++;
+                    DPT("EnumSessions: found \"%s\"\n", sd.lpszSessionNameA);
+                    if (cb && !cb(&sd, &tmo, 0, ctx)) break;
+                }
+            }
+            usleep(20000);
+        }
+        DPT("EnumSessions -> %d session(s)\n", found);
+        return DP_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE CreatePlayer(LPDPID pid, LPDPNAME nm, HANDLE, LPVOID, DWORD, DWORD) override {
+        myPid = nextPid++;
+        if (pid) *pid = myPid;
+        DPT("CreatePlayer \"%s\" -> pid %u\n",
+            (nm && nm->lpszShortNameA) ? nm->lpszShortNameA : "(unnamed)", (unsigned)myPid);
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE DestroyPlayer(DPID id) override { DPT("DestroyPlayer %u\n", (unsigned)id); return DP_OK; }
+
+    HRESULT STDMETHODCALLTYPE Send(DPID from, DPID to, DWORD, LPVOID data, DWORD len) override {
+        if (fd < 0 || !havePeer) return DPERR_NOCONNECTION;
+        char out[2048];
+        if (len > sizeof(out) - sizeof(WireHdr)) len = sizeof(out) - sizeof(WireHdr);
+        WireHdr* h = (WireHdr*)out;
+        h->magic = DPMAGIC; h->kind = MSG_DATA; h->from = (unsigned)from; h->to = (unsigned)to;
+        memcpy(out + sizeof(WireHdr), data, len);
+        ssize_t s = sendto(fd, out, sizeof(WireHdr) + len, 0, (struct sockaddr*)&peer, sizeof(peer));
+        DPT("Send %u bytes pid %u -> %u (%s)\n", (unsigned)len, (unsigned)from, (unsigned)to,
+            s > 0 ? "ok" : strerror(errno));
+        return s > 0 ? DP_OK : DPERR_GENERIC;
+    }
+    HRESULT STDMETHODCALLTYPE Receive(LPDPID from, LPDPID to, DWORD, LPVOID data, LPDWORD size) override {
+        pump();
+        if (qcount() == 0) return DPERR_NOMESSAGES;
+        QMsg& m = q[qh];
+        if (size && *size < m.len) { *size = m.len; return DPERR_BUFFERTOOSMALL; }
+        if (from) *from = (DPID)m.from;
+        if (to)   *to   = (DPID)m.to;
+        if (data && size) { memcpy(data, m.data, m.len); *size = m.len; }
+        qh = (qh + 1) % MAXQ;
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE GetMessageCount(DPID, LPDWORD n) override {
+        pump(); if (n) *n = (DWORD)qcount(); return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE CancelMessage(DWORD, DWORD) override { return DP_OK; }
+    HRESULT STDMETHODCALLTYPE GetCaps(LPDPCAPS c, DWORD) override {
+        if (c) { DWORD sz = c->dwSize ? c->dwSize : sizeof(DPCAPS); memset(c, 0, sz); c->dwSize = sz;
+                 c->dwMaxBufferSize = 1024; c->dwMaxPlayers = 8; }
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE SetSessionDesc(LPDPSESSIONDESC2 d, DWORD) override {
+        if (d && d->lpszSessionNameA) strncpy(sessName, d->lpszSessionNameA, sizeof(sessName)-1);
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE GetSessionDesc(LPVOID data, LPDWORD size) override {
+        DWORD need = sizeof(DPSESSIONDESC2);
+        if (!size) return E_POINTER;
+        if (!data || *size < need) { *size = need; return DPERR_BUFFERTOOSMALL; }
+        DPSESSIONDESC2* d = (DPSESSIONDESC2*)data;
+        memset(d, 0, need); d->dwSize = need;
+        d->lpszSessionNameA = sessName; d->guidInstance = sessGuid;
+        d->dwMaxPlayers = 8; d->dwCurrentPlayers = havePeer ? 2 : 1;
+        *size = need;
         return DP_OK;
     }
 
@@ -90,10 +299,6 @@ public:
         (void)a0;
         (void)a1;
         UNIMPL("AddPlayerToGroup");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE Close() override {
-        UNIMPL("Close");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE CreateGroup(LPDPID a0, LPDPNAME a1, LPVOID a2, DWORD a3, DWORD a4) override {
@@ -105,16 +310,6 @@ public:
         UNIMPL("CreateGroup");
         return DPERR_UNSUPPORTED;
     }
-    HRESULT STDMETHODCALLTYPE CreatePlayer(LPDPID a0, LPDPNAME a1, HANDLE a2, LPVOID a3, DWORD a4, DWORD a5) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        (void)a5;
-        UNIMPL("CreatePlayer");
-        return DPERR_UNSUPPORTED;
-    }
     HRESULT STDMETHODCALLTYPE DeletePlayerFromGroup(DPID a0, DPID a1) override {
         (void)a0;
         (void)a1;
@@ -124,11 +319,6 @@ public:
     HRESULT STDMETHODCALLTYPE DestroyGroup(DPID a0) override {
         (void)a0;
         UNIMPL("DestroyGroup");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE DestroyPlayer(DPID a0) override {
-        (void)a0;
-        UNIMPL("DestroyPlayer");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE EnumGroupPlayers(DPID a0, LPGUID a1, LPDPENUMPLAYERSCALLBACK2 a2, LPVOID a3, DWORD a4) override {
@@ -156,21 +346,6 @@ public:
         UNIMPL("EnumPlayers");
         return DPERR_UNSUPPORTED;
     }
-    HRESULT STDMETHODCALLTYPE EnumSessions(LPDPSESSIONDESC2 a0, DWORD a1, LPDPENUMSESSIONSCALLBACK2 a2, LPVOID a3, DWORD a4) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        UNIMPL("EnumSessions");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE GetCaps(LPDPCAPS a0, DWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("GetCaps");
-        return DPERR_UNSUPPORTED;
-    }
     HRESULT STDMETHODCALLTYPE GetGroupData(DPID a0, LPVOID a1, LPDWORD a2, DWORD a3) override {
         (void)a0;
         (void)a1;
@@ -184,12 +359,6 @@ public:
         (void)a1;
         (void)a2;
         UNIMPL("GetGroupName");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE GetMessageCount(DPID a0, LPDWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("GetMessageCount");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE GetPlayerAddress(DPID a0, LPVOID a1, LPDWORD a2) override {
@@ -221,39 +390,9 @@ public:
         UNIMPL("GetPlayerName");
         return DPERR_UNSUPPORTED;
     }
-    HRESULT STDMETHODCALLTYPE GetSessionDesc(LPVOID a0, LPDWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("GetSessionDesc");
-        return DPERR_UNSUPPORTED;
-    }
     HRESULT STDMETHODCALLTYPE Initialize(LPGUID a0) override {
         (void)a0;
         UNIMPL("Initialize");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE Open(LPDPSESSIONDESC2 a0, DWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("Open");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE Receive(LPDPID a0, LPDPID a1, DWORD a2, LPVOID a3, LPDWORD a4) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        UNIMPL("Receive");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE Send(DPID a0, DPID a1, DWORD a2, LPVOID a3, DWORD a4) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        UNIMPL("Send");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE SetGroupData(DPID a0, LPVOID a1, DWORD a2, DWORD a3) override {
@@ -284,12 +423,6 @@ public:
         (void)a1;
         (void)a2;
         UNIMPL("SetPlayerName");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE SetSessionDesc(LPDPSESSIONDESC2 a0, DWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("SetSessionDesc");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE AddGroupToGroup(DPID a0, DPID a1) override {
@@ -329,12 +462,6 @@ public:
         (void)a2;
         (void)a3;
         UNIMPL("GetGroupConnectionSettings");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE InitializeConnection(LPVOID a0, DWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("InitializeConnection");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE SecureOpen(LPCDPSESSIONDESC2 a0, DWORD a1, LPCDPSECURITYDESC a2, LPCDPCREDENTIALS a3) override {
@@ -426,12 +553,6 @@ public:
         UNIMPL("GetMessageQueue");
         return DPERR_UNSUPPORTED;
     }
-    HRESULT STDMETHODCALLTYPE CancelMessage(DWORD a0, DWORD a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("CancelMessage");
-        return DPERR_UNSUPPORTED;
-    }
     HRESULT STDMETHODCALLTYPE CancelPriority(DWORD a0, DWORD a1, DWORD a2) override {
         (void)a0;
         (void)a1;
@@ -441,13 +562,11 @@ public:
     }
 };
 
-/* Hooked from compat's CoCreateInstance (objbase.h) for CLSID_DirectPlay. Returns DP_OK with a
- * live object; every other CLSID keeps the old E_NOINTERFACE. */
 extern "C" HRESULT bob_dplay_create(void** ppv)
 {
     if (!ppv) return E_POINTER;
     BobDPlay4* p = new BobDPlay4();
     *ppv = (void*)static_cast<IDirectPlay4*>(p);
-    if (dp_trace()) fprintf(stderr, "[dplay] CoCreateInstance(CLSID_DirectPlay) -> %p\n", (void*)p);
+    DPT("CoCreateInstance(CLSID_DirectPlay) -> %p\n", (void*)p);
     return DP_OK;
 }
