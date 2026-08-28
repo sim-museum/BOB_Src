@@ -28,7 +28,8 @@ Last updated: 2026-08-27 (sprint 309)
 `BOB_DUMP_FRAME=N` (**3D frame grab — use this, it predates and works**) · `BOB_TRACE_PRESENT` ·
 `BOB_TRACE_BLOB` + `BOB_BLOB_HILITE` + `BOB_BLOB_TEX=<glTex>` (find/paint a suspect draw) ·
 `BOB_TRACE_PROJ` · `BOB_DUMP_HITTARGETS` (dump menu + control rects; never guess pixels) ·
-`BOB_TRACE_TEXFAIL` (+ `BOB_TEXFAIL_EVERY=N` positive control) · `BOB_BLOB_SKIP=<set>` (omit
+`BOB_TRACE_TEXFAIL` (+ `BOB_TEXFAIL_EVERY=N` positive control) ·
+`BOB_COMBO_FORCE_UNANSWERED=1` (forces the unanswered-dispatch path so the guard is observable) · `BOB_BLOB_SKIP=<set>` (omit
 draws by texture — **use this, not `BOB_BLOB_TEX` hilite**) · `BOB_GLTEX_ONLY=<n>` (dump one
 texture + its alpha) · `tools/bob_blob_bisect.sh` ·
 `BOB_TRACE_SETFIELD` (settings write-back) · `BOB_TRACE_COMBO` · `BOB_TRACE_GARBAGE` ·
@@ -42,9 +43,12 @@ Navigation, measured: main menu `0`=Quick Shots `1`=Campaigns `4`=Replay `5`=PC 
 
 - **`CRCombo::GetIndex` used to return an uninitialised `long`** when no OLE host answered the
   dispatch — and `SETFIELD` writes its bits straight into `Save_Data.gamedifficulty`, so an
-  unanswered dispatch silently set or cleared real preferences. Now sentinel-detected and defaulted
-  to 0. **The 0 is damage control, not a fix** — it is a guess, kept only because deterministic
-  beats random.
+  unanswered dispatch silently set or cleared real preferences. Sentinel-detected since S289 and
+  defaulted to 0, which was recorded here as "damage control, not a fix".
+  **S310 stopped writing the guess at all.** `GetIndex` now also raises
+  `g_bob_combo_unanswered`, and the write-back skips `whatbit` when it is set: an unanswered read
+  means *no new value*, so the stored preference is the best information available.
+  `BOB_NO_COMBO_GUARD=1` restores the old always-write behaviour.
 - **A silent probe is a fact about the probe.** Three wrong conclusions this session came from
   nulls produced by instruments that were unreachable, not switched on, or comparing model-space
   coordinates against screen pixels. Give every new detector a positive control before trusting it.
@@ -243,3 +247,36 @@ The chain that closed the gap, each link a small instrument:
 A global written on one path and read on all of them will always answer, and a plausible wrong
 answer is worse than no answer here — this is the same failure as the S307 identification, in a
 different medium.
+
+
+## S310 — the combo fallback stopped being a guess
+
+S289 caught `CRCombo::GetIndex` returning stack garbage when no OLE host answered, and defaulted it
+to 0. This file has said ever since that the 0 is *damage control, not a fix*, and it was right: the
+one caller that matters is `SETFIELD`'s write-back, which takes the returned value and writes its
+**bits into `Save_Data.gamedifficulty`**. A deterministic wrong answer is still a wrong answer, and
+the preference it corrupts includes `GD_GUNCAMERAATSTART` — the one deciding whether a sortie is
+recorded at all.
+
+The fix is not a better default. There is no correct value to invent, so the write-back now **skips
+the write** when the dispatch went unanswered, and says so.
+
+### The guard had to be made observable before it could be believed
+
+In a healthy run `bob_settings_nav` reports **"combo dispatches returning stack garbage: 0"** — the
+condition never occurs, so the guard's behaviour is unobservable and indistinguishable from no guard
+at all. `BOB_COMBO_FORCE_UNANSWERED=1` forces it:
+
+| arm | unanswered | gun-camera preference (want 2) |
+|---|---|---|
+| healthy, default | 0 | **2** — gate PASSes |
+| forced fault, guard on | 20 | **none** — the write is skipped |
+| forced fault, guard off (`BOB_NO_COMBO_GUARD=1`) | — | **0** — a fabricated value stored |
+
+The third row is the point. Under the identical fault the old code writes a **0** into
+`GD_GUNCAMERAATSTART`, silently turning the gun camera off; the new code leaves the setting alone.
+That harm had been described in this file for twenty sprints and never demonstrated — it took one
+env var to turn the description into a measurement.
+
+Both forced arms make the gate go **red**, which is correct: preferences that fail to store are a
+failure, and the guard converts a silent corruption into a loud one.

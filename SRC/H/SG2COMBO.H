@@ -3,6 +3,12 @@
 //
 //
 // Redefines and reuses the macro OPTIONS to say what the list of options will do
+#if defined(BOB_LINUX)
+/* S310: set by CRCombo::GetIndex - see the write-back below. NOT `extern "C"`: this header is
+   included INSIDE function bodies (it redefines its macros and is re-included per use site), and a
+   linkage specification is only legal at namespace scope. A plain extern declaration is fine. */
+extern int g_bob_combo_unanswered;
+#endif
 // OPTIONS is a list of SETFIELD(whatbit, combo,strings,	 level)
 // The first and last SETFIELDs are specials to drive a master level control field
 // If a variable 
@@ -163,7 +169,20 @@
 	   (the combo showing "On" tells you what was DRAWN, not what was STORED). BOB_TRACE_SETFIELD=1. */\
 	if (getenv("BOB_TRACE_SETFIELD"))\
 		fprintf(stderr, "[setfield] combo id=%d -> val=%d\n", (int)(whatcombo), val);\
-	whatbit;\
+	/* S310 (bob): DO NOT WRITE A GUESS. When no OLE host answered the dispatch, GetIndex has no
+	   value to give and returns a fabricated 0 -- and `whatbit` writes that 0's bits straight into
+	   Save_Data.gamedifficulty, silently clearing real preferences including GD_GUNCAMERAATSTART,
+	   the one deciding whether a sortie records at all. The earlier fallback made that
+	   deterministic rather than random, which is better, but a deterministic wrong answer is still
+	   a wrong answer. Skip the write instead: an unanswered read means "no new value", and the
+	   stored preference is the best information available. Loud, because silently declining to
+	   write is its own trap. BOB_NO_COMBO_GUARD=1 restores the old always-write behaviour. */\
+	if (g_bob_combo_unanswered && !getenv("BOB_NO_COMBO_GUARD")) {\
+		fprintf(stderr, "[setfield] combo id=%d: NOBODY ANSWERED - preference left unchanged\n",\
+		        (int)(whatcombo));\
+	} else {\
+		whatbit;\
+	}\
 }
 
 #undef SG2C_DISPLAY

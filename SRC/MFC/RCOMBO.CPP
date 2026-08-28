@@ -237,6 +237,13 @@ void CRCombo::SetIndex(long row)
 		 row);
 }
 
+#if defined(BOB_LINUX)
+/* S310 (bob): set by CRCombo::GetIndex when the OLE dispatch went unanswered; read by SG2COMBO.H's
+   write-back. One flag suffices because the write-back reads it immediately after the call it
+   belongs to, in the same statement sequence. */
+int g_bob_combo_unanswered = 0;   /* declared in SG2COMBO.H without a linkage spec - see there */
+#endif
+
 long CRCombo::GetIndex()
 {
 	long result;
@@ -256,6 +263,18 @@ long CRCombo::GetIndex()
 	if (getenv("BOB_TRACE_COMBO"))
 		fprintf(stderr, "[combo] GetIndex -> %ld%s\n", result,
 		        result == -0x5EED ? "   *** NOBODY ANSWERED: value would have been stack garbage" : "");
+	/* S310 (bob): tell the CALLER that nobody answered, instead of only guessing for it.
+	   The 0 below is still a guess and still wrong; what was missing was any way for the one caller
+	   that matters to know it is being handed one. SETFIELD's write-back now reads this flag and
+	   SKIPS the write rather than storing a fabricated index into Save_Data -- leaving a preference
+	   alone is always defensible, inventing one never is. */
+	/* S310 POSITIVE CONTROL. The guard below only matters when a dispatch goes unanswered, and in
+	   a healthy run that never happens -- bob_settings_nav reports "combo dispatches returning
+	   stack garbage: 0". So the guard's correct behaviour is unobservable without forcing the
+	   condition, and an unobservable guard is indistinguishable from no guard at all.
+	   BOB_COMBO_FORCE_UNANSWERED=1 makes every GetIndex report unanswered. */
+	if (getenv("BOB_COMBO_FORCE_UNANSWERED")) result = -0x5EED;
+	g_bob_combo_unanswered = (result == -0x5EED) ? 1 : 0;
 	if (result == -0x5EED) result = 0;
 	return result;
 #else
