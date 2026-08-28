@@ -20,7 +20,7 @@ Last updated: 2026-08-27 (sprint 309)
 |---|---|---|
 | PO-73 | ~~Grey elliptical blob floating in the cockpit view~~ | **CLOSED (S309) — NOT A DEFECT.** It is the game's own **threat indicator**: `COverlay::DoThreat()`, texture `MskMap16/THREAT01.X8`, gated on `Save_Data.gamedifficulty[GD_HUDINSTACTIVE]`. Position and size match the source constants to within a pixel. It reads as a blank grey ellipse because it has no contacts to plot — the player is alone in this scene. **For the PO:** it is switched off with the HUD-instruments difficulty setting. |
 | — | ~~`upload_texture` may be failing silently~~ | **Closed (S306).** It no longer can: the early return counts and traces itself (`BOB_TRACE_TEXFAIL`), and a summary prints at every frame dump so zero is a measured number. |
-| R1 | Recording chain proven in two halves | **S313: the UI half now measured INSIDE the combined process** — `tools/bob_r1_continuous.sh` gets `[setfield] combo id=1075 -> val=2` in the same run that then tries to fly, so the join is no longer an inference across two processes on that side. The flight does not launch: `BOB_BOOT_FRONTEND` skips the menus entirely, and `BOB_FRONTEND`+`BOB_STARTFLYING=click` wants `BOB_AUTOCLICK` to be *only* the fly navigation while pre-flighting on a hard-coded 30-tick timer. **Next: a delay knob on that pre-flight.** |
+| R1 | Recording chain proven in two halves | **S314: pre-flight delay knob added (`BOB_STARTFLYING_DELAY`, default 30 = unchanged); still blocked, on NAVIGATION not timing.** The UI half passes inside the combined process (`[setfield] combo id=1075 -> val=2`). The delay does move the pre-flight, but `BOB_AUTOCLICK` advances **one step per screen PAINT** while the pre-flight fires on a **tick** count, so the clicks always run after it regardless — and "Continue" out of Sim Config therefore returns to **artnum 27917**, not the main menu 28937. Index 0 there is the strategic map, which segfaults. **Next: enumerate 27917's menu.** `BOB_DUMP_HITTARGETS` does NOT work here (no output — its dump sits behind a condition this path never reaches), so that needs a different instrument. |
 | — | Strategic map segfaults from the post-Sim-Config screen | Found by S313 taking a wrong menu index: `CMapDlg::InvalidateAnotherItem` → `Persons2::ConvertPtrUID` (`Persons2.cpp:251`), signal 11, fault_addr=0x4800. Different subsystem from the S310–S312 OLE work. Not investigated. |
 | — | Combat is never reached in any recipe | Known since S206: the flight consumes the wall clock the raid needs. The ACM tree remains untested code. |
 
@@ -406,3 +406,34 @@ have not run an older binary to prove that, so it is recorded as *found*, not as
 
 **Two things driving the same menus do not compose by concatenating their click lists** — and the
 failure mode is not an error but a click landing somewhere plausible.
+
+
+## S314 (bob) — R1: the blocker is navigation, not timing
+
+Added `BOB_STARTFLYING_DELAY=<ticks>` (default 30, so every existing recipe is unchanged) to push
+`BOB_STARTFLYING=click`'s pre-flight past the Sim Config trip. **It works and it does not help**,
+which is worth writing down because the hypothesis was reasonable and wrong:
+
+`BOB_AUTOCLICK` advances **one step per screen paint**; the pre-flight fires on a **tick count**.
+Those are different clocks. Delaying the pre-flight to tick 300 moves it later in wall time but the
+clicks still land after it, because the screens that pace them are painted after init either way.
+So the ordering — pre-flight, then clicks — is invariant under this knob.
+
+The consequence is unchanged: "Continue" out of Sim Config returns to **artnum 27917** rather than
+the main menu **28937**, menu indices are per-screen, and index 0 on 27917 opens the strategic map.
+
+**The strategic-map segfault reproduced a second time**, same frames:
+
+```
+Persons2::ConvertPtrUID (Persons2.cpp:251)
+CMapDlg::InvalidateAnotherItem (MapDlg.cpp:1187)
+CMIGApp::OnIdle
+```
+
+Two independent runs, so it is reproducible rather than incidental — worth its own fix regardless
+of R1.
+
+⚠️ `BOB_DUMP_HITTARGETS=1` produces **no output** on this path. Its dump is inside a block this
+configuration never reaches, so "no hit targets printed" says nothing about the screen. Anyone
+enumerating 27917 needs a different instrument — do not read the silence as "the screen has no
+menu", which is exactly the null-as-fact trap this port keeps re-learning.

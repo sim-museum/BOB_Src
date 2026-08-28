@@ -63,9 +63,11 @@ REC="$GD/VIDEOS/replay.dat"     # uppercase VIDEOS (S260)
 # screens on its own tick, so after Continue the front end was NOT on the main menu (artnum 27917,
 # not 28937) and index 0 meant something else. Menu indices are only meaningful per screen, and two
 # things driving the same menus do not compose by concatenating their click lists.
-CLICKS="6,3,#1075,#1075,6"
-# the control never touches the combo
-[ "$CONTROL" = 1 ] && CLICKS="6,3,6"
+# Sim Config -> Views -> cycle Gun Camera twice -> Continue, THEN the harness's own fly navigation
+# (it prints "use BOB_AUTOCLICK=0,1,2"). BOB_STARTFLYING_DELAY pushes the pre-flight past the
+# preference trip so the two do not interleave -- see S314 in FULLPSYS.CPP.
+CLICKS="${CLICKS:-6,3,#1075,#1075,6,0,1,2}"
+[ "$CONTROL" = 1 ] && CLICKS="6,3,6,0,1,2"
 
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running (pid $(pgrep -x bob|tr '\n' ' '))"; exit 2; }

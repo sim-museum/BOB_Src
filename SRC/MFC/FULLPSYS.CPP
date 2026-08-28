@@ -1452,7 +1452,18 @@ extern "C" void bob_frontend_tick(void)
 		   force-launches the flight screen; inc 4.2 (=click) seeds the state and lets real menu
 		   clicks drive OnSelectRlistbox -> FragFly2 -> LaunchScreen(quickmissionflight). */
 		if (!sf_preflighted) {
-			if (++sf_t < 30) return;                        /* let the prev screen settle/paint */
+			/* S314: the 30 was hard-coded, and that is what stops R1's continuous session from
+			   composing. BOB_AUTOCLICK advances one step per screen PAINT, while this pre-flight
+			   fires on a fixed TICK count -- so prepending a Sim Config trip to the click list
+			   makes the pre-flight land in the middle of it, and "Continue" then returns to a
+			   different screen (artnum 27917 with the harness, 28937 without). Menu indices are
+			   per-screen, so the trailing Quick-Shots click lands somewhere else entirely.
+			   BOB_STARTFLYING_DELAY=<ticks> pushes the pre-flight past the preference trip.
+			   Default unchanged at 30, so every existing recipe behaves exactly as before. */
+			{ static int sf_delay = -1;
+			  if (sf_delay < 0) { const char* d = getenv("BOB_STARTFLYING_DELAY");
+			                      sf_delay = (d && *d) ? atoi(d) : 30; if (sf_delay < 1) sf_delay = 1; }
+			  if (++sf_t < sf_delay) return; }          /* let the prev screen settle/paint */
 			fprintf(stderr,"[startfly] BOB_STARTFLYING=%s: pre-flight (mission %d/%d)\n", mode, sf_flights+1, totalFlights);
 			bob_startflying_preflight(clickMode, sf_flights==0);
 			sf_preflighted = true;
