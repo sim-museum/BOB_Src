@@ -70,8 +70,19 @@ REC="$GD/VIDEOS/replay.dat"     # uppercase VIDEOS (S260)
 # as exactly three items -- 0 "Back", 1 "Sim Config", 2 "Fly" -- so index 0 LEAVES the screen on the
 # first click (its onselect ran LaunchMap, which is how S314 met the S315 segfault) and 1/2 then
 # address whatever Back navigated to. Fly is index 2; click it directly.
-CLICKS="${CLICKS:-6,3,#1075,#1075,6,2}"
-[ "$CONTROL" = 1 ] && CLICKS="6,3,6,2"
+# S317: and the ROUTE was wrong too, not just the tail. BOB_DUMP_MENU=1 maps the screen graph:
+#   28937 main : 0 Quick Shots -> 27923 ... 6 Sim Config -> 27911
+#   27923      : 0 Back        1 Fly -> 27917
+#   27917      : 0 Back        1 Sim Config -> 27911      2 Fly -> flight
+# Going main -> Sim Config -> Continue LANDS on 27917 without ever passing through 27923, so no
+# quick mission is ever selected and Fly enters 3D with no player aircraft:
+#   *** FATAL: Persons3.cpp:3384 "No player A/C set up on entering 3d!"
+# Sim Config is a DETOUR off the briefing screen, not the route to it. Select the mission first,
+# then detour through Sim Config, then Fly -- which still exercises the Sim Config UI this gate
+# exists to test. (Seeding currquickmiss via the forced pre-flight arm would make the gate pass
+# while testing nothing about the menus.)
+CLICKS="${CLICKS:-0,1,1,3,#1075,#1075,6,2}"
+[ "$CONTROL" = 1 ] && CLICKS="0,1,1,3,6,2"
 
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running (pid $(pgrep -x bob|tr '\n' ' '))"; exit 2; }

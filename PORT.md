@@ -1,5 +1,52 @@
 # Rowan's Battle of Britain — Linux Native Port
 
+## 2026-08-28 — S317: R1 IS GREEN — UI preference → flight → recording, in one process
+
+```
+UI wrote GD_GUNCAMERAATSTART        val=2
+flight launched in the same process yes
+recorder armed by the preference    yes
+recording written                   181382 bytes
+PASS: UI -> preference -> flight -> recording, in one process
+```
+
+R1 was committed **RED** (S313) and kept out of `bob_gates.sh` until it could pass. It now passes,
+and it is **GATE 8**. Three real defects had to be cleared, each hiding the next:
+
+| | defect |
+|---|---|
+| **S315** | the strategic-map segfault — `pItem[SagBAND]` off a **NULL array**. The harness had been *routing around* it with a comment rather than fixing it. |
+| **S316** | "try indices 0,1,2 for Fly" clicks **Back** first on screen 27917. Fly is index 2. |
+| **S317** | the ROUTE — main → Sim Config → Continue never passes through Quick Shots, so no mission is selected and 3D entry has no player aircraft (`Persons3.cpp:3384`). |
+
+**The screen graph** (`BOB_DUMP_MENU=1`, new in S316) is what made all three legible:
+
+```
+28937 main : 0 Quick Shots -> 27923   ...   6 Sim Config -> 27911
+27923      : 0 Back                         1 Fly -> 27917
+27917      : 0 Back   1 Sim Config -> 27911  2 Fly -> flight
+```
+
+**Sim Config is a DETOUR off the briefing screen, not the route to it.** Correct list:
+`0,1,1,3,#1075,#1075,6,2`.
+
+**The negative control is real:** `CONTROL=1` flies the identical route with the gun camera never
+switched on and records **0 bytes**, against 181382 with the preference. The gate discriminates.
+
+- ⚠️ **What I deliberately did NOT do.** The forced pre-flight arm will seed `currquickmiss` /
+  `MMC.playersquadron` directly (`BOB_QM_INDEX`). Using it would have made R1 green in one line —
+  and tested **nothing about the menus**, which is the only thing R1 exists to prove.
+- ⚠️ **The 4th check was failing on a STALE MARKER, not the product.** It greps for
+  `"View3d interactive"`, printed only by `MIG.CPP`'s `BOB_BOOT_FRONTEND` scaffold — a path this
+  route never runs. The flight reached `Launch3d`, opened `replay.dat`, installed the joystick and
+  mouse mappings and recorded 181KB, and the gate still said "flight launched: NO". Fixed by
+  emitting the marker at `RTESTSH1.CPP:330` where the view ACTUALLY becomes interactive — **not**
+  by relaxing the check to `"Launch3d returned"`, which passes without interactivity.
+  ⭐ That is the **second** instrument in this one suite silent on the path that needs it
+  (`BOB_DUMP_HITTARGETS` was the first, S316). A probe wired to a route nobody takes reads as a
+  product failure.
+
+
 ## 2026-08-28 — S316: the R1 navigation blocker, answered by an instrument that runs on the path
 
 **The blocker.** `BOB_AUTOCLICK` addresses menu items by INDEX, and an index only means something on

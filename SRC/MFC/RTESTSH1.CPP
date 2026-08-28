@@ -329,6 +329,21 @@ void	Rtestsh1::Launch3d(bool flag)
 		tmpview=new View3d(tmpinst,InDialAncestor()->m_hWnd,this);
 		if (trg_uid==UID_Null)	tmpview->MakeInteractive(WinMode::WIN,*(CRect*)NULL,false,flag);
 		else					tmpview->MakeInteractive(WinMode::WIN,*(CRect*)NULL,true);
+#if BOB_LINUX
+		/* S317: say so HERE. tools/bob_r1_continuous.sh proves "the same process reached flight"
+		   by grepping for "View3d interactive" / "MakeInteractive" -- and the only place that
+		   string is printed is MIG.CPP's BOB_BOOT_FRONTEND boot scaffold, a DIFFERENT path that
+		   this route never runs. So the check could never pass however well the flight went: the
+		   run reached Launch3d, opened replay.dat, installed the joystick and mouse mappings and
+		   recorded 181424 bytes, and the gate still reported "flight launched: NO".
+		   That is the second instrument in this one gate suite that is silent on the path that
+		   needs it (BOB_DUMP_HITTARGETS was the first, see S316). The cure is to emit the marker
+		   where the flight ACTUALLY becomes interactive -- not to weaken the gate's check to
+		   something like "Launch3d returned", which would pass without the view ever going
+		   interactive at all. */
+		fprintf(stderr,"[rtestsh1] View3d interactive (MakeInteractive) inst=%p view=%p trg_uid=%d\n",
+		        (void*)tmpinst,(void*)tmpview,(int)trg_uid);
+#endif
 	}
 
 //#pragma message("RTestSh1.cpp - paused for profiling")

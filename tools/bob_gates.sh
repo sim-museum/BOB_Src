@@ -194,6 +194,20 @@ bash /home/admin/bob/tools/bob_strategic_soak.sh 2>&1 | sed 's/^/  /'
 ss=${PIPESTATUS[0]}
 if [ "$ss" = "0" ]; then echo "  strategic: PASS"; else echo "  strategic: FAIL (exit=$ss)"; gates_fail=$((gates_fail+1)); fi
 
+# -- GATE 8 (S317): R1 -- the UI's own preference arms the recorder, in ONE process ------------
+echo "### GATE 8: R1 continuous -- Sim Config -> Gun Camera -> Fly -> recording (S313-S317)"
+# Committed RED by S313 and deliberately left OUT of this suite until it could pass. It now does,
+# and three real defects had to be cleared to get there, each hiding the next: S315 (the strategic
+# map segfault -- pItem[SagBAND] off a NULL array, which this harness had been ROUTING AROUND with
+# a comment rather than fixing), S316 ("try indices 0,1,2 for Fly" clicks BACK first on screen
+# 27917; Fly is index 2), and S317 (the route itself -- main -> Sim Config -> Continue never passes
+# through Quick Shots, so no mission is selected and 3D entry has no player aircraft).
+# Has a negative control and it is REAL: CONTROL=1 flies the same route with the gun camera never
+# switched on and must record 0 bytes. Measured -- 181382 bytes with the preference, 0 without.
+bash /home/admin/bob/tools/bob_r1_continuous.sh 2>&1 | sed 's/^/  /'
+r1=${PIPESTATUS[0]}
+if [ "$r1" = "0" ]; then echo "  r1: PASS"; else echo "  r1: FAIL (exit=$r1)"; gates_fail=$((gates_fail+1)); fi
+
 if [ -n "$BASE" ] && [ -d "$BASE" ]; then
   echo "### GATE 5: A/B vs $BASE"
   python3 - "$BASE" "$OUT" <<'PY'
