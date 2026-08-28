@@ -306,3 +306,47 @@ frame. Those are different claims and this run cannot separate them.
 centre with its glTex, so suspect and evidence come from the SAME frame. Also worth checking why any
 texture reaches draw time with glTex=0 given the `if (t->texDirty || !t->glTex) upload_texture(t)`
 guard immediately above: an upload that silently fails would be a defect in its own right.
+
+## S306–S309 — PO-73 CLOSED: the blob is the game's threat indicator, working correctly
+
+This thread ended at S303 with a next step and a hypothesis, both of which were carried out. Both
+answers were no. Recording the closure here because this file is the running PO-73 log, and a log
+that stops mid-investigation reads as an open invitation to redo it — which is exactly what the
+julia-racer port lost three sprints to this week when a retraction was filed under one track and
+the rotation returned by another.
+
+**S303's "why does any texture reach draw time with glTex=0" — refuted, under a control.** The
+probe read `t->glTex` about 130 lines *before* `upload_texture` ran at bind time, so the first draw
+of every texture reported `glTex=0`, healthy ones included. Suspect and evidence came from different
+instants — the very defect S303 asked to fix. With the upload hoisted above the probe, the count of
+uploads that bail before creating a texture is **0** in the frame that contains the blob.
+That zero is a measurement, not a silence: `BOB_TEXFAIL_EVERY=N` forces the bail path and moves
+32% of the frame's pixels.
+
+**The hilite could never have answered this, and S299's negative result was uninterpretable for the
+same reason.** `BOB_BLOB_HILITE` does `glDisable(GL_TEXTURE_2D)` plus a flat colour, which discards
+the texture's **alpha** — a transparent cloud billboard paints as an *opaque* magenta rectangle. Any
+bisect built on it follows the largest transparent quad. `BOB_BLOB_SKIP` omits the draw instead,
+leaving every other draw untouched.
+
+**Identified by skip-isolation:** omitting `glTex=43` removes the ellipse and nothing else. Naming
+it needed identity to survive the deferred transparent list: `g_lib3d_map0` carries the material's
+`MAPDESC*` to the GL layer, and `BOB_TRACE_IMAGEMAP` logs every imagemap at creation with its
+`(dir,file)` and `FileNum` — resolving the blob to `ImageMapNumber=0x020d` → **`MskMap16/THREAT01.X8`**.
+That pairing rule was checked across all 241 loads before being relied on.
+
+**`THREAT01NO` appears exactly once in the source**, in `COverlay::DoThreat` (`SRC/3D/OVERLAY.CPP:7756`)
+— *"display threat indicator in the top left corner of the screen"*. Its constants predict centre
+(75.0, 71.9), 125 wide, 18.75 tall; the measured ellipse is centred (75.5, 71) on a 125x125 quad,
+21 tall. **Nothing is misplaced, mis-scaled or mis-textured.** It looks featureless because it has
+no contacts to plot — the player is alone in that scene. It is gated on
+`Save_Data.gamedifficulty[GD_HUDINSTACTIVE]`, so the PO can switch it off with the HUD-instruments
+difficulty setting.
+
+**The S307 misstep, kept because it is the useful part.** S307 named `glTex=43` "the aircraft shadow
+sprite" from the *texture's appearance* — a dark flat ellipse at 40% alpha does look like a shadow
+blob. `do_object_shad`, the only route a `SHADOW_OBJECT` takes into the draw list, is entered **0
+times**; no shadow is drawn in this scene at all. The draw had been identified by measurement and
+the *name* by inspection, and the two sat in one sentence where the second inherited the first's
+confidence. "What does this look like" and "what code puts it there" are separate questions, and
+only the second one names a defect.
