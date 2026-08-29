@@ -248,6 +248,22 @@ extern "C" void bob_ole_census(int dlgId)
 
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
+    /* R3.8: "zero hosted controls" and "hosted under a DIFFERENT parent" look identical from inside
+       the match loop below, because it only ever prints hosts that already matched. That ambiguity
+       is the whole question for the briefing pane (never populated vs populated and not drawn), so
+       report the registry TOTAL alongside the match count, once per dialog. */
+    if (getenv("BOB_TRACE_SYSBOX")) {
+        static const void* seenDlg[64]; static int nSeen = 0; int already = 0;
+        for (int k = 0; k < nSeen; k++) if (seenDlg[k] == (void*)dialog) { already = 1; break; }
+        if (!already && nSeen < 64) {
+            seenDlg[nSeen++] = (void*)dialog;
+            int match = 0, firstDlgId = -1;
+            for (auto& kv : hosts()) if (kv.second->parentDlg == dialog) {
+                match++; if (firstDlgId < 0) firstDlgId = kv.second->dlgId; }
+            fprintf(stderr, "[panel] dialog=%p dlgId=%d registry=%zu matched=%d\n",
+                    (void*)dialog, firstDlgId, hosts().size(), match);
+        }
+    }
     if (bob_ole_trace()) {
         fprintf(stderr, "[ole] draw_panel dialog=%p off=(%d,%d) hosts=%zu\n", (void*)dialog, ox, oy, hosts().size());
         for (auto& kv : hosts()) fprintf(stderr, "[ole]     host id=%d parentDlg=%p%s\n",
@@ -293,9 +309,19 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            control's position and behaviour both correct -- so the question is which id is drawing
            what, not where anything sits. */
         if (getenv("BOB_TRACE_SYSBOX")) {
-            static int seen[64], nseen = 0; int already = 0;
-            for (int k = 0; k < nseen; k++) if (seen[k] == host->ctrlId) { already = 1; break; }
-            if (!already && nseen < 64) { seen[nseen++] = host->ctrlId;
+            /* R3.8: the dedup key MUST include dlgId, and the cap must not silently swallow.
+               The first cut keyed on ctrlId alone with a 64-entry table and simply stopped
+               recording once full -- the directives grid contributes 49 ids by itself, so later
+               dialogs printed NOTHING and the briefing pane looked like it hosted zero controls.
+               It hosts 22. A trace that goes quiet when it runs out of room reports "absent" for
+               "I stopped looking". */
+            static long seen[1024]; static int nseen = 0; static int warned = 0;
+            long key = (long)host->dlgId * 100000L + host->ctrlId;
+            int already = 0;
+            for (int k = 0; k < nseen; k++) if (seen[k] == key) { already = 1; break; }
+            if (!already && nseen >= 1024 && !warned) {
+                warned = 1; fprintf(stderr, "[sysbox-ctl] TABLE FULL -- further controls NOT listed\n"); }
+            if (!already && nseen < 1024) { seen[nseen++] = key;
                 DluRect rr;
                 int haveR = lookupDluIn(host->dlgId, host->ctrlId, rr);
                 fprintf(stderr, "[sysbox-ctl] dlgId=%d ctrlId=%d visible=%d dlu=(%d,%d,%d,%d)%s\n",

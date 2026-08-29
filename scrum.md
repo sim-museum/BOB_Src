@@ -209,6 +209,20 @@ was filed (2026-08-28). Do not go looking for it. The working equivalent is `BOB
 dialog hosts: **zero rows means the list was never populated; rows present with a drawn rect means
 it is populated and mis-drawn.** Those are different fixes.
 
+⛔ **THE "ZERO CONTROLS" READING BELOW WAS AN INSTRUMENT FAULT — RETRACTED (2026-08-29).**
+`[panel] dialog=0x986e300 dlgId=? registry=59 matched=22`: the briefing pane hosts **22** controls,
+not zero. The per-control trace deduped on `ctrlId` alone into a 64-entry table and **stopped
+recording once full** — `IDD_LWDIRECTIVES` contributes 49 ids by itself, so every dialog reached
+later printed nothing and the briefing looked empty. A trace that goes quiet when it runs out of
+room reports "absent" for "I stopped looking". Fixed: key on `(dlgId,ctrlId)`, 1024 entries, and it
+now prints `TABLE FULL` rather than falling silent.
+
+**The open question is therefore back to the original one** — is `IDC_RLIST_UNITDETAILS` among those
+22 and drawn empty (population failure, `maxsquadoption == 0`), or absent from them (creation
+failure)? `BOBFRAG.CPP:225-255` is the filler: four columns (Unit/Aircraft/Duty/Callsign) then one
+row per `squadinfo.currfrag->squadoptions[i]`, `i < maxsquadoption`.
+
+_Superseded reading, kept so the mistake is not repeated:_
 ⭐ **MEASURED (2026-08-29): NEVER POPULATED, not mis-drawn.** German campaign driven to the briefing
 and STOPPED there (no `BOB_CAMPFLY_GO`, so the screen is actually up — the first attempt flew
 straight through to 3D and its empty dump proved nothing).
