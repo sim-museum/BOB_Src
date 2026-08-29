@@ -2424,6 +2424,30 @@ through a filter for pointer→integer conversions, run over ALL unity TUs (only
 use-site assessment, and any that reaches an index/count/size is fixed or has a
 recorded reason it is safe.
 
+☑ **DONE (2026-08-29).** All **98** unity TUs recompiled with `-w` swapped for `-Wall` and every
+`invalid conversion` collected. **13** in the whole tree; exactly **ONE** is pointer→integer:
+
+| site | conversion | use | verdict |
+|---|---|---|---|
+| `MFC/MainFrm.cpp:1197` | `void*` (`HTASK`) → `long unsigned int` (`DWORD`) | `CFrameWnd::OnActivateApp(bActive, hTask)` — passed straight to the base handler, never indexed or sized | **safe on i386** (both 32-bit, value preserved); revisit on any 64-bit port |
+
+The other 12 are not this bug class: six `int → Angles` (a typed-scalar constructor), two
+`int → LPCSTR` (the `MAKEINTRESOURCE` idiom), two function-pointer casts, and `long int* → int*`
+twice at `fullpsys.cpp:2377` (a pointer-to-POINTER pun, same width here — not a truncation).
+
+**So R3.7 was the only live instance of the class, and it is fixed. The tree is clean of
+pointer-as-index.**
+
+⚠️ **THE AUDIT REPORTED A CLEAN TREE TWICE BEFORE THIS, BOTH TIMES WRONGLY:**
+1. **"0 across 98 TUs"** — the grep used `.` for GCC's quote characters, which are Unicode `‘ ’`
+   (3 bytes each in UTF-8), so the pattern matched nothing at all.
+2. **"0 pointer→integer"** — the regex captured the ALIAS name (`HTASK`), which contains no `*`;
+   the pointer is visible only in the `{aka ‘void*’}` expansion.
+
+Both were caught by re-running the sweep against a TU already known to emit 6. **A zero from a wide
+audit is the most comfortable possible result and the easiest to be wrong about — run it against a
+known positive before believing its silence.**
+
 ### R5.x (PO 2026-08-28) — centre-square padlock on the "S" key
 
 PO: *"during a dogfight, imagine the forward view as a 3x3 grid. When you press the 'S' key, you
