@@ -2506,8 +2506,25 @@ the real game will literally draw it for us.
 * Enemies only, or any aircraft (the PO says "bogie", which implies unidentified/hostile)?
 * Does it re-acquire when the target leaves the cell, or hold until broken?
 
-**Which key:** `S` is not currently in `keymaps.h` as a padlock binding; the acquisition needs its
-own `KeyName`/`KeyMap` entry rather than stealing `PADLOCKTOG`'s.
+**Which key — ⚠️ CORRECTED (2026-08-29): `S` IS ALREADY TAKEN.** The original note here said "`S` is
+not currently in `keymaps.h` as a padlock binding", which was true and misleading. Measured with
+`grep -a` (plain `grep` silently skips ~46 % of this tree):
+
+```
+KeyMap(SUICIDE,       s, norm)     <-- PLAIN S IS BOUND
+KeyMap(SPINRECOVERY,  s, ShiftL)
+KeyMap(ASCII_S,       s, ShMsg)
+```
+
+So binding the centre-square padlock to plain `S` **displaces `SUICIDE`**. Three possibilities, and
+they must be told apart from the BDG patch rather than chosen:
+1. BDG rebound `S` and moved `SUICIDE` elsewhere — then match what it did;
+2. the PO's `S` carries a modifier this port has not recorded;
+3. BDG binds it only while in a padlock-capable view, so the two coexist by context.
+
+⚠️ The acquisition still needs its own `KeyName`/`KeyMap` entry rather than stealing `PADLOCKTOG`'s
+(Enter) — but "which key" is now an open question with a wrong answer already written down once.
+**Check the BDG executable's key table before assigning anything.**
 
 **Done when** pressing the bound key with a bogie in the centre cell locks the NEAREST one, pressing
 it with an empty centre cell does nothing observable, and a gate asserts BOTH arms — the empty-cell
