@@ -85,7 +85,7 @@ static void gl_bind_thread(void)
 }
 static int g_scrW = 1024, g_scrH = 768;     /* current display-mode size */
 static int g_bootW = 0, g_bootH = 0;        /* S182: the mode the window was created at */
-/* S162: the mode in force before the game first changed it — what the front end must get back
+/* S162: the mode in force before the game first changed it â what the front end must get back
    when a flight ends (the 3D view runs 800x600; the front end lays out at 1024x768). */
 static int g_origScrW = 0, g_origScrH = 0;
 static int g_traceVid = 0;
@@ -273,9 +273,9 @@ extern "C" int bob_change_display_mode(int w, int h, int test)
 
 /* S162 (user-reported QS-3): put the display back to the mode the front end uses.
    The 3D view runs 800x600; the front end lays out at 1024x768 and draws its menu row at y=710,
-   so while the framebuffer stays 800x600 that row is off the bottom — after ALT-X from a flight
+   so while the framebuffer stays 800x600 that row is off the bottom â after ALT-X from a flight
    the debrief had no reachable way back. DD_RestoreDisplayMode was a `{ return DD_OK; }` stub, but
-   fixing it was INERT: the game never calls it on this path (verified — the restore trace never
+   fixing it was INERT: the game never calls it on this path (verified â the restore trace never
    fired). So the port restores at the point it knows the front end has regained control: the
    flight-close bridge. BOB_NO_RESTORE_MODE reverts. */
 extern "C" void bob_gdi_restore_mode(void) {
@@ -1006,7 +1006,27 @@ extern "C" int bob_enum_display_mode(unsigned idx, int* w, int* h, int* bpp, int
 	int disp = 0;
 	if (g_win) { int d = SDL_GetWindowDisplayIndex(g_win); if (d >= 0) disp = d; }
 	int n = SDL_GetNumDisplayModes(disp);
-	if (n <= 0 || (int)idx >= n) return 0;
+	/* S241 (PO 2026-08-29, bob died with TwoDPref.cpp:454 "your current desktop resolution is TOO
+	   LOW to continue" on a 1920x1080 desktop): ENUM_CURRENT_SETTINGS is (DWORD)-1, and this
+	   function treated idx as a plain index. (int)idx == -1 SLIPS PAST `(int)idx >= n`, and the
+	   reversal below then asked SDL for mode `n - 1 - (-1)` == n, one past the end. So every
+	   EnumDisplaySettings(ENUM_CURRENT_SETTINGS) call failed -- and the header's stub leaves the
+	   caller's DEVMODE UNTOUCHED on failure while TWODPREF.CPP:401 ignores the return value, so
+	   `devmode.dmPelsWidth` was uninitialised STACK GARBAGE. TwoDPref:402 zeroes it only when it
+	   falls outside [512,8200]; garbage landing in 512..1023 is kept and trips the fatal at :454.
+	   That is why this was intermittent rather than constant. Answer the current/registry queries
+	   from the desktop mode, which is what Windows returns. */
+	if (idx == (unsigned)-1 || idx == (unsigned)-2) {   /* ENUM_CURRENT_SETTINGS / _REGISTRY_SETTINGS */
+		SDL_DisplayMode cur;
+		if (SDL_GetCurrentDisplayMode(disp, &cur) != 0 &&
+		    SDL_GetDesktopDisplayMode(disp, &cur) != 0) return 0;
+		if (w)   *w = cur.w;
+		if (h)   *h = cur.h;
+		if (bpp) *bpp = SDL_BITSPERPIXEL(cur.format);
+		if (hz)  *hz = cur.refresh_rate;
+		return 1;
+	}
+	if (n <= 0 || (int)idx < 0 || (int)idx >= n) return 0;
 	SDL_DisplayMode m;
 	/* ASCENDING order, because the game assumes the Windows convention. TwoDPref finds the 1024
 	   entry and then lists everything from there FORWARD (`indcount=res1024res-1; while
@@ -1339,11 +1359,11 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSurface7** out, IUnknown*) {
 	if (!out) return DDERR_INVALIDPARAMS;
 	check_surfaces("CreateSurface");
-	/* Render-to-texture (TEXTURE+3DDEVICE) — used by Lib3D's landscape detail compositing +
+	/* Render-to-texture (TEXTURE+3DDEVICE) â used by Lib3D's landscape detail compositing +
 	   the water/mirror reflection probe (CheckIfTextureCanBeRenderTarget). The FBO RTT path is
 	   now the DEFAULT (fills the airfield ground; black->green). Escape hatch BOB_NO_FBO_RTT
 	   reverts to rejecting the surface so the game takes its back-buffer fallback (no RTT),
-	   exactly as on HW that lacks RTT — kept for A/B + as a safety valve. */
+	   exactly as on HW that lacks RTT â kept for A/B + as a safety valve. */
 	if (d && (d->ddsCaps.dwCaps & DDSCAPS_TEXTURE) && (d->ddsCaps.dwCaps & DDSCAPS_3DDEVICE)) {
 		if (getenv("BOB_NO_FBO_RTT")) {
 			if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx (BOB_NO_FBO_RTT)\n",
@@ -1385,11 +1405,11 @@ static HRESULT DD_SetDisplayMode(IDirectDraw7*, DWORD w, DWORD h, DWORD, DWORD, 
 	return DD_OK;
 }
 
-/* S162 (user-reported QS-3): this was `{ return DD_OK; }` — a stub that reports SUCCESS and does
-   nothing, the same class as compat's SendMessage allowlist (§8-MA83) and the empty ON_MESSAGE
-   macros (§8-MA91). The game sets 800x600 for the 3D view and calls RestoreDisplayMode on the way
+/* S162 (user-reported QS-3): this was `{ return DD_OK; }` â a stub that reports SUCCESS and does
+   nothing, the same class as compat's SendMessage allowlist (Â§8-MA83) and the empty ON_MESSAGE
+   macros (Â§8-MA91). The game sets 800x600 for the 3D view and calls RestoreDisplayMode on the way
    out to get its front-end resolution back. Because nothing happened, the GDI framebuffer stayed
-   at 800x600 while the front end kept laying out at resw=1024 — so after ALT-X from a flight the
+   at 800x600 while the front end kept laying out at resw=1024 â so after ALT-X from a flight the
    debrief's menu row, drawn at y=710, fell entirely outside a 600-tall buffer: invisible and
    unclickable. Measured: window created 1024x768, post-flight framebuffer 800x600, menu rects
    menu[0..3] all at y=710.
@@ -2900,12 +2920,12 @@ static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEO
 				got++;
 			}
 		}
-		/* S163 (user-reported): emit POV/hat change events too. They were missing entirely — this
+		/* S163 (user-reported): emit POV/hat change events too. They were missing entirely â this
 		   loop only reported axes and buttons, so the hat state computed in GetDeviceState was
 		   never delivered through the BUFFERED path the game actually reads (see the comment
 		   above: "not immediate GetDeviceState"). Result: the X3D's hat switch did nothing,
 		   because no hat event ever reached the keymap. The immediate path was implemented and its
-		   sibling was not — the same shape as this port's other silent gaps.
+		   sibling was not â the same shape as this port's other silent gaps.
 		   dwData is the DirectInput POV angle in hundredths of a degree, 0xFFFFFFFF centred, which
 		   is what ANALOGUE.CPP's hatmaps expect (either as key events at hatkeyplace or, when the
 		   user has mapped the hat to an axis, via AX_FLAG_HATASAXIS). BOB_NO_JOY_HAT reverts. */
