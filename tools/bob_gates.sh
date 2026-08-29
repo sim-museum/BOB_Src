@@ -1,5 +1,5 @@
 #!/bin/bash
-# BoB per-sprint DoD gate suite — one gl-lock acquisition, one command.
+# BoB per-sprint DoD gate suite Ã¢ÂÂ one gl-lock acquisition, one command.
 #
 # Usage:  gl-lock tools/bob_gates.sh <outdir> [baseline-dir]
 #   <outdir>        where this run's captures go (created)
@@ -10,13 +10,13 @@
 # the previous sprint's baseline), and once when the recipes drifted from the prose that
 # documented them. Recipes live HERE, versioned, so a sprint's gate is reproducible from the repo.
 #
-# ── Gate integrity (S148/SP.19) ────────────────────────────────────────────────────────────────
+# Ã¢ÂÂÃ¢ÂÂ Gate integrity (S148/SP.19) Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 # S148's sweep came back 13/14 and the cause was not code: the gate sat in the gl-lock queue while
 # the tree was rebuilt twice, so its 14 sequential `bob` invocations straddled two binaries and one
 # recipe was captured mid-swap. Two innocent explanations were available for the differing frame
 # (live device state; this port's run-to-run variance class) and both would have been comfortable
 # to write down. **A gate whose inputs can change under it is not a gate.** So: hash the binary
-# before and after, and fail loudly if it moved. Treat "queued" as "running" — do not touch the
+# before and after, and fail loudly if it moved. Treat "queued" as "running" Ã¢ÂÂ do not touch the
 # tree once this is submitted.
 set -u
 
@@ -79,7 +79,7 @@ run bobfrag       120 BOB_BOBFRAG=1
 if [ "$g1_fail" -eq 0 ]; then echo "  GATE 1: PASS (14/14 clean exits, no crash banners)"
 else echo "  GATE 1: FAIL ($g1_fail of 14 recipes crashed or exited non-zero)"; fi
 
-# ── GATE 1c (S165): the game's own confirmation box answers what the player clicked ────────────
+# Ã¢ÂÂÃ¢ÂÂ GATE 1c (S165): the game's own confirmation box answers what the player clicked Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 # CDialog::DoModal was `return -1` and EndDialog a no-op, so RDialog::RMessageBox always reported
 # the same answer -- and CMainFrame::OnBye reads `rv<2` as "quit", so the game left a campaign
 # without ever showing the Save/Yes/Cancel it was written to show. There is no headless trigger for
@@ -141,7 +141,7 @@ except Exception as e:
     print(f"  flight measure failed: {e}")
 PY
 
-# ── GATE 4b (S173v): terrain tiles must not come out black ─────────────────────────────────────
+# Ã¢ÂÂÃ¢ÂÂ GATE 4b (S173v): terrain tiles must not come out black Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 # BOB-PO-2 was a D3D->GL viewport origin that was never flipped: correct for a full-size viewport
 # and wrong for every smaller one, so the landscape tile compositor read its scratch target's
 # top-left corner while GL had rendered into the bottom-left, and 64x64/128x128 tiles uploaded
@@ -154,8 +154,8 @@ tb=$(cd "$GD" && timeout -k 5 400 env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_QM_INDE
       BOB_DUMP_PATH=/dev/null BOB_EXIT_AFTER_DUMP=1 "$BOB" 2>&1 |
       grep -a "quads: blackTex=" | tail -1 | sed "s/.*blackTex=\\([0-9]*\\).*/\\1/")
 if [ -z "$tb" ]; then echo "  blackTex: NO SAMPLE (run failed?)"
-elif [ "$tb" = "0" ]; then echo "  blackTex=0 — PASS"
-else echo "  blackTex=$tb — FAIL (expected 0; terrain tiles are uploading black)"; fi
+elif [ "$tb" = "0" ]; then echo "  blackTex=0 Ã¢ÂÂ PASS"
+else echo "  blackTex=$tb Ã¢ÂÂ FAIL (expected 0; terrain tiles are uploading black)"; fi
 
 # S196: the German Convoys campaign, end to end. It belongs in the DoD set because S192-S195
 # established that EVERY gate above passed while that campaign was broken -- the front end, the
@@ -229,6 +229,27 @@ print(f"  {ident}/{len(names)} byte-identical")
 PY
 fi
 
+# ---- R11: ACMI export orientation (S276/S327) -----------------------------------------------
+# Offline and displayless: reads whatever .acmi this run (or a previous one) produced and asserts
+# the Tacview CONVENTION, not merely internal consistency. The yaw-sense bug passed every
+# self-consistency check ever run against it, because yaw and course share the convention.
+echo "### GATE R11: ACMI export orientation"
+# ONLY the live export. VIDEOS/*.acmi are an ARCHIVE and every one predates S276, so scanning
+# them would leave this gate permanently red -- which trains the reader to ignore it.
+_acmi=""
+[ -f "$GD/acmi_current.txt" ] && _acmi="$GD/acmi_current.txt"
+if [ -z "$_acmi" ]; then
+  echo "###   SKIP: no .acmi produced -- nothing to check (fly a sortie with BOB_ACMI unset/on)"
+else
+  if "$(dirname "$0")/bob_acmi_orientation.sh" $_acmi; then
+    echo "###   R11 PASS"
+  else
+    _r=$?
+    if [ "$_r" -eq 2 ]; then echo "###   R11 INCONCLUSIVE (no east-west leg in these sorties)"
+    else echo "###   R11 FAIL -- yaw convention regressed"; gates_fail=$((gates_fail+1)); fi
+  fi
+fi
+
 HASH_AFTER=$(md5sum "$BOB" | cut -d' ' -f1)
 if [ "$HASH_BEFORE" != "$HASH_AFTER" ]; then
   echo "### !!! GATE INVALID: the binary CHANGED during this run"
@@ -238,11 +259,11 @@ if [ "$HASH_BEFORE" != "$HASH_AFTER" ]; then
   echo "### DONE (INVALID)"
   exit 2
 fi
-echo "### binary unchanged (md5=$HASH_AFTER) — gate valid"
+echo "### binary unchanged (md5=$HASH_AFTER) Ã¢ÂÂ gate valid"
 # S199: one line that says whether ANY run in this file crashed or exited non-zero. Without it
 # the outcome of every run was printed and never judged, so a crashed recipe looked like a
 # passing one unless a human read the numbers.
 if [ "$gates_fail" -eq 0 ]; then echo "### RUNS: all clean (no crashes, no non-zero exits)"
-else echo "### RUNS: $gates_fail run(s) CRASHED or exited non-zero — see the notes above"; fi
+else echo "### RUNS: $gates_fail run(s) CRASHED or exited non-zero Ã¢ÂÂ see the notes above"; fi
 echo "### DONE"
 [ "$gates_fail" -eq 0 ] || exit 1
