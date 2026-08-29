@@ -2499,6 +2499,49 @@ settles, by measurement rather than by choice, the questions this entry lists be
 Do this BEFORE writing any geometry. Gold-standard behaviour is what the real game does, and here
 the real game will literally draw it for us.
 
+#### R5.x-S1 (2026-08-29) — the oracle RUNS. Recipe recorded; one obstacle left before the capture.
+
+**The BDG build launches under Wine and reaches its own window.** Two things had to be got right,
+neither obvious, both now written down so the next attempt starts here instead of rediscovering them:
+
+1. **The system `wine` cannot run it.** `wine-10.0` is a 64-bit loader and the prefix is 32-bit:
+   `wine: '/home/admin/sgl/TUE/BattleOfBritain/WP' is a 32-bit installation, it cannot support
+   64-bit applications.` Use a 32-bit loader from Lutris —
+   `/home/admin/.local/share/lutris/runners/wine/lutris-8.0-x86_64/bin/wine` — with `WINEARCH=win32`.
+2. **Wine's Mono installer blocks the launch.** Suppress it with
+   `WINEDLLOVERRIDES="mscoree=d;mshtml=d"`, else a `Wine Mono Installer` window takes the session
+   and `bob.exe` never gets there.
+
+Working command:
+
+```bash
+cd "$GD" && DISPLAY=:0 WINEPREFIX=/home/admin/sgl/TUE/BattleOfBritain/WP WINEARCH=win32 \
+  WINEDEBUG=-all WINEDLLOVERRIDES="mscoree=d;mshtml=d" \
+  /home/admin/.local/share/lutris/runners/wine/lutris-8.0-x86_64/bin/wine bob.exe
+```
+
+With that, `bob.exe` runs indefinitely (killed only by `timeout`) and creates a **fullscreen
+1920x1080 window titled `BoB` at (0,0)**.
+
+**`DRAW_PADLOCK_CENTER_BOX` is now `ON`** in the install's `bdg.txt` (line 58), backup at
+`/tmp/bdg.txt.backup-162307`. It was `OFF`. **Left ON deliberately** so the capture can be taken
+without re-editing; restore from the backup if the PO wants the shipped config back.
+
+⚠️ **BLOCKER — a modal sits BEHIND the fullscreen window.** On first run the imported-settings
+dialog appears: *"Your pre-BDG 0.96 configuration file has been imported."* (279x101 at 854,505).
+It is in the window tree but **obscured by the fullscreen `BoB` window**, so it cannot be seen or
+clicked: `xdotool` `Return` and a synthetic click at its OK position both left it standing, and an
+`x11grab` of its rectangle returns the game's black, not the dialog. Until it is dismissed the
+front-end does not proceed.
+**Next attempt should try, in order:** run the game WINDOWED (a BDG/`bdg.txt` or registry setting)
+so the modal is reachable; or `xdotool windowraise` the dialog before clicking; or dismiss it once
+by hand — it is a first-run-only dialog, so one manual OK likely clears it for every later run.
+
+**Still outstanding, unchanged:** capture the drawn box at TWO different FOVs (a 1/3x1/3 grid cell
+scales with FOV, an angular cone does not) and measure its extent in pixels against the viewport.
+No geometry should be written before that pair of screenshots exists.
+
+
 ⛔ **NOT DONE BY ME, DELIBERATELY — THIS ONE NEEDS THE PO (2026-08-29).** The measurement means
 editing `bdg.txt` in the PO's own Battle of Britain install and then RUNNING the BDG 0.99 build under
 Wine. That is their game directory: the run can rewrite `settings.cfg` (S151 records that this build
