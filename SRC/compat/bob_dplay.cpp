@@ -49,7 +49,11 @@
 
 static int dp_trace(void) { static int t = -1; if (t < 0) t = getenv("BOB_TRACE_DPLAY") ? 1 : 0; return t; }
 #define DPT(...) do { if (dp_trace()) { fprintf(stderr, "[dplay] " __VA_ARGS__); } } while (0)
-#define UNIMPL(n) do { if (dp_trace()) fprintf(stderr, "[dplay] %s: not implemented yet\n", (n)); } while (0)
+/* R6.4: log each unimplemented method ONCE. The first host run produced a 24.7-MILLION-line log
+   because the game calls SendEx every frame once a session is live -- a per-call trace turns a
+   useful "the next blocker names itself" signal into an unreadable flood, and fills the disk. */
+#define UNIMPL(n) do { if (dp_trace()) { static int _once = 0; \
+        if (!_once) { _once = 1; fprintf(stderr, "[dplay] %s: not implemented yet\n", (n)); } } } while (0)
 
 static int dp_port(void) { const char* e = getenv("BOB_DPLAY_PORT"); int p = e ? atoi(e) : 0; return p > 0 ? p : 47624; }
 static const char* dp_host(void) { const char* e = getenv("BOB_DPLAY_HOST"); return (e && *e) ? e : "127.0.0.1"; }
@@ -75,6 +79,7 @@ class BobDPlay4 : public IDirectPlay4
     DPID nextPid;
     DPID myPid;
     DPID assignedPid;      /* R6.3: what the host gave us (client side); 0 until it answers */
+    DPID groups[8]; int gmembers[8]; DPID gplayers[8][8]; int ngroups;   /* R6.4 */
     struct sockaddr_in peer; /* host: last client seen. client: the host. */
     int  havePeer;
     char sessName[128];
@@ -150,7 +155,7 @@ class BobDPlay4 : public IDirectPlay4
     }
 public:
     BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0), assignedPid(0),
-                  havePeer(0), qh(0), qt(0) {
+                  havePeer(0), ngroups(0), qh(0), qt(0) {
         memset(&peer, 0, sizeof(peer)); memset(sessName, 0, sizeof(sessName));
         memset(&sessGuid, 0, sizeof(sessGuid));
     }
@@ -290,6 +295,57 @@ public:
     HRESULT STDMETHODCALLTYPE GetMessageCount(DPID, LPDWORD n) override {
         pump(); if (n) *n = (DWORD)qcount(); return DP_OK;
     }
+    /* R6.4: GROUPS. The game creates a group immediately after Open(CREATE) -- the trace named
+       CreateGroup as the next stop, which is what the per-method logging is for. For a session
+       this size a group is just an id plus a membership list; the Aggrgtor addresses traffic by
+       PLAYER id, so group routing is not on the packet path yet. Implemented as real bookkeeping
+       rather than DP_OK-and-forget, so EnumGroups/EnumGroupPlayers can answer truthfully. */
+    HRESULT STDMETHODCALLTYPE CreateGroup(LPDPID pid, LPDPNAME nm, LPVOID, DWORD, DWORD) override {
+        DPID g = nextPid++;
+        if (pid) *pid = g;
+        if (ngroups < 8) { groups[ngroups] = g; gmembers[ngroups] = 0; ngroups++; }
+        DPT("CreateGroup \"%s\" -> gid %u\n",
+            (nm && nm->lpszShortNameA) ? nm->lpszShortNameA : "(unnamed)", (unsigned)g);
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE DestroyGroup(DPID g) override { DPT("DestroyGroup %u\n", (unsigned)g); return DP_OK; }
+    HRESULT STDMETHODCALLTYPE AddPlayerToGroup(DPID g, DPID p) override {
+        for (int i = 0; i < ngroups; i++)
+            if (groups[i] == g && gmembers[i] < 8) { gplayers[i][gmembers[i]++] = p; break; }
+        DPT("AddPlayerToGroup player %u -> group %u\n", (unsigned)p, (unsigned)g);
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE DeletePlayerFromGroup(DPID g, DPID p) override {
+        DPT("DeletePlayerFromGroup %u from %u\n", (unsigned)p, (unsigned)g); return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE SetGroupData(DPID, LPVOID, DWORD, DWORD) override { return DP_OK; }
+    HRESULT STDMETHODCALLTYPE GetGroupData(DPID, LPVOID, LPDWORD sz, DWORD) override {
+        if (sz) *sz = 0; return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE SetGroupName(DPID, LPDPNAME, DWORD) override { return DP_OK; }
+    HRESULT STDMETHODCALLTYPE GetGroupName(DPID, LPVOID, LPDWORD sz) override {
+        if (sz) *sz = 0; return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE EnumGroups(LPGUID, LPDPENUMPLAYERSCALLBACK2 cb, LPVOID ctx, DWORD) override {
+        DPT("EnumGroups -> %d\n", ngroups);
+        if (cb) for (int i = 0; i < ngroups; i++) {
+            DPNAME nm; memset(&nm, 0, sizeof(nm)); nm.dwSize = sizeof(nm);
+            if (!cb(groups[i], 0, &nm, 0, ctx)) break;
+        }
+        return DP_OK;
+    }
+    HRESULT STDMETHODCALLTYPE EnumGroupPlayers(DPID g, LPGUID, LPDPENUMPLAYERSCALLBACK2 cb,
+                                               LPVOID ctx, DWORD) override {
+        for (int i = 0; i < ngroups; i++) if (groups[i] == g) {
+            DPT("EnumGroupPlayers group %u -> %d\n", (unsigned)g, gmembers[i]);
+            if (cb) for (int k = 0; k < gmembers[i]; k++) {
+                DPNAME nm; memset(&nm, 0, sizeof(nm)); nm.dwSize = sizeof(nm);
+                if (!cb(gplayers[i][k], 0, &nm, 0, ctx)) break;
+            }
+            break;
+        }
+        return DP_OK;
+    }
     HRESULT STDMETHODCALLTYPE CancelMessage(DWORD, DWORD) override { return DP_OK; }
     HRESULT STDMETHODCALLTYPE GetCaps(LPDPCAPS c, DWORD) override {
         if (c) { DWORD sz = c->dwSize ? c->dwSize : sizeof(DPCAPS); memset(c, 0, sz); c->dwSize = sz;
@@ -312,70 +368,12 @@ public:
         return DP_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE AddPlayerToGroup(DPID a0, DPID a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("AddPlayerToGroup");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE CreateGroup(LPDPID a0, LPDPNAME a1, LPVOID a2, DWORD a3, DWORD a4) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        UNIMPL("CreateGroup");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE DeletePlayerFromGroup(DPID a0, DPID a1) override {
-        (void)a0;
-        (void)a1;
-        UNIMPL("DeletePlayerFromGroup");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE DestroyGroup(DPID a0) override {
-        (void)a0;
-        UNIMPL("DestroyGroup");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE EnumGroupPlayers(DPID a0, LPGUID a1, LPDPENUMPLAYERSCALLBACK2 a2, LPVOID a3, DWORD a4) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        UNIMPL("EnumGroupPlayers");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE EnumGroups(LPGUID a0, LPDPENUMPLAYERSCALLBACK2 a1, LPVOID a2, DWORD a3) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        UNIMPL("EnumGroups");
-        return DPERR_UNSUPPORTED;
-    }
     HRESULT STDMETHODCALLTYPE EnumPlayers(LPGUID a0, LPDPENUMPLAYERSCALLBACK2 a1, LPVOID a2, DWORD a3) override {
         (void)a0;
         (void)a1;
         (void)a2;
         (void)a3;
         UNIMPL("EnumPlayers");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE GetGroupData(DPID a0, LPVOID a1, LPDWORD a2, DWORD a3) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        UNIMPL("GetGroupData");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE GetGroupName(DPID a0, LPVOID a1, LPDWORD a2) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        UNIMPL("GetGroupName");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE GetPlayerAddress(DPID a0, LPVOID a1, LPDWORD a2) override {
@@ -410,21 +408,6 @@ public:
     HRESULT STDMETHODCALLTYPE Initialize(LPGUID a0) override {
         (void)a0;
         UNIMPL("Initialize");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE SetGroupData(DPID a0, LPVOID a1, DWORD a2, DWORD a3) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        UNIMPL("SetGroupData");
-        return DPERR_UNSUPPORTED;
-    }
-    HRESULT STDMETHODCALLTYPE SetGroupName(DPID a0, LPDPNAME a1, DWORD a2) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        UNIMPL("SetGroupName");
         return DPERR_UNSUPPORTED;
     }
     HRESULT STDMETHODCALLTYPE SetPlayerData(DPID a0, LPVOID a1, DWORD a2, DWORD a3) override {
@@ -548,18 +531,13 @@ public:
         UNIMPL("SetGroupOwner");
         return DPERR_UNSUPPORTED;
     }
-    HRESULT STDMETHODCALLTYPE SendEx(DPID a0, DPID a1, DWORD a2, LPVOID a3, DWORD a4, DWORD a5, DWORD a6, LPVOID a7, LPDWORD a8) override {
-        (void)a0;
-        (void)a1;
-        (void)a2;
-        (void)a3;
-        (void)a4;
-        (void)a5;
-        (void)a6;
-        (void)a7;
-        (void)a8;
-        UNIMPL("SendEx");
-        return DPERR_UNSUPPORTED;
+    /* R6.4: SendEx is Send with async/priority/timeout extras the game does not depend on here.
+       The session goes live and the game sends every frame through it, so this is on the hot path:
+       forward to the same datagram send rather than duplicating it. */
+    HRESULT STDMETHODCALLTYPE SendEx(DPID from, DPID to, DWORD flags, LPVOID data, DWORD len,
+                                     DWORD, DWORD, LPVOID, LPDWORD msgid) override {
+        if (msgid) *msgid = 0;
+        return Send(from, to, flags, data, len);
     }
     HRESULT STDMETHODCALLTYPE GetMessageQueue(DPID a0, DPID a1, DWORD a2, LPDWORD a3, LPDWORD a4) override {
         (void)a0;
