@@ -2453,14 +2453,19 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	     (b) t && !t->glTex  -> texturing ENABLED bound to texture 0 (upload produced nothing),
 	                            so GL samples white. This is the quiet one.
 	   Keyed per surface: a per-call trace here once wrote 24.7 M lines and starved the run. */
-	if (getenv("BOB_TRACE_GREY") && !is2D && (!t || !t->glTex)) {
+	/* 2D-FLAGGED DRAWS COUNT TOO. The first cut filtered `!is2D`, on the assumption that a square
+	   floating in the 3D view must be 3D geometry. It need not be: an RTT blit or an overlay quad
+	   carries BFVF_XYZRHW and would have been excluded from the very trace meant to find it. A
+	   10-minute real-GL campaign flight reported 0 untextured draws under that filter, which is
+	   only evidence about the half it was looking at. Keyed per surface, so widening cannot flood. */
+	if (getenv("BOB_TRACE_GREY") && (!t || !t->glTex)) {
 		static const void* gseen[64]; static int gn=0; static int gfull=0; int already=0;
 		for (int k=0;k<gn;k++) if (gseen[k]==(const void*)t) { already=1; break; }
 		if (!already) {
 			if (gn<64) { gseen[gn++]=(const void*)t;
-				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx\n",
+				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx is2D=%d\n",
 					t? "texture 0 (upload produced no GL texture)" : "NO texture (texturing disabled)",
-					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf);
+					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf, is2D);
 			} else if (!gfull) { gfull=1; fprintf(stderr,"[grey] TABLE FULL -- further untextured draws NOT listed\n"); }
 		}
 	}
@@ -2552,7 +2557,7 @@ static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE pr
 	   Report both, keyed per surface so a per-frame draw cannot flood the log -- BOB_TRACE_UNIMPL
 	   once wrote 24.7 million lines by tracing per call, which made the log useless AND starved the
 	   run. BOB_TRACE_GREY=1. */
-	if (getenv("BOB_TRACE_GREY") && !is2D) {
+	if (getenv("BOB_TRACE_GREY")) {   /* 2D-flagged draws included -- see the note in draw_fvf */
 		static const void* seen[64]; static int nseen=0; static int flooded=0;
 		const void* key = (const void*)t;
 		if (!t || !t->glTex) {
