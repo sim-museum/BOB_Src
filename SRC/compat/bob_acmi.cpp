@@ -25,6 +25,8 @@ static FILE* g_acmi = 0;
 static char  g_acmi_path[512];
 static int   g_acmi_objects = 0;
 static double g_acmi_lastT = -1.0;
+static unsigned long g_acmi_base = 0;
+static long          g_acmi_lastRaw = -1;
 
 /* Theatre origin. BoB's map is flat and local; one reference point anchors the whole file.
    Roughly Seoul -- the exact value only shifts where Tacview draws the map under the track, and
@@ -45,6 +47,7 @@ int bob_acmi_begin(const char* title)
     if (!bob_acmi_enabled()) return 0;
     if (g_acmi) { fclose(g_acmi); g_acmi = 0; }
     g_acmi_objects = 0; g_acmi_lastT = -1.0;
+    g_acmi_base = 0; g_acmi_lastRaw = -1;   /* S275: new recording, new clock */
     snprintf(g_acmi_path, sizeof(g_acmi_path), "%s", "acmi_current.txt");
     g_acmi = fopen(g_acmi_path, "wb");
     if (!g_acmi) return 0;
@@ -65,12 +68,35 @@ int bob_acmi_begin(const char* title)
 
 /* Advance the timeline. ACMI requires time markers to be MONOTONIC; emit one only when the time
    actually moves forward, so a repeated or stale call cannot corrupt the file. */
+/* S275 (PO 2026-08-29: "tacview file works! But very short" -- 20.40 s of a full dogfight).
+   REPLAY.CPP fed this `replayframecount / hz`, and replayframecount RESETS EVERY BLOCK
+   (`#define FRAMESINBLOCK 512`, REPLAY.CPP:106, wrapped at :556). At the first wrap the timestamp
+   jumped back to 0, the `seconds <= g_acmi_lastT` guard below returned 0, and the caller's
+   `goto acmi_done` then skipped EVERY remaining sample -- so recording stopped dead at
+   512/25 = 20.48 s and never resumed. That is exactly the length the PO got, and it is the same
+   defect as MA's PO-79 in the same engine.
+   A free-running counter would NOT do: S274 established that StoreDeltas runs ~7.7x per
+   replayframecount advance, and duplicate suppression depends on the raw counter STAYING PUT
+   across those redundant calls. Incrementing per call would restore the ~7.7x bloat that made a
+   sortie 57 MB. So keep the raw counter as the de-duplication key and only lift it past each wrap.
+   BOB_ACMI_BLOCKCLOCK=1 restores the old behaviour for an A/B. */
+unsigned long bob_acmi_frame_monotonic(unsigned long raw)
+{
+    if (g_acmi_lastRaw >= 0 && (long)raw < g_acmi_lastRaw)
+        g_acmi_base += (unsigned long)(g_acmi_lastRaw + 1);   /* a block wrapped */
+    g_acmi_lastRaw = (long)raw;
+    return g_acmi_base + raw;
+}
+
 int bob_acmi_time(double seconds)
 {
     if (!g_acmi) return 0;
     if (seconds <= g_acmi_lastT) return 0;   /* S274: caller uses this to skip duplicate samples */
     fprintf(g_acmi, "#%.2f\r\n", seconds);
     g_acmi_lastT = seconds;
+    /* S275b: the PO's first export ended mid-record because the process still held unflushed
+       stdio. Bound the loss to about a second of track rather than a whole buffer. */
+    { static int n = 0; if (++n >= 25) { n = 0; fflush(g_acmi); } }
     return 1;
 }
 
@@ -102,7 +128,7 @@ void bob_acmi_object_ias(unsigned long id, double u, double v, double alt,
        the authoritative spherical position and U/V are supplementary. With both blank every object
        stayed pinned at the reference origin for the whole recording while its attitude and altitude
        kept updating.
-       ⭐ THE PO DIAGNOSED THIS FROM THE PICTURE, and the report is worth preserving because of how
+       Ã¢Â­Â THE PO DIAGNOSED THIS FROM THE PICTURE, and the report is worth preserving because of how
        precise it was: "each aircraft seems constrained to stay at the same X,Y location - it can
        rotate and move up and down, but not translate in the X-Y plane". That splits the transform
        exactly along the line between the fields written into non-Lon/Lat slots (Alt, Roll, Pitch,
