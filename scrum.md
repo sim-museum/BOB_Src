@@ -2499,6 +2499,17 @@ settles, by measurement rather than by choice, the questions this entry lists be
 Do this BEFORE writing any geometry. Gold-standard behaviour is what the real game does, and here
 the real game will literally draw it for us.
 
+◐ **CONFIG READ (2026-08-29): `bdg.txt` carries NO dimensions for the box — only the on/off flag.**
+113 lines; the padlock entries are all boolean (`DRAW_PADLOCK_CENTER_BOX`, `BOB_PADLOCKFIX`,
+`PADLOCK_OVERRIDES_TRACKIR`, `NO_HEAD_BOBBING_WHILE_PADLOCK`). The geometry is compiled into the
+patch, so **draw-and-measure is the only route short of disassembly** — which is what the plan above
+already says, now confirmed rather than assumed.
+
+⚠️ **DO NOT MISTAKE `EPI_RADIUS = 50.0` / `EPI_Y_RADIUS = 10.0` FOR THE BOX.** They sit two lines
+away in the same numeric block and look exactly like an acquisition region. They belong to
+`ENEMY_POSITION_INDICATOR` (line 56), a different aid entirely. Anyone skimming for "the padlock
+numbers" will find these first and they are the wrong ones.
+
 **Open questions to settle from the patch, not by choice:**
 * Is the cell exactly 1/3 x 1/3 of the view, or an angular cone (e.g. ±10 deg)? A grid cell scales
   with FOV; a cone does not. These differ a lot at the FOV extremes.
