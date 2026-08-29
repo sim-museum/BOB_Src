@@ -296,6 +296,24 @@ bool DPlay::UIGetSessionListUpdate ()
 			(DWORD)(DPENUMSESSIONS_AVAILABLE|DPENUMSESSIONS_ASYNC)
 			);
 
+#if defined(BOB_LINUX)
+	/* R7.1: report what the JOIN screen will actually offer. The UI path is plumbed end to end
+	   (GetSessions -> UIGetSessionListUpdate -> EnumSessions -> EnumSessionsCallback -> SessionList)
+	   but nothing has ever observed the RESULT, and a Join screen renders identically whether the
+	   list holds one entry or none -- the "painted but inert" failure S82 booked for the front end.
+	   So a gate must assert on the list CONTENTS, and this is what lets it. */
+	if (getenv("BOB_TRACE_SESSIONS")) {
+		int n = 0;
+		for (LPENUMSESSION e = SessionList; e; e = e->Next) {
+			fprintf(stderr, "[sessions] %d: \"%s\"\n", n, e->sname ? e->sname : "(null)");
+			n++;
+		}
+		fprintf(stderr, "[sessions] UIGetSessionListUpdate -> %d session(s), res=%s\n",
+		        n, res == DP_OK ? "DP_OK" : "FAIL");
+		fflush(stderr);
+	}
+#endif
+
 	if (res!=DP_OK) 
 		return false;
 
