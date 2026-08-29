@@ -236,6 +236,14 @@ BOOL BoBFrag::OnInitDialog()
 	rlistbox->AddString(RESSTRING(DUTY),2);
 	rlistbox->AddString(RESSTRING(CALLSIGN),3);
 
+	/* R3.8: the list is created, hosted, visible and drawn at dlu=(5,42,449,86) -- measured -- and
+	   the PO sees it empty. So the question is this loop's bound. Report it, and the rows actually
+	   added, rather than inferring either. */
+	if (getenv("BOB_TRACE_FRAGLIST"))
+		fprintf(stderr, "[fraglist] maxsquadoption=%d currsquadoption=%d side=%d\n",
+		        squadinfo.currfrag->maxsquadoption, squadinfo.currfrag->currsquadoption,
+		        GetSideAndSetFrag());
+
 	CString string;
 //DEADCODE AMM 03/03/00 	Gruppen* mystfl=Node_Data[squadinfo.currfrag->squadoptions[0].squadnum];	//RDH 28/02/00
 //DEADCODE AMM 03/03/00 	int gruppennum = mystfl->gruppennum;
@@ -275,6 +283,14 @@ BOOL BoBFrag::OnInitDialog()
 			string.LoadString(squadinfo.currfrag->squadoptions[i].somesortofduty);	//RDH 23/03/00
 			rlistbox->AddString(string,2);
 			rlistbox->AddString(mystfl->CallName() ,3);		
+			/* R3.8: the list is created, hosted, visible, drawn at dlu=(5,42,449,86) and this loop
+			   runs maxsquadoption=7 times adding 4 strings each -- all measured. So if the PO sees
+			   nothing, the STRINGS are the remaining candidate. CString::LoadString is properly
+			   backed by the PE resource loader, so this cannot be settled by reading code. */
+			if (getenv("BOB_TRACE_FRAGLIST"))
+				fprintf(stderr, "[fragrow] %d: unit='%s' ac='%s' duty='%s' call='%s'\n", i,
+				        (LPCTSTR)name, (LPCTSTR)RESLIST(SPIT_A, mystfl->AcType()),
+				        (LPCTSTR)string, (LPCTSTR)mystfl->CallName());
 		}
 	}
 	

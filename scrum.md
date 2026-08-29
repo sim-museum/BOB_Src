@@ -222,8 +222,36 @@ now prints `TABLE FULL` rather than falling silent.
 failure)? `BOBFRAG.CPP:225-255` is the filler: four columns (Unit/Aircraft/Duty/Callsign) then one
 row per `squadinfo.currfrag->squadoptions[i]`, `i < maxsquadoption`.
 
-_Superseded reading, kept so the mistake is not repeated:_
-⭐ **MEASURED (2026-08-29): NEVER POPULATED, not mis-drawn.** German campaign driven to the briefing
+⭐ **ANSWERED (2026-08-29): THE LIST IS FULLY POPULATED WITH CORRECT DATA. THE DEFECT IS IN
+PAINTING THE ROWS.** Every link in the chain measured good:
+
+| link | evidence |
+|---|---|
+| created & hosted | `[sysbox-ctl] dlgId=1164 ctrlId=1481` (`IDC_RLIST_UNITDETAILS` on `IDD_BOBFRAG`) |
+| visible | `visible=1` |
+| drawn with a real rect | `dlu=(5,42,449,86)` |
+| fill loop runs | `[fraglist] maxsquadoption=7 currsquadoption=0 side=1` |
+| rows carry real data | `[fragrow] 0: unit='S1/III (7)' ac='Ju87' duty='Dive Bomb' call=' Checkerboard III'` … `4: unit='J3/I (1)' ac='Me109' duty='High' call=' Panther I'` |
+| `CString::LoadString` | properly backed by the PE resource loader (`cstring_impl.cpp:571`) |
+
+Seven squadron options with correct units, aircraft types, duties and callsigns are added to a
+visible, drawn listbox — and the PO sees an empty panel. **So look at how the RListBox host PAINTS
+its rows**, not at the campaign data:
+* `bob_ole_draw_panel` clips each control to its own rect before `host->draw()` — check the DLU→px
+  conversion for a 449-wide control on this pane (a wrong `pxPer100` would clip the rows away);
+* row text colour vs the panel art behind it;
+* whether the host's row renderer draws the header row only.
+
+⚠️ **NOT the same defect as R3.6.** That one has correct data and correct geometry with VISIBILITY
+as the surviving suspect; this one has correct data and a drawn control with ROW PAINTING as the
+surviving suspect. Two "missing UI content" reports, two different mechanisms — do not fix one and
+assume the other follows.
+
+_Two superseded readings, kept so the mistakes are not repeated:_
+_(1) "the briefing hosts zero controls" — a truncated trace, retracted above._
+_(2) the conclusion that followed from it:_
+⭐ ~~**MEASURED (2026-08-29): NEVER POPULATED, not mis-drawn.**~~ — wrong twice over: it was right
+about "not mis-drawn" only by luck, and it is now measured to be exactly backwards. German campaign driven to the briefing
 and STOPPED there (no `BOB_CAMPFLY_GO`, so the screen is actually up — the first attempt flew
 straight through to 3D and its empty dump proved nothing).
 
