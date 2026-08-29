@@ -286,6 +286,23 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             if (dead) { host->sw = host->sh = 0; continue; }
         }
         if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; continue; }
+        /* R3.6: name the controls the sysbox actually hosts. BOB_TRACE_OLE dumps every control of
+           every dialog per frame (85 spinners once wrote 70 MB and starved a run), so it cannot be
+           used to answer a question about ONE panel. This prints one line per control for one
+           dialog. The PO reports two CAMPAIGN icons where the "X" exit icon belongs, with the
+           control's position and behaviour both correct -- so the question is which id is drawing
+           what, not where anything sits. */
+        if (getenv("BOB_TRACE_SYSBOX")) {
+            static int seen[64], nseen = 0; int already = 0;
+            for (int k = 0; k < nseen; k++) if (seen[k] == host->ctrlId) { already = 1; break; }
+            if (!already && nseen < 64) { seen[nseen++] = host->ctrlId;
+                DluRect rr;
+                int haveR = lookupDluIn(host->dlgId, host->ctrlId, rr);
+                fprintf(stderr, "[sysbox-ctl] dlgId=%d ctrlId=%d visible=%d dlu=(%d,%d,%d,%d)%s\n",
+                        host->dlgId, host->ctrlId, host->visible ? 1 : 0,
+                        haveR ? rr.x : -1, haveR ? rr.y : -1, haveR ? rr.w : -1, haveR ? rr.h : -1,
+                        haveR ? "" : " NO-RECT"); }
+        }
         DluRect r;
         /* SP.2 (S123): look the rect up SCOPED to the control's own dialog template first.
            The unscoped by-id lookup returned the first id match across ALL parsed dialogs;

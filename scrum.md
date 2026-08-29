@@ -171,8 +171,33 @@ Two traps worth keeping:
   went nowhere. **Narrowing the guard would have changed nothing and "verified" whatever the next
   screenshot happened to show.**
 
-**Next lead: `bob_ole_draw_panel` (`MAINFRM.CPP:1401`)**, which the sysbox paint walk actually goes
-through — find where IT resolves each control's icon.
+⛔ **THE LAYOUT IS CORRECT TOO (2026-08-29, measured).** `BOB_TRACE_SYSBOX` dumps what dialog 823
+(`IDDT_SYSTEM`) actually hosts:
+
+```
+[sysbox-ctl] dlgId=823 ctrlId=1003 visible=1 dlu=(0, 0,34,30)   IDC_FILES     -- the "X", TOP
+[sysbox-ctl] dlgId=823 ctrlId=1001 visible=1 dlu=(0,30,17,20)   IDC_THUMBNAIL -- bottom-left
+[sysbox-ctl] dlgId=823 ctrlId=1002 visible=1 dlu=(16,30,18,20)  IDC_ZOOMIN    -- bottom-right
+```
+
+So: the right three controls, the right ids, `IDC_FILES` on top at full width exactly as this entry
+describes, correct panel origin (965,8), and the PO has confirmed the click behaves. **Nothing about
+identity, geometry or hit-testing is wrong.**
+
+⭐ **REMAINING HYPOTHESIS — VISIBILITY, not art and not layout.** All three report `visible=1`. The
+PO's words are *"two campaign icons that should be at BOTTOM of screen are at upper right, where the
+X icon should be displayed"* — which fits a sysbox correctly showing its X **with THUMBNAIL and
+ZOOMIN also drawn beneath it**, when the real game shows those two elsewhere (or not at all) in this
+context. `host->visible` honours the game's runtime `ShowWindow` (SP.2/S123), so the question is
+whether gold ever calls `ShowWindow(SW_HIDE)` on 1001/1002 here and this port misses it.
+
+**Next step is a GOLD COMPARISON, not more code reading:** capture the same screen under Wine and
+count the icons in that 51x81 px box at (965,8). If gold shows one, this is a missed hide; if gold
+shows three, the PO is describing the ART on them and the search moves to `host->draw()`'s
+`SetDIBitsToDevice` source per control.
+
+_Sprint limit reached (4). Two suspects eliminated by measurement; do not start from the art guard
+or the layout again._
 
 **Start at the icon/art assignment, not the layout:** `IDDT_SYSTEM` is 34x50 DLU with `IDC_FILES` (exit) on top and `THUMBNAIL`/`ZOOMIN` beneath, drawn as a whole panel by `bob_ole_draw_panel` (`MAINFRM.CPP:1401`). ⭐ **Sister-port precedent — MA S315:** widening `CRToolBar::OnGetFile`'s art guard from `0x6800..0x7100` to `0..0xFFFF` admitted two art files the real game never draws (`0x6607`, `0x660c`), putting the WRONG icons on toolbar buttons. Check bob's equivalent art guard / `FileNum` resolution for the same over-admission before touching any geometry. | 5 | ☐ |
 | R3.7 | ☑ **FIXED & GATED (2026-08-28, commit `3c0a9cf`).** Root cause was **not** the use-after-free first supposed: `MAINFRM.CPP:1795` passed `root` (an `RDialog*`) to `CloseLoggedChild(**int**)` — the slot INDEX. It compiles silently because the build carries `-fpermissive` *and* `-w`. On i386 the pointer is truncated and used as a subscript: `root=0xb2efe10` = 187,727,376 → the read lands ~750 MB past the array, giving the log's `fault_addr=0x3bf95c60`. It also explains why the S108 re-entrancy guard never fired — `i >= 0 && i < 256` is false for a truncated pointer. Fixed by passing `i`. Gate `tools/bob_dialslots.sh`: PASS arm green on all five assertions; `CONTROL=1` (`BOB_R37_REVERT=1`) reproduces the SIGSEGV on the same path. Two earlier controls poisoned slot *contents* and came up green — they tested a wrong theory and never reached the line; the gate now asserts the close path was REACHED. Follow-up: **R3.10**. <br>_Original report:_ 🔴 **CRASH: accepting an "Intercept Offered" dialog kills the game (PO 2026-08-28)** — the PO ran the German campaign, then the British campaign, and the window disappeared. **Fully resolved from the session log — this is a real, reproducible backtrace, not a mystery:** <br>`[titleglyph] (655,57) -> IDOK (accept) on dialog 0xb2efe10 (16InterceptOffered)` <br>`[dlgclose] toolbar 1 child 12 closed (root=0xc525d10, asked=0xb2efe10)` <br>`=== CRASH: signal 11 fault_addr=0x3bf95c60 ===` <br>`CRToolBar::CloseLoggedChild(int)` (`rdiallog.cpp:434`) ← `bob_close_logged_dialog` (`MainFrm.cpp:1796`) ← `bob_oob_click_title_glyph` (`:1836`) ← `bob_map_click_oob` (`:1473`) ← `bob_frontend_tick` ← `OnIdle`. Registers: `eax=0c525d10` (root), `ebx=edi=0b2efe10` (the dialog asked to close), `esi=0x0c` (**child 12** — the one the line above says was just closed). ⭐ **The child is closed and then still walked** — a use-after-free in the sibling walk during removal. `CloseLoggedChild` has **previous form**: `CLAUDE.md` records a *"CloseLoggedChild recursion"* as one of three real game-code bugs already fixed there. Same function, new failure. **Repro: campaign map → accept an Intercept Offered dialog via its title glyph.** | 8 | ☐ |
