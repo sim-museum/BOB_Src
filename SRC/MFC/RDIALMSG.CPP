@@ -94,6 +94,13 @@ BYTE* DIALCLASS::OnGetFile(int filenum)
 	m_pfileblock=NULL;
 	if (filenum>=0x10000)
 	{
+		/* R3.6: ICONS come through HERE, not through the file-block branch below. The first cut
+		   traced only the else-branch (the 0x6600..0x7200 art guard the backlog fingered) and
+		   measured ZERO calls across a whole campaign run -- because an icon returns above it.
+		   Tracing the branch you did not take proves nothing about the branch you did. */
+		if (getenv("BOB_TRACE_ART"))
+			fprintf(stderr,"[icon] filenum=%#x dialog=%p %s\n",
+			        (unsigned)filenum, (void*)this, typeid(*this).name());
 		RDialog::AXicondesc=IconsUI(filenum);
 		return (BYTE*)&RDialog::AXicondesc;
 	}
