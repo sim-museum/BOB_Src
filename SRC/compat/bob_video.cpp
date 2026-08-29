@@ -2459,10 +2459,20 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   10-minute real-GL campaign flight reported 0 untextured draws under that filter, which is
 	   only evidence about the half it was looking at. Keyed per surface, so widening cannot flood. */
 	if (getenv("BOB_TRACE_GREY") && (!t || !t->glTex)) {
-		static const void* gseen[64]; static int gn=0; static int gfull=0; int already=0;
-		for (int k=0;k<gn;k++) if (gseen[k]==(const void*)t) { already=1; break; }
+		/* KEY ON THE DRAW, NOT THE SURFACE. The first cut deduped on `t`, which is (nil) for EVERY
+		   texturing-disabled draw -- so they all collapsed to one entry and only the first was ever
+		   reported. That first one was COverlay::LoaderScreen going through
+		   Lib3D::RenderPlainPolyList (untextured BY DESIGN, a legitimate hit), and it silently
+		   swallowed every later untextured draw, including whatever the PO actually sees in a
+		   dogfight. Same failure family as the R3.8 trace that stopped recording when its table
+		   filled: the instrument reported "one" where the truth was "one of many". */
+		static unsigned long gseen[128]; static int gn=0; static int gfull=0; int already=0;
+		unsigned long key = t ? (unsigned long)(uintptr_t)t
+		                      : (0x80000000UL ^ ((unsigned long)fvf<<8) ^ ((unsigned long)prim<<4)
+		                         ^ (unsigned long)(count & 0xF));
+		for (int k=0;k<gn;k++) if (gseen[k]==key) { already=1; break; }
 		if (!already) {
-			if (gn<64) { gseen[gn++]=(const void*)t;
+			if (gn<128) { gseen[gn++]=key;
 				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx is2D=%d\n",
 					t? "texture 0 (upload produced no GL texture)" : "NO texture (texturing disabled)",
 					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf, is2D);
