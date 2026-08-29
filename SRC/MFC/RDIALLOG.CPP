@@ -70,6 +70,22 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 #include "stdafx.h"
 
+#if BOB_LINUX
+/* R3.7 negative control. The fix is a one-character `()`; a gate that cannot make the bug come
+   back cannot claim to guard against it. BOB_POISON_DIALSLOTS=1 refills the freshly value-
+   initialised array with the kind of residue glibc actually hands back (the faulting address in
+   the PO's crash was 0x3bf95c60), so the control arm reproduces the crash on demand and the fixed
+   arm must survive it. File scope deliberately: `extern "C"` inside a function body is ill-formed,
+   and this port has made that exact mistake four times now. */
+extern "C" void bob_poison_dialslots(RDialog** a, int n)
+{
+	if (!a || !getenv("BOB_POISON_DIALSLOTS")) return;
+	for (int k = 0; k < n; k++) a[k] = (RDialog*)(unsigned long)(0x3bf95c00u + 16u*k);
+}
+#else
+#define bob_poison_dialslots(a,n) ((void)0)
+#endif
+
 
 //dummy notify routines that can be overloaded
 void	RDialog::ParentDialClosed(RDialog*,int)
@@ -93,10 +109,21 @@ int RDialog::LogChild(RDialog* child)
 	RDialog* top=InDialAncestor();
 	RDialog* chtop=child->InDialAncestor();
 	int rv=0;
+	/* R3.7 (PO 2026-08-28: "I ran german campaign, then tried british campaign which ended in
+	   window disappearing"). SIGSEGV in CRToolBar::CloseLoggedChild(12), faulting on the element
+	   read itself -- with MAX_CHILD_DIALS=16, slot 12 is IN BOUNDS, so this was never an overrun:
+	   the ARRAY CONTENTS were garbage. `new RDialog*[N]` DEFAULT-initialises, which for pointers
+	   leaves them indeterminate. Every consumer here assumes zeroed slots -- `while
+	   (loggedchild[rv]) rv++` to find a free one, `if (loggedchild[i])` to guard a close -- so heap
+	   residue reads as a live dialog and gets dereferenced. The original built under MSVC, whose
+	   debug allocator hands back zeroed pages; glibc hands back whatever was last freed there,
+	   which is why this surfaces only after a first campaign has churned the heap (german, THEN
+	   british). The `()` makes it value-initialisation: all slots NULL. */
 	if (!top->dialoglinks.loggedchild)
 	{
-		top->dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
-		top->dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
+		top->dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		top->dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		bob_poison_dialslots(top->dialoglinks.loggedchild, dialoglinks.MAX_CHILD_DIALS);
 		for (int i=0;i<dialoglinks.MAX_CHILD_DIALS;i++)
 			top->dialoglinks.loggedchild[i]=top->dialoglinks.loggedchildlauncher[i]=NULL;
 	}
@@ -114,8 +141,9 @@ bool	RDialog::LogChild(int rv,RDialog* child)
 	RDialog* chtop=child->InDialAncestor();
 	if (!top->dialoglinks.loggedchild)
 	{
-		top->dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
-		top->dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
+		top->dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		top->dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		bob_poison_dialslots(top->dialoglinks.loggedchild, dialoglinks.MAX_CHILD_DIALS);
 		for (int i=0;i<dialoglinks.MAX_CHILD_DIALS;i++)
 			top->dialoglinks.loggedchild[i]=top->dialoglinks.loggedchildlauncher[i]=NULL;
 	}
@@ -135,8 +163,9 @@ int CRToolBar::LogChild(RDialog* child)
 	int rv=0;
 	if (!dialoglinks.loggedchild)
 	{
-		dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
-		dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
+		dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		bob_poison_dialslots(dialoglinks.loggedchild, dialoglinks.MAX_CHILD_DIALS);
 		for (int i=0;i<dialoglinks.MAX_CHILD_DIALS;i++)
 			dialoglinks.loggedchild[i]=dialoglinks.loggedchildlauncher[i]=NULL;
 	}
@@ -153,8 +182,9 @@ bool	CRToolBar::LogChild(int rv,RDialog* child)
 	RDialog* chtop=child->InDialAncestor();
 	if (!dialoglinks.loggedchild)
 	{
-		dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
-		dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS];
+		dialoglinks.loggedchild=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		dialoglinks.loggedchildlauncher=new RDialog* [dialoglinks.MAX_CHILD_DIALS]();
+		bob_poison_dialslots(dialoglinks.loggedchild, dialoglinks.MAX_CHILD_DIALS);
 		for (int i=0;i<dialoglinks.MAX_CHILD_DIALS;i++)
 			dialoglinks.loggedchild[i]=dialoglinks.loggedchildlauncher[i]=NULL;
 	}
