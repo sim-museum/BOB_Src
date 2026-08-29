@@ -2472,10 +2472,32 @@ What the PO describes is a **narrow acquisition rule**, and the narrowness is th
 quadrant and forces the corkscrew. The value is that the key is a **deliberate, aimed** acquisition —
 you point the nose at who you want, then press. Silence on an empty centre cell is a FEATURE.
 
-**Provenance:** the PO says this shipped in an official BoB patch. Before implementing, check the
-patch-level executables/data under the Wine install for the acquisition rule and the exact key —
-matching the patch beats inventing our own geometry. Gold-standard behaviour, as always, is what the
-real game does, not what seems reasonable.
+**Provenance — RESOLVED (2026-08-29).** It is a **BDG** feature (the community Battle of Britain
+Developer's Guide patch), not a Rowan one. `bdg.txt` in the install carries the settings by name:
+
+```
+DRAW_PADLOCK_CENTER_BOX=OFF      <-- the PO's centre square, by name
+BOB_PADLOCKFIX=OFF
+PADLOCK_OVERRIDES_TRACKIR=OFF
+NO_HEAD_BOBBING_WHILE_PADLOCK=OFF
+```
+
+* The installed executable **is** the BDG 0.99 build and contains those strings (3 occurrences
+  each), so the behaviour is implemented **in the patched binary**.
+* **None of these keys appears anywhere in `SRC/`** (checked with `grep -a`, which matters — plain
+  `grep` silently skips ~46 % of this tree). So there is nothing dormant to switch on: the port must
+  IMPLEMENT it. What the patch gives us is an oracle, not code.
+
+⭐ **AND THE ORACLE CAN BE MADE TO DRAW ITS OWN ANSWER.** Setting `DRAW_PADLOCK_CENTER_BOX=ON` in
+`bdg.txt` and running the BDG build under Wine renders the acquisition region on screen. That
+settles, by measurement rather than by choice, the questions this entry lists below:
+* **cell or cone** — capture the drawn box at two different FOVs. A 1/3 x 1/3 grid cell scales with
+  FOV; an angular cone does not. One screenshot pair decides it.
+* **exact extent** — measure the box in pixels against the viewport, rather than assuming "one
+  third".
+
+Do this BEFORE writing any geometry. Gold-standard behaviour is what the real game does, and here
+the real game will literally draw it for us.
 
 **Open questions to settle from the patch, not by choice:**
 * Is the cell exactly 1/3 x 1/3 of the view, or an angular cone (e.g. ±10 deg)? A grid cell scales
