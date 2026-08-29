@@ -128,7 +128,7 @@ void bob_acmi_object_ias(unsigned long id, double u, double v, double alt,
        the authoritative spherical position and U/V are supplementary. With both blank every object
        stayed pinned at the reference origin for the whole recording while its attitude and altitude
        kept updating.
-       Ã¢Â­Â THE PO DIAGNOSED THIS FROM THE PICTURE, and the report is worth preserving because of how
+       ÃÂ¢ÃÂ­ÃÂ THE PO DIAGNOSED THIS FROM THE PICTURE, and the report is worth preserving because of how
        precise it was: "each aircraft seems constrained to stay at the same X,Y location - it can
        rotate and move up and down, but not translate in the X-Y plane". That splits the transform
        exactly along the line between the fields written into non-Lon/Lat slots (Alt, Roll, Pitch,
@@ -168,8 +168,26 @@ void bob_acmi_object_ias(unsigned long id, double u, double v, double alt,
     const double _mPerDegLon = 111320.0 * cos(_refLat * 3.14159265358979323846 / 180.0);
     double _lat = _refLat + (v - _oV) / _mPerDegLat;
     double _lon = _refLon + (u - _oU) / _mPerDegLon;
+    /* S276 (PO 2026-08-29: "aircraft going backwards" in Tacview). The Yaw field is written in
+       Tacview's NATIVE-frame rotation sense, which is the OPPOSITE of the compass sense this
+       exporter computes (`yaw` here is clockwise from north, matching atan2(dU,dV) over the U/V
+       we also write). Measured with a synthetic control -- four aircraft all flying due east
+       along +U, differing only in how the angle was encoded:
+           yaw=090 hdg=090  -> flew BACKWARDS      (what this exporter used to write)
+           yaw=270 hdg=270  -> flew nose-first
+           yaw=090 hdg=270  -> flew BACKWARDS
+           yaw=270 hdg=090  -> flew nose-first
+       B and D differ from A and C only in YAW, and both correct cases have yaw=270. So Tacview
+       orients the model from Yaw ALONE -- Heading does not affect it -- and our yaw needs
+       negating. A yaw of 000 was unaffected, which is why straight north-south legs always looked
+       right and only the east-west component ever appeared reversed.
+       Heading stays the TRUE compass value so the readout remains honest.
+       BOB_ACMI_RAWYAW=1 restores the old encoding for an A/B. */
+    double _yawTv = yaw;
+    if (!getenv("BOB_ACMI_RAWYAW")) { _yawTv = 360.0 - yaw; if (_yawTv >= 360.0) _yawTv -= 360.0;
+                                      if (_yawTv < 0.0) _yawTv += 360.0; }
     fprintf(g_acmi, "%lx,T=%.7f|%.7f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f",
-            id, _lon, _lat, alt, roll, pitch, yaw, u, v, yaw);
+            id, _lon, _lat, alt, roll, pitch, _yawTv, u, v, yaw);
     }
     if (name  && *name)  fprintf(g_acmi, ",Name=%s", name);
     if (type  && *type)  fprintf(g_acmi, ",Type=%s", type);
