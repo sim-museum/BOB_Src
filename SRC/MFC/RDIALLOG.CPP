@@ -80,7 +80,18 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 extern "C" void bob_poison_dialslots(RDialog** a, int n)
 {
 	if (!a || !getenv("BOB_POISON_DIALSLOTS")) return;
-	for (int k = 0; k < n; k++) a[k] = (RDialog*)(unsigned long)(0x3bf95c00u + 16u*k);
+	/* Poison the TAIL only. The first cut filled every slot, which broke the gate: LogChild finds a
+	   free slot with `while (loggedchild[rv]) rv++`, so an all-poisoned array sends that unbounded
+	   loop straight off the end BEFORE any dialog is ever logged -- the run wandered into undefined
+	   behaviour that happened not to fault, the control came up green, and the gate correctly
+	   declared ITSELF broken. Real heap residue is patchy, and the PO's crash was CloseLoggedChild(12)
+	   with slots 0..11 usable, so leave the low slots NULL and poison from 12 up: LogChild still
+	   allocates normally and the close-walk still hits garbage at exactly the reported index. */
+	for (int k = 12; k < n; k++) a[k] = (RDialog*)(unsigned long)(0x3bf95c00u + 16u*(k-12));
+	/* Say so. Two control arms in a row came up green, and "the poison did not reproduce the bug"
+	   and "the poison never ran" are completely different diagnoses that look identical from the
+	   outside. Do not infer which one it is -- print it. */
+	fprintf(stderr, "[poison] filled slots 12..%d of array %p\n", n-1, (void*)a);
 }
 #else
 #define bob_poison_dialslots(a,n) ((void)0)

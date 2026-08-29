@@ -699,7 +699,8 @@ extern "C" void bob_map_paint_titlebar(int, int);             /* footer date/tim
 extern "C" void bob_map_paint_teletype(int, int);             /* footer event-log pane (TELETYPE.CPP) */
 extern "C" void bob_map_paint_toolbars(int, int);             /* footer button rows (MAINFRM.CPP, S89) */
 extern "C" int  bob_map_click_toolbars(int, int);             /* S92: map click -> button handler */
-extern "C" int  bob_map_click_oob(int, int);                  /* S156: open OOB dialog gets first refusal */
+extern "C" int  bob_map_click_oob(int, int);
+extern "C" int  bob_r37_close_first_logged(void);   /* R3.7 gate hook */                  /* S156: open OOB dialog gets first refusal */
 extern "C" int  bob_sdl_push_click(int, int);                 /* S157: queue a REAL SDL mouse event */
 extern "C" int  bob_gdi_get_click(int*, int*);
 extern "C" int  bob_gdi_get_mapnav(int*, int*, int*);         /* S96: pan/zoom from the SDL layer */
@@ -744,6 +745,10 @@ extern "C" void bob_frontend_tick(void)
 		/* S92: a click on the map -> fire the hit footer-toolbar button's handler. Done before the
 		   paint so a handler that changes mode (e.g. mission folder -> LaunchFullPane) takes effect;
 		   if it left map mode, bail to the front-end paint path next tick. */
+		/* R3.7 gate hook: after N map paints, close the first logged child (see bob_r37_close_first_logged). */
+		{ const char* r37 = getenv("BOB_R37_CLOSE");
+		  if (r37) { static int r37p = 0, r37done = 0; int want = atoi(r37); if (want < 1) want = 20;
+			if (!r37done && ++r37p >= want) { r37done = 1; bob_r37_close_first_logged(); } } }
 		{ int cx, cy; int haveClick = 0;
 		  if (!getenv("BOB_NO_BUTTONS") && bob_gdi_get_click(&cx, &cy)) haveClick = 1;
 		  /* BOB_MAP_CLICK="x,y" (diag): inject one click at (x,y) once the map has settled, to test

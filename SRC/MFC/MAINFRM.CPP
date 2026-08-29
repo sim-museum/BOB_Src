@@ -1765,6 +1765,31 @@ static void bob_oob_paint_title_glyphs(RDialog* n, int /*ox*/, int /*oy*/)
 /* S174: close a MODELESS dialog that is a logged child of one of the map toolbars. Called from
    CDialog::EndDialog, which the game reaches via RDialog::OnOK/OnCancel. Returns 1 if it owned and
    closed the dialog, 0 otherwise (so the modal path is untouched). */
+extern "C" int bob_close_logged_dialog(void* dlgp);   /* defined just below; the hook calls it */
+
+/* R3.7 gate hook. BOB_R37_CLOSE=1 makes the FIRST logged child close itself through
+   bob_close_logged_dialog, which is the function that carries the bug. The PO reached it by
+   clicking a title glyph on an InterceptOffered dialog in the British campaign; hunting those
+   pixels in a headless recipe is fragile, and two earlier control arms proved the point -- they
+   never reached this code at all and came up green. This drives the SAME entry point directly, so
+   the control arm can only pass if the truncation genuinely no longer faults. */
+extern "C" int bob_r37_close_first_logged(void)
+{
+	if (!AfxGetMainWnd()) return 0;
+	for (int tb = 0; tb < TB_TOTAL; tb++) {
+		CRToolBar* t = CMainFrame::toolbars[tb];
+		if (!t || !t->dialoglinks.loggedchild) continue;
+		for (int i = 0; i < t->dialoglinks.MAX_CHILD_DIALS; i++) {
+			RDialog* root = t->dialoglinks.loggedchild[i];
+			if (!root) continue;
+			fprintf(stderr, "[r37] closing logged child tb=%d slot=%d root=%p\n", tb, i, (void*)root);
+			return bob_close_logged_dialog(root);
+		}
+	}
+	fprintf(stderr, "[r37] no logged child found -- nothing to close\n");
+	return 0;
+}
+
 extern "C" int bob_close_logged_dialog(void* dlgp)
 {
 	if (!dlgp || !AfxGetMainWnd()) return 0;
@@ -1792,7 +1817,21 @@ extern "C" int bob_close_logged_dialog(void* dlgp)
 			if (!owns) continue;
 			fprintf(stderr, "[dlgclose] toolbar %d child %d closed (root=%p, asked=%p)\n",
 				tb, i, (void*)root, (void*)d);
-			t->CloseLoggedChild(root);
+			/* R3.7 ROOT CAUSE. This passed `root`, an RDialog*, to CloseLoggedChild(INT) -- the slot
+			   INDEX. It compiles only because the build carries -fpermissive AND -w, so GCC's
+			   "invalid conversion from 'RDialog*' to 'int'" is downgraded to a warning and then
+			   silenced. On i386 the pointer is truncated and used as the index: the PO's crash had
+			   root=0xb2efe10 = 187,727,376, so CloseLoggedChild read loggedchild[187727376], i.e.
+			   base 0x0f3d6420 + 0x2cbbf840 = 0x3bf95c60 -- the fault address in the log, exactly.
+			   It also explains why the S108 re-entrancy guard did nothing: `i >= 0 && i < 256` is
+			   false for a truncated pointer, so the guard is skipped entirely.
+			   `i` is the index we already have, and loggedchild[i] == root by construction. */
+			/* BOB_R37_REVERT=1 restores the pre-fix truncation so tools/bob_dialslots.sh's control
+			   arm exercises THIS line. Two earlier controls (poisoned slot contents) came up green
+			   because the campaign recipe never reaches a title-glyph close at all -- they were
+			   testing a theory of the bug, not the bug. */
+			if (getenv("BOB_R37_REVERT")) t->CloseLoggedChild((int)(long)root);
+			else                          t->CloseLoggedChild(i);
 			return 1;
 		}
 	}
