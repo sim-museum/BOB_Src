@@ -2305,3 +2305,48 @@ through a filter for pointer→integer conversions, run over ALL unity TUs (only
 **Done when** every pointer→integer conversion in the tree is listed with a
 use-site assessment, and any that reaches an index/count/size is fixed or has a
 recorded reason it is safe.
+
+### R5.x (PO 2026-08-28) — centre-square padlock on the "S" key
+
+PO: *"during a dogfight, imagine the forward view as a 3x3 grid. When you press the 'S' key, you
+padlock the closest aircraft in the center square of that imaginary grid, if there is a bogie within
+that square, otherwise the keypress has no effect. This was added as a bob enhancement in one of the
+patches. It turns a corkscrewing effort to outturn a locked up bandit in your rear quadrant while
+taking potshots from his pals in a melee into a manageable repeated boom-and-zooms into a furball."*
+
+**This is NOT the existing padlock.** The engine already has one — `VM_InPadlock` / `VM_OutPadlock`
+(`SRC/H/viewsel.h:83`) toggled by `PADLOCKTOG`, bound to **Enter** (`SRC/H/keymaps.h:1183`, also
+joystick `A1_b2`/`A3_b2`). That one cycles/toggles a lock on whatever the engine considers current.
+What the PO describes is a **narrow acquisition rule**, and the narrowness is the whole point:
+
+1. project candidate aircraft into forward-view screen space;
+2. keep only those inside the **centre cell of a 3x3 split of the view** (i.e. |x| and |y| within
+   1/6 of the view width/height about the centre — confirm against the patch, do not assume);
+3. of those, lock the **nearest**;
+4. **if the centre cell is empty, do nothing at all** — no nearest-overall fallback, no cycling.
+
+⚠️ Step 4 is the requirement most likely to be "improved" into uselessness. A padlock that grabs
+*something* whenever you press it is the behaviour the PO is escaping: it locks a bandit in the rear
+quadrant and forces the corkscrew. The value is that the key is a **deliberate, aimed** acquisition —
+you point the nose at who you want, then press. Silence on an empty centre cell is a FEATURE.
+
+**Provenance:** the PO says this shipped in an official BoB patch. Before implementing, check the
+patch-level executables/data under the Wine install for the acquisition rule and the exact key —
+matching the patch beats inventing our own geometry. Gold-standard behaviour, as always, is what the
+real game does, not what seems reasonable.
+
+**Open questions to settle from the patch, not by choice:**
+* Is the cell exactly 1/3 x 1/3 of the view, or an angular cone (e.g. ±10 deg)? A grid cell scales
+  with FOV; a cone does not. These differ a lot at the FOV extremes.
+* "Closest" by slant range, or by angular distance from view centre?
+* Enemies only, or any aircraft (the PO says "bogie", which implies unidentified/hostile)?
+* Does it re-acquire when the target leaves the cell, or hold until broken?
+
+**Which key:** `S` is not currently in `keymaps.h` as a padlock binding; the acquisition needs its
+own `KeyName`/`KeyMap` entry rather than stealing `PADLOCKTOG`'s.
+
+**Done when** pressing the bound key with a bogie in the centre cell locks the NEAREST one, pressing
+it with an empty centre cell does nothing observable, and a gate asserts BOTH arms — the empty-cell
+no-op is the half that will silently rot.
+
+**Points:** 8
