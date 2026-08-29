@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tools/bob_mp_connect.sh -- R6.1: multiplayer gets past its front door.
+# tools/bob_mp_connect.sh -- R7.1: multiplayer gets past its front door.
 #
 # WHY THIS EXISTS. Multiplayer was never missing game code: the engine's DPlay class and Aggrgtor
 # packet layer are compiled in, and the lobby screens render and navigate. What was missing was the
@@ -38,7 +38,7 @@ run() {  # $1=log  $2=extra env assignment (may be empty)
   pkill -x bob 2>/dev/null; return 0
 }
 
-echo "bob R6.1 -- multiplayer connectivity: Multi-Player -> DirectPlay -> lobby"
+echo "bob R7.1 -- multiplayer connectivity: Multi-Player -> DirectPlay -> lobby"
 fail=0
 say(){ printf '  %-46s %s\n' "$1" "$2"; }
 bad(){ say "$1" "$2"; fail=1; }

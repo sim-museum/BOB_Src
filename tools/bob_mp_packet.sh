@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# tools/bob_mp_packet.sh -- R6.2: two processes exchange a DirectPlay packet.
+# tools/bob_mp_packet.sh -- R7.1: two processes exchange a DirectPlay packet.
 #
 # Proves the TRANSPORT, not the UI, and deliberately so. The two-process test cannot go through the
 # front end yet: gl-lock serialises the display so host and client cannot both run, and the lobby's
@@ -32,7 +32,7 @@ fail=0
 say(){ printf '  %-44s %s\n' "$1" "$2"; }
 bad(){ say "$1" "$2"; fail=1; }
 
-echo "bob R6.2 -- two processes exchange a DirectPlay packet (port $BOB_DPLAY_PORT)"
+echo "bob R7.1 -- two processes exchange a DirectPlay packet (port $BOB_DPLAY_PORT)"
 
 # 1. negative control FIRST: discovery must come back empty when nobody is hosting.
 if "$PROBE" solo >/tmp/dp_solo.txt 2>&1; then say "control: no host -> 0 sessions" "yes"

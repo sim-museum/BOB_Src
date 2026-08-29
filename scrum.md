@@ -316,7 +316,7 @@ interceptor falls outside the briefing's flyable-status gate. | 5 | ☐ |
 ### Release 7 — "Multiplayer" (the long tail — now in scope)
 | ID | Story | Pts | Status |
 |---|---|---|---|
-| R7.1 | **DirectPlay → sockets** — session create/join, lobby/readyroom, state sync. (Large; slice into sub-stories at planning.) | 21 | ☐ |
+| R7.1 | ◐ **DirectPlay → sockets** — session create/join, lobby/readyroom, state sync. **TWO GATES PASS (2026-08-28):** `tools/bob_mp_connect.sh` drives Multi-Player → DirectPlay → lobby through the real menus (with a `BOB_NO_DPLAY=1` control that must stay on the main menu), and `tools/bob_mp_packet.sh` has two processes discover a session and exchange a packet on port 47624 (with a no-host control that must find 0 sessions). ⚠️ Both gates were labelled **R6.1/R6.2** in their own banners — pointing at "Front-end blit" and "Font / DPI fidelity" — and are relabelled R7.1 here. A gate that announces the wrong story ID sends the next reader to the wrong backlog row. _(Large; slice into sub-stories at planning.) | 21 | ☐ |
 | R7.2 | **H2H + co-op missions** — play a multiplayer mission end-to-end over the socket transport. | 13 | ☐ |
 
 ### Release SP — "Screen parity vs the Windows gold standard" *(PO-added 2026-07-25)*
