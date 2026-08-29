@@ -2466,6 +2466,13 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx is2D=%d\n",
 					t? "texture 0 (upload produced no GL texture)" : "NO texture (texturing disabled)",
 					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf, is2D);
+				/* R3.9: fvf=0x3c4 is XYZRHW|DIFFUSE|SPECULAR|TEX2 -- the vertex format DECLARES two
+				   texture coordinate sets and yet nothing is bound, which is why it paints flat.
+				   Name the caller rather than guess: one-shot, this is on the draw path. */
+				{ static int btDone = 0;
+				  if (!btDone) { btDone = 1; void* bt[24]; int nbt = backtrace(bt, 24);
+					fprintf(stderr, "[grey] --- caller ---\n"); fflush(stderr);
+					backtrace_symbols_fd(bt, nbt, 2); } }
 			} else if (!gfull) { gfull=1; fprintf(stderr,"[grey] TABLE FULL -- further untextured draws NOT listed\n"); }
 		}
 	}
