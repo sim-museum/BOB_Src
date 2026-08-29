@@ -85,7 +85,7 @@ static void gl_bind_thread(void)
 }
 static int g_scrW = 1024, g_scrH = 768;     /* current display-mode size */
 static int g_bootW = 0, g_bootH = 0;        /* S182: the mode the window was created at */
-/* S162: the mode in force before the game first changed it â what the front end must get back
+/* S162: the mode in force before the game first changed it ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ what the front end must get back
    when a flight ends (the 3D view runs 800x600; the front end lays out at 1024x768). */
 static int g_origScrW = 0, g_origScrH = 0;
 static int g_traceVid = 0;
@@ -101,6 +101,22 @@ static int g_traceVid = 0;
    BOB_SHOT3D=N grabs frame N (counted in swaps), BOB_SHOT3D_PATH names the file, and
    BOB_SHOT3D_EVERY=M grabs every Mth frame instead -- a box that DRIFTS needs a sequence, not a
    single still, which is the whole difficulty of the report. */
+/* S243: `fopen` is `#define fopen fopen_nocase` (compat_types.h:584) -- the port's case-insensitive
+   resolver, which does NOT create these files. bob_gdi_dump_to already sidesteps it with ::open;
+   bob_shot3d_maybe did not, so BOB_SHOT3D wrote nothing AND said nothing (it logs only inside
+   `if (o)`). Write PPMs through POSIX open for both. */
+static int bob_write_ppm(const char* path, const unsigned char* px, int w, int h)
+{
+    int fd = ::open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) return 0;
+    char hd[64];
+    int n = snprintf(hd, sizeof(hd), "P6\n%d %d\n255\n", w, h);
+    if (write(fd, hd, n) < 0) { close(fd); return 0; }
+    for (int y = h - 1; y >= 0; y--)
+        if (write(fd, px + (size_t)y * w * 3, (size_t)w * 3) < 0) { close(fd); return 0; }
+    close(fd);
+    return 1;
+}
 static void bob_shot3d_maybe(void)
 {
     static long want = -2, every = 0, n = 0;
@@ -124,13 +140,47 @@ static void bob_shot3d_maybe(void)
     char path[512];
     if (every > 0) snprintf(path, sizeof(path), "%s.%04ld.ppm", base ? base : "/tmp/bob3d", f);
     else           snprintf(path, sizeof(path), "%s", base ? base : "/tmp/bob3d.ppm");
-    FILE* o = fopen(path, "wb");
-    if (o) {
-        fprintf(o, "P6\n%d %d\n255\n", w, h);
-        for (int y = h - 1; y >= 0; y--) fwrite(px + (size_t)y * w * 3, 1, (size_t)w * 3, o);
-        fclose(o);
-        fprintf(stderr, "[shot3d] frame %ld -> %s (%dx%d)\n", f, path, w, h);
-    }
+    int ok = bob_write_ppm(path, px, w, h);
+    fprintf(stderr, "[shot3d] frame %ld -> %s (%dx%d)%s\n", f, path, w, h,
+            ok ? "" : "   <-- WRITE FAILED");
+    fflush(stderr);
+    free(px);
+}
+
+/* S243: the FRONT-END counterpart of bob_shot3d_maybe. The PO's "ALT X, crash" leaves the game
+   ALIVE and hit-testing correctly (the log shows clicks landing on menu items and repaints) while
+   the screen shows nothing. External capture cannot settle whether the framebuffer is really black:
+   x11grab returns 99.98% black for this window even when it is demonstrably painting (MA-S233), and
+   the GNOME screenshot API is blocked here. Only an in-process glReadPixels can answer it.
+   bob_shot3d_maybe counts EVERY swap, so at a flight's 60 fps a useful interval floods the disk,
+   while the front-end presents about twice a MINUTE and never reaches a large interval at all.
+   Count front-end presents separately: BOB_SHOT2D_EVERY=1 costs ~2 dumps/min in the front-end and
+   nothing during a flight, which is exactly where the symptom lives. */
+static void bob_shot2d_maybe(void)
+{
+    static long every = -2, n = 0;
+    if (every == -2) { const char* v = getenv("BOB_SHOT2D_EVERY"); every = v ? atol(v) : 0; }
+    if (every <= 0 || !g_win) return;
+    long f = ++n;
+    if ((f % every) != 0) return;
+    int w = 0, h = 0;
+    SDL_GL_GetDrawableSize(g_win, &w, &h);
+    if (w <= 0 || h <= 0) return;
+    unsigned char* px = (unsigned char*)malloc((size_t)w * h * 3);
+    if (!px) return;
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px);   /* back buffer: BEFORE the swap */
+    long nz = 0;
+    for (size_t i = 0; i < (size_t)w * h * 3; i += 3)
+        if (px[i] | px[i+1] | px[i+2]) nz++;
+    const char* base = getenv("BOB_SHOT2D_PATH");
+    char path[512];
+    snprintf(path, sizeof(path), "%s.%04ld.ppm", base ? base : "/tmp/bob2d", f);
+    int ok = bob_write_ppm(path, px, w, h);
+    fprintf(stderr, "[shot2d] frontend present %ld -> %s%s (%dx%d) nonblack=%ld/%ld%s\n",
+            f, path, ok ? "" : " (WRITE FAILED)", w, h, nz, (long)w * h,
+            nz == 0 ? "   <-- GL FRAMEBUFFER IS BLACK (paint/present fault, not capture)" : "");
+    fflush(stderr);
     free(px);
 }
 
@@ -273,9 +323,9 @@ extern "C" int bob_change_display_mode(int w, int h, int test)
 
 /* S162 (user-reported QS-3): put the display back to the mode the front end uses.
    The 3D view runs 800x600; the front end lays out at 1024x768 and draws its menu row at y=710,
-   so while the framebuffer stays 800x600 that row is off the bottom â after ALT-X from a flight
+   so while the framebuffer stays 800x600 that row is off the bottom ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ after ALT-X from a flight
    the debrief had no reachable way back. DD_RestoreDisplayMode was a `{ return DD_OK; }` stub, but
-   fixing it was INERT: the game never calls it on this path (verified â the restore trace never
+   fixing it was INERT: the game never calls it on this path (verified ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the restore trace never
    fired). So the port restores at the point it knows the front end has regained control: the
    flight-close bridge. BOB_NO_RESTORE_MODE reverts. */
 extern "C" void bob_gdi_restore_mode(void) {
@@ -904,6 +954,30 @@ static void present_surface(GLSurface7* s)
 	glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(0,1,0,1,-1,1);
 	glMatrixMode(GL_MODELVIEW);  glLoadIdentity();
 	glDisable(GL_DEPTH_TEST);
+	/* S242 (PO 2026-08-29: "ALT X, crash" -- the process lives, the front-end logs
+	   "painted ... + presented", and the window is 99.98% BLACK after returning from a flight).
+	   This quad is GL_MODULATEd by the CURRENT COLOUR, and the 3D path renders through
+	   glColorPointer + client-side arrays. Per the GL spec the current colour is UNDEFINED after
+	   array rendering, so after a flight this quad could be multiplied by black -- a fully painted
+	   2D canvas presented as black. The last 3D batch can also leave GL_BLEND enabled with its own
+	   blend func. Neither was reset here. Set both explicitly.
+	   BOB_TRACE_PRESENT=1 reports what the state WAS on the first few presents, so a single
+	   reproduction decides this instead of an assertion. */
+	{
+		static int trace = -1, shown = 0;
+		if (trace < 0) trace = getenv("BOB_TRACE_PRESENT") ? 1 : 0;
+		if (trace && shown < 6) {
+			float col[4] = {-1,-1,-1,-1};
+			glGetFloatv(GL_CURRENT_COLOR, col);
+			GLboolean bl = glIsEnabled(GL_BLEND);
+			fprintf(stderr, "[present] before reset: current colour = (%.3f %.3f %.3f %.3f), "
+			        "GL_BLEND = %s%s\n", col[0], col[1], col[2], col[3], bl ? "ON" : "off",
+			        (col[0]==0.f && col[1]==0.f && col[2]==0.f) ? "   <-- BLACK: this is the bug" : "");
+			shown++;
+		}
+	}
+	glColor4ub(255,255,255,255);
+	glDisable(GL_BLEND);
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_QUADS);                 /* V flipped: DDraw top-left -> GL bottom-left */
 		glTexCoord2f(0,1); glVertex2f(0,0);
@@ -974,6 +1048,7 @@ extern "C" void bob_gdi_present(void) {
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
+	bob_shot2d_maybe();   /* S243: read the back buffer BEFORE the swap */
 	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
 }
 /* Decode a DIB (BITMAPINFO `bmi` + `bits`) into the GDI framebuffer at (xDest,yDest).
@@ -1359,11 +1434,11 @@ static GLSurface7* make_surface(const DDSURFACEDESC2* in, int defW, int defH)
 static HRESULT DD_CreateSurface(IDirectDraw7*, LPDDSURFACEDESC2 d, IDirectDrawSurface7** out, IUnknown*) {
 	if (!out) return DDERR_INVALIDPARAMS;
 	check_surfaces("CreateSurface");
-	/* Render-to-texture (TEXTURE+3DDEVICE) â used by Lib3D's landscape detail compositing +
+	/* Render-to-texture (TEXTURE+3DDEVICE) ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ used by Lib3D's landscape detail compositing +
 	   the water/mirror reflection probe (CheckIfTextureCanBeRenderTarget). The FBO RTT path is
 	   now the DEFAULT (fills the airfield ground; black->green). Escape hatch BOB_NO_FBO_RTT
 	   reverts to rejecting the surface so the game takes its back-buffer fallback (no RTT),
-	   exactly as on HW that lacks RTT â kept for A/B + as a safety valve. */
+	   exactly as on HW that lacks RTT ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ kept for A/B + as a safety valve. */
 	if (d && (d->ddsCaps.dwCaps & DDSCAPS_TEXTURE) && (d->ddsCaps.dwCaps & DDSCAPS_3DDEVICE)) {
 		if (getenv("BOB_NO_FBO_RTT")) {
 			if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] REJECTED render-target texture %lux%lu caps=0x%lx (BOB_NO_FBO_RTT)\n",
@@ -1405,11 +1480,11 @@ static HRESULT DD_SetDisplayMode(IDirectDraw7*, DWORD w, DWORD h, DWORD, DWORD, 
 	return DD_OK;
 }
 
-/* S162 (user-reported QS-3): this was `{ return DD_OK; }` â a stub that reports SUCCESS and does
-   nothing, the same class as compat's SendMessage allowlist (Â§8-MA83) and the empty ON_MESSAGE
-   macros (Â§8-MA91). The game sets 800x600 for the 3D view and calls RestoreDisplayMode on the way
+/* S162 (user-reported QS-3): this was `{ return DD_OK; }` ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ a stub that reports SUCCESS and does
+   nothing, the same class as compat's SendMessage allowlist (ÃÂÃÂÃÂÃÂ§8-MA83) and the empty ON_MESSAGE
+   macros (ÃÂÃÂÃÂÃÂ§8-MA91). The game sets 800x600 for the 3D view and calls RestoreDisplayMode on the way
    out to get its front-end resolution back. Because nothing happened, the GDI framebuffer stayed
-   at 800x600 while the front end kept laying out at resw=1024 â so after ALT-X from a flight the
+   at 800x600 while the front end kept laying out at resw=1024 ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ so after ALT-X from a flight the
    debrief's menu row, drawn at y=710, fell entirely outside a 600-tall buffer: invisible and
    unclickable. Measured: window created 1024x768, post-flight framebuffer 800x600, menu rects
    menu[0..3] all at y=710.
@@ -2920,12 +2995,12 @@ static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEO
 				got++;
 			}
 		}
-		/* S163 (user-reported): emit POV/hat change events too. They were missing entirely â this
+		/* S163 (user-reported): emit POV/hat change events too. They were missing entirely ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ this
 		   loop only reported axes and buttons, so the hat state computed in GetDeviceState was
 		   never delivered through the BUFFERED path the game actually reads (see the comment
 		   above: "not immediate GetDeviceState"). Result: the X3D's hat switch did nothing,
 		   because no hat event ever reached the keymap. The immediate path was implemented and its
-		   sibling was not â the same shape as this port's other silent gaps.
+		   sibling was not ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the same shape as this port's other silent gaps.
 		   dwData is the DirectInput POV angle in hundredths of a degree, 0xFFFFFFFF centred, which
 		   is what ANALOGUE.CPP's hatmaps expect (either as key events at hatkeyplace or, when the
 		   user has mapped the hat to an axis, via AX_FLAG_HATASAXIS). BOB_NO_JOY_HAT reverts. */
