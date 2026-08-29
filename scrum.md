@@ -2505,6 +2505,16 @@ the real game will literally draw it for us.
 patch, so **draw-and-measure is the only route short of disassembly** — which is what the plan above
 already says, now confirmed rather than assumed.
 
+◐ **THE EXE HAS A FIFTH PADLOCK SETTING THAT `bdg.txt` DOES NOT LIST (2026-08-29):
+`DEATH_BREAKS_PADLOCK`.** Present in the executable's strings, absent from the shipped 113-line
+config. **So the config is NOT an inventory of the patch's padlock behaviour** — reading only
+`bdg.txt` under-counts what BDG implements, which matters when deciding what "match the patch" means.
+
+⛔ **The key question cannot be answered from the executable's strings.** Searched for binding text:
+the exe carries `KEY_CONFIGMENU`, `KEY_JOYSTICKCONFIG`, `KEY_TOGGLE_DESC_TEXT` and similar, but
+nothing tying a key to the padlock acquisition. So "which key, and what happened to `SUICIDE`"
+still needs either the draw-and-measure route or disassembly — it is not sitting in a string table.
+
 ⚠️ **DO NOT MISTAKE `EPI_RADIUS = 50.0` / `EPI_Y_RADIUS = 10.0` FOR THE BOX.** They sit two lines
 away in the same numeric block and look exactly like an acquisition region. They belong to
 `ENEMY_POSITION_INDICATOR` (line 56), a different aid entirely. Anyone skimming for "the padlock
