@@ -104,5 +104,5 @@ if [ "$CONTROL" = "1" ]; then
   echo "            SIGSEGV on the same close path, so this gate is discriminating"
   exit 0
 fi
-[ "$fail" -eq 0 ] && { echo "PASS: dialog slots start empty and the campaign runs"; exit 0; }
+[ "$fail" -eq 0 ] && { echo "PASS: the logged-child close path does not fault, and the campaign is intact"; exit 0; }
 echo "FAIL: R3.7 is not fixed"; exit 1
