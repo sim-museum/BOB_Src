@@ -100,7 +100,20 @@ BYTE* DIALCLASS::OnGetFile(int filenum)
 	else
 	{
 //		if (!(filenum>0x6600 && filenum<0x7100))  //only directories 104..113
-		if (!(filenum>0x6600 && filenum<0x7200))  //only directories 104..113
+		/* R3.6 (PO: two CAMPAIGN icons drawn where the "X" exit icon belongs, upper-right).
+		   The guard above it -- the ORIGINAL -- stops at 0x7100; this one was widened to 0x7200 and
+		   admits the whole 0x71xx range while the comment still says "only directories 104..113".
+		   Sister-port precedent, MA S315: widening exactly this guard admitted two art files the
+		   real game never draws (0x6607, 0x660c) and put the WRONG icons on toolbar buttons.
+		   BOB_ART_GUARD=orig restores 0x7100 for A/B; BOB_TRACE_ART=1 lists what each dialog asks
+		   for, so the over-admitted files can be NAMED before anything is changed. */
+		static const int artHi = (getenv("BOB_ART_GUARD") && !strcmp(getenv("BOB_ART_GUARD"),"orig"))
+		                         ? 0x7100 : 0x7200;
+		if (getenv("BOB_TRACE_ART"))
+			fprintf(stderr,"[art] filenum=%#x %s dialog=%p %s\n", (unsigned)filenum,
+			        (filenum>0x6600 && filenum<artHi) ? "ADMIT" : "reject",
+			        (void*)this, typeid(*this).name());
+		if (!(filenum>0x6600 && filenum<artHi))
 			return NULL;
 #if defined(BOB_LINUX)
 		/* S159 (§8-MA84): the engine allows ONE open per FileNum globally, but this block is
