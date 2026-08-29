@@ -2265,3 +2265,34 @@ problem.
 | No joystick hardware to verify R3.1 | Medium | Can't accept R3.1 | Implement against `SDL_NumJoysticks`; mark accepted-on-hardware. |
 | MIDI music environment blocker | Certain | Music absent | Iceboxed; excluded from DoD; revisit only after environment change. |
 ```
+
+### R3.10 (from R3.7, 2026-08-28) — audit the conversions that `-w` hides
+
+R3.7 was a `RDialog*` silently truncated into an `int` **slot index**
+(`MAINFRM.CPP:1795`). It compiled because the build carries `-fpermissive`
+(invalid conversion → warning) *and* `-w` (warning → nothing). Recompiling the
+`_MFC.CPP` unity TU with warnings on emits **7** such conversions; R3.7 was one.
+
+Triage of the other six — all size-preserving on i386, none currently suspected
+of being a live defect:
+
+| site | conversion | assessment |
+|---|---|---|
+| `fullpsys.cpp:2377` (×2) | `LONG*` → `LONG_PTR*` | both 4 bytes here; a type-pun, not a truncation |
+| `MainFrm.cpp:1197` | `HTASK` (`void*`) → `DWORD` | 32-bit target, value preserved |
+| `MIG.cpp:311` | fn-ptr → `void*` | benign on i386 |
+| `afxwin.h:450`, `resource.h:121` | `int` → `LPCSTR` | the `MAKEINTRESOURCE` idiom |
+
+**The dangerous class is specifically pointer → integer where the result is used
+as an INDEX, COUNT or SIZE** — that is what made R3.7 a wild read rather than a
+harmless reinterpretation. This audit is about finding more of *that*, not about
+zeroing the warning count.
+
+⚠️ Do **not** simply drop `-w`: this is 1990s Win32 source and the noise floor is
+enormous. The useful move is a one-off build with `-Wconversion-null -Wall` piped
+through a filter for pointer→integer conversions, run over ALL unity TUs (only
+`_MFC.CPP` has been examined), with each hit triaged for how the value is USED.
+
+**Done when** every pointer→integer conversion in the tree is listed with a
+use-site assessment, and any that reaches an index/count/size is fixed or has a
+recorded reason it is safe.
