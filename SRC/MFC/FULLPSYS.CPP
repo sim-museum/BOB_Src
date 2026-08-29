@@ -1495,7 +1495,9 @@ extern "C" void bob_frontend_tick(void)
 		   clicks drive OnSelectRlistbox -> FragFly2 -> LaunchScreen(quickmissionflight). */
 		if (!sf_preflighted) {
 			/* S314: the 30 was hard-coded, and that is what stops R1's continuous session from
-			   composing. BOB_AUTOCLICK advances one step per screen PAINT, while this pre-flight
+			   composing. BOB_AUTOCLICK advances one step per 120 TICKS (`++t % 120`, see the dispatch below --
+			   this comment said "per screen PAINT" until S319 read the code; the wrong version was
+			   copied into a backlog note and cost a false "harness fault" diagnosis), while this pre-flight
 			   fires on a fixed TICK count -- so prepending a Sim Config trip to the click list
 			   makes the pre-flight land in the middle of it, and "Continue" then returns to a
 			   different screen (artnum 27917 with the harness, 28937 without). Menu indices are
