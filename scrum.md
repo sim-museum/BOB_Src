@@ -2537,6 +2537,43 @@ front-end does not proceed.
 so the modal is reachable; or `xdotool windowraise` the dialog before clicking; or dismiss it once
 by hand — it is a first-run-only dialog, so one manual OK likely clears it for every later run.
 
+#### R5.x-S2 (2026-08-29) — four ways past the modal tried, all failed. **This needs 30 seconds of PO time, and that is now the cheapest path.**
+
+The modal is REAL and LIVE, not a stale window: `_NET_WM_PID` on the dialog and on the `BoB` window
+both return the running `bob.exe` (pid 1400570). Its X id repeating across runs is just Wine
+allocating ids deterministically, not a leftover.
+
+Tried, in order, all unsuccessful:
+1. **Wine virtual desktop** (`wine explorer /desktop=bobdesk,1280x1024 bob.exe`) — the usual trick
+   for trapped modals. `bob.exe` **exits immediately and silently** under it (log holds only the
+   harmless `winemenubuilder` line). Not viable, and worth recording so it is not retried.
+2. **`xdotool windowraise` + `windowactivate`** on the dialog — it stays behind the fullscreen
+   surface.
+3. **Synthetic `Return` and a click at the OK position** — dialog still standing afterwards.
+4. **Moving the dialog to the FREE SECOND MONITOR** (`windowmove 2100,300`, where nothing covers
+   it) — an `x11grab` of its own rect there is still **uniformly one colour**.
+
+That last result is the informative one: even with nothing on top of it, the dialog captures as a
+flat colour. Consistent with Wine's **DirectDraw fullscreen-exclusive** mode suppressing ordinary
+window painting — the same class of trap as MA-S233 (a capture tool reporting black for a rendering
+app), so the pixels cannot be trusted either way and the window-tree facts above are the only solid
+evidence.
+
+**RECOMMENDED NEXT STEP — PO, ~30 seconds, once ever.** Run the command below, click **OK** on
+*"Your pre-BDG 0.96 configuration file has been imported."*, then quit. It is a FIRST-RUN dialog, so
+one manual dismissal should clear it for every later automated run, after which the two-FOV capture
+can proceed unattended:
+
+```bash
+cd "/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain"
+DISPLAY=:0 WINEPREFIX=/home/admin/sgl/TUE/BattleOfBritain/WP WINEARCH=win32 \
+  WINEDLLOVERRIDES="mscoree=d;mshtml=d" \
+  /home/admin/.local/share/lutris/runners/wine/lutris-8.0-x86_64/bin/wine bob.exe
+```
+
+`DRAW_PADLOCK_CENTER_BOX=ON` is already set in `bdg.txt`, so the box will be drawn once a flight is
+reached.
+
 **Still outstanding, unchanged:** capture the drawn box at TWO different FOVs (a 1/3x1/3 grid cell
 scales with FOV, an angular cone does not) and measure its extent in pixels against the viewport.
 No geometry should be written before that pair of screenshots exists.
