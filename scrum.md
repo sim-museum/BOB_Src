@@ -207,7 +207,33 @@ was filed (2026-08-28). Do not go looking for it. The working equivalent is `BOB
 `dlgId`, `ctrlId`, `visible`, and its DLU rect — once each, rather than the per-frame firehose of
 `BOB_TRACE_OLE`. Run the campaign recipe through to the briefing and read off what the pre-3D
 dialog hosts: **zero rows means the list was never populated; rows present with a drawn rect means
-it is populated and mis-drawn.** Those are different fixes. | 5 | ☐ |
+it is populated and mis-drawn.** Those are different fixes.
+
+⭐ **MEASURED (2026-08-29): NEVER POPULATED, not mis-drawn.** German campaign driven to the briefing
+and STOPPED there (no `BOB_CAMPFLY_GO`, so the screen is actually up — the first attempt flew
+straight through to 3D and its empty dump proved nothing).
+
+`[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=6 hisquad=0` then
+`[fullpane] ENTER page=1 startscreen=0x8453be0 reqres=3` — the briefing pane enters, and hosts
+**ZERO** OCX controls. Every dialog that hosts anything in that run is a campaign-SELECTION screen:
+
+| dlgId | name | hosted controls |
+|---|---|---|
+| 1032 | `IDD_LWDIRECTIVES` | 49 |
+| 1191 | `IDD_CAMPNAME` | 5 |
+| 823 | `IDDT_SYSTEM` | 3 |
+| 289 | `IDD_SCAMPAIGNSELECT` | 3 |
+| 1040 | `IDD_SIDESELECT` | 3 |
+| 1043 | `IDD_PHASEDESCRIPTION` | 1 |
+
+The fullpane path is not a separate draw route — `FULLPSYS.CPP:540,571` call `bob_ole_draw_panel`,
+the same function the trace sits in — so a hosted aircraft list WOULD have appeared. It does not
+exist to be drawn.
+
+**So the fix is population/creation, not layout or art.** Next: find what builds the flyable-aircraft
+list for `UIR_FRAG` and why it produces nothing — `hisquad=0` in the same line is a suspicious
+neighbour, given R4.3 already had to set `MMC.playersquadron` at Fly time because a just-scrambled
+interceptor falls outside the briefing's flyable-status gate. | 5 | ☐ |
 | R3.9 | **Floating light/dark grey square during campaign dogfight (PO 2026-08-28)** — screenshots `Screenshot From 2026-08-28 21-40-46.png` and `21-44-32.png`. An untextured grey quad appears intermittently in the 3D view. ⚠️ **Likely the same family as the cockpit/mirror RTT work**: an untextured or unbound quad reads as flat grey. Suspects, in order — a render-target surface drawn as geometry (`BOB_DUMP_RTT` dumps each RTT FBO), the `InfiniteStrip` horizon backdrop (known garbage `v` texcoords, R3.4), and a sprite whose texture failed to bind. `BOB_TRACE_RTT` / `BOB_CHECK_SURF` are the existing instruments. | 5 | ☐ |
 | R3.4 | **Rear-view mirror horizon UVs** — `InfiniteStrip` garbage v-texcoords (compat sanitiser or game-side) so the mirror shows the horizon, not a flat edge texel. | 5 | ☐ |
 | R3.5 | **Trilinear mipmaps** — ☑ **DONE (2026-06-21).** The `CopyMapToSurface` NULL-deref was a missing **attached mip-level chain**: for `HINT_TRILINEAR` the game makes a `DDSCAPS_COMPLEX|DDSCAPS_MIPMAP` texture and walks `GetAttachedSurface(DDSCAPS_MIPMAP)` to upload each level; compat created no sub-levels → NULL target. Fixed in `bob_video.cpp`: `make_surface` builds the `dwMipMapCount` sub-surface chain (`GLSurface7::mip`), `GetAttachedSurface` returns + AddRefs each level (DX semantics; prevents the mid-walk free), `SURF_Release` tears it down, `upload_texture` auto-generates GL mips (+anisotropy) for chained surfaces only. Bilinear pins (R1.3c) lifted → trilinear is the faithful default; `BOB_BILINEAR`/`BOB_NOMIP` A/B. `BOB_FILTER=2` SIGSEGV→clean flight; default boots `filtering=2`, 88.8% non-black, no stripes. | 5 | ☑ |
