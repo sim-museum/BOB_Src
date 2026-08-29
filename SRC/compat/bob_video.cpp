@@ -2447,6 +2447,23 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   to tell whether flat-grey terrain is a texture problem or a lighting/fog wash. */
 	static int texMode = -2;
 	if (texMode==-2) texMode = getenv("BOB_TEX_REPLACE") ? GL_REPLACE : GL_MODULATE;
+	/* R3.9 canary -- the MAIN draw path (see the twin in DEV_DrawIndexedPrimitiveVB).
+	   A flat grey square is an untextured quad. Two distinct causes, two different fixes:
+	     (a) t == NULL       -> texturing disabled, quad draws in vertex colour/white
+	     (b) t && !t->glTex  -> texturing ENABLED bound to texture 0 (upload produced nothing),
+	                            so GL samples white. This is the quiet one.
+	   Keyed per surface: a per-call trace here once wrote 24.7 M lines and starved the run. */
+	if (getenv("BOB_TRACE_GREY") && !is2D && (!t || !t->glTex)) {
+		static const void* gseen[64]; static int gn=0; static int gfull=0; int already=0;
+		for (int k=0;k<gn;k++) if (gseen[k]==(const void*)t) { already=1; break; }
+		if (!already) {
+			if (gn<64) { gseen[gn++]=(const void*)t;
+				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx\n",
+					t? "texture 0 (upload produced no GL texture)" : "NO texture (texturing disabled)",
+					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf);
+			} else if (!gfull) { gfull=1; fprintf(stderr,"[grey] TABLE FULL -- further untextured draws NOT listed\n"); }
+		}
+	}
 	if (t) { if (t->texDirty || !t->glTex) upload_texture(t);
 		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
 		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode);
@@ -2526,6 +2543,29 @@ static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE pr
 	if(g_devAlphaBlend){glEnable(GL_BLEND);glBlendFunc(g_srcBlend,g_dstBlend);}
 	GLSurface7* t=g_devTex[0];
 	if(t){ if(t->texDirty||!t->glTex) upload_texture(t); glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex); glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);} else glDisable(GL_TEXTURE_2D);
+	/* R3.9 (PO 2026-08-28: "during campaign dogfight a floating light/dark grey square can
+	   sometimes be seen"). An untextured quad is exactly what a flat grey square IS, and there are
+	   two ways to get one here, which need different fixes:
+	     (a) t == NULL          -> texturing DISABLED; the quad draws in vertex colour (or white).
+	     (b) t && !t->glTex     -> texturing ENABLED and bound to texture 0 because upload_texture
+	                               did not produce one; GL then samples white. This is the quiet one.
+	   Report both, keyed per surface so a per-frame draw cannot flood the log -- BOB_TRACE_UNIMPL
+	   once wrote 24.7 million lines by tracing per call, which made the log useless AND starved the
+	   run. BOB_TRACE_GREY=1. */
+	if (getenv("BOB_TRACE_GREY") && !is2D) {
+		static const void* seen[64]; static int nseen=0; static int flooded=0;
+		const void* key = (const void*)t;
+		if (!t || !t->glTex) {
+			int already=0; for(int k=0;k<nseen;k++) if(seen[k]==key){already=1;break;}
+			if(!already){
+				if(nseen<64){ seen[nseen++]=key;
+					fprintf(stderr,"[grey] 3D draw with %s  surf=%p prim=%d verts=%d\n",
+						t? "texture 0 (upload produced no GL texture)" : "NO texture bound (texturing disabled)",
+						(void*)t, (int)prim, (int)idxcount);
+				} else if(!flooded){ flooded=1; fprintf(stderr,"[grey] TABLE FULL -- further untextured draws NOT listed\n"); }
+			}
+		}
+	}
 	glEnableClientState(GL_VERTEX_ARRAY); glVertexPointer(is2D?2:3,GL_FLOAT,L.stride,base+L.posOff);
 	if(L.hasCol){glEnableClientState(GL_COLOR_ARRAY); glColorPointer(GL_BGRA,GL_UNSIGNED_BYTE,L.stride,base+L.colOff);}
 	if(L.hasTex&&t){glEnableClientState(GL_TEXTURE_COORD_ARRAY); glTexCoordPointer(2,GL_FLOAT,L.stride,base+L.texOff);}
