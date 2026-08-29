@@ -2499,6 +2499,24 @@ settles, by measurement rather than by choice, the questions this entry lists be
 Do this BEFORE writing any geometry. Gold-standard behaviour is what the real game does, and here
 the real game will literally draw it for us.
 
+⛔ **NOT DONE BY ME, DELIBERATELY — THIS ONE NEEDS THE PO (2026-08-29).** The measurement means
+editing `bdg.txt` in the PO's own Battle of Britain install and then RUNNING the BDG 0.99 build under
+Wine. That is their game directory: the run can rewrite `settings.cfg` (S151 records that this build
+rejects its own saved settings on a date mismatch and silently reverts to factory defaults) and
+touch saves. **I am not modifying a working install to take a measurement**, and the change is a
+one-line edit for the PO.
+
+**What the PO would do, and what to capture:**
+1. in `bdg.txt`, set `DRAW_PADLOCK_CENTER_BOX=ON` (it currently reads `OFF`);
+2. fly, padlock a bogie, and screenshot the forward view **twice — once at each FOV extreme**
+   (`FOV_SMALL = 25` and `FOV_LARGE = 80` are both already in that file);
+3. send both shots.
+
+**Why two FOVs and not one:** a 1/3 x 1/3 GRID CELL scales with the field of view; an angular CONE
+does not. One screenshot shows a box and settles nothing; the pair settles which of the two the
+patch implements, which is the open question this whole item turns on. Measure the box in pixels
+against the viewport in each.
+
 ◐ **CONFIG READ (2026-08-29): `bdg.txt` carries NO dimensions for the box — only the on/off flag.**
 113 lines; the padlock entries are all boolean (`DRAW_PADLOCK_CENTER_BOX`, `BOB_PADLOCKFIX`,
 `PADLOCK_OVERRIDES_TRACKIR`, `NO_HEAD_BOBBING_WHILE_PADLOCK`). The geometry is compiled into the
