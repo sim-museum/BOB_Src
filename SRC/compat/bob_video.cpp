@@ -118,6 +118,7 @@ static int bob_write_ppm(const char* path, const unsigned char* px, int w, int h
     close(fd);
     return 1;
 }
+static void bob_frame_tick(void);   /* R16: defined below, used by earlier swap sites */
 static void bob_shot3d_maybe(void)
 {
     static long want = -2, every = 0, n = 0;
@@ -263,6 +264,24 @@ static void ensure_window(int w, int h)
 	g_bootW = g_scrW; g_bootH = g_scrH;             /* S182: ChangeDisplaySettings(NULL) restores this */
 	g_ctx = SDL_GL_CreateContext(g_win);
 	if (!g_ctx) { fprintf(stderr, "[vid] SDL_GL_CreateContext failed: %s\n", SDL_GetError()); return; }
+	/* R16 (PO 2026-08-30): "sometimes there is a flickering band at the top of the screen".
+	   THE SWAP INTERVAL WAS NEVER SET. SDL_GL_SetSwapInterval appears nowhere in this port, so the
+	   presents inherited whatever the driver defaulted to -- and the frame-time histogram shows the
+	   consequence plainly: 55% of 24600 frames completed in under 16.7 ms, i.e. faster than a 60 Hz
+	   refresh, so the buffer was being swapped mid-scanout. A present that lands mid-scanout tears,
+	   and a tear near the top of the frame is a band near the top of the screen.
+	   Ask for vsync; fall back to late-swap tearing (-1) only if the driver refuses it, and then to
+	   uncapped. BOB_NO_VSYNC=1 restores the old behaviour for an A/B -- the PO's judder symptom is a
+	   SEPARATE question (the histogram refutes a frame-rate collapse: 99.9% of frames were at 30+
+	   fps, only 3 between 100-200 ms), and if capping the rate ever made that worse this switch
+	   separates the two without a rebuild. */
+	if (!getenv("BOB_NO_VSYNC")) {
+		int si = SDL_GL_SetSwapInterval(1);
+		if (si != 0) si = SDL_GL_SetSwapInterval(-1);
+		fprintf(stderr, "[vid] swap interval -> %d (%s)\n", SDL_GL_GetSwapInterval(),
+		        si == 0 ? "vsync" : "driver refused; uncapped (tearing possible)");
+		fflush(stderr);
+	}
 	SDL_GL_MakeCurrent(g_win, g_ctx);
 	g_glOwner = (unsigned long)SDL_ThreadID();   /* main thread owns it through setup */
 	fprintf(stderr, "[vid] SDL2 window %dx%d + GL context: %s | %s\n",
@@ -271,7 +290,7 @@ static void ensure_window(int w, int h)
 	glViewport(0, 0, g_scrW, g_scrH);
 	glClearColor(0.05f, 0.05f, 0.10f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win);
 	/* R9 test hook: BOB_FORCE_MODE=WxH applies a display mode at startup, so the
 	   larger-window-than-content case is reachable without hand-driving the settings UI. The PO
 	   gets there via Campaign Resolution; a gate cannot. Diagnostic only. */
@@ -911,6 +930,52 @@ static void brighten_pass()
 	glDisable(GL_BLEND);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
 }
+/* R16 (PO 2026-08-30): "sometimes when you get close to a padlocked bogie it feels like the frame
+   rate is about 5 fps at a time of rapid motion. On an i7 PC with a 6GB nvidia card there should
+   never be a low fps kind of effect."
+   MEASURE BEFORE CHANGING ANYTHING. "Feels like 5 fps" has at least three causes that are
+   indistinguishable from the cockpit and need different fixes:
+     (1) the frame rate really collapses          -> long intervals BETWEEN swaps
+     (2) the rate holds but the CAMERA steps      -> intervals stay short; the motion is elsewhere
+     (3) frames are presented out of order/duped  -> intervals short, image wrong
+   This measures (1) directly: the wall-clock gap between consecutive presents, as a histogram plus
+   the worst offenders. If the histogram is clean while the PO sees judder, (1) is REFUTED and the
+   search moves to the camera update rate -- which is worth far more than guessing at vsync.
+   Reports periodically and at exit, and says so when it has seen nothing, because a silent
+   instrument has repeatedly been read here as "no problem". BOB_TRACE_FRAMETIME=1. */
+static void bob_frame_tick(void)
+{
+    static int on = -1;
+    if (on < 0) on = getenv("BOB_TRACE_FRAMETIME") ? 1 : 0;
+    if (!on) return;
+    static Uint64 prev = 0, freq = 0;
+    static long n = 0, b16 = 0, b33 = 0, b50 = 0, b100 = 0, b200 = 0, bhuge = 0;
+    static double worst[5] = {0,0,0,0,0};
+    if (!freq) freq = SDL_GetPerformanceFrequency();
+    Uint64 now = SDL_GetPerformanceCounter();
+    if (prev) {
+        double ms = 1000.0 * (double)(now - prev) / (double)freq;
+        n++;
+        if      (ms < 16.7) b16++;
+        else if (ms < 33.4) b33++;
+        else if (ms < 50.0) b50++;
+        else if (ms < 100.0) b100++;
+        else if (ms < 200.0) b200++;
+        else bhuge++;
+        for (int i = 0; i < 5; i++) if (ms > worst[i]) {
+            for (int j = 4; j > i; j--) worst[j] = worst[j-1];
+            worst[i] = ms; break;
+        }
+        if ((n % 600) == 0) {
+            fprintf(stderr, "[frametime] n=%ld  <16.7ms=%ld  16-33=%ld  33-50=%ld  50-100=%ld  "
+                            "100-200=%ld  >200ms=%ld | worst %.1f %.1f %.1f %.1f %.1f ms\n",
+                    n, b16, b33, b50, b100, b200, bhuge,
+                    worst[0], worst[1], worst[2], worst[3], worst[4]);
+            fflush(stderr);
+        }
+    }
+    prev = now;
+}
 /* g_frameNo defined above (moved up for the BOB_AUTOQUIT frame timer) */
 /* S256 (P6): the S232 rect check, moved OUT of present_surface into a helper both present paths
    call. IT HAD BEEN IN THE WRONG FUNCTION SINCE S232 AND ITS ZERO MEANT NOTHING.
@@ -953,8 +1018,8 @@ static void present_surface(GLSurface7* s)
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
 	if (g_curRT && load_fbo_funcs()) { p_glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0,0,g_scrW,g_scrH); g_curRT=NULL; } /* safety: never present with an FBO bound */
-	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win); } return; }
-	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win); } return; }
+	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win); } return; }
+	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -1002,7 +1067,7 @@ static void present_surface(GLSurface7* s)
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	present_dbg("2d-blit");
-	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win);
 }
 
 /* ===================== GDI 2D front-end paint pipeline =====================
@@ -1125,7 +1190,7 @@ extern "C" void bob_gdi_present(void) {
 	   frame's accumulation from zero. */
 	if (bob_centre_ui()) { g_uiExtX = 0; g_uiExtY = 0; }
 	bob_shot2d_maybe();   /* S243: read the back buffer BEFORE the swap */
-	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win);
 }
 /* Decode a DIB (BITMAPINFO `bmi` + `bits`) into the GDI framebuffer at (xDest,yDest).
    Handles 8-bit palettized and 24/32-bit; honours bottom-up (biHeight>0) vs top-down. */
@@ -3383,7 +3448,7 @@ extern "C" int bob_render_smoketest(void)
 		dev->SetTexture(0,tex);
 		dev->DrawPrimitiveVB((D3DPRIMITIVETYPE)6,vb,0,4,0); /* TRIANGLEFAN */
 		dev->EndScene();
-		bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
+		bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
 	}
 	unsigned char mid[3]={0,0,0};
 	glReadPixels(400,300,1,1,GL_RGB,GL_UNSIGNED_BYTE,mid);
