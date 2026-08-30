@@ -234,6 +234,18 @@ fi
 # Offline and displayless: reads whatever .acmi this run (or a previous one) produced and asserts
 # the Tacview CONVENTION, not merely internal consistency. The yaw-sense bug passed every
 # self-consistency check ever run against it, because yaw and course share the convention.
+echo "### GATE R9: 1920x1080 canvas placement (default / centre / scale)"
+# S361: R9's two remedies were each verified ONCE by hand in the session that built them, and the
+# S342 bug -- placement computed from the PREVIOUS frame, so the first frame after a mode change
+# painted wrong -- is exactly the kind that returns unnoticed. This asserts the LIT REGION of a real
+# capture for all three placements, using the same glReadPixels instrument that found R9, rather
+# than the [centre]/[scale] log lines, which only say what the code intended.
+if "$HERE_ABS/bob_r9_layout.sh"; then
+  echo "###   R9 PASS"
+else
+  echo "###   R9 FAIL -- canvas placement regressed"; gates_fail=$((gates_fail+1))
+fi
+
 echo "### GATE R11: ACMI export orientation"
 # ONLY the live export. VIDEOS/*.acmi are an ARCHIVE and every one predates S276, so scanning
 # them would leave this gate permanently red -- which trains the reader to ignore it.
