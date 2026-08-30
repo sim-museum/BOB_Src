@@ -475,6 +475,35 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             }
         }
         if (bob_ole_trace()) fprintf(stderr, "[ole] draw panel ctrl id=%d at (%d,%d) %dx%d\n", host->ctrlId, sx, sy, dluX(r.w), hpx);
+        /* R1 (S346): ENUMERATE A MENU WITHOUT CLICKING IT.
+           R1 is blocked on "enumerate 27917's menu": leaving Sim Config lands on artnum 27917
+           rather than the main menu, index 0 there is the strategic map, and that segfaults -- so
+           the recipe needs to know which ctrlId and which ROW to aim at. BOB_DUMP_HITTARGETS
+           cannot answer it: bob_ole_col_rect only prints when it is CALLED, and it is called from
+           the click path, so a run that has not clicked yet produces nothing. That is a
+           chicken-and-egg, not a missing feature.
+           The host already knows its own shape -- rowAtY/colAtX/contentH are the same functions
+           the hit test uses -- so read it at DRAW time, which happens whether or not anyone
+           clicks. Deduped per (dlg,ctrl) so a per-frame path cannot flood the log. */
+        if (getenv("BOB_DUMP_MENU")) {
+            static int seenD[256], seenC[256]; static int nS = 0; int already = 0;
+            for (int k = 0; k < nS; k++) if (seenD[k]==host->dlgId && seenC[k]==host->ctrlId) { already=1; break; }
+            if (!already && nS < 256) {
+                seenD[nS]=host->dlgId; seenC[nS]=host->ctrlId; nS++;
+                int hh = host->hitH > 0 ? host->hitH : host->sh;
+                int nrows = 0, lastRow = -999;
+                for (int ty = 0; ty < hh; ty++) { int rw = host->rowAtY(ty);
+                    if (rw >= 0 && rw != lastRow) { nrows++; lastRow = rw; } }
+                int ncols = 0, lastCol = -999;
+                for (int tx = 0; tx < host->sw; tx++) { int cl = host->colAtX(tx);
+                    if (cl != lastCol) { ncols++; lastCol = cl; } }
+                fprintf(stderr, "[menu] dlgId=%d ctrl=%d rect=(%d,%d %dx%d) hitH=%d contentH=%d "
+                                "rows=%d cols=%d curIndex=%d\n",
+                        host->dlgId, host->ctrlId, host->sx, host->sy, host->sw, host->sh,
+                        host->hitH, host->contentH(), nrows, ncols, host->curIndex());
+                fflush(stderr);
+            }
+        }
         drawn++;
         n++;
     }
