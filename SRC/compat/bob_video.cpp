@@ -993,6 +993,15 @@ static void bob_frame_tick(int site)
                   med = tmp[nh/2]; }
               fprintf(stderr, "[frametime] mean=%.2f ms  median=%.2f ms  => %.1f fps\n",
                       sum/(double)n, med, 1000.0/(sum/(double)n)); }
+            { extern long g_bobSceneCount; extern long g_bobClearCount; static long prevScene = 0, prevN = 0;
+              long ds = g_bobSceneCount - prevScene, dn = n - prevN;
+              fprintf(stderr, "[frametime] scenes=%ld presents=%ld  ratio=%.2f scenes/present "
+                              "(this interval: %ld scenes / %ld presents)\n",
+                      g_bobSceneCount, n, n ? (double)g_bobSceneCount/(double)n : 0.0, ds, dn);
+              fprintf(stderr, "[frametime] clears=%ld  ratio=%.2f clears/present  %.2f scenes/clear\n",
+                      g_bobClearCount, n ? (double)g_bobClearCount/(double)n : 0.0,
+                      g_bobClearCount ? (double)g_bobSceneCount/(double)g_bobClearCount : 0.0);
+              prevScene = g_bobSceneCount; prevN = n; }
             fprintf(stderr, "[frametime] per-site swaps: 0=%ld 1=%ld 2=%ld 3=%ld 4=%ld 5=%ld\n",
                     persite[0], persite[1], persite[2], persite[3], persite[4], persite[5]);
             fflush(stderr);
@@ -2050,9 +2059,16 @@ static void upload_texture(GLSurface7* s) {
 }
 
 static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { check_surfaces("BeginScene"); gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
+/* R16-S3: COUNT SCENES AGAINST PRESENTS. Frame delivery is proven clean (59.5 fps, one swap per
+   refresh, S356), so the PO's judder cannot be how often frames ARRIVE -- it has to be what is IN
+   them. If the game renders the 3D scene far less often than we present it, the display is smooth
+   while the IMAGE steps, which is exactly what "feels like about 5 fps at a time of rapid motion"
+   describes. Presents are already counted; this counts the other side of the ratio. */
+long g_bobSceneCount = 0;
+long g_bobClearCount = 0;   /* R16-S3: full-target clears -- a clear usually starts a frame */
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { g_bobSceneCount++; check_surfaces("BeginScene"); gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
-static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) {
+static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) { g_bobClearCount++;
 	if (!g_win) return D3D_OK;
 	gl_bind_thread();
 	g_devRendered=1;
