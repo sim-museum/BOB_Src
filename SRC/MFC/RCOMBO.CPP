@@ -69,6 +69,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 
 #include "stdafx.h"
+extern "C" int bob_ole_ctrlid(void* wrapper);   /* R13: the id GetDlgCtrlID() cannot give */
 #include "rcombo.h"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -233,6 +234,15 @@ void CRCombo::SetIndex(long row)
 {
 	static BYTE parms[] =
 		VTS_I4;
+	/* R13 (2026-08-29): the START index is SET here, never read, which is why tracing GetIndex
+	   could not answer "where did the combo begin?" -- GetIndex fires once, at the SETFIELD
+	   write-back, so it only ever reports the END state. bob_settings_nav clicks id=1075 twice and
+	   asserts the stored value is 2 but gets 1; with N=3 (RESCOMBO(CAMERAOFF,3), SVIEWER.CPP:92)
+	   that implies a start of 2, i.e. the setting is ALREADY "at start". That was ARITHMETIC.
+	   This makes it observable. */
+	if (getenv("BOB_TRACE_COMBO"))
+		fprintf(stderr, "[combo] SetIndex id=%d <- %ld   (the START state)\n",
+		        bob_ole_ctrlid(this), row);
 	InvokeHelper(0xb, DISPATCH_METHOD, VT_EMPTY, NULL, parms,
 		 row);
 }
@@ -277,7 +287,7 @@ long CRCombo::GetIndex()
 		   That is arithmetic, not observation; this makes the start index observable so the
 		   next change is measured rather than fitted to the number. */
 		fprintf(stderr, "[combo] GetIndex id=%d -> %ld%s\n",
-		        (int)GetDlgCtrlID(), result,
+		        bob_ole_ctrlid(this), result,
 		        unanswered ? "   *** NOBODY ANSWERED: value would have been stack garbage" : "");
 	/* S310 (bob): tell the CALLER that nobody answered, instead of only guessing for it.
 	   The 0 below is still a guess and still wrong; what was missing was any way for the one caller
