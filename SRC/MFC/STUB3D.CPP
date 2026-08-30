@@ -87,6 +87,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 #if defined(BOB_LINUX)
 #include	"bob_mfc_pre.h"		/* F_BATTLE file-enum group (FIL_3D_KEYBOARD_TABLE) before stdafx */
+#include <unistd.h>
+#include <fcntl.h>
 #endif
 #include	"stdafx.h"
 #include	<afxmt.h>
@@ -183,6 +185,52 @@ extern Replay _Replay;
 ///View3d*		Inst3d::viewedwin=NULL;
 //char		Inst3d::lastkeys[256]={0};
 //Inst3d*		Inst3d::Master_3d.currinst=NULL;
+#if defined(BOB_LINUX)
+/* R14 (2026-08-29, cross-port of MA's MA_DUMP_BINDINGS): BOB_DUMP_BINDINGS=<path> writes the LIVE
+   key table -- scancode, shift state, raw action value -- out of KeyMap3d::mappings AFTER Reg3dConv
+   has loaded the game's own table. BoB had no equivalent; the alternative was a STATIC read of
+   KEYMAPS.H, which cannot see what the running game actually bound and whose 393 entries include
+   many //DEADCODE ones that would list keys doing nothing.
+   Dumps the RAW action VALUE, not a name: KeyVal == index*2, so naming is a pure offline join,
+   keeping the fallible part re-runnable without a rebuild. Read-only -- it never writes the array,
+   so it cannot perturb what it measures.
+   Ã¢ÂÂ Ã¯Â¸Â Called from BOTH commonkeymaps assignment sites: the first placement caught only one, and a
+   BOB_BOOT_FRONTEND run reached the 3D and wrote nothing at all. */
+static void bob_dump_bindings(KeyMap3d* km)
+{
+	if (!km || !getenv("BOB_DUMP_BINDINGS")) return;
+	/* ⚠️ Latch only on SUCCESS. The first version latched on entry, so the empty dump taken
+	   before Reg3dConv populated the table permanently blocked the populated one -- it wrote
+	   "0 live bindings" and then refused to try again. */
+	static int done = 0; if (done) return;
+	const char* dp = getenv("BOB_DUMP_BINDINGS");
+	/* â ï¸ NOT fopen. This TU sees `#define fopen fopen_nocase` (compat_types.h:584), the port's
+	   case-insensitive resolver, which does NOT create files -- the first version of this dump
+	   printed "cannot write" for exactly that reason, which is the SAME trap S243 found in
+	   BOB_SHOT3D earlier today and wrote down. Use POSIX open, as bob_gdi_dump_to does. */
+	int fd = ::open(dp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd < 0) { fprintf(stderr, "[keydump] cannot write %s\n", dp); return; }
+	char hdr[128];
+	int hn = snprintf(hdr, sizeof(hdr),
+		"# BoB live 3D key table. scancode,shiftstate,actionvalue  (KeyVal = KeyName index * 2)\n");
+	if (write(fd, hdr, hn) < 0) {}
+	long n = 0;
+	for (int sc = 0; sc < KeyMap3d::MAXKEYS; sc++)
+		for (int sh = 0; sh < 8; sh++) {
+			UWord v = km->mappings[sc][sh];
+			if (!v) continue;
+			char ln[64];
+			int c = snprintf(ln, sizeof(ln), "0x%02X,%d,%u\n", sc, sh, (unsigned)v);
+			if (write(fd, ln, c) < 0) {}
+			n++;
+		}
+	close(fd);
+	if (n > 0) done = 1;
+	fprintf(stderr, "[keydump] %ld live bindings -> %s%s\n", n, dp,
+	        n ? "" : "   (table not populated yet -- will retry at the next site)");
+	fflush(stderr);
+}
+#endif
 KeyMap3d*	Inst3d::commonkeymaps=NULL;
 extern	KeyMapping	*Debug3dMapTable;
 
@@ -364,6 +412,10 @@ Inst3d::Inst3d(bool flag)
 	accel=FALSE;
 	interactive=FALSE;
 	commonkeymaps=(KeyMap3d*) Key_Tests.reftable3d.flat;
+#if defined(BOB_LINUX)
+	bob_dump_bindings(commonkeymaps);   /* R14 */
+#endif
+
 	world=new WorldStuff;
 	(&world)->SetViewpoint(NULL);
 	blocktick=blockticks=TRUE;	//no movecodes
@@ -388,6 +440,9 @@ Inst3d::Inst3d(bool flag)
 //DEADCODE DAW 28/03/99 	Timer_Code.accel=FALSE;
 	Trans_Obj.View_Point=NULL;
 	Key_Tests.Reg3dConv(FIL_3D_KEYBOARD_TABLE);
+#if defined(BOB_LINUX)
+	bob_dump_bindings((KeyMap3d*) Key_Tests.reftable3d.flat);   /* R14: AFTER the load */
+#endif
 	timeofday=11*60*60*100;
 	OverLay.SetToMapViewScreen();
 	Dead_Stream.GetWorldDead(&world);				//RDH 02Oct96	  //JIM 03/06/99
@@ -449,6 +504,9 @@ Inst3d::Inst3d()
 	accel=FALSE;
 	interactive=FALSE;
 	commonkeymaps=(KeyMap3d*) Key_Tests.reftable3d.flat;
+#if defined(BOB_LINUX)
+	bob_dump_bindings(commonkeymaps);   /* R14 */
+#endif
 	world=new WorldStuff;
 	blocktick=blockticks=0;
 	viewedwin=NULL;
@@ -631,6 +689,9 @@ Inst3d::Inst3d()
 // clear locks
 
 	Key_Tests.Reg3dConv(FIL_3D_KEYBOARD_TABLE);
+#if defined(BOB_LINUX)
+	bob_dump_bindings((KeyMap3d*) Key_Tests.reftable3d.flat);   /* R14: AFTER the load */
+#endif
 
 	if (_Replay.RestorePosition)
 	{
@@ -894,7 +955,7 @@ bool	Inst3d::InThe3D()
 	return false;
 }
 
-//������������������������������������������������������������������������������
+//ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½
 //Procedure		ReleaseDirectX
 //Author		Paul.   
 //Date			Mon 25 Jan 1999
@@ -916,7 +977,7 @@ void Inst3d::ReleaseDirectX()
 	}
 }
 
-//������������������������������������������������������������������������������
+//ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½ÃÂÃÂ¯ÃÂÃÂ¿ÃÂÃÂ½
 //Procedure		RestoreDirectX
 //Author		Paul.   
 //Date			Mon 25 Jan 1999
