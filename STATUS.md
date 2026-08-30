@@ -49,7 +49,17 @@ against centring's `(448,156)-(1472,924)`, 786,427 lit — **roughly twice the s
 <br>Building it also required fixing a real gap: the content-extent measurement was gated on
 `bob_centre_ui()` alone, so scaling had nothing to scale and printed nothing at all. Both the
 accumulator and its reset now run for either mode.
-<br>⚠️ **The click mapping is written but NOT yet exercised.** Clicks are un-letterboxed and divided by
+<br>✅ **S360: HIT-TESTING UNDER SCALE IS VERIFIED, with a control arm.** A real SDL mouse click at
+**(535,333)** — the scaled screen position of the main menu's "Quick Shots" (unscaled centre (210,237),
+×1.406, +240 letterbox) — selects it and the run reaches **artnum 27923**. The **control**: the same
+pixel with scaling OFF selects nothing and stays on 28937. So the compensation is doing the work,
+rather than a coincidentally generous hit box.
+<br>⚠️ **My first attempt at this test was invalid** and is recorded so it is not repeated: `BOB_CLICKXY`
+injects FRAMEBUFFER coordinates directly (`bob_video.cpp:484`) and deliberately bypasses the
+compensation, so feeding it a scaled coordinate tested nothing. The real-mouse path (`:662`) is the one
+carrying the transform, reached via `BOB_SDL_CLICK`. Two click paths, and only one of them is the
+subject.
+<br>⚠️ ~~**The click mapping is written but NOT yet exercised.**~~ Clicks are un-letterboxed and divided by
 the same `g_uiScale`/`g_uiScaleOffX/Y` the quad is drawn with, in the same frame — deliberately from
 the same variables, because presenting into one rect while hit-testing another is the P6/MA-S209b bug
 this port already has scars from. But no click has been driven through it yet, and R9's own warning is
