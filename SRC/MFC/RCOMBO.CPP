@@ -268,7 +268,16 @@ long CRCombo::GetIndex()
 	InvokeHelper(0xc, DISPATCH_METHOD, VT_I4, (void*)&result, NULL);
 	int unanswered = g_bob_ole_unanswered || (result == -0x5EED);
 	if (getenv("BOB_TRACE_COMBO"))
-		fprintf(stderr, "[combo] GetIndex -> %ld%s\n", result,
+		/* R13 (2026-08-29): tag the trace with the CONTROL ID. Without it these lines are
+		   anonymous, and `bob_settings_nav`'s red result could not be diagnosed from the log:
+		   the gate clicks id=1075 twice and asserts the stored value is 2, but gets 1, and
+		   nothing recorded which index the combo STARTED from. SVIEWER.CPP:92 declares it
+		   RESCOMBO(CAMERAOFF,3) -- N=3 -- so (S+2) mod 3 == 1 implies S == 2, i.e. the setting
+		   is ALREADY "at start" before the gate touches it and the gate's WANT=2 assumes S=0.
+		   That is arithmetic, not observation; this makes the start index observable so the
+		   next change is measured rather than fitted to the number. */
+		fprintf(stderr, "[combo] GetIndex id=%d -> %ld%s\n",
+		        (int)GetDlgCtrlID(), result,
 		        unanswered ? "   *** NOBODY ANSWERED: value would have been stack garbage" : "");
 	/* S310 (bob): tell the CALLER that nobody answered, instead of only guessing for it.
 	   The 0 below is still a guess and still wrong; what was missing was any way for the one caller
