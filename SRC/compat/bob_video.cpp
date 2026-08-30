@@ -1084,6 +1084,27 @@ extern "C" void bob_gdi_present(void) {
 	   smaller than the window, map only the CONTENT sub-rect of the texture into a centred window
 	   rect. Doing it here catches every drawing path, including the ones that never call
 	   bob_gdi_setdibits. */
+	/* S342: RESOLVE THE PLACEMENT FROM *THIS* FRAME, BEFORE DRAWING IT. The first cut computed
+	   the offset AFTER the quad, so the quad always used the PREVIOUS frame's extent -- which is
+	   the "one frame lags" caveat R9 shipped with: the first frame after a mode change paints
+	   uncentred, and the PO's own trigger for R9 IS a mode change (Campaign Resolution ->
+	   1920x1080), so the lag lands exactly where the feature is meant to help.
+	   Every drawing path has already run by present time, so g_uiExtX/Y is complete here and no
+	   staleness is needed. g_uiExtLast survives only as the fallback for a frame that drew
+	   nothing at all (an idle frame must not re-centre onto an extent of zero). */
+	if (bob_centre_ui()) {
+		int ex = (g_uiExtX > 0) ? g_uiExtX : g_uiExtLastX;
+		int ey = (g_uiExtY > 0) ? g_uiExtY : g_uiExtLastY;
+		int ox = (ex > 0 && g_scrW > ex) ? (g_scrW - ex) / 2 : 0;
+		int oy = (ey > 0 && g_scrH > ey) ? (g_scrH - ey) / 2 : 0;
+		if (ox != g_uiOffX || oy != g_uiOffY) {
+			g_uiOffX = ox; g_uiOffY = oy;
+			fprintf(stderr, "[centre] UI content %dx%d in window %dx%d -> offset (%d,%d)\n",
+			        ex, ey, g_scrW, g_scrH, ox, oy);
+			fflush(stderr);
+		}
+		if (ex > 0 && ey > 0) { g_uiExtLastX = ex; g_uiExtLastY = ey; }
+	}
 	float vx0=0.f, vy0=0.f, vx1=1.f, vy1=1.f, tu1=1.f, tv1=1.f;
 	if (bob_centre_ui() && g_uiOffX >= 0 && g_uiExtLastX > 0 && g_uiExtLastY > 0 &&
 	    g_uiExtLastX <= g_gdiW && g_uiExtLastY <= g_gdiH && g_scrW > 0 && g_scrH > 0) {
@@ -1100,18 +1121,9 @@ extern "C" void bob_gdi_present(void) {
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
-	if (bob_centre_ui()) {
-		int ox = (g_uiExtX > 0 && g_scrW > g_uiExtX) ? (g_scrW - g_uiExtX) / 2 : 0;
-		int oy = (g_uiExtY > 0 && g_scrH > g_uiExtY) ? (g_scrH - g_uiExtY) / 2 : 0;
-		if (ox != g_uiOffX || oy != g_uiOffY) {
-			g_uiOffX = ox; g_uiOffY = oy;
-			fprintf(stderr, "[centre] UI content %dx%d in window %dx%d -> offset (%d,%d)\n",
-			        g_uiExtX, g_uiExtY, g_scrW, g_scrH, ox, oy);
-			fflush(stderr);
-		}
-		if (g_uiExtX > 0 && g_uiExtY > 0) { g_uiExtLastX = g_uiExtX; g_uiExtLastY = g_uiExtY; }
-		g_uiExtX = 0; g_uiExtY = 0;
-	}
+	/* S342: placement is resolved above, before the quad; all that is left is to start the next
+	   frame's accumulation from zero. */
+	if (bob_centre_ui()) { g_uiExtX = 0; g_uiExtY = 0; }
 	bob_shot2d_maybe();   /* S243: read the back buffer BEFORE the swap */
 	bob_shot3d_maybe(); SDL_GL_SwapWindow(g_win);
 }
