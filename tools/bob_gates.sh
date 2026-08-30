@@ -43,6 +43,73 @@ E="BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy"
 # GATE 1 problem -- GATES 2, 3 and 4 did the same. Prints the same "<label> exit=N" line the
 # old code did (other tooling reads it), appends a reason only when something is wrong, and
 # counts it. Pass the stderr file so a crash banner survives /dev/null.
+
+# ---- S365 (R17): PLAYER-DATA GUARD -------------------------------------------------
+# This suite was confirmed twice to overwrite the player's SAVEGAME/dreplay.dat -- a real
+# recording replaced by a gate's own, deterministically, on every run. A gate that eats
+# player data is a bug in the gate, so the suite now carries its own protection.
+#
+# Two deliberate design choices:
+#   * DETECT per gate, RESTORE once at the end. Restoring between gates would be stronger
+#     protection but it would change what the gates see: later recipes (R11's ACMI export)
+#     read a recording an earlier one (GATE 8) writes, so a mid-suite rollback could break
+#     a passing gate and the failure would look like a regression in the port. Attribution
+#     does not need the rollback; the player's file only needs it by the time we exit.
+#   * Hash EVERY file in SAVEGAME, not just dreplay.dat. Package.dat has a fresh mtime too,
+#     and naming one victim before checking for others is how the second one gets missed.
+SAVEDIR="$GD/SAVEGAME"
+GUARD_BAK="$OUT/_savegame_before"
+mkdir -p "$GUARD_BAK"
+cp -p "$SAVEDIR"/* "$GUARD_BAK"/ 2>/dev/null
+sg_hash() { md5sum "$SAVEDIR"/* 2>/dev/null | sort -k2 | md5sum | cut -d" " -f1; }
+guard_prev=$(sg_hash)
+guard_hits=0
+guard_culprits=""
+replay_check() {   # $1 = the gate that has just finished
+  local now; now=$(sg_hash)
+  [ "$now" = "$guard_prev" ] && return 0
+  local changed="" f b
+  for f in "$SAVEDIR"/*; do
+    [ -f "$f" ] || continue
+    b="$GUARD_BAK/$(basename "$f")"
+    if [ ! -f "$b" ] || ! cmp -s "$f" "$b"; then changed="$changed $(basename "$f")"; fi
+  done
+  # A DELETED file has no counterpart to iterate over, so the loop above cannot see it and the
+  # census would stay silent about the one kind of damage that is hardest to notice. Walk the
+  # backup side too and name what has gone missing.
+  for b in "$GUARD_BAK"/*; do
+    [ -f "$b" ] || continue
+    [ -f "$SAVEDIR/$(basename "$b")" ] || changed="$changed $(basename "$b")(DELETED)"
+  done
+  echo "###   PLAYER-DATA: $1 wrote SAVEGAME:$changed"
+  guard_hits=$((guard_hits+1))
+  guard_culprits="$guard_culprits [$1:$changed ]"
+  guard_prev="$now"
+}
+guard_restore() {
+  local n=0 d=0 f b
+  for b in "$GUARD_BAK"/*; do
+    [ -f "$b" ] || continue
+    f="$SAVEDIR/$(basename "$b")"
+    if ! cmp -s "$b" "$f"; then cp -p "$b" "$f"; n=$((n+1)); fi
+  done
+  # Files the run CREATED are litter too: restoring only what we backed up leaves the
+  # directory a superset of how it started, and the next run's "before" snapshot then
+  # bakes the litter in as if it were player data. Safe here precisely because a gate run
+  # has no player in it -- anything new in SAVEGAME was written by a gate.
+  for f in "$SAVEDIR"/*; do
+    [ -f "$f" ] || continue
+    [ -f "$GUARD_BAK/$(basename "$f")" ] && continue
+    rm -f "$f"; d=$((d+1))
+  done
+  [ "$d" -gt 0 ] && echo "###   removed $d file(s) the run created"
+  if [ "$guard_hits" -eq 0 ]; then echo "### PLAYER DATA: untouched by this run"
+  else
+    echo "### PLAYER DATA: $guard_hits gate(s) wrote to SAVEGAME --$guard_culprits"
+    echo "###   restored $n file(s) from $GUARD_BAK; originals preserved there"
+  fi
+}
+
 gates_fail=0
 checkrun() {   # $1 = label, $2 = rc, $3 = stderr file (may be missing)
   local label="$1" rc="$2" errf="${3:-}" note=""
@@ -87,6 +154,7 @@ else echo "  GATE 1: FAIL ($g1_fail of 14 recipes crashed or exited non-zero)"; 
 # a modal (OnBye needs the system box; the bad-weather prompt needs a campaign day whose weather
 # says so), so BOB_TEST_MODAL fires the real RMessageBox from the idle loop and prints its return.
 # Assert on the ANSWER, per button: three distinct codes is the only thing that proves a loop ran.
+replay_check "GATE 1"
 echo "### GATE 1c: modal message box (Save=0 Yes=1 Cancel=2)"
 modal_ok=1
 # S181: these coordinates are DERIVED from IDDS_MODAL_DIALOG, not fitted to the screen.
@@ -115,9 +183,11 @@ for bx in "387 Save 0" "515 Yes 1" "642 Cancel 2"; do
 done
 [ $modal_ok -eq 1 ] && echo "  modal: PASS" || echo "  modal: FAIL"
 
+replay_check "GATE 1c"
 echo "### GATE 2: safe default (BOB_NO_RUN)"
 timeout -k 5 120 env BOB_NO_RUN=1 "$BOB" >/dev/null 2>"$OUT/default.err"; checkrun default $? "$OUT/default.err"
 
+replay_check "GATE 2"
 echo "### GATE 3: phase select dummy vs real GL"
 timeout -k 5 300 env $E BOB_AUTOCLICK=1,1,#1000:1 BOB_SHOT=520 \
   BOB_SHOT_PATH="$OUT/gl_dummy.ppm" "$BOB" >/dev/null 2>"$OUT/gl_dummy.err"; checkrun dummy $? "$OUT/gl_dummy.err"
@@ -126,6 +196,7 @@ timeout -k 5 300 env DISPLAY=:0 BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
 checkrun realGL $? "$OUT/gl_real.err"
 cmp -s "$OUT/gl_dummy.ppm" "$OUT/gl_real.ppm" && echo "  dummy==GL BYTE-IDENTICAL" || echo "  dummy!=GL DIFFERS"
 
+replay_check "GATE 3"
 echo "### GATE 4: flight frame-150 (real GL)"
 rm -f "$OUT/flight.ppm"
 timeout -k 5 300 env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_DUMP_FRAME=150 \
@@ -149,6 +220,7 @@ PY
 # black. It survived nine eliminated mechanisms precisely because nothing asserted on it. Assert on
 # the NUMBER, not the picture: BOB_TRACE_TEXBLACK counts quads drawn with an all-black texture, and
 # the correct answer is zero. Needs real GL (the tiles are composited in an FBO).
+replay_check "GATE 4"
 echo "### GATE 4b: terrain tiles textured (blackTex must be 0)"
 tb=$(cd "$GD" && timeout -k 5 400 env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_QM_INDEX=11 \
       BOB_AUTOFLY=view40 BOB_TRACE_TEXBLACK=20000 BOB_DUMP_FRAME=300 \
@@ -162,6 +234,7 @@ else echo "  blackTex=$tb Ã¢ÂÂ FAIL (expected 0; terrain tiles are uploa
 # established that EVERY gate above passed while that campaign was broken -- the front end, the
 # modal, a quick-mission flight and the terrain all say nothing about whether a campaign can be
 # started, planned, launched and flown. Nested inside this suite's single lock, like its siblings.
+replay_check "GATE 4b"
 echo "### GATE 5: German (Luftwaffe) Convoys campaign end to end"
 # absolute path: this suite cd's into the game directory in its subshells, so a $(dirname $0)
 # relative path resolves against whatever the last cd left behind (measured: "No such file").
@@ -174,6 +247,7 @@ bash /home/admin/bob/tools/bob_convoy_campaign.sh 2>&1 | sed 's/^/  /'
 cg=${PIPESTATUS[0]}
 if [ "$cg" = "0" ]; then echo "  campaign: PASS"; else echo "  campaign: FAIL (exit=$cg)"; gates_fail=$((gates_fail+1)); fi
 
+replay_check "GATE 5"
 echo "### GATE 6: combat soak (S201)"
 # The dogfight crash (S200) passed every gate in this file because none of them flies long
 # enough to hit a crash in the sim. GATE 6 soaks the campaign for its full run and asserts
@@ -186,6 +260,7 @@ bash /home/admin/bob/tools/bob_combat_soak.sh 2>&1 | sed 's/^/  /'
 cs=${PIPESTATUS[0]}
 if [ "$cs" = "0" ]; then echo "  soak: PASS"; else echo "  soak: FAIL (exit=$cs)"; gates_fail=$((gates_fail+1)); fi
 
+replay_check "GATE 6"
 echo "### GATE 7: strategic soak -- the raid flies and the RAF is tasked (S206)"
 # The property S204 measured as zero and concluded was broken. It is not: give the campaign the
 # game time it needs (stay on the map) and the raid flies its whole route, SetRAFIntercept is
@@ -196,6 +271,7 @@ ss=${PIPESTATUS[0]}
 if [ "$ss" = "0" ]; then echo "  strategic: PASS"; else echo "  strategic: FAIL (exit=$ss)"; gates_fail=$((gates_fail+1)); fi
 
 # -- GATE 8 (S317): R1 -- the UI's own preference arms the recorder, in ONE process ------------
+replay_check "GATE 7"
 echo "### GATE 8: R1 continuous -- Sim Config -> Gun Camera -> Fly -> recording (S313-S317)"
 # Committed RED by S313 and deliberately left OUT of this suite until it could pass. It now does,
 # and three real defects had to be cleared to get there, each hiding the next: S315 (the strategic
@@ -234,6 +310,7 @@ fi
 # Offline and displayless: reads whatever .acmi this run (or a previous one) produced and asserts
 # the Tacview CONVENTION, not merely internal consistency. The yaw-sense bug passed every
 # self-consistency check ever run against it, because yaw and course share the convention.
+replay_check "GATE 8"
 echo "### GATE R9: 1920x1080 canvas placement (default / centre / scale)"
 # S361: R9's two remedies were each verified ONCE by hand in the session that built them, and the
 # S342 bug -- placement computed from the PREVIOUS frame, so the first frame after a mode change
@@ -246,6 +323,7 @@ else
   echo "###   R9 FAIL -- canvas placement regressed"; gates_fail=$((gates_fail+1))
 fi
 
+replay_check "GATE R9"
 echo "### GATE R11: ACMI export orientation"
 # ONLY the live export. VIDEOS/*.acmi are an ARCHIVE and every one predates S276, so scanning
 # them would leave this gate permanently red -- which trains the reader to ignore it.
@@ -259,7 +337,7 @@ else
   # convention regressed" when the script simply could not be found. A missing harness must never
   # be reported as a regression in the thing it measures. Resolve the script directory once,
   # absolutely, before any cd.
-  if "$HERE_ABS/bob_acmi_orientation.sh" $_acmi; then
+  if "$HERE_ABS/bob_acmi_orientation.sh" "$_acmi"; then   # S365: MUST be quoted -- the game dir has spaces
     echo "###   R11 PASS"
   else
     _r=$?
@@ -281,6 +359,9 @@ echo "### binary unchanged (md5=$HASH_AFTER) Ã¢ÂÂ gate valid"
 # S199: one line that says whether ANY run in this file crashed or exited non-zero. Without it
 # the outcome of every run was printed and never judged, so a crashed recipe looked like a
 # passing one unless a human read the numbers.
+replay_check "GATE R11"
+guard_restore
+
 if [ "$gates_fail" -eq 0 ]; then echo "### RUNS: all clean (no crashes, no non-zero exits)"
 else echo "### RUNS: $gates_fail run(s) CRASHED or exited non-zero Ã¢ÂÂ see the notes above"; fi
 echo "### DONE"
