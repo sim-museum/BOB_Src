@@ -456,6 +456,28 @@ static void extractProps(const unsigned char* b, int n, int dlgId, int ctrlId) {
     /* S126: exact sequential walk when the control class is known (PE templates). */
     {
         int kind = bagKindOf(dlgId, ctrlId);
+        /* R3.8 (S337): "IDD_BOBFRAG draws 12 of 22 controls" -- name the ones that fall short,
+           instead of inferring them from BOB.RC. Inference is not safe here: loadFromPE() runs
+           BEFORE parseRc() and the .rc only fills "the pairs the installed resources lack", so the
+           PE template is authoritative and the .rc census disagrees with it (the .rc lists 18
+           controls on this dialog, not 22).
+           seqProps() is the suspect: it covers only K_RSTATIC/K_RBUTTON/K_RLISTBOX/K_RCOMBO/
+           K_REDIT and returns 0 for K_RSPINBUT/K_RRADIO/K_REDTBT/K_RTABS, which then fall back to
+           the S125 anchor heuristics to GUESS a ResourceNumber. IDD_BOBFRAG is dominated by
+           K_REDTBT (every IDC_PILOT_*), so that is the hypothesis -- but it is a hypothesis, and
+           this prints the evidence rather than asserting it.
+           BOB_DUMP_DLG=<id> for one dialog, BOB_DUMP_DLG=all for every one. */
+        {
+            const char* dd = getenv("BOB_DUMP_DLG");
+            if (dd && (!strcasecmp(dd, "all") || atoi(dd) == dlgId)) {
+                int hr = 0, nc = 0; unsigned rn = 0; short cw[9]; int ca[9];
+                int covered = (kind != K_UNKNOWN) && seqProps(b, n, kind, &hr, &rn, &nc, cw, ca);
+                fprintf(stderr, "[dlgdump] dlg=%d ctrl=%-6d kind=%-9s %-9s res=%s\n",
+                        dlgId, ctrlId, kindName(kind),
+                        covered ? "EXACT" : "heuristic",
+                        hr ? "yes" : "NO");
+            }
+        }
         if (kind != K_UNKNOWN) {
             int hasRes = 0, ncols = 0; unsigned resnum = 0; short colw[9]; int cola[9];
             if (seqProps(b, n, kind, &hasRes, &resnum, &ncols, colw, cola)) {
