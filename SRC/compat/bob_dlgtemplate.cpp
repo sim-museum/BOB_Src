@@ -443,6 +443,19 @@ static int seqProps(const unsigned char* b, int n, int kind,
         return 1;
     }
     case K_RCOMBO: case K_REDIT:
+    /* R3.8 (S337): K_REDTBT belongs in THIS group, not in the uncovered default. Its whole
+       property list is (SRC/REDTBT/REDTBTC.CPP:534)
+
+           ExchangeVersion(...); COleControl::DoPropExchange(pPX);
+           PX_Long(pPX, _T("FontNum"), m_FontNum, 0);
+
+       -- there is NO ResourceNumber on this control. It draws its caption, and picks bitmap vs
+       text from whether that caption starts with '~'. Falling through to the default sent all 15
+       of IDD_BOBFRAG's IDC_PILOT_* slots into the S125 anchor heuristics to hunt for a field that
+       does not exist, where the only two outcomes were "found nothing" (what BOB_DUMP_DLG
+       actually reports: heuristic, res=NO, fifteen times) or a FABRICATED resnum scavenged from
+       some unrelated DWORD. Saying "covered, no Props-table fields" is both true and safer. */
+    case K_REDTBT:
         return 1;                             /* no Props-table fields */
     }
     return 0;
