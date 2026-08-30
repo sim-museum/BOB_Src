@@ -22,11 +22,13 @@ set -u
 
 HERE_ABS="$(cd "$(dirname "$0")" && pwd)"   # S351: absolute, resolved BEFORE any cd
 BOB=/home/admin/bob/build/bob
-GD="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain"
+BOB_DRIVE_C_REAL="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c"
+GD="$BOB_DRIVE_C_REAL/Program Files/Rowan Software/Battle Of Britain"
 OUT="${1:?usage: bob_gates.sh <outdir> [baseline-dir]}"
 BASE="${2:-}"
 
 mkdir -p "$OUT"
+OUT="$(cd "$OUT" && pwd)"   # S366: absolute BEFORE any cd -- the scratch drive_c is built under it
 HASH_BEFORE=$(md5sum "$BOB" | cut -d' ' -f1)
 echo "### binary $BOB md5=$HASH_BEFORE"
 
@@ -57,7 +59,37 @@ E="BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy"
 #     does not need the rollback; the player's file only needs it by the time we exit.
 #   * Hash EVERY file in SAVEGAME, not just dreplay.dat. Package.dat has a fresh mtime too,
 #     and naming one victim before checking for others is how the second one gets missed.
-SAVEDIR="$GD/SAVEGAME"
+# ---- S366 (R17): REDIRECT, so the gates never touch the player's directory ------------
+# S365's guard detects damage and undoes it afterwards. That is a bandage: the run still eats
+# the data, and anything that kills the suite mid-flight (the gl-lock timeout, a crash, Ctrl-C)
+# skips the restore entirely. This points the whole run at a scratch drive_c instead --
+# symlinks all the way down to the game dir, with SAVEGAME a real copy and VIDEOS a real
+# directory (R11's .acmi export must not write back through a link into the player's tree).
+#
+# It has to be a whole drive_c, not just the game dir. A first attempt linked only the game
+# directory and ran with cwd pointed at it; bob segfaulted on
+#   [fileman] missing file 8c00=\Program Files\...\landscap\DIR.DIR
+# because it builds ABSOLUTE paths from BOB_DRIVE_C -- the working directory redirects nothing.
+#
+# Verified standalone on GATE 5's own recipe, the measured culprit: gate PASSES (all nine
+# checks, reaches 3D), the scratch SAVEGAME takes the dreplay.dat/Package.dat writes, and the
+# player's SAVEGAME comes out byte-identical to a pristine backup.
+#
+# The S365 guard below is KEPT and now watches the PLAYER's directory, where it should see
+# nothing. It has become the assertion that the redirect held: if it ever fires again, the
+# redirect has broken and it still names the gate. BOB_NO_SCRATCH=1 runs the old way.
+PLAYER_GD="$GD"
+if [ -z "${BOB_NO_SCRATCH:-}" ]; then
+  if bash "$HERE_ABS/bob_scratch_gamedir.sh" "$BOB_DRIVE_C_REAL" "$OUT/drive_c"; then
+    export BOB_DRIVE_C="$OUT/drive_c"
+    GD="$OUT/drive_c/Program Files/Rowan Software/Battle Of Britain"
+    cd "$GD" || exit 1
+  else
+    echo "### SCRATCH BUILD FAILED -- falling back to the player's directory (guard still armed)"
+  fi
+fi
+
+SAVEDIR="$PLAYER_GD/SAVEGAME"
 GUARD_BAK="$OUT/_savegame_before"
 mkdir -p "$GUARD_BAK"
 cp -p "$SAVEDIR"/* "$GUARD_BAK"/ 2>/dev/null
