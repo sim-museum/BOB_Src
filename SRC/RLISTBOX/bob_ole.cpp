@@ -204,6 +204,23 @@ static bool lookupDluIn(int dlgId, int id, DluRect& out) {
 }
 /* MS Sans Serif 8pt dialog base units ~ (6,13): px = DLU*base/(4 horiz, 8 vert). */
 static int dluX(int d) { return d * 6 / 4; }
+/* R3.8 (S344): NAME the skipped controls, do not only count them. The R12 line reports totals
+   per dialog -- "DREW=156 ... not-in-template=17" -- which proves controls are being dropped but
+   not WHICH, and R3.8's literal ask is for the ctrlIds. Counting told us there is a problem;
+   only the ids can tell us whether it matters (a decorative row versus a button the player needs).
+   One line per (dialog, ctrl, reason), printed once each, so a per-frame draw path cannot flood
+   the log. */
+static void bob_skip_name(int dlgId, int ctrlId, const char* why)
+{
+    if (!getenv("BOB_TRACE_SKIP")) return;
+    struct Seen { int d, c; const char* w; };
+    static Seen seen[512]; static int nSeen = 0;
+    for (int i = 0; i < nSeen; i++)
+        if (seen[i].d == dlgId && seen[i].c == ctrlId && seen[i].w == why) return;
+    if (nSeen < 512) { seen[nSeen].d = dlgId; seen[nSeen].c = ctrlId; seen[nSeen].w = why; nSeen++; }
+    fprintf(stderr, "[skipid] dlgId=%d ctrl=%d %s\n", dlgId, ctrlId, why);
+    fflush(stderr);
+}
 static int dluY(int d) { return d * 13 / 8; }
 
 /* Draw every hosted control owned by `dialog` at its template position, offset by
@@ -293,7 +310,7 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         /* SP.2 (S123): honor the game's runtime ShowWindow state -- a hidden control isn't
            drawn and can't be clicked (zeroed hit rect). E.g. CSQuick1 hides IDC_DISABLEDEMO
            ("This is disabled in the demo") on the full game. */
-        if (!host->visible) { host->sw = host->sh = 0; skipVis++; continue; }
+        if (!host->visible) { host->sw = host->sh = 0; skipVis++; bob_skip_name(host->dlgId, host->ctrlId, "not-visible"); continue; }
         /* S124: a control absent from the installed build's template for this dialog would
            never be created by the Windows dialog manager -- don't draw it (e.g. CSSound's
            source-only music combos over the BDG IDD_SSOUND layout). Dialogs the PE doesn't
@@ -317,9 +334,9 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             bool dead = false;
             for (unsigned k = 0; k < sizeof(deadSweepRow)/sizeof(deadSweepRow[0]); k++)
                 if (host->ctrlId == deadSweepRow[k]) { dead = true; break; }
-            if (dead) { host->sw = host->sh = 0; skipDead++; continue; }
+            if (dead) { host->sw = host->sh = 0; skipDead++; bob_skip_name(host->dlgId, host->ctrlId, "dead-sweep-row"); continue; }
         }
-        if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; skipTmpl++; continue; }
+        if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; skipTmpl++; bob_skip_name(host->dlgId, host->ctrlId, "not-in-template"); continue; }
         /* R3.6: name the controls the sysbox actually hosts. BOB_TRACE_OLE dumps every control of
            every dialog per frame (85 spinners once wrote 70 MB and starved a run), so it cannot be
            used to answer a question about ONE panel. This prints one line per control for one
@@ -354,7 +371,7 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            labels took rects from other screens' templates -- scrambled/overlapping label
            layout on the GFX/Sound/Controls/Views forms (vs the Wine gold shots). lookupDluIn
            falls back to the unscoped search when the (dlg,id) pair isn't found. */
-        if (!lookupDluIn(host->dlgId, host->ctrlId, r)) { skipDlu++; continue; }
+        if (!lookupDluIn(host->dlgId, host->ctrlId, r)) { skipDlu++; bob_skip_name(host->dlgId, host->ctrlId, "no-DLU-rect"); continue; }
         /* S126 (#16): settled-state emulation of the Windows dirty-region repaint.
            On Windows a WS_VISIBLE static under an interactive listbox paints once;
            the listbox's next repaint re-blits the panel background over it, and the
