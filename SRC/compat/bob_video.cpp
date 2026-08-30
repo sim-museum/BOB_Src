@@ -500,6 +500,24 @@ int g_bob_flight_active = 0;
 static long g_frameNo = 0;   /* incremented each 3D present; the frame-based BOB_AUTOQUIT timer reads it */
 /* R9: forward decls -- the click handler in pump_events runs long before these are defined. */
 static int bob_centre_ui(void);
+/* R9 (S359): THE OTHER HALF OF THE PO'S CHOICE. R9 root-caused the 1920x1080 front end painting
+   only its top-left 1024x768; centring (BOB_CENTRE_UI) shipped as the conservative option, and the
+   PO was asked to choose between centring and SCALING. Scaling was never built, so the choice could
+   not actually be tried -- which is a poor way to ask someone to decide.
+   Scaling maps the same content sub-rect across the WHOLE window instead of a centred rect,
+   preserving aspect so the art is not stretched, and letterboxing the remainder. Its known hazard
+   is stated in R9 itself: it moves every hit-test, and presenting into one rect while mapping
+   clicks against another is a bug this codebase already has scars from (P6/MA-S209b). So the click
+   path divides by the same scale it draws with, from the same variables, in the same frame.
+   BOB_SCALE_UI=1. Mutually exclusive with BOB_CENTRE_UI; centring wins if both are set, because it
+   is the conservative one. */
+static float g_uiScale = 1.0f;              /* applied uniform scale (1.0 = none) */
+static int   g_uiScaleOffX = 0, g_uiScaleOffY = 0;   /* letterbox offset in window px */
+static int bob_scale_ui(void) {
+    static int on = -1;
+    if (on < 0) on = (getenv("BOB_SCALE_UI") && !getenv("BOB_CENTRE_UI")) ? 1 : 0;
+    return on;
+}
 extern int g_uiOffX, g_uiOffY;
 static void pump_events(void)
 {
@@ -646,6 +664,15 @@ static void pump_events(void)
 				/* R9: the canvas was drawn at +g_uiOff, so a click must come back by the same
 				   amount or every hit-test is offset by exactly the centring margin. */
 				if (bob_centre_ui()) { g_clickX -= g_uiOffX; g_clickY -= g_uiOffY; }
+				/* R9 (S359): the scaled canvas is drawn at (g_uiScaleOffX,Y) with a uniform
+				   g_uiScale, so a click must be un-letterboxed and un-scaled by the SAME
+				   variables -- presenting into one rect while hit-testing another is the P6 /
+				   MA-S209b bug shape, and it is why the scale option needs this line to exist
+				   before it can be offered at all. */
+				else if (bob_scale_ui() && g_uiScale > 0.0f) {
+					g_clickX = (int)((g_clickX - g_uiScaleOffX) / g_uiScale);
+					g_clickY = (int)((g_clickY - g_uiScaleOffY) / g_uiScale);
+				}
 				g_clickPending = 1;
 				if (getenv("BOB_TRACE_CLICKPATH"))
 					fprintf(stderr, "[clickpath] 1. SDL event POLLED logical=(%d,%d) -> fb=(%d,%d)\n",
@@ -1190,6 +1217,25 @@ extern "C" void bob_gdi_present(void) {
 	   Every drawing path has already run by present time, so g_uiExtX/Y is complete here and no
 	   staleness is needed. g_uiExtLast survives only as the fallback for a frame that drew
 	   nothing at all (an idle frame must not re-centre onto an extent of zero). */
+	if (bob_scale_ui()) {
+		int ex = (g_uiExtX > 0) ? g_uiExtX : g_uiExtLastX;
+		int ey = (g_uiExtY > 0) ? g_uiExtY : g_uiExtLastY;
+		if (ex > 0 && ey > 0 && g_scrW > 0 && g_scrH > 0) {
+			float sx = (float)g_scrW / (float)ex, sy = (float)g_scrH / (float)ey;
+			float sc = sx < sy ? sx : sy;               /* uniform: never stretch the art */
+			if (sc < 1.0f) sc = 1.0f;                   /* never shrink below 1:1 */
+			int dw = (int)(ex * sc + 0.5f), dh = (int)(ey * sc + 0.5f);
+			int ox = (g_scrW > dw) ? (g_scrW - dw) / 2 : 0;
+			int oy = (g_scrH > dh) ? (g_scrH - dh) / 2 : 0;
+			if (sc != g_uiScale || ox != g_uiScaleOffX || oy != g_uiScaleOffY) {
+				g_uiScale = sc; g_uiScaleOffX = ox; g_uiScaleOffY = oy;
+				fprintf(stderr, "[scale] UI content %dx%d -> %dx%d (x%.3f) at (%d,%d) in %dx%d\n",
+				        ex, ey, dw, dh, sc, ox, oy, g_scrW, g_scrH);
+				fflush(stderr);
+			}
+			g_uiExtLastX = ex; g_uiExtLastY = ey;
+		}
+	}
 	if (bob_centre_ui()) {
 		int ex = (g_uiExtX > 0) ? g_uiExtX : g_uiExtLastX;
 		int ey = (g_uiExtY > 0) ? g_uiExtY : g_uiExtLastY;
@@ -1204,7 +1250,16 @@ extern "C" void bob_gdi_present(void) {
 		if (ex > 0 && ey > 0) { g_uiExtLastX = ex; g_uiExtLastY = ey; }
 	}
 	float vx0=0.f, vy0=0.f, vx1=1.f, vy1=1.f, tu1=1.f, tv1=1.f;
-	if (bob_centre_ui() && g_uiOffX >= 0 && g_uiExtLastX > 0 && g_uiExtLastY > 0 &&
+	if (bob_scale_ui() && g_uiExtLastX > 0 && g_uiExtLastY > 0 &&
+	    g_uiExtLastX <= g_gdiW && g_uiExtLastY <= g_gdiH && g_scrW > 0 && g_scrH > 0) {
+		tu1 = (float)g_uiExtLastX / (float)g_gdiW;
+		tv1 = (float)g_uiExtLastY / (float)g_gdiH;
+		float dw = g_uiExtLastX * g_uiScale, dh = g_uiExtLastY * g_uiScale;
+		vx0 = (float)g_uiScaleOffX / (float)g_scrW;
+		vy0 = (float)g_uiScaleOffY / (float)g_scrH;
+		vx1 = ((float)g_uiScaleOffX + dw) / (float)g_scrW;
+		vy1 = ((float)g_uiScaleOffY + dh) / (float)g_scrH;
+	} else if (bob_centre_ui() && g_uiOffX >= 0 && g_uiExtLastX > 0 && g_uiExtLastY > 0 &&
 	    g_uiExtLastX <= g_gdiW && g_uiExtLastY <= g_gdiH && g_scrW > 0 && g_scrH > 0) {
 		tu1 = (float)g_uiExtLastX / (float)g_gdiW;
 		tv1 = (float)g_uiExtLastY / (float)g_gdiH;
@@ -1221,7 +1276,7 @@ extern "C" void bob_gdi_present(void) {
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
 	/* S342: placement is resolved above, before the quad; all that is left is to start the next
 	   frame's accumulation from zero. */
-	if (bob_centre_ui()) { g_uiExtX = 0; g_uiExtY = 0; }
+	if (bob_centre_ui() || bob_scale_ui()) { g_uiExtX = 0; g_uiExtY = 0; }   /* S359 */
 	bob_shot2d_maybe();   /* S243: read the back buffer BEFORE the swap */
 	bob_shot3d_maybe(); bob_frame_tick(4); SDL_GL_SwapWindow(g_win);
 }
@@ -1316,7 +1371,7 @@ extern "C" int bob_gdi_setdibits(int xDest, int yDest, int /*w*/, int /*h*/, uns
 	xDest += g_sdibOrgX; yDest += g_sdibOrgY;
 	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
 	if (!fb || !bits || !bmi) return 0;
-	if (bob_centre_ui()) {
+	if (bob_centre_ui() || bob_scale_ui()) {   /* S359: SCALING needs the same content extent as centring */
 		/* Measure only. The canvas is NOT moved here: at least one drawing path does not come
 		   through this function -- with per-blit offsetting the painted bbox came out
 		   (133,156)-(1472,924), i.e. ~19k pixels landed at the un-offset X. Chasing every writer
