@@ -118,7 +118,7 @@ static int bob_write_ppm(const char* path, const unsigned char* px, int w, int h
     close(fd);
     return 1;
 }
-static void bob_frame_tick(void);   /* R16: defined below, used by earlier swap sites */
+static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 static void bob_shot3d_maybe(void)
 {
     static long want = -2, every = 0, n = 0;
@@ -290,7 +290,7 @@ static void ensure_window(int w, int h)
 	glViewport(0, 0, g_scrW, g_scrH);
 	glClearColor(0.05f, 0.05f, 0.10f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); bob_frame_tick(0); SDL_GL_SwapWindow(g_win);
 	/* R9 test hook: BOB_FORCE_MODE=WxH applies a display mode at startup, so the
 	   larger-window-than-content case is reachable without hand-driving the settings UI. The PO
 	   gets there via Campaign Resolution; a gate cannot. Diagnostic only. */
@@ -943,14 +943,22 @@ static void brighten_pass()
    search moves to the camera update rate -- which is worth far more than guessing at vsync.
    Reports periodically and at exit, and says so when it has seen nothing, because a silent
    instrument has repeatedly been read here as "no problem". BOB_TRACE_FRAMETIME=1. */
-static void bob_frame_tick(void)
+static void bob_frame_tick(int site)
 {
     static int on = -1;
     if (on < 0) on = getenv("BOB_TRACE_FRAMETIME") ? 1 : 0;
     if (!on) return;
     static Uint64 prev = 0, freq = 0;
     static long n = 0, b16 = 0, b33 = 0, b50 = 0, b100 = 0, b200 = 0, bhuge = 0;
+    static long persite[8] = {0,0,0,0,0,0,0,0};
+    if (site >= 0 && site < 8) persite[site]++;
     static double worst[5] = {0,0,0,0,0};
+    /* R16-S2: report the MEAN and MEDIAN, not only buckets. The first cut of this reported
+       "<16.7ms=55%" and I read it as more than one present per refresh -- but the bucket edge sits
+       exactly at the 60 Hz period, so an ordinary vsync-locked stream with a little jitter splits
+       ~55/45 across it and looks like double-presenting. A central value cannot be misread that
+       way. (Per-site counts settled it independently: one site issues 17395 of 17401 swaps.) */
+    static double sum = 0.0; static double hist[4096]; static int nh = 0;
     if (!freq) freq = SDL_GetPerformanceFrequency();
     Uint64 now = SDL_GetPerformanceCounter();
     if (prev) {
@@ -966,11 +974,27 @@ static void bob_frame_tick(void)
             for (int j = 4; j > i; j--) worst[j] = worst[j-1];
             worst[i] = ms; break;
         }
+        sum += ms;
+        if (nh < 4096) hist[nh++] = ms;
         if ((n % 600) == 0) {
             fprintf(stderr, "[frametime] n=%ld  <16.7ms=%ld  16-33=%ld  33-50=%ld  50-100=%ld  "
                             "100-200=%ld  >200ms=%ld | worst %.1f %.1f %.1f %.1f %.1f ms\n",
                     n, b16, b33, b50, b100, b200, bhuge,
                     worst[0], worst[1], worst[2], worst[3], worst[4]);
+            /* R16-S2: WHICH path presents. With vsync confirmed active, 55% of intervals were still
+               under 16.7 ms, so more than one swap is being issued per refresh -- and a count per
+               call site is the only thing that says which. Sites: 0 present-2D, 1 dev-rendered,
+               2 no-surface, 3 gdi-present, 4 blit-present, 5 modal-pump. */
+            { double med = 0.0;
+              if (nh > 0) { /* insertion sort of a copy is fine at this size and runs once per 600 frames */
+                  static double tmp[4096]; for (int i = 0; i < nh; i++) tmp[i] = hist[i];
+                  for (int i = 1; i < nh; i++) { double k = tmp[i]; int j = i-1;
+                      while (j >= 0 && tmp[j] > k) { tmp[j+1] = tmp[j]; j--; } tmp[j+1] = k; }
+                  med = tmp[nh/2]; }
+              fprintf(stderr, "[frametime] mean=%.2f ms  median=%.2f ms  => %.1f fps\n",
+                      sum/(double)n, med, 1000.0/(sum/(double)n)); }
+            fprintf(stderr, "[frametime] per-site swaps: 0=%ld 1=%ld 2=%ld 3=%ld 4=%ld 5=%ld\n",
+                    persite[0], persite[1], persite[2], persite[3], persite[4], persite[5]);
             fflush(stderr);
         }
     }
@@ -1018,8 +1042,8 @@ static void present_surface(GLSurface7* s)
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
 	if (g_curRT && load_fbo_funcs()) { p_glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0,0,g_scrW,g_scrH); g_curRT=NULL; } /* safety: never present with an FBO bound */
-	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win); } return; }
-	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win); } return; }
+	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(1); SDL_GL_SwapWindow(g_win); } return; }
+	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(2); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -1067,7 +1091,7 @@ static void present_surface(GLSurface7* s)
 	glEnd();
 	glDisable(GL_TEXTURE_2D);
 	present_dbg("2d-blit");
-	bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); bob_frame_tick(3); SDL_GL_SwapWindow(g_win);
 }
 
 /* ===================== GDI 2D front-end paint pipeline =====================
@@ -1190,7 +1214,7 @@ extern "C" void bob_gdi_present(void) {
 	   frame's accumulation from zero. */
 	if (bob_centre_ui()) { g_uiExtX = 0; g_uiExtY = 0; }
 	bob_shot2d_maybe();   /* S243: read the back buffer BEFORE the swap */
-	bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win);
+	bob_shot3d_maybe(); bob_frame_tick(4); SDL_GL_SwapWindow(g_win);
 }
 /* Decode a DIB (BITMAPINFO `bmi` + `bits`) into the GDI framebuffer at (xDest,yDest).
    Handles 8-bit palettized and 24/32-bit; honours bottom-up (biHeight>0) vs top-down. */
@@ -3448,7 +3472,7 @@ extern "C" int bob_render_smoketest(void)
 		dev->SetTexture(0,tex);
 		dev->DrawPrimitiveVB((D3DPRIMITIVETYPE)6,vb,0,4,0); /* TRIANGLEFAN */
 		dev->EndScene();
-		bob_shot3d_maybe(); bob_frame_tick(); SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
+		bob_shot3d_maybe(); bob_frame_tick(5); SDL_GL_SwapWindow(g_win); pump_events(); SDL_Delay(16);
 	}
 	unsigned char mid[3]={0,0,0};
 	glReadPixels(400,300,1,1,GL_RGB,GL_UNSIGNED_BYTE,mid);
