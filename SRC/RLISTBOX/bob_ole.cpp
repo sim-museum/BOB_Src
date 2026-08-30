@@ -1,5 +1,5 @@
 /* ==========================================================================
- *  bob_ole.cpp — OLE/ActiveX control hosting for the R* controls (side-table +
+ *  bob_ole.cpp Ã¢ÂÂ OLE/ActiveX control hosting for the R* controls (side-table +
  *  entry points). The genuine controls live in per-control TUs (bob_ole_rlistbox.cpp,
  *  bob_ole_rcombo.cpp) behind the OleHost interface; this file is control-agnostic.
  *
@@ -36,7 +36,7 @@ static const CLSID CLSID_RButton  = { 0x78918646, 0xa917, 0x11d6, { 0xa1,0xf0,0x
 static const CLSID CLSID_REdit    = { 0x499e2be6, 0xac32, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 static const CLSID CLSID_RRadio   = { 0x5363ba22, 0xd90a, 0x11d6, { 0xa1,0xf0,0x00,0x80,0xc8,0x58,0x2d,0xe4 } };
 static const CLSID CLSID_REdtBt   = { 0x461a1fe3, 0xb81b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S140: CREdtBt pilot slots (BoBFrag) */
-static const CLSID CLSID_RSpinBut = { 0xc3270e66, 0x6d6b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S142: CRSpinBut — the LW Directives allocation grid (gold #18); 8th and LAST R* type */
+static const CLSID CLSID_RSpinBut = { 0xc3270e66, 0x6d6b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S142: CRSpinBut Ã¢ÂÂ the LW Directives allocation grid (gold #18); 8th and LAST R* type */
 
 /* wrapper CWnd*  ->  hosted control (type-agnostic via OleHost). */
 static std::unordered_map<CWnd*, OleHost*>& hosts() {
@@ -111,10 +111,10 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
 
 /* S124: host the dialog TEMPLATE's label statics that no DDX_Control bound.
    On Windows the dialog manager creates EVERY template item; our DDX-driven
-   creation only instantiates the members a dialog binds — e.g. SMissionConfigure
+   creation only instantiates the members a dialog binds Ã¢ÂÂ e.g. SMissionConfigure
    binds its 8 combos but none of its 6 RStatic labels, so the Sim-Config Mission
    tab rendered label-less. The ids come from the installed build's PE DIALOG
-   templates (bob_dlg_enum_statics; empty under BOB_NO_PE_RSRC → feature off).
+   templates (bob_dlg_enum_statics; empty under BOB_NO_PE_RSRC Ã¢ÂÂ feature off).
    Called from CDialog::Create between DoDataExchange and OnInitDialog, so
    g_bobDlgIDD is the owning dialog and OnInitDialog can already GetDlgItem them.
    The synthetic wrapper CWnds follow the existing host-lifetime pattern (hosts
@@ -248,6 +248,15 @@ extern "C" void bob_ole_census(int dlgId)
 
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
+    /* R12 (cross-port from MA S329-S2, 2026-08-29). In MA the PO's "empty variants screen" was a
+       control type that was created, hosted, classified and populated -- and then had NO BRANCH in
+       the main draw dispatcher, so it was never drawn and NOTHING SAID SO. The generalisable lesson
+       is that a control skipped SILENTLY is indistinguishable from one that does not exist, and
+       this function has several distinct skip paths.
+       BOB_TRACE_SKIP=1 reports, once per dialog, how many hosted controls each path dropped. A
+       screen that "shows nothing" can then be read directly rather than narrowed by elimination
+       over several sprints, which is what R3.8 has cost so far. */
+    int skipVis = 0, skipDead = 0, skipTmpl = 0, skipDlu = 0, drawn = 0;
     /* R3.8: "zero hosted controls" and "hosted under a DIFFERENT parent" look identical from inside
        the match loop below, because it only ever prints hosts that already matched. That ambiguity
        is the whole question for the briefing pane (never populated vs populated and not drawn), so
@@ -275,7 +284,7 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         /* SP.2 (S123): honor the game's runtime ShowWindow state -- a hidden control isn't
            drawn and can't be clicked (zeroed hit rect). E.g. CSQuick1 hides IDC_DISABLEDEMO
            ("This is disabled in the demo") on the full game. */
-        if (!host->visible) { host->sw = host->sh = 0; continue; }
+        if (!host->visible) { host->sw = host->sh = 0; skipVis++; continue; }
         /* S124: a control absent from the installed build's template for this dialog would
            never be created by the Windows dialog manager -- don't draw it (e.g. CSSound's
            source-only music combos over the BDG IDD_SSOUND layout). Dialogs the PE doesn't
@@ -299,9 +308,9 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             bool dead = false;
             for (unsigned k = 0; k < sizeof(deadSweepRow)/sizeof(deadSweepRow[0]); k++)
                 if (host->ctrlId == deadSweepRow[k]) { dead = true; break; }
-            if (dead) { host->sw = host->sh = 0; continue; }
+            if (dead) { host->sw = host->sh = 0; skipDead++; continue; }
         }
-        if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; continue; }
+        if (bob_dlg_in_template(host->dlgId, host->ctrlId) == 0) { host->sw = host->sh = 0; skipTmpl++; continue; }
         /* R3.6: name the controls the sysbox actually hosts. BOB_TRACE_OLE dumps every control of
            every dialog per frame (85 spinners once wrote 70 MB and starved a run), so it cannot be
            used to answer a question about ONE panel. This prints one line per control for one
@@ -336,11 +345,11 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            labels took rects from other screens' templates -- scrambled/overlapping label
            layout on the GFX/Sound/Controls/Views forms (vs the Wine gold shots). lookupDluIn
            falls back to the unscoped search when the (dlg,id) pair isn't found. */
-        if (!lookupDluIn(host->dlgId, host->ctrlId, r)) continue;
+        if (!lookupDluIn(host->dlgId, host->ctrlId, r)) { skipDlu++; continue; }
         /* S126 (#16): settled-state emulation of the Windows dirty-region repaint.
            On Windows a WS_VISIBLE static under an interactive listbox paints once;
            the listbox's next repaint re-blits the panel background over it, and the
-           static is never re-invalidated — so it is absent from the settled screen
+           static is never re-invalidated Ã¢ÂÂ so it is absent from the settled screen
            (gold #16: the date heading RStatic 1227 under CSCampaign's tab-row
            listbox). Our panel model redraws every control every frame; emulate the
            settled state by skipping a static whose template rect is >=90% covered
@@ -399,16 +408,16 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         host->draw(&dc, dluX(r.w), hpx);
         bob_gdi_setdibits_clip(clipSave[0], clipSave[1], clipSave[2], clipSave[3]);
         host->sx = sx; host->sy = sy; host->sw = dluX(r.w); host->sh = hpx;  /* for click hit-test */
-        /* S207, answering MA's §8-MA137: does anything we host LAY OUT more content than the rect
+        /* S207, answering MA's ÃÂ§8-MA137: does anything we host LAY OUT more content than the rect
            we hit-test? MA's title menu drew 199px of rows inside a 100px listbox and its lower
            rows -- Replay among them -- could not be clicked by any route. We clip the art blit to
            the rect (S173), but that clip is on the SetDIBitsToDevice path and says nothing about
            row TEXT, so reading the code was not going to answer this. Measure it.
            FILTERED, not capped: only an actual overflow prints, so a clean tree is silent and a
-           dirty one cannot be starved by whatever draws first (§8-MA83). Deduped per control. */
+           dirty one cannot be starved by whatever draws first (ÃÂ§8-MA83). Deduped per control. */
         {
             int ch = host->contentH();
-            /* S207: hit-test what paint covered. MA's §8-MA137, measured true here: IDD_BOBFRAG's
+            /* S207: hit-test what paint covered. MA's ÃÂ§8-MA137, measured true here: IDD_BOBFRAG's
                IDC_RLIST_UNITDETAILS lays out 162px of rows in a 139px box, so its bottom rows were
                painted and refused every click. Widening the per-control hit test cannot move a
                pixel -- it only makes drawn rows answer. BOB_NO_DRAWH=1 reverts. */
@@ -440,7 +449,24 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             }
         }
         if (bob_ole_trace()) fprintf(stderr, "[ole] draw panel ctrl id=%d at (%d,%d) %dx%d\n", host->ctrlId, sx, sy, dluX(r.w), hpx);
+        drawn++;
         n++;
+    }
+    /* R12: one line per dialog saying what was dropped and by which filter. Reports even when
+       everything drew -- a report that only appears on failure cannot prove it was running, which
+       is the mistake MA's PO-82 instrument made twice. */
+    if (getenv("BOB_TRACE_SKIP")) {
+        static const void* seen[64]; static int nSeen = 0; int already = 0;
+        for (int k = 0; k < nSeen; k++) if (seen[k] == (void*)dialog) { already = 1; break; }
+        if (!already && nSeen < 64) {
+            seen[nSeen++] = (void*)dialog;
+            int total = drawn + skipVis + skipDead + skipTmpl + skipDlu;
+            fprintf(stderr, "[skip] dialog=%p hosted-for-this-dialog=%d DREW=%d | "
+                            "not-visible=%d dead-sweep-row=%d not-in-template=%d no-DLU-rect=%d%s\n",
+                    (void*)dialog, total, drawn, skipVis, skipDead, skipTmpl, skipDlu,
+                    (drawn == 0 && total > 0) ? "   <-- EVERY control was skipped: this screen is blank BY FILTER" : "");
+            fflush(stderr);
+        }
     }
     return n;
 }
@@ -500,15 +526,15 @@ extern "C" { extern long bob_evtA0, bob_evtA1; }
 extern "C" int bob_ole_last_click_id = 0;
 
 /* S160: the DRAWN screen span of one column of a hosted list control, from the control's own
-   GetColFromX walk — the same source bob_ole_click hit-tests with.
+   GetColFromX walk Ã¢ÂÂ the same source bob_ole_click hit-tests with.
 
    Why: the front-end menu row (Back / Fly / Sim Config ...) is drawn by the hosted
    CRListBoxCtrl at its OWN internal column spacing (PositionRListBox / m_horzSeperation), but
    its click rects were built separately from bob_gdi_text_width() re-measurements packed with a
    fixed gap. Two independent layouts, and they drift: measured on Quick Mission, "Fly" is painted
-   at x=132..153 while its click rect sat at x=83..108 — no overlap at all, so the button was
+   at x=132..153 while its click rect sat at x=83..108 Ã¢ÂÂ no overlap at all, so the button was
    unclickable, and "Back" (painted 56..97, rect 25..69) only responded on its leftmost 14px.
-   Same principle as S156's OOB hit-testing and MA's §8-MA84 trap #1: store what paint did,
+   Same principle as S156's OOB hit-testing and MA's ÃÂ§8-MA84 trap #1: store what paint did,
    never re-derive it. Returns 1 and fills the rect if the column is drawn. */
 extern "C" int bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int* h) {
     bool diag = getenv("BOB_DUMP_HITTARGETS") != 0;
@@ -542,14 +568,14 @@ extern "C" int bob_ole_col_rect(CWnd* ctrl, int col, int* x, int* y, int* w, int
     return 1;
 }
 
-/* S160: list every hosted control's LAST-DRAWN screen rect for one dialog — i.e. exactly the
+/* S160: list every hosted control's LAST-DRAWN screen rect for one dialog Ã¢ÂÂ i.e. exactly the
    rects bob_ole_click hit-tests against. Used to answer "is there any clickable target under
    this button's pixels?", which distinguishes a click that never arrives from one that arrives
    and finds no handler. */
 /* S173d: the union of a dialog's last-DRAWN control rects, or 0 if it drew nothing hit-testable.
    Exists because CWnd::GetWindowRect in this compat answers with the WHOLE SCREEN for every window
    (afxwin.h: left=top=0, right/bottom = bob_gdi_screen_size). Any caller asking "is this click
-   inside that dialog?" therefore gets "yes" for every pixel — which turned S156's
+   inside that dialog?" therefore gets "yes" for every pixel Ã¢ÂÂ which turned S156's
    swallow-clicks-that-land-on-an-open-dialog rule into swallow-EVERY-click-once-anything-is-open.
    Same principle as the hit-testing next door: the rect comes from the paint, so it cannot drift
    from what the player sees. */
@@ -605,7 +631,7 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (h->parentDlg != dialog) continue;
         if (bob_ole_trace()) fprintf(stderr, "[ole]   hit? id=%d rect=(%d,%d,%d,%d) click=(%d,%d)\n", h->ctrlId, h->sx, h->sy, h->sw, h->sh, x, y);
         if (h->sw <= 0 || h->sh <= 0) continue;
-        /* S207 (§8-MA137): bound by what paint COVERED, not by the template rect. See OleHost::hitH. */
+        /* S207 (ÃÂ§8-MA137): bound by what paint COVERED, not by the template rect. See OleHost::hitH. */
         int hitH = (h->hitH > 0) ? h->hitH : h->sh;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + hitH) {
             bob_ole_last_click_id = h->ctrlId;   /* S156: report the hit control to the caller */
@@ -635,18 +661,18 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
             }
             if (h->onClick()) {
                 /* S161: supply the event ARGUMENTS. bob_evt_call marshals a (LPCTSTR,short)
-                   handler as (caption, (short)bob_evtA0), and this branch never set them — so the
+                   handler as (caption, (short)bob_evtA0), and this branch never set them Ã¢ÂÂ so the
                    index parameter carried whatever the last radio/listbox click left behind.
                    Handlers that re-read the control (SController) were fine; handlers that use the
                    parameter were not: CSQuick1::OnTextChangedFamilylists does
                    `currquickfamily = index`, so choosing Dogfight applied a stale family and the
-                   game launched Training/Takeoff. bob_evtP is cleared rather than left dangling —
+                   game launched Training/Takeoff. bob_evtP is cleared rather than left dangling Ã¢ÂÂ
                    the thunk would otherwise pass a stale pointer as the caption. */
                 static const int noEvtIdx = getenv("BOB_NO_EVT_INDEX") ? 1 : 0;   /* revert */
                 if (!noEvtIdx) { bob_evtA0 = h->curIndex(); bob_evtA1 = 0; bob_evtP = 0; }
                 /* S33: the value already cycled (onClick); now fire the combo's TextChanged event
                    (dispid 1) on the dialog's RUNTIME type via the general eventsink so the genuine
-                   handler runs (e.g. SController::OnTextChanged* applies the device/axis rebind —
+                   handler runs (e.g. SController::OnTextChanged* applies the device/axis rebind Ã¢ÂÂ
                    it reads the combo's new GetIndex). Dialogs with no registered handler for this
                    (id,dispid) no-op faithfully (they persist via writeback-on-destroy). */
                 bob_evt_fire((void*)dialog, &typeid(*dialog), h->ctrlId, 1);
@@ -654,16 +680,16 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
                 return 1;
             }
             /* S33: a click on a hosted LIST control (e.g. the load screen's file list) selects the
-               row under the cursor — fire the listbox Select event (dispid 1, args row/col) via the
+               row under the cursor Ã¢ÂÂ fire the listbox Select event (dispid 1, args row/col) via the
                general eventsink so the genuine handler runs (e.g. CLoad::OnSelectRlistboxfile sets
-               selectedfile). id==0 is the FullPanelDial menu listbox (handled elsewhere) — skip. */
+               selectedfile). id==0 is the FullPanelDial menu listbox (handled elsewhere) Ã¢ÂÂ skip. */
             int row = h->rowAtY(y - h->sy);
             if (row >= 0 && h->ctrlId) {
                 /* S141: the Select event is Select(row, COLUMN) (VTS_I4 VTS_I4) and the
                    column half was hardcoded 0. BoB's tab rows are multi-COLUMN listboxes
-                   (one column per item), so handlers that switch on the column — e.g.
+                   (one column per item), so handlers that switch on the column Ã¢ÂÂ e.g.
                    CSCampaign::OnSelectRlistCampaigns -> ChangeCamp(column), the campaign
-                   PHASE selector — could only ever be told "column 0". Resolve it from the
+                   PHASE selector Ã¢ÂÂ could only ever be told "column 0". Resolve it from the
                    control's own metrics (GetColFromX). BOB_NO_LIST_COL reverts to 0. */
                 int col = getenv("BOB_NO_LIST_COL") ? 0 : h->colAtX(x - h->sx);
                 bob_evtA0 = row; bob_evtA1 = col;
@@ -731,7 +757,7 @@ extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int
         }
         int ly = h->sh / 2;
         if (row >= 0) {                              /* S199: find the row's vertical span */
-            /* S207 (§8-MA137): scan the height paint COVERED. Bounded by h->sh this loop could
+            /* S207 (ÃÂ§8-MA137): scan the height paint COVERED. Bounded by h->sh this loop could
                never find a row living past the rect, so it took the S199 refusal branch and the
                recipe reported "row not mapped" -- the mirror of the hit test refusing the click.
                Both halves have to know how tall the content is or the rows stay unaddressable.
@@ -761,7 +787,7 @@ extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int
 
 /* S143 (SP.9, from FF note 15): summarise which dialogs are actually hosted and how many of
    their controls were last DRAWN, for the parity-capture state banner. A verdict that says
-   "screen X with control set Y" must be able to point at output proving X and Y were up —
+   "screen X with control set Y" must be able to point at output proving X and Y were up Ã¢ÂÂ
    otherwise a mis-selected state and a render bug are indistinguishable, which cost the
    FreeFalcon port a sprint. Writes e.g. "dlg=1481:7 dlg=2010:85" (drawn/total per dialog). */
 /* S146 (SP.8, env-gated one-shot, default-off): gold #18 shows no "Sweeps" row, we draw one.
@@ -947,13 +973,13 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
     dc.m_bobTextH = textH > 0 ? textH : 14;
     host->draw(&dc, w, h);
     /* S160: record what we just drew, like every other draw path does. This one never did, so the
-       front-end menu row (Back / Fly / Sim Config ...) had NO drawn rect — which is exactly why the
+       front-end menu row (Back / Fly / Sim Config ...) had NO drawn rect Ã¢ÂÂ which is exactly why the
        menu path had to re-derive its click rects from bob_gdi_text_width() instead of reading them
        back, and why those re-derived rects drifted off the painted text ("Fly" painted x=132..153,
-       click rect x=83..108 — unclickable; user-reported 2026-08-09).
+       click rect x=83..108 Ã¢ÂÂ unclickable; user-reported 2026-08-09).
        Recording it does not add a new click path: bob_ole_click is only called on the pdial[]
        panels, and this host belongs to the RFullPanelDial itself. It exists so hit rects can come
-       from the paint (S156 / MA §8-MA84 trap 1: store what paint did, never re-derive it). */
+       from the paint (S156 / MA ÃÂ§8-MA84 trap 1: store what paint did, never re-derive it). */
     host->sx = x; host->sy = y; host->sw = w; host->sh = h;
     { int ch = host->contentH();                           /* S207: see OleHost::hitH */
       host->hitH = (ch > h && !getenv("BOB_NO_DRAWH")) ? ch : h; }
