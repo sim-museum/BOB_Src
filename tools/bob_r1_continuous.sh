@@ -81,7 +81,15 @@ REC="$GD/VIDEOS/replay.dat"     # uppercase VIDEOS (S260)
 # then detour through Sim Config, then Fly -- which still exercises the Sim Config UI this gate
 # exists to test. (Seeding currquickmiss via the forced pre-flight arm would make the gate pass
 # while testing nothing about the menus.)
-CLICKS="${CLICKS:-0,1,1,3,#1075,#1075,6,2}"
+# S351: THREE cycles, not two. The gun-camera combo STARTS at index 2 (S331-S4 observed
+# `[combo] SetIndex id=1075 <- 2`), and this gate needs it to END at 2 -- that is the
+# GD_GUNCAMERAATSTART bit which arms the recorder, so unlike R13's gate the value here is
+# SEMANTIC, not just an arithmetic result. Two clicks run 2 -> 0 -> 1 and land on ON-TRIGGER,
+# which arms nothing, so every downstream assertion in this gate was failing for a reason that
+# had nothing to do with recording. Three clicks return it to 2.
+# The start index is verified below rather than assumed; if it ever changes, this recipe cannot
+# reach 2 and the gate says so instead of reporting a recording failure it did not test.
+CLICKS="${CLICKS:-0,1,1,3,#1075,#1075,#1075,6,2}"
 [ "$CONTROL" = 1 ] && CLICKS="0,1,1,3,6,2"
 
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
@@ -94,7 +102,7 @@ log="$OUT/run.log"
 ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env \
     BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=click BOB_AUTOCLICK="$CLICKS" \
-    BOB_TRACE_SETFIELD=1 BOB_TRACE_RECLOG=1 \
+    BOB_TRACE_SETFIELD=1 BOB_TRACE_RECLOG=1 BOB_TRACE_COMBO=1 \
     "$BOB" ) >"$log" 2>&1
 pkill -x bob 2>/dev/null
 
@@ -105,7 +113,24 @@ bad(){ say "$1" "$2"; fail=1; }
 # 1. the UI wrote the preference (skipped in the control, which never clicks the combo)
 if [ "$CONTROL" != 1 ]; then
   v=$(grep -a '\[setfield\] combo id=1075' "$log" | tail -1 | sed 's/.*val=//')
-  if [ "${v:-}" = "2" ]; then say "UI wrote GD_GUNCAMERAATSTART" "val=2"
+  # S351: this gate needs the AT-START value (2), because that is the bit that arms the recorder.
+  # But 2 is only reachable if the combo starts where we think it does, so check the premise and
+  # report a broken premise AS one -- not as a recording failure the gate never got far enough to
+  # test. Start index from CRCombo::SetIndex (the combo is set and never read; GetIndex fires only
+  # at write-back, so it can only ever report the END state -- S331-S4).
+  st=$(grep -a '\[combo\] SetIndex id=1075' "$log" | head -1 | sed -n 's/.*<- *\([0-9-]*\).*/\1/p')
+  nclick=$(printf '%s' "$CLICKS" | grep -ao '#1075' | wc -l)
+  if [ -n "${st:-}" ]; then
+    exp=$(( ( st + nclick ) % 3 ))
+    if [ "$exp" != "2" ]; then
+      bad "recipe can reach the arming value" "start=$st + $nclick clicks mod 3 = $exp, not 2 — RECIPE, not a recording fault"
+    fi
+    if [ "${v:-}" = "$exp" ]; then say "UI wrote the combo" "start=$st +$nclick -> val=$v"
+    else bad "UI wrote the combo" "start=$st +$nclick predicts $exp, got '${v:-none}'"; fi
+  else
+    say "UI wrote the combo" "start index not observed — cannot verify (need BOB_TRACE_COMBO)"
+  fi
+  if [ "${v:-}" = "2" ]; then say "UI wrote GD_GUNCAMERAATSTART" "val=2 (recorder armed)"
   else bad "UI wrote GD_GUNCAMERAATSTART" "got '${v:-none}' (want 2) — the rest is meaningless"; fi
 fi
 

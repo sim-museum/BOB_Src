@@ -20,6 +20,7 @@
 # tree once this is submitted.
 set -u
 
+HERE_ABS="$(cd "$(dirname "$0")" && pwd)"   # S351: absolute, resolved BEFORE any cd
 BOB=/home/admin/bob/build/bob
 GD="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain"
 OUT="${1:?usage: bob_gates.sh <outdir> [baseline-dir]}"
@@ -241,7 +242,12 @@ _acmi=""
 if [ -z "$_acmi" ]; then
   echo "###   SKIP: no .acmi produced -- nothing to check (fly a sortie with BOB_ACMI unset/on)"
 else
-  if "$(dirname "$0")/bob_acmi_orientation.sh" $_acmi; then
+  # S351: $0 is a RELATIVE path and this gate has already cd'd to "$GD", so dirname "$0" resolved
+  # to a "tools" directory that does not exist there -- the suite reported "R11 FAIL -- yaw
+  # convention regressed" when the script simply could not be found. A missing harness must never
+  # be reported as a regression in the thing it measures. Resolve the script directory once,
+  # absolutely, before any cd.
+  if "$HERE_ABS/bob_acmi_orientation.sh" $_acmi; then
     echo "###   R11 PASS"
   else
     _r=$?
