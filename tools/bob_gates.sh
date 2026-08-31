@@ -414,6 +414,35 @@ echo "### binary unchanged (md5=$HASH_AFTER) Ã¢ÂÂ gate valid"
 # S199: one line that says whether ANY run in this file crashed or exited non-zero. Without it
 # the outcome of every run was printed and never judged, so a crashed recipe looked like a
 # passing one unless a human read the numbers.
+# ---- S370: gates that existed but nothing ran ------------------------------------------------
+# An audit of tools/ against this file found TEN scripts the suite never invoked. A gate nobody
+# runs protects nothing -- the same finding as ma S372 and the julia gates.sh, and the reason
+# BoB's own campaign gate stayed green for nine sprints while being unpassable.
+# Each was RUN before being added, because adding a red gate makes the suite permanently red and
+# adding a probe makes it report failure for a tool that never had a verdict to give:
+#   ADDED (measured green): bob_mp_connect, bob_mp_packet, check_notes_sync
+#   NOT ADDED, with reasons measured rather than assumed:
+#     bob_mp_uijoin     exit 2 INCONCLUSIVE -- "nothing was measured; fix the drive first"
+#     bob_dialslots     times out (exit 124) -- needs its recipe re-derived
+#     bob_settings_nav  exceeded a 10-minute cap; runtime unknown, not yet characterised
+#     bob_detect_probe  a PROBE, no verdict; its own header warns not to read its zeros as findings
+#     bob_blob_bisect   an investigation instrument, not an assertion
+#     bob_validate      no verdict text; unclassified
+echo "### GATE MP1: multiplayer front door (DirectPlay object + lobby)"
+bash "$HERE_ABS/bob_mp_connect.sh" 2>&1 | sed 's/^/  /'
+mp1=${PIPESTATUS[0]}
+if [ "$mp1" = "0" ]; then echo "  mp_connect: PASS"; else echo "  mp_connect: FAIL (exit=$mp1)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE MP1"
+echo "### GATE MP2: discovery, join and a packet across two processes"
+bash "$HERE_ABS/bob_mp_packet.sh" 2>&1 | sed 's/^/  /'
+mp2=${PIPESTATUS[0]}
+if [ "$mp2" = "0" ]; then echo "  mp_packet: PASS"; else echo "  mp_packet: FAIL (exit=$mp2)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE MP2"
+echo "### GATE NOTES: cross-port lessons doc in sync with MiG Alley"
+bash "$HERE_ABS/check_notes_sync.sh" 2>&1 | sed 's/^/  /'
+nt=${PIPESTATUS[0]}
+if [ "$nt" = "0" ]; then echo "  notes_sync: PASS"; else echo "  notes_sync: FAIL (exit=$nt)"; gates_fail=$((gates_fail+1)); fi
+
 replay_check "GATE R11"
 guard_restore
 
