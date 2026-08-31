@@ -27,6 +27,7 @@
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
+. "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"   # S373: default to a SCRATCH tree, never the player's
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
 OUT="${OUT:-/tmp/bob_replay_record}"
 TMO="${TMO:-120}"
