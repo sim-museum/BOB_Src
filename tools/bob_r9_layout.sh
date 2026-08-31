@@ -61,8 +61,14 @@ PY
 }
 
 echo "bob R9 -- 1920x1080 canvas placement, both options"
-# Default: the R9 defect itself -- 1024x768 painted in the top-left corner, the rest black.
-arm default ""                 0   0 1024  768
+# S369: centring is now the DEFAULT, so the default arm asserts the CENTRED region. The old
+# expectation (top-left) was the defect, and this gate correctly went red when the default moved
+# -- which is the whole reason it exists. It is updated because the change was deliberate, not to
+# make a failure go away, and the top-left placement keeps an arm of its own below so the revert
+# path stays covered rather than becoming untested the moment it stopped being the default.
+arm default ""                        448 156 1472  924
+# The revert: BOB_NO_CENTRE_UI restores the original top-left placement.
+arm topleft "BOB_NO_CENTRE_UI=1"        0   0 1024  768
 # Centre: same 1024x768 canvas, centred. (1920-1024)/2=448, (1080-768)/2=156.
 arm centre  "BOB_CENTRE_UI=1"  448 156 1472  924
 # Scale: uniform x1.406 to 1440x1080, letterboxed 240 px each side. Aspect preserved, not stretched.

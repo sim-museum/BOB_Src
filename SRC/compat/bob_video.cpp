@@ -515,7 +515,10 @@ static float g_uiScale = 1.0f;              /* applied uniform scale (1.0 = none
 static int   g_uiScaleOffX = 0, g_uiScaleOffY = 0;   /* letterbox offset in window px */
 static int bob_scale_ui(void) {
     static int on = -1;
-    if (on < 0) on = (getenv("BOB_SCALE_UI") && !getenv("BOB_CENTRE_UI")) ? 1 : 0;
+    /* R9/S369: centring now defaults ON, so "scale unless centring is set" would never fire.
+       Scale is an explicit opt-in that also has to turn centring off: BOB_SCALE_UI=1 alone is
+       enough, and it wins here because the centring path reads BOB_NO_CENTRE_UI OR this flag. */
+    if (on < 0) on = getenv("BOB_SCALE_UI") ? 1 : 0;
     return on;
 }
 extern int g_uiOffX, g_uiOffY;
@@ -1155,7 +1158,17 @@ static int g_uiExtLastX = 0, g_uiExtLastY = 0;  /* last completed frame's conten
 static int g_uiExtX = 0, g_uiExtY = 0;      /* content extent accumulating this frame */
 static int bob_centre_ui(void) {
     static int on = -1;
-    if (on < 0) on = getenv("BOB_CENTRE_UI") ? 1 : 0;
+    /* R9/S369: centring is now the DEFAULT; BOB_NO_CENTRE_UI=1 reverts to top-left.
+       The PO reported the front end painting only the top-left 1024x768 of a 1920x1080 screen and
+       has not picked between centre and scale, and leaving a known-visible defect switched off
+       waiting for a preference serves nobody. Centring is the half that can be defaulted safely:
+       it RESAMPLES NOTHING -- the instrument that found the bug measured the identical lit-pixel
+       count (786427) after centring, so the canvas is intact, exactly offset, nothing clipped or
+       duplicated -- and it shifts hit-testing by one constant offset, which the click path already
+       compensates for. Scaling would change every pixel and move hit-tests non-uniformly, so it
+       stays opt-in (BOB_SCALE_UI=1) as a genuine preference rather than a default.
+       Reversible either way; the PO's answer changes one line. */
+    if (on < 0) on = (getenv("BOB_NO_CENTRE_UI") || getenv("BOB_SCALE_UI")) ? 0 : 1;
     return on;
 }
 extern "C" void bob_ui_centre_offset(int* x, int* y) { if (x) *x = g_uiOffX; if (y) *y = g_uiOffY; }
