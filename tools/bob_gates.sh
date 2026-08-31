@@ -420,11 +420,18 @@ echo "### binary unchanged (md5=$HASH_AFTER) Ã¢ÂÂ gate valid"
 # BoB's own campaign gate stayed green for nine sprints while being unpassable.
 # Each was RUN before being added, because adding a red gate makes the suite permanently red and
 # adding a probe makes it report failure for a tool that never had a verdict to give:
-#   ADDED (measured green): bob_mp_connect, bob_mp_packet, check_notes_sync
-#   NOT ADDED, with reasons measured rather than assumed:
-#     bob_mp_uijoin     exit 2 INCONCLUSIVE -- "nothing was measured; fix the drive first"
-#     bob_dialslots     times out (exit 124) -- needs its recipe re-derived
-#     bob_settings_nav  exceeded a 10-minute cap; runtime unknown, not yet characterised
+#   ADDED (all measured green): bob_mp_connect, bob_mp_packet, check_notes_sync,
+#                               bob_mp_uijoin, bob_dialslots, bob_settings_nav
+#   S372 CORRECTION -- two of the three original exclusions were MY MEASUREMENT ERROR, not gate
+#   faults, and recording them as gate faults would have retired two working gates:
+#     bob_dialslots     "times out (exit 124)" was a 300s cap against a gate that documents TWO
+#                       420s runs. Given its own budget it PASSES all five arms.
+#     bob_settings_nav  "exceeded a 10-minute cap" was measured while bob_dialslots held gl-lock
+#                       in the background, so it spent that time QUEUED FOR THE DISPLAY, not
+#                       running. With the display free it PASSES in 5m00s.
+#     bob_mp_uijoin     the one real finding: its drive was a click short (S371), now fixed.
+#   The lesson is cheap to state and was not: do not time a gate without checking what it costs,
+#   and do not measure anything on this box while another display gate is queued.
 #     bob_detect_probe  a PROBE, no verdict; its own header warns not to read its zeros as findings
 #     bob_blob_bisect   an investigation instrument, not an assertion
 #     bob_validate      no verdict text; unclassified
@@ -443,6 +450,16 @@ bash "$HERE_ABS/bob_mp_uijoin.sh" 2>&1 | sed 's/^/  /'
 mp3=${PIPESTATUS[0]}
 if [ "$mp3" = "0" ]; then echo "  mp_uijoin: PASS"; else echo "  mp_uijoin: FAIL (exit=$mp3)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE MP3"
+echo "### GATE R3.7: the logged-child close path does not fault (two runs, ~14 min)"
+bash "$HERE_ABS/bob_dialslots.sh" 2>&1 | sed 's/^/  /'
+ds=${PIPESTATUS[0]}
+if [ "$ds" = "0" ]; then echo "  dialslots: PASS"; else echo "  dialslots: FAIL (exit=$ds)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE R3.7"
+echo "### GATE SET: the settings UI writes its preference (combo dispatch, S289 hazard)"
+bash "$HERE_ABS/bob_settings_nav.sh" 2>&1 | sed 's/^/  /'
+sn=${PIPESTATUS[0]}
+if [ "$sn" = "0" ]; then echo "  settings_nav: PASS"; else echo "  settings_nav: FAIL (exit=$sn)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE SET"
 echo "### GATE NOTES: cross-port lessons doc in sync with MiG Alley"
 bash "$HERE_ABS/check_notes_sync.sh" 2>&1 | sed 's/^/  /'
 nt=${PIPESTATUS[0]}
