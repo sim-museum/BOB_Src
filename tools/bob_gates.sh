@@ -476,6 +476,11 @@ bash "$HERE_ABS/bob_r16_viewdt.sh" 2>&1 | sed 's/^/  /'
 r16=${PIPESTATUS[0]}
 if [ "$r16" = "0" ]; then echo "  r16_viewdt: PASS"; else echo "  r16_viewdt: FAIL (exit=$r16)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE R16"
+echo "### GATE R18: the move timer keeps an absolute schedule (two arms)"
+bash "$HERE_ABS/bob_r18_timer.sh" 2>&1 | sed 's/^/  /'
+r18=${PIPESTATUS[0]}
+if [ "$r18" = "0" ]; then echo "  r18_timer: PASS"; else echo "  r18_timer: FAIL (exit=$r18)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE R18"
 echo "### GATE NOTES: cross-port lessons doc in sync with MiG Alley"
 bash "$HERE_ABS/check_notes_sync.sh" 2>&1 | sed 's/^/  /'
 nt=${PIPESTATUS[0]}

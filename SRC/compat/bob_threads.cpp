@@ -12,6 +12,8 @@
 #ifdef FF_LINUX
 
 #include <pthread.h>
+#include <errno.h>
+#include <time.h>
 #include <unistd.h>
 #include <cstdlib>
 #include <cstring>
@@ -135,19 +137,55 @@ struct Timer {
 static Timer g_timers[BOB_MAX_TIMERS];
 static pthread_mutex_t g_timerLock = PTHREAD_MUTEX_INITIALIZER;
 
+/* R18 (2026-08-31): the periodic timer must keep an ABSOLUTE schedule.
+   The old loop slept `delayMs` in 5 ms usleep slices and then ran the callback, so every period cost
+   delayMs + 8 sleep-wakeup overshoots + the callback's own runtime, and the error ACCUMULATED: the
+   move cycle ran slow, and with it `timeofday += FRAMETIME` -- the game's own clock. R16-S5 measured
+   the consequence downstream (the padlock extrapolation drifted ~20 ms per second against wall time,
+   reaching its 1000 ms clamp in ~50 s) and fixed that symptom by reading the wall clock instead of
+   counting ticks. This is the cause.
+   clock_nanosleep(TIMER_ABSTIME) against a fixed next-deadline keeps the long-run rate exact: a late
+   callback is absorbed by the next period rather than pushing the whole schedule back. If the loop
+   falls more than one period behind (a stall), the deadline is re-based to now so it does not then
+   fire a burst of catch-up callbacks.
+   BOB_TIMER_SLICES=1 restores the old accumulate-and-drift loop -- the negative control for
+   tools/bob_r18_timer.sh. BOB_TRACE_TIMER=1 reports the achieved period. */
 static void* timer_thread(void* p)
 {
 	Timer* t = (Timer*)p;
+	const int legacy = getenv("BOB_TIMER_SLICES") != NULL;
+	const int trace  = getenv("BOB_TRACE_TIMER") != NULL;
+	struct timespec next; clock_gettime(CLOCK_MONOTONIC, &next);
+	struct timespec t0 = next; long fired = 0;
+	const long periodNs = (long)(t->delayMs ? t->delayMs : 1) * 1000000L;
 	do {
-		/* sleep in small slices so timeKillEvent is responsive */
-		unsigned remaining = t->delayMs ? t->delayMs : 1;
-		while (remaining && !t->kill) {
-			unsigned slice = remaining > 5 ? 5 : remaining;
-			usleep(slice * 1000);
-			remaining -= slice;
+		if (legacy) {
+			/* sleep in small slices so timeKillEvent is responsive */
+			unsigned remaining = t->delayMs ? t->delayMs : 1;
+			while (remaining && !t->kill) {
+				unsigned slice = remaining > 5 ? 5 : remaining;
+				usleep(slice * 1000);
+				remaining -= slice;
+			}
+		} else {
+			next.tv_nsec += periodNs;
+			while (next.tv_nsec >= 1000000000L) { next.tv_nsec -= 1000000000L; next.tv_sec++; }
+			struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
+			long behindNs = (now.tv_sec - next.tv_sec) * 1000000000L + (now.tv_nsec - next.tv_nsec);
+			if (behindNs > periodNs) next = now;      /* stalled: re-base, do not burst */
+			else while (!t->kill &&
+			            clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &next, NULL) == EINTR) { }
 		}
 		if (t->kill) break;
 		if (t->cb) t->cb((unsigned)(t - g_timers) + 1, 0, t->user, 0, 0);
+		if (trace && ++fired % 250 == 0) {
+			struct timespec now; clock_gettime(CLOCK_MONOTONIC, &now);
+			double el = (now.tv_sec - t0.tv_sec) + (now.tv_nsec - t0.tv_nsec) / 1e9;
+			fprintf(stderr, "[timer] id=%u fired=%ld in %.2fs -> %.3f ms/period (nominal %u) %s\n",
+			        (unsigned)(t - g_timers) + 1, fired, el, 1000.0 * el / (double)fired,
+			        t->delayMs, legacy ? "[legacy slices]" : "[absolute deadline]");
+			fflush(stderr);
+		}
 	} while (t->periodic && !t->kill);
 	pthread_mutex_lock(&g_timerLock);
 	t->inUse = 0;
