@@ -1967,6 +1967,17 @@ QueryPerformanceFrequency(
 void	Inst3d::DoMoveCycle()
 {
 #if BOB_LINUX
+	/* R16-S5 (PO: "near a padlocked bogie it feels like about 5 fps at a time of rapid motion").
+	   ViewPoint::move_time_ms is the timestamp view_dt is measured from, and view_dt is the
+	   extrapolation ViewFudge applies to the padlocked item (World += vel*view_dt) so the target is
+	   drawn where it WILL be between 25 Hz world moves. It was stamped ONCE, in the ThreeDee ctor,
+	   and never again: view_dt then grows from 0 to the 400 ms clamp, snaps to 0, and repeats -- a
+	   2.5 Hz sawtooth. At 100 m/s closing the bogie is drawn up to 40 m ahead of truth and yanked
+	   back 2.5 times a second; worse with speed, worse up close, exactly the PO's description.
+	   Stamp it at every world move, which is what "time since last move" means. BOB_NO_MOVESTAMP=1
+	   reverts, and is the negative control for tools/bob_r16_viewdt.sh. */
+	/* (The stamp itself lives at the += site below, replacing the counter -- a second stamp here
+	   FOUGHT the increment: measured 1600 negative-delta resets, extrapolation off 41% of frames.) */
 	if (getenv("BOB_TRACE_FLY")) { static int tc=0;
 		if ((tc++ % 20)==0 && Manual_Pilot.ControlledAC2)
 			fprintf(stderr,"[fly] tick=%d paused=%d ac.World=(%ld,%ld,%ld)\n", tc, (int)paused,
@@ -2290,7 +2301,20 @@ void	Inst3d::DoMoveCycle()
 	for (auto view = viewedwin; view; view = view->nextview)					//CSB 08/03/00
 		if((view) && (view->View_Point))								//CSB 08/03/00
 		{																//CSB 08/03/00
-			view->View_Point->move_time_ms += Timer_Code.FRAMETIME * 10;	//cs -> ms	//CSB 02/03/00	//CSB 08/03/00
+			/* R16-S5: STAMP THE CLOCK, do not count moves. This line advanced move_time_ms by a
+			   nominal 40 ms per move cycle -- a COUNTER standing in for a clock. It is only right if
+			   the move timer is exactly 25 Hz; the port's pthread timer (usleep slices) runs ~2%
+			   slow, so the counter drifted against wall time by ~20 ms/s, view_dt (= now -
+			   move_time_ms, the padlock extrapolation) climbed to the 1000 ms clamp in ~50 s and
+			   snapped back. Measured: max=1000 mean=469 over a sortie, 68% of frames extrapolated
+			   >300 ms. At 100 m/s closing that draws the bogie up to 100 m ahead of truth and yanks
+			   it back -- the PO's "about 5 fps near a padlocked bogie at a time of rapid motion".
+			   With the clock: max=37 ms, mean 13. BOB_NO_MOVESTAMP=1 restores the counter (the
+			   negative control for tools/bob_r16_viewdt.sh). */
+			if (getenv("BOB_NO_MOVESTAMP"))
+				view->View_Point->move_time_ms += Timer_Code.FRAMETIME * 10;	//cs -> ms	//CSB 02/03/00	//CSB 08/03/00
+			else
+				view->View_Point->move_time_ms = timeGetTime();
 #ifdef	_FRAMESHITE_
 			fprintf(Three_Dee.framefp,"+\n");
 #endif

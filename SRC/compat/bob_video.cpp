@@ -546,6 +546,18 @@ static void pump_events(void)
 				else if (dc>30 && (dc%3)==0) { kb_push(0xC7,1); kb_push(0xC7,0); }  /* Home = nose-UP trim (climb->stall) */
 			}
 		}
+		else if (mode && strstr(mode,"padlock")) {  /* R16-S5: throttle up, then PADLOCKTOG (Enter,
+			   DIK 0x1C) so the view tracks a bogie -- the case the PO's judder report is about. */
+			/* Not gated on g_bob_flight_active: that flag is set only on the front-end fly path
+			   (FULLPSYS.CPP), and BOB_BOOT_FRONTEND bypasses it, so the tap never fired (measured:
+			   "padlock tapped=0"). Keyboard acquisition is the signal that the 3D is up. */
+			static int kc=0;
+			{ kc++;
+				if (kc==20)       { kb_push(0x0B,1); kb_push(0x0B,0); }   /* full throttle */
+				else if (kc==200) { kb_push(0x1C,1); kb_push(0x1C,0);     /* padlock toggle */
+					if (getenv("BOB_TRACE_VIEWDT")) fprintf(stderr,"[viewdt] PADLOCKTOG tapped at kc=%d\n",kc); }
+			}
+		}
 		else if (mode && strstr(mode,"plunge")) {  /* R3.2 repro: throttle + nose-DOWN -> point the
 			   nose at the terrain so the landscape fills the view BEHIND the cockpit panel (the
 			   "landscape shows through cockpit" depth-sort symptom). */

@@ -6731,6 +6731,28 @@ inline	void	ThreeDee::SetFrameTime()
 
 		if(View_Point->trackeditem)
 			MissManCampSky().GetWind(View_Point->trackeditem->World.Y, wind_x, wind_y, wind_z);
+#if BOB_LINUX
+		/* R16-S5: MEASURE view_dt. It is the extrapolation applied to the tracked/padlocked item
+		   (ViewFudge: World += vel*view_dt), so if it is ever large, the target is DRAWN far from
+		   where the world has it. Buckets plus max, reported periodically (not atexit -- a SIGKILL
+		   never runs atexit, and a silent instrument has been misread as "no problem" here before).
+		   BOB_TRACE_VIEWDT=1. */
+		if (getenv("BOB_TRACE_VIEWDT")) {
+			static long n=0,b50=0,b100=0,b200=0,b300=0,b400=0,resets=0; static SLong mx=0; static double sum=0;
+			if (delta_ms < 0 || delta_ms > max_ms) { resets++;
+				fprintf(stderr, "[viewdt] RESET vp=%p now=%lu move=%lu delta=%ld\n", (void*)View_Point,
+				        (unsigned long)time_now, (unsigned long)View_Point->move_time_ms, (long)delta_ms); }
+			n++; sum += view_dt; if (view_dt > mx) mx = view_dt;
+			if ((n % 300) == 0 || n <= 5)
+				fprintf(stderr, "[viewdt] sample vp=%p now=%lu move=%lu delta=%ld view_dt=%ld\n", (void*)View_Point,
+				        (unsigned long)time_now, (unsigned long)View_Point->move_time_ms, (long)delta_ms, (long)view_dt);
+			if      (view_dt < 50)  b50++;  else if (view_dt < 100) b100++; else if (view_dt < 200) b200++;
+			else if (view_dt < 300) b300++; else b400++;
+			if ((n % 300) == 0)
+				fprintf(stderr, "[viewdt] n=%ld <50=%ld 50-100=%ld 100-200=%ld 200-300=%ld 300+=%ld  max=%ld mean=%.1f resets=%ld\n",
+				        n,b50,b100,b200,b300,b400,(long)mx,sum/n,resets);
+		}
+#endif
 	}																	
 
 //DEADCODE CSB 08/03/00 PrintVar(65, 21, "tn %.0f ", FP(time_now));								
