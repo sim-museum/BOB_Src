@@ -438,6 +438,11 @@ bash "$HERE_ABS/bob_mp_packet.sh" 2>&1 | sed 's/^/  /'
 mp2=${PIPESTATUS[0]}
 if [ "$mp2" = "0" ]; then echo "  mp_packet: PASS"; else echo "  mp_packet: FAIL (exit=$mp2)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE MP2"
+echo "### GATE MP3: the Join list is populated from a real host (with a no-host control)"
+bash "$HERE_ABS/bob_mp_uijoin.sh" 2>&1 | sed 's/^/  /'
+mp3=${PIPESTATUS[0]}
+if [ "$mp3" = "0" ]; then echo "  mp_uijoin: PASS"; else echo "  mp_uijoin: FAIL (exit=$mp3)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE MP3"
 echo "### GATE NOTES: cross-port lessons doc in sync with MiG Alley"
 bash "$HERE_ABS/check_notes_sync.sh" 2>&1 | sed 's/^/  /'
 nt=${PIPESTATUS[0]}

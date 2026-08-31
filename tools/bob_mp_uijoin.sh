@@ -48,10 +48,19 @@ trap '[ -n "$hostpid" ] && kill -9 $hostpid 2>/dev/null; wait $hostpid 2>/dev/nu
 log="$OUT/join.log"
 # bob_mp_connect.sh's recipe VERBATIM -- it demonstrably reaches the lobby. The first cut guessed
 # BOB_AUTOCLICK="1,4" and omitted BOB_DRIVE_C, and UIGetSessionListUpdate never ran at all.
+# S371: the drive was still one click SHORT and the gate reported INCONCLUSIVE for it. "2" reaches
+# the lobby and stops at EnumConnections; the Join path needs a second click. Found by probing the
+# three candidates and reading the DirectPlay trace, which says plainly which screen each lands on:
+#   2,1 -> InitializeConnection (TCP/IP provider selected)
+#   2,2 -> EnumSessions          <- the Join path
+#   2,3 -> Release               (back/cancel)
+# Note the gate was NOT keyed on a trace it failed to switch on -- BOB_TRACE_SESSIONS is set right
+# here. It was the drive alone, which is why the verdict was INCONCLUSIVE rather than FAIL: it
+# correctly refused to read either arm from a run that never reached the screen.
 ( cd "$GD" && timeout -k 5 -s KILL 180 env \
     BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_SESSIONS=1 \
-    BOB_AUTOCLICK="${MPCLICK:-2}" \
+    BOB_AUTOCLICK="${MPCLICK:-2,2}" \
     "$BOB" ) >"$log" 2>&1
 pkill -x "$(basename "$BOB")" 2>/dev/null
 
