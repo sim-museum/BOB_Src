@@ -471,6 +471,11 @@ bash "$HERE_ABS/bob_settings_nav.sh" 2>&1 | sed 's/^/  /'
 sn=${PIPESTATUS[0]}
 if [ "$sn" = "0" ]; then echo "  settings_nav: PASS"; else echo "  settings_nav: FAIL (exit=$sn)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE SET"
+echo "### GATE R16: padlock extrapolation must not drift (view_dt clock stamp, two arms)"
+bash "$HERE_ABS/bob_r16_viewdt.sh" 2>&1 | sed 's/^/  /'
+r16=${PIPESTATUS[0]}
+if [ "$r16" = "0" ]; then echo "  r16_viewdt: PASS"; else echo "  r16_viewdt: FAIL (exit=$r16)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE R16"
 echo "### GATE NOTES: cross-port lessons doc in sync with MiG Alley"
 bash "$HERE_ABS/check_notes_sync.sh" 2>&1 | sed 's/^/  /'
 nt=${PIPESTATUS[0]}

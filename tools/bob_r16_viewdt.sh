@@ -23,7 +23,7 @@ arm() { # $1 tag, $2 extra env
   [ -z "$last" ] && { echo "  INCONCLUSIVE: no view_dt samples in the $1 arm -- the flight never rendered"; exit 2; }
   [ "$tap" -ge 1 ] || { echo "  INCONCLUSIVE: PADLOCKTOG never fired in the $1 arm"; exit 2; }
   MAX=$(echo "$last" | sed -n 's/.*max=\([0-9]*\).*/\1/p'); RESETS=$(echo "$last" | sed -n 's/.*resets=\([0-9]*\).*/\1/p')
-  N=$(echo "$last" | sed -n 's/.*n=\([0-9]*\).*/\1/p')
+  N=$(echo "$last" | sed -n 's/^\[viewdt\] n=\([0-9]*\).*/\1/p')   # anchored: a greedy .*n= matched "mean=20.4" 
 }
 echo "R16-S5 -- view_dt sawtooth, ${SECS}s per arm"
 arm off "BOB_NO_MOVESTAMP=1"; OFFMAX=$MAX; OFFRES=$RESETS
