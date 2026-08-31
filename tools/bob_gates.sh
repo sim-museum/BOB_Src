@@ -95,29 +95,42 @@ if [ -z "${BOB_NO_SCRATCH:-}" ]; then
   fi
 fi
 
+# S368: watch VIDEOS as well as SAVEGAME. VIDEOS/replay.dat is the flight recording -- player
+# data by any measure -- and the guard never looked at it, so GATE R1 quietly rewrote the real
+# one on every run while the report said "player data untouched". It was found only because the
+# redirect made R1 fail and the mtime on the real file gave it away. A guard that watches one
+# directory reports honestly about that directory and says nothing at all about the rest.
 SAVEDIR="$PLAYER_GD/SAVEGAME"
+VIDEODIR="$PLAYER_GD/VIDEOS"
 GUARD_BAK="$OUT/_savegame_before"
 mkdir -p "$GUARD_BAK"
-cp -p "$SAVEDIR"/* "$GUARD_BAK"/ 2>/dev/null
-sg_hash() { md5sum "$SAVEDIR"/* 2>/dev/null | sort -k2 | md5sum | cut -d" " -f1; }
+mkdir -p "$GUARD_BAK/SAVEGAME" "$GUARD_BAK/VIDEOS"
+cp -p "$SAVEDIR"/*  "$GUARD_BAK/SAVEGAME/" 2>/dev/null
+cp -p "$VIDEODIR"/* "$GUARD_BAK/VIDEOS/"   2>/dev/null
+sg_hash() { md5sum "$SAVEDIR"/* "$VIDEODIR"/* 2>/dev/null | sort -k2 | md5sum | cut -d" " -f1; }
 guard_prev=$(sg_hash)
 guard_hits=0
 guard_culprits=""
 replay_check() {   # $1 = the gate that has just finished
   local now; now=$(sg_hash)
   [ "$now" = "$guard_prev" ] && return 0
-  local changed="" f b
-  for f in "$SAVEDIR"/*; do
-    [ -f "$f" ] || continue
-    b="$GUARD_BAK/$(basename "$f")"
-    if [ ! -f "$b" ] || ! cmp -s "$f" "$b"; then changed="$changed $(basename "$f")"; fi
+  local changed="" f b d n
+  for d in "$SAVEDIR" "$VIDEODIR"; do
+    n="$(basename "$d")"
+    for f in "$d"/*; do
+      [ -f "$f" ] || continue
+      b="$GUARD_BAK/$n/$(basename "$f")"
+      if [ ! -f "$b" ] || ! cmp -s "$f" "$b"; then changed="$changed $n/$(basename "$f")"; fi
+    done
   done
   # A DELETED file has no counterpart to iterate over, so the loop above cannot see it and the
   # census would stay silent about the one kind of damage that is hardest to notice. Walk the
   # backup side too and name what has gone missing.
-  for b in "$GUARD_BAK"/*; do
-    [ -f "$b" ] || continue
-    [ -f "$SAVEDIR/$(basename "$b")" ] || changed="$changed $(basename "$b")(DELETED)"
+  for d in SAVEGAME VIDEOS; do
+    for b in "$GUARD_BAK/$d"/*; do
+      [ -f "$b" ] || continue
+      [ -f "$PLAYER_GD/$d/$(basename "$b")" ] || changed="$changed $d/$(basename "$b")(DELETED)"
+    done
   done
   echo "###   PLAYER-DATA: $1 wrote SAVEGAME:$changed"
   guard_hits=$((guard_hits+1))
@@ -125,20 +138,24 @@ replay_check() {   # $1 = the gate that has just finished
   guard_prev="$now"
 }
 guard_restore() {
-  local n=0 d=0 f b
-  for b in "$GUARD_BAK"/*; do
-    [ -f "$b" ] || continue
-    f="$SAVEDIR/$(basename "$b")"
-    if ! cmp -s "$b" "$f"; then cp -p "$b" "$f"; n=$((n+1)); fi
+  local n=0 d=0 f b dir
+  for dir in SAVEGAME VIDEOS; do
+    for b in "$GUARD_BAK/$dir"/*; do
+      [ -f "$b" ] || continue
+      f="$PLAYER_GD/$dir/$(basename "$b")"
+      if ! cmp -s "$b" "$f"; then cp -p "$b" "$f"; n=$((n+1)); fi
+    done
   done
   # Files the run CREATED are litter too: restoring only what we backed up leaves the
   # directory a superset of how it started, and the next run's "before" snapshot then
   # bakes the litter in as if it were player data. Safe here precisely because a gate run
   # has no player in it -- anything new in SAVEGAME was written by a gate.
-  for f in "$SAVEDIR"/*; do
-    [ -f "$f" ] || continue
-    [ -f "$GUARD_BAK/$(basename "$f")" ] && continue
-    rm -f "$f"; d=$((d+1))
+  for dir in SAVEGAME VIDEOS; do
+    for f in "$PLAYER_GD/$dir"/*; do
+      [ -f "$f" ] || continue
+      [ -f "$GUARD_BAK/$dir/$(basename "$f")" ] && continue
+      rm -f "$f"; d=$((d+1))
+    done
   done
   [ "$d" -gt 0 ] && echo "###   removed $d file(s) the run created"
   if [ "$guard_hits" -eq 0 ]; then echo "### PLAYER DATA: untouched by this run"

@@ -51,10 +51,14 @@ for e in "$REAL"/*; do
     *)        ln -s "$e" "$SCRATCH/$b"; n=$((n+1)) ;;
   esac
 done
-# Writable dirs the gates also produce into. VIDEOS holds .acmi exports, which R11 reads back,
-# so it must be a real directory too or the export lands in the player's tree through the link.
+# Writable dirs the gates also produce into. VIDEOS takes replay.dat and the .acmi exports, so it
+# must be a real directory or those writes follow the link into the player's tree.
+# COPY it, do not create it empty. S367 made it an empty mkdir and GATE R1 failed: the directory
+# also holds DIR.DIR and Bob.cam, and a Rowan directory without its DIR.DIR is the same missing-
+# index failure that segfaulted the first scratch attempt on landscap/DIR.DIR. "Writable" means
+# the game writes INTO it, not that it starts empty.
 for w in VIDEOS; do
-  if [ -L "$SCRATCH/$w" ]; then rm -f "$SCRATCH/$w"; mkdir -p "$SCRATCH/$w"; fi
+  if [ -e "$REAL/$w" ]; then rm -rf "$SCRATCH/$w"; cp -a "$REAL/$w" "$SCRATCH/$w"; fi
 done
 [ -d "$SCRATCH/SAVEGAME" ] || { echo "scratch build FAILED: no SAVEGAME copy" >&2; exit 1; }
 echo "scratch game dir: $SCRATCH  ($n linked, SAVEGAME copied$([ -d "$SCRATCH/VIDEOS" ] && echo ', VIDEOS real'))"

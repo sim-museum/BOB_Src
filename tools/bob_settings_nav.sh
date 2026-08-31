@@ -40,7 +40,7 @@ CLICKS="${CLICKS:-6,3,#1075,#1075,6}"     # Sim Config -> Views -> cycle Gun Cam
 NITEMS="${NITEMS:-3}"                      # RESCOMBO(CAMERAOFF,3): off / on-trigger / at-start
 pgrep -x bob >/dev/null && { echo "REFUSING: bob already running"; exit 2; }
 ( cd "$GD" && timeout -k 5 -s KILL "${TMO:-300}" env \
-    BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" \
+    BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy \
     BOB_AUTOCLICK="$CLICKS" BOB_TRACE_SETFIELD=1 BOB_TRACE_COMBO=1 \
     "$BOB" ) >"$OUT/nav.log" 2>&1

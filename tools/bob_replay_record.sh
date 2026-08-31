@@ -47,7 +47,7 @@ echo "bob replay record — fly, arm the gun camera, expect a recording"
 rm -f "$REC"
 log="$OUT/fly.log"
 ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env \
-    BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" \
+    BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_BOOT_FRONTEND=1 BOB_TRACE_RECLOG=1 \
     $([ "$CONTROL" = 1 ] || echo BOB_GUNCAM=1) \
     "$BOB" ) >"$log" 2>&1

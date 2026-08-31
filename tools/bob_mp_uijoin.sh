@@ -49,7 +49,7 @@ log="$OUT/join.log"
 # bob_mp_connect.sh's recipe VERBATIM -- it demonstrably reaches the lobby. The first cut guessed
 # BOB_AUTOCLICK="1,4" and omitted BOB_DRIVE_C, and UIGetSessionListUpdate never ran at all.
 ( cd "$GD" && timeout -k 5 -s KILL 180 env \
-    BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" \
+    BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_SESSIONS=1 \
     BOB_AUTOCLICK="${MPCLICK:-2}" \
     "$BOB" ) >"$log" 2>&1

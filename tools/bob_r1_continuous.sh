@@ -100,7 +100,7 @@ echo "bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> reco
 rm -f "$REC"
 log="$OUT/run.log"
 ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env \
-    BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" \
+    BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=click BOB_AUTOCLICK="$CLICKS" \
     BOB_TRACE_SETFIELD=1 BOB_TRACE_RECLOG=1 BOB_TRACE_COMBO=1 \
     "$BOB" ) >"$log" 2>&1

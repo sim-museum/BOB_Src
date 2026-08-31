@@ -32,7 +32,7 @@ pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running"; exit 2; }
 
 run() {  # $1=log  $2=extra env assignment (may be empty)
   ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env ${2:+$2} \
-      BOB_RUN_INIT=1 BOB_DRIVE_C="/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c" \
+      BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
       BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_AUTOCLICK="2" \
       "$BOB" ) >"$1" 2>&1
   pkill -x bob 2>/dev/null; return 0
