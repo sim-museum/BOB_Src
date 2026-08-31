@@ -432,9 +432,20 @@ echo "### binary unchanged (md5=$HASH_AFTER) Ã¢ÂÂ gate valid"
 #     bob_mp_uijoin     the one real finding: its drive was a click short (S371), now fixed.
 #   The lesson is cheap to state and was not: do not time a gate without checking what it costs,
 #   and do not measure anything on this box while another display gate is queued.
+#   AUDIT CLOSED (S373). Ten orphans: SIX added (mp_connect, mp_packet, mp_uijoin, dialslots,
+#   settings_nav, check_notes_sync); FOUR correctly excluded, each for a stated reason:
 #     bob_detect_probe  a PROBE, no verdict; its own header warns not to read its zeros as findings
 #     bob_blob_bisect   an investigation instrument, not an assertion
-#     bob_validate      no verdict text; unclassified
+#     bob_validate      a capture HARNESS -- parks a camera, grabs a frame, reports stats. Its
+#                       lone exit 1 is a usage error, so it has no verdict to contribute.
+#     bob_replay_record FAILS, and its own report contradicts itself: "recorder armed NO" beside
+#                       "recording written 81178 bytes". The bytes are real and freshly written,
+#                       so the FEATURE works and the ASSERTION is stale -- it greps for
+#                       "[guncam] StartRecordFlag branch TAKEN", an unconditional trace in
+#                       WINMOVE.CPP, while the recording evidently reaches the file another way.
+#                       Adding it would park a permanently red gate in the suite for a working
+#                       feature. The contradiction in its own output is the lead for re-deriving
+#                       the arming check against the path recording ACTUALLY takes.
 echo "### GATE MP1: multiplayer front door (DirectPlay object + lobby)"
 bash "$HERE_ABS/bob_mp_connect.sh" 2>&1 | sed 's/^/  /'
 mp1=${PIPESTATUS[0]}
