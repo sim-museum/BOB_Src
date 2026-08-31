@@ -83,6 +83,12 @@ if [ -z "${BOB_NO_SCRATCH:-}" ]; then
   if bash "$HERE_ABS/bob_scratch_gamedir.sh" "$BOB_DRIVE_C_REAL" "$OUT/drive_c"; then
     export BOB_DRIVE_C="$OUT/drive_c"
     GD="$OUT/drive_c/Program Files/Rowan Software/Battle Of Britain"
+    # EXPORT it. The sub-gates take `GD="${GD:-<real path>}"` from the ENVIRONMENT, and an
+    # unexported shell variable is invisible to a child script -- so bob_convoy_campaign.sh and
+    # bob_combat_soak.sh fell back to the real game directory and cd'd there, and the replay
+    # write landed in the player's SAVEGAME even though BOB_DRIVE_C pointed at the scratch tree.
+    # The S365 guard caught it and named both gates, which is exactly the job it was kept for.
+    export GD
     cd "$GD" || exit 1
   else
     echo "### SCRATCH BUILD FAILED -- falling back to the player's directory (guard still armed)"
