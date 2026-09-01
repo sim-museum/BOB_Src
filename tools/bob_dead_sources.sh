@@ -32,7 +32,7 @@ for _ in 1 2 3 4 5; do
         # file on disk, and its target was reported DEAD. It called MIG.CPP dead, which is included
         # by 3DCODE.CPP and plainly compiled. Split on BOTH separators.
         grep -ao '#include[[:space:]]*"[^"]*\.[Cc][Pp][Pp]"' "$f" 2>/dev/null |
-            sed 's/.*"//; s/.*[\\/]//; s/"$//' >> "$pend"
+            sed 's/.*"\(.*\)"/\1/; s|.*[\\/]||' >> "$pend"
     done < "$live"
     sort -u "$pend" "$live" -o "$pend".all 2>/dev/null
     if cmp -s "$pend".all "$live"; then break; fi
@@ -48,8 +48,18 @@ while read -r f; do
         # frozen import-era code that looks current. A dead file with NO twin is a whole subsystem
         # this port replaced -- still a trap for cross-porting, but it cannot be confused for its
         # own live version.
-        t=$(find SRC -iname "$b" -type f | wc -l)
-        if [ "$t" -gt 1 ]; then twins=$((twins+1)); mark="DEAD+twin"; else mark="DEAD     "; fi
+        # S390: a same-name file is only a dangerous twin if it is actually COMPILED. The first
+        # cut counted `find -iname | wc -l > 1`, which reported 58 "live twins" -- and RCOMBO.CPP,
+        # RLISTBOX.CPP and PERSONS2.CPP have two or three copies of which EVERY ONE is dead (the
+        # MFC control sources, all replaced by the compat layer). Those are a different and worse
+        # trap: a doc citing "RLISTBOX.CPP" names a file that is not built in ANY copy, and the
+        # live listbox is SRC/RLISTBOX/bob_ole.cpp. Check the twin's liveness, do not assume it.
+        t=0
+        for o in $(find SRC -iname "$b" -type f); do
+            [ "$o" = "$f" ] && continue
+            grep -qxF "$(basename "$o")" "$live" && t=1
+        done
+        if [ "$t" -eq 1 ]; then twins=$((twins+1)); mark="DEAD+twin"; else mark="DEAD     "; fi
         printf '  %s  %-46s %8d bytes\n' "$mark" "$f" "$(stat -c%s "$f")"
         dead=$((dead+1))
     fi
@@ -58,5 +68,7 @@ tot=$(find SRC -name "*.[cC][pP][pP]" -type f | wc -l)
 rm -f "$live" "$pend" "$pend".all
 echo "----------------------------------------"
 echo "$dead of $tot source file(s) are not compiled."
-echo "  $twins of them have a SAME-NAME compiled twin -- a grep on those reads frozen import-era code."
+echo "  $twins of them have a SAME-NAME COMPILED twin -- a grep on those reads frozen import-era code."
+echo "  The rest are not built in ANY copy: whole subsystems this port replaced. A doc naming one"
+echo "  (e.g. RLISTBOX.CPP) points at nothing live -- the real listbox is SRC/RLISTBOX/bob_ole.cpp."
 echo "They match every grep over SRC/. Do not read them as current, and do not cross-port from them."
