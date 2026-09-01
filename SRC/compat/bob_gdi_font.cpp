@@ -187,7 +187,22 @@ extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned 
 		stbtt_GetCodepointBitmapBox(fnt, *p, scale, scale, &x0, &y0, &x1, &y1);
 		int gw = x1 - x0, gh = y1 - y0;
 		if (gw > 0 && gh > 0) {
-			unsigned char* glyph = (unsigned char*)malloc((size_t)gw * gh);
+			/* R25 (S422): CALLOC, not malloc. `stbtt_GetCodepointBitmapBox` and
+			   `stbtt_MakeCodepointBitmap` size the glyph by independent floating-point rounding
+			   and can disagree by a pixel, so the last row/column of this buffer is sometimes
+			   never written -- and the blend loop below reads all gw*gh bytes regardless.
+			   With malloc that reads UNINITIALISED HEAP and paints it as coverage: the observed
+			   symptom was a stray vertical stroke through the "S" of "Small" on the Controls
+			   screen, present in most runs and absent in others depending on what the heap
+			   happened to hold. 81 px, one glyph, intermittent -- and it is in the committed
+			   reference, which is why parity looked flaky rather than wrong.
+			   ⚠️ THIS DID NOT FIX THE OBSERVED FLAKE. Measured after the change: still 1 fresh
+			   tree in 6 rendering differently, the same ratio as before. So the stray stroke is
+			   NOT an uninitialised glyph buffer, and that theory is withdrawn. The change is kept
+			   anyway because the read it removes is real -- the box/bitmap rounding disagreement
+			   is a documented stb_truetype pitfall and reading uninitialised heap is a defect
+			   whether or not it is the defect being hunted. It is hardening, not the fix. */
+			unsigned char* glyph = (unsigned char*)calloc((size_t)gw * gh, 1);
 			stbtt_MakeCodepointBitmap(fnt, glyph, gw, gh, gw, scale, scale, *p);
 			int ox = (int)penx + x0, oy = baseline + y0;
 			for (int gy = 0; gy < gh; gy++) for (int gx = 0; gx < gw; gx++) {
