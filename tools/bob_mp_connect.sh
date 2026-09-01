@@ -23,6 +23,7 @@
 # maximized_nav in the sister port passed its own control once, which is why this runs both arms.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+. "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"   # S418: never the player's game directory
 bob_snapshot_pids
 ROOT="/home/admin/bob"
 BOB="${BOB:-$ROOT/build/bob}"
@@ -30,10 +31,16 @@ GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Sof
 OUT="${OUT:-/tmp/bob_mp}"; mkdir -p "$OUT"
 TMO="${TMO:-90}"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
-pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running"; exit 2; }
+# S418: was `pgrep -x bob >/dev/null && exit 2`. This gate walks Multi-Player -> DirectPlay ->
+# lobby, which is 2-D FRONT END -- and the measured display boundary in both ports says 2-D renders
+# under SDL_VIDEODRIVER=dummy (MA proved the identical screen sequence headless in PO-76/S417,
+# reaching CoCreateInstance, EnumConnections, InitializeConnection and a fully drawn Create Game
+# screen with no display at all). So this never needed the display, and refusing while the PO plays
+# meant it did not run for a whole day. Headless + a scratch tree + safe-kill, and the refusal goes.
 
 run() {  # $1=log  $2=extra env assignment (may be empty)
   ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env ${2:+$2} \
+      SDL_VIDEODRIVER=dummy \
       BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
       BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_AUTOCLICK="2" \
       "$BOB" ) >"$1" 2>&1
