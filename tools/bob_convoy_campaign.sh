@@ -59,6 +59,7 @@ echo "German (Luftwaffe) Convoys campaign — end to end"
     BOB_AUTOCLICK="1,1,#1000:0,1,1" \
     $ACCEPT BOB_CAMPAIGN_FLY=30 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=8 \
     BOB_TRACE_CAMPFLY=1 BOB_TRACE_LWDIR=1 \
+    BOB_TRACE_SKIP=1 \
     BOB_SHOT=99999 BOB_SHOT_PATH="$OUT/convoy.ppm" "$BOB" ) >"$log" 2>&1
 pkill -x "$(basename "$BOB")" 2>/dev/null
 
@@ -84,6 +85,18 @@ chk "directives accepted"            "\[directives\] accept"
 chk "a raid package was selected"    "hipack=[0-9]"
 chk "a LIVE squadron was chosen"     "playersquadron=[0-9]"
 chk "briefing raised"                "LaunchFullPane(bobfrag"
+# R3.8b/S3: this gate is the ONLY recipe that reaches the briefing, so it is the only place the
+# panel drawer can be asked about it. bob_detect_probe.sh traces 8 dialogs and none of them is
+# bobfrag -- two sprints read its clean report as reassurance about a screen it never opened.
+# BOB_TRACE_SKIP above makes every run name what the briefing dropped and why.
+brief=$(grep -a "^\[skip\] dlgId=1164" "$log" | tail -1)
+if [ -n "$brief" ]; then
+    echo "  briefing (IDD_BOBFRAG) draw profile:"
+    echo "    ${brief#*| }"
+    grep -a "^\[skipid\] dlgId=1164" "$log" | sed 's/^/    /'
+else
+    echo "  briefing draw profile:                     NOT TRACED (the drawer never ran for it)"
+fi
 chk "Fly reached 3D"                 "InThe3D=1"
 if grep -aq "FATAL" "$log"; then say "no fatal error" "FATAL present — FAIL"; fail=1; else say "no fatal error" "yes"; fi
 
