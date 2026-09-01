@@ -2839,9 +2839,23 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		for (int k=0;k<gn;k++) if (gseen[k]==key) { already=1; break; }
 		if (!already) {
 			if (gn<128) { gseen[gn++]=key;
-				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx is2D=%d\n",
+				/* R20 (S397): REPORT THE FLAT COLOUR. An untextured draw paints in its vertex
+				   colour, and the PO's floating square was measured off his own screenshot as
+				   exactly ONE colour, RGB (40,52,52), against a sky of (179,198,205). Everything
+				   else this line prints (surface, prim, count, fvf) is shared by thousands of
+				   legitimate untextured draws; the COLOUR is the field that can pick his square
+				   out of them. D3DCOLOR is ARGB, stored BGRA. Guarded on hasCol -- a draw with no
+				   colour array takes glColor state instead, and saying "0x00000000" for that would
+				   be inventing a reading. */
+				unsigned c0 = 0; const int hasC = (L.hasCol && base) ? 1 : 0;
+				if (hasC) c0 = *(const unsigned*)(base + L.colOff);
+				char colbuf[80];
+				if (hasC) snprintf(colbuf, sizeof colbuf, "flat colour 0x%08x = R%u G%u B%u",
+				                   c0, (c0 >> 16) & 0xff, (c0 >> 8) & 0xff, c0 & 0xff);
+				else      snprintf(colbuf, sizeof colbuf, "flat colour: none (uses glColor state)");
+				fprintf(stderr,"[grey] draw_fvf %s  surf=%p prim=%d count=%lu fvf=%03lx is2D=%d  %s\n",
 					t? "texture 0 (upload produced no GL texture)" : "NO texture (texturing disabled)",
-					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf, is2D);
+					(void*)t, (int)prim, (unsigned long)count, (unsigned long)fvf, is2D, colbuf);
 				/* R3.9: fvf=0x3c4 is XYZRHW|DIFFUSE|SPECULAR|TEX2 -- the vertex format DECLARES two
 				   texture coordinate sets and yet nothing is bound, which is why it paints flat.
 				   Name the caller rather than guess: one-shot, this is on the draw path. */
