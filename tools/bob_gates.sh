@@ -476,6 +476,13 @@ bash "$HERE_ABS/bob_r16_viewdt.sh" 2>&1 | sed 's/^/  /'
 r16=${PIPESTATUS[0]}
 if [ "$r16" = "0" ]; then echo "  r16_viewdt: PASS"; else echo "  r16_viewdt: FAIL (exit=$r16)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE R16"
+echo "### GATE PARITY: screens vs committed references (headless, no display)"
+bash "$HERE_ABS/bob_parity.sh" 2>&1 | sed 's/^/  /'
+pg=${PIPESTATUS[0]}
+if [ "$pg" = "0" ]; then echo "  parity: PASS"
+elif [ "$pg" = "2" ]; then echo "  parity: INCONCLUSIVE (references missing -- seed with SEED=1)"
+else echo "  parity: FAIL (exit=$pg)"; gates_fail=$((gates_fail+1)); fi
+
 echo "### GATE CLIP: R21 -- the text clip actually clips (headless, no display)"
 bash "$HERE_ABS/bob_clip_gate.sh" 2>&1 | sed 's/^/  /'
 cg2=${PIPESTATUS[0]}
