@@ -14,6 +14,8 @@
 #include "stdafx.h"
 #include "bob_ole_host.h"
 #include <unordered_map>
+#include <algorithm>
+#include <vector>
 #include <set>
 #include <cstdarg>
 #include <cstdlib>
@@ -307,8 +309,32 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         for (auto& kv : hosts()) fprintf(stderr, "[ole]     host id=%d parentDlg=%p%s\n",
             kv.second->ctrlId, (void*)kv.second->parentDlg, kv.second->parentDlg==dialog?" <==MATCH":"");
     }
-    for (auto& kv : hosts()) {
-        OleHost* host = kv.second;
+    /* R25 (S425): DRAW IN A DETERMINISTIC ORDER.
+     *
+     * `hosts()` is `std::unordered_map<CWnd*, OleHost*>` -- keyed by POINTER -- so iterating it
+     * directly visits controls in an order that depends on how the pointers happen to hash, which
+     * changes between runs with the heap/ASLR layout. Where two controls' pixels touch, whichever
+     * is painted LAST wins, so the same screen renders differently run to run.
+     *
+     * That is R25, and it took four sprints to find because every earlier theory was about WHAT
+     * was drawn. The draw calls were never wrong: a struck run and a clean run emit the SAME 24
+     * "Small" draws with the same origins and colours, in a DIFFERENT ORDER. Four clean runs out
+     * of 64 showed three different orders between them.
+     *
+     * Sorting by (dlgId, ctrlId) makes the pass reproducible and is also the meaningful order --
+     * it follows the dialog template, which is the z-order Windows itself painted in. It costs one
+     * small sort per panel paint.
+     * BOB_NO_DRAWORDER=1 restores the old pointer order for A/B.
+     */
+    std::vector<OleHost*> drawlist;
+    drawlist.reserve(hosts().size());
+    for (auto& kv : hosts()) if (kv.second && kv.second->parentDlg == dialog) drawlist.push_back(kv.second);
+    if (!getenv("BOB_NO_DRAWORDER"))
+        std::sort(drawlist.begin(), drawlist.end(), [](OleHost* a, OleHost* b) {
+            if (a->dlgId != b->dlgId) return a->dlgId < b->dlgId;
+            return a->ctrlId < b->ctrlId;
+        });
+    for (OleHost* host : drawlist) {
         if (host->parentDlg != dialog) continue;
         /* SP.2 (S123): honor the game's runtime ShowWindow state -- a hidden control isn't
            drawn and can't be clicked (zeroed hit rect). E.g. CSQuick1 hides IDC_DISABLEDEMO
