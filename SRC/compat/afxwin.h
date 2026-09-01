@@ -721,11 +721,31 @@ public:
                compares dummy against real GL, so the same regression here would be invisible.
                Leaving it on in the port that cannot detect the failure, after measuring the failure
                in the port that can, would be choosing not to know. BOB_ETOCLIP=1 enables. */
+            /* S411: CLIP IN Y ONLY, and default ON -- cross-ported from MA/S410, where the same
+               change went from regressing three screens to contributing ZERO.
+               MA localised why: a full-rect clip cut its title menu items on BOTH SIDES
+               ("PREFERENCES" -> "REFERENC") because the port's TTF text is WIDER than the rect the
+               game passes -- the original's bitmap font fitted, ours does not. BoB's own regression
+               was the same shape: the word "Axis" vanishing from a combo on config-control.
+               The defect being fixed is VERTICAL -- the PO's Messages log painting ~500 px of rows
+               past the dialog, over the map -- so clipping Y alone stops it and touches no
+               horizontal pixel. 2 px of slop absorbs ascenders reaching just above the rect.
+               BOB_NO_ETOCLIP=1 disables; BOB_ETOCLIP_XY=1 restores the full rect. */
+            /* S411: still DEFAULT OFF in BoB, unlike MA. The Y-only change took config-control
+               from 1131 bytes to 210 (the word "Axis" is restored) -- but 81 px on one glyph of
+               "Small" remain, and they are NOT a boundary effect: identical at slop 3, 4 and 6, so
+               widening the rect does not touch them. Unexplained, therefore not shipped. MA's clip
+               is on because it contributes exactly ZERO; BoB's does not meet that bar yet.
+               BOB_ETOCLIP=1 enables. */
             if ((opt & 0x0004 /*ETO_CLIPPED*/) && clipr && getenv("BOB_ETOCLIP")) {
                 bob_gdi_get_text_clip(&txSave[0], &txSave[1], &txSave[2], &txSave[3]);
-                /* the rect is in the same logical space as x/y, so it takes the same viewport shift */
-                bob_gdi_text_clip(m_bobVpX + clipr->left,  m_bobVpY + clipr->top,
-                                  m_bobVpX + clipr->right, m_bobVpY + clipr->bottom);
+                const int slop = getenv("BOB_ETOCLIP_SLOP") ? atoi(getenv("BOB_ETOCLIP_SLOP")) : 2;
+                if (getenv("BOB_ETOCLIP_XY"))
+                    bob_gdi_text_clip(m_bobVpX + clipr->left,  m_bobVpY + clipr->top,
+                                      m_bobVpX + clipr->right, m_bobVpY + clipr->bottom);
+                else
+                    bob_gdi_text_clip(-100000, m_bobVpY + clipr->top - slop,
+                                       100000, m_bobVpY + clipr->bottom + slop);
                 didClip = true;
             }
             char buf[512]; UINT k = n < 511 ? n : 511; memcpy(buf, s, k); buf[k] = 0;
