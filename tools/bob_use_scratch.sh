@@ -19,6 +19,18 @@ if [ -z "${BOB_DRIVE_C:-}" ]; then
         export BOB_DRIVE_C="$_scr"
         GD="$_scr/Program Files/Rowan Software/Battle Of Britain"
         echo "  [scratch] writing gate -> $_scr (player's tree untouched; set BOB_DRIVE_C to override)"
+        # S424: REMOVE IT ON EXIT. This built a tree per invocation and never cleaned up, so every
+        # gate that sources it left one behind -- for as long as this file has existed. Running it
+        # in a loop during R25's bisection made that visible by helping to exhaust the /tmp quota,
+        # which broke every shell command until the PO cleared it. (The bulk turned out to be
+        # accumulated CAPTURE output, not these trees -- ~2-3 MB each -- but a gate that leaves
+        # litter on every run is still a gate that eventually fills a disk.)
+        # ⚠️ This matters beyond tidiness: S378 records that when /tmp last hit its quota a gate's
+        # backup came out empty and the restore wrote a 0-byte file over the player's campaign save.
+        # BOB_KEEP_SCRATCH=1 keeps the tree when you need to inspect it after a failure.
+        if [ -z "${BOB_KEEP_SCRATCH:-}" ]; then
+            trap 'rm -rf "'"$_scr"'" 2>/dev/null' EXIT
+        fi
     else
         echo "  [scratch] BUILD FAILED -- refusing to run against the player's directory." >&2
         echo "            Set BOB_DRIVE_C explicitly if that is really what you want." >&2

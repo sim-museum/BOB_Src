@@ -122,15 +122,18 @@ static stbtt_fontinfo* cur_font(void)
  *
  * Filter, don't cap: a fixed print budget is spent by whatever draws first (the menu), so the
  * screen under investigation never gets a line. Booked six times in MA before it stuck. */
-static void bob_text_trace(const char* str)
+/* R25 (S423): carry the ORIGIN and SIZE. "which strings were drawn" cannot distinguish a glyph
+   rendered wrong from the same string drawn TWICE a pixel apart, and that is precisely the open
+   question for the struck "S" on the Controls screen. */
+static void bob_text_trace(const char* str, int x, int y, int pixelH, unsigned color)
 {
 	const char* want = getenv("BOB_TRACE_TEXT");
 	if (want) {
 		if (want[0] == '1' && !want[1]) {
 			static int n = 0;
-			if (n++ < 24) fprintf(stderr, "[text] \"%s\"\n", str);
+			if (n++ < 24) fprintf(stderr, "[text] \"%s\" at (%d,%d) h=%d col=%06x\n", str, x, y, pixelH, color & 0xffffff);
 		} else if (strstr(str, want)) {
-			fprintf(stderr, "[text] \"%s\"\n", str);
+			fprintf(stderr, "[text] \"%s\" at (%d,%d) h=%d col=%06x\n", str, x, y, pixelH, color & 0xffffff);
 		}
 	}
 	if (getenv("BOB_TRACE_GARBAGE")) {
@@ -174,7 +177,7 @@ extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned 
 {
 	stbtt_fontinfo* fnt = cur_font();
 	if (!fnt || !str || pixelH <= 0) return 0;
-	bob_text_trace(str);
+	bob_text_trace(str, x, y, pixelH, color);
 	int fbw, fbh; unsigned* fb = bob_gdi_dc_bits(&fbw, &fbh);
 	if (!fb) return 0;
 	float scale = stbtt_ScaleForPixelHeight(fnt, (float)pixelH);
