@@ -988,6 +988,9 @@ extern "C" {
     CWnd* bob_ole_find_wrapper(CWnd* dlg, int id);   /* (dialog,id) -> hosted control wrapper */
 }
 
+extern "C" unsigned bob_timer_set(void* wnd, unsigned id, unsigned ms);   /* R24 S420 */
+extern "C" void bob_timer_kill(void* wnd, unsigned id);
+extern "C" void bob_timers_tick(void);
 class CWnd : public CCmdTarget {
 public:
     enum { adjustBorder = 0, adjustOutside = 1 };
@@ -1230,8 +1233,11 @@ public:
     void Invalidate(BOOL = TRUE) {}
     void InvalidateRect(LPCRECT, BOOL = TRUE) {}
     void ClientToScreenRect(LPRECT) const {}
-    BOOL SetTimer(UINT, UINT, void* = NULL) { return TRUE; }
-    BOOL KillTimer(UINT) { return TRUE; }
+    /* R24 (S420, cross-port from MA PO-76/S419): these were no-ops, so all 28 OnTimer overrides
+       were unreachable -- including every site that pumps a multiplayer session. Returns the id,
+       as MFC does (callers store it and test it against 0). */
+    UINT SetTimer(UINT id, UINT ms, void* = NULL) { return bob_timer_set(this, id, ms); }
+    BOOL KillTimer(UINT id) { bob_timer_kill(this, id); return TRUE; }
     void SetWindowPos(const CWnd*, int, int, int, int, UINT) {}
     void BringWindowToTop() {}
     BOOL IsWindowVisible() const { return FALSE; }
@@ -1255,7 +1261,10 @@ public:
     afx_msg void OnDestroy() {}
     afx_msg void OnPaint() {}
     afx_msg void OnSize(UINT, int, int) {}
-    afx_msg void OnTimer(UINT_PTR) {}
+    /* VIRTUAL, and declared UINT to match all 28 overrides EXACTLY. The base was UINT_PTR; on
+       i386 that is the same type, but relying on a typedef alias for virtual dispatch is how an
+       override silently becomes an overload and is never called. */
+    virtual void OnTimer(UINT) {}
     afx_msg void OnClose() {}
     afx_msg BOOL OnEraseBkgnd(CDC*) { return TRUE; }
     afx_msg void OnLButtonDown(UINT, CPoint) {}

@@ -725,8 +725,14 @@ static void pump_events(void)
    Pumps SDL events and yields the CPU briefly so CMIGApp::Run() doesn't busy-spin.
    Returns WAIT_TIMEOUT (0x102) -- a real window-message queue wired to SDL events
    is the next step. */
+extern "C" void bob_timers_tick(void);   /* R24 S420 */
 extern "C" unsigned long bob_msg_wait(unsigned long nCount, void* const* handles, unsigned long dwMilliseconds)
 {
+	/* R24 (S420): the per-frame pump is where the original's WM_TIMER would arrive, so this is
+	   where MFC timers tick. Without it SetTimer registered nothing and 28 OnTimer handlers
+	   never ran -- including DPlay::UIUpdateMainSheet, the only thing that services a hosted
+	   multiplayer session. BOB_NO_TIMERS=1 disables (the negative control). */
+	bob_timers_tick();
 	bob_apply_pending_resize();   /* S172: window ops deferred by other threads land here */
 	pump_events();
 	/* Hand the GL context off to the draw thread: the first time the owning (main)

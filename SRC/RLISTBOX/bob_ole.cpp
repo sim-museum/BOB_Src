@@ -1077,3 +1077,95 @@ extern "C++" void bob_ole_show_window(CWnd* w, int nCmdShow) {
         fprintf(stderr, "[ole] ShowWindow id=%d -> %s\n", h->ctrlId, vis ? "SHOW" : "HIDE");
     h->visible = vis;
 }
+
+/* ── R24 (S420): THE TIMER THIS PORT NEVER HAD — cross-ported from MA PO-76/S419 ────────────────
+ * `SetTimer` returned TRUE and registered nothing, `KillTimer` likewise, and `OnTimer` was a
+ * non-virtual stub — so **28 OnTimer overrides and 29 SetTimer callers in this tree were dead
+ * code**. MA found this the hard way: every site that services a multiplayer session sits inside an
+ * OnTimer handler (`_DPlay.UIUpdateMainSheet()` → `ReceiveNextMessage`), so a hosted session was
+ * opened and then never pumped, and no client could discover it. MA measured ZERO pumps after a
+ * successful `Open(CREATE)`; after the timer landed, 12,500+.
+ * BoB has the identical shape — `SVIEWER`, `SFLIGHT`, `RAFCOMBT`, `LWDIARYD`, `COMMSAC`, `RADIO`
+ * all call `UIUpdateMainSheet()` from `OnTimer`.
+ *
+ * Ticked from the per-frame pump, which is where the original's WM_TIMER would arrive. An interval
+ * of 0 means "every pass", which is what most call sites ask for.
+ *
+ * ⚠️ The tick iterates a SNAPSHOT and re-checks each entry before firing: a handler may legally
+ * KillTimer, SetTimer, or destroy a window, and mutating the registry underneath the loop would be
+ * a use-after-free. BOB_NO_TIMERS=1 disables the lot — the negative control for a change that
+ * brings 28 handlers to life at once.
+ */
+#include <time.h>
+#include <vector>
+namespace {
+struct BobTimer { CWnd* w; unsigned id; unsigned ms; unsigned long long due; };
+static std::vector<BobTimer>& bobtimers() { static std::vector<BobTimer> v; return v; }
+static unsigned long long bob_now_ms() {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long long)ts.tv_sec * 1000ull + (unsigned long long)(ts.tv_nsec / 1000000);
+}
+}
+extern "C" unsigned bob_timer_set(void* wnd, unsigned id, unsigned ms) {
+    if (!wnd) return 0;
+    std::vector<BobTimer>& v = bobtimers();
+    for (size_t i = 0; i < v.size(); i++)
+        if (v[i].w == (CWnd*)wnd && v[i].id == id) { v[i].ms = ms; v[i].due = bob_now_ms() + ms; return id; }
+    BobTimer t; t.w = (CWnd*)wnd; t.id = id; t.ms = ms; t.due = bob_now_ms() + ms; v.push_back(t);
+    if (getenv("BOB_TRACE_TIMER"))
+        fprintf(stderr, "[mfctimer] set wnd=%p id=%u every %u ms (now %zu)\n", wnd, id, ms, v.size()), fflush(stderr);
+    return id;
+}
+extern "C" void bob_timer_kill(void* wnd, unsigned id) {
+    std::vector<BobTimer>& v = bobtimers();
+    for (size_t i = 0; i < v.size(); i++)
+        if (v[i].w == (CWnd*)wnd && v[i].id == id) { v.erase(v.begin() + i); return; }
+}
+extern "C" void bob_timer_kill_all(void* wnd) {
+    std::vector<BobTimer>& v = bobtimers();
+    for (size_t i = v.size(); i-- > 0; ) if (v[i].w == (CWnd*)wnd) v.erase(v.begin() + i);
+}
+/* ⚠️ DEFAULT OFF in BoB (BOB_TIMERS=1 enables) -- but NOT for the reason I first wrote here, and
+ * the correction matters more than the conclusion.
+ *
+ * I saw `bob_parity.sh` fail on `config-control` (210 bytes) after enabling the timer, watched it
+ * pass 4/4 with the timer disabled, and wrote that the timer caused it -- naming
+ * `SController::OnTimer` (SCONTROL.CPP:1507), which really does call `GotSameDevices()` every tick
+ * and rebuild the Controls display when it disagrees. Plausible, specific, and WRONG:
+ * **with the timer OFF by default the screen still failed, on run 2 of 3.**
+ * Four clean runs were luck, not evidence, and I had already been told this once -- S413 called the
+ * same 210 bytes "deterministic" on the strength of two runs.
+ *
+ * What is actually established: `config-control` is INTERMITTENTLY non-deterministic inside the
+ * suite (~1 run in 3), independently of the timer, while being byte-identical **9 runs out of 9**
+ * when captured on its own (6 standalone, 3 after other screens). So the variable lives in the
+ * suite context, and it is not this.
+ *
+ * The timer therefore stays opt-in here for a narrower reason: **the gate cannot currently
+ * arbitrate.** With a screen that flakes on its own, a timer-induced regression and the existing
+ * flake are indistinguishable, and shipping a 28-handler change that no gate can judge is how a
+ * regression gets in wearing a known failure's clothes. MA keeps its timer ON -- its multiplayer
+ * depends on it and its five parity screens are stable across repeated runs.
+ * Blocked on: the config-control flake (filed separately), not on this code.
+ */
+extern "C" void bob_timers_tick(void) {
+    static int off = -1;
+    if (off < 0) off = getenv("BOB_TIMERS") ? 0 : 1;
+    if (off) return;
+    std::vector<BobTimer>& v = bobtimers();
+    if (v.empty()) return;
+    const unsigned long long now = bob_now_ms();
+    std::vector<BobTimer> due;
+    for (size_t i = 0; i < v.size(); i++) if (now >= v[i].due) due.push_back(v[i]);
+    for (size_t i = 0; i < due.size(); i++) {
+        bool alive = false;
+        for (size_t j = 0; j < v.size(); j++)
+            if (v[j].w == due[i].w && v[j].id == due[i].id) { v[j].due = now + v[j].ms; alive = true; break; }
+        if (!alive) continue;
+        static long fired = 0;
+        if (getenv("BOB_TRACE_TIMER") && (fired == 0 || (fired % 500) == 0))
+            fprintf(stderr, "[mfctimer] fire #%ld wnd=%p id=%u\n", fired, (void*)due[i].w, due[i].id), fflush(stderr);
+        fired++;
+        due[i].w->OnTimer(due[i].id);
+    }
+}
