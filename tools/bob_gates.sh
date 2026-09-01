@@ -476,6 +476,11 @@ bash "$HERE_ABS/bob_r16_viewdt.sh" 2>&1 | sed 's/^/  /'
 r16=${PIPESTATUS[0]}
 if [ "$r16" = "0" ]; then echo "  r16_viewdt: PASS"; else echo "  r16_viewdt: FAIL (exit=$r16)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE R16"
+echo "### GATE CLIP: R21 -- the text clip actually clips (headless, no display)"
+bash "$HERE_ABS/bob_clip_gate.sh" 2>&1 | sed 's/^/  /'
+cg2=${PIPESTATUS[0]}
+if [ "$cg2" = "0" ]; then echo "  clip: PASS"; else echo "  clip: FAIL (exit=$cg2)"; gates_fail=$((gates_fail+1)); fi
+
 echo "### GATE R18: the move timer keeps an absolute schedule (two arms)"
 bash "$HERE_ABS/bob_r18_timer.sh" 2>&1 | sed 's/^/  /'
 r18=${PIPESTATUS[0]}
