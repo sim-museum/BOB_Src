@@ -14,6 +14,8 @@
 #
 # Usage:  tools/bob_r9_layout.sh          (run under gl-lock; needs a real GL context)
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 BOB="${BOB:-/home/admin/bob/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
 OUT="${OUT:-/tmp/bob_r9_layout}"; mkdir -p "$OUT"
@@ -30,7 +32,7 @@ arm() {
   ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
       BOB_FORCE_MODE=1920x1080 BOB_SHOT2D_EVERY=1 BOB_SHOT2D_PATH="$OUT/$label" $envv \
       "$BOB" ) > "$OUT/$label.log" 2>&1
-  pkill -x "$(basename "$BOB")" 2>/dev/null
+  bob_kill_new
   local ppm; ppm=$(ls "$OUT/$label".*.ppm 2>/dev/null | head -1)
   if [ -z "$ppm" ]; then bad "$label: captured a frame" "NO -- see $OUT/$label.log"; return; fi
   # measure the lit bounding box in the capture

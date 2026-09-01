@@ -53,6 +53,8 @@
 # it prints the combat numbers every run so the gap cannot quietly persist. When combat starts
 # working, turn assertion 3 on -- the numbers are already here.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
@@ -77,7 +79,7 @@ echo "combat soak — German Convoys campaign, ${TMO}s"
     BOB_MAP_ACCEPTDIR=40 BOB_CAMPAIGN_FLY=30 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=8 \
     BOB_TRACE_MOVECODE=1 BOB_TRACE_ACM=1 \
     BOB_SHOT=99999 BOB_SHOT_PATH="$OUT/soak.ppm" "$BOB" ) >"$log" 2>&1
-pkill -x bob 2>/dev/null
+bob_kill_new
 
 fail=0
 

@@ -22,6 +22,8 @@
 # in SEPARATE runs and joined at a plain variable both read -- stated because a single continuous
 # UI->recording session has NOT been run, and the join is an inference, however short.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
 BOB="${BOB:-/home/admin/bob/build/bob}"
 OUT="${OUT:-/tmp/bob_settings_nav}"; mkdir -p "$OUT"
@@ -44,7 +46,7 @@ pgrep -x bob >/dev/null && { echo "REFUSING: bob already running"; exit 2; }
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy \
     BOB_AUTOCLICK="$CLICKS" BOB_TRACE_SETFIELD=1 BOB_TRACE_COMBO=1 \
     "$BOB" ) >"$OUT/nav.log" 2>&1
-pkill -x bob 2>/dev/null
+bob_kill_new
 fail=0
 n=$(grep -ac '\[setfield\]' "$OUT/nav.log")
 echo "  settings write-backs seen: $n"

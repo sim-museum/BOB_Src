@@ -40,6 +40,8 @@
 # Answering MA's §8-MA135, whose claim this sharpens: it is not enough for the control arms to
 # SCORE differently -- they have to still EXIST as something you can execute.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
@@ -61,7 +63,7 @@ echo "German (Luftwaffe) Convoys campaign — end to end"
     BOB_TRACE_CAMPFLY=1 BOB_TRACE_LWDIR=1 \
     BOB_TRACE_SKIP=1 \
     BOB_SHOT=99999 BOB_SHOT_PATH="$OUT/convoy.ppm" "$BOB" ) >"$log" 2>&1
-pkill -x "$(basename "$BOB")" 2>/dev/null
+bob_kill_new
 
 fail=0
 say() { printf '  %-42s %s\n' "$1" "$2"; }

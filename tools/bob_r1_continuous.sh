@@ -47,6 +47,8 @@
 #
 # ⚠️ Needs real GL. Run under gl-lock.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 . "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"   # S373: default to a SCRATCH tree, never the player's
@@ -105,7 +107,7 @@ log="$OUT/run.log"
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=click BOB_AUTOCLICK="$CLICKS" \
     BOB_TRACE_SETFIELD=1 BOB_TRACE_RECLOG=1 BOB_TRACE_COMBO=1 \
     "$BOB" ) >"$log" 2>&1
-pkill -x bob 2>/dev/null
+bob_kill_new
 
 fail=0
 say(){ printf '  %-46s %s\n' "$1" "$2"; }

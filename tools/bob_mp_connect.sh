@@ -22,6 +22,8 @@
 # the gate REQUIRES that arm to stay on the main menu. A gate that cannot fail proves nothing --
 # maximized_nav in the sister port passed its own control once, which is why this runs both arms.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="/home/admin/bob"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
@@ -35,7 +37,7 @@ run() {  # $1=log  $2=extra env assignment (may be empty)
       BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
       BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_AUTOCLICK="2" \
       "$BOB" ) >"$1" 2>&1
-  pkill -x bob 2>/dev/null; return 0
+  bob_kill_new; return 0
 }
 
 echo "bob R7.1 -- multiplayer connectivity: Multi-Player -> DirectPlay -> lobby"

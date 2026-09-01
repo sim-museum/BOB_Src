@@ -25,6 +25,8 @@
 #
 # ⚠️ Needs real GL. Run under gl-lock.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 . "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"   # S373: default to a SCRATCH tree, never the player's
@@ -52,7 +54,7 @@ log="$OUT/fly.log"
     BOB_BOOT_FRONTEND=1 BOB_TRACE_RECLOG=1 \
     $([ "$CONTROL" = 1 ] || echo BOB_GUNCAM=1) \
     "$BOB" ) >"$log" 2>&1
-pkill -x bob 2>/dev/null
+bob_kill_new
 
 # 1. reach
 if grep -aq "View3d interactive" "$log"; then say "flight launched" "yes"

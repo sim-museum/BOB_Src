@@ -21,6 +21,8 @@
 # A gate that has never been watched report zero cannot distinguish "the list is populated" from
 # "my assertion always fires".
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="/home/admin/bob"
 BOB="${BOB:-$ROOT/build/bob}"
 PROBE="${PROBE:-/tmp/dplay_probe}"
@@ -62,7 +64,7 @@ log="$OUT/join.log"
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_SESSIONS=1 \
     BOB_AUTOCLICK="${MPCLICK:-2,2}" \
     "$BOB" ) >"$log" 2>&1
-pkill -x "$(basename "$BOB")" 2>/dev/null
+bob_kill_new
 
 fail=0
 say() { printf '  %-46s %s\n' "$1" "$2"; }

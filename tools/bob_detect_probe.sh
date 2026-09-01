@@ -29,6 +29,8 @@
 #
 # This is a PROBE, not a gate: it asserts nothing and cannot go red. It answers a question.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
@@ -50,7 +52,7 @@ echo "detection probe — German Convoys campaign, ${TMO}s"
     BOB_MAP_ACCEPTDIR=40 BOB_CAMPAIGN_FLY=30 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=8 \
     BOB_TRACE_DETECT=1 BOB_TRACE_GROUNDVIS=1 BOB_TRACE_SAGWP=1 \
     BOB_SHOT=99999 BOB_SHOT_PATH="$OUT/detect.ppm" "$BOB" ) >"$log" 2>&1
-pkill -x bob 2>/dev/null
+bob_kill_new
 
 echo "  ---- package census (FIRST and LAST — the picture changes) ----"
 # The census re-dumps whenever the live set changes. Show the first and the last: a probe that

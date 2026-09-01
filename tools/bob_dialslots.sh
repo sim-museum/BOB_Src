@@ -32,6 +32,8 @@
 # array with residue around the real faulting address. The control MUST crash. If it survives, this
 # gate is not measuring what it claims and must be treated as broken -- not as a pass.
 set -u
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
@@ -68,9 +70,9 @@ run_campaign() {  # $1=extra env  $2=logfile
   echo $?
 }
 rc=$(run_campaign "BOB_R37_CLOSE=25 $POISON" "$log")
-pkill -x "$(basename "$BOB")" 2>/dev/null
+bob_kill_new
 rc2=$(run_campaign "" "$log2")
-pkill -x "$(basename "$BOB")" 2>/dev/null
+bob_kill_new
 
 fail=0
 say() { printf '  %-44s %s\n' "$1" "$2"; }
