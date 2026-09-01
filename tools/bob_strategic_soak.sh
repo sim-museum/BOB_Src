@@ -53,6 +53,13 @@
 # multiplier hardly matters. Being ON THE MAP is what matters. The control caught an overspecific
 # mechanism in this very header before it was published.
 set -u
+# S415: this gate is DUMMY-VIDEO, so it never needed exclusive use of anything -- it inherited that
+# from sharing the PLAYER'S game directory and from killing bob by name. Both are fixed here, and
+# the blanket refusal below is dropped, because refusing to run for as long as the PO plays is how a
+# headless gate goes unrun for a whole day (S405 found four in that state).
+. "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"    # kill ONLY what this script started
+. "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"  # run against a scratch tree, not the player's
+bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
@@ -64,10 +71,7 @@ else                         TMO="${TMO:-300}"; FF="${FF:-8}"; MIN_DISP="${MIN_D
                             FLY=""; fi
 mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
-if pgrep -x bob >/dev/null 2>&1; then
-  echo "  REFUSING TO RUN: bob is already running (pid $(pgrep -x bob | tr '\n' ' '))."
-  exit 2
-fi
+
 
 log="$OUT/strategic.log"
 echo "strategic soak -- German Convoys campaign, ${TMO}s at BOB_MAP_TIMER=$FF$([ "$STARVE" = 1 ] && echo '  [NEGATIVE CONTROL: S204 recipe, flight takes the wall clock]')"
@@ -79,7 +83,11 @@ echo "strategic soak -- German Convoys campaign, ${TMO}s at BOB_MAP_TIMER=$FF$([
     BOB_MAP_ACCEPTDIR=40 BOB_MAP_TIMER="$FF" $FLY \
     BOB_TRACE_SAGWP=1 BOB_TRACE_DETECT=1 \
     BOB_SHOT=99999 BOB_SHOT_PATH="$OUT/soak.ppm" "$BOB" ) >"$log" 2>&1
-for p in $(pgrep -x bob); do kill -9 "$p" 2>/dev/null; done
+# S415: was `for p in $(pgrep -x bob); do kill -9 "$p"` -- that kills the PLAYER'S session too,
+# the exact hazard S392 wrote bob_kill_new for. The blanket refusal at the top of this file was the
+# only thing standing between this line and the PO's game; removing the refusal without fixing the
+# kill would have been strictly worse than leaving both.
+bob_kill_new
 
 fail=0
 red() { echo "  $1 -- FAIL"; fail=1; }

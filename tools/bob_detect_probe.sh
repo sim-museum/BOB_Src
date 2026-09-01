@@ -30,6 +30,11 @@
 # This is a PROBE, not a gate: it asserts nothing and cannot go red. It answers a question.
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/bob_safe_kill.sh"   # S392: never kill a bob this gate did not start
+# S415: and run against a SCRATCH tree. This probe is dummy-video and already killed safely, so the
+# only thing it still shared with the player was the game directory -- which is enough, because the
+# game loads its settings from there (R23/S413 measured a parity reference drifting for exactly
+# that reason). With both fixed, the blanket "refusing to run while bob exists" below is dropped.
+. "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"
 bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
@@ -38,10 +43,7 @@ OUT="${OUT:-/tmp/bob_detect}"
 TMO="${TMO:-700}"
 mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
-if pgrep -x bob >/dev/null 2>&1; then
-  echo "  REFUSING TO RUN: bob is already running (pid $(pgrep -x bob | tr '\n' ' '))." >&2
-  exit 2
-fi
+
 
 log="$OUT/detect.log"
 echo "detection probe — German Convoys campaign, ${TMO}s"
