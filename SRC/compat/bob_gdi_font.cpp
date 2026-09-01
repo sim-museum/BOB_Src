@@ -147,6 +147,29 @@ static void bob_text_trace(const char* str)
 	}
 }
 
+/* R21 (S395): A TEXT CLIP RECT, because the existing one does not cover text.
+ *
+ * S173 clips a control's ART BLIT to its own rect through bob_gdi_setdibits_clip -- but that clip
+ * lives on the SetDIBitsToDevice path and says nothing about glyphs, which bob_ole.cpp records in
+ * as many words. The PO's campaign screenshot is the consequence: the Messages panel's backing art
+ * stops at the dialog edge while its row text keeps painting ~500 px down over the map.
+ *
+ * Disabled by default (an empty rect means "no clip"), so nothing changes until a caller opts in.
+ * The caller that will is the listbox drawer, around the rows it paints.
+ */
+static int g_txClipX0 = 0, g_txClipY0 = 0, g_txClipX1 = 0, g_txClipY1 = 0;
+extern "C" void bob_gdi_text_clip(int x0, int y0, int x1, int y1) {
+	g_txClipX0 = x0; g_txClipY0 = y0; g_txClipX1 = x1; g_txClipY1 = y1;
+}
+extern "C" void bob_gdi_get_text_clip(int* x0, int* y0, int* x1, int* y1) {
+	if (x0) *x0 = g_txClipX0; if (y0) *y0 = g_txClipY0;
+	if (x1) *x1 = g_txClipX1; if (y1) *y1 = g_txClipY1;
+}
+static inline int tx_clipped(int px, int py) {
+	if (g_txClipX1 <= g_txClipX0 || g_txClipY1 <= g_txClipY0) return 0;   /* empty rect = no clip */
+	return px < g_txClipX0 || px >= g_txClipX1 || py < g_txClipY0 || py >= g_txClipY1;
+}
+
 extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned color)
 {
 	stbtt_fontinfo* fnt = cur_font();
@@ -171,6 +194,7 @@ extern "C" int bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned 
 				int a = glyph[gy * gw + gx]; if (!a) continue;
 				int px = ox + gx, py = oy + gy;
 				if (px < 0 || px >= fbw || py < 0 || py >= fbh) continue;
+				if (tx_clipped(px, py)) continue;
 				unsigned* d = &fb[(size_t)py * fbw + px];
 				unsigned db = (*d) & 0xff, dg = ((*d) >> 8) & 0xff, dr = ((*d) >> 16) & 0xff;
 				int r = (cr * a + dr * (255 - a)) / 255;

@@ -227,6 +227,9 @@ static int dluY(int d) { return d * 13 / 8; }
    the panel's screen origin (ox,oy). Returns the count drawn. */
 extern "C" void bob_gdi_setdibits_clip(int, int, int, int);
 extern "C" void bob_gdi_get_setdibits_clip(int*, int*, int*, int*);
+/* R21 (S395): the TEXT clip, which the art clip above does not cover. See bob_gdi_font.cpp. */
+extern "C" void bob_gdi_text_clip(int, int, int, int);
+extern "C" void bob_gdi_get_text_clip(int*, int*, int*, int*);
 int g_bobFontHCtrl = 0, g_bobFontHDlg = 0;   /* S185 measurement only */
 /* S191 (BOB_TRACE_CENSUS, default-off): after a dialog is built, list the template controls that
    got NO host, by control type.
@@ -431,8 +434,23 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
         int clipSave[4];
         bob_gdi_get_setdibits_clip(&clipSave[0], &clipSave[1], &clipSave[2], &clipSave[3]);
         bob_gdi_setdibits_clip(sx, sy, sx + dluX(r.w), sy + hpx);
+        /* R21 (S395): clip the ROW TEXT to the same rect. BOB_CLIP_ROWS=1, default OFF.
+           Default off on purpose: S207 deliberately made overflow rows CLICKABLE (it widened the
+           hit test to contentH) because MA's title menu laid out 199 px of rows in a 100 px box and
+           its lower rows -- Replay among them -- answered no click. Clipping without deciding what
+           an over-long list should DO would make those rows invisible as well as unreachable, which
+           trades a cosmetic defect for a functional one. The PO's Messages log wants scrolling or
+           paging; a 5-row menu wants a correctly sized box. Same symptom, different fixes.
+           So this switch exists to MEASURE the cosmetic half in isolation, not to ship a fix. */
+        int txSave[4] = {0,0,0,0};
+        const bool clipRows = getenv("BOB_CLIP_ROWS") != NULL;
+        if (clipRows) {
+            bob_gdi_get_text_clip(&txSave[0], &txSave[1], &txSave[2], &txSave[3]);
+            bob_gdi_text_clip(sx, sy, sx + dluX(r.w), sy + hpx);
+        }
         host->draw(&dc, dluX(r.w), hpx);
         bob_gdi_setdibits_clip(clipSave[0], clipSave[1], clipSave[2], clipSave[3]);
+        if (clipRows) bob_gdi_text_clip(txSave[0], txSave[1], txSave[2], txSave[3]);
         host->sx = sx; host->sy = sy; host->sw = dluX(r.w); host->sh = hpx;  /* for click hit-test */
         /* S207, answering MA's ÃÂÃÂÃÂÃÂ§8-MA137: does anything we host LAY OUT more content than the rect
            we hit-test? MA's title menu drew 199px of rows inside a 100px listbox and its lower
