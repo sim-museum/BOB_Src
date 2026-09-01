@@ -40,7 +40,23 @@ CLICKS="${CLICKS:-6,3,#1075,#1075,6}"     # Sim Config -> Views -> cycle Gun Cam
 # endpoints read from the log. NITEMS=3 is from the declaration, not from tuning:
 #   SVIEWER.CPP:92  SETFIELD(..., IDC_CBO_GUNCAMERAONATSTART, RESCOMBO(CAMERAOFF,3), NOLEVEL)
 NITEMS="${NITEMS:-3}"                      # RESCOMBO(CAMERAOFF,3): off / on-trigger / at-start
-pgrep -x bob >/dev/null && { echo "REFUSING: bob already running"; exit 2; }
+# S405: refuse only when this gate would touch the PLAYER'S game directory.
+#
+# The guard used to be a blanket `pgrep -x bob` refusal, which made this gate -- and three other
+# HEADLESS ones -- unrunnable for as long as a player session existed. That cost real time: with the
+# PO playing for four hours, the front-end gates that would have caught MA's ETO_CLIPPED regression
+# (parity_2d's twin here) could not run, and the guard was not the display but this line.
+#
+# The refusal was right when it was written: these gates drove the real drive_c. S373 then built
+# bob_use_scratch.sh, which gives a writing gate its own tree, and S392 made cleanup kill only what
+# the gate itself started. With both, a dummy-video run against a scratch tree cannot disturb a
+# player session -- so refuse on the actual hazard (sharing the player's data), not on the mere
+# existence of another process.
+. "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"   # sets BOB_DRIVE_C + GD to a scratch tree
+case "${BOB_DRIVE_C:-}" in
+    */bob_scratch_*) ;;                                  # isolated: safe to run alongside a session
+    *) pgrep -x bob >/dev/null && { echo "REFUSING: bob already running and this run would use the player's game directory"; exit 2; } ;;
+esac
 ( cd "$GD" && timeout -k 5 -s KILL "${TMO:-300}" env \
     BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy \

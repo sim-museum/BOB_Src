@@ -714,7 +714,14 @@ public:
     BOOL ExtTextOutA(int x, int y, UINT opt, LPCRECT clipr, LPCSTR s, UINT n, LPINT) {
         if (m_bobScreen && s && n) {
             int txSave[4] = {0,0,0,0}; bool didClip = false;
-            if ((opt & 0x0004 /*ETO_CLIPPED*/) && clipr && !getenv("BOB_NO_ETOCLIP")) {
+            /* S405: DEFAULT OFF, matching MA. MA's identical change regressed THREE front-end
+               screens that had been byte-identical to gold (title 4290 px, prefs_3d 77,
+               prefs_others 79) -- caught by parity_2d, which compares whole screens against
+               committed references. BoB HAS NO SUCH GATE: its suite captures screens but only
+               compares dummy against real GL, so the same regression here would be invisible.
+               Leaving it on in the port that cannot detect the failure, after measuring the failure
+               in the port that can, would be choosing not to know. BOB_ETOCLIP=1 enables. */
+            if ((opt & 0x0004 /*ETO_CLIPPED*/) && clipr && getenv("BOB_ETOCLIP")) {
                 bob_gdi_get_text_clip(&txSave[0], &txSave[1], &txSave[2], &txSave[3]);
                 /* the rect is in the same logical space as x/y, so it takes the same viewport shift */
                 bob_gdi_text_clip(m_bobVpX + clipr->left,  m_bobVpY + clipr->top,
