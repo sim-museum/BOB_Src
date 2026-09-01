@@ -48,6 +48,8 @@ class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 extern "C" void bob_gdi_screen_size(int*, int*);   /* live SDL window size (bob_video.cpp) */
 extern "C" int  bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned color); /* bob_gdi_font.cpp */
 extern "C" int  bob_gdi_text_width(const char* str, int pixelH);
+extern "C" void bob_gdi_text_clip(int x0, int y0, int x1, int y1);          /* R21 S398: ETO_CLIPPED */
+extern "C" void bob_gdi_get_text_clip(int* x0, int* y0, int* x1, int* y1);  /* R21 S398 */
 extern "C" void bob_gdi_set_face(int kind);   /* S131: 0=ART 1=SANS 2=SERIF 3=MONO for the next bob_gdi_text/width */
 extern "C" void bob_gdi_line(int x0, int y0, int x1, int y1, unsigned color);
 extern int g_bobListFontH;   /* live R* list font pixel height (bob_ole.cpp); shared so the control's
@@ -698,8 +700,27 @@ public:
     COLORREF SetBkColor(COLORREF c) { return c; }
     int SetBkMode(int) { return 0; }
     BOOL TextOutA(int x, int y, LPCSTR s, int n) { return ExtTextOutA(x, y, 0, NULL, s, (UINT)n, NULL); }
-    BOOL ExtTextOutA(int x, int y, UINT, LPCRECT, LPCSTR s, UINT n, LPINT) {
+    /* R21 (S398): HONOUR ETO_CLIPPED. Both parameters used to be UNNAMED here -- the options word
+       and the clip rectangle were accepted and thrown away -- so every ExtTextOut drew unclipped.
+       CRListBoxCtrl asks for exactly this: RLISTBXC.CPP calls
+           pdc->ExtTextOut(x, y, ETO_CLIPPED, cliprect, text, len, NULL)
+       for every row it paints. The GAME clips its list text correctly; the compat layer was
+       discarding the request. That is the PO's campaign Messages log painting ~500 px of rows past
+       the dialog edge over the map (R21), and MA's replay-save list bleeding across the film-strip
+       art (MA PO-77) -- one cause, two ports.
+       Same shape as S171 in this very function, where SetTextAlign was ignored because the code
+       `{ return 0; }`-ed the request: an unnamed parameter is a dropped requirement.
+       BOB_NO_ETOCLIP=1 reverts, as the negative control. */
+    BOOL ExtTextOutA(int x, int y, UINT opt, LPCRECT clipr, LPCSTR s, UINT n, LPINT) {
         if (m_bobScreen && s && n) {
+            int txSave[4] = {0,0,0,0}; bool didClip = false;
+            if ((opt & 0x0004 /*ETO_CLIPPED*/) && clipr && !getenv("BOB_NO_ETOCLIP")) {
+                bob_gdi_get_text_clip(&txSave[0], &txSave[1], &txSave[2], &txSave[3]);
+                /* the rect is in the same logical space as x/y, so it takes the same viewport shift */
+                bob_gdi_text_clip(m_bobVpX + clipr->left,  m_bobVpY + clipr->top,
+                                  m_bobVpX + clipr->right, m_bobVpY + clipr->bottom);
+                didClip = true;
+            }
             char buf[512]; UINT k = n < 511 ? n : 511; memcpy(buf, s, k); buf[k] = 0;
             bobSetFace();
             /* S171: honour SetTextAlign. It used to be `{ return 0; }`, so TA_RIGHT and
@@ -718,6 +739,7 @@ public:
             }
             if (m_bobTextAlign & 24 /*TA_BASELINE*/) ay -= (m_bobTextH * 4) / 5;
             bob_gdi_text(ax, ay, buf, m_bobTextH, bobColor(m_textColor));
+            if (didClip) bob_gdi_text_clip(txSave[0], txSave[1], txSave[2], txSave[3]);
         }
         return TRUE;
     }
