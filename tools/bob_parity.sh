@@ -22,6 +22,19 @@ BOB="${BOB:-$ROOT/build/bob}"
 REF="${REF:-$ROOT/doc/ref/native}"
 OUT="${OUT:-/tmp/bob_parity}"
 SEED="${SEED:-0}"
+# S413: RUN AGAINST A SCRATCH TREE, not the player's.
+#
+# The first cut read the real drive_c, which makes the gate NON-HERMETIC: the game loads its
+# settings from that directory, so anything that writes there moves the captures. It did. The
+# config-control reference was seeded at S407 and by S411 the same binary produced a 210-byte
+# difference -- deterministic run to run, unchanged by every clip setting, and the diff was a combo
+# VALUE rendering differently. Between those sprints the PO had been playing (their GFX screenshot
+# is from this session) and a campaign gate had run against the real tree.
+#
+# A parity gate whose baseline moves when someone plays the game is worse than no gate: it produces
+# red that means nothing, which is how a real regression gets waved through. bob_use_scratch.sh
+# (S373) already builds an isolated tree for exactly this.
+. "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"   # sets BOB_DRIVE_C + GD to a scratch tree
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
 mkdir -p "$OUT" "$REF"
 [ -x "$BOB" ] || { echo "no binary at $BOB"; exit 2; }
