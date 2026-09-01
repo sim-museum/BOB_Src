@@ -731,13 +731,20 @@ public:
                past the dialog, over the map -- so clipping Y alone stops it and touches no
                horizontal pixel. 2 px of slop absorbs ascenders reaching just above the rect.
                BOB_NO_ETOCLIP=1 disables; BOB_ETOCLIP_XY=1 restores the full rect. */
-            /* S411: still DEFAULT OFF in BoB, unlike MA. The Y-only change took config-control
-               from 1131 bytes to 210 (the word "Axis" is restored) -- but 81 px on one glyph of
-               "Small" remain, and they are NOT a boundary effect: identical at slop 3, 4 and 6, so
-               widening the rect does not touch them. Unexplained, therefore not shipped. MA's clip
-               is on because it contributes exactly ZERO; BoB's does not meet that bar yet.
-               BOB_ETOCLIP=1 enables. */
-            if ((opt & 0x0004 /*ETO_CLIPPED*/) && clipr && getenv("BOB_ETOCLIP")) {
+            /* S413: DEFAULT ON. S411 held this off for 81 px on one glyph of "Small" that it
+               could not explain -- identical at slop 3, 4 and 6, so not a boundary effect, and
+               still present with the clip DISABLED. That last fact was the tell and I read past it:
+               a difference that survives turning the feature off was never the feature.
+               It was the GATE. bob_parity.sh read the PLAYER'S game directory, and the game loads
+               its settings from there, so the PO playing BoB moved the baseline out from under a
+               reference seeded four sprints earlier. The differing region was a combo VALUE.
+               S413 made the gate hermetic (its own scratch tree) and reseeded. Against a baseline
+               that cannot drift, this clip contributes EXACTLY ZERO: all 8 screens byte-identical
+               with it on, which is precisely the bar the S411 comment set for shipping it.
+               The negative control is real: BOB_ETOCLIP_XY=1 (full rect) still breaks
+               config-control by 1187 bytes, so the gate can see this code path change.
+               BOB_NO_ETOCLIP=1 disables; BOB_ETOCLIP_XY=1 restores the full rect. */
+            if ((opt & 0x0004 /*ETO_CLIPPED*/) && clipr && !getenv("BOB_NO_ETOCLIP")) {
                 bob_gdi_get_text_clip(&txSave[0], &txSave[1], &txSave[2], &txSave[3]);
                 const int slop = getenv("BOB_ETOCLIP_SLOP") ? atoi(getenv("BOB_ETOCLIP_SLOP")) : 2;
                 if (getenv("BOB_ETOCLIP_XY"))
