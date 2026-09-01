@@ -2,6 +2,29 @@
 
 Last updated: 2026-08-27 (sprint 309)
 
+
+## STATUS INDEX (rebuilt 2026-08-31)
+
+### 🔴 OPEN
+
+**None.** Every backlog row is closed and the full gate suite is green end to end
+(`RUNS: all clean`, `PLAYER DATA: untouched`, exit 0, verified 2026-08-31).
+
+### ✅ CLOSED
+
+R1 (recording chain, one process), R3.7, R3.8b (the aircraft list is present, unfiltered and drawn —
+every one of `IDD_BOBFRAG`'s 22 hosted controls accounted for by name), R8, R9, R10, R11, R12, R13,
+R14, R15, R16 (padlock judder 1000 ms → 41 ms; its control restored after R18 neutered it), R18
+(game clock 1.9% slow → 40.000 ms/period), R19 (cross-port: bob does NOT carry MA's texture-quality
+ratchet — that code is not built).
+
+### ⚠️ NOTE FOR WHOEVER PLANS THE NEXT SPRINT
+
+bob has **no open defects**. Under a rotation it will otherwise be filled with suite verification and
+cross-ports from MiG Alley, which is the lowest-value work of the three ports. It needs new PO items
+to justify its share of the rotation.
+
+
 ## What works
 
 - **3D flight** from the front end and from the campaign; the sim runs, records, and exports.
