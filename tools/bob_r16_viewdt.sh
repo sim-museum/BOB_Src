@@ -26,11 +26,21 @@ arm() { # $1 tag, $2 extra env
   N=$(echo "$last" | sed -n 's/^\[viewdt\] n=\([0-9]*\).*/\1/p')   # anchored: a greedy .*n= matched "mean=20.4" 
 }
 echo "R16-S5 -- view_dt sawtooth, ${SECS}s per arm"
-arm off "BOB_NO_MOVESTAMP=1"; OFFMAX=$MAX; OFFRES=$RESETS
+# S388: the control must revert BOTH fixes, not just this one. R16's control (the legacy frame
+# counter, BOB_NO_MOVESTAMP=1) only sawtooths when the move timer itself drifts -- and R18 later
+# gave that timer an absolute schedule, so `FRAMETIME * 10` now tracks real time and the control
+# stopped misbehaving: measured max=42 ms / 5 resets where it used to run to 1000 ms. The gate
+# said so honestly ("the control did NOT sawtooth -- the premise is wrong") and went red, which is
+# the right failure: a negative control that no longer reproduces the defect proves nothing about
+# the fix. BOB_TIMER_SLICES=1 restores R18's old sliced sleep, so the control is once again the
+# code as it stood when the PO reported the judder.
+arm off "BOB_NO_MOVESTAMP=1 BOB_TIMER_SLICES=1"; OFFMAX=$MAX; OFFRES=$RESETS
 arm on  ""; ONMAX=$MAX; ONRES=$RESETS; ONN=$N
 echo "----------------------------------------"
 if [ "${OFFMAX:-0}" -lt 300 ] || [ "${OFFRES:-0}" -lt 1 ]; then
-  echo "FAIL/RETHINK: the control did NOT sawtooth (max=$OFFMAX resets=$OFFRES) -- the premise is wrong"; exit 1; fi
+  echo "FAIL/RETHINK: the control did NOT sawtooth (max=$OFFMAX resets=$OFFRES) -- the premise is wrong"
+  echo "              (the control reverts BOTH R16 and R18; if it is quiet, something else now"
+  echo "               bounds view_dt and this gate is testing a defect that can no longer occur)"; exit 1; fi
 if [ "${ONMAX:-999}" -ge 60 ]; then
   echo "FAIL: with the stamp in, view_dt still reaches ${ONMAX} ms (one move period is 40)"; exit 1; fi
 # Negative deltas mean the stamp is running AHEAD of the draw clock -- two writers fighting (S5
