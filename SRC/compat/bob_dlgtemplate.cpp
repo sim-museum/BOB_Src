@@ -722,8 +722,30 @@ static void load(void) {
    (a source-only control — on Windows the dialog manager would never create it,
    e.g. CSSound's IDC_CBO_MUSIC/SFX2/SFX3 which BDG 0.99 dropped from IDD_SSOUND);
    -1 = the PE doesn't cover this dialog (no filtering possible). */
+/* R3.8b/S4: dump the PE template's control list for one dialog. `not-in-template` is a strong
+   claim -- it says the ORIGINAL executable's dialog resource has no such control, so Windows would
+   never have created it either and gold cannot be drawing it. That deserves to be checkable rather
+   than trusted: BOB_DUMP_TMPL=<dlgId> (or `all`) prints every control the PE lists for it. */
+extern "C" void bob_dump_template(int dlgId) {
+    load();
+    if (!g_pe) { fprintf(stderr, "[tmpl] no PE resources loaded -- nothing to compare against\n"); return; }
+    int n = 0;
+    for (int i = 0; i < g_nrects; i++)
+        if (g_rects[i].dlgId == dlgId && g_rects[i].pe) {
+            fprintf(stderr, "[tmpl] dlg=%d ctrl=%-6d x=%-5d y=%-5d w=%-5d h=%d\n",
+                    dlgId, g_rects[i].id, g_rects[i].x, g_rects[i].y, g_rects[i].w, g_rects[i].h);
+            n++;
+        }
+    fprintf(stderr, "[tmpl] dlg=%d: %d control(s) in the PE template\n", dlgId, n);
+    fflush(stderr);
+}
+
 extern "C" int bob_dlg_in_template(int dlgId, int ctrlId) {
     load();
+    { static int done = 0; const char* dt = getenv("BOB_DUMP_TMPL");
+      if (dt && !done) { done = 1;
+          if (!strcasecmp(dt, "all")) { for (int i = 0; i < g_nrects; i++) if (g_rects[i].pe) bob_dump_template(g_rects[i].dlgId); }
+          else bob_dump_template(atoi(dt)); } }
     if (!g_pe || dlgId <= 0) return -1;
     int seen = 0;
     for (int i = 0; i < g_nrects; i++) if (g_rects[i].dlgId == dlgId && g_rects[i].pe) {
