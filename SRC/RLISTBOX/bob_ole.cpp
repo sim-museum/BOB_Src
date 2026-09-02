@@ -1151,8 +1151,27 @@ extern "C" void bob_timer_kill_all(void* wnd) {
     std::vector<BobTimer>& v = bobtimers();
     for (size_t i = v.size(); i-- > 0; ) if (v[i].w == (CWnd*)wnd) v.erase(v.begin() + i);
 }
-/* ⚠️ DEFAULT OFF in BoB (BOB_TIMERS=1 enables) -- but NOT for the reason I first wrote here, and
- * the correction matters more than the conclusion.
+/* 🔴 STILL OPT-IN (BOB_TIMERS=1), and now for a MEASURED reason rather than an unarbitrable gate.
+ *
+ * R25/S425 fixed the flaky screen, so the parity gate could finally judge this -- and it passes:
+ * 3 consecutive PASSES with timers on, plus bob_settings_nav, bob_dialslots, bob_clip_gate,
+ * bob_mp_connect, bob_mp_packet and bob_detect_probe. Parity alone would have shipped it.
+ *
+ * But `bob_mp_uijoin` REGRESSES: the game's Join list goes from 1 session to 0.
+ * Measured 3 runs each way, no overlap -- timers on: 0,0,0; timers off: 1,1,1.
+ * So enabling the timer breaks multiplayer session discovery in the game's own UI, and the
+ * multiplayer gates are the only ones that see it.
+ *
+ * ⚠️ My mechanism for it was WRONG. I reasoned that a timer-driven
+ * UIUpdateMainSheet -> ReceiveNextMessage -> Receive -> pump() would drain the socket that
+ * EnumSessions polls, and that pump() would silently discard the MSG_OFFER because it has no branch
+ * for it -- true of the old code, and a real gap. I added an offer cache to close it and re-ran:
+ * still 0,0,0, and the cache branch fired ZERO times. So the OFFER is not being stolen; the client
+ * never sees one at all with timers live. The cache is kept as hardening (two readers on one
+ * socket, only one of which understood the packet, is a defect either way) but it is NOT the fix
+ * and did not change the outcome.
+ *
+ * The history below is kept because the corrections in it are worth more than the conclusions were.
  *
  * I saw `bob_parity.sh` fail on `config-control` (210 bytes) after enabling the timer, watched it
  * pass 4/4 with the timer disabled, and wrote that the timer caused it -- naming
@@ -1176,7 +1195,7 @@ extern "C" void bob_timer_kill_all(void* wnd) {
  */
 extern "C" void bob_timers_tick(void) {
     static int off = -1;
-    if (off < 0) off = getenv("BOB_TIMERS") ? 0 : 1;
+    if (off < 0) off = getenv("BOB_TIMERS") ? 0 : 1;   /* R24/S427: STILL OPT-IN -- see below */
     if (off) return;
     std::vector<BobTimer>& v = bobtimers();
     if (v.empty()) return;

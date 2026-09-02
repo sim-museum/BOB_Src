@@ -84,6 +84,7 @@ class BobDPlay4 : public IDirectPlay4
     int  havePeer;
     char sessName[128];
     GUID sessGuid;
+    char offers[8][128]; int offerCount = 0;   /* R24/S427: offers drained by pump(), not by EnumSessions */
     QMsg q[MAXQ]; int qh, qt;
 
     void qpush(unsigned f, unsigned t, const char* d, unsigned n) {
@@ -126,6 +127,26 @@ class BobDPlay4 : public IDirectPlay4
                 sendto(fd, &ah, sizeof(ah), 0, (struct sockaddr*)&from, fl);
                 DPT("client joined from %s:%d -> assigned pid %u\n",
                     inet_ntoa(from.sin_addr), (int)ntohs(from.sin_port), (unsigned)given);
+            } else if (h->kind == MSG_OFFER && !isHost) {
+                /* R24/S427: STASH IT. `EnumSessions` runs its own recvfrom loop on this same
+                   socket, so there are two readers -- and before this branch existed only one of
+                   them understood an OFFER. `pump()` fell through every case and DISCARDED it, so
+                   whenever anything else drained the socket first, discovery came back empty.
+                   That is not hypothetical: enabling the MFC timer (R24) made
+                   DPlay::UIUpdateMainSheet -> ReceiveNextMessage -> Receive -> pump() run on the
+                   client, and bob_mp_uijoin went from "1 session listed" to "0 listed", 3 runs out
+                   of 3 each way. The timer only exposed it; the race was always there, because any
+                   Receive() during a session scan could win the same packet.
+                   Cache the offer so whichever reader gets it, EnumSessions can still report it. */
+                const char* nm = (const char*)buf + sizeof(WireHdr);
+                size_t maxn = (size_t)n - sizeof(WireHdr);
+                if (maxn > 0 && offerCount < (int)(sizeof(offers)/sizeof(offers[0]))) {
+                    size_t cn = strnlen(nm, maxn);
+                    if (cn >= sizeof(offers[0])) cn = sizeof(offers[0]) - 1;
+                    memcpy(offers[offerCount], nm, cn); offers[offerCount][cn] = 0;
+                    offerCount++;
+                    DPT("cached a session offer \"%s\" seen outside EnumSessions\n", offers[offerCount-1]);
+                }
             } else if (h->kind == MSG_ASSIGN && !isHost) {
                 assignedPid = (DPID)h->to;
                 DPT("host assigned us pid %u\n", (unsigned)assignedPid);
@@ -236,6 +257,15 @@ public:
 
         int found = 0;
         unsigned waitms = timeout ? (timeout > 2000 ? 2000 : timeout) : 400;
+        /* Report anything pump() already took off the socket for us. */
+        for (int i = 0; i < offerCount; i++) {
+            DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd)); sd.dwSize = sizeof(sd);
+            sd.lpszSessionNameA = offers[i]; sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
+            DWORD tmo = waitms; found++;
+            DPT("EnumSessions: found \"%s\" (from the pump cache)\n", offers[i]);
+            if (cb && !cb(&sd, &tmo, 0, ctx)) { offerCount = 0; DPT("EnumSessions -> %d session(s)\n", found); return DP_OK; }
+        }
+        offerCount = 0;
         for (unsigned t = 0; t < waitms; t += 20) {
             char buf[2048]; struct sockaddr_in from; socklen_t fl = sizeof(from);
             ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);
