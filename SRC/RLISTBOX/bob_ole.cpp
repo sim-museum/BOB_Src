@@ -1151,7 +1151,8 @@ extern "C" void bob_timer_kill_all(void* wnd) {
     std::vector<BobTimer>& v = bobtimers();
     for (size_t i = v.size(); i-- > 0; ) if (v[i].w == (CWnd*)wnd) v.erase(v.begin() + i);
 }
-/* 🔴 STILL OPT-IN (BOB_TIMERS=1), and now for a MEASURED reason rather than an unarbitrable gate.
+/* ✅ DEFAULT ON since R24/S429 (BOB_NO_TIMERS=1 disables). The regression that reverted this at
+ * S427 was MY OWN GATE, not the timer -- see the correction at the end of this comment.
  *
  * R25/S425 fixed the flaky screen, so the parity gate could finally judge this -- and it passes:
  * 3 consecutive PASSES with timers on, plus bob_settings_nav, bob_dialslots, bob_clip_gate,
@@ -1170,6 +1171,15 @@ extern "C" void bob_timer_kill_all(void* wnd) {
  * never sees one at all with timers live. The cache is kept as hardening (two readers on one
  * socket, only one of which understood the packet, is a defect either way) but it is NOT the fix
  * and did not change the outcome.
+ *
+ * ⭐ S429 -- THE REGRESSION WAS THE HARNESS. With the timer on, the Join screen re-enumerates
+ * periodically. The gate's probe host (`dplay_probe host`) runs ~20 s and exits, so the game's FIRST
+ * EnumSessions found the session and the SECOND -- after the host had gone -- correctly reported 0.
+ * The gate read the last count and blamed the timer. A `hostloop` mode that stays up until killed
+ * fixes it, and the gate then passes with timers ON, 2 runs out of 2, exactly as with them off.
+ * So "the timer breaks multiplayer discovery" was false, and the S427 revert was unnecessary.
+ * The lesson is the one this file keeps teaching: when a change makes a gate red, suspect the gate
+ * as well as the change -- especially a gate whose fixture has a lifetime.
  *
  * The history below is kept because the corrections in it are worth more than the conclusions were.
  *
@@ -1195,7 +1205,7 @@ extern "C" void bob_timer_kill_all(void* wnd) {
  */
 extern "C" void bob_timers_tick(void) {
     static int off = -1;
-    if (off < 0) off = getenv("BOB_TIMERS") ? 0 : 1;   /* R24/S427: STILL OPT-IN -- see below */
+    if (off < 0) off = getenv("BOB_NO_TIMERS") ? 1 : 0;   /* R24/S429: DEFAULT ON */
     if (off) return;
     std::vector<BobTimer>& v = bobtimers();
     if (v.empty()) return;

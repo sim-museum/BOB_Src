@@ -38,7 +38,10 @@ echo "bob R7.1 -- the JOIN screen lists a hosted session  (CONTROL=$CONTROL)"
 
 hostpid=""
 if [ "$CONTROL" != "1" ]; then
-  "$PROBE" host >"$OUT/host.log" 2>&1 &
+  # S429: `hostloop`, not `host`. The short-lived `host` mode exits after ~20 s, and with the MFC
+  # timer enabled the game re-enumerates AFTER that -- so the Join list was correctly empty on the
+  # second look and this gate blamed the timer for its own harness expiring.
+  "$PROBE" hostloop >"$OUT/host.log" 2>&1 &
   hostpid=$!
   sleep 2
   grep -aq "hosting as pid" "$OUT/host.log" && echo "  host is up" || echo "  host did not report -- continuing anyway"

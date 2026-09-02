@@ -33,6 +33,33 @@ int main(int argc, char** argv) {
     if (bob_dplay_create((void**)&dp) != DP_OK || !dp) { printf("FAIL: no object\n"); return 2; }
     dp->InitializeConnection(0, 0);
 
+    /* R24/S429: `hostloop` -- host and KEEP hosting until killed.
+     * `host` runs ~20 s and exits on the first packet, which is right for mp_packet (one exchange,
+     * then done) and wrong for any gate where the GAME may enumerate more than once. With the MFC
+     * timer enabled the Join screen re-enumerates periodically: the first EnumSessions found the
+     * session, the probe host then expired, and the second correctly reported 0 -- which read as
+     * "the timer broke discovery" and cost a revert (S427). The host must outlive the client. */
+    if (!strcmp(mode, "hostloop")) {
+        DPSESSIONDESC2 d; memset(&d, 0, sizeof(d));
+        d.dwSize = sizeof(d); d.lpszSessionNameA = (char*)"BoB probe session"; d.dwMaxPlayers = 8;
+        if (dp->Open(&d, DPOPEN_CREATE) != DP_OK) { printf("FAIL: Open(CREATE)\n"); return 2; }
+        DPID pid = 0; DPNAME nm; memset(&nm, 0, sizeof(nm));
+        nm.dwSize = sizeof(nm); nm.lpszShortNameA = (char*)"host";
+        dp->CreatePlayer(&pid, &nm, 0, 0, 0, 0);
+        printf("  [probe] hosting as pid %u; staying up until killed\n", (unsigned)pid);
+        fflush(stdout);
+        for (;;) {
+            DPID f = 0, t = 0; char buf[512]; DWORD n = sizeof(buf);
+            if (dp->Receive(&f, &t, 0, buf, &n) == DP_OK) {
+                buf[n < sizeof(buf) ? n : sizeof(buf) - 1] = 0;
+                printf("  [probe] RECEIVED %u bytes from pid %u: \"%s\"\n",
+                       (unsigned)n, (unsigned)f, buf);
+                fflush(stdout);
+            }
+            usleep(100000);
+        }
+    }
+
     if (!strcmp(mode, "host")) {
         DPSESSIONDESC2 d; memset(&d, 0, sizeof(d));
         d.dwSize = sizeof(d); d.lpszSessionNameA = (char*)"BoB probe session"; d.dwMaxPlayers = 8;
