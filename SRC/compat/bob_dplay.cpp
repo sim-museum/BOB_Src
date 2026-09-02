@@ -300,7 +300,25 @@ public:
     HRESULT STDMETHODCALLTYPE DestroyPlayer(DPID id) override { DPT("DestroyPlayer %u\n", (unsigned)id); return DP_OK; }
 
     HRESULT STDMETHODCALLTYPE Send(DPID from, DPID to, DWORD, LPVOID data, DWORD len) override {
-        if (fd < 0 || !havePeer) return DPERR_NOCONNECTION;
+        /* R26 (S431): NO PEER IS NOT AN ERROR.
+         * This used to return DPERR_NOCONNECTION whenever nobody had connected yet, and the game
+         * reads that as "comms are broken". Real DirectPlay does not: a Send to a GROUP with no
+         * members transmits nothing and returns DP_OK. Only an absent socket is a connection error.
+         *
+         * It matters because the game broadcasts to a group at the moment it starts a flight:
+         * UISendFlyNow -> SendMessageToPlayers(playergroupID) -> SendEx. With this guard a HOST
+         * WHO IS ALONE can never take off -- UISendFlyNow returns FALSE, UINetworkSelectFly
+         * refuses, CommsSelectFly returns FALSE, and the FLY click silently does nothing.
+         * MA traced exactly that chain end to end (MA PO-76/S430) and this shim carries the same
+         * line; the two shims share their ancestry, so the defect is shared too.
+         * BOB_STRICT_SEND=1 restores the old behaviour as the negative control. */
+        if (fd < 0) return DPERR_NOCONNECTION;
+        if (!havePeer) {
+            if (getenv("BOB_STRICT_SEND")) return DPERR_NOCONNECTION;
+            DPT("Send %u bytes pid %u -> %u (no peer yet -- DP_OK, nothing transmitted)\n",
+                (unsigned)len, (unsigned)from, (unsigned)to);
+            return DP_OK;
+        }
         char out[2048];
         if (len > sizeof(out) - sizeof(WireHdr)) len = sizeof(out) - sizeof(WireHdr);
         WireHdr* h = (WireHdr*)out;
