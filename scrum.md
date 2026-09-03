@@ -3032,3 +3032,53 @@ from depth-OFF and 12,299 px from depth-ON.
 (a cloudier QM, or fly INTO the cloud layer — `MissManCampSky().Layer[0]` gives the altitudes, and
 `BOB_AUTOFLY` can climb). Only then can the near-free threshold be A/B'd on the property that
 matters, and only then should it be defaulted on.
+
+
+## R3.2 — SPRINT 3 (2026-09-03): the cloud half CANNOT BE VALIDATED HERE — the original bug does not reproduce
+
+Sprint 2 left one question: does the `BOB_ZD_NEARFREE` split still keep clouds off the canopy? To
+answer it needs a frame where clouds demonstrably overlap the cockpit **with the depth sort OFF** —
+i.e. where the original defect is visible. Two flights were flown to find one:
+
+| run | scenario | result |
+|---|---|---|
+| `BOB_AUTOFLY=dive`, depth OFF, frame 1600 | climbing, 10,379 ft | canopy occludes correctly; a cloud sits in the sky, not over the frame |
+| `BOB_AUTOFLY=dive`, depth OFF, frame 3000 | 10,476 ft | same |
+
+**The clouds-over-cockpit defect did not reproduce in ANY arm.** So the near-free rule cannot be
+validated against it on this machine's available scenarios, and — worth saying plainly — **it is not
+established that the defect still exists at all**. It may need particular weather (an overcast layer
+low enough to fly INTO; `MissManCampSky().Layer[0]` carries the altitudes and this QM's layer was
+never entered), or it may already be fixed by other work.
+
+**Consequence for the item:** `BOB_ZD_NEARFREE` restores the three cockpit instruments (sprint 2,
+visually confirmed) and its risk to clouds is UNTESTED because the risk case could not be staged.
+It stays default OFF. **Before another sprint, R3.2 needs a scenario that shows the bug** — the PO
+saw it, so the fastest route is asking which mission/weather, rather than flying more sorties blind.
+
+---
+
+### 🔗 A LEAD FOR R3.9 (the PO's floating grey square), found while doing this
+
+Every cockpit capture across this session — four flights, different altitudes, different depth
+settings — contains a **flat grey ellipse pinned to the SAME screen rows, y 140-190**:
+
+| capture | grey-blob bbox |
+|---|---|
+| `cl_off` (dive, 10,379 ft) | x 156-314, **y 140-189** |
+| `cl_off2` (dive, 10,476 ft) | x 48-293, **y 140-190** |
+| `r32_on` (level QM) | x 62-314, **y 140-190** |
+| `r32_off` (level QM) | x 63-314, **y 140-190** |
+
+A world object would move as the aircraft climbs and manoeuvres; **this is pinned to screen
+coordinates**. Cropped, it is a hard-edged grey lens/ellipse floating in the sky — the same character
+as the PO's report ("a floating light/dark grey square … sometimes").
+
+**Best hypothesis: an aircraft SHADOW polygon drawn in the sky rather than on the ground** — a shadow
+is an ellipse, `DETAIL3D_AIRCRAFTSHADOWS` is on by default, and R3.9's own marker-texture list
+already names `shadow` / `lshad`. ⚠️ Note it is TEXTURED, not an untextured draw: R3.9's `[grey]`
+canary reports only the loader quad, which is consistent with a shadow texture rather than a missing
+bind — and explains why four sprints of untextured-quad hunting never found it.
+
+**R3.9 is at its 4-sprint limit**, so this is recorded rather than pursued. The next sprint on it
+should start here: toggle `DETAIL3D_AIRCRAFTSHADOWS` and see whether the ellipse goes.
