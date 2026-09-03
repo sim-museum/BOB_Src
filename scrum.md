@@ -2718,3 +2718,59 @@ nothing on it.
 `REFUSING TO RUN: bob is already running (pid 2341852)`. That process has been alive **2 days**; it
 is not this sprint's doing and safe-kill deliberately will not touch it, per the standing rule that
 a stray bob may be the PO's own game. **It needs the PO's word before anything kills it.**
+
+
+## R3.8 — SPRINT 2 (2026-09-03): 🔴 **MY OWN SPRINT-1 ROOT CAUSE IS RETRACTED. The briefing DOES render the list.**
+
+Sprint 1 concluded the list was "painted, then buried by the frontend repaint". **That conclusion was
+wrong, and the error was in the comparison, not the measurement.** I compared a pixel probe taken
+*while the briefing pane was drawing* against the recipe's framebuffer capture — which fires at tick
+99999, **after `Launch3d`, by which time the briefing has closed.** Two different screens. A capture
+that cannot contain the thing you are looking for is not evidence that something removed it.
+
+**What the briefing actually looks like.** Armed a capture on the dialog itself
+(`BOB_DUMP_AFTER_DLG=<dlgId>:<n>`, dumping the PRESENTED frame n presents after dlg 1164 draws) and
+shot the briefing while it is up. With the port **stock**, it renders:
+
+```
+Unit         Aircraft Duty        Callsign
+S1/III (7)   Ju87     Dive Bomb   Checkerboard III
+S1/III (8)   Ju87     Dive Bomb   Checkerboard III
+S1/III (9)   Ju87     Dive Bomb   Checkerboard III
+S1/III (10)  Ju87     Dive Bomb   Checkerboard III
+J3/I (1)     Me109    High        Panther I
+J3/I (2)     Me109    High        Panther I
+J3/I (3)     Me109    High        Panther I
+```
+
+— exactly the seven squadron options S(2026-08-29) measured as populated, with the squadron/callsign
+labels and "Return to Player" beside them. **On this path the feature works.**
+
+The frame that matches the PO's screenshot (art + `Debrief / Back / Sim Config / Fly`, no list) is
+the **next** screen, after the briefing closes and Fly is taken — captured at n=2, where it looks the
+same with and without any change. It is a different screen, not a broken briefing.
+
+**So R3.8 is not "the list fails to draw".** The open question is now: *what does the PO's route do
+differently?* Candidates, in order: a different screen reached from Debrief rather than the frag
+pane; a real-GL/interactive path the headless recipe does not exercise; or a campaign state where
+`maxsquadoption` really is 0 (this recipe always has 7). **The next sprint should get the PO's exact
+route** rather than test more of the one that works.
+
+**The fix I wrote is DEFAULT OFF.** `bob_ole_replay_panels()` redraws already-drawn panels at their
+OWN recorded origins before the present (never a guessed origin, which would move a control rather
+than restore it). It is sound in shape and does change the final frame — it brings the system box
+back into the post-briefing frame — but it fixes a burial that was never demonstrated, so it ships
+disabled: `BOB_PANELREPLAY=1` enables it.
+
+**Kept, and worth keeping** (all env-gated, off by default): `bob_gdi_rect_content()`,
+`BOB_TRACE_PIX=<dlgId>`, `BOB_TRACE_PAINTORDER=1`, and `BOB_DUMP_AFTER_DLG=<dlgId>:<n>` — the last is
+the one that settled this, because it is the only way to photograph a transient screen at the moment
+it is up.
+
+⚠️ **A second instrument fault, mine, worth recording**: I first "verified" with a metric that counted
+pixels differing from the rect's dominant colour. Over cloudy background art that scores ~93,000
+either way, so it reported the list present in both arms when one of them plainly had none. The
+metric could not fail. The visual check is what caught it.
+
+**Gates: same 13 pass / 3 blocked as sprint 1** (`soak`, `r1`, `settings_nav` refuse while the
+2-day-old pid 2341852 is alive — still awaiting the PO's word).

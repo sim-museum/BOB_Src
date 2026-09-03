@@ -167,6 +167,9 @@ END_MESSAGE_MAP()
 // RFullPanelDial message handlers
 
 
+extern int g_bob_dump_dlg_armed;                 /* R3.8 verification */
+extern "C" int bob_gdi_dump_to(const char*);     /* R3.8 verification */
+extern "C" int bob_ole_replay_panels(CWnd*, CWnd*, CWnd*);   /* R3.8 */
 #if BOB_LINUX
 extern "C" void bob_gdi_present(void);                              /* present (bob_video.cpp) */
 extern "C" int  bob_gdi_text(int,int,const char*,int,unsigned);    /* TTF text (bob_gdi_font.cpp) */
@@ -1996,7 +1999,19 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 			fprintf(stderr, "[frontend]   dial[%d] painted\n", d);
 		}
 		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);  /* tabs / menu items */
+		/* R3.8 (2026-09-03): this repaint draws art + the three DIALS' hosted controls + the menu,
+		   then presents -- so a non-dial dialog (the briefing pane, IDD_BOBFRAG) had its controls
+		   drawn by another path and then buried here, every frame. Measured: the unit list writes
+		   93,541 content px into its rect and the presented frame shows bare art. Replay the panels
+		   we have already drawn, each at its OWN recorded origin (a guessed origin would move the
+		   list rather than restore it), before the present. BOB_NO_PANELREPLAY=1 reverts. */
+		if (bobOleDraw())
+			bob_ole_replay_panels((CWnd*)pdial[0], (CWnd*)pdial[1], (CWnd*)pdial[2]);
 		bob_gdi_present();
+		/* R3.8 verification: dump the PRESENTED frame n presents after the target dialog drew. */
+		{ if (g_bob_dump_dlg_armed > 0 && --g_bob_dump_dlg_armed == 0) {
+			const char* dp = getenv("BOB_DUMP_PATH");
+			bob_gdi_dump_to(dp ? dp : "/tmp/bob_dumpdlg.ppm"); } }
 		fprintf(stderr, "[frontend] painted screen artnum=%d + dials + menu + presented\n", (int)artnum);
 	}
 #endif

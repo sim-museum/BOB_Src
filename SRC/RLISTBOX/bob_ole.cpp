@@ -278,8 +278,29 @@ extern "C" void bob_ole_census(int dlgId)
 }
 
 extern "C" int bob_gdi_rect_content(int,int,int,int);   /* R3.8: framebuffer probe */
+
+/* R3.8 (2026-09-03): the frontend repaint (FULLPSYS.CPP) redraws the background art, the three
+   DIAL panels with their hosted controls, the menu, and then PRESENTS -- so any OTHER open dialog's
+   controls, drawn earlier by a different path, are covered and never repainted. Measured: the
+   briefing list writes 93,541 content px into its rect and the presented frame shows bare art there.
+   The fix cannot invent an origin -- drawing the list at a guessed (ox,oy) would MOVE it rather than
+   restore it -- so remember the origin each dialog was actually drawn with and replay exactly that.
+   A dialog that has since closed is self-limiting: its controls are marked not-visible and the
+   existing loop skips them. */
+struct PanelOrigin { CWnd* dlg; int ox, oy; };
+static std::vector<PanelOrigin>& panelOrigins() { static std::vector<PanelOrigin> v; return v; }
+static void bob_ole_note_origin(CWnd* dialog, int ox, int oy) {
+    for (auto& po : panelOrigins()) if (po.dlg == dialog) { po.ox = ox; po.oy = oy; return; }
+    if (panelOrigins().size() < 64) panelOrigins().push_back(PanelOrigin{dialog, ox, oy});
+}
+/* R3.8 verification: BOB_DUMP_AFTER_DLG="<dlgId>:<n>" dumps the framebuffer on the nth PRESENT
+   after dialog <dlgId> has drawn. The convoy recipe's own capture fires after Launch3d, by which
+   time the briefing is closed -- so it could never show the pane the PO is complaining about, and
+   comparing it proved nothing about this fix. This arms on the dialog itself. */
+int g_bob_dump_dlg_armed = -1;   /* -1 = not armed; else presents remaining */
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
+    bob_ole_note_origin(dialog, ox, oy);   /* R3.8: so the frontend repaint can replay this exactly */
     /* R12 (cross-port from MA S329-S2, 2026-08-29). In MA the PO's "empty variants screen" was a
        control type that was created, hosted, classified and populated -- and then had NO BRANCH in
        the main draw dispatcher, so it was never drawn and NOTHING SAID SO. The generalisable lesson
@@ -335,6 +356,15 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             if (a->dlgId != b->dlgId) return a->dlgId < b->dlgId;
             return a->ctrlId < b->ctrlId;
         });
+    if (const char* da = getenv("BOB_DUMP_AFTER_DLG")) {
+        int wantDlg = atoi(da); const char* c = strchr(da, ':');
+        int wantN = c ? atoi(c + 1) : 1;
+        if (g_bob_dump_dlg_armed < 0)
+            for (OleHost* h2 : drawlist)
+                if (h2->dlgId == wantDlg) { g_bob_dump_dlg_armed = wantN;
+                    fprintf(stderr, "[dumpdlg] armed on dlgId=%d, %d present(s) to go\n", wantDlg, wantN);
+                    fflush(stderr); break; }
+    }
     for (OleHost* host : drawlist) {
         if (host->parentDlg != dialog) continue;
         /* SP.2 (S123): honor the game's runtime ShowWindow state -- a hidden control isn't
@@ -604,6 +634,30 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
    (the config-panel dluX/dluY 1.5x is too big for the 50-DLU toolbar buttons). Each CRButtonCtrl
    OnDraw blits its NormalFileNum art (SetDIBitsToDevice) at the button's screen origin -- the art
    is native-BMP-sized, so scale here just sets the button spacing/layout. */
+/* R3.8: redraw every panel we have already drawn once, at its OWN recorded origin. Called from the
+   frontend repaint after the menu and BEFORE the present, so a non-dial dialog's controls survive
+   the repaint that used to bury them. Returns how many panels were replayed.
+   BOB_NO_PANELREPLAY=1 disables it for A/B. */
+/* DEFAULT OFF (BOB_PANELREPLAY=1 to enable). The burial this was written for was NOT demonstrated:
+   see the R3.8 retraction in scrum.md. It changes what the final frame contains (it brings the
+   system box back into the post-briefing frame), and an unproven change to every frontend repaint
+   is not something to ship on a diagnosis that did not hold. Kept because the mechanism it
+   implements -- replaying a panel at its OWN recorded origin -- is the right shape if a real
+   burial is ever demonstrated. */
+extern "C" int bob_ole_replay_panels(CWnd* skip1, CWnd* skip2, CWnd* skip3) {
+    if (!getenv("BOB_PANELREPLAY")) return 0;
+    int n = 0;
+    for (auto& po : panelOrigins()) {
+        if (!po.dlg) continue;
+        if (po.dlg == skip1 || po.dlg == skip2 || po.dlg == skip3) continue;  /* dials: already drawn */
+        int drew = bob_ole_draw_panel(po.dlg, po.ox, po.oy);
+        if (drew > 0) n++;
+    }
+    if (getenv("BOB_TRACE_REPLAY"))
+        { fprintf(stderr, "[replay] %d panel(s) redrawn after the frontend repaint\n", n); fflush(stderr); }
+    return n;
+}
+
 extern "C" void bob_gdi_setdibits_origin(int, int);
 /* ids/nids: if nids>0, draw only controls whose id is in ids[] (used to draw just the accel
    buttons off the TitleBar, whose DATETIME/DATE we render separately). nids==0 -> draw all. */
