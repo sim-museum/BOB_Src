@@ -2650,3 +2650,71 @@ it with an empty centre cell does nothing observable, and a gate asserts BOTH ar
 no-op is the half that will silently rot.
 
 **Points:** 8
+
+
+---
+
+## R3.8 — SPRINT (2026-09-02/03): ⭐ **ROOT CAUSE FOUND. The list is PAINTED, then WIPED by the frontend repaint.**
+
+The question this entry has carried for four sprints — never populated, or populated and not drawn —
+is answered, and the answer is a third thing neither branch predicted: **it is drawn correctly and
+then erased.**
+
+**Reproduced in the gate first.** `tools/bob_convoy_campaign.sh` already captures a framebuffer PPM
+(`BOB_SHOT`), and that capture is the PO's screenshot exactly: background art, the
+`Debrief / Back / Sim Config / Fly` row, and **no aircraft list**. So this is reproducible headlessly
+and needs no PO session to work on.
+
+**The chain, measured end to end:**
+
+| link | evidence |
+|---|---|
+| hosted, visible, real rect | `[sysbox-ctl] dlgId=1164 ctrlId=1481 visible=1 dlu=(5,42,449,86)` |
+| not skipped | `[skip] dlgId=1164 hosted=22 DREW=12 \| not-visible=6 not-in-template=4 no-DLU-rect=0` |
+| rows laid out | `[extent] dlg=1164 ctrl=1481 rect=(27,88 673x139) contentH=162 -- rows 0..6 fit` |
+| **pixels actually written** | `[pix] dlg=1164 ctrl=1481 rect=(27,88 673x139) content-px-just-after-draw=93541` |
+| final frame | that same rect is **bare sky art** |
+
+93,541 content pixels in a 673x139 box (93,547 px) means essentially the WHOLE control was painted
+into the framebuffer. It is then lost.
+
+**What wipes it — from the log, in order after the control paints:**
+
+```
+[frontend] painted screen artnum=27917 + dials + menu + presented
+[frontend] LaunchMain painted artnum=27917 res=1024 + menu + presented
+[frontend] painted screen artnum=0   + dials + menu + presented
+```
+
+`FULLPSYS.CPP:~1985` repaints the whole screen and presents: `DoPaint` (background art) →
+`pdial[0..2]` and **their** hosted controls → `bob_draw_menu` → `bob_gdi_present`. It redraws hosted
+controls **only for the three dial panels**. `IDD_BOBFRAG` is not a dial, so its controls are painted
+by another path, then this repaint覆 covers them and presents. The final frame is exactly what this
+function draws — art + menu — which is why the PO sees art + menu.
+
+**The fix (next sprint):** the frontend repaint must also redraw the hosted controls of whatever
+non-dial dialogs are open, at their own origins, before `bob_gdi_present`. The origin is the part to
+get right — the briefing drew at px (27,88) via its own path, and guessing an origin would move the
+list rather than restore it. A dialog registry already exists (`[shot-state] ... dialogs=6 dlg=254:1/1
+dlg=942:8/8 ...`), which is where the enumeration should come from. **Not attempted this sprint on
+purpose:** the diagnosis is solid, a placement guess is not, and this pane has already cost sprints
+to wrong turns.
+
+**Instruments added (both env-gated, off by default):**
+* `bob_gdi_rect_content(x,y,w,h)` (`SRC/compat/bob_video.cpp`) — counts non-background pixels inside
+  a rect of the GDI framebuffer. This is the measurement that separated "never painted" from
+  "painted then covered"; nothing existing could tell those apart.
+* `BOB_TRACE_PIX=<dlgId>` (`SRC/RLISTBOX/bob_ole.cpp`) — samples that rect right after each control
+  draws, restricted to ONE dialog.
+* `BOB_TRACE_PAINTORDER=1` (`SRC/MFC/MAINFRM.CPP`) — the paint-tree visit order, node + artnum.
+
+⚠️ **My first cut of `BOB_TRACE_PIX` deduped across all dialogs in a 64-entry table and went silent
+before reaching the briefing** — dlg 1032 draws 156 controls by itself. That is the SAME instrument
+fault that produced this entry's retracted "zero controls" reading. It is now filtered at the source
+by dialog id. An instrument that stops recording when it fills reads exactly like a screen with
+nothing on it.
+
+**Gates: 13 pass.** `soak`, `r1` and `settings_nav` did not run — all three print
+`REFUSING TO RUN: bob is already running (pid 2341852)`. That process has been alive **2 days**; it
+is not this sprint's doing and safe-kill deliberately will not touch it, per the standing rule that
+a stray bob may be the PO's own game. **It needs the PO's word before anything kills it.**

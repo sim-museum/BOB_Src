@@ -1203,6 +1203,29 @@ extern "C" void bob_blit_selftest(void);
 /* R4.3 (BOB_CAMPAIGN_FLY): one-shot framebuffer dump to a named PPM, callable from a boot
    scaffold once a target screen is up -- deterministic (no per-frame BOB_DUMP_GDI race on the
    shared /tmp/bobgdi.ppm). Returns nonblack pixel count, -1 if no framebuffer. */
+/* R3.8 (2026-09-02): sample the framebuffer INSIDE one control's rect. The briefing pane reports
+   drawing 7 rows at (27,88 673x139) and the PO sees bare art there, so the question is whether the
+   rows are painted and then COVERED, or never painted at all. Those need opposite fixes, and only a
+   pixel read between the two moments can tell them apart: call this right after the control draws
+   and again at capture time. Returns the count of pixels differing from the rect's dominant colour
+   -- i.e. how much "content" sits in the box. */
+extern "C" int bob_gdi_rect_content(int x, int y, int w, int h) {
+	if (!g_gdiFB) return -1;
+	if (x < 0 || y < 0 || w <= 0 || h <= 0 || x + w > g_gdiW || y + h > g_gdiH) return -2;
+	/* dominant colour = the background art behind the box; content = anything else */
+	unsigned best = 0; int bestn = 0;
+	for (int pass = 0; pass < 2; pass++) {
+		int n = 0;
+		for (int j = 0; j < h; j++) for (int i = 0; i < w; i++) {
+			unsigned px = g_gdiFB[(size_t)(y + j) * g_gdiW + (x + i)] & 0xFFFFFF;
+			if (pass == 0) { if (px == (g_gdiFB[(size_t)y * g_gdiW + x] & 0xFFFFFF)) n++; }
+			else if (px != best) n++;
+		}
+		if (pass == 0) { best = g_gdiFB[(size_t)y * g_gdiW + x] & 0xFFFFFF; bestn = n; }
+		else return n;
+	}
+	return bestn;
+}
 extern "C" int bob_gdi_dump_to(const char* path) {
 	if (!g_gdiFB) return -1;
 	int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;

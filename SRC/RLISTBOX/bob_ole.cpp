@@ -277,6 +277,7 @@ extern "C" void bob_ole_census(int dlgId)
     fprintf(stderr, "\n");
 }
 
+extern "C" int bob_gdi_rect_content(int,int,int,int);   /* R3.8: framebuffer probe */
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
     /* R12 (cross-port from MA S329-S2, 2026-08-29). In MA the PO's "empty variants screen" was a
@@ -485,6 +486,28 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            row TEXT, so reading the code was not going to answer this. Measure it.
            FILTERED, not capped: only an actual overflow prints, so a clean tree is silent and a
            dirty one cannot be starved by whatever draws first (ÃÂÃÂÃÂÃÂ§8-MA83). Deduped per control. */
+        /* R3.8: read the framebuffer inside this control's rect RIGHT AFTER it drew. Compared with
+           the same rect in the final capture, this separates "never painted" from "painted then
+           covered" -- the two remaining hypotheses, which need opposite fixes. BOB_TRACE_PIX=1. */
+        /* BOB_TRACE_PIX=<dlgId> restricts the probe to ONE dialog. The first cut deduped across all
+           dialogs in a 64-entry table and went silent BEFORE reaching the briefing -- dlg 1032 draws
+           156 controls by itself. That is the same instrument fault that already cost this entry a
+           sprint (the retracted "zero controls" reading): a trace that stops recording when it fills
+           reads exactly like a screen with nothing on it. Filtered at the source instead. */
+        if (getenv("BOB_TRACE_PIX")) {
+            int wantDlg = atoi(getenv("BOB_TRACE_PIX"));
+            static int pseen[64]; static int npseen = 0;
+            int pkey = host->dlgId * 10000 + host->ctrlId, pdup = 0;
+            if (wantDlg > 1 && host->dlgId != wantDlg) pdup = 1;
+            for (int k = 0; k < npseen; k++) if (pseen[k] == pkey) { pdup = 1; break; }
+            if (!pdup && npseen < 64) {
+                pseen[npseen++] = pkey;
+                int content = bob_gdi_rect_content(sx, sy, dluX(r.w), hpx);
+                fprintf(stderr, "[pix] dlg=%d ctrl=%d rect=(%d,%d %dx%d) content-px-just-after-draw=%d\n",
+                        host->dlgId, host->ctrlId, sx, sy, dluX(r.w), hpx, content);
+                fflush(stderr);
+            }
+        }
         {
             int ch = host->contentH();
             /* S207: hit-test what paint covered. MA's ÃÂÃÂÃÂÃÂ§8-MA137, measured true here: IDD_BOBFRAG's

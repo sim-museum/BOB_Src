@@ -1696,6 +1696,19 @@ static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
    the shared (ox,oy). */
 static void bob_oob_paint_tree_deep(RDialog* n, int ox, int oy) {
 	for (; n; n = n->sibling) {
+		/* R3.8 (2026-09-02): the briefing list is PAINTED (93,541 content px in its rect right
+		   after it draws) and then COVERED -- the final frame shows bare art there. This walk draws
+		   art-then-controls PER NODE, so a node visited LATER repaints over an earlier node's
+		   controls. Print the visit order with each node's art, once per pass, to name the coverer.
+		   BOB_TRACE_PAINTORDER=1. */
+		if (getenv("BOB_TRACE_PAINTORDER")) {
+			static int seq = 0;
+			/* the node pointer is the join key: bob_ole_draw_panel's [panel] line prints
+			   `dialog=<ptr> dlgId=<id>` for the same pointer, so the two traces correlate. */
+			fprintf(stderr, "[paintorder] %3d node=%p artnum=%d\n",
+			        seq++, (void*)n, (int)n->artnum);
+			fflush(stderr);
+		}
 		if (n->artnum) {
 			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
 			int clipped = bob_oob_clip_begin(n, ox, oy);
