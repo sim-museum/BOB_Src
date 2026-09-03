@@ -2445,6 +2445,56 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   detailed ground tiles), skipping the sky/haze/font surfaces -- isolates terrain. */
 	if (is2D) { const char* otw=getenv("BOB_ONLY_TEXW");
 		if (otw) { int w=atoi(otw); if (!g_devTex[0] || g_devTex[0]->w!=w) return; } }
+	/* R3.9 (2026-09-03): BOB_PIXPROBE="x,y" names the draw that COVERS a screen pixel. Four sprints
+	   of R3.9 reasoned from the shape of a grey ellipse and got the wrong answer twice (a shadow;
+	   "screen-pinned"). The object it belongs to is answerable directly: for each pre-transformed
+	   primitive, compute its screen bbox and, when it contains the probe point, report the bound
+	   texture's size/format and the primitive's extent. Reported once per distinct texture so a
+	   full-screen backdrop cannot drown the small thing on top of it. */
+	if (is2D && count >= 3) {
+		static int px = -1, py = -1, pinit = 0;
+		if (!pinit) { pinit = 1; const char* e = getenv("BOB_PIXPROBE");
+			if (e) { px = atoi(e); const char* c = strchr(e, ','); if (c) py = atoi(c+1); } }
+		if (px >= 0 && py >= 0) {
+			float x0=1e9f,x1=-1e9f,y0=1e9f,y1=-1e9f;
+			for (DWORD i=0;i<count;i++){ const float* q=(const float*)(base+(size_t)i*L.stride+L.posOff);
+				if(q[0]<x0)x0=q[0]; if(q[0]>x1)x1=q[0]; if(q[1]<y0)y0=q[1]; if(q[1]>y1)y1=q[1]; }
+			if (px>=x0 && px<=x1 && py>=y0 && py<=y1) {
+				GLSurface7* pt = g_devTex[0];
+				static const void* seen[32]; static int nseen=0; int dup=0;
+				for (int k=0;k<nseen;k++) if (seen[k]==(const void*)pt) { dup=1; break; }
+				if (!dup && nseen<32) { seen[nseen++]=(const void*)pt;
+					fprintf(stderr,"[pixprobe] (%d,%d) covered by prim=%d count=%lu fvf=0x%lx "
+						"bbox=(%.0f,%.0f)-(%.0f,%.0f) tex=%p %dx%d bpp=%d isRTT=%d ckey=%d\n",
+						px,py,(int)prim,(unsigned long)count,(unsigned long)fvf,x0,y0,x1,y1,
+						(void*)pt, pt?pt->w:0, pt?pt->h:0, pt?pt->bpp:0,
+						pt?pt->isRTT:0, pt?pt->ckeyOn:0);
+					fflush(stderr);
+					/* and WRITE the bound texture out, so the object is identified by looking at
+					   it rather than inferred from its silhouette (the mistake R3.9 made twice). */
+					if (pt && pt->bits && pt->w > 0 && pt->h > 0) {
+						char tp[96]; snprintf(tp,sizeof tp,"/tmp/pixprobe_%lx_%dx%d.ppm",
+							(unsigned long)((size_t)pt & 0xffffff), pt->w, pt->h);
+						int fd = ::open(tp, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+						if (fd >= 0) {
+							char hd[64]; int hn = snprintf(hd,sizeof hd,"P6\n%d %d\n255\n",pt->w,pt->h);
+							if (write(fd,hd,hn)<0){}
+							const unsigned char* bp = (const unsigned char*)pt->bits;
+							for (int yy=0; yy<pt->h; yy++) for (int xx=0; xx<pt->w; xx++) {
+								unsigned char rgb[3] = {0,0,0};
+								if (pt->bpp == 16) { unsigned short v = ((const unsigned short*)bp)[(size_t)yy*pt->w+xx];
+									rgb[0]=(unsigned char)(((v>>10)&0x1f)<<3); rgb[1]=(unsigned char)(((v>>5)&0x1f)<<3); rgb[2]=(unsigned char)((v&0x1f)<<3); }
+								else if (pt->bpp == 32) { const unsigned char* q=bp+((size_t)yy*pt->w+xx)*4;
+									rgb[0]=q[2]; rgb[1]=q[1]; rgb[2]=q[0]; }
+								if (write(fd,rgb,3)<0){}
+							}
+							close(fd);
+							fprintf(stderr,"[pixprobe]   texture written -> %s\n", tp); fflush(stderr);
+						}
+					} }
+			}
+		}
+	}
 	/* BOB_TRACE_CLOUDZ (R3.2 spike): for pre-transformed 2D textured quads, bucket by alpha-blend
 	   state -- blended ~= cloud/sprite billboards, opaque ~= cockpit/terrain -- and accumulate the
 	   RHW screen-z range + screen-Y range of each bucket. If blended (cloud) z and opaque (cockpit)

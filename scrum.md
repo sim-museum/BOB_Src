@@ -3249,3 +3249,42 @@ stay blank until real art is identified.
 The PO's report — *"two CAMPAIGN icons are drawn where the X (exit) icon belongs"* — is answered in
 full: the two wrong icons are gone and the X is there. Earlier sprints had established the placement
 and hit-test were already correct, so no other work is outstanding on this entry.
+
+
+## R3.9 — SPRINT (2026-09-03): ⭐ **THE GREY SHAPE IS IDENTIFIED — it is a SPRITE, and here is its texture**
+
+The previous sprint ended by saying the next one should *identify the object, not reason from its
+shape* — because reasoning from shape had produced two wrong answers (an aircraft shadow; "pinned to
+screen coordinates"). This sprint did that.
+
+**New instrument: `BOB_PIXPROBE="x,y"`** names every pre-transformed primitive whose screen bbox
+covers a given pixel, reports its bound texture (size, bpp, isRTT, colour-key) — and now **writes
+that texture out as a PPM**, so the object is identified by looking at it.
+
+**Probing the ellipse at (180,165)**, one draw matches its footprint exactly:
+
+```
+[pixprobe] (180,165) prim=6 count=4 bbox=(30,17)-(330,317) tex=128x128 bpp=16 isRTT=0
+```
+
+— a 128x128 texture drawn as a ~300x300 screen quad, over the ellipse's own span (x 48-314).
+
+**And the texture is the answer**: a **beige/tan ELLIPSE on a pure GREEN background** — green being
+the colour-key. So the "floating grey square/lens" is a **SPRITE**, drawn from artwork that is
+literally an ellipse.
+
+**That explains why four sprints missed it:** R3.9 hunted untextured quads (`[grey]` canary) and then
+shadow geometry. This is neither — it is a normal, textured, colour-keyed sprite. An untextured-draw
+canary can never see it, and disabling aircraft shadows correctly changed nothing.
+
+**What remains:** which game object places that sprite. Candidates now that the ART is known: a
+ground/blob shadow drawn through a path other than `Add_Shadow`, a distant barrage balloon, or a
+smoke/cloud puff. Identifying the source file would settle it — a recursive scan of the installed
+art for 128x128 BMPs timed out and is not worth brute-forcing; better to log the texture's creation
+path (the surface is created from a named file somewhere) and read the name.
+
+⚠️ Whether this sprite is even the PO's defect is still unconfirmed — the PO said "square", this is a
+lens — but it IS a real flat grey shape floating in the sky in ordinary flight, and it is now a known
+quantity rather than a mystery.
+
+Convoy campaign gate: PASS. The probe is env-gated and off by default.
