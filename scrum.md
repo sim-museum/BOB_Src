@@ -2995,3 +2995,40 @@ are the geometry the depth test exists to reject. Classify a cloud draw first, t
 world-vs-cockpit instead of on alpha.
 
 Both new switches are **default OFF**; the shipped path is untouched by this sprint.
+
+
+## R3.2 — SPRINT 2 (2026-09-03): the missing instruments are FIXED by a depth split; the cloud half is NOT yet verified
+
+**Two candidates eliminated first, both by measurement:**
+* **world-vs-cockpit via `isRTT`** — the split sprint 1 proposed. `BOB_TRACE_CLOUDZ` in a real
+  cockpit flight reports **`WORLD/terrain(isRTT) n=0`**: not one draw is classified as the
+  FBO-composited world, all 628,000 land in the other bucket. The discriminator does not exist on
+  this path, so that plan is dead.
+* **stale back-buffer depth** — R3.2's own note listed "a per-frame back-buffer depth clear" as a
+  requirement, and the game only z-clears its FBO targets. Added one (`BOB_ZDEPTH_CLEAR=1`,
+  back buffer only). The bezels stay missing: 15k px from the broken frame, 94k from the good one.
+  Not the cause.
+
+**What does work.** The missing bezels are TRANSLUCENT cockpit decals rejected by the opaque panel
+drawn before them at a nearer z — in painter's order they composite on top, under `LEQUAL` they lose.
+Clouds are translucent too, so opacity cannot separate them — but **depth can**: the cockpit is near,
+the clouds far, and the RHW z spans the full 0..1 across this pass. `BOB_ZD_NEARFREE=<z>` lets a
+translucent draw whose nearest z is below the threshold skip the test (cockpit decal) while a far one
+keeps it (cloud).
+
+At `BOB_ZD_NEARFREE=0.5` **the three instrument bezels come back** — confirmed visually, and the
+frame moves from 48k px away from the good cockpit to 27k.
+
+⚠️ **AND THE CLOUD HALF IS UNVERIFIED — the test frame cannot check it.** Cropping the canopy post in
+all three arms shows clouds correctly BEHIND it in `depth-OFF` too, i.e. **this frame never exhibited
+the bug the depth sort exists to fix**, so it cannot discriminate. The region diff is consistent with
+that reading and not with a claim of success: in the sky/canopy rows the near-free arm sits 196 px
+from depth-OFF and 12,299 px from depth-ON.
+
+**So the honest state:** a fix that restores the cockpit and a property that has not been tested.
+`BOB_ZD_NEARFREE` ships **default OFF**.
+
+**Next sprint:** get a frame where clouds demonstrably overlap the canopy with `BOB_NO_ZDEPTH=1`
+(a cloudier QM, or fly INTO the cloud layer — `MissManCampSky().Layer[0]` gives the altitudes, and
+`BOB_AUTOFLY` can climb). Only then can the near-free threshold be A/B'd on the property that
+matters, and only then should it be defaulted on.

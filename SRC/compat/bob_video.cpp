@@ -2175,7 +2175,15 @@ static HRESULT DEV_ok(IDirect3DDevice7*) { return D3D_OK; }
    describes. Presents are already counted; this counts the other side of the ratio. */
 long g_bobSceneCount = 0;
 long g_bobClearCount = 0;   /* R16-S3: full-target clears -- a clear usually starts a frame */
-static HRESULT DEV_BeginScene(IDirect3DDevice7*) { g_bobSceneCount++; check_surfaces("BeginScene"); gl_bind_thread(); g_devRendered=1; pump_events(); return D3D_OK; }
+static HRESULT DEV_BeginScene(IDirect3DDevice7*) { g_bobSceneCount++; check_surfaces("BeginScene"); gl_bind_thread(); g_devRendered=1; pump_events();
+	/* R3.2 (2026-09-03): the depth sort loses three cockpit instrument bezels. R3.2's own note
+	   already listed "a per-frame back-buffer depth clear" as a requirement, and the game only
+	   z-clears its FBO render targets -- it runs the back buffer in painter's order, so nothing
+	   clears back-buffer depth between frames. Stale depth would reject exactly the geometry that
+	   went missing. Clear it here, on the BACK BUFFER only (never while an FBO target is bound,
+	   which the game clears itself). BOB_ZDEPTH_CLEAR=1; default off until A/B'd. */
+	if (getenv("BOB_ZDEPTH_CLEAR") && !g_curRT) { glDepthMask(GL_TRUE); glClearDepth(1.0); glClear(GL_DEPTH_BUFFER_BIT); }
+	return D3D_OK; }
 static HRESULT DEV_EndScene(IDirect3DDevice7*) { return D3D_OK; }
 static HRESULT DEV_Clear(IDirect3DDevice7*, DWORD, LPD3DRECT, DWORD flags, D3DCOLOR col, D3DVALUE z, DWORD) { g_bobClearCount++;
 	if (!g_win) return D3D_OK;
@@ -2682,6 +2690,24 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		if (getenv("BOB_ZDEPTH_PAINTER") && (!zd_translucent || getenv("BOB_ZD_ALLPAINT")))
 			glDepthFunc(GL_ALWAYS);   /* BOB_ZD_ALLPAINT: include translucent, to test whether the
 			                             missing instrument bezels are classified translucent */
+		/* R3.2 (2026-09-03): the missing instrument bezels are TRANSLUCENT cockpit decals, rejected
+		   by the opaque panel drawn before them at a nearer z -- in painter's order they composite
+		   on top, under LEQUAL they lose. Clouds are translucent too, so opacity cannot separate
+		   them; DEPTH can. The cockpit sits at near z, the clouds at far z (the RHW z spans the full
+		   0..1 across this pass). So: a translucent draw that is NEAR is a cockpit decal and skips
+		   the test; a translucent draw that is FAR is a cloud/sprite and keeps it, which is what
+		   stops clouds painting over the canopy. BOB_ZD_NEARFREE=<z> sets the split; default off. */
+		if (zd_translucent) { const char* nf = getenv("BOB_ZD_NEARFREE");
+			if (nf) { float thr = (float)atof(nf);
+				const float* q0 = (const float*)(base + L.posOff);
+				float zlo = 1e9f;
+				for (DWORD i = 0; i < count; i++) {
+					const float* q = (const float*)(base + (size_t)i*L.stride + L.posOff);
+					if (q[2] < zlo) zlo = q[2];
+				}
+				(void)q0;
+				if (zlo < thr) glDepthFunc(GL_ALWAYS);   /* near => cockpit decal, always draw */
+			} }
 	} else if (getenv("BOB_ZTEST") && g_zEnable) {
 		glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(g_zWrite?GL_TRUE:GL_FALSE);
 	} else {
