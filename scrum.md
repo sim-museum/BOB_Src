@@ -2774,3 +2774,52 @@ metric could not fail. The visual check is what caught it.
 
 **Gates: same 13 pass / 3 blocked as sprint 1** (`soak`, `r1`, `settings_nav` refuse while the
 2-day-old pid 2341852 is alive — still awaiting the PO's word).
+
+
+## R3.4 — SPRINT (2026-09-03): ⭐ **THE MIRROR IS OFF BY DEFAULT, AND WHEN TURNED ON IT RENDERS A FLAT WASH**
+
+R3.4 was filed as "`InfiniteStrip` garbage v-texcoords so the mirror shows the horizon, not a flat
+edge texel". **That attribution is not supported.** Measured instead, on real GL:
+
+**1. The mirror is not rendered at all under the shipped defaults.** `RenderMirror`
+(`3DCODE.CPP:6458`) is gated on `Save_Data.cockpit3Ddetail[COCK3D_SKYIMAGES]` — the "Reflections"
+setting — which `SAVEGAME.CPP:2497` **clears by default**, and which `DecDetailLevel()` clears third
+when reducing detail. Across three flights with it off, `BOB_TRACE_RTT` shows the mirror surface
+**never once receiving a `SetRenderTarget`**: only the 256x256 landscape composite did (40 binds,
+one FBO). A texture that is never rendered into can only sample stale content — which is exactly
+"a flat edge texel".
+
+**2. It is NOT the RTT probe and NOT the FBO.** Added a one-line report of the probe's verdict:
+`[rtt] CheckIfTextureCanBeRenderTarget -> 0x00000000 (DD_OK) => mirror/land RTT ENABLED`. So
+`F_TEXTURECANBERENDERTARGET` is set and `LIB3D.CPP:4427` would bind the mirror. The gate is the
+setting, upstream of all of it.
+
+**3. Turned on (`BOB_MIRROR=1` — an existing switch, see below), the mirror DOES render:** two FBOs
+appear (`128x128 tex=42` and `256x256 tex=43`) with **20 render-target binds each**. So the 128x128
+surface is the mirror, and the whole RTT path works.
+
+**4. …and what lands in it is a near-uniform LIGHT GREY** — `BOB_DUMP_RTT`: 19 unique colours,
+mean rgb (213.5, 213.6, 214.0), no horizon, no terrain, no sky gradient. The landscape RTT beside it
+in the same frame has 264 colours and real structure, so the dump path is sound. **R3.4 therefore
+reduces to: the mirror FBO is bound and rendered, but the scene is not drawn into it.**
+
+🔗 **POSSIBLE LINK TO R3.9 (the PO's floating grey square) — hypothesis, not a claim.** The mirror
+texture is a flat LIGHT GREY 128x128. R3.9's suspect 2 is "an RTT surface drawn as geometry", and the
+PO reports "a floating light/dark grey square… sometimes" in a dogfight. A cockpit mirror surface
+painted with this texture would read as exactly that, and "sometimes" fits a mirror that is only in
+view at certain angles. R3.9's own canary work eliminated the untextured-quad path, which is
+consistent: this quad IS textured — with a flat grey texture. **Worth testing together next.**
+
+⚠️ **I duplicated an existing facility and removed it.** I added a `BOB_SKYIMAGES` override in
+`SAVEGAME.CPP` before finding that `MIG.CPP:669` already has **`BOB_MIRROR`**, which forces the same
+flag at QM boot — the right place, and the reason my earlier override appeared to do nothing (the
+settings load runs after it). A second env var for the same switch is worse than none: reverted, and
+`BOB_MIRROR` is what this entry should use.
+
+**Kept:** the probe-verdict trace in `LIB3D.CPP` (env-gated on the existing `BOB_TRACE_RTT`).
+
+**Next sprint:** with `BOB_MIRROR=1`, find why the scene does not reach the mirror FBO — the
+`RENDERTARGET_MIRROR` branch sets `clipVal2D`, clears `LANDSCAPE_TEXTURE` from
+`globTextureTypeFlags` and applies `mirrorRect` as the viewport (`LIB3D.CPP:4427`); a wrong
+`mirrorRect` or an empty visible-shape list would both produce a flat clear. Dump `mirrorRect` and
+the shape count for the mirror pass first.

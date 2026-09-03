@@ -3888,10 +3888,22 @@ HRESULT	Lib3D::_SetDriverAndMode(const HDRIVER& hDriver,const HMODE& hMode,const
 
 	for (i=MAX_TEXTURES-1;i>=0;textureTable[i--]=NULL);
 
-	if (CheckIfTextureCanBeRenderTarget()==DD_OK)		
-		flags=Flags(flags|F_TEXTURECANBERENDERTARGET);
-	else
-		flags=Flags(flags&~F_TEXTURECANBERENDERTARGET);
+	/* R3.4 (2026-09-03): the rear-view MIRROR is only bound as a render target when this flag is
+	   set (LIB3D.CPP:4427). Measured: across three real-GL flights the mirror surface never once
+	   received a SetRenderTarget -- only the 256x256 landscape composite did -- so the mirror can
+	   only ever sample stale/flat content, which is R3.4's "flat edge texel, not the horizon".
+	   Report the probe's verdict so this stops being an inference. BOB_TRACE_RTT=1. */
+	{
+		HRESULT rtchk = CheckIfTextureCanBeRenderTarget();
+		if (getenv("BOB_TRACE_RTT"))
+			fprintf(stderr, "[rtt] CheckIfTextureCanBeRenderTarget -> 0x%08lx (%s) => mirror/land RTT %s\n",
+			        (unsigned long)rtchk, rtchk==DD_OK ? "DD_OK" : "FAILED",
+			        rtchk==DD_OK ? "ENABLED" : "DISABLED");
+		if (rtchk==DD_OK)
+			flags=Flags(flags|F_TEXTURECANBERENDERTARGET);
+		else
+			flags=Flags(flags&~F_TEXTURECANBERENDERTARGET);
+	}
 
 	IsSlowCopyRequired();
 
