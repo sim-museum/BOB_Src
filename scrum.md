@@ -3120,3 +3120,47 @@ sprint should identify the object rather than the mechanism** — dump the draw 
 pixels (its texture and vertex extent) instead of guessing from shape.
 
 Convoy campaign gate: PASS (the only code added is an env-gated early return, default off).
+
+
+## R3.6 (PO 2026-08-28, the icon art) — ⭐ **ROOT CAUSE FOUND AND FIXED: the marker-x rule was substituting a CAMPAIGN icon for the exit icon**
+
+R3.6 was already narrowed by earlier work to "the placement and the hit-test are correct — only the
+ART is wrong", with the `OnGetFile` art-guard eliminated. This sprint found what actually assigns it.
+
+**The evidence, straight out of the system box's own draw sequence:**
+
+```
+[sysbox-ctl] dlgId=823 ctrlId=1002 visible=1 dlu=(16,30,18,20)
+[fileman] marker-x: 'xi_bases.bmp' -> 'i_bases.bmp' (FIL_x placeholder substituted)
+[ole] getfile 0x6a9c -> BM 48x48 8bpp
+[ole] draw panel ctrl id=1002 at (989,56) 27x32
+```
+
+The system box's control asks for `xi_bases.bmp`; that file does not exist; the **marker-x rule**
+(`FILEMAN.CPP`, S180b) strips one `x` and accepts `i_bases.bmp` — **the campaign BASES icon** — which
+is then drawn on the exit control. That is precisely the PO's report: *campaign icons drawn where the
+X belongs*.
+
+**Why the rule did it.** It was written for a real problem — MASTER.FIL spells a family of names with
+a stray `x` (`buxtton1`, `xtitleb`, `gripx`, …) and the retail build substitutes it away, so the map
+toolbar had been missing its art. Its guard only ensured it "cannot change any path that resolves
+today" — but it never checked that the substituted name is *semantically* the same art. A missing
+icon is a missing icon; a DIFFERENT icon is worse, because it looks deliberate.
+
+**The fix, and why it is safe.** The rule's own evidence names the family it verified — `button1`,
+`button2`, `titleb`, `grip`, `b_all1`, `b_all2`, "checked 6 for 6 against artwork/AXART". It is now
+restricted to that family. Measured over a full campaign session **the rule fired exactly ONCE, and
+that once was the wrong one** — its intended beneficiaries never trigger on this path — so
+restricting it removes the defect and takes nothing away. `BOB_MARKERX_ANY=1` restores the old
+behaviour for A/B.
+
+**Verified:** marker-x substitutions in a full campaign run go **1 → 0**; the system box still draws
+all 3 of its controls (`[sysbox] panel 34x50 DLU -> 51x81 px at (965,8): 3 controls drawn`); the
+convoy campaign gate still PASSES.
+
+⚠️ **Scope, stated honestly:** this removes ONE wrong icon, and the PO reported TWO. The remaining
+one is not this mechanism (only one substitution ever fires). The exit control will now show no art
+rather than the wrong art — better, but the "X" itself is still not being drawn, and finding its real
+source is the next step on this entry.
+
+Gates: the usual `soak`/`r1`/`settings_nav` refuse while pid 2341852 is alive; everything that ran, passed.

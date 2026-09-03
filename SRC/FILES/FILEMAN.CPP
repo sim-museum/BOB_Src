@@ -1027,11 +1027,30 @@ static FILE* bob_open_marker_x(const char* name)
 	char buf[1024];
 	size_t len = strlen(name);
 	if (len >= sizeof buf) return NULL;
+	/* R3.6 (2026-09-03): the rule as written strips an 'x' from ANY failed name and accepts
+	   whatever exists. Measured over a full campaign session it fires EXACTLY ONCE, and that once
+	   is wrong: 'xi_bases.bmp' -> 'i_bases.bmp', which hands the system box's exit control the
+	   campaign BASES icon. That is the PO's R3.6 ("two CAMPAIGN icons are drawn where the X belongs,
+	   upper-right"), whose own investigation had already established that the placement and the
+	   hit-test are correct and only the ART is wrong.
+	   The rule's evidence covers a NAMED family -- button1, button2, titleb, grip, b_all1, b_all2,
+	   "checked 6 for 6 against artwork/AXART". Restricting it to that family keeps the map-toolbar
+	   art it was written for and stops it inventing substitutions for names it never verified.
+	   A missing icon is a missing icon; substituting a DIFFERENT icon is worse, because it looks
+	   deliberate. BOB_MARKERX_ANY=1 restores the old permissive behaviour for A/B. */
+	static const char* kFamily[] = { "button1", "button2", "titleb", "grip", "b_all1", "b_all2" };
 	for (size_t i = (size_t)(base-name); i < len; i++) {
 		if (name[i] != 'x' && name[i] != 'X') continue;
 		memcpy(buf, name, i);
 		memcpy(buf+i, name+i+1, len-i-1);
 		buf[len-1] = 0;
+		if (!getenv("BOB_MARKERX_ANY")) {
+			const char* sb = buf; for (const char* q = buf; *q; q++) if (*q=='/'||*q=='\\') sb = q+1;
+			bool ok = false;
+			for (size_t k = 0; k < sizeof(kFamily)/sizeof(kFamily[0]); k++)
+				if (strncasecmp(sb, kFamily[k], strlen(kFamily[k])) == 0) { ok = true; break; }
+			if (!ok) continue;   /* not a verified placeholder -- do not guess */
+		}
 		FILE* f = fopen(buf, "rb");
 		if (f) {
 			fprintf(stderr, "[fileman] marker-x: '%s' -> '%s' (FIL_x placeholder substituted)\n",
