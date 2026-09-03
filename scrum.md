@@ -2863,3 +2863,48 @@ draws between `RenderMirrorLandscape` and `GetMirrorObjects`; (2) note the proje
 **New instruments, all env-gated and default-off:** the `mirrorRect`/viewport report and the
 per-target draw counter (`BOB_TRACE_RTT`), a bind-time FBO dump (`BOB_DUMP_RTT_BIND`) — the one that
 settled black-before/grey-after — and `BOB_NO_STRIP` for the strip A/B.
+
+
+## R3.4 — SPRINT 3 (2026-09-03): the mirror is filled by the AMBIENT-LIT HORIZON, and one of my own readings was wrong
+
+**A correction first.** I split the mirror pass's ~140 draws with phase markers around
+`RenderMirrorLandscape()` and `GetMirrorObjects()`, and got `landscape=8 objects=0 other=132`. The
+obvious reading — "132 unrelated draws are landing in the mirror because the target is never
+released" — **is wrong**. `Lib3D::EndScene()` is where the deferred poly lists are actually rendered
+(`RenderTLPolyList` / `RenderPlainPolyList` / `RenderPolyList` / `RenderTPolyList`): the collection
+calls only BUILD the lists, so the 132 are the mirror's OWN geometry, flushed after my markers had
+already reset. A batching renderer cannot be attributed by wrapping the calls that submit to it.
+
+**What the sprint does establish.** `RenderMirrorLandscape` lights the horizon geometry with
+`landAmbientColamb`, and that colour is now printed:
+
+```
+[rtt] mirror landscape ambientRGB=0xe5e5e5 (R229 G229 B229)
+```
+
+The mirror reads back as **(213.5, 213.6, 214.0)** — the same neutral grey at ~93% brightness. Two
+independently-measured neutral greys, one the ambient the pass lights with and one the result, is
+strong support for: **the mirror is filled by the ambient-lit HORIZON geometry, not by the scene.**
+Stated as support, not proof — the 229 → 213 difference is unexplained (texture or shading
+modulation), and identical hue is not identity.
+
+That also fits what the code does: `RenderMirrorLandscape` (`LANDSCAP.CPP:620+`) draws the horizon
+points with `view_dist = RANGE_FAR_MIRROR`, translated `-(viewer_y + 500)` — **it never draws terrain
+tiles**. A mirror showing only an ambient-lit dome is flat by construction.
+
+**Standing summary of R3.4 after three sprints** — everything eliminated by measurement, not opinion:
+
+| eliminated | how |
+|---|---|
+| `InfiniteStrip` (the filed cause) | `BOB_NO_STRIP=1` makes the mirror MORE uniform (19 colours → 2) |
+| the RTT probe / FBO | probe returns `DD_OK`; FBO `complete=1`, 20 binds/flight |
+| the viewport | `mirrorRect L0 T0 R128 B128 → x0 y0 w128 h128` |
+| "nothing is drawn into it" | black at bind, grey after; 138-140 draws land |
+| texture upload failure | `0 uploads bailed`; the grey canary sees only the loader quad |
+| fog | `EnableFogging` is entirely dead code |
+| a colour clear | the pass clears ZBUFFER only; compat `Clear` is faithful |
+
+**Next (sprint 4, the last on this item):** the remaining question is why the horizon dome fills the
+frame — the projection is built with a **2.5 aspect ratio for a square 128x128 target**, and the
+object matrix is offset `-(viewer_y + 500)`. Check those two numbers before anything else; if the
+dome is simply drawn too close/too large, that is the whole defect.

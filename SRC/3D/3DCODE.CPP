@@ -5489,6 +5489,7 @@ void ThreeDee::AddVisibleShape(void *pvoid,int index, int realscale)
 //Date			Tue 7 Dec 1999
 //
 //------------------------------------------------------------------------------
+int g_bob_mirror_phase = 0;   /* R3.4: 1 = mirror landscape, 2 = mirror objects, 0 = elsewhere */
 void ThreeDee::UseMirror(SWord	material, COORDS3D& pos,SWord dx,SWord dy,SWord dz,Angles fov)
 {
 	mirrorSeen = true;
@@ -6564,11 +6565,17 @@ void	ThreeDee::RenderMirror()
 
 //draw the landscape
 //	g_lpLib3d->EnableFogging( false );
+	/* R3.4 sprint 3: attribute the mirror pass's ~140 draws between its two halves. "140 draws
+	   land and the result is flat" does not say WHICH half paints it -- the horizon geometry
+	   (ambient-lit, no terrain tiles) or the object list. Phase 1 = landscape, 2 = objects. */
+	g_bob_mirror_phase = 1;
 	Land_Scape.RenderMirrorLandscape();
 
 //draw the shapes
+	g_bob_mirror_phase = 2;
 	GetMirrorObjects();
 	DrawVisibleObjects();
+	g_bob_mirror_phase = 0;
 
 //render the mirror scene
 	g_lpLib3d->EndScene();

@@ -2251,6 +2251,8 @@ static void ensure_rtt_fbo(GLSurface7* s) {
    second explains a flat result. Count primitive draws that land while an RTT is current, and
    report the tally when the target is switched away. */
 static long g_rttDraws = 0;
+static long g_rttDrawsPhase[3] = {0,0,0};   /* R3.4: [0] other, [1] mirror landscape, [2] mirror objects */
+extern int g_bob_mirror_phase;
 static void dump_rtt_fbo(GLSurface7* s) {
 	if (!s || !s->fbo || !getenv("BOB_DUMP_RTT") || !load_fbo_funcs()) return;
 	int w=s->w,h=s->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*3);
@@ -2274,10 +2276,11 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 			if (g_curRT && g_curRT != s) {
 				dump_rtt_fbo(g_curRT);
 				if (getenv("BOB_TRACE_RTT"))
-					fprintf(stderr,"[rtt]   ^ %ld primitive draw(s) landed on surf=%p (%dx%d)\n",
-					        g_rttDraws, (void*)g_curRT, g_curRT->w, g_curRT->h);
+					fprintf(stderr,"[rtt]   ^ %ld primitive draw(s) landed on surf=%p (%dx%d)  [landscape=%ld objects=%ld other=%ld]\n",
+					        g_rttDraws, (void*)g_curRT, g_curRT->w, g_curRT->h,
+					        g_rttDrawsPhase[1], g_rttDrawsPhase[2], g_rttDrawsPhase[0]);
 			}
-			g_rttDraws = 0;
+			g_rttDraws = 0; g_rttDrawsPhase[0]=g_rttDrawsPhase[1]=g_rttDrawsPhase[2]=0;
 			p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
 			glViewport(0,0,s->w,s->h);
 			g_curRT = s;
@@ -2423,7 +2426,9 @@ static void bob_texblack_dump_blend(void) {
 }
 
 static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
-	if (g_curRT) g_rttDraws++;   /* R3.4: this draw lands on the bound render target */
+	if (g_curRT) { g_rttDraws++;
+		int ph = g_bob_mirror_phase; if (ph < 0 || ph > 2) ph = 0;
+		g_rttDrawsPhase[ph]++; }   /* R3.4: which half of the mirror pass drew it */
 	if (!g_win || !base || !count) return;
 	FvfLayout L = fvf_layout(fvf);
 	if (!L.stride) return;

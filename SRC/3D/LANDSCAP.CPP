@@ -655,6 +655,14 @@ void LandScape::RenderMirrorLandscape( void )
 
 	InfiniteStrip( Persons2::PlayerSeenAC->pitch, Persons2::PlayerSeenAC->roll ); // hahaha
 	lightDesc.ambientRGB=currentLighting.landAmbientColamb.col(); // now set ambient col for landscape
+	/* R3.4 sprint 3: the mirror reads back as a uniform grey (209-215). This pass draws the HORIZON
+	   geometry ambient-lit -- if that ambient colour IS the grey, the mirror is showing the dome
+	   filling the frame rather than the scene. Print it once so the two numbers can be compared
+	   instead of assumed equal. */
+	if (getenv("BOB_TRACE_RTT")) { static int once=0; if(!once++) {
+		unsigned long ac=(unsigned long)lightDesc.ambientRGB;
+		fprintf(stderr,"[rtt] mirror landscape ambientRGB=0x%06lx (R%lu G%lu B%lu)\n",
+		        ac,(ac>>16)&0xff,(ac>>8)&0xff,ac&0xff); fflush(stderr); } }
 	g_lpLib3d->SetAmbientLighting(lightDesc);
 
 	g_lpLib3d->PushMatrix( MATRIX_OBJECT );
