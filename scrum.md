@@ -3082,3 +3082,41 @@ bind — and explains why four sprints of untextured-quad hunting never found it
 
 **R3.9 is at its 4-sprint limit**, so this is recorded rather than pursued. The next sprint on it
 should start here: toggle `DETAIL3D_AIRCRAFTSHADOWS` and see whether the ellipse goes.
+
+
+## R3.9 — SPRINT (2026-09-03): the shadow hypothesis is REFUTED, and I RETRACT the "screen-pinned" claim I made for it
+
+Last sprint I recorded a lead: a flat grey ellipse appearing in every cockpit capture, "pinned to the
+SAME screen rows (y 140-190)", with the hypothesis that it is an aircraft SHADOW polygon drawn in the
+sky. Both halves were tested this sprint.
+
+**1. The shadow hypothesis is refuted.** `BOB_TRACE_SHADOW` first confirmed shadows are live and
+reaching the draw (`detail=1`, added for non-player aircraft; the player's own is correctly skipped
+because `dopiloted=0` and `ac == ControlledAC2`). Then `BOB_NO_ACSHADOW=1` (new, test-only,
+default off) suppressed them entirely:
+
+| | grey-blob pixels in the region |
+|---|---|
+| shadows ON | 10,312 |
+| shadows OFF | **10,288** |
+
+Unchanged, and the ellipse is still there in the crop. **It is not an aircraft shadow.**
+
+**2. ⚠️ And my "pinned to screen coordinates" claim does not hold.** Re-reading my own table: the
+blob's **x** moves substantially between captures (156-314, 48-293, 62-314, 63-314) — only **y** is
+stable, and stable y is exactly what level-ish flight at similar altitude produces. I treated "same
+rows" as "screen-pinned" and drew a conclusion the data did not support. A distant world object would
+look like this. The lead was overstated and is withdrawn.
+
+**3. It is also unconfirmed that this ellipse is even the PO's defect.** The PO reported a "floating
+light/dark grey SQUARE"; this is a hard-edged grey LENS. Similar in character, not the same shape,
+and I should not have equated them.
+
+**What remains true and useful:** there IS a hard-edged flat-grey ellipse in the sky in ordinary
+cockpit flight, it survives disabling shadows, and R3.9's earlier work already eliminated untextured
+draws — so it is textured geometry. Plausible identities not yet tested: a barrage BALLOON (grey
+ellipsoid, and this is Battle of Britain), or a cloud billboard drawn with hard edges. **The next
+sprint should identify the object rather than the mechanism** — dump the draw that covers those
+pixels (its texture and vertex extent) instead of guessing from shape.
+
+Convoy campaign gate: PASS (the only code added is an env-gated early return, default off).

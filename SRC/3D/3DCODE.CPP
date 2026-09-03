@@ -1780,6 +1780,13 @@ void ThreeDee::Add_Shadow(AirStrucPtr	ac, bool dopiloted)
 		        (int)(ac == Manual_Pilot.ControlledAC2), (long)ac->World.Y); }
 	if (!Save_Data.detail_3d[DETAIL3D_AIRCRAFTSHADOWS])
 		return;
+	/* R3.9 (2026-09-03): every cockpit capture this session carries a flat grey ELLIPSE pinned to
+	   the same screen rows (y 140-190) across four flights at different altitudes -- a world object
+	   would move, so it is screen-fixed, and an aircraft shadow IS an ellipse. If a shadow's ground
+	   height is not resolved it would be placed at the aircraft's own altitude and float in the sky.
+	   BOB_NO_ACSHADOW=1 suppresses shadows so the ellipse can be A/B'd. Test switch only. */
+	if (getenv("BOB_NO_ACSHADOW"))
+		return;
 
 	if (dopiloted || (ac != Manual_Pilot.ControlledAC2))		//RJS 13Jul98
 	{
