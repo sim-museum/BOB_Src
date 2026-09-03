@@ -3213,3 +3213,39 @@ icon reads as deliberate.
 **A real route to the X exists though:** the port already paints `? / tick / X` glyphs itself for
 title bands (`bob_oob_paint_title_glyphs`, S174). Pointing that at the system box's close control
 would draw a genuine X without needing the absent art. **That is the next sprint on this entry.**
+
+
+## R3.6 — SPRINT 3 (2026-09-03): ✅ **THE X IS DRAWN. R3.6 is closed.**
+
+Sprint 2 ended with the system box's buttons correctly no longer showing campaign icons, but blank —
+because the art `MASTER.FIL` maps them to is `i_bases.bmp` under a marker-`x`, and the sprite sheets
+carry no `CLOSE1` entry.
+
+**They do carry a real X, though: `ICON_CROSS`** — already used by the title-band glyph painter
+(S174). The system box's close control is now mapped to it, so the X is drawn **from art that
+actually exists** rather than from a filename that does not:
+
+| | before | after |
+|---|---|---|
+| dlg 823 id=1003 (`CLOSE1`) | 0x6aa0 — a file that returns nil | **0x10022 — `ICON_CROSS`, a sheet icon** |
+
+**Verified in pixels:** a campaign-map capture shows the **red X drawn in the upper-right**, at the
+system box's own position (965,8). Convoy campaign gate: PASS.
+
+**Only that one control is mapped, deliberately.** The sheet has no `TOOLBAR_HIDE` or `SCREENSIZE`
+equivalent, and picking a near-match (`ICON_ZOOM` for "screensize", say) is exactly the habit that
+created this defect — an icon that is merely *plausible* reads as intentional and misleads. Those two
+stay blank until real art is identified.
+
+### R3.6 — the complete story, three sprints
+
+1. **marker-x** was substituting `i_bases.bmp` (the campaign BASES icon) for any failed filename;
+   restricted to the six names its own evidence verified.
+2. **`kBtnIcon` matched on `ctrlId` alone**, and the system box shares ids 1001/1003 with the files
+   toolbar — so it was force-fed the toolbar's THUMB and SAVE icons. **That was the "two campaign
+   icons".** Each entry now carries its dialog (826 map toolbar / 942 files toolbar / 960 title bar).
+3. **The close button now draws `ICON_CROSS`.**
+
+The PO's report — *"two CAMPAIGN icons are drawn where the X (exit) icon belongs"* — is answered in
+full: the two wrong icons are gone and the X is there. Earlier sprints had established the placement
+and hit-test were already correct, so no other work is outstanding on this entry.

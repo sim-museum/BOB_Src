@@ -77,6 +77,14 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
                GETFILE.CPP: the 32 B_ICON_* enumerators were skipped without being counted).
                ICON_FFCTRL is IDC_CONTROL, the leftmost button, which no id list here ever named. */
             {960,1836,"ICON_FFCTRL"},{960,1838,"ICON_PAUSE"},{960,1842,"ICON_PLAY"},{960,1845,"ICON_FFORWARD"},
+            /* R3.6 sprint 3: the SYSTEM BOX's close button. Its authored art (FIL_ICON_CLOSE1) maps
+               through MASTER.FIL to i_baxses.bmp -- i_bases.bmp with a marker 'x' -- so the only art
+               the data can give it is the campaign BASES icon, which is the defect the PO reported.
+               The sprite sheet DOES carry a real X: ICON_CROSS, already used by the title-band glyph
+               painter (S174). Point the close button at it, so the X is drawn from art that exists.
+               ONLY this control is mapped: the sheet has no TOOLBAR_HIDE or SCREENSIZE equivalent,
+               and guessing a near-match is exactly what produced this defect. They stay blank. */
+            {823,1003,"ICON_CROSS"},
         };
         int forced = 0;
         for (unsigned k = 0; k < sizeof kBtnIcon/sizeof kBtnIcon[0]; k++)
