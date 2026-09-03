@@ -669,7 +669,14 @@ void LandScape::RenderMirrorLandscape( void )
 	g_lpLib3d->LoadIdentity( MATRIX_OBJECT );
 	D3DVECTOR viewMods;
 	viewMods.x=(D3DVALUE)-viewer_x;
-	viewMods.y=(D3DVALUE)-(viewer_y+500.f);
+	/* R3.4 sprint 4: the MIRROR landscape path is the only one that offsets the viewer height --
+	   both normal paths (LANDSCAP.CPP:530 and :993) use plain -viewer_y. Rendering the horizon
+	   geometry as if the camera were 500 units higher is a candidate for the mirror being filled by
+	   an ambient-lit dome. BOB_MIRROR_YOFF=<metres> overrides (default 500 = shipped behaviour), so
+	   the contribution can be measured rather than argued. */
+	{ static float yoff = -1.f;
+	  if (yoff < 0.f) { const char* e = getenv("BOB_MIRROR_YOFF"); yoff = e ? (float)atof(e) : 500.f; }
+	  viewMods.y=(D3DVALUE)-(viewer_y+yoff); }
 	viewMods.z=(D3DVALUE)-viewer_z;
 	g_lpLib3d->Translate( MATRIX_OBJECT, viewMods );
 

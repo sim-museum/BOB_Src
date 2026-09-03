@@ -2908,3 +2908,48 @@ tiles**. A mirror showing only an ambient-lit dome is flat by construction.
 frame — the projection is built with a **2.5 aspect ratio for a square 128x128 target**, and the
 object matrix is offset `-(viewer_y + 500)`. Check those two numbers before anything else; if the
 dome is simply drawn too close/too large, that is the whole defect.
+
+
+## R3.4 — SPRINT 4 (2026-09-03): two more candidates eliminated; **SPRINT LIMIT REACHED**, and the item needs a GOLD reference to proceed
+
+**Eliminated this sprint:**
+* **the `-(viewer_y + 500)` offset** — the mirror path is the only landscape render that offsets the
+  viewer height (both normal paths at `LANDSCAP.CPP:530` and `:993` use plain `-viewer_y`), so it
+  looked like a real candidate. `BOB_MIRROR_YOFF=0` (new A/B, default 500 = shipped) produces an
+  **identical** mirror: mean (213.5, 213.6, 214.0), range 209-215. Not it.
+* **the 2.5 aspect ratio on a square target** — eliminated by reasoning, not measurement, and marked
+  as such: a rear-view mirror is a wide, short shape, so rendering at 2.5 into a square texture that
+  is then mapped onto a wide cockpit quad is the ordinary way to do it.
+* **the pitch sign** (`BOB_MIRROR_PITCH`, default −1 = shipped) — the code's own comment says the
+  pitch "needs to be made to point down not up", so a wrong sign would face the sky. Flipping it
+  DOES change the content (19 → 47 colours, range 204-217) but the result is still a flat grey of
+  the same mean. It affects what the mirror sees; it is not the defect.
+
+**The structural finding that should drive the next sprint.** Listing the calls each landscape path
+makes:
+
+| main render (`:530+`) | mirror render (`:672+`) |
+|---|---|
+| `DrawHorizon`, `GeneratePointData`, `DistDrawClouds`, `FlushAsBackground`, `InfiniteStrip`, `DoRain`, `SetAmbientLighting` … | `UpdateHorizTexture`, `VisibleCheck`, `BeginPoly`/`EndPoly`, `Translate` |
+
+**`RenderMirrorLandscape` draws the horizon band and NO TERRAIN TILES.** A mirror fed only an
+ambient-lit horizon is flat by construction — which is consistent with everything measured across
+four sprints (ambient `0xe5e5e5` → result `~213`).
+
+⚠️ **And that raises the question this item cannot answer from inside the port: what SHOULD the
+mirror show?** A rear-view mirror in a fighter, looking backward and level at altitude, showing sky
+and horizon is not obviously wrong. The reported defect may be less "the mirror is flat" than
+"nothing ever appears IN it" — and `GetMirrorObjects` contributing no visible draws would be the
+real complaint. **I cannot claim that from the phase counters**: sprint 3 established that all
+geometry is batched to `Lib3D::EndScene`, so `landscape=8 objects=0` does not mean the object list
+was empty.
+
+**Recommendation to the PO: settle it against the gold before spending a fifth sprint.** R3.8
+(render regression sweep) exists precisely to A/B in-flight views against Wine `bob.exe`. One gold
+capture of the cockpit mirror answers whether a flat sky-grey mirror is correct behaviour, whether
+aircraft should appear in it, or whether terrain should. Every internal candidate that could be
+eliminated by measurement now has been; the next question is about the TARGET, not the code.
+
+**Instruments left behind, all env-gated and default-off:** `BOB_TRACE_RTT` (probe verdict,
+`mirrorRect`/viewport, per-target draw counts, ambient colour), `BOB_DUMP_RTT_BIND`, `BOB_NO_STRIP`,
+`BOB_MIRROR_YOFF`, `BOB_MIRROR_PITCH`.

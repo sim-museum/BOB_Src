@@ -6545,7 +6545,13 @@ void	ThreeDee::RenderMirror()
 	//- finally, to make the image mirror( as the imap coords are swapped left/right in the shape)
 	//- we need to invert the roll
 	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_HEADING,(Angles)((-(int)Persons2::PlayerSeenAC->hdg)+(int)ANGLES_180Deg));
-	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_PITCH,(Angles)(-(int)Persons2::PlayerSeenAC->pitch));
+	/* R3.4 sprint 4: the comment above says the pitch "needs to be made to point down not up". If
+	   that sign is wrong in this port's angle convention the mirror faces the SKY, which would be a
+	   uniform ambient dome -- exactly the flat grey measured. BOB_MIRROR_PITCH=<mult> A/B's it
+	   (default -1 = shipped). */
+	{ static int pm = -2;
+	  if (pm == -2) { const char* e = getenv("BOB_MIRROR_PITCH"); pm = e ? atoi(e) : -1; }
+	  g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_PITCH,(Angles)(pm*(int)Persons2::PlayerSeenAC->pitch)); }
 	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_ROLL,(Angles)(-(int)Persons2::PlayerSeenAC->roll));
 
 	// these are correct to give a 'camera view - but not a reflected one' with imagemap coords messed wiv.
