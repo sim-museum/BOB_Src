@@ -3288,3 +3288,42 @@ lens — but it IS a real flat grey shape floating in the sky in ordinary flight
 quantity rather than a mystery.
 
 Convoy campaign gate: PASS. The probe is env-gated and off by default.
+
+
+## R3.9 — SPRINT (2026-09-03, cont.): the sprite's DRAW PATH and TEXTURE IDENTITY are pinned down
+
+Building on the identification of the artwork (a beige ellipse on a green colour-key), this sprint
+answered *how* it reaches the screen and *which* texture it is.
+
+**Draw path — by backtrace, not inference:**
+
+```
+draw_fvf  <-  DEV_DrawPrimitiveVB  <-  Lib3D::RenderTPolyList  <-  Lib3D::EndScene
+          <-  ThreeDee::render3d   <-  ThreeDee::render
+```
+
+So it is a **world-space TRANSPARENT (alpha-blended) polygon**, batched into the transparent list and
+flushed at `EndScene` — not an overlay, not a HUD element, not a render-target blit. Every one of
+those had been a live suspect in this entry at some point.
+
+**Texture identity** — the port already carries `uniqueTextID` down to the GL layer for exactly this
+kind of question, and the probe now reports it:
+
+```
+uniqueTextID=0x07ad  ->  type=TIT_LOADED  index=1965  masked=2  isLand=0
+```
+
+A **loaded, colour-keyed texture, index 1965**, not a landscape tile and not a plain-coloured
+material — consistent with the green-key artwork dumped last sprint.
+
+⚠️ **One loose thread worth recording rather than guessing at:** `3DDEFS.H` declares
+`MINMAX(ImageMapNumber, 0, 1023)`, yet this index is **1965** — outside the image-map range even
+though `TIT_MASK_INDEX` (0x07FF) permits it. Either the index is not an ImageMapNumber, or the range
+in the header is stale. **That is the thread the next sprint should pull**, because whichever it is
+names the object.
+
+⚠️ I also corrected my own probe: I printed the type as `id >> 11`, which mixes in
+`TIT_MASK_SECONDARY`. The type is `id & 0xC000` (`TIT_MASK_TYPE`). The conclusion (TIT_LOADED) was
+right because the top bits are zero, but the field as printed was wrong and is fixed.
+
+Convoy campaign gate: PASS. The probe stays env-gated (`BOB_PIXPROBE`, `BOB_PIXPROBE_BT`), off by default.

@@ -2452,6 +2452,8 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   texture's size/format and the primitive's extent. Reported once per distinct texture so a
 	   full-screen backdrop cannot drown the small thing on top of it. */
 	if (is2D && count >= 3) {
+		extern unsigned short g_lib3d_uniqueTextID; extern unsigned char g_lib3d_isMasked;
+		extern unsigned long g_lib3d_isLand;
 		static int px = -1, py = -1, pinit = 0;
 		if (!pinit) { pinit = 1; const char* e = getenv("BOB_PIXPROBE");
 			if (e) { px = atoi(e); const char* c = strchr(e, ','); if (c) py = atoi(c+1); } }
@@ -2465,10 +2467,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				for (int k=0;k<nseen;k++) if (seen[k]==(const void*)pt) { dup=1; break; }
 				if (!dup && nseen<32) { seen[nseen++]=(const void*)pt;
 					fprintf(stderr,"[pixprobe] (%d,%d) covered by prim=%d count=%lu fvf=0x%lx "
-						"bbox=(%.0f,%.0f)-(%.0f,%.0f) tex=%p %dx%d bpp=%d isRTT=%d ckey=%d\n",
+						"bbox=(%.0f,%.0f)-(%.0f,%.0f) tex=%p %dx%d bpp=%d isRTT=%d ckey=%d "
+						"uniqueTextID=0x%04x (type=%u idx=%u) masked=%u isLand=%lu\n",
 						px,py,(int)prim,(unsigned long)count,(unsigned long)fvf,x0,y0,x1,y1,
 						(void*)pt, pt?pt->w:0, pt?pt->h:0, pt?pt->bpp:0,
-						pt?pt->isRTT:0, pt?pt->ckeyOn:0);
+						pt?pt->isRTT:0, pt?pt->ckeyOn:0,
+						(unsigned)g_lib3d_uniqueTextID,
+						(unsigned)(g_lib3d_uniqueTextID & 0xC000),   /* TIT_MASK_TYPE, not >>11 */
+						(unsigned)(g_lib3d_uniqueTextID & 0x07FF),   /* TIT_MASK_INDEX */
+						(unsigned)g_lib3d_isMasked, (unsigned long)g_lib3d_isLand);
 					fflush(stderr);
 					/* and WRITE the bound texture out, so the object is identified by looking at
 					   it rather than inferred from its silhouette (the mistake R3.9 made twice). */
@@ -2490,6 +2497,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 							}
 							close(fd);
 							fprintf(stderr,"[pixprobe]   texture written -> %s\n", tp); fflush(stderr);
+							/* R3.9 sprint 3: and NAME THE CALLER. The artwork is known (a beige
+							   ellipse on a green key) but not which game object places it. A
+							   one-shot backtrace at the covering draw answers that directly --
+							   the same technique that identified the loader-screen quad earlier
+							   in this entry. BOB_PIXPROBE_BT=1. */
+							if (getenv("BOB_PIXPROBE_BT")) {
+								fprintf(stderr,"[pixprobe]   --- caller ---\n"); fflush(stderr);
+								void* bt[24]; int nb=backtrace(bt,24); backtrace_symbols_fd(bt,nb,2);
+							}
 						}
 					} }
 			}
