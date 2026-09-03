@@ -3327,3 +3327,47 @@ names the object.
 right because the top bits are zero, but the field as printed was wrong and is fixed.
 
 Convoy campaign gate: PASS. The probe stays env-gated (`BOB_PIXPROBE`, `BOB_PIXPROBE_BT`), off by default.
+
+
+## R3.9 — SPRINT (2026-09-03, 4th this cycle): **the sprite's texture is NAMED — image map 525 (dir 2, file 13)**
+
+The loose thread from last sprint was that `uniqueTextID`'s index (1965) sat outside the documented
+`ImageMapNumber` range of 0..1023. **Resolved, and the header was not stale:** `hTextureMap` is a
+**runtime texture-table SLOT** (`LIB3D.CPP:7405` allocates from the top of `textureTable` as textures
+upload), not an identity. So `uniqueTextID` can never name artwork — a dead end, now closed rather
+than left as a suspicion.
+
+**The identity is on the material's ImageMap pointer, which the port already captures
+(`g_lib3d_map0`).** Added `bob_imagemap_number_of()` — a reverse lookup that walks
+`GetImageMapPtrDontLoad(dir<<8|file)` over the table and returns the composed number for a pointer
+(public accessor only, and it never loads, so it cannot change what is resident). The probe now
+reports it:
+
+```
+[pixprobe] (180,165) ... tex=128x128 masked=2 isLand=0 uniqueTextID=0x07ad
+[pixprobe]   imagemap number = 525 (dir 2, file 13)
+```
+
+**So the floating grey shape is image map 525** — a 128x128, colour-keyed, beige-ellipse-on-green
+sprite, drawn as a world-space transparent billboard.
+
+**R3.9's state after this cycle — everything by measurement:**
+
+| question | answer |
+|---|---|
+| untextured quad? | **no** — the `[grey]` canary sees only the loader screen |
+| an aircraft shadow? | **no** — suppressing shadows leaves it unchanged |
+| screen-pinned? | **no** — my own claim, withdrawn; its x moves between frames |
+| an overlay / HUD / RTT blit? | **no** — backtrace puts it in `RenderTPolyList` from `render3d` |
+| what IS it? | a world-space transparent SPRITE, **image map 525 (dir 2, file 13)**, colour-keyed |
+
+**The last step, for whenever this resumes:** turn dir 2 / file 13 into a filename. `SuperMap` carries
+no directory name, so it needs the image-map LOADER (`LoadImageMap`) — log the path it opens for
+dir 2 and the answer falls out. That is a small, well-defined piece of work, and it is the difference
+between "image map 525" and naming the object on screen.
+
+⚠️ Still unconfirmed that this sprite is the PO's reported defect (they said "square"; this is a
+lens), and that caveat has now survived four sprints — worth asking the PO directly rather than
+assuming.
+
+Convoy campaign gate: PASS. All probe code is env-gated and off by default.

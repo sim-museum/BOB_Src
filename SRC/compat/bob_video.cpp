@@ -2258,6 +2258,7 @@ static void ensure_rtt_fbo(GLSurface7* s) {
 /* R3.4: "the FBO is bound" and "the scene is drawn into it" are different claims, and only the
    second explains a flat result. Count primitive draws that land while an RTT is current, and
    report the tally when the target is switched away. */
+extern "C" long bob_imagemap_number_of(const void*);   /* R3.9: pointer -> ImageMapNumber */
 static long g_rttDraws = 0;
 static long g_rttDrawsPhase[3] = {0,0,0};   /* R3.4: [0] other, [1] mirror landscape, [2] mirror objects */
 extern int g_bob_mirror_phase;
@@ -2453,7 +2454,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   full-screen backdrop cannot drown the small thing on top of it. */
 	if (is2D && count >= 3) {
 		extern unsigned short g_lib3d_uniqueTextID; extern unsigned char g_lib3d_isMasked;
-		extern unsigned long g_lib3d_isLand;
+		extern unsigned long g_lib3d_isLand; extern const void* g_lib3d_map0;
 		static int px = -1, py = -1, pinit = 0;
 		if (!pinit) { pinit = 1; const char* e = getenv("BOB_PIXPROBE");
 			if (e) { px = atoi(e); const char* c = strchr(e, ','); if (c) py = atoi(c+1); } }
@@ -2476,6 +2477,11 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 						(unsigned)(g_lib3d_uniqueTextID & 0xC000),   /* TIT_MASK_TYPE, not >>11 */
 						(unsigned)(g_lib3d_uniqueTextID & 0x07FF),   /* TIT_MASK_INDEX */
 						(unsigned)g_lib3d_isMasked, (unsigned long)g_lib3d_isLand);
+					{ long imn = bob_imagemap_number_of(g_lib3d_map0);
+					  if (imn >= 0) fprintf(stderr,"[pixprobe]   imagemap number = %ld (dir %ld, file %ld)\n",
+					                        imn, imn >> 8, imn & 0xFF);
+					  else fprintf(stderr,"[pixprobe]   imagemap number = (not in the table)\n");
+					  fflush(stderr); }
 					fflush(stderr);
 					/* and WRITE the bound texture out, so the object is identified by looking at
 					   it rather than inferred from its silhouette (the mistake R3.9 made twice). */

@@ -1463,3 +1463,25 @@ void ImageMap::UnLoadImageMaps()
 
 	Three_Dee.newpalettes = NULL;
 }
+
+#if BOB_LINUX
+/* R3.9 (2026-09-03): reverse-look-up an ImageMapDescPtr to its ImageMapNumber. The pixel probe can
+   name the TEXTURE a draw binds (uniqueTextID gives a runtime texture-table SLOT, which is not an
+   identity -- slots are allocated from the top of textureTable as textures are uploaded, which is
+   why the observed index 1965 exceeds the documented ImageMapNumber range of 0..1023). The material
+   carries the ImageMapDesc pointer itself, and THAT is addressable: superimagemaptable[dir][file]
+   is the authoritative map, so scanning it turns the pointer into (dir,file) -- the image map's
+   own number, which names the artwork. Returns -1 if the pointer is not in the table. */
+extern "C" long bob_imagemap_number_of(const void* p)
+{
+	if (!p) return -1;
+	for (int d = 0; d < MaxMapDirs; d++)
+		for (int f = 0; f < 256; f++) {
+			/* the table itself is private; the public accessor takes the composed number and
+			   never loads, so this cannot change what is resident. */
+			ImageMapDescPtr q = Image_Map.GetImageMapPtrDontLoad((ImageMapNumber)((d << 8) | f));
+			if (q && (const void*)q == p) return (long)((d << 8) | f);
+		}
+	return -1;
+}
+#endif
