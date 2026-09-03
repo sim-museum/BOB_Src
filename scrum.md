@@ -2689,7 +2689,7 @@ into the framebuffer. It is then lost.
 `FULLPSYS.CPP:~1985` repaints the whole screen and presents: `DoPaint` (background art) →
 `pdial[0..2]` and **their** hosted controls → `bob_draw_menu` → `bob_gdi_present`. It redraws hosted
 controls **only for the three dial panels**. `IDD_BOBFRAG` is not a dial, so its controls are painted
-by another path, then this repaint覆 covers them and presents. The final frame is exactly what this
+by another path, then this repaint covers them and presents. The final frame is exactly what this
 function draws — art + menu — which is why the PO sees art + menu.
 
 **The fix (next sprint):** the frontend repaint must also redraw the hosted controls of whatever
