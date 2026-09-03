@@ -2668,6 +2668,20 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL);
 		/* opaque/keyed -> write depth (sorts); translucent clouds -> test only (keep blend). */
 		glDepthMask(zd_translucent ? GL_FALSE : GL_TRUE);
+		/* R3.2 (2026-09-03): forcing LEQUAL on ALL screen-space geometry costs cockpit detail.
+		   Measured in a QM cockpit flight: three instrument bezels on the lower panel are present
+		   with BOB_NO_ZDEPTH=1 and GONE with the depth sort on -- 99k of the 112k pixels that
+		   differ between the two are in the bottom quarter of the screen, and the depth-on frame is
+		   darker there. The cockpit is authored in SUBMISSION order, so a gauge drawn later with a
+		   farther RHW z loses to the panel drawn before it.
+		   Keep painter's order WITHIN the opaque cockpit -- draw unconditionally (GL_ALWAYS) but
+		   still WRITE depth -- so later cockpit parts win as the game intends, while the depth
+		   buffer is still populated for the translucent clouds/smoke that follow to test against.
+		   That is what makes clouds stop painting over the canopy without deleting instruments.
+		   BOB_ZDEPTH_PAINTER=1 enables; default off until A/B'd against the gold. */
+		if (getenv("BOB_ZDEPTH_PAINTER") && (!zd_translucent || getenv("BOB_ZD_ALLPAINT")))
+			glDepthFunc(GL_ALWAYS);   /* BOB_ZD_ALLPAINT: include translucent, to test whether the
+			                             missing instrument bezels are classified translucent */
 	} else if (getenv("BOB_ZTEST") && g_zEnable) {
 		glEnable(GL_DEPTH_TEST); glDepthFunc(GL_LEQUAL); glDepthMask(g_zWrite?GL_TRUE:GL_FALSE);
 	} else {

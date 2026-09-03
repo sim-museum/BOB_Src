@@ -2953,3 +2953,45 @@ eliminated by measurement now has been; the next question is about the TARGET, n
 **Instruments left behind, all env-gated and default-off:** `BOB_TRACE_RTT` (probe verdict,
 `mirrorRect`/viewport, per-target draw counts, ambient colour), `BOB_DUMP_RTT_BIND`, `BOB_NO_STRIP`,
 `BOB_MIRROR_YOFF`, `BOB_MIRROR_PITCH`.
+
+
+## R3.2 — SPRINT (2026-09-03): 🔴 **THE SHIPPED DEPTH SORT IS DELETING COCKPIT INSTRUMENTS**
+
+**First, the entry was stale.** R3.2 reads "SPIKE — needs dedicated focused work (2 failed real-time
+attempts)", but the spike LANDED: `zdepth = is2D && !getenv("BOB_NO_ZDEPTH")` is **default ON**
+(marked S119). So this sprint measured the shipped state rather than re-implementing it.
+
+**And the shipped state has a cost nobody had measured.** A/B of a QM cockpit flight, same frame:
+
+| | depth ON (shipped) | depth OFF (`BOB_NO_ZDEPTH=1`) |
+|---|---|---|
+| lower instrument panel | **three instrument bezels MISSING** | all three present |
+| pixels differing | 112,313 — **99k of them in the bottom quarter** of the screen | |
+| where they differ | depth-ON is DARKER (35,39,25) | (42,46,31) |
+
+The cockpit is authored in SUBMISSION order, so a gauge drawn later with a farther RHW z loses the
+`LEQUAL` test to the panel drawn before it, and vanishes.
+
+**Two experiments, both conclusive:**
+1. `BOB_ZDEPTH_PAINTER=1` — keep painter's order within the OPAQUE cockpit (`GL_ALWAYS` + still
+   write depth) so later parts win while the depth buffer still populates for clouds. **Did not
+   restore the bezels.**
+2. `BOB_ZD_ALLPAINT=1` — extend that to translucent geometry as well. **Restores the cockpit
+   completely: 191 pixels from the depth-OFF frame.**
+
+So the missing bezels are **smooth-alpha cockpit parts being depth-rejected**, and the useful
+distinction is NOT opaque-vs-translucent (which is what the code currently splits on) but
+**world-vs-cockpit**.
+
+⚠️ **This is a live trade-off in the PO's build, and the PO should decide it:** the depth sort stops
+clouds painting over the canopy, and costs three instruments on the panel. `BOB_NO_ZDEPTH=1` trades
+back. Neither is right; the fix is to depth-test the WORLD and leave cockpit/HUD geometry in
+painter's order.
+
+**Next sprint:** the world quads are already identifiable — `g_devTex[0]->isRTT` marks the
+FBO-composited landscape, and the existing `[cloudz]` instrument buckets on exactly that. The open
+question is which class the CLOUD sprites fall into (they are not the FBO landscape), because they
+are the geometry the depth test exists to reject. Classify a cloud draw first, then split on
+world-vs-cockpit instead of on alpha.
+
+Both new switches are **default OFF**; the shipped path is untouched by this sprint.
