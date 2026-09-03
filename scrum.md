@@ -3164,3 +3164,52 @@ rather than the wrong art — better, but the "X" itself is still not being draw
 source is the next step on this entry.
 
 Gates: the usual `soak`/`r1`/`settings_nav` refuse while pid 2341852 is alive; everything that ran, passed.
+
+
+## R3.6 — SPRINT 2 (2026-09-03): ⭐⭐ **THE SECOND MECHANISM FOUND AND FIXED — an id collision — and R3.6 is now fully explained**
+
+Sprint 1 fixed one wrong icon (marker-x). The PO reported TWO. This sprint found the other, and it is
+a straightforward bug:
+
+**`bob_ole_rbutton.cpp`'s `kBtnIcon` forcing table matched on `ctrlId` ALONE.** Control ids are only
+unique WITHIN a dialog, and the SYSTEM BOX (dlgId **823**) numbers its buttons **1001/1002/1003** —
+the same ids the files toolbar uses. So the system box's `TOOLBAR_HIDE` and `CLOSE1` buttons were
+force-fed the toolbar's **THUMB** and **SAVE** icons. That is exactly *"two CAMPAIGN icons are drawn
+where the X (exit) icon belongs"*, and it is why every earlier sprint measured the placement and the
+hit-test as correct while only the ART was wrong.
+
+**Fixed** by giving each entry the dialog it was written for, measured from a campaign run:
+**826** = strategic-map toolbar, **942** = files toolbar, **960** = title bar
+(`BOB_BTNICON_ANYDLG=1` restores the old match). Verified:
+
+| | before | after |
+|---|---|---|
+| dlg 823 id=1001 (`TOOLBAR_HIDE`) | forced 0x10000 (ICON_THUMB) | **0x6a99, its own art** |
+| dlg 823 id=1003 (`CLOSE1`) | forced 0x10002 (ICON_SAVE) | **0x6aa0, its own art** |
+| dlg 826 id=1827 (map toolbar) | 0x10007 | 0x10007 — unchanged |
+| dlg 942 id=1001 (files toolbar) | 0x10000 | 0x10000 — unchanged |
+
+Convoy campaign gate: PASS.
+
+### ⚠️ And the reason the X still will not appear — worth the PO knowing
+
+Following the art through to the data, **the correct icons are simply not in this source drop**:
+
+```
+MASTER.FIL:   i_basexs.bmp   FIL_xICON_TOOLBAR_HIDE
+              xi_bases.bmp   FIL_xICON_SCREENSIZE
+              i_baxses.bmp   FIL_xICON_CLOSE1
+```
+
+All three are `i_bases.bmp` **with a stray `x` at a different position** — the marker-x placeholder
+family. Strip the x and every system-box button loads the campaign BASES icon; six more entries share
+the same file. And the sprite sheets (`iconnum.g`, `iconnum2.g`) contain no `CLOSE1`,
+`TOOLBAR_HIDE` or `SCREENSIZE` entry either.
+
+**So the exit button can be blank or wrong; with this data it cannot be right.** Sprint 1's marker-x
+restriction chose blank, which is the better of the two — a missing icon reads as missing, a wrong
+icon reads as deliberate.
+
+**A real route to the X exists though:** the port already paints `? / tick / X` glyphs itself for
+title bands (`bob_oob_paint_title_glyphs`, S174). Pointing that at the system box's close control
+would draw a genuine X without needing the absent art. **That is the next sprint on this entry.**

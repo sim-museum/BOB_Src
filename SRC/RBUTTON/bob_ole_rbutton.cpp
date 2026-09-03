@@ -56,22 +56,33 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
            but that assignment isn't in this source drop's toolbar code. Reconstruct it -- map each
            toolbar control id to its matching iconnum.g sheet icon (1:1 by function), so the row
            shows the correct distinct faces (bases/weather/squadrons/... per the wine reference). */
-        static const struct { int id; const char* icon; } kBtnIcon[] = {
-            {1807,"ICON_WEATHER"},{1827,"ICON_BASES"},{1829,"ICON_SQUADRONS"},{1832,"ICON_PILOTS"},
-            {1835,"ICON_ASSETS"},{1837,"ICON_REVIEW"},{1841,"ICON_MISSIONS"},{1844,"ICON_AIRCRAFT"},
-            {1848,"ICON_HOSTILES"},{1001,"ICON_THUMB"},{1003,"ICON_SAVE"},{1004,"ICON_ZOOM"},
-            {1005,"ICON_ZOOM"},{1006,"ICON_MAPFILTERS"},{1007,"ICON_DIRECTIVES"},{1055,"ICON_REPLAY"},
+        /* R3.6 (PO 2026-08-28) FIX: this table matched on ctrlId ALONE. Control ids are only unique
+           WITHIN a dialog, and the SYSTEM BOX (dlgId 823) numbers its buttons 1001/1002/1003 -- the
+           same ids the files toolbar uses -- so the system box's TOOLBAR_HIDE and CLOSE1 buttons
+           were force-fed the toolbar's THUMB and SAVE icons. That is exactly the PO's report: "two
+           CAMPAIGN icons are drawn where the X (exit) icon belongs, upper-right", and it explains
+           why the placement and the hit-test measured correct while only the ART was wrong.
+           Each entry now carries the dialog it was written for, measured from a campaign run:
+           826 = strategic-map toolbar, 942 = files toolbar, 960 = title bar. BOB_BTNICON_ANYDLG=1
+           restores the id-only match for A/B. */
+        static const struct { int dlg; int id; const char* icon; } kBtnIcon[] = {
+            {826,1807,"ICON_WEATHER"},{826,1827,"ICON_BASES"},{826,1829,"ICON_SQUADRONS"},{826,1832,"ICON_PILOTS"},
+            {826,1835,"ICON_ASSETS"},{826,1837,"ICON_REVIEW"},{826,1841,"ICON_MISSIONS"},{826,1844,"ICON_AIRCRAFT"},
+            {826,1848,"ICON_HOSTILES"},{942,1001,"ICON_THUMB"},{942,1003,"ICON_SAVE"},{942,1004,"ICON_ZOOM"},
+            {942,1005,"ICON_ZOOM"},{942,1006,"ICON_MAPFILTERS"},{942,1007,"ICON_DIRECTIVES"},{942,1055,"ICON_REPLAY"},
             /* TitleBar accel/time controls (S94; S173 adds the fourth).
                S94's NAMES were right -- iconnum.g really does hold FFCTRL/PAUSE/PLAY/FFORWARD as a
                consecutive family, which is exactly gold's >| || |> >> -- but they rendered as round
                gold map tokens because bob_icon_pagenum mis-numbered every icon past index 34 (see
                GETFILE.CPP: the 32 B_ICON_* enumerators were skipped without being counted).
                ICON_FFCTRL is IDC_CONTROL, the leftmost button, which no id list here ever named. */
-            {1836,"ICON_FFCTRL"},{1838,"ICON_PAUSE"},{1842,"ICON_PLAY"},{1845,"ICON_FFORWARD"},
+            {960,1836,"ICON_FFCTRL"},{960,1838,"ICON_PAUSE"},{960,1842,"ICON_PLAY"},{960,1845,"ICON_FFORWARD"},
         };
         int forced = 0;
         for (unsigned k = 0; k < sizeof kBtnIcon/sizeof kBtnIcon[0]; k++)
-            if (kBtnIcon[k].id == ctrlId) { int pv = bob_icon_pagenum(kBtnIcon[k].icon);
+            if (kBtnIcon[k].id == ctrlId &&
+                (kBtnIcon[k].dlg == dlgId || getenv("BOB_BTNICON_ANYDLG"))) {
+                int pv = bob_icon_pagenum(kBtnIcon[k].icon);
                 if (pv) { SetNormalFileNum(pv); forced = 1; } break; }
         char art[48]; int got = bob_dlg_artname(dlgId, ctrlId, art, sizeof art);
         if (!forced && got && art[0]) {
