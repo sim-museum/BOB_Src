@@ -2823,3 +2823,43 @@ settings load runs after it). A second env var for the same switch is worse than
 `globTextureTypeFlags` and applies `mirrorRect` as the viewport (`LIB3D.CPP:4427`); a wrong
 `mirrorRect` or an empty visible-shape list would both produce a flat clear. Dump `mirrorRect` and
 the shape count for the mirror pass first.
+
+
+## R3.4 — SPRINT 2 (2026-09-03): the mirror pass is fully exercised, and the flat grey is CHARACTERISED
+
+Sprint 1 left "the mirror FBO is bound and rendered, but the scene is not drawn into it". Sprint 2
+measured that claim and **it was wrong in its second half — the scene IS drawn.** What is true:
+
+| question | measurement |
+|---|---|
+| is the mirror bound? | yes — 20 `SetRenderTarget` binds per flight, `128x128 fbo=1 complete=1` |
+| is the viewport right? | yes — `mirrorRect L=0 T=0 R=128 B=128 -> viewport x=0 y=0 w=128 h=128` |
+| does anything draw into it? | **yes — 138-140 primitive draws land on the mirror surface every pass** |
+| does the FBO start blank? | **yes — pure black at bind time** (mean 0, 1 colour) |
+| what comes out? | **uniform grey: range 209-215, no row gradient, 19 colours** |
+| textures failing? | no — `[texfail] summary: 0 uploads bailed`; the `[grey]` canary reports only the known loader-screen quad |
+| fog? | ruled out — `Lib3D::EnableFogging` is entirely dead code |
+| colour clear? | no — the mirror pass clears ZBUFFER only, and the compat `Clear` is faithful |
+
+So the mirror's geometry lands and **paints a flat fill**. Black-before / grey-after is the pair that
+proves it: the draws are what turn it grey.
+
+**`InfiniteStrip` is ELIMINATED as the cause** — R3.4's filed attribution. `BOB_NO_STRIP=1` (new A/B
+switch, off by default) makes the mirror *more* uniform, not less (19 colours → 2). The strip was
+contributing the only variation there was.
+
+**What the pass actually draws, read from the code** (`3DCODE.CPP:6526+`): viewer rotated 180° from
+the aircraft heading, `SetProjectionMatrix(mirrorFoV, 5/2, NEARZ, RANGE_FAR_MIRROR)`, then
+`RenderMirrorLandscape()` + `GetMirrorObjects()`. And `RenderMirrorLandscape` (`LANDSCAP.CPP:620+`)
+draws the **HORIZON geometry** under `LF_AMBIENT` ambient-only lighting, translated
+`-(viewer_y + 500)`, with `view_dist = RANGE_FAR_MIRROR` — it does not draw terrain tiles.
+
+**Leading hypothesis for the next sprint (stated, not claimed):** the mirror is showing the
+ambient-lit HORIZON DOME filling the frame — which would be a flat wash by construction — because
+the terrain tiles are not part of the mirror pass. Two cheap discriminators: (1) attribute the 140
+draws between `RenderMirrorLandscape` and `GetMirrorObjects`; (2) note the projection is built with a
+**2.5 aspect ratio for a square 128x128 target**, which is worth checking on its own.
+
+**New instruments, all env-gated and default-off:** the `mirrorRect`/viewport report and the
+per-target draw counter (`BOB_TRACE_RTT`), a bind-time FBO dump (`BOB_DUMP_RTT_BIND`) — the one that
+settled black-before/grey-after — and `BOB_NO_STRIP` for the strip A/B.

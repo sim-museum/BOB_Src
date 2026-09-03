@@ -7482,6 +7482,12 @@ void LandScape::InfiniteStrip( const ANGLES pitch, const ANGLES roll)
 #ifdef _NO_INFI_STRIP
 	return;
 #endif
+	/* R3.4 (2026-09-03) A/B: the rear-view MIRROR reads back as a UNIFORM 213 grey after 140
+	   textured draws (black at bind time, so the draws do land -- they just paint flat). The
+	   InfiniteStrip haze/sky bands are untextured coloured quads and would fill the mirror's
+	   backward view exactly like that. BOB_NO_STRIP=1 skips them, to see whether the mirror then
+	   shows terrain. Test switch only; unset leaves shipped behaviour. */
+	if (getenv("BOB_NO_STRIP")) return;
 //DeadCode JON 2Nov00 	SLong layerAltitude =	(MissManCampSky().Layer[0].AltBase + MissManCampSky().Layer[0].AltTop)>>1;
 
 	const SLong layerAltitudeTop = MissManCampSky().Layer[0].AltTop;

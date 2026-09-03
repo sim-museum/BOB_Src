@@ -2241,11 +2241,16 @@ static void ensure_rtt_fbo(GLSurface7* s) {
 	int ok = !p_glCheckFramebufferStatus || p_glCheckFramebufferStatus(GL_FRAMEBUFFER)==GL_FRAMEBUFFER_COMPLETE;
 	p_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	if (getenv("BOB_TRACE_RTT")) fprintf(stderr,"[rtt] created FBO=%u tex=%u %dx%d complete=%d surf=%p\n",s->fbo,s->glTex,w,h,ok,(void*)s);
+
 }
 
 /* BOB_DUMP_RTT: capture the given RTT FBO to /tmp/rtt_<ptr>.ppm before it is switched away
    (catches the mirror, which is bound directly as a texture and never SURF_Lock'd, and whose
    target can switch RTT->RTT to the landscape without ever unbinding to the back buffer). */
+/* R3.4: "the FBO is bound" and "the scene is drawn into it" are different claims, and only the
+   second explains a flat result. Count primitive draws that land while an RTT is current, and
+   report the tally when the target is switched away. */
+static long g_rttDraws = 0;
 static void dump_rtt_fbo(GLSurface7* s) {
 	if (!s || !s->fbo || !getenv("BOB_DUMP_RTT") || !load_fbo_funcs()) return;
 	int w=s->w,h=s->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*3);
@@ -2266,10 +2271,40 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 		ensure_rtt_fbo(s);
 		if (s->fbo) {
 			/* switching RTT -> RTT (e.g. mirror -> landscape): dump the outgoing FBO first */
-			if (g_curRT && g_curRT != s) dump_rtt_fbo(g_curRT);
+			if (g_curRT && g_curRT != s) {
+				dump_rtt_fbo(g_curRT);
+				if (getenv("BOB_TRACE_RTT"))
+					fprintf(stderr,"[rtt]   ^ %ld primitive draw(s) landed on surf=%p (%dx%d)\n",
+					        g_rttDraws, (void*)g_curRT, g_curRT->w, g_curRT->h);
+			}
+			g_rttDraws = 0;
 			p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
 			glViewport(0,0,s->w,s->h);
 			g_curRT = s;
+			/* R3.4: dump the target's contents AT BIND, before this pass's draws. The mirror reads
+			   back as a uniform grey after 140 textured draws; comparing bind-time against
+			   switch-time contents says whether those draws contribute ANYTHING, which decides
+			   between "geometry is off-frustum/degenerate" and "geometry lands but paints flat".
+			   BOB_DUMP_RTT_BIND=1 (writes /tmp/rttbind_<ptr>.ppm, first time per surface). */
+			if (getenv("BOB_DUMP_RTT_BIND")) {
+				static const void* seen[8]; static int nseen = 0; int dup = 0;
+				for (int k = 0; k < nseen; k++) if (seen[k] == (const void*)s) { dup = 1; break; }
+				if (!dup && nseen < 8) {
+					seen[nseen++] = (const void*)s;
+					int w2=s->w,h2=s->h; unsigned char* bb=(unsigned char*)malloc((size_t)w2*h2*3);
+					if (bb) {
+						glReadBuffer(GL_COLOR_ATTACHMENT0); glPixelStorei(GL_PACK_ALIGNMENT,1);
+						glReadPixels(0,0,w2,h2,GL_RGB,GL_UNSIGNED_BYTE,bb);
+						char pth[64]; snprintf(pth,sizeof(pth),"/tmp/rttbind_%lx.ppm",(unsigned long)((size_t)s & 0xffffff));
+						int fd2=::open(pth,O_WRONLY|O_CREAT|O_TRUNC,0644);
+						if(fd2>=0){ char hd2[64]; int hn2=snprintf(hd2,sizeof(hd2),"P6\n%d %d\n255\n",w2,h2);
+							if(write(fd2,hd2,hn2)<0){}
+							for(int y=h2-1;y>=0;y--) if(write(fd2,bb+(size_t)y*w2*3,w2*3)<0){}
+							close(fd2); }
+						free(bb);
+					}
+				}
+			}
 			if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<40)
 				fprintf(stderr,"[rtt] SetRenderTarget -> RTT surf=%p fbo=%u %dx%d\n",(void*)s,s->fbo,s->w,s->h); }
 		}
@@ -2277,6 +2312,10 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 		/* back buffer / primary -> main framebuffer */
 		gl_bind_thread();
 		dump_rtt_fbo(g_curRT);
+		if (getenv("BOB_TRACE_RTT"))
+			fprintf(stderr,"[rtt]   ^ %ld primitive draw(s) landed on surf=%p (%dx%d)\n",
+			        g_rttDraws, (void*)g_curRT, g_curRT->w, g_curRT->h);
+		g_rttDraws = 0;
 		if (load_fbo_funcs()) p_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0,0,g_scrW,g_scrH);
 		if (getenv("BOB_TRACE_RTT")) { static int n=0; if(n++<40) fprintf(stderr,"[rtt] SetRenderTarget -> MAIN (unbind fbo)\n"); }
@@ -2384,6 +2423,7 @@ static void bob_texblack_dump_blend(void) {
 }
 
 static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
+	if (g_curRT) g_rttDraws++;   /* R3.4: this draw lands on the bound render target */
 	if (!g_win || !base || !count) return;
 	FvfLayout L = fvf_layout(fvf);
 	if (!L.stride) return;

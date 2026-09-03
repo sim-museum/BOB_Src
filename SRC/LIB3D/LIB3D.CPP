@@ -4439,6 +4439,15 @@ inline HRESULT Lib3D::_BeginScene(const HRENDERTARGET hRenderTarget)
 			if ( flags&F_TEXTURECANBERENDERTARGET )
 				lastError=pD3DDEV7->SetRenderTarget(pDDS7MirrorRT,0);
 			D3DVIEWPORT7 vp={mirrorRect.left,mirrorRect.top,mirrorRect.right,mirrorRect.bottom,0,1};
+			/* R3.4 (2026-09-03): the mirror FBO IS bound and rendered (20 binds/flight) yet its
+			   contents are a near-uniform light grey -- so either nothing is drawn into it, or it is
+			   drawn outside the viewport. D3DVIEWPORT7 is {X, Y, WIDTH, HEIGHT}, and this passes
+			   mirrorRect.right/.bottom as width/height: if mirrorRect holds EDGES rather than
+			   extents the viewport is wrong and the scene lands off-target. Report the numbers. */
+			if (getenv("BOB_TRACE_RTT"))
+				fprintf(stderr, "[rtt] MIRROR pass: mirrorRect L=%ld T=%ld R=%ld B=%ld -> viewport x=%lu y=%lu w=%lu h=%lu\n",
+				        (long)mirrorRect.left, (long)mirrorRect.top, (long)mirrorRect.right, (long)mirrorRect.bottom,
+				        (unsigned long)vp.dwX, (unsigned long)vp.dwY, (unsigned long)vp.dwWidth, (unsigned long)vp.dwHeight);
 			lastError=pD3DDEV7->SetViewport(&vp);
 
 			lastError=pD3DDEV7->SetViewport(&vp);
