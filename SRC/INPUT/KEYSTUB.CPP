@@ -607,3 +607,17 @@ void	keytests::SetMouseShiftMode(DeviceMode mode)
 //DeadCode JIM 31Aug00 	else
 //DeadCode JIM 31Aug00 		jshift=false;
 //DeadCode JIM 31Aug00 }
+
+#if BOB_LINUX
+/* R3.7 (2026-09-03): drive SHOOT directly into the 3D key map. Measured: pushing DIK 0x39 (space,
+   which KEYMAPS.H binds to SHOOT) never makes KeyPress3d(SHOOT) true -- gun ammo stays at 2800
+   whether the key is tapped or HELD, while throttle and trim keys from the same scaffold do work.
+   So the scancode -> KeyMap3d leg does not deliver this action, and a test scaffold should not be
+   the thing that has to fix it. KeyFake3d is the game's OWN facility for exactly this; use it so
+   R3.7 can get on with measuring whether tracers/muzzle-flash/smoke actually RENDER, which is what
+   the story is about. The scancode gap is recorded separately as its own defect. */
+extern "C" void bob_fake_shoot(int down)
+{
+	Key_Tests.KeyFake3d(SHOOT, down ? TRUE : FALSE, down ? TRUE : FALSE);
+}
+#endif

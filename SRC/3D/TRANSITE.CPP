@@ -10229,6 +10229,20 @@ void TransObj::ControlKeybWeap(AirStrucPtr ac,WorldStuff& world)
 			secondaryfirekey=MENUSELECT;
 
 
+		/* R3.7 (2026-09-03): the guns never fire under BOB_AUTOFLY=shoot -- gun ammo reads 2800 at
+		   frame 900 AND frame 2500, with the key both tapped and HELD, while the other autofly modes
+		   (throttle, trim) work. Report the gate this reaches: whether the key test is seen at all,
+		   and whether the shoot delay lets a round out. BOB_TRACE_FIRE=1. */
+		{
+			static int _ftn = 0;
+			if (getenv("BOB_TRACE_FIRE") && _ftn < 20) {
+				bool k1 = Key_Tests.KeyPress3d(SHOOT), k2 = Key_Tests.KeyPress3d(secondaryfirekey);
+				if (k1 || k2 || (_ftn == 0)) { _ftn++;
+					fprintf(stderr, "[fire] KeyPress3d(SHOOT)=%d secondary=%d ShootDelay=%ld frametime=%ld\n",
+					        (int)k1, (int)k2, (long)ac->weap.ShootDelay, (long)frametime);
+					fflush(stderr); }
+			}
+		}
 		if (Key_Tests.KeyPress3d(SHOOT) || Key_Tests.KeyPress3d(secondaryfirekey))						//RJS 10Jun97
 		{
 			ClearWeaponChain(ac);								//RJS 15Nov99

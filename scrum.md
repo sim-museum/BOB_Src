@@ -3371,3 +3371,36 @@ lens), and that caveat has now survived four sprints — worth asking the PO dir
 assuming.
 
 Convoy campaign gate: PASS. All probe code is env-gated and off by default.
+
+
+## R3.7 (in-flight effects) — SPRINT (2026-09-03): 🔴 **BLOCKED BEFORE THE EFFECTS: the guns never fire**
+
+R3.7 asks whether tracers, muzzle flash, smoke and flak render faithfully. **The story cannot be
+started, because nothing fires.** Measured, not assumed:
+
+| attempt | result |
+|---|---|
+| `BOB_AUTOFLY=shoot` as shipped (tap DIK 0x39 down+up in one tick) | gun ammo **2800 at frame 900 and 2800 at frame 2500** — not one round |
+| the key HELD instead (down for 20 ticks, then up) | ammo **still 2800** |
+| driving the game's own `KeyFake3d(SHOOT, …)` directly, bypassing the scancode leg | ammo **still 2800** |
+| the gate it reaches | `[fire] KeyPress3d(SHOOT)=0 secondary=0 ShootDelay=0` — **the action is never seen** |
+
+`KEYMAPS.H` binds `KeyAll(SHOOT, space)` and the scaffold pushes DIK 0x39, so the binding is right;
+and the SAME scaffold's other keys work (throttle `0x0B` and trim `0xC7` fly the aircraft in
+`BOB_AUTOFLY=dive`, view `0x40` switches views). So this is specific to the SHOOT action, not to
+synthetic input in general.
+
+⚠️ **Scope, stated carefully: this shows two SYNTHETIC paths fail.** Whether a human pressing space in
+a real session fires the guns is NOT established — it cannot be tested headlessly, and I should not
+report "the port cannot shoot" on this evidence. **The PO can settle it in one sortie**: fly a quick
+mission, hold the trigger, and see whether the ammo counter moves.
+
+**If it does not move for the PO either, this is a significant gameplay gap** — a combat flight sim
+that cannot fire — and it outranks R3.7's fidelity question entirely.
+
+**Instruments left behind (env-gated, off by default):** `BOB_TRACE_FIRE=1` reports the firing gate
+(`KeyPress3d(SHOOT)`, the secondary key, `ShootDelay`, `frametime`), and `bob_fake_shoot()` drives
+the action bit directly. The `BOB_AUTOFLY=shoot` scaffold now HOLDS the key rather than tapping it
+down-and-up in a single tick — a one-tick tap was a race, not an input, regardless of this defect.
+
+Convoy campaign gate: PASS.

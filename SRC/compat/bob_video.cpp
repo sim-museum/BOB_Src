@@ -522,6 +522,8 @@ static int bob_scale_ui(void) {
     return on;
 }
 extern int g_uiOffX, g_uiOffY;
+extern "C" void bob_fake_shoot(int);   /* R3.7: drive SHOOT into the 3D key map (KEYSTUB.CPP) */
+
 static void pump_events(void)
 {
 	if (!g_win) return;
@@ -532,8 +534,18 @@ static void pump_events(void)
 	if (getenv("BOB_AUTOFLY") && g_diKbAcquired) {
 		const char* mode=getenv("BOB_AUTOFLY");
 		static int cnt=0; cnt++;
-		if (mode && strstr(mode,"shoot")) {   /* repro: tap SPACE (SHOOT, DIK 0x39) during flight */
-			if (g_bob_flight_active && (cnt%15)==0) { kb_push(0x39,1); kb_push(0x39,0); }
+		if (mode && strstr(mode,"shoot")) {   /* SPACE = SHOOT (KEYMAPS.H: KeyAll(SHOOT, space)) */
+			/* R3.7 (2026-09-03): the original pushed DOWN and UP in the SAME tick, so whether the
+			   game ever saw the key depended on when it polled between the two -- and measured, it
+			   never did: gun ammo read 2800 at frame 900 AND at frame 2500, i.e. not one round was
+			   fired, while the other autofly modes (throttle, trim) work. HOLD the key instead:
+			   down for a burst, then up. A one-tick tap is not an input, it is a race. */
+			if (g_bob_flight_active) {
+				int ph = cnt % 60;
+				if (ph == 0)       { kb_push(0x39,1); bob_fake_shoot(1); }
+				else if (ph == 20) { kb_push(0x39,0); bob_fake_shoot(0); }
+				else if (ph < 20)  bob_fake_shoot(1);   /* hold the action bit through the burst */
+			}
 		}
 		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->
 			   climb steeply -> stall -> fall -> hit the ground (the player-crash path) */
