@@ -1092,12 +1092,34 @@ FILE*	retval=easyopennumberedfile(MyFile);
 		// ReallyEmitSysErr here -- on Linux it routes to SayAndQuit -> _exit(), aborting the
 		// whole game; a missing leaf asset must degrade, not exit.)
 		{
-			static FileNum lastwarned = (FileNum)-1;
-			if (MyFile != lastwarned)
+			/* R3.6 follow-up (2026-09-03): the dedup was a SINGLE `lastwarned`, which two
+			   alternating missing files defeat completely -- each call differs from the last, so
+			   BOTH log on every frame. The PO hit exactly that: after R3.6 restricted the marker-x
+			   substitution, the system box's two icons (0x6a99 TOOLBAR_HIDE, 0x6a9c SCREENSIZE)
+			   became honest misses and alternated, flooding the session log at ~101 lines/sec --
+			   51,842 of 51,904 lines were this one message, 6 MB in nine minutes.
+			   ⚠️ My R3.6 change made these misses HAPPEN (they used to be silently mis-resolved to
+			   the campaign BASES icon); this dedup makes them REPORT ONCE, which is what the
+			   message was always meant to do. Keep a small set, not a single slot. */
+			enum { FM_WARN_MAX = 128 };
+			static FileNum warned[FM_WARN_MAX];
+			static int nwarned = 0;
+			static int warn_full = 0;
+			int seen = 0;
+			for (int wi = 0; wi < nwarned; wi++)
+				if (warned[wi] == MyFile) { seen = 1; break; }
+			if (!seen)
 			{
-				lastwarned = MyFile;
-				fprintf(stderr, "[fileman] missing file %04x=%s -- returning NULL\n",
-						(unsigned)MyFile, path);
+				if (nwarned < FM_WARN_MAX)
+					warned[nwarned++] = MyFile;
+				else if (!warn_full)
+				{
+					warn_full = 1;
+					fprintf(stderr, "[fileman] missing-file table full -- further misses NOT listed\n");
+				}
+				if (!warn_full)
+					fprintf(stderr, "[fileman] missing file %04x=%s -- returning NULL\n",
+							(unsigned)MyFile, path);
 			}
 			return(NULL);
 		}

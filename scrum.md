@@ -3404,3 +3404,33 @@ the action bit directly. The `BOB_AUTOFLY=shoot` scaffold now HOLDS the key rath
 down-and-up in a single tick — a one-tick tap was a race, not an input, regardless of this defect.
 
 Convoy campaign gate: PASS.
+
+
+## R3.6 FOLLOW-UP (2026-09-03): 🔴 **MY OWN FIX CAUSED A LOG FLOOD — the PO hit it as a hang**
+
+PO: *"start bob -> campaign -> german -> begin -> ... -> fly, tried mousing -> hang"*. Caught the
+process live: **state R at 78% CPU**, not deadlocked — and the session log was growing at
+**~101 lines/sec**, with **51,842 of 51,904 lines (99.9%)** being one message, 6 MB in nine minutes:
+
+```
+[fileman] missing file 6a99=...\artwork\axart\i_basexs.bmp -- returning NULL
+[fileman] missing file 6a9c=...\artwork\axart\xi_bases.bmp -- returning NULL
+```
+
+**Those are the system box's two icons, and this is a consequence of R3.6 sprint 1.** Before that
+sprint the marker-x rule silently (and wrongly) resolved them to the campaign BASES icon, so they
+never reported a miss. Restricting the rule made them honest misses — correct — but exposed a latent
+defect in the reporting.
+
+**The latent defect:** the dedup kept a SINGLE `lastwarned` slot, which two ALTERNATING missing files
+defeat completely — each call differs from the last, so both log every frame. One missing file would
+have been quiet; two are a flood. Replaced with a 128-entry set plus a "table full" notice, the same
+shape this codebase uses elsewhere. **Verified: a full campaign run now emits 2 missing-file lines,
+down from 51,842.** Convoy gate: PASS.
+
+⚠️ **What I have NOT established** is that the flood is the whole of the PO's hang. It is certainly a
+real defect and certainly mine to fix; but the process was busy in `hrtimer_nanosleep` at 78% CPU,
+and 101 lines/sec of stderr is not obviously enough to stall a frame loop on its own. **The PO should
+retry the same path on this build**; if it still hangs, the flood was a passenger and the hang needs
+its own diagnosis — the live-process method used here (state, %CPU, wchan, log growth rate) is the
+one to repeat, because it distinguished "spinning" from "deadlocked" in seconds.
