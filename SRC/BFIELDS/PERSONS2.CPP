@@ -613,6 +613,23 @@ void Persons2::LoadSubPiece(WorldStuff *worldptr, string& bfieldptr,int bfindex,
 //------------------------------------------------------------------------------
 void	Persons2::processbfieldtoplevel(string& bfieldptr)
 {
+#if defined(BOB_LINUX)
+	/* MP-5 (PO 2026-09-05): multiplayer dies with "No player A/C set up on entering 3d!" because
+	   ZERO aircraft groups are built -- [psq] group prints 0 lines where single-player prints one
+	   per group. Aircraft come from a battlefield's T_airgrp records, parsed here. This counts what
+	   this parse actually contains, so "the battlefield had no air groups" can be told from "no
+	   battlefield was parsed at all" -- two different bugs that look identical from the FATAL.
+	   BOB_TRACE_BFIELD=1. */
+	{
+		static int s_on = -1;
+		if (s_on < 0) s_on = getenv("BOB_TRACE_BFIELD") ? 1 : 0;
+		if (s_on) {
+			static long s_calls = 0;
+			fprintf(stderr, "[bfield] processbfieldtoplevel call #%ld\n", ++s_calls);
+			fflush(stderr);
+		}
+	}
+#endif
 currsupergroup=UID_Null;
 int	loopcount=getloopcount(bfieldptr);
 	while (loopcount--)
@@ -632,7 +649,11 @@ int	loopcount=getloopcount(bfieldptr);
 			case T_itemS:		toplevel_itemS(bfieldptr,true);					break;
 			case T_itemgrp:		toplevel_itemgrp(bfieldptr);				break;
 			case T_gndgrp:		toplevel_gndgrp(bfieldptr);					break;
-			case T_airgrp:		toplevel_airgrp(bfieldptr);					break;
+			case T_airgrp:
+#if defined(BOB_LINUX)
+				if (getenv("BOB_TRACE_BFIELD")) { static long g=0; fprintf(stderr,"[bfield] T_airgrp #%ld\n",++g); fflush(stderr); }
+#endif
+				toplevel_airgrp(bfieldptr);					break;
 			case T_route:		toplevel_route(bfieldptr);					break;
 			case T_setval:		toplevel_setval(bfieldptr);					break;
 			default:

@@ -706,3 +706,54 @@ host. The ghosts were mine: four automated test joins, each ended by closing the
 2. Then re-run the two-instance loopback harness above; it is fully scripted and needs no human.
 3. Consider bounding `GetAllGoResponses` with a message pump, so a slow or absent peer degrades to a
    refusal rather than a 20-second frozen window.
+
+### MP-5 (cont.) — ⛔ **"Select Side" is NOT the bug. No BATTLEFIELD is loaded at all.**
+
+The PO asked me to fix Select Side, on my own suggestion that it was the blocker. **Measured, and my
+suggestion was wrong.**
+
+**Select Side is deliberately empty in Death Match.** `LOCKER.CPP:266`:
+
+```c
+if (_DPlay.GameType != DPlay::DEATHMATCH)
+{
+    pradio = GETDLGITEM(IDC_RRADIO_SELECTSIDE);
+    pradio->AddButton(RESSTRING(RED));
+    pradio->AddButton(RESSTRING(UN));
+}
+```
+
+The client branch adds the RED/UN buttons **only when the game type is not Death Match**, and the
+session was Death Match. A radio with no buttons draws nothing — which is why `id=2129` never
+appears in any host/draw log while its sibling `id=2128` (Game Type, the same `CRRadio` class in the
+same `CLockerRoom` dialog) draws fine. **Two identical controls, one populated and one not, by
+design.** Chasing it would have been a wasted sprint, and the port's own UI-2 addendum had already
+warned that the multiplayer side-selection screen was unverified.
+
+### The real cause, measured
+
+New instrument `BOB_TRACE_BFIELD=1` counts battlefield parses and the `T_airgrp` records inside
+them, so **"the battlefield had no aircraft" can be told from "no battlefield was parsed"** — two
+bugs that look identical from the FATAL. On a host that navigates Create Game → Continue → Fly:
+
+    [bfield] processbfieldtoplevel call ... : 0
+    [bfield] T_airgrp # ...                 : 0
+    *** FATAL: Persons3.cpp3384
+
+**Zero battlefield parses.** Aircraft exist only as `T_airgrp` records inside a battlefield
+(`PERSONS2.CPP:635` → `toplevel_airgrp` → `make_airgrp`), and the multiplayer path enters 3D without
+ever loading one. So:
+
+* it is not that the player was assigned the wrong aircraft,
+* it is not that Select Side was blank,
+* **the world is empty because no mission data was loaded.**
+
+The single-player route reaches a battlefield through `NodeData::CheckTargetLoaded` →
+`TargetToBf(target)` → `Persons4::LoadSubPiece` — i.e. a *target* selects the battlefield file. The
+comms/Death-Match path chooses a **scenario** (`_DPlay.GameIndex`, `currquickmiss`, the "1) Implode"
+combo) and nothing observed maps that to a battlefield load.
+
+**Next, and it is now one specific question:** what is supposed to turn `_DPlay.GameIndex` into a
+loaded battlefield for a comms game, and does that code run at all in this port? `BOB_TRACE_BFIELD=1`
+answers it the moment the call is found — a single-player Quick Mission run with the same trace gives
+the working control to compare against.
