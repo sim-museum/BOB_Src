@@ -811,3 +811,39 @@ Single-player reaches 35337 through `NodeData::CheckTargetLoaded` → `TargetToB
 that call in both arms**: if multiplayer never calls it, the comms path never establishes a target
 for its scenario (`_DPlay.GameIndex`, the "1) Implode" combo), and that is the fix site. The
 instrument to add is one line, and the control run already exists.
+
+### MP-5 (cont. 3) — host FLIES; client joins and is registered, but does not follow into 3D
+
+Two-instance loopback run with the `quickdef` fix in place:
+
+| | host | client |
+|---|---|---|
+| joined / registered | hosting, 2 players | `Open(JOIN)`, **`host assigned us pid 4`** |
+| `quickdef` seeded | ✅ `-> currmissnum=35337` | — (never reaches the seed) |
+| aircraft built | ✅ | — |
+| **`InThe3D=1`** | ✅ **yes** | ❌ no |
+| FATAL | 0 | 0 |
+
+**The peer handshake works.** Host logs `client joined from 127.0.0.1:45850 -> assigned pid 4`, the
+client logs `host assigned us pid 4`, and traffic crosses both ways (`Send pid 3 -> 4 (ok)`,
+`received 524 data bytes from pid 3`). The 8 earlier `no peer yet -- nothing transmitted` sends are
+all at lines 75-76, **before** the join at line 180 — the host was alone in its Ready Room. Not a
+defect, and worth pinning so it is not chased.
+
+**What is missing:** the client received only **6** packets and never set `FlyNowFlag`, so
+`CReadyRoom::OnTimer` never called `UINetworkSelectFly()`.
+
+⚠️ **Prime suspect, and it is the defect the PO already asked to have fixed:** the client's log is
+dominated by `EnumSessions: probing 127.0.0.1:47624` right to the end — **the Select-Session screen's
+2365 timer is still polling from a screen closed minutes earlier**, because `WM_DESTROY` is never
+dispatched and `CSelectSession::OnDestroy` (which calls `KillTimer`) never runs. That is continuous
+UDP chatter at the host during the exact window in which the Fly handshake has to complete.
+
+**Next: fix the `WM_DESTROY` dispatch.** It was deferred twice as "too big to bundle"; it is now on
+the critical path for the PO's stated goal, which changes the trade.
+
+**Harness note for whoever runs this next:** the client's session-row `BOB_SDL_CLICK` ticks must fall
+**before** its `BOB_AUTOCLICK` Select step (row at 280-320, Select at 360). Moving them to 600 made
+the client select nothing and stall on the session list -- it looks exactly like a discovery failure
+and is not one. Also: `[menu] screen=0x...` pointers differ between processes, so match screens by
+`artnum` (Ready Room = 27918), never by address.
