@@ -1276,6 +1276,33 @@ extern "C" void bob_frontend_tick(void)
 		}
 	}
 
+	/* R27 (BOB_TEST_QUIT=<ticks>, default-off): fire the exit request from the idle loop.
+	   The title-page Quit needs a screen path a script cannot reliably reach (the menu INDEX
+	   for Quit depends on which screen you are on), so this drives the half that was broken:
+	   flag set -> CMIGApp::Run leaves its for(;;) -> ExitInstance -> process exits. Without it
+	   "the loop can now exit" would rest on reading the code, which is what put the original
+	   stubs there. */
+	/* R27b (BOB_TEST_CHANGEMODE=<ticks>, default-off): call the exact function CMainFrame::OnClose
+	   calls, and report whether it RETURNS. The PO's quit log ends on ChangeMode's display-mode
+	   line with no [quit] after it, which localises the hang to inside ChangeMode -- but "the log
+	   stops here" is absence-of-evidence until the call is driven on its own. */
+	if (const char* tc = getenv("BOB_TEST_CHANGEMODE")) {
+		static long ct = 0;
+		if (++ct == atol(tc)) {
+			fprintf(stderr, "[testcm] calling Save_Data.ChangeMode(UIR_FIRST)...\n"); fflush(stderr);
+			Save_Data.ChangeMode(SaveData::UIR_FIRST);
+			fprintf(stderr, "[testcm] ChangeMode RETURNED -- it is not the hang\n"); fflush(stderr);
+		}
+	}
+
+	if (const char* tq = getenv("BOB_TEST_QUIT")) {
+		static long qt = 0;
+		if (++qt == atol(tq)) {
+			fprintf(stderr, "[testquit] tick %ld: requesting exit\n", qt); fflush(stderr);
+			bob_request_quit(0);
+		}
+	}
+
 	if (const char* tm = getenv("BOB_TEST_MODAL")) {
 		static int fired = 0; static long ticks = 0;
 		/* own counter: g_bob_shot_t only advances when a BOB_SHOT* variable is set */
@@ -1631,6 +1658,21 @@ extern "C" void bob_frontend_tick(void)
 				}
 			}
 	}
+}
+
+/* PO 2026-09-05: multiplayer chat -- "can't type anything in".
+   The chat box is a genuine hosted CREdit that drew its caret and received no keystrokes, because
+   nothing in the port delivered any. This is the front-end half: take one key, offer it to the
+   focused hosted control, and REPAINT if it was consumed -- without the repaint the text would
+   only appear on the next click, which is a worse bug than the one being fixed.
+   Returns 1 if the key was consumed, so the caller leaves it alone. */
+extern "C" int bob_ole_key(int ch, int isText);
+extern "C" int bob_fp_key(int ch, int isText)
+{
+	if (!bobOleDraw() || !g_bobActiveFP) return 0;
+	if (!bob_ole_key(ch, isText)) return 0;
+	bob_fp_repaint(g_bobActiveFP);
+	return 1;
 }
 #endif
 void RFullPanelDial::LaunchMain(FullScreen* startscreen)

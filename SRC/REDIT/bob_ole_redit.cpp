@@ -50,6 +50,27 @@ struct HostREdit : public CREditCtrl, public OleHost {
         m_FirstSweep = TRUE;
         OnDraw(pdc, rc, rc);
     }
+    /* PO 2026-09-05: deliver keystrokes to the genuine control. CREditCtrl already has
+       OnChar/OnKeyDown (REditCtl.h:86-87) with the real caret, blocking-key and word-list
+       machinery behind them -- nothing was calling them. Printable characters arrive as text
+       (SDL_TEXTINPUT, so keyboard layout is the OS's problem, not ours); backspace/enter/delete
+       and the arrows arrive as virtual keys. */
+    int wantsKeys() override { return 1; }
+    int onKey(int ch, int isText) override {
+        if (!GetEnabled()) return 0;
+        if (isText) { if (ch < 32 || ch > 126) return 0; OnChar((UINT)ch, 1, 0); return 1; }
+        OnKeyDown((UINT)ch, 1, 0);
+        /* RETURN is not just another key here. READY.CPP:280 binds
+           ON_EVENT(CReadyRoom, IDC_PLAYERCHAT, 1 / ReturnPressed /, OnReturnPressedPlayerchat,
+           VTS_BSTR) -- the handler that actually SENDS the chat line. Delivering the keystroke
+           without firing that event would give a box you can type in and a chat nobody receives,
+           which is a more confusing bug than the one being fixed. Reported as 2 so the caller
+           fires the event; the caller owns eventsink plumbing, this host does not. */
+        return (ch == 13) ? 2 : 1;
+    }
+    /* the current text, for the ReturnPressed argument (VTS_BSTR). */
+    const char* keyText() override { return m_bobKeyText = (const char*)GetCaption(); }
+    const char* m_bobKeyText = 0;
     void dispatch(DISPID id, VARTYPE, void*, va_list) override {
         if (bob_ole_trace()) fprintf(stderr, "[ole] REdit: unhandled method dispid %ld\n", (long)id);
     }

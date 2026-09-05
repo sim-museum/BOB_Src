@@ -118,6 +118,8 @@ static int bob_write_ppm(const char* path, const unsigned char* px, int w, int h
     close(fd);
     return 1;
 }
+long g_bobZeroSceneFrames = 0;   /* presents with no scene drawn since the last one */
+long g_bobSceneHist[10] = {0,0,0,0,0,0,0,0,0,0};
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 static void bob_shot3d_maybe(void)
 {
@@ -201,6 +203,14 @@ static void bob_shot2d_maybe(void)
 static volatile int g_pendingW = 0, g_pendingH = 0;
 static unsigned long g_mainThread = 0;
 static void ensure_window(int w, int h);
+/* PO 2026-09-04 ("campaign screen corrupted after return from 3D"): the UI centring offset is
+   computed from the PREVIOUS frame's measured content extent, and that cache was never cleared
+   when the display mode changed. Returning from 3D IS a mode change, so the front end positioned
+   its canvas using an extent measured at the OTHER resolution -- the canvas lands in the wrong
+   place and the part of the window it never covers keeps whatever was on screen before, which is
+   the flat block the PO photographed. Defined after the extent variables; declared here so
+   ensure_window can call it. */
+static void bob_ui_extent_invalidate(void);
 extern "C" void bob_apply_pending_resize(void)
 {
 	int pw = g_pendingW, ph = g_pendingH;
@@ -223,6 +233,7 @@ static void ensure_window(int w, int h)
 		static int lastW = 0, lastH = 0;
 		if (g_scrW == lastW && g_scrH == lastH) return;   /* skip redundant resizes */
 		lastW = g_scrW; lastH = g_scrH;
+		bob_ui_extent_invalidate();   /* the old extent describes the old mode -- do not reuse it */
 		SDL_SetWindowSize(g_win, g_scrW, g_scrH);
 		SDL_DisplayMode dm;
 		if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && g_scrW >= dm.w && g_scrH >= dm.h) {
@@ -276,14 +287,49 @@ static void ensure_window(int w, int h)
 	   fps, only 3 between 100-200 ms), and if capping the rate ever made that worse this switch
 	   separates the two without a rebuild. */
 	if (!getenv("BOB_NO_VSYNC")) {
-		int si = SDL_GL_SetSwapInterval(1);
-		if (si != 0) si = SDL_GL_SetSwapInterval(-1);
-		fprintf(stderr, "[vid] swap interval -> %d (%s)\n", SDL_GL_GetSwapInterval(),
-		        si == 0 ? "vsync" : "driver refused; uncapped (tearing possible)");
+		/* PO 2026-09-04: "in bob appImage dogfight the screen flickered baddly".
+		   The -1 fallback below is ADAPTIVE vsync, which by definition stops synchronising
+		   whenever a frame misses the refresh -- so it tears exactly when the scene gets heavy.
+		   That fits a fault which shows in a dogfight (a full field of aircraft, frame rate
+		   dipping) and not in level flight (a steady 59.5 fps here, measured). It could not be
+		   reproduced on this box because SetSwapInterval(1) succeeds here, so the fallback never
+		   runs -- which is precisely why the achieved interval has to be REPORTED rather than
+		   assumed, and why it needs an override that does not require a rebuild.
+		   BOB_VSYNC=<n> forces the interval: 1 = vsync, 0 = uncapped, -1 = adaptive. */
+		int want = 1, forced = 0;
+		const char* v = getenv("BOB_VSYNC");
+		if (v && *v) { want = atoi(v); forced = 1; }
+		int si = SDL_GL_SetSwapInterval(want);
+		int adaptive = 0;
+		if (si != 0 && !forced) { si = SDL_GL_SetSwapInterval(-1); adaptive = (si == 0); }
+		/* Describe what the driver ACTUALLY DID, not what the call returned. The first cut of
+		   this keyed the label off `si` and reported "driver refused; UNCAPPED -- tearing likely"
+		   for a run that was sitting at interval 1 at a locked 59.2 fps: a refused REQUEST is not
+		   the same as an unsynchronised RESULT, because a refusal leaves the previous interval in
+		   place. An instrument that cries tearing on a clean vsync would send the next reader
+		   hunting a fault that is not there. */
+		int got = SDL_GL_GetSwapInterval();
+		fprintf(stderr, "[vid] swap interval -> %d (%s)%s%s\n", got,
+		        got == 1       ? "vsync" :
+		        got == -1      ? "ADAPTIVE vsync" : "NO SYNC -- tearing likely",
+		        si != 0 ? "   [request refused; this is the pre-existing interval]" : "",
+		        forced ? "   [forced by BOB_VSYNC]" : "");
+		if (got != 1) {
+			fprintf(stderr, "[vid]   WARNING: this is not full vsync. Adaptive (-1) stops "
+			                "synchronising whenever the frame rate drops below the refresh, so "
+			                "the picture TEARS under load (a busy dogfight) while looking clean "
+			                "in level flight. Try BOB_VSYNC=1 to force it.\n");
+		}
+		if (adaptive) fprintf(stderr, "[vid]   (the driver refused interval 1; fell back to adaptive)\n");
 		fflush(stderr);
 	}
 	SDL_GL_MakeCurrent(g_win, g_ctx);
 	g_glOwner = (unsigned long)SDL_ThreadID();   /* main thread owns it through setup */
+	/* PO 2026-09-05 (multiplayer chat): SDL delivers SDL_TEXTINPUT only while text input is
+	   started. Without this the chat box receives nothing and looks exactly like a dead
+	   control -- which is how it was reported. Started once at window creation; the game has
+	   no other text-entry mode to arbitrate with. */
+	SDL_StartTextInput();
 	fprintf(stderr, "[vid] SDL2 window %dx%d + GL context: %s | %s\n",
 		g_scrW, g_scrH, (const char*)glGetString(GL_RENDERER), (const char*)glGetString(GL_VERSION));
 	/* clear once so the window isn't garbage while the rest of init runs */
@@ -412,6 +458,19 @@ static int sdl_to_dik(int sc) {
 	case SDL_SCANCODE_F9: return 0x43; case SDL_SCANCODE_F10: return 0x44;
 	case SDL_SCANCODE_F11: return 0x57; case SDL_SCANCODE_F12: return 0x58;
 	case SDL_SCANCODE_NUMLOCKCLEAR: return 0x45; case SDL_SCANCODE_SCROLLLOCK: return 0x46;
+	/* R26: the NUMERIC KEYPAD. These 13 scancodes were absent from this table, so every
+	   numpad key died here and never reached OnKeyDown -- the cockpit would not pan or zoom
+	   (PO-reported, 2026-09-03, "with or without numlock"). The live 3D key table binds all
+	   13 (42 bindings, /tmp/keys.csv), so the game side was always ready. NumLock does not
+	   matter here: SDL scancodes are PHYSICAL, unlike SDL keycodes, which is why the mapping
+	   belongs on the scancode. KP_MULTIPLY (0x37) and KP_DIVIDE (0xB5) were already present. */
+	case SDL_SCANCODE_KP_7: return 0x47; case SDL_SCANCODE_KP_8: return 0x48;
+	case SDL_SCANCODE_KP_9: return 0x49; case SDL_SCANCODE_KP_MINUS: return 0x4A;
+	case SDL_SCANCODE_KP_4: return 0x4B; case SDL_SCANCODE_KP_5: return 0x4C;
+	case SDL_SCANCODE_KP_6: return 0x4D; case SDL_SCANCODE_KP_PLUS: return 0x4E;
+	case SDL_SCANCODE_KP_1: return 0x4F; case SDL_SCANCODE_KP_2: return 0x50;
+	case SDL_SCANCODE_KP_3: return 0x51; case SDL_SCANCODE_KP_0: return 0x52;
+	case SDL_SCANCODE_KP_PERIOD: return 0x53;
 	/* extended (0xE0-prefixed -> DIK uses 0x80|base) */
 	case SDL_SCANCODE_RCTRL: return 0x9D; case SDL_SCANCODE_RALT: return 0xB8;
 	case SDL_SCANCODE_KP_ENTER: return 0x9C; case SDL_SCANCODE_KP_DIVIDE: return 0xB5;
@@ -513,17 +572,29 @@ static int bob_centre_ui(void);
    is the conservative one. */
 static float g_uiScale = 1.0f;              /* applied uniform scale (1.0 = none) */
 static int   g_uiScaleOffX = 0, g_uiScaleOffY = 0;   /* letterbox offset in window px */
+/* UI-2: "scale ONLY when the content does not fit" -- disposition 1 of the two put to the PO.
+   Kept OPT-IN (BOB_AUTOSCALE_UI=1) because centre-vs-scale is the PO's call and they already
+   answered it once; this only makes the alternative one flag away instead of a code change.
+   It has to be DYNAMIC: whether the content fits is a property of the current screen, not of the
+   process, so it cannot be a cached env flag like the other two. */
+static int g_uiOverflow = 0;        /* set per frame: content taller/wider than the window */
+static int bob_autoscale_ui(void) {
+    static int on = -1;
+    if (on < 0) on = getenv("BOB_AUTOSCALE_UI") ? 1 : 0;
+    return on;
+}
 static int bob_scale_ui(void) {
     static int on = -1;
     /* R9/S369: centring now defaults ON, so "scale unless centring is set" would never fire.
        Scale is an explicit opt-in that also has to turn centring off: BOB_SCALE_UI=1 alone is
        enough, and it wins here because the centring path reads BOB_NO_CENTRE_UI OR this flag. */
     if (on < 0) on = getenv("BOB_SCALE_UI") ? 1 : 0;
-    return on;
+    return on || (bob_autoscale_ui() && g_uiOverflow);
 }
 extern int g_uiOffX, g_uiOffY;
 extern "C" void bob_fake_shoot(int);   /* R3.7: drive SHOOT into the 3D key map (KEYSTUB.CPP) */
 
+extern "C" int bob_fp_key(int ch, int isText);
 static void pump_events(void)
 {
 	if (!g_win) return;
@@ -708,9 +779,36 @@ static void pump_events(void)
 		else if (e.type == SDL_MOUSEWHEEL) {   /* S96: wheel = map zoom in/out */
 			g_mapZoomSteps += e.wheel.y;
 		}
+		else if (e.type == SDL_TEXTINPUT) {
+			/* PO 2026-09-05 (multiplayer chat): printable characters for a focused hosted edit
+			   control. SDL_TEXTINPUT rather than mapping scancodes ourselves, so the user's
+			   keyboard LAYOUT is the OS's business -- a scancode table would type the wrong
+			   letters on any non-US layout, which is the trap FreeFalcon's MP-1 hit from the
+			   other direction (the scancode posted in the wrong parameter, so Key was always 0). */
+			for (const char* c = e.text.text; *c; ++c)
+				if ((unsigned char)*c >= 32 && (unsigned char)*c < 127)
+					bob_fp_key((int)(unsigned char)*c, 1);
+		}
 		else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
 			int dik = sdl_to_dik(e.key.keysym.scancode);
 			if (dik && g_diKbAcquired && !e.key.repeat) kb_push(dik, e.type==SDL_KEYDOWN);
+			/* PO 2026-09-05: the editing keys, which SDL_TEXTINPUT does not deliver. Offered to
+			   the focused edit control FIRST; if it takes them they go no further, so backspace
+			   in a chat box cannot also mean something to the screen behind it. */
+			if (e.type == SDL_KEYDOWN) {
+				int vk = 0;
+				switch (e.key.keysym.sym) {
+				case SDLK_BACKSPACE: vk = 8;  break;
+				case SDLK_RETURN: case SDLK_KP_ENTER: vk = 13; break;
+				case SDLK_DELETE: vk = 46; break;
+				case SDLK_LEFT:   vk = 37; break;
+				case SDLK_RIGHT:  vk = 39; break;
+				case SDLK_HOME:   vk = 36; break;
+				case SDLK_END:    vk = 35; break;
+				default: break;
+				}
+				if (vk && bob_fp_key(vk, 0)) continue;
+			}
 			/* S96: strategic-map pan (arrows) + zoom (+/-) -- captured for the map tick. Harmless in
 			   flight (those keys also go to DInput above; the map tick only drains this when map-active). */
 			if (e.type==SDL_KEYDOWN) {
@@ -1003,15 +1101,86 @@ static void brighten_pass()
    search moves to the camera update rate -- which is worth far more than guessing at vsync.
    Reports periodically and at exit, and says so when it has seen nothing, because a silent
    instrument has repeatedly been read here as "no problem". BOB_TRACE_FRAMETIME=1. */
+/* FRAME PACING when the driver gives us no true vsync (PO 2026-09-04, bob dogfight flicker).
+   Measured on this box: with the swap interval at 0 the game presents at 333 fps -- about six
+   swaps per 60 Hz refresh, so several tear lines are visible at once and the picture "flickers
+   badly". That is the mechanism, and it needs no exotic hardware: any machine where
+   SDL_GL_SetSwapInterval(1) is refused lands there, which is why it reproduces for the PO and
+   not here (this driver grants interval 1).
+   When there IS no vsync, hold each frame to one display refresh in software. This does not
+   align the swap to scanout -- only real vsync does that -- so it does not eliminate tearing;
+   it cuts it from several tears per refresh to at most one, which is the difference between
+   "flickering badly" and an occasional seam. Costs nothing when vsync works: mode 0, one
+   early return. BOB_NO_FPSCAP=1 disables it. */
+static void bob_present_pace(void)
+{
+    static int mode = -1;                 /* -1 = undecided, 0 = vsync fine (off), 1 = pacing */
+    static Uint64 freq = 0, last = 0;
+    static double target_ms = 16.667;
+    if (mode < 0) {
+        mode = 0;
+        if (!g_ctx || getenv("BOB_NO_FPSCAP")) return;
+        if (SDL_GL_GetSwapInterval() != 1) {          /* 0 = none, -1 = adaptive: both tear */
+            SDL_DisplayMode dm; double hz = 60.0;
+            if (SDL_GetCurrentDisplayMode(0, &dm) == 0 && dm.refresh_rate > 0) hz = (double)dm.refresh_rate;
+            target_ms = 1000.0 / hz;
+            mode = 1;
+            fprintf(stderr, "[vid] no true vsync -> pacing frames in software to %.1f Hz "
+                            "(%.2f ms). This limits tearing to one seam per frame; it cannot "
+                            "align the swap to scanout the way real vsync does. BOB_NO_FPSCAP=1 disables.\n",
+                    hz, target_ms);
+            fflush(stderr);
+        }
+    }
+    if (mode != 1) return;
+    if (!freq) freq = SDL_GetPerformanceFrequency();
+    Uint64 now = SDL_GetPerformanceCounter();
+    if (last) {
+        double ms = 1000.0 * (double)(now - last) / (double)freq;
+        /* Only ever wait for the REMAINDER of one refresh. If the frame already took longer we
+           are behind, and sleeping further would just lower the frame rate for no benefit. */
+        if (ms < target_ms) {
+            double left = target_ms - ms;
+            if (left > 0.5) SDL_Delay((Uint32)(left));
+        }
+        now = SDL_GetPerformanceCounter();
+    }
+    last = now;
+}
+
 static void bob_frame_tick(int site)
 {
+    bob_present_pace();   /* runs at every swap site, before the tracing gate */
     static int on = -1;
-    if (on < 0) on = getenv("BOB_TRACE_FRAMETIME") ? 1 : 0;
+    if (on < 0) on = (getenv("BOB_TRACE_FRAMETIME") || getenv("BOB_TRACE_FLICKER")) ? 1 : 0;
     if (!on) return;
     static Uint64 prev = 0, freq = 0;
     static long n = 0, b16 = 0, b33 = 0, b50 = 0, b100 = 0, b200 = 0, bhuge = 0;
     static long persite[8] = {0,0,0,0,0,0,0,0};
     if (site >= 0 && site < 8) persite[site]++;
+    /* FLICKER CENSUS (PO 2026-09-04: "in bob appImage dogfight the screen flickered baddly").
+       The scenes/present RATIO is an average and hides the case that matters: a present with
+       ZERO BeginScene calls since the last one shows a frame nobody drew -- a clear-only buffer
+       or a repeat -- which is exactly what a flash looks like. Counting per frame separates
+       "5 scenes every frame" from "10 scenes then 0", which average identically.
+       Two integer ops per present, so unlike a glReadPixels probe it cannot perturb the timing
+       it is measuring (a per-frame readback is a pipeline sync and can mask a timing-dependent
+       flicker outright). BOB_TRACE_FLICKER=1 also reports each zero-scene frame as it happens. */
+    { extern long g_bobSceneCount;
+      static long prevSc = -1, zeroFrames = 0, sceneHist[10] = {0,0,0,0,0,0,0,0,0,0};
+      static int loud = -1;
+      if (loud < 0) loud = getenv("BOB_TRACE_FLICKER") ? 1 : 0;
+      if (prevSc >= 0) {
+          long d = g_bobSceneCount - prevSc; if (d < 0) d = 0;
+          sceneHist[d < 9 ? (int)d : 9]++;
+          if (d == 0) { zeroFrames++;
+              if (loud) { fprintf(stderr, "[flicker] frame %ld presented with ZERO scenes drawn "
+                                          "(nothing was rendered into it)\n", n + 1); fflush(stderr); } }
+      }
+      prevSc = g_bobSceneCount;
+      g_bobZeroSceneFrames = zeroFrames;
+      for (int i = 0; i < 10; i++) g_bobSceneHist[i] = sceneHist[i];
+    }
     static double worst[5] = {0,0,0,0,0};
     /* R16-S2: report the MEAN and MEDIAN, not only buckets. The first cut of this reported
        "<16.7ms=55%" and I read it as more than one present per refresh -- but the bucket edge sits
@@ -1062,6 +1231,11 @@ static void bob_frame_tick(int site)
                       g_bobClearCount, n ? (double)g_bobClearCount/(double)n : 0.0,
                       g_bobClearCount ? (double)g_bobSceneCount/(double)g_bobClearCount : 0.0);
               prevScene = g_bobSceneCount; prevN = n; }
+            fprintf(stderr, "[frametime] scenes-per-frame: 0=%ld 1=%ld 2=%ld 3=%ld 4=%ld 5=%ld "
+                            "6=%ld 7=%ld 8=%ld 9+=%ld   (0 = a frame nobody drew -> flash)\n",
+                    g_bobSceneHist[0], g_bobSceneHist[1], g_bobSceneHist[2], g_bobSceneHist[3],
+                    g_bobSceneHist[4], g_bobSceneHist[5], g_bobSceneHist[6], g_bobSceneHist[7],
+                    g_bobSceneHist[8], g_bobSceneHist[9]);
             fprintf(stderr, "[frametime] per-site swaps: 0=%ld 1=%ld 2=%ld 3=%ld 4=%ld 5=%ld\n",
                     persite[0], persite[1], persite[2], persite[3], persite[4], persite[5]);
             fflush(stderr);
@@ -1186,6 +1360,20 @@ static unsigned* g_gdiFB = NULL; static int g_gdiW = 0, g_gdiH = 0;
 int g_uiOffX = 0, g_uiOffY = 0;             /* applied offset (previous frame's measurement) */
 static int g_uiExtLastX = 0, g_uiExtLastY = 0;  /* last completed frame's content extent */
 static int g_uiExtX = 0, g_uiExtY = 0;      /* content extent accumulating this frame */
+/* Drop the cached extent and the offset derived from it. The next frame then measures the content
+   afresh at the NEW mode. That costs one uncentred frame -- the behaviour the centring comment
+   already describes and accepts -- whereas reusing a stale extent places the canvas wrongly and
+   keeps it there, because the offset is only ever recomputed from a measurement that never changes
+   while the same screen is repainted. One wrong frame is self-correcting; a wrong offset is not. */
+static void bob_ui_extent_invalidate(void)
+{
+    if (getenv("BOB_TRACE_VID") && (g_uiExtLastX || g_uiExtLastY))
+        fprintf(stderr, "[centre] mode changed -- dropping stale content extent %dx%d "
+                        "(offset was %d,%d)\n", g_uiExtLastX, g_uiExtLastY, g_uiOffX, g_uiOffY);
+    g_uiExtLastX = g_uiExtLastY = 0;
+    g_uiExtX = g_uiExtY = 0;
+    g_uiOffX = g_uiOffY = 0;
+}
 static int bob_centre_ui(void) {
     static int on = -1;
     /* R9/S369: centring is now the DEFAULT; BOB_NO_CENTRE_UI=1 reverts to top-left.
@@ -1199,6 +1387,9 @@ static int bob_centre_ui(void) {
        stays opt-in (BOB_SCALE_UI=1) as a genuine preference rather than a default.
        Reversible either way; the PO's answer changes one line. */
     if (on < 0) on = (getenv("BOB_NO_CENTRE_UI") || getenv("BOB_SCALE_UI")) ? 0 : 1;
+    /* on an overflowing screen the two are mutually exclusive and scale is the only one that can
+       show the bottom row -- centring cannot make 1532 px fit in 1080. */
+    if (bob_autoscale_ui() && g_uiOverflow) return 0;
     return on;
 }
 extern "C" void bob_ui_centre_offset(int* x, int* y) { if (x) *x = g_uiOffX; if (y) *y = g_uiOffY; }
@@ -1283,13 +1474,44 @@ extern "C" void bob_gdi_present(void) {
 	   Every drawing path has already run by present time, so g_uiExtX/Y is complete here and no
 	   staleness is needed. g_uiExtLast survives only as the fallback for a frame that drew
 	   nothing at all (an idle frame must not re-centre onto an extent of zero). */
+	/* UI-2: decide overflow BEFORE either placement block runs, from this frame's extent
+	   (falling back to the last non-empty one for a frame that drew nothing). */
+	{
+		int ex = (g_uiExtX > 0) ? g_uiExtX : g_uiExtLastX;
+		int ey = (g_uiExtY > 0) ? g_uiExtY : g_uiExtLastY;
+		int over = (ex > 0 && ey > 0 && g_scrW > 0 && g_scrH > 0 &&
+		            (ex > g_scrW || ey > g_scrH)) ? 1 : 0;
+		/* Prove the instrument can speak: report ARMED once, with the first extent it sees.
+		   Otherwise a run where nothing overflows is indistinguishable from a run where the flag
+		   was ignored -- and "no output" would read as "autoscale did nothing" when it may mean
+		   "autoscale never ran". That confusion has cost this project several sprints already. */
+		if (bob_autoscale_ui()) {
+			static int armed = 0;
+			if (!armed) {
+				armed = 1;
+				fprintf(stderr, "[autoscale] ARMED: content %dx%d window %dx%d (overflow=%d)\n",
+				        ex, ey, g_scrW, g_scrH, over);
+				fflush(stderr);
+			}
+		}
+		if (over != g_uiOverflow && bob_autoscale_ui()) {
+			fprintf(stderr, "[autoscale] content %dx%d vs window %dx%d -> %s\n",
+			        ex, ey, g_scrW, g_scrH, over ? "SCALE (does not fit)" : "centre (fits)");
+			fflush(stderr);
+		}
+		g_uiOverflow = over;
+	}
 	if (bob_scale_ui()) {
 		int ex = (g_uiExtX > 0) ? g_uiExtX : g_uiExtLastX;
 		int ey = (g_uiExtY > 0) ? g_uiExtY : g_uiExtLastY;
 		if (ex > 0 && ey > 0 && g_scrW > 0 && g_scrH > 0) {
 			float sx = (float)g_scrW / (float)ex, sy = (float)g_scrH / (float)ey;
 			float sc = sx < sy ? sx : sy;               /* uniform: never stretch the art */
-			if (sc < 1.0f) sc = 1.0f;                   /* never shrink below 1:1 */
+			/* UI-2: this 1:1 clamp is why BOB_SCALE_UI=1 could NOT fix the oversized campaign
+			   screen -- 1080/1532 = 0.70 was clamped straight back to 1.0, so the bottom row
+			   stayed off-screen and "scale" looked like it did nothing. Shrinking is the whole
+			   point when the content does not fit, so allow it in exactly that case. */
+			if (sc < 1.0f && !(bob_autoscale_ui() && g_uiOverflow)) sc = 1.0f;
 			int dw = (int)(ex * sc + 0.5f), dh = (int)(ey * sc + 0.5f);
 			int ox = (g_scrW > dw) ? (g_scrW - dw) / 2 : 0;
 			int oy = (g_scrH > dh) ? (g_scrH - dh) / 2 : 0;
@@ -3346,6 +3568,20 @@ static SDL_Joystick* g_sdlJoy = NULL;
 static int g_joyNAxes=0, g_joyNButtons=0, g_joyNHats=0;
 static int g_joyAxisOfs[16];      /* SDL axis index -> data-format buffer offset (-1 = unmapped) */
 static int g_joyButtonOfs[64];    /* SDL button index -> offset */
+/* R3.2 harness (2026-09-04): hold a synthetic JOYSTICK BUTTON.
+   Why this is needed: the engine starter (FK_ENGINESTARTER0) must be HELD to run
+   (KEYFLY.CPP:501), and its only bindings are DIK 0x0D in shift-state 5 -- unreachable, because
+   shift state is ASSIGNED not OR'd and no key in the table yields 5 -- and 0x10B, which is
+   Raw_A1_b7, a DEVICE button. So a keyboard-only harness can never start an engine, which is why
+   every headless flight attempt since June has sat at Speed 0 with the throttle applied.
+   BOB_FAKE_BTN=<n> holds SDL button n down (0-based). Default off; affects nothing when unset. */
+static int joy_btn(int i)
+{
+    static int fake = -2;
+    if (fake == -2) { const char* v = getenv("BOB_FAKE_BTN"); fake = v ? atoi(v) : -1; }
+    if (fake >= 0 && i == fake) return 1;
+    return g_sdlJoy ? SDL_JoystickGetButton(g_sdlJoy, i) : 0;
+}
 static int g_joyHatOfs = -1;      /* POV/hat offset */
 static DWORD g_joyLastPov = 0xFFFFFFFF;   /* S163: last POV reported through the buffered path */
 static int g_joyTraced = 0;
@@ -3390,6 +3626,23 @@ static int g_mouseAxisOfs[3]   = {-1,-1,-1};   /* SDL axis 0=X 1=Y 2=wheel -> da
 static int g_mouseButtonOfs[8];                /* SDL button index -> offset */
 static int g_mouseLastBtn[8];
 static int g_mouseInit  = 0;
+/* R26: DirectInput button INSTANCE order is left, RIGHT, middle -- NOT SDL's left, middle, right.
+   This mapping was `SDL_BUTTON(i+1)`, i.e. straight SDL order, so DI instance 1 carried the SDL
+   MIDDLE button and instance 2 the right. The live 3D key table binds instance 1 (Raw_A2_b1=301)
+   to MOUSEMODETOGGLE -- the panning <-> interactive-cockpit switch -- and instance 2 to
+   ROTRESET2, so the PO's right-click recentred the view instead of toggling mouse mode.
+   BOB_MOUSE_SDLORDER=1 restores the old (wrong) order for A/B. */
+static int mouse_sdl_button_for_di(int inst) {
+	static int sdlorder = -1;
+	if (sdlorder < 0) sdlorder = getenv("BOB_MOUSE_SDLORDER") ? 1 : 0;
+	if (sdlorder) return inst + 1;
+	switch (inst) {
+		case 0: return SDL_BUTTON_LEFT;
+		case 1: return SDL_BUTTON_RIGHT;
+		case 2: return SDL_BUTTON_MIDDLE;
+		default: return inst + 1;
+	}
+}
 static int g_mouseTraced= 0;
 
 /* relative mouse delta since last call (or the injected test delta). */
@@ -3415,7 +3668,7 @@ static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID 
 		for (int i=0;i<g_joyNAxes && i<16;i++) { int o=g_joyAxisOfs[i];
 			if (o>=0 && o+4<=n) *(int32_t*)((char*)buf+o) = SDL_JoystickGetAxis(g_sdlJoy,i); }  /* -32768..32767 */
 		for (int i=0;i<g_joyNButtons && i<64;i++) { int o=g_joyButtonOfs[i];
-			if (o>=0 && o<n) ((unsigned char*)buf)[o] = SDL_JoystickGetButton(g_sdlJoy,i)?0x80:0; }
+			if (o>=0 && o<n) ((unsigned char*)buf)[o] = joy_btn(i)?0x80:0; }
 		if (g_joyHatOfs>=0 && g_joyHatOfs+4<=n && g_joyNHats>0) {
 			Uint8 h=SDL_JoystickGetHat(g_sdlJoy,0); DWORD pov=0xFFFFFFFF; /* centred */
 			if      (h==SDL_HAT_UP)        pov=0;
@@ -3438,7 +3691,7 @@ static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID 
 		int n=(int)cb;
 		Uint32 bmask = SDL_GetMouseState(NULL,NULL);
 		for (int i=0;i<3;i++) { int o=g_mouseButtonOfs[i];
-			if (o>=0 && o<n) ((unsigned char*)buf)[o] = (bmask & SDL_BUTTON(i+1))?0x80:0; }
+			if (o>=0 && o<n) ((unsigned char*)buf)[o] = (bmask & SDL_BUTTON(mouse_sdl_button_for_di(i)))?0x80:0; }
 	}
 	return 0;
 }
@@ -3470,7 +3723,7 @@ static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEO
 			}
 		}
 		for (int i=0;i<g_joyNButtons && i<64 && got<want;i++) if (g_joyButtonOfs[i]>=0) {
-			int v=SDL_JoystickGetButton(g_sdlJoy,i)?0x80:0;
+			int v=joy_btn(i)?0x80:0;
 			if (v!=g_joyLastBtn[i]) {
 				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_joyButtonOfs[i];
 					buf[got].dwData=(DWORD)v; buf[got].dwSequence=++g_kbSeq; }
@@ -3530,7 +3783,7 @@ static HRESULT DIDEV_GetDeviceData(IDirectInputDeviceA* This, DWORD, LPDIDEVICEO
 			got++;
 		}
 		for (int i=0;i<3 && got<want;i++) if (g_mouseButtonOfs[i]>=0) {
-			int v=(bmask & SDL_BUTTON(i+1))?0x80:0;
+			int v=(bmask & SDL_BUTTON(mouse_sdl_button_for_di(i)))?0x80:0;
 			if (v!=g_mouseLastBtn[i]) {
 				if (buf){ memset(&buf[got],0,sizeof(buf[got])); buf[got].dwOfs=(DWORD)g_mouseButtonOfs[i];
 					buf[got].dwData=(DWORD)v; buf[got].dwSequence=++g_kbSeq; }
@@ -3859,3 +4112,23 @@ extern "C" void bob_modal_pump(void) {
 	}
 	SDL_Delay(8);          /* the modal is idle-waiting for a human; do not spin a core */
 }
+
+/* ====================================================================== *
+ * R27: application-exit flag.                                            *
+ * CMIGApp::Run()'s for(;;) has exactly one exit: `if (!PumpMessage())    *
+ * return ExitInstance();`. On Windows PumpMessage goes FALSE after       *
+ * WM_QUIT, which CFrameWnd::OnClose -> DestroyWindow posts. Here that     *
+ * whole tail was stubbed, so Quit left the process spinning with the      *
+ * front end torn down (m_doIExist=false) -- a black window at ~6% CPU     *
+ * that only ALT-TAB + kill could clear. This is the flag those now share. *
+ * ====================================================================== */
+static volatile int g_bobQuit = 0;
+static int          g_bobQuitCode = 0;
+extern "C" void bob_request_quit(int code) {
+	if (g_bobQuit) return;                 /* first request wins; it is not re-entrant */
+	g_bobQuit = 1; g_bobQuitCode = code;
+	fprintf(stderr, "[quit] exit requested (code %d) -- leaving the Run loop\n", code);
+	fflush(stderr);
+}
+extern "C" int bob_quit_requested(void) { return g_bobQuit; }
+extern "C" int bob_quit_code(void)      { return g_bobQuitCode; }

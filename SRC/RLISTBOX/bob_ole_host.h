@@ -26,6 +26,16 @@ struct OleHost {
     virtual void getprop(DISPID id, void* pvRet) = 0;
     virtual void draw(class CDC* pdc, int w, int h) = 0;
     virtual void applyDesignProps() {}   /* set design-time props (e.g. RStatic label caption) once ids are known */
+    /* PO 2026-09-05: multiplayer chat -- "can't type anything in". The chat box is a genuine
+       CREdit (COMMCHAT.CPP:134 GETDLGITEM(IDC_PLAYERCHAT)) and IS hosted, so it draws its caret --
+       but HostREdit implemented boot/draw/setprop/getprop/dispatch and NO keyboard path at all, so
+       a keystroke had nowhere to go. Note P8 was closed on the premise "BoB hosts no edit controls,
+       so nothing fires it today"; this screen is the counter-example.
+       wantsKeys() marks a control that should take focus on click; onKey() delivers one keystroke,
+       returning 1 if it consumed it. */
+    virtual int  wantsKeys() { return 0; }
+    virtual int  onKey(int /*ch*/, int /*isText*/) { return 0; }
+    virtual const char* keyText() { return 0; }   /* current text, for a submit event's argument */
     virtual int  onClick() { return 0; } /* interactive controls (RCombo) cycle on click; return 1 if state changed */
     /* S197: some controls need WHERE inside themselves they were clicked -- a spin button's arrows
        are the right ~15px and its up/down halves are decided by Y. onClick() has no coordinates and

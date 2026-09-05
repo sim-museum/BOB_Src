@@ -804,6 +804,48 @@ extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog) {
     fprintf(stderr, "[hittargets]   (%d hosted controls for this dialog)\n", n);
 }
 
+/* PO 2026-09-05 (multiplayer chat): keyboard focus for hosted edit controls.
+   Clicking a control that wantsKeys() gives it focus; bob_ole_key() then routes keystrokes to it.
+   Focus is cleared whenever the focused host's dialog stops being the one clicked, so a stale
+   pointer cannot outlive its screen -- the same hazard that produced today's SIGSEGV in
+   UIGetSessionListUpdate, and worth not repeating one file away from it. */
+static OleHost* g_focusHost = 0;
+
+extern "C" void bob_ole_clear_focus(void) { g_focusHost = 0; }
+
+/* Deliver one keystroke to the focused hosted control. isText=1 for a printable character
+   (SDL_TEXTINPUT), 0 for a virtual key (backspace/enter/arrows). Returns 1 if consumed. */
+extern "C" int bob_ole_key(int ch, int isText) {
+    if (!g_focusHost) return 0;
+    /* the focused host must still be a live, hosted control -- not a pointer left behind by a
+       screen that has gone away. */
+    int alive = 0;
+    for (auto& kv : hosts()) if (kv.second == g_focusHost) { alive = 1; break; }
+    if (!alive) { g_focusHost = 0; return 0; }
+    int took = g_focusHost->onKey(ch, isText);
+    if (took == 2) {
+        /* RETURN on an edit: fire the control's ReturnPressed (dispid 1) on the dialog's RUNTIME
+           type, the same route bob_ole_click uses for combo TextChanged. For the chat box this is
+           CReadyRoom::OnReturnPressedPlayerchat, which is what puts the line on the wire. */
+        CWnd* par = (CWnd*)g_focusHost->parentDlg;
+        if (par && g_focusHost->ctrlId) {
+            const char* txt = g_focusHost->keyText();
+            bob_evtP = (void*)(txt ? txt : "");
+            bob_evtA0 = 0; bob_evtA1 = 0;
+            bob_evt_fire((void*)par, &typeid(*par), g_focusHost->ctrlId, 1 /*ReturnPressed*/);
+            bob_evtP = 0;
+            if (bob_ole_trace())
+                fprintf(stderr, "[ole] RETURN on id=%d -> ReturnPressed(\"%s\")\n",
+                        g_focusHost->ctrlId, txt ? txt : "");
+        }
+        return 1;
+    }
+    if (bob_ole_trace())
+        fprintf(stderr, "[ole] key %s %d -> id=%d %s\n",
+                isText ? "text" : "vkey", ch, g_focusHost->ctrlId, took ? "consumed" : "ignored");
+    return took;
+}
+
 extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
     if (bob_ole_trace()) {
         int match=0; for (auto& kv : hosts()) if (kv.second->parentDlg==dialog) match++;
@@ -818,6 +860,13 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         int hitH = (h->hitH > 0) ? h->hitH : h->sh;
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + hitH) {
             bob_ole_last_click_id = h->ctrlId;   /* S156: report the hit control to the caller */
+            /* PO 2026-09-05: a click on an edit control gives it the keyboard. Set before the
+               onClickXY/onButtonClick/onClick chain below, because those may return early. */
+            if (h->wantsKeys()) {
+                g_focusHost = h;
+                if (bob_ole_trace())
+                    fprintf(stderr, "[ole] keyboard focus -> id=%d\n", h->ctrlId);
+            }
             /* S129: a multi-button control (RRadio tab row) -- select the button under the
                cursor and fire its genuine Selected(index) event (dispid 1, VTS_I4) via the
                general eventsink so the dialog's handler runs (e.g. CSQuick1::OnSelectedRradio
