@@ -1033,3 +1033,41 @@ Continue and this function.
 Instruments kept, all `BOB_TRACE_DPLAY`-gated: packet ids at `ProcessPlayerMessage`, the
 `aggID` decision in `UIUpdateMainSheet`, `Process_PM_Password`/`CheckPassword` entry, and the
 host/join branch in `RFullPanelDial::CreatePlayer`.
+
+### MP-5 (cont. 8) — the client sits on the LOCKER ROOM; my harness cannot click its Continue
+
+Corrected picture of where the client actually stops. Its last screen is the **locker room**:
+
+    [menu] screen=... artnum=27920 items=3 HORIZ
+    [menu]   0 "Back"      centre=(63,747)
+    [menu]   1 "Continue"  centre=(156,747)      <- this is what calls CreatePlayer
+    [menu]   2 "Load Game" centre=(227,747)
+
+and `FPLAYOUT.CPP:574` maps that item to `&RFullPanelDial::CreatePlayer`, whose else-branch is the
+`AttemptToJoin()` that sends `PID_PASSWORD`. **So the join is one click away and the click is not
+landing.**
+
+**Two drivers tried, both fail on this screen specifically:**
+
+* `BOB_AUTOCLICK="2,2,1,1"` — the 4th step never fires. Only three menu clicks appear (MP, Join,
+  Select) plus the three session-row SDL clicks.
+* `BOB_SDL_CLICK` at ticks 620/760/900 on (156,747) — **no `[sdlclick]` line at all** for those
+  ticks, though the earlier row clicks at 280-320 fired normally. The tick counter increments once
+  per pump call, so a later tick cannot simply be skipped: the pump appears to stop advancing after
+  Select, which is when `JoinCommsGame` → `JoinComms()` runs and blocks on its own comms timeout.
+
+**This is a HARNESS limit, not a proven game defect, and the distinction matters:** everything I have
+said about "the client never sends PID_PASSWORD" is true of runs in which *Continue was never
+clicked*. It does not establish that the join fails when a human clicks it.
+
+⭐ **Cheapest way to settle it: the PO clicks Continue on a real client.** One click answers whether
+`AttemptToJoin` fires, whether the host allocates a slot, and whether Fly then works — and the
+instruments are already in and default-off:
+
+    BOB_TRACE_DPLAY=1   ->  [mp] CreatePlayer: UIPlayerType=... -> join path
+                            [mp] Process_PM_Password from=... Host=1     (on the HOST)
+                            [mp] CheckPassword name=... -> slot=N        (on the HOST)
+
+If those three appear, the join works and the remaining question is only Fly. If `CreatePlayer`
+prints the join path but the host never prints `Process_PM_Password`, the defect is real and is in
+`AttemptToJoin`'s send.
