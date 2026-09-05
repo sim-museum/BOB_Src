@@ -28,7 +28,7 @@ So BoB records **only when the gun-camera-on-trigger preference is on AND the pl
 
 **NEXT STEP (testable, not speculative):** set `GD_GUNCAMERAONTRIGGER`, fly, fire, and check for `[reclog]`. If it arms, R1 is a *preference-plumbing* story, not a repair. Two twin traps already avoided here: the compiled files are **`Winmove.cpp`** and **`Transite.cpp`** (mixed case), not their SHOUTING twins. |
 | R2 | Saving a replay also writes a Tacview `.acmi`. | 8 | ✅ **DONE (S268/S272).** 148 distinct objects on a campaign flight, coloured by side (288k Blue / 273k Red samples). Units cross-validated: **IAS vs position-derived speed = 0.9656**, anchored by the PO's own cockpit HUD (`Speed 177Kts, Alt 5123ft`). Remaining polish: the file is **57 MB** for one sortie at 25 Hz x 148 objects — worth a sampling option. | `.acmi` appears beside the `.cam`; the `.cam` is **byte-identical** to what the same save produced before. | 🔨 **NEW — blocked on R1.** Nothing should be built on a replay path that does not work; MA learned this the expensive way (EPIC L's L1 was blocked on PO-68 for exactly this reason). **`SRC/compat/ma_acmi.cpp` should port nearly unchanged** — it deliberately takes plain C types and knows nothing about the game's structures, so only the tee's field names differ. |
-| R3 | Every aircraft exports, not just the player. | 5 | AI aircraft appear as distinct objects. | 🔨 **NEW.** MA walks `*AirStruc::ACList` stepping `*ac->nextmobile` — **the same link the replay reader uses** (MA S226 cost four sprints to learn that; do not re-derive it). |
+| R3 | Every aircraft exports, not just the player. | 5 | AI aircraft appear as distinct objects. | ✅ **DONE (S436–S439).** Measured on the exported file, not in-process: **39 AI aircraft + 1 player** as distinct objects, **0 ids whose `Name` changes and 0 whose `Color` changes across 6,535 time markers**, ids are game uids (`136c`…) not 1..N. Identity fixed to `uniqueID.count` in S437. Known limit: the walk still caps at `_id < 256` and the list runs to 148, so a raid 73 % larger truncates silently. Original note: MA walks `*AirStruc::ACList` stepping `*ac->nextmobile` — **the same link the replay reader uses** (MA S226 cost four sprints to learn that; do not re-derive it). |
 
 ⭐ **Carry MA's two hard-won constraints into R2 unchanged:**
 1. **Tee from the SIM, do not convert the `.cam`.** A `REPLAYPACKET` is packed deltas against a
@@ -537,3 +537,36 @@ quantity itself.
 
 **R3 state: walk ✅, filters ✅, colours ✅, types ✅, identity ✅ (uniqueID, proven distinct),
 list-size hazard ✅ measured-absent, `_id<256` cap ⚠️ known limit. Sprint 3 of 4.**
+
+### S439 (2026-09-05) — R3 **CLOSED**, on evidence from the artifact rather than from the process
+
+The three prior sprints measured the exporter from *inside* the game. This one reads the file a
+player would actually open — `acmi_current.txt`, written live in the game directory (7.5 MB from the
+S438 campaign run, under the new `uniqueID` id scheme).
+
+| measure | result |
+|---|---|
+| distinct object ids | **40** |
+| of which `Pilot=Player` | **1** (`136c`) — so **39 AI aircraft** |
+| object samples | 55,504 |
+| time markers | 6,535 |
+| **ids whose `Name` changes** | **0** |
+| **ids whose `Color` changes** | **0** |
+| id form | game uids (`136c`, `136d`, `1370`…), **not** 1..N |
+| samples spanned per object | min 47,622 / max 55,480 of 55,504 |
+
+**That is R3's acceptance criterion met and measured.** "AI aircraft appear as distinct objects"
+needs two things — distinct, and *the same* object throughout — and both are now properties of the
+delivered file rather than of a counter I wrote. Zero name changes and zero colour changes across
+6,535 markers is the artifact-level restatement of S437's zero swaps, arrived at by a different
+route, which is why it is worth having both.
+
+**Caveat on coverage, stated rather than glossed:** every object in this run is a **Ju-87** — the
+Luftwaffe Convoys campaign launches a single Stuka squadron, so this file exercises one type. Four
+types were evidenced separately at S282. This run proves *identity*, not type coverage.
+
+**Also worth recording:** 40 objects exported from a 148-aircraft list. The gap is the S285
+dead/unplaced filters doing their job — 108 aircraft tracked by the campaign but not instantiated in
+the local 3D area, which is exactly what those filters exist to keep out of the file.
+
+**R3 closes at 4 of 4 sprints.** Remaining known limit, carried not hidden: the `_id < 256` cap.
