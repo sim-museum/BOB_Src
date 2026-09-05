@@ -1071,3 +1071,51 @@ instruments are already in and default-off:
 If those three appear, the join works and the remaining question is only Fly. If `CreatePlayer`
 prints the join path but the host never prints `Process_PM_Password`, the defect is real and is in
 `AttemptToJoin`'s send.
+
+### MP-5 (cont. 9) — ⭐⭐ THE JOIN WORKS END TO END. Both sides now enter 3D; the client stalls on a sync packet
+
+## The harness limit is gone — `BOB_SDL_CLICK_MS`
+
+`BOB_SDL_CLICK` fires on a PUMP-CALL counter, and that counter stops advancing when the game blocks
+inside its own comms timeouts — so after the client clicked Select, `JoinComms()` blocked and every
+later tick-scheduled click was never reached. Measured: row clicks at ticks 280-320 fired, ticks 620+
+produced no injection line at all. **`BOB_SDL_CLICK_MS="ms,x,y[;...]"` schedules on elapsed
+milliseconds instead**, so a stalled pump DELAYS a click rather than losing it. It fires on the first
+pump call after its deadline:
+
+    [sdlclickms] pushed SDL_MOUSEBUTTONDOWN (156,747) at 20233ms (due 20000ms) rc=1
+
+## ⭐⭐ With Continue actually clicked, the whole join works
+
+    client:  [mp] CreatePlayer: UIPlayerType=2 (HOST=1 GUEST=2) -> join path
+    host:    [mp] ProcessPlayerMessage: PacketID=9 size=44 from=4      <- PID_PASSWORD
+    host:    [mp] Process_PM_Password from=4 Host=1
+    host:    [mp] CheckPassword name="Bob" player=4 -> slot=1 pwordOK=1
+
+**The host allocates slot 1 to the client, by name.** ⛔ **This RETRACTS the earlier conclusion that
+"the client never sends PID_PASSWORD"** — that was true only of runs in which Continue was never
+clicked, exactly as flagged when it was recorded. The join was never broken; my driver could not
+reach the button.
+
+## Where it stands now
+
+| | host | client |
+|---|---|---|
+| hosts / joins | ✅ | ✅ |
+| **host allocates a player slot for the client** | ✅ **slot 1, "Bob"** | — |
+| Ready Room | ✅ | ✅ (artnum 27918) |
+| **enters the 3D transition** | ✅ `InThe3D=1` | ✅ reaches artnum 0 |
+| completes 3D entry | ✅ | ⛔ **`FATAL: Timed out (SIP)`** |
+
+**The client's failure is now a SYNC, not a missing join.** `WINMOVE.CPP:1499` — inside
+`SendPacketToAggregator`, the client sits in *"Receive Random List"* waiting for the host and quits
+after `CommsTimeoutLength` (20 s).
+
+**Also found, and it is the likely next fix:** the client's `quickdef` seed **never runs** (`seeded
+from scenario` = 0 on the client). The seed lives in `CommsSelectFly`, the menu action behind the Fly
+item — but a client never clicks Fly: `CReadyRoom::OnTimer` sees `FlyNowFlag` and calls
+`UINetworkSelectFly()` then `OnSelectRlistbox(1,1)` itself. So the client enters 3D with an empty
+quickdef, exactly the state that made the HOST fatal before the seed was added.
+
+**Next, in order:** (1) seed `quickdef` on the client's auto-launch path too, not just the menu
+action; (2) then trace the random-list send on the host against the receive on the client.

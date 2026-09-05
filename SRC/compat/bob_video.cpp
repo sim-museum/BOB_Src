@@ -746,6 +746,42 @@ static void pump_events(void)
 			}
 		}
 	}
+	/* MP-5: BOB_SDL_CLICK_MS="ms,x,y[;ms,x,y...]" -- the WALL-CLOCK twin of BOB_SDL_CLICK.
+	   BOB_SDL_CLICK fires on a PUMP-CALL counter, and that counter stops advancing when the game
+	   blocks inside its own comms timeouts: after the client clicks Select, JoinComms() blocks and
+	   every later tick-scheduled click is simply never reached, so the locker room's Continue --
+	   the click that triggers AttemptToJoin and the whole join -- could not be driven at all.
+	   Measured: row clicks at ticks 280-320 fired, ticks 620+ produced no [sdltext]/[sdlclick] line
+	   whatsoever. Scheduling on elapsed milliseconds means a stalled pump DELAYS a click instead of
+	   losing it: it fires on the first pump call after its deadline. */
+	{
+		const char* st = getenv("BOB_SDL_CLICK_MS");
+		static Uint32 t0 = 0;
+		static char fired[32];
+		if (st) {
+			if (!t0) { t0 = SDL_GetTicks(); memset(fired, 0, sizeof(fired)); }
+			Uint32 el = SDL_GetTicks() - t0;
+			int idx = 0;
+			for (const char* p = st; p && *p && idx < 32; idx++) {
+				long T; int px, py;
+				if (sscanf(p, "%ld,%d,%d", &T, &px, &py) == 3 && !fired[idx] && el >= (Uint32)T) {
+					fired[idx] = 1;
+					int lw = g_scrW, lh = g_scrH;
+					if (g_win) SDL_GetWindowSize(g_win, &lw, &lh);
+					SDL_Event ev; memset(&ev, 0, sizeof(ev));
+					ev.type = SDL_MOUSEBUTTONDOWN; ev.button.button = SDL_BUTTON_LEFT;
+					ev.button.state = SDL_PRESSED; ev.button.clicks = 1;
+					ev.button.x = g_scrW ? px * lw / g_scrW : px;
+					ev.button.y = g_scrH ? py * lh / g_scrH : py;
+					int pushed = SDL_PushEvent(&ev);
+					fprintf(stderr, "[sdlclickms] pushed SDL_MOUSEBUTTONDOWN (%d,%d) at %ums (due %ldms) rc=%d\n",
+					        px, py, (unsigned)el, T, pushed);
+					fflush(stderr);
+				}
+				p = strchr(p, ';'); if (p) p++;
+			}
+		}
+	}
 	{
 		const char* sc = getenv("BOB_SDL_CLICK");
 		static long sc_calls = -1;
