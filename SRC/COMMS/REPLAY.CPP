@@ -512,15 +512,31 @@ Bool	Replay::StoreDeltas()
 						_seen[_oid] = (void*)_ac;
 						_seenFrame[_oid] = (unsigned long)replayframecount + 1;
 					}
+					/* S438: LIST LENGTH PER FRAME, measured rather than inferred from report
+					   boundaries. `_id==1` is the first aircraft of a frame, so the previous
+					   frame's count is final at that moment. This answers two open R3 threads at
+					   once: how close the walk gets to its hard `_id < 256` cap, and whether
+					   ACList changes size mid-sortie (which is what would make the positional-id
+					   hazard real). Deriving these from the sampled trace gave 125..166.7, which
+					   was an artifact of reports not aligning with frames. */
+					static unsigned long _lenPrev = 0, _lenMin = 0xFFFFFFFFUL, _lenMax = 0, _lenChg = 0;
+					if (_id == 1 && _lenPrev)
+					{
+						if (_lenPrev < _lenMin) _lenMin = _lenPrev;
+						if (_lenPrev > _lenMax) _lenMax = _lenPrev;
+						if (_lenMin != _lenMax) _lenChg++;
+					}
+					_lenPrev = _id;
 					static long _every = -1;
 					if (_every < 0) _every = getenv("BOB_ACMI_IDEVERY") ? atol(getenv("BOB_ACMI_IDEVERY")) : 50;
 					if ((_rep++ % _every) == 0)
 					{
 						static long _p2 = -1;
 						if (_p2 < 0) _p2 = getenv("BOB_ACMI_POSID") ? 1 : 0;
-						fprintf(stderr, "[acmi] idscheme=%s identity: %lu swaps / %lu checks / %lu walked (frame %lu)\n",
+						fprintf(stderr, "[acmi] idscheme=%s identity: %lu swaps / %lu checks / %lu walked (frame %lu) listlen min=%lu max=%lu cap=256\n",
 						        _p2 ? "POSITIONAL" : "uniqueID", _swaps, _checks, _rep,
-						        (unsigned long)replayframecount);
+						        (unsigned long)replayframecount,
+						        _lenMin == 0xFFFFFFFFUL ? 0UL : _lenMin, _lenMax);
 						fflush(stderr);
 					}
 				}

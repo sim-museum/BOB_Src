@@ -506,3 +506,34 @@ unique.
 recorded before and after this sprint are not id-comparable.
 
 **R3: the walk, filters, colours, types and now the identity are all in. Sprint 2 of 4.**
+
+### S438 (2026-09-05) — R3: the list is **exactly 148 and never changes**; the 256 cap has 1.7x headroom
+
+Both remaining R3 threads answered by one direct measurement, replacing numbers I had *derived* and
+got wrong.
+
+**Instrument:** `_id == 1` marks the first aircraft of a frame, so the previous frame's count is
+final at that instant; min/max reported in the existing trace line.
+
+    [acmi] idscheme=uniqueID identity: 0 swaps / 965853 checks / 966001 walked (frame 383)
+           listlen min=148 max=148 cap=256
+
+* **`ACList` holds exactly 148 aircraft and does not change size across 383 frames.** That is
+  independent corroboration of S437's zero swaps: the list is not mutated during a sortie, so the
+  positional-id hazard cannot fire here. Two different instruments, same conclusion.
+* **148 matches R2's recorded "148 distinct objects" exactly**, which is a useful cross-check that
+  the walk and the export agree on what is in the world.
+* **The `_id < 256` cap has 1.7x headroom, not the comfortable margin it looks like.** A campaign
+  raid 73 % larger than this one truncates silently. Left as a known limit rather than raised: the
+  right fix is to drop the cap and bound the walk on the list itself, and that wants a run with a
+  bigger raid to be worth anything.
+
+⚠️ **Correcting my own arithmetic from earlier this sprint.** I first derived list length from the
+sampled trace and got "min 125.0, median 166.7, max 166.7", and read the spread as *"the list CHANGES
+SIZE"*. Both figures were artifacts of reports landing every 500 iterations rather than on frame
+boundaries. The direct measurement says **148, constant**. Deriving a quantity from an instrument
+sampled on a different axis produced a confident wrong answer, and the fix was to measure the
+quantity itself.
+
+**R3 state: walk ✅, filters ✅, colours ✅, types ✅, identity ✅ (uniqueID, proven distinct),
+list-size hazard ✅ measured-absent, `_id<256` cap ⚠️ known limit. Sprint 3 of 4.**
