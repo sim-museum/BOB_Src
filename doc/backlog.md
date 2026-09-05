@@ -757,3 +757,57 @@ combo) and nothing observed maps that to a battlefield load.
 loaded battlefield for a comms game, and does that code run at all in this port? `BOB_TRACE_BFIELD=1`
 answers it the moment the call is found — a single-player Quick Mission run with the same trace gives
 the working control to compare against.
+
+### MP-5 (cont. 2) — the missing piece is **battlefield FileNum 35337**, and my "no battlefield" claim was VOID
+
+⛔ **Retracting the previous entry's headline.** It said "zero battlefield parses" for multiplayer.
+**That measurement was worthless: the instrument was in `SRC/BFIELDS/PERSONS2.CPP`, which is NOT IN
+THE BUILD.** The compiled file is `SRC/BFIELDS/Persons2.cpp` — a *separate regular file* (55,660 vs
+56,323 bytes, different md5), pulled in through `_BFIE.CPP`'s unity include. The dead copy's trace
+never executed, so it printed 0 for multiplayer **and** for a known-good single-player flight. A zero
+from code that does not run, read as a finding — `stale-duplicate-sources`, walked into after I had
+correctly checked for exactly this on three other files the same day.
+
+*(It also cost a truncated source: the re-patch hit a `UnicodeEncodeError` **after** `open(...,'w')`
+had emptied the file. Restored from git, verified byte-identical by md5. The write now encodes first
+and only opens the file once the bytes exist.)*
+
+### With the trace in live code, the real comparison
+
+| | single-player (flies) | multiplayer (FATAL) |
+|---|---|---|
+| battlefield parses | **28** | **15** |
+| `T_airgrp` records | **1** | **0** |
+| `[psq]` aircraft groups | 1 | 0 |
+| piloted aircraft | 1 | 0 |
+
+**Multiplayer does load battlefields — it loads a SUBSET.** 27 distinct FileNums in single-player, 15
+in multiplayer. Files loaded ONLY by single-player:
+
+    30721 30722 30769 30771 30772 30773 30847 30848 30861 30862 30863 30864 31498 35337
+
+⭐ **And the aircraft live in exactly one of them: FileNum 35337.** Correlating each `T_airgrp` with
+the `LoadSubPiece` that preceded it:
+
+    [bfield] LoadSubPiece file=35337 slot=26
+    [bfield] processbfieldtoplevel call #28
+    [bfield] T_airgrp #1
+
+Single-player loads 35337 **last**, and that parse is the one that yields the only air group in the
+mission. Multiplayer never loads it. Note both arms load 35333 (single-player twice, multiplayer
+once), so the 353xx band is the mission data and multiplayer is getting only part of it.
+
+### So the chain, end to end and all measured
+
+1. Multiplayer never loads battlefield **35337**.
+2. No `T_airgrp` record is parsed → `make_airgrp` never runs → **0 aircraft groups**.
+3. `pilotedaircraft` stays NULL → the expansion gate at `PERSONS3.CPP:3960` is 0.
+4. The S72/S74 recovery walks `ACList` and finds no flyable aircraft — correctly, there are none.
+5. `ControlledAC2` is NULL entering 3D → **FATAL "No player A/C set up on entering 3d!"**
+
+### Next, and it is one question
+
+Single-player reaches 35337 through `NodeData::CheckTargetLoaded` → `TargetToBf(target)`. **Trace
+that call in both arms**: if multiplayer never calls it, the comms path never establishes a target
+for its scenario (`_DPlay.GameIndex`, the "1) Implode" combo), and that is the fix site. The
+instrument to add is one line, and the control run already exists.
