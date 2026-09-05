@@ -3050,6 +3050,30 @@ bool	DPlay::SaveDummyCommsSaveGame(UByte* data,ULong size)
 //Procedure		JoinComms
 //Date			Wed 20 Jan 1999
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+/* PO 2026-09-05: CLOSING A CLIENT WINDOW LEAKED ITS PLAYER ON THE HOST.
+   bob_video.cpp's SDL_QUIT handler ends the process with _exit(0) -- no destructors, no
+   DirectPlay teardown -- so every client that was closed stayed registered on the host as a
+   player that would never answer again. The host's Fly then calls GetAllGoResponses(), which
+   spins for CommsTimeoutLength (20 s on TCP/IP) waiting for responses from those ghosts WITHOUT
+   pumping messages, and the desktop offers "force quit". That is exactly what the PO hit, and the
+   ghosts were mine: four automated test joins, each closed by killing the window.
+
+   This is the orderly teardown JoinComms already performs on its failure path, exposed so the
+   quit path can run it. Guarded on PlayerCreated so it is a no-op for a single-player exit, and
+   it must never itself block: DestroyPlayer/Close are sends, not waits. */
+extern "C" void bob_comms_shutdown(void)
+{
+    if (!_DPlay.PlayerCreated || !_DPlay.lpDP4) return;
+    fprintf(stderr, "[dplay] shutdown: destroying player %lu and closing the session\n",
+            (unsigned long)_DPlay.myDPlayID);
+    fflush(stderr);
+    _DPlay.lpDP4->DestroyPlayer(_DPlay.myDPlayID);
+    _DPlay.lpDP4->Close();
+    _DPlay.PlayerCreated = FALSE;
+}
+#endif
+
 Bool	DPlay::JoinComms()
 {
 	_DPlay.UIPlayerType = PLAYER_GUEST;

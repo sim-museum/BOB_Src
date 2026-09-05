@@ -595,6 +595,7 @@ extern int g_uiOffX, g_uiOffY;
 extern "C" void bob_fake_shoot(int);   /* R3.7: drive SHOOT into the 3D key map (KEYSTUB.CPP) */
 
 extern "C" int bob_fp_key(int ch, int isText);
+extern "C" void bob_comms_shutdown(void);
 static void pump_events(void)
 {
 	if (!g_win) return;
@@ -779,7 +780,12 @@ static void pump_events(void)
 	}
 	SDL_Event e;
 	while (SDL_PollEvent(&e)) {
-		if (e.type == SDL_QUIT) { fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0); }
+		if (e.type == SDL_QUIT) {
+			/* PO 2026-09-05: leave the multiplayer session before dying, or this client stays
+			   registered on the host forever and the host's next Fly blocks 20 s per ghost. */
+			bob_comms_shutdown();
+			fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0);
+		}
 		else if (e.type==SDL_MOUSEBUTTONDOWN && e.button.button==SDL_BUTTON_LEFT) {
 				int lw=g_scrW, lh=g_scrH; if (g_win) SDL_GetWindowSize(g_win,&lw,&lh);  /* logical->drawable */
 				g_clickX = lw ? e.button.x * g_scrW / lw : e.button.x;

@@ -628,3 +628,81 @@ change to land while the PO is mid-session; the guard makes this crash impossibl
 as its own item — and it belongs with **P7** (`WM_*` route coverage) and MA's **N3**, which exist for
 exactly this class. **This is the first CONFIRMED, crashing instance of that class, which raises its
 priority from an audit to a defect.**
+
+---
+
+## 🔴 MP-5 (2026-09-05): multiplayer cannot reach 3D — **"No player A/C set up on entering 3d!"**
+
+**Goal set by the PO:** a client BoB session attached to a host, in a real 3D multiplayer session.
+**Result: the transport is fine and the FLIGHT is the blocker.** Diagnosed end to end on this box by
+running a HOST and a CLIENT as two instances over loopback, each in its own scratch game tree.
+
+### What now works, fully automated (no human clicks)
+
+* **Host:** `BOB_AUTOCLICK="2,1,1"` → Multi-Player → Create Game → Continue. Reaches its Ready Room,
+  `host bound to UDP 47624`, `Open(CREATE) session "BoB"`.
+* **Client:** `BOB_AUTOCLICK="2,2,1,1"` + `BOB_SDL_CLICK` on the session row → Multi-Player → Join →
+  select → Continue. Reaches the Ready Room, `Open(JOIN)`, `CreatePlayer`.
+* **Discovery and join work on loopback AND across the PO's two real PCs** (192.168.254.57 →
+  192.168.254.14, `EnumSessions: found "BoB"`).
+* The client **does not need to click Fly**: `CReadyRoom::OnTimer` polls `_DPlay.FlyNowFlag` and
+  calls `UINetworkSelectFly()` itself (`READY.CPP:363`).
+
+### ⛔ The blocker, with the whole chain measured
+
+The host clicks Fly, `StartFlying -> Launch3d`, and then dies:
+
+    *** FATAL: SRC/BFIELDS/Persons3.cpp3384
+
+`PERSONS3.CPP:3384` is `_Error.EmitSysErr("No player A/C set up on entering 3d!")`, guarded by
+`if (!Manual_Pilot.ControlledAC2)`. With `BOB_TRACE_PLAYERSQ=1`:
+
+    [psq] ExpandPilotedFlights: pilotedaircraft=(nil) uniqueID.count=-1 SagBANDEND=4864 gate=0
+    [psq] NO player (pt=-1 squad 65535 nat 0); reassigning to NONE AC pt=-1
+    [psq] group ... lines: 0            <- THE AIRCRAFT-GROUP BUILD LOOP NEVER RAN
+
+So, in order:
+
+1. **No aircraft groups are built at all** for the session — zero `[psq] group` lines, where a
+   single-player mission emits one per group.
+2. `pilotedaircraft` therefore stays NULL, so the gate
+   `if (pilotedaircraft && pilotedaircraft->uniqueID.count < SagBANDEND)` (`:3960`) is **0** and no
+   piloted flight is expanded.
+3. The S72/S74 recovery — walk `ACList` for any flyable aircraft and re-associate the player — finds
+   **NONE**, because the world has no aircraft to offer.
+4. `ControlledAC2` is NULL on entering 3D → FATAL.
+
+**The recovery path is not at fault and must not be "fixed": it correctly reports that there is
+nothing to recover to.** The defect is upstream, at step 1.
+
+### ⭐ Why there are no aircraft: the player squadron is never chosen
+
+`pilotedaircraft` is only assigned where a built group's squadron matches `Pack_PlayerSquad`
+(`PERSONS3.CPP:858-875`). Nothing ran, and the trace shows `squad 65535` (0xffff = unset) and
+`nat 0`. The session-setup screen carries **"Game Type"** and **"Select Side"**, and the automated
+run clicked Continue straight past them — as, in effect, does the PO, because **"Select Side" is the
+known-blank panel** already logged in this port (UI-2 addendum, 2026-09-04, 4 sprints, two
+hypotheses eliminated) and its sibling defect in MiG Alley is **MP-2**, whose radios are erased by
+`DestroyPanel`.
+
+**So the blank Select-Side panel is not cosmetic — it is what stops multiplayer flying.** That
+raises its priority from a rendering complaint to the blocker on the PO's stated goal, and it ties
+the BoB and MA multiplayer items to one cause.
+
+### Also fixed this session (separate, real, and mine to clean up)
+
+**A closed client leaked its player on the host.** `bob_video.cpp`'s `SDL_QUIT` handler ended the
+process with `_exit(0)` — no destructors, no DirectPlay teardown — so every client whose window was
+closed stayed registered on the host forever. The host's Fly then calls `GetAllGoResponses()`, which
+spins for `CommsTimeoutLength` (**20 s** on TCP/IP) waiting for answers from those ghosts **without
+pumping messages** — which is precisely the "not responding / force quit" dialog the PO hit on their
+host. The ghosts were mine: four automated test joins, each ended by closing the window.
+`bob_comms_shutdown()` now destroys the player and closes the session before exit.
+
+### Next
+
+1. **Make Select Side work** (BoB UI-2 addendum / MA MP-2 — one cause, two ports). Until a side is
+   chosen there is no player squadron and no aircraft.
+2. Then re-run the two-instance loopback harness above; it is fully scripted and needs no human.
+3. Consider bounding `GetAllGoResponses` with a message pump, so a slow or absent peer degrades to a
+   refusal rather than a 20-second frozen window.
