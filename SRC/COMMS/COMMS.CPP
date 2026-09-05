@@ -282,6 +282,30 @@ bool DPlay::UIGetSessionListUpdate ()
 
 	DeleteSessionList();
 
+#if defined(BOB_LINUX)
+	/* PO 2026-09-05: SIGSEGV on the client while joining a LAN game, backtrace
+	   DPlay::UIGetSessionListUpdate (Comms.cpp:288) <- CSelectSession::OnTimer
+	   (session.cpp:235) <- bob_timers_tick. fault_addr=(nil), eax/ebx/ecx all 0.
+	   Line 288 is `DPSessionDesc2.guidApplication = *lpAppGuid;` and lpAppGuid is
+	   NULL until DirectPlay is set up (COMMS.CPP:167 sets it NULL; :828/:1541 set
+	   it to &BOB_GUID). The Select-Session screen arms a 2365 timer (session.cpp:119)
+	   that polls this every tick, so ANY tick before setup -- or after the player has
+	   left the screen, which is what the PO's log shows (menu item 0 -> artnum 28937,
+	   then the crash) -- dereferences NULL.
+	   Note the function already guards lpDP4 four lines below. The guard existed for
+	   one pointer and not the other, which is why this survived: the code LOOKS
+	   defended. Traced rather than silent, so a suppressed poll is visible instead of
+	   looking like a working screen that never lists a session. */
+	if (!lpAppGuid || !lpDP4)
+	{
+		static int _rep = 0;
+		if (_rep++ < 3 || getenv("BOB_TRACE_DPLAY"))
+			fprintf(stderr, "[dplay] UIGetSessionListUpdate: not initialised "
+			                "(lpAppGuid=%p lpDP4=%p) -- poll skipped\n",
+			        (void*)lpAppGuid, (void*)lpDP4);
+		return false;
+	}
+#endif
 	ZeroMemory( &DPSessionDesc2,sizeof(DPSESSIONDESC2));
 
 	DPSessionDesc2.dwSize = sizeof (DPSESSIONDESC2);
@@ -330,6 +354,19 @@ bool DPlay::UIAssignServices()
 
 	DeleteServiceList();
 
+#if defined(BOB_LINUX)
+	/* Same class as the crash above, found in the same pass: this dereferences lpDP4
+	   outright and hands lpAppGuid to EnumConnections, neither checked. Not observed
+	   firing -- fixed because it is the identical shape one call away, not because a
+	   report names it. */
+	if (!lpDP4 || !lpAppGuid)
+	{
+		if (getenv("BOB_TRACE_DPLAY"))
+			fprintf(stderr, "[dplay] UIAssignServices: not initialised "
+			                "(lpAppGuid=%p lpDP4=%p)\n", (void*)lpAppGuid, (void*)lpDP4);
+		return false;
+	}
+#endif
 	res=lpDP4->EnumConnections(lpAppGuid,EnumConnectionsCallback,NULL,0);
 
 	if (res!=DP_OK)
@@ -345,6 +382,17 @@ bool DPlay::UIAssignServices()
 //------------------------------------------------------------------------------
 Bool DPlay::UINewPlayer (char* Name, char* SessionName)
 {
+#if defined(BOB_LINUX)
+	/* Two more unguarded *lpAppGuid dereferences live in this function (the host and
+	   the join paths). Same guard, same reason. */
+	if (!lpAppGuid || !lpDP4)
+	{
+		fprintf(stderr, "[dplay] UINewPlayer: DirectPlay not initialised "
+		                "(lpAppGuid=%p lpDP4=%p) -- refusing\n",
+		        (void*)lpAppGuid, (void*)lpDP4);
+		return FALSE;
+	}
+#endif
 	HRESULT res;
 	DPSESSIONDESC2 DPSessionDesc2;
 
@@ -1563,8 +1611,11 @@ Bool DPlay::FinishLobbySetup()
 
 	if (lpDPC->lpSessionDesc->lpszSessionNameA)
 	{
-		strncpy (SessionName,(char*)lpDPC->lpSessionDesc->lpszSessionName,59);
-		SessionName[59]=NULL;
+		/* stale-59 again: SessionName is char[SESSIONNAMELEN] (==32). This one copies the name
+		   straight off the wire (the host's advertised session), so a host with a name longer than
+		   31 chars would overflow a client here before any UI is involved. */
+		strncpy (SessionName, (char*)lpDPC->lpSessionDesc->lpszSessionName, SESSIONNAMELEN - 1);
+		SessionName[SESSIONNAMELEN - 1] = '\0';
 	}
 	else
 	{
@@ -3047,8 +3098,10 @@ Bool	DPlay::FindGoodSession()
 
 		if (_DPlay.SessionList)
 		{
-			strncpy(_DPlay.SessionName,_DPlay.SessionList->sname,59);
-			_DPlay.SessionName[59]=NULL;
+			/* fourth and last stale-59 site (see session.cpp:197). SessionName is
+			   char[SESSIONNAMELEN]==32; 59 predates the enum being cut from 128. */
+			strncpy(_DPlay.SessionName, _DPlay.SessionList->sname, SESSIONNAMELEN - 1);
+			_DPlay.SessionName[SESSIONNAMELEN - 1] = '\0';
 
 			return TRUE;
 		}

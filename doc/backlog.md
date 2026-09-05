@@ -570,3 +570,61 @@ dead/unplaced filters doing their job — 108 aircraft tracked by the campaign b
 the local 3D area, which is exactly what those filters exist to keep out of the file.
 
 **R3 closes at 4 of 4 sprints.** Remaining known limit, carried not hidden: the `_id < 256` cap.
+
+---
+
+## 🔴 PO CRASH 2026-09-05 — client SIGSEGV joining a LAN game. **FIXED (guard), root cause is systemic**
+
+**PO's report:** `BOB_DPLAY_HOST=192.168.254.14 …/BattleOfBritain-x86_64.AppImage`, into Multi-Player,
+clicked around, went back (`menu item 0` → `painted screen artnum=28937`), then
+`CRASH: signal 11 fault_addr=(nil)`, `eax=ebx=ecx=0`.
+
+### Symbolised against the exact binary they ran (260905 image, mounted)
+
+    0x820a434  DPlay::UIGetSessionListUpdate()   Comms.cpp:288
+    0x82c673f  CSelectSession::OnTimer(unsigned)  session.cpp:235
+    0x832cd07  bob_timers_tick                    bob_ole.cpp:1301
+    0x80835c2  bob_msg_wait                       bob_video.cpp:216
+
+`Comms.cpp:288` is `DPSessionDesc2.guidApplication = *lpAppGuid;` — **a NULL dereference**, which is
+exactly `fault_addr=(nil)`.
+
+### Mechanism, established from the code
+
+1. Opening the Select-Session screen arms timer **2365** (`session.cpp:119`) that polls
+   `UIGetSessionListUpdate()` every tick.
+2. Leaving the screen runs **`DPlay::ExitDirectPlay()`** (`COMMS.CPP:154`), which sets
+   **`lpAppGuid = NULL`** *and* `lpDP4 = NULL`.
+3. **The timer is still armed**, so the next tick dereferences NULL.
+
+⭐ **Why it survived review: the function already guards `lpDP4` four lines below the crash.** The
+code *looks* defended. The guard existed for one pointer and not the other.
+
+### Fixed now — three guards, additive
+
+`UIGetSessionListUpdate()`, `UIAssignServices()` and `UINewPlayer()` all dereferenced `lpAppGuid`
+(and two of them `lpDP4`) unchecked. Each now returns early if DirectPlay is not initialised, and
+**says so on stderr** rather than failing silently — a screen that lists nothing must not look like a
+screen that is working.
+
+**Verified no regression on the happy path:** the join recipe still reports
+`[sessions] UIGetSessionListUpdate -> 1 session(s), res=DP_OK` repeatedly, and the guard does not
+fire. ⚠️ **The crash itself was NOT reproduced here** — this run initialises DirectPlay and never
+tears it down mid-screen. The fix is justified by the code path and the PO's backtrace, not by a
+local repro, and that distinction is recorded rather than glossed.
+
+### ⭐⭐ ROOT CAUSE, and it is much bigger than this crash: `WM_DESTROY` IS NEVER DISPATCHED
+
+`CSelectSession` **does** kill its timer — in `OnDestroy()` (`session.cpp:280`), wired with
+`ON_WM_DESTROY()` at `:108`. It never ran. **`WM_DESTROY` appears nowhere in the port's compat
+layer** — nothing sends or dispatches it.
+
+**So no dialog's `OnDestroy` has ever run in this port: 25 files define one, and `SRC/MFC` holds 27
+`KillTimer` calls.** Every timer armed by a dialog outlives it, and every other cleanup in an
+`OnDestroy` is dead code. This crash is one instance of that.
+
+**Not fixed here, deliberately.** Dispatching `WM_DESTROY` touches 25 dialogs at once and is not a
+change to land while the PO is mid-session; the guard makes this crash impossible either way. Filed
+as its own item — and it belongs with **P7** (`WM_*` route coverage) and MA's **N3**, which exist for
+exactly this class. **This is the first CONFIRMED, crashing instance of that class, which raises its
+priority from an audit to a defect.**
