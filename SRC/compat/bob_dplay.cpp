@@ -80,6 +80,15 @@ class BobDPlay4 : public IDirectPlay4
     DPID myPid;
     DPID assignedPid;      /* R6.3: what the host gave us (client side); 0 until it answers */
     DPID groups[8]; int gmembers[8]; DPID gplayers[8][8]; int ngroups;   /* R6.4 */
+    /* MP-5 (PO 2026-09-05): pids this HOST has handed to joining clients. The game only ever
+       calls AddPlayerToGroup for its OWN player, so a group held one member (the host) and
+       SendMessageToGroup -- which is how UISendFlyNow broadcasts PID_FLYNOW -- reached nobody.
+       Measured on a working two-instance join: "AddPlayerToGroup player 3 -> group 2" and nothing
+       for the client's pid 4, so the client sat in the Ready Room forever waiting for a Fly-Now
+       that was never transmitted to it. Real DirectPlay tells the host about a remote player via a
+       DPSYS_CREATEPLAYERORGROUP system message and the game adds it; this shim never delivered
+       one. Track them here so joiners land in the groups the game broadcasts to. */
+    DPID joined[8]; int njoined;
     struct sockaddr_in peer; /* host: last client seen. client: the host. */
     int  havePeer;
     char sessName[128];
@@ -122,6 +131,16 @@ class BobDPlay4 : public IDirectPlay4
                    the Aggrgtor addresses its packets BY pid. Found by reading the R6.2 trace, not
                    by a failure: a two-node echo cannot expose an id collision. */
                 DPID given = nextPid++;
+                /* MP-5: remember the joiner and put it in the groups that already exist, so a
+                   group broadcast (UISendFlyNow) actually reaches it. */
+                if (njoined < 8) joined[njoined++] = given;
+                for (int gi = 0; gi < ngroups; gi++)
+                    if (gmembers[gi] < 8)
+                    {
+                        gplayers[gi][gmembers[gi]++] = given;
+                        DPT("auto-added joining pid %u to group %u (%d members)\n",
+                            (unsigned)given, (unsigned)groups[gi], gmembers[gi]);
+                    }
                 WireHdr ah; ah.magic = DPMAGIC; ah.kind = MSG_ASSIGN;
                 ah.from = (unsigned)DPID_SERVERPLAYER; ah.to = (unsigned)given;
                 sendto(fd, &ah, sizeof(ah), 0, (struct sockaddr*)&from, fl);
@@ -176,7 +195,7 @@ class BobDPlay4 : public IDirectPlay4
     }
 public:
     BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0), assignedPid(0),
-                  havePeer(0), ngroups(0), qh(0), qt(0) {
+                  havePeer(0), ngroups(0), njoined(0), qh(0), qt(0) {
         memset(&peer, 0, sizeof(peer)); memset(sessName, 0, sizeof(sessName));
         memset(&sessGuid, 0, sizeof(sessGuid));
     }
@@ -370,7 +389,17 @@ public:
     HRESULT STDMETHODCALLTYPE CreateGroup(LPDPID pid, LPDPNAME nm, LPVOID, DWORD, DWORD) override {
         DPID g = nextPid++;
         if (pid) *pid = g;
-        if (ngroups < 8) { groups[ngroups] = g; gmembers[ngroups] = 0; ngroups++; }
+        if (ngroups < 8) {
+            groups[ngroups] = g; gmembers[ngroups] = 0;
+            /* MP-5: a group created after clients joined must contain them too, or the same
+               broadcast-to-nobody happens with the order reversed. */
+            for (int j = 0; j < njoined && gmembers[ngroups] < 8; j++)
+            {
+                gplayers[ngroups][gmembers[ngroups]++] = joined[j];
+                DPT("seeded group %u with already-joined pid %u\n", (unsigned)g, (unsigned)joined[j]);
+            }
+            ngroups++;
+        }
         DPT("CreateGroup \"%s\" -> gid %u\n",
             (nm && nm->lpszShortNameA) ? nm->lpszShortNameA : "(unnamed)", (unsigned)g);
         return DP_OK;

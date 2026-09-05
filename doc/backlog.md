@@ -906,3 +906,50 @@ one message.
 `! pgrep` guard fires instantly otherwise and reports a failure that has not happened); and never
 print a success line outside the loop's success branch — an `until` that exits on timeout printed
 "host hosting" for a host that never hosted.
+
+### MP-5 (cont. 5) — joiners now reach the host's broadcast group; the host's GAME layer still does not know them
+
+## ⭐ Fixed: a joining client was never added to the group the host broadcasts to
+
+`UISendFlyNow()` sends `PID_FLYNOW` via **`SendMessageToGroup`**. Measured on a working join:
+
+    [dplay] CreateGroup "(unnamed)" -> gid 2
+    [dplay] AddPlayerToGroup player 3 -> group 2      <- the HOST's own player, and nothing else
+
+The game only ever calls `AddPlayerToGroup` for its own player, so the group had one member and the
+Fly-Now broadcast reached nobody. Real DirectPlay tells the host about a remote player with a
+`DPSYS_CREATEPLAYERORGROUP` system message and the game adds it; this shim never delivered one.
+
+The shim now records pids it hands to joiners and puts them in every group — both directions of the
+ordering (join-then-CreateGroup and CreateGroup-then-join). Confirmed: `auto-added joining pid 4 to
+group 2 (2 members)`.
+
+## What is now established, and what is left
+
+**Traffic flows both ways.** Host: 6 packets `received ... from pid 4`. Client: 6 sends `pid 4 -> ...
+(ok)`. The transport, the join, the pid assignment and the group are all working.
+
+⛔ **But the host's GAME layer never registers the client as a player.** Its only `CreatePlayer`
+calls are its own (pid 1, pid 3). So `CountPlayers()` sees one player, `H2H_Player[]` has no entry
+for the joiner, and `UINetworkSelectFly()`'s host branch has nobody to send Fly-Now to or collect a
+go-response from — it flies alone, which is exactly what the logs show (host `InThe3D=1`, client
+still in the Ready Room).
+
+⚠️ **And the obvious route is a dead end, checked rather than assumed:** the game's
+`DPSYS_CREATEPLAYERORGROUP` case in `ProcessSystemMessage` (`COMMS.CPP:1064`) casts the message and
+`break`s — **it does nothing**. So synthesising that system message in the shim would not create the
+player either. Worth recording so the next attempt does not spend a sprint on it.
+
+**Next: find what actually creates an `H2H_Player` entry for a REMOTE player on the host** — the
+client is already sending packets the host receives (44, 190, 12 bytes), so the question is which of
+those the host is meant to act on, and why `ProcessPlayerMessage` is not turning one into a player.
+
+## Running state
+
+| | host | client |
+|---|---|---|
+| hosts / joins / pid | ✅ | ✅ |
+| in the host's broadcast group | ✅ | ✅ (new) |
+| packets crossing | ✅ 6 | ✅ 6 |
+| known to the host's game layer | ✅ | ❌ |
+| **enters 3D** | ✅ | ❌ |
