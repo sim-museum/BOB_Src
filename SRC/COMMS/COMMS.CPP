@@ -537,6 +537,22 @@ void DPlay::UIUpdateMainSheet ()
 		{
 // if aggregated packet ignore 
 
+#if defined(BOB_LINUX)
+			/* MP-5: the host receives the joiner's PID_PASSWORD but Process_PM_Password never
+			   runs. This is the only filter between the two: a packet whose sender equals aggID
+			   is DROPPED as aggregator traffic. The shim mints player ids and group ids from ONE
+			   counter (host players 1 and 3, group 2, client 4), so an aggID that collides with a
+			   real player's pid would silently discard everything that player sends -- and the
+			   symptom would be exactly what we see. Log every packet with both ids so the drop is
+			   visible instead of inferred. BOB_TRACE_DPLAY=1. */
+			if (getenv("BOB_TRACE_DPLAY"))
+			{
+				fprintf(stderr,"[mp] UIUpdateMainSheet: packet from=%lu aggID=%lu len=%lu -> %s\n",
+					(unsigned long)from,(unsigned long)aggID,(unsigned long)RecPacketLen,
+					(from!=aggID)?"dispatch":"DROPPED as aggregator traffic");
+				fflush(stderr);
+			}
+#endif
 			if (from!=aggID)
 			{
 				retval=ProcessPlayerMessage(RecPacket,RecPacketLen,from);
@@ -1214,6 +1230,19 @@ Bool	DPlay::ProcessPlayerMessage(char* message,ULong size,ULong from)
 
 	LPGENERIC pack=(LPGENERIC)message;
 
+#if defined(BOB_LINUX)
+	/* MP-5: the host dispatches the client's packets but Process_PM_Password never runs, so the
+	   join (PID_PASSWORD, sent by AttemptToJoin) is not among them. Name every PacketID the host
+	   actually sees, so "the client never sent it" can be told from "the host ignores it".
+	   PID_PASSWORD is what allocates the H2H_Player slot; without it the host's game layer never
+	   knows the client exists. BOB_TRACE_DPLAY=1. */
+	if (getenv("BOB_TRACE_DPLAY"))
+	{
+		fprintf(stderr,"[mp] ProcessPlayerMessage: PacketID=%d size=%lu from=%lu (PID_PASSWORD=%d)\n",
+			(int)pack->PacketID,(unsigned long)size,(unsigned long)from,(int)PID_PASSWORD);
+		fflush(stderr);
+	}
+#endif
 	switch (pack->PacketID)
 	{
 	case PID_CSSTRUCINIT:

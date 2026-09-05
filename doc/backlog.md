@@ -990,3 +990,46 @@ Instruments left in place, all `BOB_TRACE_DPLAY`-gated: `Process_PM_Password` en
 **Running state unchanged otherwise:** host hosts, seeds `quickdef`, builds aircraft, reaches
 `InThe3D=1`; client joins, gets a pid, is now in the host's broadcast group, exchanges packets,
 reaches the Ready Room — and is still invisible to the host's game layer.
+
+### MP-5 (cont. 7) — ⭐ the client NEVER SENDS ITS JOIN PACKET, and the branch that would send it is never reached
+
+Traced every packet the host receives, by id:
+
+    [mp] ProcessPlayerMessage: PacketID=16 size=47 from=4 (PID_PASSWORD=9)
+    [mp] ProcessPlayerMessage: PacketID=21 size=12 from=4 (PID_PASSWORD=9)
+
+**`PID_PASSWORD` is 9, and the host never sees it.** That packet is what
+`DPlay::AttemptToJoin()` sends, and it is the ONLY thing that makes the host run
+`CheckPassword` → `GetNextAvailableSlot` → allocate an `H2H_Player` slot for the joiner. Without it
+the host's game layer never knows the client exists, `CountPlayers()` returns 1, and
+`UINetworkSelectFly()`'s host branch has nobody to send Fly-Now to — it flies alone, exactly as
+observed.
+
+**Also ruled out on the way, each by measurement rather than reasoning:**
+
+* the `aggID` filter in `UIUpdateMainSheet` — `packet from=4 aggID=1 -> dispatch`, nothing dropped;
+* the shim's `Receive` — it does not filter on `to`, so a `DPID_ALLPLAYERS` packet is delivered;
+* the host's ready-room pump — `UIUpdateMainSheet` does drain and dispatch, and its traces prove it.
+
+### Where the join is supposed to happen
+
+`RFullPanelDial::CreatePlayer` (`FULLPANE.CPP:1440`) branches:
+
+```c
+if (_DPlay.UIPlayerType == DPlay::PLAYER_HOST)  { /* host: no join */ }
+else                                            { res = _DPlay.AttemptToJoin(); ... }
+```
+
+Traced both sides. **The host prints `UIPlayerType=1 (HOST) -> HOST path`. The client prints
+NOTHING — it never reaches `RFullPanelDial::CreatePlayer` at all.** So this is not a
+mis-set `UIPlayerType` (`PLAYER_HOST=1`, `PLAYER_GUEST=2`, field initialises to 0); the client's
+navigation simply never runs the function that would join.
+
+**Next, and it is the last link:** find what invokes `RFullPanelDial::CreatePlayer` on the
+host's path and why the client's Continue does not reach it. The client does reach the locker room
+and does get a shim-level pid (`host assigned us pid 4`), so the gap is between the locker room's
+Continue and this function.
+
+Instruments kept, all `BOB_TRACE_DPLAY`-gated: packet ids at `ProcessPlayerMessage`, the
+`aggID` decision in `UIUpdateMainSheet`, `Process_PM_Password`/`CheckPassword` entry, and the
+host/join branch in `RFullPanelDial::CreatePlayer`.

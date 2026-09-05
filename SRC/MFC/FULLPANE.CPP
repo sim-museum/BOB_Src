@@ -1471,6 +1471,22 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 
 //DeadCode AMM 21Feb100	Bool res;
 	ULong res;
+#if defined(BOB_LINUX)
+	/* MP-5: THE BRANCH THAT DECIDES WHETHER A CLIENT EVER JOINS. The else-branch below calls
+	   AttemptToJoin(), which sends PID_PASSWORD (id 9) -- the packet that makes the host allocate
+	   an H2H_Player slot for this client. Measured: the host receives only PacketID 16 and 21 from
+	   the joiner and never 9, so AttemptToJoin is not running, so the host's game layer never
+	   learns the client exists and flies alone. PLAYER_HOST=1, PLAYER_GUEST=2, and the field
+	   initialises to 0 -- neither -- so this reports what the client actually holds here.
+	   BOB_TRACE_DPLAY=1. */
+	if (getenv("BOB_TRACE_DPLAY"))
+	{
+		fprintf(stderr,"[mp] CreatePlayer: UIPlayerType=%d (HOST=%d GUEST=%d) -> %s\n",
+			(int)_DPlay.UIPlayerType,(int)DPlay::PLAYER_HOST,(int)DPlay::PLAYER_GUEST,
+			(_DPlay.UIPlayerType==DPlay::PLAYER_HOST)?"HOST path (no AttemptToJoin)":"join path");
+		fflush(stderr);
+	}
+#endif
 	if (_DPlay.UIPlayerType==DPlay::PLAYER_HOST)
 	{
 // host now creates session at start of ready room
