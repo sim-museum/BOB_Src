@@ -350,3 +350,104 @@ times**; no shadow is drawn in this scene at all. The draw had been identified b
 the *name* by inspection, and the two sat in one sentence where the second inherited the first's
 confidence. "What does this look like" and "what code puts it there" are separate questions, and
 only the second one names a defect.
+
+---
+
+## ⭐ PO PRIORITY RULING (2026-09-05)
+
+PO, verbatim: *"backlog priority, highest first: ma EPIC M, bob R3, ff GMRADAR-8 and PIT-1,
+julia PERF-1, AI car rear-tyre rods, also ma and julia multiplayer"*
+
+**BoB's only named item is R3 — every aircraft exports, not just the player — at rank 2 overall.**
+Everything else on this board (R1's remaining UI path, R2's 57 MB sampling polish, P5/P6/P7, UI-2,
+MP-3) sits below the ruling's six ranks and keeps its existing relative order.
+
+**R3 is NOT blocked.** It was written when R2 was open; R2 closed at S268/S272, so the tee exists and
+R3 is additive on top of it. MA's `L3` is the same story and is done — walk `*AirStruc::ACList`
+stepping `*ac->nextmobile`, **the same link the replay reader uses** (MA S226 spent four sprints
+learning that; do not re-derive it).
+
+BoB's Fable 5.1 parkings are untouched by this ruling: headless flight ("aircraft will not roll")
+and R3.2 (depth sort / cockpit) stay parked, and R3.2's propeller and cloud/canopy cases with them.
+
+## ⭐ PO CADENCE RULE CHANGE (2026-09-05) — **4 sprints per item, not 8 or 12**
+
+PO, verbatim: *"continue scrum, highest backlog items first, then other backlog items, no more than
+4 sprints on any one backlog item"*.
+
+**This supersedes the old 8-sprint (BoB/Julia) and 12-sprint (MA/FF) limits.** From now on an item
+gets **at most 4 sprints in a pass**, then the loop moves to the next item.
+
+**My reading, stated so it can be corrected in one word:** 4 sprints is a **rotation cap, not a
+death sentence** — the item stays open and is eligible again on a later pass through the backlog. It
+is not the old rule's "mark it for Fable 5.1 and never run it again". Items already parked for
+Fable 5.1 stay parked; the new cap does not retroactively re-park anything, and it does not re-park
+MA's MP-2, which the PO un-parked by naming it at rank 6.
+
+Order within a pass: the PO's 2026-09-05 priority ruling first (MA EPIC M → BoB R3 → FF GMRADAR-8
+and PIT-1 → Julia AI-CARGFX → Julia PERF-1 → MA and Julia multiplayer), then everything else.
+
+---
+
+## S436 (2026-09-05) — R3 is **IMPLEMENTED**; its acceptance fails on one thing, and MA has the same bug
+
+Rank 2 of the PO's priority ruling. **The first question was whether R3 is still open at all, and
+mostly it is not.** The board row says *"🔨 NEW"*; the code says otherwise.
+
+### What is already built and evidenced
+
+`SRC/COMMS/REPLAY.CPP:466` — `AirStrucPtr _ac = *AirStruc::ACList; while (_ac && _id < 256)` — the
+all-aircraft walk R3 asks for, stepping `*_ac->nextmobile`, **already shipped with R2** (S268–S285).
+With it: the dead/unplaced filters (S285, using the game's own `Status.deadtime` predicate), side
+colouring, player identification via `Manual_Pilot.ControlledAC2` (S274b), AI decimation to 5 Hz
+(S274), and the S282 type names. Evidence on record: **148 distinct objects, 288k Blue / 273k Red
+samples, 511 markers, four aircraft types, zero unrecognised ids.**
+
+⚠️ **Checked first, because MA was bitten by it this same day:** `SRC/COMMS/Replay.cpp` here is an
+intact **symlink** to `REPLAY.CPP`, and `_COMM.CPP` compiles it. BoB's pair is NOT split — unlike
+MA's, where the two are separate regular files 781 lines apart. Same filename, opposite situation;
+the check is cheap and is now the first move on any replay work in either tree.
+
+So the board row is stale in the way this file already warned about at MP-4: *"a resolution buried
+under an unchanged header is invisible to exactly the sweep that is supposed to find it."*
+
+### 🔴 But the acceptance criterion is "AI aircraft appear as **distinct objects**", and that fails over time
+
+**The object id is POSITIONAL.** `unsigned long _id = 0;` is reset every frame and `_id++` counts
+position in `ACList`. The code already reasons about this once — *"the `_id++` stays OUTSIDE this
+skip: object ids must keep referring to the same aircraft across frames"* — which handles a
+**skipped** aircraft but not a **changed list**. And the list changes:
+
+| site | operation |
+|---|---|
+| `MOVECODE/MOVEALL.CPP:1442–1443` — `nextmobile=ACList; ACList=*this;` | **head insertion** — a new aircraft is pushed on the FRONT |
+| `BFIELDS/PERSONS3.CPP:3464` — `AirStruc::ACList=*Me->nextmobile;` | **head removal** |
+
+Every spawn or despawn therefore shifts every subsequent aircraft's index by one, and from that
+frame on **object N is a different aeroplane**. In Tacview that reads as tracks swapping identity
+mid-file — a Spitfire's trace continuing as a Heinkel's. The objects are distinct at any one instant
+and not consistently identified across the sortie, which is the half of "distinct objects" a debrief
+tool actually needs.
+
+**The engine already provides the stable identity.** `ac->uniqueID.count` is what the replay stream
+itself writes for cross-references (`Replay.cpp:1737`, `:1772`, `:4080`, `:4087`…). Using it as the
+ACMI object id is a smaller change than the walk that is already there.
+
+**Secondary, same line:** `_id < 256` silently truncates the walk. A campaign that instantiates more
+than 256 aircraft exports the first 256 and says nothing.
+
+### ⭐ CROSS-PORT: MA's L3 is marked ✅ DONE and has the IDENTICAL defect
+
+`~/ma/SRC/COMMS/Replay.cpp:558–601` is the same code — `unsigned long _id = 0; while (_ac && _id <
+256) { _id++; … ma_acmi_object_ias(_id, …) }` — and MA's list is head-inserted by
+`AirStruc::AddToList()` (`MOVEALL.CPP:891–892`) and head-removed at `PERSONS3.CPP:3139`. Same engine,
+same bug, and MA's L3 row claims acceptance. **L3 should be reopened**; whichever port fixes it first
+should hand the other the `uniqueID.count` change rather than both re-deriving it.
+
+### Not fixed here, and why
+
+The fix is small but it changes the **on-disk meaning of every object id**, so it needs its own
+before/after: a recorded sortie exported both ways, with the id→aircraft mapping counted per frame.
+That is a run, not a read, and it belongs in the sprint that lands the change. **State on handover:
+mechanism proven from the code, instrument named (count ids whose backing pointer changes between
+frames), and the identity to use already chosen.**
