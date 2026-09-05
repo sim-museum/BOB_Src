@@ -236,6 +236,20 @@ enum	{MIGDAYSOUTH,MIGDAYDIRECT,MIGDAYLATEBARCAP,MIGDAYALLBARCAP,MIGDAYBIGTRAIN};
 
 FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 {
+#if defined(BOB_LINUX)
+	/* MP-5: this phase machine feeds LoadSetPiece. Single-player walks it far enough to load
+	   battlefield 35337 -- the only file containing a T_airgrp, i.e. the mission's aircraft.
+	   Multiplayer loads 15 files to single-player's 27 and never reaches 35337, then FATALs with
+	   "No player A/C set up on entering 3d!". Logging the phase on ENTRY, paired with the
+	   [bfield] LoadSubPiece line that follows, shows which phase yields the aircraft and where the
+	   comms walk diverges. BOB_TRACE_BFIELD=1. */
+	if (getenv("BOB_TRACE_BFIELD"))
+	{
+		static long c=0;
+		fprintf(stderr,"[bfield] FindNextBf #%ld phase=0x%x\n",++c,(unsigned)nextbftype);
+		fflush(stderr);
+	}
+#endif
 //DeadCode JIM 23Aug100 	_Radio.phrase_groundcontroller = 1;							//RJS 15Aug00
 
 
@@ -560,6 +574,24 @@ FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 				rv= (FileNum)CSQuick1::quickdef.altmissnum;
 			else
 				rv= (FileNum)CSQuick1::quickdef.currmissnum;
+#if defined(BOB_LINUX)
+			/* MP-5: THIS is where multiplayer loses its aircraft. LOADSCRAMBF returns the scramble
+			   battlefield straight out of CSQuick1::quickdef -- the QUICK MISSION definition -- and
+			   the whole scramble setup above reads quickdef.line[][][] too. Single-player fills
+			   quickdef on the Quick Mission screen and gets file 35337 (the only file with a
+			   T_airgrp). Multiplayer picks a SCENARIO index (_DPlay.GameIndex / currquickmiss) and,
+			   on the evidence, never builds quickdef -- so rv is 0, no battlefield loads, no
+			   aircraft exist, and entering 3D FATALs with "No player A/C set up".
+			   Printing the fields distinguishes "quickdef is empty" from "quickdef is filled but
+			   names a file that does not exist". BOB_TRACE_BFIELD=1. */
+			if (getenv("BOB_TRACE_BFIELD"))
+			{
+				fprintf(stderr,"[bfield] LOADSCRAMBF: plside=%d currmissnum=%d altmissnum=%d target=%d -> rv=%d\n",
+					(int)CSQuick1::quickdef.plside,(int)CSQuick1::quickdef.currmissnum,
+					(int)CSQuick1::quickdef.altmissnum,(int)CSQuick1::quickdef.target,(int)rv);
+				fflush(stderr);
+			}
+#endif
 //DeadCode AMM 5Sep00 // Fix-up Quick-Mission Diary Records...
 //DeadCode AMM 5Sep00 
 //DeadCode AMM 5Sep00 			Squad_Diary.EmptyDiary();

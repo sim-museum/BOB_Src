@@ -1605,6 +1605,51 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 
 Bool RFullPanelDial::CommsSelectFly(FullScreen*&fs)
 {
+#if defined(BOB_LINUX)
+	/* MP-5 (PO 2026-09-05): MULTIPLAYER FLEW INTO AN EMPTY WORLD AND DIED.
+	   Measured, host and client, against a flying single-player control:
+
+	     single-player   LOADSCRAMBF: currmissnum=35337 altmissnum=35340 target=13178 -> rv=35337
+	     multiplayer     LOADSCRAMBF: currmissnum=0     altmissnum=0     target=0     -> rv=0
+
+	   LOADSCRAMBF (TANK.CPP) returns the scramble battlefield straight out of
+	   CSQuick1::quickdef, and the whole scramble setup above it reads quickdef.line[][][].
+	   quickdef is filled by the QUICK MISSION screen (`quickdef=quickmissions[currquickmiss]`,
+	   SQUICK1.CPP:127/507/640/854). The comms path never opens that screen -- it picks a SCENARIO
+	   in the locker room and stores the index in _DPlay.GameIndex -- so quickdef stayed all-zero,
+	   battlefield 35337 (the only file carrying a T_airgrp) was never loaded, no aircraft groups
+	   were built, pilotedaircraft stayed NULL, and entering 3D hit
+	   "No player A/C set up on entering 3d!" (PERSONS3.CPP:3384).
+
+	   Seed quickdef from the scenario the session actually chose. Deliberately ONLY when it is
+	   still empty, so a path that legitimately populated it is never overridden -- this adds the
+	   missing step, it does not take the wheel. BOB_NO_MP_QUICKDEF=1 reverts. */
+	if (!getenv("BOB_NO_MP_QUICKDEF") && CSQuick1::quickdef.currmissnum == FIL_NULL)
+	{
+		int qi = (int)_DPlay.GameIndex;
+		if (qi <= 0) qi = (int)CSQuick1::currquickmiss;
+		if (qi > 0)
+			CSQuick1::quickdef = CSQuick1::quickmissions[qi];
+		/* Neither index is set when the session never touched the Scenario combo -- measured:
+		   "seeded from scenario -1". The Quick Mission screen's own default is misslistindex[0],
+		   but that table is only built by that screen. So fall back to the first scenario that
+		   actually NAMES a battlefield: self-validating, and it cannot pick an empty slot the way
+		   a hardcoded 0 could. Bounded by the 40 the mission-list table itself uses. */
+		if (CSQuick1::quickdef.currmissnum == FIL_NULL)
+			for (int i = 0; i < 40; i++)
+			{
+				QuickDef qd = CSQuick1::quickmissions[i];
+				if (qd.currmissnum != FIL_NULL) { qi = i; CSQuick1::quickdef = qd; break; }
+			}
+		if (CSQuick1::quickdef.currmissnum != FIL_NULL)
+			CSQuick1::currquickmiss = qi;
+		fprintf(stderr,"[mp] CommsSelectFly: quickdef was empty; seeded from scenario %d -> "
+		               "currmissnum=%d altmissnum=%d target=%d\n",
+		        qi,(int)CSQuick1::quickdef.currmissnum,(int)CSQuick1::quickdef.altmissnum,
+		        (int)CSQuick1::quickdef.target);
+		fflush(stderr);
+	}
+#endif
 //DeadCode AMM 18Aug98	if (_DPlay.Host)											//AMM 15Jul98
 //DeadCode AMM 18Aug98		_Agg.StopResetAggregator();								//AMM 15Jul98
 

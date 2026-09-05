@@ -7858,6 +7858,20 @@ int	NodeData::GenerateSecondaries(UniqueID* buffer,int minsize,int maxsize,int c
 FileNum	NodeData::CheckTargetLoaded(UniqueID targ,bool	inconsequentials)
 {
 	FileNum bf=TargetToBf(targ,inconsequentials);
+#if defined(BOB_LINUX)
+	/* MP-5: single-player loads battlefield 35337 (the only file carrying a T_airgrp) through this
+	   call; multiplayer never loads it and then FATALs with "No player A/C set up on entering 3d!".
+	   This says whether the comms path reaches here at all, and with what target -- "never called"
+	   and "called with a target that maps to no battlefield" are different bugs with different
+	   fixes. BOB_TRACE_BFIELD=1. */
+	if (getenv("BOB_TRACE_BFIELD"))
+	{
+		static long c=0;
+		fprintf(stderr,"[bfield] CheckTargetLoaded #%ld targ=%u -> bf=%d%s\n",
+			++c,(unsigned)targ,(int)bf,bf?"":"  <-- NO BATTLEFIELD FOR THIS TARGET");
+		fflush(stderr);
+	}
+#endif
 	if (bf)
 	{
 //DEADCODE DAW 03/02/00 		if (Persons2::loadedBF[0]!=FIL_1_convoy)
