@@ -451,3 +451,58 @@ before/after: a recorded sortie exported both ways, with the id→aircraft mappi
 That is a run, not a read, and it belongs in the sprint that lands the change. **State on handover:
 mechanism proven from the code, instrument named (count ids whose backing pointer changes between
 frames), and the identity to use already chosen.**
+
+### S437 (2026-09-05) — R3: the fix is landed and PROVEN DISTINCT; ⚠️ **S436's "acceptance fails" claim is DOWNGRADED — the defect did not reproduce**
+
+**Landed** (`SRC/COMMS/REPLAY.CPP`, additive, `BOB_ACMI_POSID=1` reverts): the ACMI object id is now
+`_ac->uniqueID.count` — the engine's own `UNIQUE_ID` (a 14-bit field, `WORLDINC.H:245`), which the
+replay stream already writes for every cross-reference — instead of the aircraft's position in
+`ACList`. A zero uid (`UID_Null`) exports under a synthetic id at `0x4000 + _id`, a band real uids
+cannot reach, rather than being dropped. Edited `REPLAY.CPP`, the real file; `Replay.cpp` is still a
+symlink to it (checked after the write).
+
+## ⚠️ The measurement, and what it did to my own claim
+
+S436 asserted R3's acceptance *fails* because positional ids swap when `ACList` mutates. The
+mechanism in the code is real — head insertion at `MOVEALL.CPP:1442-1443`, head removal at
+`PERSONS3.CPP:3464`. **It did not fire.**
+
+Instrument: remember which `AirStrucPtr` each id referred to last frame, count the ids whose backing
+pointer changed. A/B under `tools/bob_convoy_campaign.sh` (the campaign recipe that produced R2's
+148 objects), both arms reaching comparable depth:
+
+| arm | walked | checks | **swaps** |
+|---|---|---|---|
+| control `BOB_ACMI_POSID=1` (positional) | 1,034,501 | 1,033,353 | **0** |
+| fix (uniqueID) | 1,046,501 | 1,046,353 | **0** |
+
+**A million opportunities in the control arm and zero swaps.** The aircraft set is established before
+the tee starts and does not change during the sortie, so the positional scheme is never exercised in
+the way S436 predicted. **The acceptance-failure claim is withdrawn and re-filed as a LATENT
+hazard:** the code shape is genuinely fragile, and nothing observed is broken by it.
+
+## What the run DOES prove, and it is worth having
+
+**`uniqueID.count` is distinct across all ~148 aircraft and stable across 400+ frames.** Zero swaps
+in the fix arm is not a null result here: a duplicate uid would have made two aircraft share a slot
+and shown up as a swap on the following frame. So the identity adopted is genuinely unique, which is
+the property R3 actually needs — proven, rather than assumed from the fact that the engine calls it
+unique.
+
+## Two honest caveats
+
+1. **The first attempt measured nothing and looked like a pass.** The instrument reported on
+   `_rep % 20000`, which fired only at iteration 0, so the first A/B printed `0 swaps / 0 checks` in
+   both arms — a zero from an instrument that had never had a second frame to compare against. It was
+   caught by reading `checks`, not `swaps`. `BOB_ACMI_IDEVERY` now sets the cadence (default 50), and
+   the line reports `walked` and the frame number so a silent arm cannot be mistaken for a clean one.
+   `instrument-bookkeeping-lies`, again, and it nearly banked a false pass.
+2. **Both campaign runs were cut short by MY harness** (a 10-minute cap on the pair), at frames 333
+   and 414 — not by the game. The counts above are from partial sorties. A full run could still
+   produce a spawn; that is the only way this becomes reproducible, and it is the next test if anyone
+   wants to close the latent hazard rather than leave it fixed-and-unproven.
+
+**On-disk change to note:** object ids in exported `.acmi` files are now game uids, not 1..N. Files
+recorded before and after this sprint are not id-comparable.
+
+**R3: the walk, filters, colours, types and now the identity are all in. Sprint 2 of 4.**

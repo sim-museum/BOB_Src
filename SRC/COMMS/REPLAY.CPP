@@ -465,6 +465,65 @@ Bool	Replay::StoreDeltas()
 			while (_ac && _id < 256)
 			{
 				_id++;
+				/* S437 (R3): THE OBJECT ID MUST NAME THE AIRCRAFT, NOT ITS PLACE IN A LIST.
+				   `_id` is a position in ACList, recomputed every frame, and ACList is
+				   head-INSERTED (MOVEALL.CPP:1442-1443 `nextmobile=ACList; ACList=*this;`) and
+				   head-REMOVED (PERSONS3.CPP:3464). So one spawn or despawn shifts every later
+				   index and object N silently becomes a different aeroplane -- in Tacview a
+				   Spitfire's track continues as a Heinkel's. R3 asks for DISTINCT objects, and
+				   positional ids are distinct only within a single frame.
+				   `uniqueID.count` is the engine's own identity (UNIQUE_ID, a 14-bit field in
+				   WORLDINC.H:245) and is what the replay stream itself writes for every
+				   cross-reference, so this is adopting the game's answer, not inventing one.
+				   Zero is UID_Null, which Tacview cannot use as an object id, so an aircraft
+				   carrying it still exports under a synthetic id in a band real uids cannot
+				   reach (count is 14 bits, so 0x4000+ is free) rather than being dropped.
+				   BOB_ACMI_POSID=1 restores the positional id -- it is the CONTROL for the
+				   instrument below, not a compatibility knob. */
+				unsigned long _oid;
+				{
+					static long _posid = -1;
+					if (_posid < 0) _posid = getenv("BOB_ACMI_POSID") ? 1 : 0;
+					if (_posid) _oid = _id;
+					else
+					{
+						_oid = (unsigned long)_ac->uniqueID.count;
+						if (_oid == 0) _oid = 0x4000UL + _id;
+					}
+				}
+				/* S437: THE MEASUREMENT R3'S ACCEPTANCE NEEDS, and it must be able to fail.
+				   Remember which aircraft each id referred to last frame; count the ids whose
+				   backing pointer CHANGED. A stable scheme reports 0 swaps; the positional one
+				   reports a swap for every aircraft after an insertion or removal. Reported
+				   under BOB_TRACE_ACMI with the id scheme named, so a run can never be
+				   mistaken for the other arm. */
+				if (getenv("BOB_TRACE_ACMI"))
+				{
+					static void*         _seen[0x4400];
+					static unsigned long _seenFrame[0x4400];
+					static unsigned long _swaps = 0, _checks = 0, _rep = 0;
+					if (_oid < 0x4400)
+					{
+						if (_seenFrame[_oid])
+						{
+							_checks++;
+							if (_seen[_oid] != (void*)_ac) _swaps++;
+						}
+						_seen[_oid] = (void*)_ac;
+						_seenFrame[_oid] = (unsigned long)replayframecount + 1;
+					}
+					static long _every = -1;
+					if (_every < 0) _every = getenv("BOB_ACMI_IDEVERY") ? atol(getenv("BOB_ACMI_IDEVERY")) : 50;
+					if ((_rep++ % _every) == 0)
+					{
+						static long _p2 = -1;
+						if (_p2 < 0) _p2 = getenv("BOB_ACMI_POSID") ? 1 : 0;
+						fprintf(stderr, "[acmi] idscheme=%s identity: %lu swaps / %lu checks / %lu walked (frame %lu)\n",
+						        _p2 ? "POSITIONAL" : "uniqueID", _swaps, _checks, _rep,
+						        (unsigned long)replayframecount);
+						fflush(stderr);
+					}
+				}
 				/* S274b: identify the player by the game's OWN notion of the controlled aircraft.
 				   `gac` is Persons2::PlayerGhostAC, and comparing against it matched NOTHING here
 				   -- measured: zero `Pilot=Player` samples across 511 markers, so the export could
@@ -531,7 +590,7 @@ Bool	Replay::StoreDeltas()
 					if (_aiEvery > 1 && !_isPlayer && (replayframecount % _aiEvery) != 0)
 						{ _ac = *_ac->nextmobile; continue; }
 				}
-				bob_acmi_object_ias(_id,
+				bob_acmi_object_ias(_oid,
 				                    (double)_ac->World.X / _cm,
 				                    (double)_ac->World.Z / _cm,
 				                    (double)_ac->World.Y / _cm,
