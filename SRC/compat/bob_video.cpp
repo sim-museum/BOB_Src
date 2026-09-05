@@ -720,6 +720,31 @@ static void pump_events(void)
 	   render-only for 40+ sprints for exactly this reason: the only driver entered below the layer
 	   that was missing. This pushes an actual event, so everything from SDL_PollEvent downward is
 	   production code and the sole thing not covered is the physical mouse / X server. */
+	/* PO 2026-09-05: BOB_SDL_TEXT="tick,char[;tick,char...]" -- push a REAL SDL_TEXTINPUT, the
+	   keyboard twin of BOB_SDL_CLICK above and for the same stated reason: everything from
+	   SDL_PollEvent downward stays production code, and the only thing not covered is the physical
+	   keyboard. It exists because I shipped a keyboard path I could not reach from this box, and the
+	   PO found its NULL deref by clicking a field. A hook that lets the crash be reproduced HERE is
+	   worth more than the fix it was meant to verify. `char` is a decimal ASCII code. */
+	{
+		const char* st = getenv("BOB_SDL_TEXT");
+		static long st_calls = -1;
+		if (st) {
+			st_calls++;
+			for (const char* p = st; p && *p; ) {
+				long T; int cc;
+				if (sscanf(p, "%ld,%d", &T, &cc) == 2 && st_calls == T) {
+					SDL_Event ev; memset(&ev, 0, sizeof(ev));
+					ev.type = SDL_TEXTINPUT;
+					ev.text.text[0] = (char)cc; ev.text.text[1] = 0;
+					int pushed = SDL_PushEvent(&ev);
+					fprintf(stderr, "[sdltext] pushed SDL_TEXTINPUT '%c' (%d) tick=%ld rc=%d\n",
+					        (cc>=32&&cc<127)?cc:'?', cc, T, pushed);
+				}
+				p = strchr(p, ';'); if (p) p++;
+			}
+		}
+	}
 	{
 		const char* sc = getenv("BOB_SDL_CLICK");
 		static long sc_calls = -1;

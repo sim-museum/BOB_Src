@@ -822,6 +822,13 @@ extern "C" int bob_ole_key(int ch, int isText) {
     int alive = 0;
     for (auto& kv : hosts()) if (kv.second == g_focusHost) { alive = 1; break; }
     if (!alive) { g_focusHost = 0; return 0; }
+    /* TRACE BEFORE THE CALL. The first cut logged only after onKey returned, so when it crashed
+       INSIDE the control the log showed focus and then nothing -- and I read that as "keys are not
+       being delivered" when they were being delivered and killing the process. A trace after the
+       risky call cannot describe the call that did not return. */
+    if (bob_ole_trace())
+        fprintf(stderr, "[ole] key %s %d -> id=%d (delivering)\n",
+                isText ? "text" : "vkey", ch, g_focusHost->ctrlId);
     int took = g_focusHost->onKey(ch, isText);
     if (took == 2) {
         /* RETURN on an edit: fire the control's ReturnPressed (dispid 1) on the dialog's RUNTIME
@@ -866,6 +873,7 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
                 g_focusHost = h;
                 if (bob_ole_trace())
                     fprintf(stderr, "[ole] keyboard focus -> id=%d\n", h->ctrlId);
+                h->onFocus();      /* the control's own focus-time setup, before any key */
             }
             /* S129: a multi-button control (RRadio tab row) -- select the button under the
                cursor and fire its genuine Selected(index) event (dispid 1, VTS_I4) via the

@@ -36,6 +36,7 @@ struct OleHost {
     virtual int  wantsKeys() { return 0; }
     virtual int  onKey(int /*ch*/, int /*isText*/) { return 0; }
     virtual const char* keyText() { return 0; }   /* current text, for a submit event's argument */
+    virtual void onFocus() {}   /* the control just gained the keyboard: run its focus-time setup */
     virtual int  onClick() { return 0; } /* interactive controls (RCombo) cycle on click; return 1 if state changed */
     /* S197: some controls need WHERE inside themselves they were clicked -- a spin button's arrows
        are the right ~15px and its up/down halves are decided by Y. onClick() has no coordinates and

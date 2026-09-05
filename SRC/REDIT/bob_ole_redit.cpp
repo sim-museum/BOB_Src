@@ -56,8 +56,20 @@ struct HostREdit : public CREditCtrl, public OleHost {
        (SDL_TEXTINPUT, so keyboard layout is the OS's problem, not ours); backspace/enter/delete
        and the arrows arrive as virtual keys. */
     int wantsKeys() override { return 1; }
+    /* PO 2026-09-05, SECOND crash (mine): clicking the Name field killed the client in
+       CREditCtrl::OnChar at REDITCTL.CPP:1105 -- `strlen(currentword->text)` with currentword
+       NULL. The genuine control sets currentword in OnSetFocus -> SetToWordUnderCursor, and this
+       host had never called ANY of the control's focus-time setup: it delivered a keystroke to a
+       control that had never been focused. The control's own OnChar has no guard, so this was a
+       NULL deref one call inside code I chose to invoke. */
+    void onFocus() override { if (GetEnabled()) OnSetFocus(0); }
+
     int onKey(int ch, int isText) override {
         if (!GetEnabled()) return 0;
+        if (!currentword) {          /* focus setup did not take -- refuse rather than crash */
+            fprintf(stderr, "[ole] REdit id=%d: no currentword, key dropped\n", ctrlId);
+            return 0;
+        }
         if (isText) { if (ch < 32 || ch > 126) return 0; OnChar((UINT)ch, 1, 0); return 1; }
         OnKeyDown((UINT)ch, 1, 0);
         /* RETURN is not just another key here. READY.CPP:280 binds
