@@ -1669,6 +1669,18 @@ extern "C" void bob_frontend_tick(void)
 extern "C" int bob_ole_key(int ch, int isText);
 extern "C" int bob_fp_key(int ch, int isText)
 {
+	/* ⚠️ DEFAULT OFF as of 2026-09-05. The PO reported that after typing in the Ready Room the
+	   screen's top text lines vanish and NOTHING further responds -- neither typing nor clicking --
+	   which is a worse defect than the one this path was added to fix, and it blocks the actual
+	   goal (a 3-D multiplayer session). The repaint below is the prime suspect: it is called on
+	   every consumed key and was never exercised on this screen.
+	   Turned off rather than guessed at, because the PO is mid-session and the feature is unproven
+	   while the regression is observed. BOB_CHAT_KEYS=1 re-enables it for debugging.
+	   This port's own convention, stated in ai/RACE_AI_NOTES terms elsewhere: ship opt-in first,
+	   default only after a test-drive confirms the feel. I skipped that step and this is the cost. */
+	static int s_on = -1;
+	if (s_on < 0) s_on = getenv("BOB_CHAT_KEYS") ? 1 : 0;
+	if (!s_on) return 0;
 	if (!bobOleDraw() || !g_bobActiveFP) return 0;
 	if (!bob_ole_key(ch, isText)) return 0;
 	bob_fp_repaint(g_bobActiveFP);
