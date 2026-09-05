@@ -1980,6 +1980,14 @@ void DPlay::CheckPassword(char* pword,char* name,ULong player)
 
 	SLong nextslot=GetNextAvailableSlot();
 
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY"))
+	{
+		fprintf(stderr,"[mp] CheckPassword name=\"%s\" player=%lu -> slot=%ld pwordOK=%d\n",
+			name?name:"(null)",(unsigned long)player,(long)nextslot,(int)pwordOK);
+		fflush(stderr);
+	}
+#endif
 	if (nextslot>=0)
 	{
 		pack.pwordOK=pwordOK;
@@ -3543,6 +3551,17 @@ void DPlay::Process_PM_IAmIn(char* message, ULong from)
 
 void DPlay::Process_PM_Password(char* message, ULong from)
 {
+#if defined(BOB_LINUX)
+	/* MP-5: the host receives the joiner's 44-byte PID_PASSWORD packet (AttemptToJoin sends it to
+	   DPID_ALLPLAYERS) but never ends up with an H2H_Player entry for that client, so CountPlayers
+	   sees 1 and the Fly handshake has nobody to talk to. This says whether the host DISPATCHES the
+	   packet at all, and whether it is acting as Host when it arrives. BOB_TRACE_DPLAY=1. */
+	if (getenv("BOB_TRACE_DPLAY"))
+	{
+		fprintf(stderr,"[mp] Process_PM_Password from=%lu Host=%d\n",(unsigned long)from,(int)Host);
+		fflush(stderr);
+	}
+#endif
 	if (Host)
 	{
 		LPPASSWORDPACK ppack=(LPPASSWORDPACK)message;

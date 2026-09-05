@@ -953,3 +953,40 @@ those the host is meant to act on, and why `ProcessPlayerMessage` is not turning
 | packets crossing | ✅ 6 | ✅ 6 |
 | known to the host's game layer | ✅ | ❌ |
 | **enters 3D** | ✅ | ❌ |
+
+### MP-5 (cont. 6) — the host RECEIVES the joiner's packets but never DISPATCHES them
+
+The client's join is sent by `DPlay::AttemptToJoin()`:
+
+```c
+pack.PacketID = PID_PASSWORD;
+ULong from = myDPlayID, to = DPID_ALLPLAYERS;
+res = lpDP4->Send(from, to, 0, &pack, sizeof(PASSWORDPACK));
+```
+
+and the host's handler `Process_PM_Password` → `CheckPassword` → `GetNextAvailableSlot` is what
+allocates the `H2H_Player` slot and replies with `newslot`/`groupID`/`aggID`. **That is the step that
+would make the host's game layer aware of the client**, and it is the missing link.
+
+**Traced both, and the answer is unambiguous:** with `BOB_TRACE_DPLAY=1` the host prints
+`[mp] Process_PM_Password ...` and `[mp] CheckPassword ...` if either runs. Across the runs:
+
+* host **receives** the client's packets — `received 44 data bytes from pid 4` (and 47, 12, 190 in
+  other runs);
+* host prints **neither** trace. `Process_PM_Password` is never entered.
+
+So the packets arrive at the shim and are queued, and the game layer never turns them into a join.
+The gap is between the shim's queue and `ProcessPlayerMessage`'s `case PID_PASSWORD` (`COMMS.CPP:1297`).
+
+**Next, and it is one question:** does the host's Ready Room ever drain the receive queue? The client
+side clearly does (it processes the host's replies), so the asymmetry is on the host. Candidates, in
+order: whether `ReceiveNextMessage*` is called on the host's ready-room tick at all; whether the
+packet's `to` field (`DPID_ALLPLAYERS`) is routed to the host's own pid by the shim's `Receive`; and
+whether the size test that precedes the dispatch rejects it.
+
+Instruments left in place, all `BOB_TRACE_DPLAY`-gated: `Process_PM_Password` entry (with `from` and
+`Host`), and `CheckPassword` (name, player, allocated slot, pwordOK).
+
+**Running state unchanged otherwise:** host hosts, seeds `quickdef`, builds aircraft, reaches
+`InThe3D=1`; client joins, gets a pid, is now in the host's broadcast group, exchanges packets,
+reaches the Ready Room — and is still invisible to the host's game layer.
