@@ -847,3 +847,62 @@ the critical path for the PO's stated goal, which changes the trade.
 the client select nothing and stall on the session list -- it looks exactly like a discovery failure
 and is not one. Also: `[menu] screen=0x...` pointers differ between processes, so match screens by
 `artnum` (Ready Room = 27918), never by address.
+
+### MP-5 (cont. 4) — EnumSessions was EATING the game's packets (fixed); WM_DESTROY dispatch REVERTED
+
+**Two findings, one fix, one regression of my own caught by its own A/B.**
+
+## ⭐ Fixed: `EnumSessions` destroyed every non-OFFER packet on the shared socket
+
+`BobDPlay4::EnumSessions` sends a probe and then runs its own `recvfrom` loop on the **same `fd`**
+the game uses, for up to `waitms`. Anything that was not `MSG_OFFER` was read off the socket and
+**silently dropped**. And the Select-Session screen's 2365 timer keeps calling `EnumSessions` long
+after that screen closes, so a client sitting in the Ready Room ran that loop **245 times** —
+swallowing the host's traffic during exactly the window the Fly handshake needs. Measured before the
+fix: the client received **6** packets in a whole session and never set `FlyNowFlag`.
+
+Non-OFFER packets now go into the same queue `pump()` fills, and the effect is visible:
+
+    [dplay] EnumSessions: rescued 190 data bytes from pid 3 (would have been dropped)
+    [dplay] EnumSessions: rescued  31 data bytes from pid 3 (would have been dropped)
+
+Those two are exactly the host's `Send 190 bytes pid 3 -> 2` and `Send 31 bytes pid 3 -> 4`, which
+before this change were destroyed by the enumeration loop.
+
+## ⛔ Reverted: dispatching WM_DESTROY BREAKS HOSTING
+
+`ON_WM_DESTROY()` expands to nothing here, so all 25 `OnDestroy` overrides are dead code — the same
+state `OnTimer` was in before R24. I made `CWnd::OnDestroy` virtual and called it from
+`DestroyWindow()`. **It breaks the host outright**, and the A/B says so unambiguously:
+
+| | `Open(CREATE)` | host bound to UDP |
+|---|---|---|
+| `BOB_NO_WM_DESTROY=1` | **1** | 1 |
+| dispatch enabled | **0** | 0 |
+
+with the game's own *"Could not create session or player"* modal. So at least one of those 25
+handlers tears down state the comms setup needs, or runs where Windows would not have delivered
+WM_DESTROY. **Now opt-in (`BOB_WM_DESTROY=1`)**, because waking 25 never-executed handlers is not a
+change to make on the critical path of the PO's goal. It also did NOT fix the stale timer: the
+Select-Session dialog is never destroyed at all, so `DestroyWindow` — and therefore any dispatch
+hung off it — is never reached for that screen. Killing that timer needs the front-end's
+screen-switch path, not `WM_DESTROY`.
+
+## State
+
+| | host | client |
+|---|---|---|
+| hosts / joins | ✅ `Open(CREATE)` | ✅ `assigned us pid` |
+| Ready Room | ✅ | ✅ (artnum 27918) |
+| **enters 3D** | ✅ **`InThe3D=1`** | ❌ still no |
+| FATAL | 0 | 0 |
+
+**Next:** the client reaches the Ready Room and receives host traffic, but never sets `FlyNowFlag`.
+With the packets no longer being eaten, the question is now narrow: does the host's `UISendFlyNow()`
+actually transmit to the client's pid, and does `CReadyRoom::OnTimer` see it? Trace both ends of that
+one message.
+
+**Harness fixes worth keeping:** wait ~12 s after launching before polling for a process (a
+`! pgrep` guard fires instantly otherwise and reports a failure that has not happened); and never
+print a success line outside the loop's success branch — an `until` that exits on timeout printed
+"host hosting" for a host that never hosted.

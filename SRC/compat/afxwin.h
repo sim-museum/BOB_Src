@@ -991,6 +991,13 @@ extern "C" {
 extern "C" unsigned bob_timer_set(void* wnd, unsigned id, unsigned ms);   /* R24 S420 */
 extern "C" void bob_timer_kill(void* wnd, unsigned id);
 extern "C" void bob_timers_tick(void);
+/* R27: application-exit flag (defined in bob_video.cpp). Declared at file scope --
+   an extern "C" declaration is ill-formed inside a function body. */
+extern "C" void bob_request_quit(int);
+extern "C" int  bob_quit_requested(void);
+class CWnd;
+extern CWnd* AfxGetMainWnd();   /* R27b: needed inside CWnd::DestroyWindow, declared again below */
+
 class CWnd : public CCmdTarget {
 public:
     enum { adjustBorder = 0, adjustOutside = 1 };
@@ -1053,7 +1060,41 @@ public:
        optimism: 181,424 -> 184 hosted controls, the directive-dialog cancel toggle (S108's
        territory) exercised without incident, and a full gate suite run with it enabled coming back
        14/14 byte-identical. */
-    BOOL DestroyWindow() { bob_dialog_destroy_trace(this); bob_dialog_teardown(this); return TRUE; }
+    /* R27b: destroying the MAIN FRAME is how this game exits. RFullPanelDial::ConfirmExit
+       (FULLPANE.CPP:130 -- the title screen's Quit item, index 8) does exactly three things:
+       ChangeMode(UIR_FIRST), m_doIExist=0, then mainframe->DestroyWindow(). On Windows that
+       posts WM_QUIT and the Run loop ends. Here it tore down the dialog hosts and returned TRUE,
+       so the app cleared its screen (m_doIExist=0 stops the front-end painting) and span forever
+       -- the PO's "black screen, does not exit". Traced to here only after the OnClose theory was
+       DISPROVED by an [onclose] probe that never fired.
+       Scoped to the main window: dialogs call DestroyWindow constantly and must not quit. */
+    BOOL DestroyWindow() {
+        bob_dialog_destroy_trace(this); bob_dialog_teardown(this);
+        /* MP-5: dispatch WM_DESTROY. Windows delivers it while the window still exists, so this
+           runs BEFORE anything else here would invalidate the object.
+
+           ⚠️ DEFAULT OFF, and measured. Enabling it BREAKS HOSTING outright:
+
+               BOB_NO_WM_DESTROY=1  ->  Open(CREATE): 1   host bound to UDP: 1
+               dispatch enabled     ->  Open(CREATE): 0   host bound to UDP: 0   + the game's
+                                        "Could not create session or player" modal
+
+           So at least one of the 25 OnDestroy handlers tears down state the comms setup needs, or
+           runs at a moment Windows would not have delivered WM_DESTROY. Waking 25 handlers that
+           have never executed in this port is not a change to make on the critical path of the
+           PO's goal, so it is opt-in until each handler has been read. BOB_WM_DESTROY=1 enables. */
+        {
+            static int s_on = -1;
+            if (s_on < 0) s_on = getenv("BOB_WM_DESTROY") ? 1 : 0;
+            if (s_on) {
+                if (getenv("BOB_TRACE_DESTROY"))
+                    { fprintf(stderr, "[destroy] OnDestroy -> %p\n", (void*)this); fflush(stderr); }
+                OnDestroy();
+            }
+        }
+        if (!getenv("BOB_NO_QUIT") && (CWnd*)this == AfxGetMainWnd()) bob_request_quit(0);
+        return TRUE;
+    }
     BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
     BOOL MoveWindow(LPCRECT, BOOL = TRUE) { return TRUE; }
     CWnd* GetTopWindow() const { return NULL; }
@@ -1258,7 +1299,15 @@ public:
     virtual LRESULT WindowProc(UINT, WPARAM, LPARAM) { return 0; }
     /* standard message handlers (derived classes call base::OnXxx) */
     afx_msg int  OnCreate(void*) { return 0; }
-    afx_msg void OnDestroy() {}
+    /* VIRTUAL as of 2026-09-05 (MP-5). ON_WM_DESTROY() expands to nothing here, so the 25
+       OnDestroy overrides in this tree were dead code -- exactly the state OnTimer was in before
+       R24, and fixed the same way: make the handler virtual and call it where the event actually
+       happens (DestroyWindow below). The concrete cost of it being dead: CSelectSession::OnDestroy
+       calls KillTimer(m_timer), so the Select-Session screen's 2365 timer outlived its screen and
+       kept probing the host several times a second during the multiplayer Fly handshake -- and it
+       is the same stale timer that produced the PO's SIGSEGV in UIGetSessionListUpdate this
+       morning. SRC/MFC holds 27 KillTimer calls; every one in an OnDestroy has never run. */
+    virtual void OnDestroy() {}
     afx_msg void OnPaint() {}
     afx_msg void OnSize(UINT, int, int) {}
     /* VIRTUAL, and declared UINT to match all 28 overrides EXACTLY. The base was UINT_PTR; on
@@ -1703,6 +1752,16 @@ public:
     void RecalcLayout(BOOL = TRUE) {}
     BOOL SetActiveView(CView* v, BOOL = TRUE) { m_pActiveView_compat = v; return TRUE; }
     void ExitHelpMode() {}
+    /* R27: the APPLICATION EXIT chain. CMainFrame::OnClose() (MAINFRM.CPP:1143) ends with an
+       explicit CFrameWnd::OnClose(), which on Windows runs DestroyWindow -> WM_NCDESTROY ->
+       PostQuitMessage(0) -> PumpMessage() returns FALSE -> CMIGApp::Run() returns ExitInstance().
+       Every link of that tail was a stub here (CWnd::OnClose {}, PostQuitMessage {}, PumpMessage
+       {return TRUE;}), so selecting Quit on the title page set m_doIExist=false, restored the
+       desktop resolution, and then span in the Run loop forever with nothing left to paint --
+       the PO's "black screen, had to ALT-TAB away" (2026-09-03).
+       Declared on CFrameWnd, NOT CWnd: CWnd::OnClose is reachable from every dialog, and a
+       dialog close must not quit the game. BOB_NO_QUIT=1 reverts to the old spin. */
+    void OnClose() { if (!getenv("BOB_NO_QUIT")) bob_request_quit(0); }
 };
 
 /* CFile / CArchive / CPrintInfo (afx.h) */
@@ -1780,7 +1839,7 @@ public:
 static inline BOOL AfxOleInit() { return TRUE; }
 static inline void AfxEnableControlContainer(void* = NULL) {}
 static inline BOOL AfxOleGetUserCtrl() { return FALSE; }
-static inline void AfxPostQuitMessage(int = 0) {}
+static inline void AfxPostQuitMessage(int n = 0) { bob_request_quit(n); }
 static inline void AfxOleSetUserCtrl(BOOL) {}
 static inline CWinApp* AfxGetAppHelper() { return NULL; }
 
@@ -1834,7 +1893,9 @@ public:
     void    HtmlHelp(DWORD, UINT = 0) {}
     void    SetRegistryKey(LPCSTR) {}
     void    SetRegistryKey(UINT) {}
-    BOOL    PumpMessage() { return TRUE; }
+    /* R27: MFC's PumpMessage returns FALSE after WM_QUIT -- the ONLY exit from CMIGApp::Run's
+       for(;;). Hardcoded TRUE meant the loop could never end. */
+    BOOL    PumpMessage() { return bob_quit_requested() ? FALSE : TRUE; }
     BOOL    IsIdleMessage(void*) { return TRUE; }
     void    Enable3dControls() {}
     void    Enable3dControlsStatic() {}

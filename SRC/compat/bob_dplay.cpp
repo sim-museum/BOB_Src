@@ -271,6 +271,25 @@ public:
             ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);
             if (n >= (ssize_t)sizeof(WireHdr)) {
                 WireHdr* rh = (WireHdr*)buf;
+                /* MP-5 (PO 2026-09-05): DO NOT EAT THE GAME'S PACKETS.
+                   This loop reads the SHARED socket for up to `waitms` and used to discard
+                   everything that was not an OFFER. The Select-Session screen's 2365 timer keeps
+                   calling EnumSessions long after that screen closes (its OnDestroy/KillTimer has
+                   never run in this port), so a client sitting in the Ready Room ran this loop 245
+                   times -- swallowing the host's traffic, including the FlyNow that tells it to
+                   launch. Measured: the client received 6 packets in a whole session and never set
+                   FlyNowFlag, so it never followed the host into 3D.
+                   Hand anything that is not an OFFER to the SAME queue pump() fills, so a packet
+                   that arrives during an enumeration is delivered instead of destroyed. */
+                if (rh->magic == DPMAGIC && rh->kind == MSG_DATA) {
+                    qpush(rh->from, rh->to, buf + sizeof(WireHdr), (unsigned)(n - sizeof(WireHdr)));
+                    DPT("EnumSessions: rescued %d data bytes from pid %u (would have been dropped)\n",
+                        (int)(n - sizeof(WireHdr)), rh->from);
+                }
+                else if (rh->magic == DPMAGIC && rh->kind == MSG_ASSIGN && !isHost) {
+                    assignedPid = (DPID)rh->to; havePeer = 1; peer = from;
+                    DPT("EnumSessions: rescued host pid assignment %u\n", (unsigned)rh->to);
+                }
                 if (rh->magic == DPMAGIC && rh->kind == MSG_OFFER) {
                     DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd));
                     sd.dwSize = sizeof(sd);
