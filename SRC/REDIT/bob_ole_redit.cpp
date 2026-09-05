@@ -66,12 +66,30 @@ struct HostREdit : public CREditCtrl, public OleHost {
 
     int onKey(int ch, int isText) override {
         if (!GetEnabled()) return 0;
-        if (!currentword) {          /* focus setup did not take -- refuse rather than crash */
-            fprintf(stderr, "[ole] REdit id=%d: no currentword, key dropped\n", ctrlId);
-            return 0;
+        if (isText) {
+            if (ch < 32 || ch > 126) return 0;
+            /* ⭐ WINDOWS MESSAGE ORDER, and it is the whole bug. CREditCtrl::OnKeyDown OPENS with
+               the word-list initialisation --
+                   if (wordlist.IsEmpty()) { ...AddHead; currentword=&wordlist.GetHead(); }
+                   if (!currentword)       { currentword=&wordlist.GetHead(); }
+               -- and CREditCtrl::OnChar has no such block, going straight to
+               strlen(currentword->text). On Windows WM_KEYDOWN ALWAYS precedes WM_CHAR, so that
+               init had always run by the time OnChar saw a character. Delivering SDL_TEXTINPUT
+               straight to OnChar broke an ordering the control has always been able to assume.
+               OnSetFocus was not enough: SetToWordUnderCursor leaves currentword NULL on an empty
+               list, which is why the PO's run logged "no currentword, key dropped".
+               So send the key-down first, exactly as Windows would. OnKeyDown's switch has NO
+               default case (only VK_BACK/DELETE/LEFT/RIGHT/HOME/END), so a letter falls through
+               it harmlessly and only the init at the top runs. */
+            OnKeyDown((UINT)(ch >= 'a' && ch <= 'z' ? ch - 32 : ch), 1, 0);
+            if (!currentword) {      /* backstop: still nothing to type into -- drop, never crash */
+                fprintf(stderr, "[ole] REdit id=%d: no currentword after OnKeyDown, key dropped\n", ctrlId);
+                return 0;
+            }
+            OnChar((UINT)ch, 1, 0);
+            return 1;
         }
-        if (isText) { if (ch < 32 || ch > 126) return 0; OnChar((UINT)ch, 1, 0); return 1; }
-        OnKeyDown((UINT)ch, 1, 0);
+        OnKeyDown((UINT)ch, 1, 0);   /* self-initialising, per the block quoted above */
         /* RETURN is not just another key here. READY.CPP:280 binds
            ON_EVENT(CReadyRoom, IDC_PLAYERCHAT, 1 / ReturnPressed /, OnReturnPressedPlayerchat,
            VTS_BSTR) -- the handler that actually SENDS the chat line. Delivering the keystroke
