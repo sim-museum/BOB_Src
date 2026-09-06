@@ -1119,3 +1119,33 @@ quickdef, exactly the state that made the HOST fatal before the seed was added.
 
 **Next, in order:** (1) seed `quickdef` on the client's auto-launch path too, not just the menu
 action; (2) then trace the random-list send on the host against the receive on the client.
+
+### MP-5 (cont. 10) — the quickdef seed now covers BOTH roles; the SIP timeout is NOT caused by it
+
+Moved the seed out of `RFullPanelDial::CommsSelectFly` (the menu action behind Fly, which only the
+HOST runs) into `DPlay::UINetworkSelectFly` — the one function both roles must call before flying.
+The body lives in `FULLPANE.CPP` behind `bob_mp_seed_quickdef()` because `CSQuick1` is an MFC-layer
+type the comms TU does not include; calling through a hook leaves the include graph as it was.
+
+**It works on the client now:**
+
+    [mp] seed_quickdef: scenario 0 -> currmissnum=35337 altmissnum=35340 target=13178 (Host=0)
+
+⛔ **And the client still dies with `FATAL: Timed out (SIP)`.** So the empty quickdef was NOT the
+cause of that timeout — a hypothesis worth killing, since it was the obvious one. The seed is still
+correct and stays: a client entering 3-D with no mission data would have failed later anyway.
+
+**⚠️ A near-miss worth recording.** The move was done as two edits; the first (removing the seed from
+`CommsSelectFly`) succeeded and the second failed its anchor assertion, leaving the tree with the
+HOST fix deleted and nothing in its place. Caught immediately by grepping both files for the marker
+string, but a build in that window would have looked like a fresh regression of a fix that was
+working an hour earlier. **When moving code between files, verify BOTH ends before building** — the
+assertion protects the destination, not the source you already cut.
+
+**MP-5 sprint count: ~10, past the PO's 6-sprint cap. Rotating off.**
+
+State on handover: host hosts, seeds quickdef, builds aircraft, allocates a player slot for the
+client (`CheckPassword name="Bob" player=4 -> slot=1`), and reaches `InThe3D=1`. Client joins,
+reaches the Ready Room, seeds quickdef, enters the 3-D transition, and times out in
+`SendPacketToAggregator`'s *"Receive Random List"* wait (`WINMOVE.CPP:1499`, 20 s).
+**Next: trace the random-list SEND on the host against that RECEIVE.**

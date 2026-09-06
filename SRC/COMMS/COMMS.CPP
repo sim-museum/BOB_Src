@@ -683,8 +683,24 @@ void DPlay::UISendDialogue (char* Text)
 //Date			Mon 23 Sep 1996
 //Description	Network Fly Selection
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+extern "C" void bob_mp_seed_quickdef(int gameIndex, int isHost);
+#endif
+
 Bool DPlay::UINetworkSelectFly ()
 {
+#if defined(BOB_LINUX)
+	/* MP-5: SEED THE QUICK-MISSION DEFINITION FOR BOTH ROLES.
+	   LOADSCRAMBF (TANK.CPP) takes the scramble battlefield out of CSQuick1::quickdef, which only
+	   the Quick Mission SCREEN fills -- and no comms path opens that screen, so multiplayer entered
+	   3-D with an empty quickdef and no aircraft ("No player A/C set up", PERSONS3.CPP:3384).
+	   The seed first lived in CommsSelectFly, the MENU ACTION behind Fly, which fixed the HOST only:
+	   a client never clicks Fly (CReadyRoom::OnTimer calls UINetworkSelectFly itself). Here it
+	   covers both roles, because this is the one function both paths must call before flying.
+	   The body lives in FULLPANE.CPP because CSQuick1 is an MFC-layer type this comms TU does not
+	   include -- calling through a hook keeps the include graph as it was. */
+	bob_mp_seed_quickdef((int)GameIndex, (int)Host);
+#endif
 	HRESULT res;
 	UIPLAYERDATA UIPlayerData;
 	ULong UIPlayerSize;
