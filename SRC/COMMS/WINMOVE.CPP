@@ -193,6 +193,28 @@ bool	DPlay::CommsGameSync()
 					ActivePlayers |= (1 << n);
 			}
 
+#if defined(BOB_LINUX)
+/* MP-6 (2026-09-13): `Joining` is set in exactly one place, DPlay::JoinGame(), and on a normal
+   start nobody reaches it -- the host never calls it, and a guest reaches it only behind
+   `if (!FlyNowFlag)`, which the host's own FLY message falsifies. So when players start together
+   NEITHER announces, no PID_IAMIN is sent, AddPlayerToGame is never called on either side, and
+   each peer keeps the invisible/dead flags the mission gave it. MA measured exactly this (0 calls
+   on both sides) and the same chain is here: shared Rowan comms design, not a port defect.
+   Announce for a peer entering alongside the host too. SendEnteringGameMessage dereferences
+   PlayerSeenAC, so require it. BOB_MP_OLDJOIN=1 restores the original behaviour. */
+			if (!Joining && !getenv("BOB_MP_OLDJOIN") && Persons2::PlayerSeenAC)
+			{
+				if (getenv("BOB_TRACE_ADDPLAYER"))
+					fprintf(stderr,"[iamin] announcing entry (started with host, Joining=FALSE)\n"),
+					fflush(stderr);
+				_DPlay.SendEnteringGameMessage();
+			}
+			else if (!Joining && getenv("BOB_TRACE_ADDPLAYER"))
+			{
+				fprintf(stderr,"[iamin] NOT announcing: Joining=0 PlayerSeenAC=%p oldjoin=%d\n",
+					(void*)Persons2::PlayerSeenAC,getenv("BOB_MP_OLDJOIN")?1:0), fflush(stderr);
+			}
+#endif
 			if (Joining)
 			{
 				_DPlay.SendEnteringGameMessage();
