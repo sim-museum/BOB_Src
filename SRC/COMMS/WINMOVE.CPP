@@ -1400,6 +1400,18 @@ Bool DPlay::SendPacketToAggregator(LPACPACKET lpAcPacket)
 //------------------------------------------------------------------------------
 void SendInitPacket ()
 {
+#if defined(BOB_LINUX)
+	/* MP-5 cont.14: the client dies in this function's "Receive Random List" wait while the HOST never
+	   transmits the 114-byte list at all (measured: zero "Send 114 bytes" in a full two-instance run).
+	   Three gates decide that, and all three were silent: Implemented, Joining (takes the RANDREQUEST
+	   path and returns), and Host. Print them once per call. */
+	{
+		static int n = 0;
+		if (n++ < 8)
+			fprintf(stderr, "[mp] SendInitPacket: Implemented=%d Joining=%d Host=%d\n",
+			        (int)_DPlay.Implemented, (int)_DPlay.Joining, (int)_DPlay.Host), fflush(stderr);
+	}
+#endif
 	_Replay.PlaybackGameState=0;	 //clear flag that we may be playing back on exit
 	_Replay.velshifttest=VELSHIFT;
 

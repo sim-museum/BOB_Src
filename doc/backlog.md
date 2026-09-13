@@ -1191,3 +1191,68 @@ Join/Select/Continue. The FlyNow broadcast the client's Ready Room waits for had
 milliseconds, after the client is in its own Ready Room. **Whether the SIP timeout survives that
 ordering is the open question** — runs 1-3 never reached the wait at all, so they cannot answer it,
 and neither does the receive filter on its own.
+
+### MP-5 cont. 15 (2026-09-12, run 10) — ROOT CAUSE: the host's `Implemented` is wiped between the Fly decision and the 3-D launch
+
+Run 10 carried the three-gate trace at the head of `SendInitPacket()`. Both instances answered, and
+they answered differently:
+
+    host.log   [mp] SendInitPacket: Implemented=0 Joining=0 Host=1
+    client.log [mp] SendInitPacket: Implemented=1 Joining=0 Host=0
+
+That is the entire bug. `SendInitPacket()` wraps its whole body in `if (_DPlay.Implemented)`, so the
+HOST — the only instance that can transmit the random list — falls straight through and sends
+nothing, while the CLIENT (Implemented=1, Host=0, Joining=0) enters the "Receive Random List" wait
+and dies 20 s later on `SayAndQuit("Timed out (SIP)")`. Neither instance is misbehaving in the
+`Host`/`Joining` gates; only `Implemented` is wrong, and only on the host.
+
+**Where it is lost.** `Implemented` is set TRUE in exactly one place, `DPlay::InitialFlagReset()`
+(`COMMS.CPP:3368`), whose own comment says it exists to "reset all flags etc before launching 3d".
+It is cleared in `DPlay::UIUpdateMainSheet()` (`COMMS.CPP:513`), unconditionally, on the third line
+of the function: `// make sure status is not 3D!  Implemented=FALSE;`. The host's log puts one of
+those calls between the two:
+
+    [frontend] click (121,747) -> menu item 1
+    [mp] seed_quickdef: ... (Host=1)          <- inside UINetworkSelectFly -> InitialFlagReset, Implemented=TRUE
+    [dplay] Send 190/12/588/143 bytes pid 3 -> 2
+    [frontend] painted screen artnum=0 + dials + menu + presented      <- one more front-end tick
+    [mp] UIUpdateMainSheet: packet from=4 len=588 -> dispatch          <- Implemented=FALSE
+    [frontend] (bridge) StartFlying -> Launch3d(wasrunning=0)
+    [mp] SendInitPacket: Implemented=0 Joining=0 Host=1                <- sends nothing
+
+The client's tail has no such paint tick between its last `UIUpdateMainSheet` (log line 982) and
+`SendInitPacket` (993), which is why its flag survives.
+
+**Why the author's own guard does not save the host.** `UIUpdateMainSheet` reads
+
+    if (LeaveCommsFlag) return;
+    Implemented=FALSE;              <- cleared FIRST
+    if (FlyNowFlag) return;         <- the "we are ready to go, wait till selectfly" guard
+
+so the clear happens before the guard in any case; but on the HOST the guard is moot, because the
+host never sets `FlyNowFlag` at all. `FlyNowFlag=TRUE` is set only in `Process_PM_FlyNow()`
+(`COMMS.CPP:3585`) — the CLIENT's reaction to receiving `PID_FLYNOW`. The host initiates the flight
+from the menu (`FULLPANE.CPP:1664`, `if (!_DPlay.UINetworkSelectFly())`) with the flag false
+throughout, which is confirmed in the log: the host's final `UIUpdateMainSheet` printed a `dispatch`
+line, and the receive loop that prints it sits *below* the `if (FlyNowFlag) return;`.
+
+**Ready for the next BoB rotation (MP-5 is at the PO's 4-sprint cap, so it is recorded, not
+applied).** Two candidate fixes, in preference order:
+
+1. Make the clear conditional on not having committed to the launch. `InitialFlagReset()` also sets
+   `GameRunning=TRUE`; gating the clear (`if (!GameRunning) Implemented=FALSE;`) keeps the "status is
+   not 3D" intent for every ordinary UI tick and stops the one tick that matters. Check first what
+   else writes `GameRunning`, and whether it is false on a normal front-end tick.
+2. Set `Implemented=TRUE` in the bridge at `Launch3d` entry, immediately before `SendInitPacket()`
+   runs. Smaller blast radius, but it papers over the clear rather than naming it.
+
+Either way the test is the same and is already automated: `tools/bob_mp_two_instance.sh` must show
+`Send 114 bytes` in the host log (currently zero occurrences in a full 420 s run) and no
+`FATAL: Timed out (SIP)` in the client's.
+
+**One more defect noticed in passing, not yet acted on.** In the `Joining` branch of
+`SendInitPacket()` the received list is walked with `UWord* ptr; ptr=(UWord*)Buffer; ptr+=sizeof(ULong);`
+— a `UWord*` advanced by 4 elements, i.e. 8 bytes, to "skip PID" (4 bytes). The host's send has no
+PID word in front of `RndPacket` at all (`SendMessageToGroup((char*)&RndPacket, 57*sizeof(UWord))`),
+so once the host does transmit, expect this branch to read the list misaligned. The non-joining
+"Receive Random List" path — the one our client actually takes — should be checked for the same.
