@@ -1441,13 +1441,38 @@ void SendInitPacket ()
 				}
 				else if (From!=_DPlay.aggID)
 				{
-					if (*(ULong*)Buffer == PID_RANDOMLIST)
+					/* MP-5 cont.17 (2026-09-13): this branch could never have read the list.
+					   The HOST sends the raw array and NOTHING else --
+					       _DPlay.SendMessageToGroup((char*)&RndPacket, 57*sizeof(UWord))
+					   -- so there is no PID word in the packet, and `*(ULong*)Buffer ==
+					   PID_RANDOMLIST` compares the first two random lookup values against a
+					   packet id. On top of that, `ptr += sizeof(ULong)` on a `UWord*` advances
+					   EIGHT bytes to "skip" a four-byte field that is not there, so even a
+					   match would have read the list misaligned by two entries and run two
+					   entries past its end.
+					   The NON-joining path twenty lines below has always done it correctly:
+					   identify the packet by LENGTH and read from Buffer with no skip. That is
+					   what the host actually sends, so this branch is made to match it.
+					   Our two-instance client takes the non-joining path, which is why MP-5
+					   cont.16 passes; this is the fix for a real `Joining` client.
+					   BOB_MP5_OLDRNDSKIP=1 restores the old test as a control arm. */
+					static int _oldskip = -1;
+					if (_oldskip < 0) _oldskip = getenv("BOB_MP5_OLDRNDSKIP") ? 1 : 0;
+					const int _isRndList = _oldskip
+						? ((*(ULong*)Buffer == PID_RANDOMLIST) ? 1 : 0)
+						: ((BufLen == (RNDPACKETSIZE * sizeof(UWord))) ? 1 : 0);
+					if (_isRndList)
 					{
 						UWord* ptr;
 						ptr = (UWord*)Buffer;
-						ptr+=sizeof(ULong);// skip PID
+						if (_oldskip) ptr += sizeof(ULong);   /* the original, preserved for the A/B */
 						for (n=0; n<RNDPACKETSIZE; n++)
 							RndPacket[n] = *ptr++;
+						if (getenv("BOB_TRACE_DPLAY"))
+							fprintf(stderr, "[mp] SendInitPacket(Joining): random list accepted,"
+							                " BufLen=%lu expected=%lu oldskip=%d\n",
+							        (unsigned long)BufLen,
+							        (unsigned long)(RNDPACKETSIZE * sizeof(UWord)), _oldskip), fflush(stderr);
 
 						for (n=0; n<(RNDPACKETSIZE - 2); n++)
 							Math_Lib.SetRndLookUp(n,RndPacket[n]);

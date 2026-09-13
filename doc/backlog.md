@@ -1388,3 +1388,42 @@ menus — which is what R1 asked for. Banner removed and **both arms added to `t
 with a note there that the control is not optional.
 
 Both runs wrote to a scratch tree (`/tmp/bob_scratch_*`), so the player's install was untouched.
+
+
+### MP-5 cont. 17 (2026-09-13) — the JOINING branch could never have read the random list
+
+cont.15 noted this in passing and cont.16 carried it forward rather than folding it into the fix.
+Closing it now that the item has rotated back round.
+
+`SendInitPacket()`'s `_DPlay.Joining` branch identified the random list like this:
+
+```c
+if (*(ULong*)Buffer == PID_RANDOMLIST)
+{
+    UWord* ptr = (UWord*)Buffer;
+    ptr += sizeof(ULong);          // "skip PID"
+```
+
+**Two independent faults, either of which alone is fatal:**
+
+1. **There is no PID word in the packet.** The host sends the bare array —
+   `SendMessageToGroup((char*)&RndPacket, 57*sizeof(UWord))` — so `*(ULong*)Buffer` is the first two
+   random lookup values, and comparing them to `PID_RANDOMLIST` succeeds only by coincidence.
+2. **`ptr += sizeof(ULong)` on a `UWord*` advances EIGHT bytes**, not four, to skip a four-byte field
+   that is not there. Even on a lucky match the list would be read two entries out of phase and two
+   entries past its end.
+
+**The correct code was already in the file.** The NON-joining "Receive Random List" path twenty lines
+below identifies the packet by **length** (`BufLen == RNDPACKETSIZE * sizeof(UWord)`) and reads from
+`Buffer` with no skip — which is exactly what the host sends. The joining branch now does the same,
+and logs the acceptance with both lengths under `BOB_TRACE_DPLAY`.
+`BOB_MP5_OLDRNDSKIP=1` keeps the old test as a control arm.
+
+**Scope, stated honestly:** our two-instance client takes the NON-joining path — `Joining=0` in every
+measured run — which is why cont.16 passes without this. So this fixes a path the harness does not
+currently exercise, and it is **not** covered by `MP-5 TWO-INSTANCE: PASS`. It is a correctness fix
+found by reading, with the reasoning above as its evidence rather than a run. A harness arm that
+drives a genuine `Joining` client (`JoinGame()` sets `Joining=TRUE`, `WINMOVE.CPP:3718`) would be the
+way to cover it, and is worth doing before anyone relies on it.
+
+Built clean; the binary carries the new trace string.
