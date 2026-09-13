@@ -462,7 +462,23 @@ Bool	Replay::StoreDeltas()
 				goto acmi_done;
 			AirStrucPtr _ac = *AirStruc::ACList;
 			unsigned long _id = 0;
-			while (_ac && _id < 256)
+			/* R3 follow-up (S440, 2026-09-12): R3 closed carrying a known limit -- this walk stopped
+			   at a hard `_id < 256` while S438 measured the live list at exactly 148, so a raid only
+			   73 % larger would have dropped aircraft from the ACMI with NOTHING SAID. A cap is
+			   right (it is what stops a corrupt or cyclic ACList spinning here forever); a SILENT
+			   cap is not, because the artifact then looks complete and the missing aeroplanes read
+			   as an export bug rather than as truncation.
+			   Default raised to 1024 -- 6.9x the measured list, and the ceiling that keeps the
+			   synthetic-id band `0x4000 + _id` inside the 0x4400 bound the identity table uses.
+			   BOB_ACMI_MAXOBJ overrides it. */
+			static unsigned long _maxobj = 0;
+			if (!_maxobj)
+			{
+				const char* _mo = getenv("BOB_ACMI_MAXOBJ");
+				_maxobj = _mo ? (unsigned long)atol(_mo) : 1024UL;
+				if (_maxobj < 16UL) _maxobj = 16UL;
+			}
+			while (_ac && _id < _maxobj)
 			{
 				_id++;
 				/* S437 (R3): THE OBJECT ID MUST NAME THE AIRCRAFT, NOT ITS PLACE IN A LIST.
@@ -619,6 +635,25 @@ Bool	Replay::StoreDeltas()
 				                    _isPlayer,
 				                    (double)_ac->vel_ / _vel);
 				_ac = *_ac->nextmobile;
+			}
+			/* S440: the cap truncated only if the walk stopped with aircraft STILL on the list.
+			   Reported once per run, unconditionally on stderr (NOT under BOB_TRACE_ACMI): the whole
+			   defect being fixed is that a truncated ACMI was indistinguishable from a complete one,
+			   so the report must reach a run that did not ask for tracing. */
+			if (_ac && _id >= _maxobj)
+			{
+				static int _said = 0;
+				if (!_said)
+				{
+					_said = 1;
+					unsigned long _rest = 0;
+					AirStrucPtr _t = _ac;
+					while (_t && _rest < 100000UL) { _rest++; _t = *_t->nextmobile; }
+					fprintf(stderr, "[acmi] *** TRUNCATED: wrote %lu objects, cap BOB_ACMI_MAXOBJ=%lu,"
+					                " at least %lu more aircraft on ACList were NOT exported ***\n",
+					        _id, _maxobj, _rest);
+					fflush(stderr);
+				}
 			}
 		}
 		acmi_done: ;

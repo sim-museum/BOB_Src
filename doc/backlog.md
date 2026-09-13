@@ -1256,3 +1256,37 @@ Either way the test is the same and is already automated: `tools/bob_mp_two_inst
 PID word in front of `RndPacket` at all (`SendMessageToGroup((char*)&RndPacket, 57*sizeof(UWord))`),
 so once the host does transmit, expect this branch to read the list misaligned. The non-joining
 "Receive Random List" path — the one our client actually takes — should be checked for the same.
+
+
+### R3 follow-up (S440, 2026-09-12) — the cap that truncated the ACMI silently
+
+R3 closed at S439 carrying one named limit, and this closes it. The all-aircraft walk in
+`REPLAY.CPP` ran `while (_ac && _id < 256)` while S438 had measured the live `ACList` at **exactly
+148**. A raid 73 % larger would therefore have dropped aircraft from the exported track **with
+nothing said anywhere** — and that is the real defect, not the number: a truncated ACMI opens in
+Tacview and looks complete, so the missing aeroplanes read as an export bug (or as the AI not having
+flown) rather than as truncation.
+
+- **Cap raised to 1024**, overridable with `BOB_ACMI_MAXOBJ` (floored at 16). 1024 is not arbitrary:
+  it is 6.9x the measured list AND the ceiling that keeps the synthetic-id band `0x4000 + _id`
+  inside the `0x4400` bound the S437 identity table indexes with.
+- **Truncation now reports**, once per run, on stderr, and deliberately **not** under
+  `BOB_TRACE_ACMI` — a report that only appears when you already suspected the problem does not fix
+  a silent failure. It prints what was written, the cap in force, the override's name, and how many
+  aircraft were still on the list behind the cursor.
+- The cap itself is kept. It is what stops a corrupt or cyclic `ACList` spinning in this loop
+  forever, which is a real hazard on a head-inserted list.
+
+Built clean; `bob` carries the string. **Not yet observed firing** — doing so needs a sortie with
+more than 1024 aircraft, which no mission here generates, so this is a hardening plus an instrument,
+honestly labelled: the 256-object truncation could have happened silently and now cannot.
+
+⚠️ **Process note, recorded because it nearly cost real work.** While making this edit I truncated
+`SRC/COMMS/REPLAY.CPP` to 0 bytes: the script did `open(path,'w',encoding='latin-1').write(text)`
+where the text contained a non-latin-1 character, and `open(...,'w')` truncates the file *before*
+`write()` raises. The build then failed in `Winmove.cpp` with `VELSHIFT was not declared` — a
+misleading symptom in a different file, because `REPLAY.CPP:110` is where `#define VELSHIFT 6`
+lives. Recovered fully with `git checkout -- SRC/COMMS/REPLAY.CPP`: HEAD carried every R3 sprint
+(S274b/S437/S438) and the repo's modified-file count went 16 -> 15, which is the proof that the file
+had no uncommitted work in it and nothing was lost. **Rule: encode the whole string (or otherwise
+prove it writes) BEFORE opening the target for writing, and check the resulting file length.**
