@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # tools/bob_r1_continuous.sh — EPIC R / R1: ONE process, UI -> preference -> flight -> recording.
 #
-# !! THIS GATE DOES NOT PASS YET, AND THAT IS ITS CURRENT PURPOSE. It encodes what R1 requires and
-# fails at a known, named point. It is deliberately NOT in tools/bob_gates.sh -- a red gate in the
-# suite trains people to ignore the suite. Remove this banner and add it there when it goes green.
+# GREEN since S441 (2026-09-13), BOTH ARMS, and it is in tools/bob_gates.sh:
+#   positive  combo -> 2, recorder arms, 183,105 bytes written
+#   control   combo -> 0, recorder never arms, 0 bytes
+# It was reported PASS once before that on the positive arm alone; the control then recorded 183,596
+# bytes and showed the positive arm had been meaningless. Run BOTH arms or neither.
 #
 # WHERE IT STOPS (S313): assertion 1 PASSES -- the UI writes GD_GUNCAMERAATSTART (val=2) inside the
 # combined process, which is new; that half had only ever been measured in a run of its own.
@@ -38,7 +40,9 @@
 # [GD_GUNCAMERAATSTART] ...) _Replay.Record=TRUE;`). That is the whole point: BOB_GUNCAM=1 tests the
 # recorder and BOB_GUNCAM=pref tests the reader, and neither tests the UI's effect on either.
 #
-# ⚠️ NEGATIVE CONTROL: CONTROL=1 drops the two #1075 clicks, so the gun camera is never switched on.
+# ⚠️ NEGATIVE CONTROL: CONTROL=1 clicks #1075 ONCE, cycling the combo 2 -> 0 (CAMERAOFF). It used to
+# DROP the clicks instead, which left the combo at its START value of 2 -- the arming value -- so the
+# control recorded a full replay and the positive arm proved nothing (S441).
 # The flight must still launch and NO recording may appear. Without that, a gate that records
 # unconditionally (a stale replay.dat, a default-on preference) would pass while proving nothing.
 #
@@ -93,7 +97,13 @@ REC="$GD/VIDEOS/replay.dat"     # uppercase VIDEOS (S260)
 # The start index is verified below rather than assumed; if it ever changes, this recipe cannot
 # reach 2 and the gate says so instead of reporting a recording failure it did not test.
 CLICKS="${CLICKS:-0,1,1,3,#1075,#1075,#1075,6,2}"
-[ "$CONTROL" = 1 ] && CLICKS="0,1,1,3,6,2"
+# S441 (2026-09-13): the control used to DROP the #1075 clicks -- and that made it useless, because
+# the combo's START state is already the arming value. Measured: `[combo] SetIndex id=1075 <- 2
+# (the START state)`, and 2 IS GD_GUNCAMERAATSTART. So "never switched on" left it switched on, the
+# control recorded 183,596 bytes, and the positive arm had been proving nothing for many sprints:
+# the preference was at the arming value before any click touched it.
+# The control must now ACTIVELY switch the camera off: ONE #1075 click cycles 2 -> 0 (CAMERAOFF).
+[ "$CONTROL" = 1 ] && CLICKS="0,1,1,3,#1075,6,2"
 
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running (pid $(pgrep -x bob|tr '\n' ' '))"; exit 2; }
@@ -149,6 +159,14 @@ else say "recorder armed by the preference" "no trace"; fi
 sz=$(stat -c%s "$REC" 2>/dev/null || echo 0)
 echo "----------------------------------------"
 if [ "$CONTROL" = 1 ]; then
+  # S441: prove the control's premise before reading its result -- the combo must be OFF, not merely
+  # "not clicked to on". Without this the control can silently become a no-op again.
+  cv=$(grep -ao 'setfield\] combo id=1075 -> val=[0-9]*' "$log" | tail -1 | grep -ao '[0-9]*$')
+  if [ "${cv:-}" = "2" ] || [ -z "${cv:-}" ]; then
+    echo "CONTROL INVALID: gun-camera combo ended at '${cv:-none}' (want 0 or 1, NOT the arming value 2)"
+    echo "  the control did not switch the camera off, so its result says nothing"; exit 1
+  fi
+  echo "  control premise: gun-camera combo ended at val=$cv (not the arming value 2)"
   if [ "${sz:-0}" -lt "$MINBYTES" ] && [ "$fail" -eq 0 ]; then
     echo "CONTROL OK: flew with the gun camera off and recorded nothing (${sz:-0} bytes)"; exit 0; fi
   echo "CONTROL FAILED: ${sz:-0} bytes recorded with the gun camera never switched on"; exit 1

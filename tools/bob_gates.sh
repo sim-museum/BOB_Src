@@ -476,6 +476,21 @@ bash "$HERE_ABS/bob_r16_viewdt.sh" 2>&1 | sed 's/^/  /'
 r16=${PIPESTATUS[0]}
 if [ "$r16" = "0" ]; then echo "  r16_viewdt: PASS"; else echo "  r16_viewdt: FAIL (exit=$r16)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE R16"
+echo "### GATE VSYNC: no true vsync must not present faster than the display (three arms)"
+bash "$HERE_ABS/bob_vsync_pace.sh" 2>&1 | sed 's/^/  /'
+vsp=${PIPESTATUS[0]}
+if [ "$vsp" = "0" ]; then echo "  vsync_pace: PASS"; else echo "  vsync_pace: FAIL (exit=$vsp)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE VSYNC"
+echo "### GATE R1: UI -> preference -> flight -> recording, in one process (BOTH arms)"
+bash "$HERE_ABS/bob_r1_continuous.sh" 2>&1 | sed 's/^/  /'
+r1p=${PIPESTATUS[0]}
+if [ "$r1p" = "0" ]; then echo "  r1_continuous(positive): PASS"; else echo "  r1_continuous(positive): FAIL (exit=$r1p)"; gates_fail=$((gates_fail+1)); fi
+# S441: the control is NOT optional. The gun-camera combo's start state IS the arming value, so a
+# positive arm alone passes whether or not the preference does anything.
+CONTROL=1 bash "$HERE_ABS/bob_r1_continuous.sh" 2>&1 | sed 's/^/  /'
+r1c=${PIPESTATUS[0]}
+if [ "$r1c" = "0" ]; then echo "  r1_continuous(control): PASS"; else echo "  r1_continuous(control): FAIL (exit=$r1c)"; gates_fail=$((gates_fail+1)); fi
+replay_check "GATE R1"
 echo "### GATE PARITY: screens vs committed references (headless, no display)"
 bash "$HERE_ABS/bob_parity.sh" 2>&1 | sed 's/^/  /'
 pg=${PIPESTATUS[0]}

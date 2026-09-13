@@ -1341,3 +1341,50 @@ list misaligned. That is the next MP-5 item.
 
 MP-5's acceptance criterion is met. The item closes at cont.16 after five sprints of diagnosis and
 one line of fix; the PID-skip defect noted above is tracked separately rather than folded in.
+
+
+### R1 (S441, 2026-09-13) — ✅ **GREEN, BOTH ARMS** — and the control is what made it mean anything
+
+`tools/bob_r1_continuous.sh` has carried a banner for many sprints: *"THIS GATE DOES NOT PASS YET,
+AND THAT IS ITS CURRENT PURPOSE."* The named blocker (a hard-coded 30-tick pre-flight that raced the
+Sim Config trip) had since been fixed in code as `BOB_STARTFLYING_DELAY`, so the gate was run again.
+
+**It passed on the first attempt — and the pass was worthless.**
+
+    UI wrote the combo                start=2 +3 -> val=2
+    UI wrote GD_GUNCAMERAATSTART      val=2 (recorder armed)
+    flight launched in same process   yes
+    recorder armed by the preference  yes
+    recording written                 183105 bytes
+    PASS: UI -> preference -> flight -> recording, in one process
+
+Then the negative control, which the gate's own banner insists on:
+
+    CONTROL FAILED: 183596 bytes recorded with the gun camera never switched on
+
+⭐ **Cause: the gun-camera combo's START state IS the arming value.** Measured in the control's log,
+`[combo] SetIndex id=1075 <- 2   (the START state)`, and 2 is `GD_GUNCAMERAATSTART`. The control
+"switched the camera off" by *dropping* the `#1075` clicks — which left it exactly where it already
+was, switched ON. So for as long as this gate has existed, its positive arm could not distinguish
+"the UI armed the recorder" from "the recorder was already armed and the UI changed nothing", and
+its control could not fail for the right reason.
+
+**Fixed (the gate, not the game):**
+
+- The control now clicks `#1075` **once**, cycling 2 → 0 (`CAMERAOFF`), instead of dropping the clicks.
+- The control **asserts its own premise** before reading its result: if the combo did not end at 0
+  or 1 it reports `CONTROL INVALID` rather than passing or failing on the byte count. Without that,
+  the control can silently become a no-op again the next time the default moves.
+
+**Both arms now measured:**
+
+| arm | combo ends at | recorder | replay.dat |
+|---|---|---|---|
+| positive | 2 (`GD_GUNCAMERAATSTART`) | armed (`OpenRecordLog: handle=ok`) | **183,105 bytes** |
+| control | 0 (`CAMERAOFF`) | **never arms** (`no trace`) | **0 bytes** |
+
+So the preference genuinely controls the recorder, end to end, in one process, through the real
+menus — which is what R1 asked for. Banner removed and **both arms added to `tools/bob_gates.sh`**,
+with a note there that the control is not optional.
+
+Both runs wrote to a scratch tree (`/tmp/bob_scratch_*`), so the player's install was untouched.
