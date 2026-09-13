@@ -988,6 +988,11 @@ void LandScape::SetUpVisibleCones(	CLib3D *lib3d,
 											ANGLES heading, bool doMaxResTiles )
 {	
 //DeadCode MS 15Aug00 	Mono_Text.Print((UByte*)"SUVC: start ");
+	/* MIRROR-1 S3: count this FORWARD pass over the SAME horizPoint grid with the SAME four-corner
+	   clip-flag test the mirror uses. S2 measured the mirror at cells=961 drawn=2 and could not say
+	   whether that is a cull fault or simply correct for a narrow rear view. Both passes walk one
+	   grid, so counting them in the same frame settles it. BOB_TRACE_RTT=1. */
+	long fwdCells = 0, fwdVis = 0;
 	// set up variables local to landscape
 	g_lpLib3d=lib3d;
 	viewer_hdg = heading;
@@ -1120,8 +1125,10 @@ void LandScape::SetUpVisibleCones(	CLib3D *lib3d,
 
 //				ULong flag=lowf2[0]|lowf2[1]|lowf2[_horizonPoints]|lowf2[_horizonPoints+1];
 				ULong flag=lowf2[0]&lowf2[1]&lowf2[_horizonPoints]&lowf2[_horizonPoints+1];
+				fwdCells++;                      /* MIRROR-1 S3 */
 				if ( !flag )
 				{ // draw this grid
+					fwdVis++;                    /* MIRROR-1 S3 */
 
 					SWord dx = (sx<<1) - (_horizonPoints-1); // distance from center
 					dx *= dx;
@@ -1224,6 +1231,12 @@ void LandScape::SetUpVisibleCones(	CLib3D *lib3d,
 			assert(false&&"Unrecoverable landscape error");
 	}
 //DeadCode MS 15Aug00 	Mono_Text.Print((UByte*)"SUVC: stop\n");
+
+	/* MIRROR-1 S3: the forward pass's own tally, to be read next to the mirror's */
+	if (getenv("BOB_TRACE_RTT")) { static long fn=0;
+		if ((fn++ % 600) == 0)
+			fprintf(stderr,"[rtt] FORWARD horizon: cells=%ld drawn=%ld\n", fwdCells, fwdVis),
+			fflush(stderr); }
 
 	lastMeshDataX = x;
 	lastMeshDataZ = z;
