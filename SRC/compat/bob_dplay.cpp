@@ -96,11 +96,27 @@ class BobDPlay4 : public IDirectPlay4
     char offers[8][128]; int offerCount = 0;   /* R24/S427: offers drained by pump(), not by EnumSessions */
     QMsg q[MAXQ]; int qh, qt;
 
+    /* MP-6 (2026-09-13), the same instrument MA carries: count the ANNOUNCE at every stage so
+       "the client never saw it" can be told from "it was delivered and something else ate it".
+       The game's packet begins with ULong PacketID (struct Generic) and PID_IAMIN is 0x08.
+       BOB_TRACE_IAMIN=1. */
+    static bool isAnnounce(const char* d, unsigned n) {
+        if (n < 4) return false;
+        unsigned id; memcpy(&id, d, 4);
+        return id == 0x08u;
+    }
+    void noteAnnounce(const char* stage, unsigned f, unsigned t, const char* d, unsigned n) {
+        if (!isAnnounce(d, n) || !getenv("BOB_TRACE_IAMIN")) return;
+        fprintf(stderr, "[iamin-wire] %s from=%u to=%u len=%u\n", stage, f, t, n);
+        fflush(stderr);
+    }
+
     void qpush(unsigned f, unsigned t, const char* d, unsigned n) {
         int nx = (qt + 1) % MAXQ;
         if (nx == qh) { DPT("queue full, dropping a packet\n"); return; }
         q[qt].from = f; q[qt].to = t; q[qt].len = n > sizeof(q[qt].data) ? sizeof(q[qt].data) : n;
         memcpy(q[qt].data, d, q[qt].len); qt = nx;
+        noteAnnounce("QUEUED", f, t, d, n);
     }
     int qcount() const { return (qt - qh + MAXQ) % MAXQ; }
 
@@ -350,6 +366,7 @@ public:
          * MA traced exactly that chain end to end (MA PO-76/S430) and this shim carries the same
          * line; the two shims share their ancestry, so the defect is shared too.
          * BOB_STRICT_SEND=1 restores the old behaviour as the negative control. */
+        noteAnnounce("SENT", (unsigned)from, (unsigned)to, (const char*)data, (unsigned)len);
         if (fd < 0) return DPERR_NOCONNECTION;
         if (!havePeer) {
             if (getenv("BOB_STRICT_SEND")) return DPERR_NOCONNECTION;
@@ -380,6 +397,12 @@ public:
      * members), or to 0 (the game's own "request" broadcast address). Anything else stays queued
      * for the caller it belongs to. DPRECEIVE_ALL / flags 0 keep the old take-the-head behaviour.
      * BOB_NO_RECV_FILTER=1 restores it as the negative control. */
+    /* every player id this side has seen: our own, the host's, and any joiner the host handed a pid. */
+    bool isKnownPlayer(unsigned pid) const {
+        if (pid == (unsigned)myPid) return true;
+        for (int i = 0; i < njoined; i++) if ((unsigned)joined[i] == pid) return true;
+        return false;
+    }
     bool inGroup(unsigned gid, unsigned pid) const {
         for (int gi = 0; gi < ngroups; gi++) {
             if ((unsigned)groups[gi] != gid) continue;
@@ -389,17 +412,39 @@ public:
         return false;
     }
     HRESULT STDMETHODCALLTYPE Receive(LPDPID from, LPDPID to, DWORD flags, LPVOID data, LPDWORD size) override {
+        const unsigned toIn   = to   ? (unsigned)*to   : 0u;   /* BEFORE *to is overwritten below */
+        const unsigned fromIn = from ? (unsigned)*from : 0u;
         pump();
         if (qcount() == 0) return DPERR_NOMESSAGES;
         static int nofilter = -1;
         if (nofilter < 0) nofilter = getenv("BOB_NO_RECV_FILTER") ? 1 : 0;
         int idx = qh;
-        if (!nofilter && (flags & DPRECEIVE_TOPLAYER) && to) {
+        /* MP-6: DPRECEIVE_FROMPLAYER was ignored, so a caller waiting on one specific peer took
+           whatever was at the head. Measured: a joiner's announce-carrying packet was delivered
+           with flags=0x4, i.e. to a FROMPLAYER wait loop, never reaching ProcessPlayerMessage.
+           Real DirectPlay returns only traffic from that player. BOB_MP_NOFROMFILTER=1 reverts. */
+        if (!nofilter && (flags & DPRECEIVE_FROMPLAYER) && from
+            && !getenv("BOB_MP_NOFROMFILTER")) {
+            int found = -1;
+            for (int i = qh; i != qt; i = (i + 1) % MAXQ)
+                if (q[i].from == fromIn) { found = i; break; }
+            if (found < 0) return DPERR_NOMESSAGES;
+            idx = found;
+        }
+        else if (!nofilter && (flags & DPRECEIVE_TOPLAYER) && to) {
             unsigned want = (unsigned)*to;
             int found = -1;
             for (int i = qh; i != qt; i = (i + 1) % MAXQ) {
                 unsigned dst = q[i].to;
-                if (dst == want || dst == 0 || inGroup(dst, want)) { found = i; break; }
+                /* MP-5 cont.13: a JOINER's shim knows the groups it was auto-added to only if the host
+                   told it; the host's own group bookkeeping does not cross the wire. A destination that
+                   is neither this player nor any player id this side knows is therefore a GROUP (or an
+                   id from the other side's numbering) and must be DELIVERED -- dropping it silently
+                   eats the FlyNow broadcast, which is the one packet the Ready Room is waiting for.
+                   The filter still does its job: traffic addressed to ANOTHER KNOWN PLAYER (the
+                   aggregator included, which is what ReceiveNextMessageToMe's comment is about)
+                   stays queued for that caller. */
+                if (dst == want || dst == 0 || inGroup(dst, want) || !isKnownPlayer(dst)) { found = i; break; }
             }
             if (found < 0) return DPERR_NOMESSAGES;
             idx = found;
@@ -409,6 +454,16 @@ public:
         if (from) *from = (DPID)m.from;
         if (to)   *to   = (DPID)m.to;
         if (data && size) { memcpy(data, m.data, m.len); *size = m.len; }
+        if (isAnnounce(m.data, m.len) && getenv("BOB_TRACE_IAMIN")) {
+            /* which clause of the filter let it through, and who asked */
+            fprintf(stderr, "[iamin-wire] DELIVERED from=%u to=%u len=%u flags=0x%lx toarg=%u"
+                            " (dst==want:%d dst==0:%d inGroup:%d unknownPlayer:%d)\n",
+                    m.from, m.to, m.len, (unsigned long)flags, toIn,
+                    (unsigned)m.to == toIn, m.to == 0,
+                    inGroup((unsigned)m.to, toIn) ? 1 : 0,
+                    isKnownPlayer((unsigned)m.to) ? 0 : 1);
+            fflush(stderr);
+        }
         /* remove q[idx], preserving the order of everything still queued */
         for (int i = idx; i != qh; i = (i - 1 + MAXQ) % MAXQ)
             q[i] = q[(i - 1 + MAXQ) % MAXQ];
@@ -443,8 +498,35 @@ public:
     }
     HRESULT STDMETHODCALLTYPE DestroyGroup(DPID g) override { DPT("DestroyGroup %u\n", (unsigned)g); return DP_OK; }
     HRESULT STDMETHODCALLTYPE AddPlayerToGroup(DPID g, DPID p) override {
+        bool matched = false;
         for (int i = 0; i < ngroups; i++)
-            if (groups[i] == g && gmembers[i] < 8) { gplayers[i][gmembers[i]++] = p; break; }
+            if (groups[i] == g && gmembers[i] < 8) { gplayers[i][gmembers[i]++] = p; matched = true; break; }
+        /* MP-6: if this side has never heard of the group, ADOPT it. Measured on a joiner:
+           "AddPlayerToGroup player 4 -> group 2 : NO SUCH GROUP on this side (ngroups=0)". The
+           host creates the group and sends its id over the wire (COMMS.CPP:2095 -> :2187); the
+           guest then calls this for its own player with an id in the HOST's numbering, matches
+           nothing, and silently records no membership -- so inGroup() can never route a broadcast
+           to a joiner, and the host's PID_IAMIN is delivered by the catch-all clause to whichever
+           caller polls first. Adopting the id makes the guest's bookkeeping agree with the host's.
+           BOB_MP_NOADOPT=1 restores the silent miss as the negative control. */
+        if (!matched && !getenv("BOB_MP_NOADOPT") && ngroups < 8) {
+            groups[ngroups] = g; gmembers[ngroups] = 0;
+            gplayers[ngroups][gmembers[ngroups]++] = p;
+            ngroups++;
+            matched = true;
+            DPT("adopted group %u from the wire and joined player %u to it\n",
+                (unsigned)g, (unsigned)p);
+        }
+        /* MP-6: a GUEST calls this for its own player with the group id the HOST created and sent
+           over the wire (COMMS.CPP:2095 -> :2187). That id is in the host's numbering and is not in
+           this side's groups[], so the loop matches nothing and the guest never records its own
+           membership -- which is why inGroup() can never be the clause that delivers a broadcast to
+           a joiner. Report it rather than assume it. */
+        if (getenv("BOB_TRACE_IAMIN")) {
+            fprintf(stderr, "[group] AddPlayerToGroup player %u -> group %u : %s (ngroups=%d)\n",
+                    (unsigned)p, (unsigned)g, matched ? "recorded" : "NO SUCH GROUP on this side", ngroups);
+            fflush(stderr);
+        }
         DPT("AddPlayerToGroup player %u -> group %u\n", (unsigned)p, (unsigned)g);
         return DP_OK;
     }
