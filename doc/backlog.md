@@ -1290,3 +1290,43 @@ lives. Recovered fully with `git checkout -- SRC/COMMS/REPLAY.CPP`: HEAD carried
 (S274b/S437/S438) and the repo's modified-file count went 16 -> 15, which is the proof that the file
 had no uncommitted work in it and nothing was lost. **Rule: encode the whole string (or otherwise
 prove it writes) BEFORE opening the target for writing, and check the resulting file length.**
+
+
+### MP-5 cont. 16 (2026-09-12) — ✅ **FIXED AND PROVEN**: the client reaches 3-D, no SIP timeout
+
+cont.15 named the cause; this applies the one-line gate and measures the result on the same harness
+that has failed for five sprints (`tools/bob_mp_two_instance.sh`, `SECS=420`, logs in
+`~/Documents/260912/logs/bob_mp2k/`).
+
+**The change** (`COMMS.CPP`, `UIUpdateMainSheet`): `Implemented=FALSE;` — unconditional, third line
+of the function — is now
+
+    if (oldclear || !GameRunning) Implemented=FALSE;
+
+**`GameRunning` is the right gate, and that was checked rather than assumed.** `UINetworkSelectFly`
+sets every active player's status to `CPS_3D` (`COMMS.CPP:815`) *before* it calls
+`InitialFlagReset()` (`COMMS.CPP:891`), and the `if (stop) GameRunning=FALSE;` test twenty lines
+below the clear only fires when **no** player is `CPS_3D`. So `GameRunning` is TRUE across exactly
+the pre-launch tick that was destroying the flag, and FALSE on an ordinary front-end tick — where
+`Implemented` is still cleared, so "make sure status is not 3D" keeps its meaning everywhere it ever
+mattered. `BOB_MP5_OLDCLEAR=1` restores the old behaviour as a control arm.
+
+**Measured, before → after:**
+
+| | before (run 10) | after (run 11) |
+|---|---|---|
+| host `SendInitPacket` gates | `Implemented=0 Joining=0 Host=1` | **`Implemented=1 Joining=0 Host=1`** |
+| host `Send 114 bytes` | **0 occurrences** in a full run | **`[dplay] Send 114 bytes pid 3 -> 2 (ok)`** |
+| client receives the list | never | **`[dplay] received 114 data bytes from pid 3`** |
+| client outcome | `FATAL: Timed out (SIP)` after 20 s | **no FATAL, no timeout** |
+| instances reaching 3-D | host only | **host AND client** (`InThe3D=1` in both logs) |
+
+The new guard also announces itself under `BOB_TRACE_DPLAY`
+(`[mp] UIUpdateMainSheet: KEPT Implemented=1 (GameRunning)`), which is how the fix was confirmed to
+be the thing that changed rather than run-to-run luck.
+
+**Carried forward, not hidden.** The misaligned PID skip noted in cont.15 is still there: the
+joining branch of `SendInitPacket` does `ptr += sizeof(ULong)` on a `UWord*` (8 bytes, to skip a
+4-byte PID) while the host's send carries no PID word at all. Our client takes the *non*-joining
+"Receive Random List" path, which is why it is now fine; a real `Joining` client would still read the
+list misaligned. That is the next MP-5 item.

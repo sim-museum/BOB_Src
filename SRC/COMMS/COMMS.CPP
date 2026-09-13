@@ -510,7 +510,39 @@ void DPlay::UIUpdateMainSheet ()
 
 // make sure status is not 3D!									
 
-	Implemented=FALSE;
+	/* MP-5 cont.16 (2026-09-12): THIS LINE IS WHY THE HOST NEVER SENDS THE RANDOM LIST.
+	   SendInitPacket() wraps its whole body in `if (_DPlay.Implemented)`, and Implemented is set
+	   TRUE in exactly one place -- InitialFlagReset(), reached from UINetworkSelectFly just before
+	   the 3-D launch. On the HOST one more front-end paint tick runs between those two points, and
+	   this unconditional clear wipes the flag: measured, host `Implemented=0 Joining=0 Host=1`
+	   against client `Implemented=1 Joining=0 Host=0`, so the host fell straight through
+	   SendInitPacket while the client sat in the matching "Receive Random List" wait and died on
+	   SayAndQuit("Timed out (SIP)") 20 s later.
+	   The author's own guard below (`if (FlyNowFlag) return;`) cannot prevent it: it sits AFTER this
+	   line, and the host never sets FlyNowFlag at all -- that is set only in Process_PM_FlyNow(),
+	   which is the CLIENT's reaction to receiving PID_FLYNOW.
+	   GameRunning is the right gate, and this is checked rather than assumed: UINetworkSelectFly
+	   sets every active player's status to CPS_3D (COMMS.CPP:815) BEFORE calling InitialFlagReset
+	   (COMMS.CPP:891), so the `if (stop) GameRunning=FALSE;` test twenty lines below -- which only
+	   fires when NO player is CPS_3D -- leaves GameRunning TRUE across exactly the tick that was
+	   destroying the flag. An ordinary front-end tick still clears Implemented, because GameRunning
+	   is FALSE there (set at construction, WINMOVE.CPP:10906, and again when the sim exits,
+	   STUB3D.CPP:768), so "make sure status is not 3D" keeps its meaning everywhere it mattered.
+	   BOB_MP5_OLDCLEAR=1 restores the unconditional clear as a control arm. */
+	{
+		static int oldclear = -1;
+		if (oldclear < 0) oldclear = getenv("BOB_MP5_OLDCLEAR") ? 1 : 0;
+		if (oldclear || !GameRunning)
+			Implemented=FALSE;
+		else if (getenv("BOB_TRACE_DPLAY"))
+		{
+			static long kept = 0;
+			if (kept++ < 4)
+				fprintf(stderr, "[mp] UIUpdateMainSheet: KEPT Implemented=1 (GameRunning) -- the"
+				                " pre-launch tick no longer wipes the SendInitPacket gate\n"),
+				fflush(stderr);
+		}
+	}
 
 // if we are ready to go then dont receive any messages here, wait till
 // selectfly !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -733,7 +765,17 @@ Bool DPlay::UINetworkSelectFly ()
 			for (n=0;n<MAXPLAYERS;n++)						
 			{												
 				if (H2H_Player[n].status!=CPS_NONE && H2H_Player[n].status!=CPS_READYROOM)
-					return FALSE;								
+				{
+#if defined(BOB_LINUX)
+					/* MP-5 cont.12: this gate is why a host with a JOINED CLIENT never takes off while a
+					   host alone does -- and it returned FALSE in silence (the only report was a CTRACE
+					   this build compiles out). Name the player and the status. */
+					fprintf(stderr, "[mp] UINetworkSelectFly: REFUSED -- player %lu status=%d (want CPS_NONE=%d or CPS_READYROOM=%d)\n",
+					        (unsigned long)n, (int)H2H_Player[n].status, (int)CPS_NONE, (int)CPS_READYROOM);
+					fflush(stderr);
+#endif
+					return FALSE;
+				}
 			}													
 		}														
 	}															
@@ -743,6 +785,9 @@ Bool DPlay::UINetworkSelectFly ()
 #ifdef CTRACE
 		fprintf(fp,"PlayerNotCreated\n");
 		fclose(fp);
+#endif
+#if defined(BOB_LINUX)
+		fprintf(stderr, "[mp] UINetworkSelectFly: REFUSED -- PlayerCreated is false\n"); fflush(stderr);
 #endif
 		return FALSE;
 	}
@@ -763,11 +808,21 @@ Bool DPlay::UINetworkSelectFly ()
 			fprintf(fp,"SendFlyNow message failed\n");
 			fclose(fp);
 #endif
+#if defined(BOB_LINUX)
+			fprintf(stderr, "[mp] UINetworkSelectFly: REFUSED -- UISendFlyNow() failed\n"); fflush(stderr);
+#endif
 			return FALSE;
 		}
 
 		if (!GetAllGoResponses())
+		{
+#if defined(BOB_LINUX)
+			/* every joined client must answer the FlyNow; a client that never replies keeps the host
+			   on the Ready Room with nothing printed. */
+			fprintf(stderr, "[mp] UINetworkSelectFly: REFUSED -- GetAllGoResponses() returned false\n"); fflush(stderr);
+#endif
 			return FALSE;
+		}
 		else
 			SendHostGo();
 	}
