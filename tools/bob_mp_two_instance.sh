@@ -28,6 +28,26 @@ HOST_CLICKS="${HOST_CLICKS:-2,1,1}"
 # working through Join/Select/Continue, and the FlyNow broadcast the client waits for is then already
 # past. Schedule the host's Fly in milliseconds instead, AFTER the client is in its own Ready Room.
 HOST_FLY_MS="${HOST_FLY_MS:-150000,121,747}"
+# MP-5 cont.18 (2026-09-13): LATEJOIN=1 drives the path cont.17 actually fixed.
+# `Joining=TRUE` is set in exactly one place, DPlay::JoinGame (WINMOVE.CPP:3741), reached from
+# exactly one condition (FULLPANE.CPP:556):
+#       if (DPlay::H2H_Player[0].status == DPlay::CPS_3D)   // "if game in progress then join"
+# -- the HOST MUST ALREADY BE FLYING. In the default arm both peers fly together, so the client goes
+# through UINetworkSelectFly, which sets Joining=FALSE (COMMS.CPP:795): that is why every run has
+# measured Joining=0 and why the joining branch of SendInitPacket has never been exercised.
+# This arm puts the host into 3-D FIRST and starts the client afterwards -- "join a game already in
+# progress".
+#
+# ⚠️ It MUST sit after every default above and use its OWN override names. The first version put it
+# before SECS/CLIENT_DELAY were defaulted and wrote `${SECS:-420}`, which is a no-op once SECS is
+# already 150 -- the arm then ran with the default 25 s client delay, the client started before the
+# host was flying, and it measured Joining=0 all over again while looking like it had run.
+if [ "${LATEJOIN:-0}" = "1" ]; then
+    HOST_FLY_MS="${LATEJOIN_FLY_MS:-70000,121,747}"
+    CLIENT_DELAY="${LATEJOIN_DELAY:-140}"
+    SECS="${LATEJOIN_SECS:-420}"
+    echo "  [latejoin] host flies at ${HOST_FLY_MS%%,*}ms; client starts at +${CLIENT_DELAY}s; ${SECS}s total"
+fi
 CLIENT_CLICKS="${CLIENT_CLICKS:-2,2,1,1}"
 CLIENT_ROW_MS="${CLIENT_ROW_MS:-20000,156,747}"
 export BOB_DPLAY_PORT="${BOB_DPLAY_PORT:-47624}"

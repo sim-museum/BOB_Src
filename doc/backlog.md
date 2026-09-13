@@ -1427,3 +1427,39 @@ drives a genuine `Joining` client (`JoinGame()` sets `Joining=TRUE`, `WINMOVE.CP
 way to cover it, and is worth doing before anyone relies on it.
 
 Built clean; the binary carries the new trace string.
+
+
+### MP-5 cont. 18 (2026-09-13) — a LATEJOIN arm, and the first attempt at it silently did nothing
+
+cont.17 fixed the `Joining` branch of `SendInitPacket` by reading, and said plainly that the harness
+does not exercise it. This builds the arm that does.
+
+**Where `Joining` comes from, traced rather than assumed.** `Joining=TRUE` is set in exactly one
+place — `DPlay::JoinGame` (`WINMOVE.CPP:3741`) — and `JoinGame` is reached from exactly one
+condition (`FULLPANE.CPP:556`):
+
+```c
+// if game in progress then join, otherwise dont do anything
+if (DPlay::H2H_Player[0].status == DPlay::CPS_3D)
+    if (!_DPlay.JoinGame()) ...
+```
+
+⭐ **The host must already be flying.** In the default arm both peers fly together, so the client
+goes through `UINetworkSelectFly`, which sets `Joining=FALSE` (`COMMS.CPP:795`). That is why every
+run of this item has measured `Joining=0`, and it means the branch cont.17 repaired is the
+**late-join** path — the user story "join a game already in progress", which is a real thing a player
+does and which nothing here has ever tested.
+
+`LATEJOIN=1` puts the host into 3-D first (fly at 70 s) and starts the client afterwards (+140 s).
+
+⚠️ **The first version of this arm ran and changed nothing, while looking like it had run.** It was
+placed *before* `SECS` and `CLIENT_DELAY` were defaulted and wrote `SECS="${SECS:-420}"` — a no-op
+once `SECS` is already `150`. The run reported `fly@70000 ... 150s` with the default 25 s client
+delay, so the client started long before the host was flying and measured `Joining=0` all over
+again. Only `HOST_FLY_MS` took effect, because that one is defaulted *after* the block.
+**A `${VAR:-default}` override is silent when the variable is already set** — the arm must sit after
+every default and use its own names (`LATEJOIN_FLY_MS`, `LATEJOIN_DELAY`, `LATEJOIN_SECS`), which it
+now does, and it echoes the timings it chose so the next reader can see the arm actually applied.
+
+That first run is otherwise uninformative and should not be cited: `host enters 3D PASS`,
+`client enters 3D FAIL` on a 150 s budget where the client had barely started.
