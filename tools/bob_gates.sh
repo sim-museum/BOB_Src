@@ -490,6 +490,15 @@ if [ "$r1p" = "0" ]; then echo "  r1_continuous(positive): PASS"; else echo "  r
 CONTROL=1 bash "$HERE_ABS/bob_r1_continuous.sh" 2>&1 | sed 's/^/  /'
 r1c=${PIPESTATUS[0]}
 if [ "$r1c" = "0" ]; then echo "  r1_continuous(control): PASS"; else echo "  r1_continuous(control): FAIL (exit=$r1c)"; gates_fail=$((gates_fail+1)); fi
+# S444: the ON-TRIGGER mode, both arms. The gate knows two recipes now (MODE=), because the gun
+# camera has two arming modes and only AT-START was ever covered -- ON-TRIGGER was untestable until
+# BOB_SDL_KEY_MS gave an automated flight a way to fire.
+MODE=ontrigger bash "$HERE_ABS/bob_r1_continuous.sh" 2>&1 | sed 's/^/  /'
+r1t=${PIPESTATUS[0]}
+if [ "$r1t" = "0" ]; then echo "  r1_continuous(ontrigger): PASS"; else echo "  r1_continuous(ontrigger): FAIL (exit=$r1t)"; gates_fail=$((gates_fail+1)); fi
+MODE=ontrigger CONTROL=1 bash "$HERE_ABS/bob_r1_continuous.sh" 2>&1 | sed 's/^/  /'
+r1tc=${PIPESTATUS[0]}
+if [ "$r1tc" = "0" ]; then echo "  r1_continuous(ontrigger control): PASS"; else echo "  r1_continuous(ontrigger control): FAIL (exit=$r1tc)"; gates_fail=$((gates_fail+1)); fi
 replay_check "GATE R1"
 echo "### GATE PARITY: screens vs committed references (headless, no display)"
 bash "$HERE_ABS/bob_parity.sh" 2>&1 | sed 's/^/  /'

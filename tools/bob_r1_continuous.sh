@@ -96,26 +96,53 @@ REC="$GD/VIDEOS/replay.dat"     # uppercase VIDEOS (S260)
 # had nothing to do with recording. Three clicks return it to 2.
 # The start index is verified below rather than assumed; if it ever changes, this recipe cannot
 # reach 2 and the gate says so instead of reporting a recording failure it did not test.
-CLICKS="${CLICKS:-0,1,1,3,#1075,#1075,#1075,6,2}"
+# S444 (2026-09-13): the gate now knows TWO recipes, because the gun camera has two arming modes and
+# only one was ever covered. MODE=atstart (default) or MODE=ontrigger.
+#   the combo cycles 0 OFF -> 1 ON-TRIGGER -> 2 AT-START and STARTS at 2, so
+#     three #1075 clicks land on 2 (AT-START), two land on 1 (ON-TRIGGER), one lands on 0 (OFF).
+#   ON-TRIGGER also needs the trigger PULLED, which needs S442's BOB_SDL_KEY_MS -- before that hook
+#   existed this arm was untestable, since as the backlog put it "automated flights never shoot".
+MODE="${MODE:-atstart}"
+case "$MODE" in
+  atstart)   WANTVAL=2; MODECLICKS='#1075,#1075,#1075'; FIREKEYS="" ;;
+  ontrigger) WANTVAL=1; MODECLICKS='#1075,#1075'
+             # space, three bursts once the flight is up; hold 400 ms so the round actually leaves
+             FIREKEYS="${FIREKEYS:-150000,32,400;156000,32,400;162000,32,400}" ;;
+  *) echo "MODE must be atstart or ontrigger (got '$MODE')" >&2; exit 2 ;;
+esac
+CLICKS="${CLICKS:-0,1,1,3,$MODECLICKS,6,2}"
 # S441 (2026-09-13): the control used to DROP the #1075 clicks -- and that made it useless, because
 # the combo's START state is already the arming value. Measured: `[combo] SetIndex id=1075 <- 2
 # (the START state)`, and 2 IS GD_GUNCAMERAATSTART. So "never switched on" left it switched on, the
 # control recorded 183,596 bytes, and the positive arm had been proving nothing for many sprints:
 # the preference was at the arming value before any click touched it.
 # The control must now ACTIVELY switch the camera off: ONE #1075 click cycles 2 -> 0 (CAMERAOFF).
-[ "$CONTROL" = 1 ] && CLICKS="0,1,1,3,#1075,6,2"
+# The control switches the camera OFF (one click -> 0) for atstart. For ontrigger the control keeps
+# the SAME mode and simply does not fire: that is the sharper control, because it tests the
+# trigger gate rather than the preference gate, and it is the one that proved ON-TRIGGER in S443.
+if [ "$CONTROL" = 1 ]; then
+  if [ "$MODE" = ontrigger ]; then FIREKEYS=""; else CLICKS="0,1,1,3,#1075,6,2"; WANTVAL=0; fi
+fi
 
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 pgrep -x bob >/dev/null && { echo "  REFUSING: bob already running (pid $(pgrep -x bob|tr '\n' ' '))"; exit 2; }
 
-echo "bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording"
-[ "$CONTROL" = 1 ] && echo "   [NEGATIVE CONTROL: gun camera never switched on; the flight must still fly and record NOTHING]"
+echo "bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=$MODE]"
+[ -n "$FIREKEYS" ] && echo "   [trigger will be pulled: BOB_SDL_KEY_MS=$FIREKEYS]"
+if [ "$CONTROL" = 1 ]; then
+  if [ "$MODE" = ontrigger ]; then
+    echo "   [NEGATIVE CONTROL: camera ON (ON-TRIGGER) but the TRIGGER IS NEVER PULLED; must record NOTHING]"
+  else
+    echo "   [NEGATIVE CONTROL: gun camera never switched on; the flight must still fly and record NOTHING]"
+  fi
+fi
 rm -f "$REC"
 log="$OUT/run.log"
 ( cd "$GD" && timeout -k 5 -s KILL "$TMO" env \
     BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=click BOB_AUTOCLICK="$CLICKS" \
     BOB_TRACE_SETFIELD=1 BOB_TRACE_RECLOG=1 BOB_TRACE_COMBO=1 \
+    ${FIREKEYS:+BOB_SDL_KEY_MS="$FIREKEYS"} \
     "$BOB" ) >"$log" 2>&1
 bob_kill_new
 
@@ -135,16 +162,16 @@ if [ "$CONTROL" != 1 ]; then
   nclick=$(printf '%s' "$CLICKS" | grep -ao '#1075' | wc -l)
   if [ -n "${st:-}" ]; then
     exp=$(( ( st + nclick ) % 3 ))
-    if [ "$exp" != "2" ]; then
-      bad "recipe can reach the arming value" "start=$st + $nclick clicks mod 3 = $exp, not 2 — RECIPE, not a recording fault"
+    if [ "$exp" != "$WANTVAL" ]; then
+      bad "recipe can reach the arming value" "start=$st + $nclick clicks mod 3 = $exp, not $WANTVAL — RECIPE, not a recording fault"
     fi
     if [ "${v:-}" = "$exp" ]; then say "UI wrote the combo" "start=$st +$nclick -> val=$v"
     else bad "UI wrote the combo" "start=$st +$nclick predicts $exp, got '${v:-none}'"; fi
   else
     say "UI wrote the combo" "start index not observed — cannot verify (need BOB_TRACE_COMBO)"
   fi
-  if [ "${v:-}" = "2" ]; then say "UI wrote GD_GUNCAMERAATSTART" "val=2 (recorder armed)"
-  else bad "UI wrote GD_GUNCAMERAATSTART" "got '${v:-none}' (want 2) — the rest is meaningless"; fi
+  if [ "${v:-}" = "$WANTVAL" ]; then say "UI wrote the $MODE preference" "val=$WANTVAL"
+  else bad "UI wrote the $MODE preference" "got '${v:-none}' (want $WANTVAL) — the rest is meaningless"; fi
 fi
 
 # 2. the same process reached flight
@@ -161,12 +188,26 @@ echo "----------------------------------------"
 if [ "$CONTROL" = 1 ]; then
   # S441: prove the control's premise before reading its result -- the combo must be OFF, not merely
   # "not clicked to on". Without this the control can silently become a no-op again.
+  # S444: the control's PREMISE differs by mode, and it must be checked and described correctly --
+  # a gate that reports the wrong thing it tested is worse than one that reports nothing.
+  #   atstart   : the camera is switched OFF, so the combo must NOT be 2
+  #   ontrigger : the camera stays ON (val=1) and the TRIGGER is withheld, so the combo MUST be 1
+  #               and no [sdlkeyms] line may appear
   cv=$(grep -ao 'setfield\] combo id=1075 -> val=[0-9]*' "$log" | tail -1 | grep -ao '[0-9]*$')
-  if [ "${cv:-}" = "2" ] || [ -z "${cv:-}" ]; then
-    echo "CONTROL INVALID: gun-camera combo ended at '${cv:-none}' (want 0 or 1, NOT the arming value 2)"
-    echo "  the control did not switch the camera off, so its result says nothing"; exit 1
+  if [ "$MODE" = ontrigger ]; then
+    nk=$(grep -ac 'sdlkeyms' "$log")
+    if [ "${cv:-}" != "1" ] || [ "$nk" != "0" ]; then
+      echo "CONTROL INVALID: combo='${cv:-none}' (want 1) keypushes=$nk (want 0)"
+      echo "  the control did not hold the ON-TRIGGER mode with the trigger withheld, so it says nothing"; exit 1
+    fi
+    echo "  control premise: ON-TRIGGER held (val=1) and trigger never pulled (0 key pushes)"
+  else
+    if [ "${cv:-}" = "2" ] || [ -z "${cv:-}" ]; then
+      echo "CONTROL INVALID: gun-camera combo ended at '${cv:-none}' (want 0 or 1, NOT the arming value 2)"
+      echo "  the control did not switch the camera off, so its result says nothing"; exit 1
+    fi
+    echo "  control premise: gun-camera combo ended at val=$cv (not the arming value 2)"
   fi
-  echo "  control premise: gun-camera combo ended at val=$cv (not the arming value 2)"
   if [ "${sz:-0}" -lt "$MINBYTES" ] && [ "$fail" -eq 0 ]; then
     echo "CONTROL OK: flew with the gun camera off and recorded nothing (${sz:-0} bytes)"; exit 0; fi
   echo "CONTROL FAILED: ${sz:-0} bytes recorded with the gun camera never switched on"; exit 1

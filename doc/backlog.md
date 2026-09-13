@@ -1570,3 +1570,39 @@ visible in the timestamps and should not be mistaken for a clean serial run.
 predicts the combo landing on 2. An ON-TRIGGER arm needs its own expected value, so adding it means
 teaching the gate two recipes rather than pasting a third invocation. Worth doing; noted rather than
 rushed.
+
+
+### R1 (S444, 2026-09-13) — both arming modes are now IN THE SUITE, each with a correct control
+
+S443 proved ON-TRIGGER by hand. This teaches `bob_r1_continuous.sh` two recipes so the suite keeps
+both honest, and closes R1's pass.
+
+`MODE=atstart` (default) or `MODE=ontrigger`. The combo cycles `0 OFF -> 1 ON-TRIGGER -> 2 AT-START`
+and starts at 2, so the recipe is derived rather than pasted: three `#1075` clicks reach 2, two reach
+1. `WANTVAL` follows the mode, so the arming-value assertion checks the right number instead of a
+hardcoded 2. ON-TRIGGER also exports `BOB_SDL_KEY_MS` to pull the trigger, and the gate echoes it so
+a reader can see the arm actually applied.
+
+**Verified standalone, both arms of both modes:**
+
+    [MODE=ontrigger]  UI wrote the ontrigger preference  val=1
+                      recorder armed by the preference   yes
+                      recording written                  31,228 bytes        PASS
+    [MODE=ontrigger, CONTROL]
+                      control premise: ON-TRIGGER held (val=1), trigger never pulled (0 key pushes)
+                      CONTROL OK: recorded nothing (0 bytes)
+
+⭐ **The control's premise differs by mode, and saying so correctly was a real fix, not cosmetics.**
+The first ON-TRIGGER control passed while printing *"gun camera never switched on"* and
+*"combo ended at val=1 (not the arming value 2)"* — both written for AT-START and both wrong here:
+in this mode the camera IS on, and 1 IS the arming value; what is withheld is the trigger. A gate
+that passes while describing the wrong experiment is the exact failure this item has been fighting
+(S441's control "switched off" a camera that was already on). The control now asserts the right
+premise per mode — ON-TRIGGER requires `val=1` **and** zero `[sdlkeyms]` pushes — and reports it.
+
+**Added to `tools/bob_gates.sh`:** `MODE=ontrigger` and `MODE=ontrigger CONTROL=1`, alongside the
+existing AT-START pair. Four R1 arms now run in the suite, all scratch-tree.
+
+**R1 closes its pass at 4 sprints** (S441 both AT-START arms green + control fixed, S442
+`BOB_SDL_KEY_MS`, S443 ON-TRIGGER proven, S444 both modes in the suite). Both gun-camera modes are
+covered by a test that can fail for the right reason.
