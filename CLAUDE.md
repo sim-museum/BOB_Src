@@ -119,13 +119,11 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
 1. **Landscape RTT polish + the rear-view mirror.** The landscape FBO path is **default-on**
    (ground renders; stable to frame 150; `BOB_NO_FBO_RTT` reverts). The rear-view **mirror** rides
    the same RTT machinery but is **dormant by default** (gated on the Reflections setting
-   `COCK3D_SKYIMAGES`, which defaults OFF; force it with `BOB_MIRROR`). A/B'd (`BOB_DUMP_RTT` dumps
-   each RTT FBO, `draw_fvf` per-quad tracing): the mirror FBO is created/bound/displayed and **real
-   geometry reaches it** — 296 textured fullscreen quads = the **horizon/`InfiniteStrip` backdrop**
-   (`RenderMirrorLandscape` renders the distant horizon+sky, *by design not* the detailed near-ground
-   tiles the land RTT composites). **⚠️ CORRECTED 2026-09-13 (MIRROR-1 S1).** This used to read that the mirror looks blank
-   because 296 textured fullscreen quads of horizon backdrop carry **garbage v-texcoords**
-   (`v≈-2.4e24`), i.e. a full-but-flat mirror. Measured with `BOB_TRACE_RTT=1` under `BOB_MIRROR=1`,
+   `COCK3D_SKYIMAGES`, which defaults OFF; force it with `BOB_MIRROR`). The mirror FBO is created, bound and displayed.
+   **⚠️ CORRECTED 2026-09-13 (MIRROR-1 S1) — the rest of this entry used to claim that "real geometry
+   reaches it", 296 textured fullscreen quads of `InfiniteStrip` horizon backdrop that read flat
+   because they carry garbage v-texcoords (`v≈-2.4e24`): a FULL-but-mis-textured mirror. That is
+   not what happens.** Measured with `BOB_TRACE_RTT=1` under `BOB_MIRROR=1`,
    that is not what happens. The mirror surface is `surf=0xa6f3200` (128x128, named by its own
    `MIRROR pass: mirrorRect ... 128x128` line), the pass runs **4136 times in a 70 s flight** — so it
    is per-frame, not dormant — and **every single pass lands exactly 2 primitive draws**, phase
