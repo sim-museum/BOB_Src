@@ -1330,3 +1330,14 @@ joining branch of `SendInitPacket` does `ptr += sizeof(ULong)` on a `UWord*` (8 
 4-byte PID) while the host's send carries no PID word at all. Our client takes the *non*-joining
 "Receive Random List" path, which is why it is now fine; a real `Joining` client would still read the
 list misaligned. That is the next MP-5 item.
+
+**Harness verdict (run 11, the suite's own assertions, not my reading of the logs):**
+
+    bob MP-5 two-instance  (host 2,1,1 + fly@150000,121,747, client 2,2,1,1, 420s)
+      host enters 3D                                 PASS
+      client enters 3D                               PASS
+      client clears the random-list wait             PASS
+      MP-5 TWO-INSTANCE: PASS
+
+MP-5's acceptance criterion is met. The item closes at cont.16 after five sprints of diagnosis and
+one line of fix; the PID-skip defect noted above is tracked separately rather than folded in.
