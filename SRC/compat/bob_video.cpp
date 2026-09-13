@@ -782,6 +782,56 @@ static void pump_events(void)
 			}
 		}
 	}
+	/* R1 (2026-09-13): BOB_SDL_KEY_MS="ms,SDLK[,holdms][;...]" -- the key twin of BOB_SDL_CLICK_MS.
+	   R1's gate covers the gun camera's AT-START mode; its ON-TRIGGER mode ("arm when the player
+	   FIRES") has never been tested, because as the backlog puts it, "automated flights never
+	   shoot". Nothing could pull the trigger. Scheduled keys are pushed into SDL exactly as the
+	   scheduled clicks are, so they run the game's own key path (Inst3d::OnKeyDown maps them
+	   through commonkeymaps) rather than a synthetic X event, which reaches no window on this
+	   desktop.
+	   SDLK is the numeric SDL keysym -- space is 32, so "150000,32,300" fires the trigger 150 s in
+	   and holds it 300 ms. Both KEYDOWN and KEYUP are pushed, because a weapon that is never
+	   released keeps firing. */
+	{
+		const char* ks = getenv("BOB_SDL_KEY_MS");
+		static Uint32 kt0 = 0;
+		static char kfired[32];
+		static Uint32 krelease[32];
+		static int   kcode[32];
+		if (ks) {
+			if (!kt0) { kt0 = SDL_GetTicks(); memset(kfired, 0, sizeof(kfired)); memset(krelease, 0, sizeof(krelease)); }
+			Uint32 el = SDL_GetTicks() - kt0;
+			int idx = 0;
+			for (const char* p = ks; p && *p && idx < 32; idx++) {
+				long T; int code; long hold = 300;
+				int n = sscanf(p, "%ld,%d,%ld", &T, &code, &hold);
+				if (n >= 2 && !kfired[idx] && el >= (Uint32)T) {
+					kfired[idx] = 1; kcode[idx] = code;
+					krelease[idx] = el + (Uint32)(n >= 3 ? hold : 300);
+					SDL_Event ev; memset(&ev, 0, sizeof(ev));
+					ev.type = SDL_KEYDOWN; ev.key.state = SDL_PRESSED;
+					ev.key.keysym.sym = (SDL_Keycode)code;
+					ev.key.keysym.scancode = SDL_GetScancodeFromKey((SDL_Keycode)code);
+					int pushed = SDL_PushEvent(&ev);
+					fprintf(stderr, "[sdlkeyms] pushed SDL_KEYDOWN sym=%d at %ums (due %ldms) hold=%ldms rc=%d\n",
+					        code, (unsigned)el, T, (n >= 3 ? hold : 300), pushed);
+					fflush(stderr);
+				}
+				/* release when its hold window expires */
+				if (kfired[idx] == 1 && krelease[idx] && el >= krelease[idx]) {
+					kfired[idx] = 2;
+					SDL_Event ev; memset(&ev, 0, sizeof(ev));
+					ev.type = SDL_KEYUP; ev.key.state = SDL_RELEASED;
+					ev.key.keysym.sym = (SDL_Keycode)kcode[idx];
+					ev.key.keysym.scancode = SDL_GetScancodeFromKey((SDL_Keycode)kcode[idx]);
+					SDL_PushEvent(&ev);
+					fprintf(stderr, "[sdlkeyms] pushed SDL_KEYUP sym=%d at %ums\n", kcode[idx], (unsigned)el);
+					fflush(stderr);
+				}
+				p = strchr(p, ';'); if (p) p++;
+			}
+		}
+	}
 	{
 		const char* sc = getenv("BOB_SDL_CLICK");
 		static long sc_calls = -1;

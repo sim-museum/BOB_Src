@@ -1507,3 +1507,27 @@ its cause. (The causal direction was the whole claim, and I had it backwards.)
   a host already in 3-D. The screens differ from the both-fly-together case, and FULLPANE.CPP:556
   shows the join is only attempted when `H2H_Player[0].status == CPS_3D` is seen from the right
   screen. Dump the client's menus at that point before changing any comms code.
+
+
+### R1 follow-up (S442, 2026-09-13) — `BOB_SDL_KEY_MS`: the trigger can finally be pulled
+
+R1 went green on the gun camera's **AT-START** mode. Its other mode, **ON-TRIGGER** — "arm when the
+player fires", which is what the manual describes — has never been tested, and the backlog says
+exactly why: *"Automated flights never shoot, so nothing arms."* There was no way to fire a gun.
+
+**`BOB_SDL_KEY_MS="ms,SDLK[,holdms][;...]"`** is the key twin of the existing `BOB_SDL_CLICK_MS`,
+built the same way and in the same place: events are pushed straight into SDL, so they travel the
+game's own key path (`Inst3d::OnKeyDown` → `commonkeymaps->mappings`) rather than arriving as
+synthetic X events, which reach no window on this desktop. Both KEYDOWN and KEYUP are pushed — a
+weapon whose key is never released keeps firing — and the hold defaults to 300 ms.
+
+Wall-clock scheduling is inherited from `BOB_SDL_CLICK_MS` for the reason recorded there: a
+tick-scheduled event is simply lost when the pump stalls inside a comms timeout, whereas a
+millisecond-scheduled one is merely delayed.
+
+**The test this unlocks, now running:** the gun-camera combo starts at index 2 (AT-START), so TWO
+`#1075` clicks walk it 2 → 0 → 1, which is ON-TRIGGER. Fly, fire, and look for `[reclog]`. The
+backlog's own framing applies: *"If it arms, R1 is a preference-plumbing story, not a repair."*
+
+Note that this is a capability, not yet a result — the same distinction MA's `MA_KEYSEQ` earned
+earlier today, and that hook then went on to answer MA-P19 in one run.
