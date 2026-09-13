@@ -123,11 +123,19 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    each RTT FBO, `draw_fvf` per-quad tracing): the mirror FBO is created/bound/displayed and **real
    geometry reaches it** — 296 textured fullscreen quads = the **horizon/`InfiniteStrip` backdrop**
    (`RenderMirrorLandscape` renders the distant horizon+sky, *by design not* the detailed near-ground
-   tiles the land RTT composites). It looks blank (variance 0, systematic across
-   frames) because the mirror horizon quads carry **garbage v-texcoords** (`v≈-2.4e24`, clamped to one
-   edge texel → flat) — a latent game-side bug in `InfiniteStrip`'s horizon UV setup (our FVF parsing is
-   fine; `u` reads correctly, only `v` is garbage). RTT plumbing is correct; the fix is game-side horizon
-   UV work (or a compat texcoord sanitiser) — deferred. **Land textures: now default FULL_RES** — the QM
+   tiles the land RTT composites). **⚠️ CORRECTED 2026-09-13 (MIRROR-1 S1).** This used to read that the mirror looks blank
+   because 296 textured fullscreen quads of horizon backdrop carry **garbage v-texcoords**
+   (`v≈-2.4e24`), i.e. a full-but-flat mirror. Measured with `BOB_TRACE_RTT=1` under `BOB_MIRROR=1`,
+   that is not what happens. The mirror surface is `surf=0xa6f3200` (128x128, named by its own
+   `MIRROR pass: mirrorRect ... 128x128` line), the pass runs **4136 times in a 70 s flight** — so it
+   is per-frame, not dormant — and **every single pass lands exactly 2 primitive draws**, phase
+   breakdown `[landscape=1 objects=0 other=1]`. Read back, the surface is mean luma 79.2, sd 0.71,
+   **4 distinct values**. So the mirror is blank because almost nothing is SUBMITTED to it, not
+   because a full backdrop textures flat; and no scenery/aircraft objects reach it at all. The
+   `BOB_NO_STRIP=1` switch added by R3.4 to test the haze-band hypothesis had never actually been
+   run: it changes the mirror by nothing (mean 79.2, sd 0.71, 4 distinct in both arms), so
+   `InfiniteStrip` is exonerated too. Next: why `RenderMirrorLandscape` submits one landscape
+   primitive for the backward view. **Land textures: now default FULL_RES** — the QM
    boot defaults `Save_Data.textureQuality=4`, so the land RT is **256×256** (4× the old 128 detail; sharp
    fields/runways), default flight + cockpit stable. `BOB_TEXQ`/`BOB_FILTER` override; `BOB_TEXQ=0` reverts.
    Trilinear is now the **default and faithful** filtering (S67, 2026-06-29): `InitPreferences` sets
