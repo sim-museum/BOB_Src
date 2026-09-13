@@ -637,6 +637,14 @@ void LandScape::RenderMirrorLandscape( void )
 //	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_PITCH,(Angles)(-(int)Persons2::PlayerSeenAC->pitch));
 //	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_ROLL,(Angles)(-(int)Persons2::PlayerSeenAC->roll));
 
+	/* MIRROR-1 S2 (2026-09-13): S1 measured exactly 2 primitive draws landing in the mirror FBO on
+	   every one of 4136 passes, [landscape=1 objects=0 other=1], so the mirror is blank because
+	   nothing is SUBMITTED, not because it textures flat. Both horizon branches below emit one
+	   BeginPoly per grid cell whose four corner clip-flags do not share a plane, so "nothing
+	   submitted" means either the cells are all culled or the loop is not reached. Count both,
+	   and say which branch ran. BOB_TRACE_RTT=1. */
+	long mirCells = 0, mirDrawn = 0; int mirBranch = 0;
+
 	LIGHTINGDESC lightDesc;
 
 	lightDesc.lowRGB=currentLighting.landAmbientCollo.col();
@@ -706,8 +714,10 @@ void LandScape::RenderMirrorLandscape( void )
 			for (int sx=0;sx<_horizonAreaSize;sx++,lowf2++,offPos2++)
 			{
 				ULong flag=lowf2[0]&lowf2[1]&lowf2[_horizonPoints]&lowf2[_horizonPoints+1];
+				mirCells++; mirBranch=1;
 				if ( !flag )
 				{ // draw this grid
+					mirDrawn++;
 
 					cornerVert = g_lpLib3d->BeginPoly(HMATERIAL(horizonImg),4);
 
@@ -720,6 +730,7 @@ void LandScape::RenderMirrorLandscape( void )
 					cornerVert[1].info.setUnique();
 					cornerVert[2].info.setUnique();
 					cornerVert[3].info.setUnique();
+
 #endif
 				
 					g_lpLib3d->EndPoly();
@@ -760,8 +771,10 @@ void LandScape::RenderMirrorLandscape( void )
 			{
 
 				ULong flag=lowf2[0]&lowf2[1]&lowf2[_cornerLengthMIN]&lowf2[_cornerLengthMIN+1];
+				mirCells++; mirBranch=2;
 				if ( !flag )
 				{ // draw this grid
+					mirDrawn++;
 
 					cornerVert = g_lpLib3d->BeginPoly(HMATERIAL(horizonImg),4);
 
@@ -783,6 +796,13 @@ void LandScape::RenderMirrorLandscape( void )
 
 	}
 
+	/* MIRROR-1 S2: report what the horizon pass actually submitted */
+	if (getenv("BOB_TRACE_RTT")) { static long n=0;
+		if ((n++ % 600) == 0)
+			fprintf(stderr,"[rtt] mirror horizon: branch=%d cells=%ld drawn=%ld  HORIZONDIST=%d view_dist=%lu\n",
+			        mirBranch, mirCells, mirDrawn,
+			        (int)Save_Data.detail_3d[DETAIL3D_HORIZONDIST], (unsigned long)view_dist),
+			fflush(stderr); }
 	g_lpLib3d->PopMatrix( MATRIX_OBJECT );
 	g_lpLib3d->SetObjectLighting( lf );
 #endif
