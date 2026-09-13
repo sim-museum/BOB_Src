@@ -1149,3 +1149,45 @@ client (`CheckPassword name="Bob" player=4 -> slot=1`), and reaches `InThe3D=1`.
 reaches the Ready Room, seeds quickdef, enters the 3-D transition, and times out in
 `SendPacketToAggregator`'s *"Receive Random List"* wait (`WINMOVE.CPP:1499`, 20 s).
 **Next: trace the random-list SEND on the host against that RECEIVE.**
+
+
+### MP-5 (cont. 11, Opus 5, 2026-09-12) — `DPRECEIVE_TOPLAYER` was ignored by the shim; and the harness lives in the tree now
+
+**Two things, one of them a real port defect.**
+
+**1. The receive filter the game depends on was not implemented.** `DPlay::ReceiveNextMessageToMe`
+(`COMMS.CPP:2155`) sets `To = myDPlayID` and calls `lpDP4->Receive(&from, &To, flags, ...)` with
+`DPRECEIVE_TOPLAYER`, whose whole point is "give me only messages addressed to THIS player" — the
+function's own comment says so: *"receive message to mydplayid in case I am aggregator. Dont want to
+receive packets sent to aggregator here!!!!"*. The shim's `Receive` took `DWORD` unnamed, ignored it,
+treated `lpidTo` as output only, and returned whatever sat at the queue head. Every caller therefore
+drained every other caller's traffic: whichever loop polled first consumed the packet. A wait loop
+looking for one specific message can lose it to an unrelated pump — and the client's 20 s *"Receive
+Random List"* wait (`WINMOVE.CPP:1499`) is exactly such a loop.
+
+Implemented where DirectPlay would: deliver the first queued message addressed **to that player**, to
+a **group the player belongs to** (real DirectPlay expands a group send to its members, and the shim
+already tracks membership for the FlyNow broadcast), or to **0** (the game's own request address).
+Anything else stays queued for the caller it belongs to. `DPRECEIVE_ALL`/flags 0 keep the old
+take-the-head behaviour; `BOB_NO_RECV_FILTER=1` is the negative control.
+
+**2. `tools/bob_mp_two_instance.sh`** — the two-instance recipe existed only in shell history and had
+to be reconstructed from this file every time. It now runs host + client, asserts both reach 3D and
+that the client clears the random-list wait, and takes the timings as env.
+
+**What the runs then showed, in order (this is the harness converging, not the game changing):**
+
+| run | client got to | why it stopped |
+|---|---|---|
+| 1 | Join screen, host's session listed | row click at 20 s, before the list |
+| 2 | session selected, packet sent to host | Continue never clicked |
+| 3 | **Ready Room (artnum 27918)** | — |
+| 4 | (running) | host's Fly was rescheduled |
+
+⭐ **Run 3's finding is about the ORDER, not the join:** the host's four autoclick steps fire as each
+screen appears, so it flew within seconds — while the client was still working through
+Join/Select/Continue. The FlyNow broadcast the client's Ready Room waits for had already gone.
+`HOST_FLY_MS` now schedules the host's Fly (menu item 1 at (121,747) on artnum 27918) in wall-clock
+milliseconds, after the client is in its own Ready Room. **Whether the SIP timeout survives that
+ordering is the open question** — runs 1-3 never reached the wait at all, so they cannot answer it,
+and neither does the receive filter on its own.

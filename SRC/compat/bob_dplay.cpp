@@ -367,14 +367,51 @@ public:
             s > 0 ? "ok" : strerror(errno));
         return s > 0 ? DP_OK : DPERR_GENERIC;
     }
-    HRESULT STDMETHODCALLTYPE Receive(LPDPID from, LPDPID to, DWORD, LPVOID data, LPDWORD size) override {
+    /* MP-5 S11 (2026-09-12): DPRECEIVE_TOPLAYER was IGNORED, and the game depends on it.
+     * `DPlay::ReceiveNextMessageToMe` passes its own id IN through lpidTo and asks DirectPlay for
+     * "messages addressed to this player only" -- its comment says so in four exclamation marks
+     * ("Dont want to receive packets sent to aggregator here!!!!"). This shim treated lpidTo as
+     * output and returned whatever was at the queue head, so every caller drained every other
+     * caller's traffic: whoever polled first consumed the packet, and a wait loop looking for one
+     * specific message could lose it to an unrelated pump. The client's 20 s "Receive Random List"
+     * wait (WINMOVE.CPP:1499) is exactly such a loop.
+     * Filter here, where DirectPlay would: deliver the first queued message addressed TO that
+     * player, to a GROUP the player belongs to (real DirectPlay expands a group send to its
+     * members), or to 0 (the game's own "request" broadcast address). Anything else stays queued
+     * for the caller it belongs to. DPRECEIVE_ALL / flags 0 keep the old take-the-head behaviour.
+     * BOB_NO_RECV_FILTER=1 restores it as the negative control. */
+    bool inGroup(unsigned gid, unsigned pid) const {
+        for (int gi = 0; gi < ngroups; gi++) {
+            if ((unsigned)groups[gi] != gid) continue;
+            for (int k = 0; k < gmembers[gi]; k++)
+                if ((unsigned)gplayers[gi][k] == pid) return true;
+        }
+        return false;
+    }
+    HRESULT STDMETHODCALLTYPE Receive(LPDPID from, LPDPID to, DWORD flags, LPVOID data, LPDWORD size) override {
         pump();
         if (qcount() == 0) return DPERR_NOMESSAGES;
-        QMsg& m = q[qh];
+        static int nofilter = -1;
+        if (nofilter < 0) nofilter = getenv("BOB_NO_RECV_FILTER") ? 1 : 0;
+        int idx = qh;
+        if (!nofilter && (flags & DPRECEIVE_TOPLAYER) && to) {
+            unsigned want = (unsigned)*to;
+            int found = -1;
+            for (int i = qh; i != qt; i = (i + 1) % MAXQ) {
+                unsigned dst = q[i].to;
+                if (dst == want || dst == 0 || inGroup(dst, want)) { found = i; break; }
+            }
+            if (found < 0) return DPERR_NOMESSAGES;
+            idx = found;
+        }
+        QMsg& m = q[idx];
         if (size && *size < m.len) { *size = m.len; return DPERR_BUFFERTOOSMALL; }
         if (from) *from = (DPID)m.from;
         if (to)   *to   = (DPID)m.to;
         if (data && size) { memcpy(data, m.data, m.len); *size = m.len; }
+        /* remove q[idx], preserving the order of everything still queued */
+        for (int i = idx; i != qh; i = (i - 1 + MAXQ) % MAXQ)
+            q[i] = q[(i - 1 + MAXQ) % MAXQ];
         qh = (qh + 1) % MAXQ;
         return DP_OK;
     }
