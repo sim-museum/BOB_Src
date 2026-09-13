@@ -1531,3 +1531,42 @@ backlog's own framing applies: *"If it arms, R1 is a preference-plumbing story, 
 
 Note that this is a capability, not yet a result — the same distinction MA's `MA_KEYSEQ` earned
 earlier today, and that hook then went on to answer MA-P19 in one run.
+
+
+### R1 (S443, 2026-09-13) — ✅ the ON-TRIGGER mode works too, and it is genuinely trigger-gated
+
+S442 built `BOB_SDL_KEY_MS` so an automated flight could fire. This uses it to close R1's other half.
+
+The gun-camera combo has three values (0 OFF, 1 ON-TRIGGER, 2 AT-START) and starts at 2, so **two**
+`#1075` clicks walk it 2 → 0 → 1 = ON-TRIGGER. Both arms flew the same recipe; only the trigger
+differs:
+
+| arm | combo ends at | trigger pulled | recorder | recording |
+|---|---|---|---|---|
+| **treatment** | 1 (ON-TRIGGER) | yes — `[sdlkeyms] pushed SDL_KEYDOWN sym=32 ... rc=1` | `OpenRecordLog: handle=ok` | **31,231 bytes** |
+| **control** | 1 (ON-TRIGGER) | **no** | **0 `OpenRecordLog` calls** | none |
+
+⭐ **The preference is honoured and the arming is genuinely gated on firing.** The control is what
+makes that a claim rather than a coincidence: same mode, same flight, no trigger — and the recorder
+never opens. (Contrast S441, where a positive arm alone looked green for years while the control
+recorded a full replay.)
+
+**So R1's own framing resolves in its favour:** *"If it arms, R1 is a preference-plumbing story, not
+a repair."* It arms. Both gun-camera modes now have a measured, controlled A/B:
+
+- **AT-START** (S441): combo → 2, recorder arms, 183,105 bytes; combo → 0, never arms, 0 bytes.
+- **ON-TRIGGER** (this sprint): combo → 1 + fire, arms, 31,231 bytes; combo → 1 without fire, never
+  arms.
+
+Both ran in a scratch tree, so the player's install was untouched.
+
+⚠️ **One caveat on the treatment run:** it overlapped an MA two-instance run on the same box (my
+sequencing error — the BoB job's wait condition released before MA's processes appeared). Both use
+wall-clock schedules, which delay rather than lose events, and the outcome here is a boolean
+(armed / not armed) rather than a timing, so the result stands. Recorded because the overlap is
+visible in the timestamps and should not be mistaken for a clean serial run.
+
+**Not folded into `bob_gates.sh`:** the suite's R1 entry drives the AT-START arms, and its assertion
+predicts the combo landing on 2. An ON-TRIGGER arm needs its own expected value, so adding it means
+teaching the gate two recipes rather than pasting a third invocation. Worth doing; noted rather than
+rushed.
