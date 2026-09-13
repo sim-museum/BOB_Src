@@ -171,6 +171,35 @@ void mobileitem::MoveAll(WorldStuff& world)
 
 	MoveList(ACList, world);
 
+#if defined(BOB_LINUX)
+	/* MP-6 (2026-09-13): DOES A REMOTE PLAYER'S AIRCRAFT EXIST IN THIS WORLD?
+	   MA measured exactly this and found it does NOT: its host alone has 8 aircraft, and with a
+	   client joined it still has 8, while ~1900 packets a side cross in flight. MP-5 proved BoB's
+	   two instances both reach the 3-D; it did not prove they can SEE each other, and the same
+	   question has to be asked here -- if both ports show it, the cause is in the shared Rowan comms
+	   design rather than either port's plumbing.
+	   The obvious oracle does not work: the ACMI walk's `listlen` trace lives in the replay recorder,
+	   which is gated on `!_DPlay.Implemented` -- recording is DISABLED in multiplayer BY DESIGN, so a
+	   two-instance run prints zero acmi lines (measured). Hence a census of its own, here, walking
+	   the list the way the loop above it does.
+	   BOB_TRACE_ACCOUNT=1. Reports a running MAX so the sample point cannot flatter the answer. */
+	{
+		static int dbg = -1;
+		if (dbg < 0) dbg = getenv("BOB_TRACE_ACCOUNT") ? 1 : 0;
+		if (dbg)
+		{
+			static long frames = 0; static int maxseen = 0;
+			int cnt = 0;
+			for (AirStrucPtr a = AirStrucPtr(ACList); a && cnt < 256; a = AirStrucPtr(a->nextmobile)) cnt++;
+			if (cnt > maxseen) maxseen = cnt;
+			if ((frames % 600) == 0)
+				fprintf(stderr, "[accnt] aircraft in this world: now=%d MAX=%d (frame sample %ld)\n",
+				        cnt, maxseen, frames / 600), fflush(stderr);
+			frames++;
+		}
+	}
+#endif
+
 	SAGAirstruc::MoveAllSAGs(world);
 
 	MoveList(MobileList, world);
@@ -214,6 +243,46 @@ static UByte dontmove=0;
 //------------------------------------------------------------------------------
 void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 {
+#if BOB_LINUX
+	/* BOB_MANUAL=1: hand the player's aircraft to MANUAL pilot control.
+	   Measured 2026-09-04: under BOB_BOOT_FRONTEND the player sits at `movecode=12` =
+	   AUTO_TRAININGTAKEOFF -- an AUTOMATIC training controller owns its movement, so the throttle
+	   is stored (HUD `Power 90`) but never acted on, and the aircraft never rolls (`Speed 0Kts`).
+	   That is why no headless in-flight capture has ever worked in this port.
+	   The game's own transition is Manual_Pilot.AutoToggle(ManualPilot::MANUAL) (OVERLAY.CPP:6297
+	   and three other sites), so use it rather than writing movecode directly -- AutoToggle is
+	   what the game runs when a player takes over, and it does whatever else that entails.
+	   One-shot, and only once the player entry actually exists. Default off. */
+	if (getenv("BOB_MANUAL") && entry == Persons2::PlayerSeenAC) {
+		static int handed = 0;
+		if (!handed) {
+			handed = 1;
+			fprintf(stderr, "[manual] movecode was %d -> AutoToggle(MANUAL)\n", (int)entry->movecode);
+			fflush(stderr);
+			Manual_Pilot.AutoToggle(ManualPilot::MANUAL);
+		}
+	}
+	/* 2026-09-04: does the world update run at all under BOB_BOOT_FRONTEND? A first version of
+	   this probe sat at ONE of the two MoveItem call sites (446 of 446/480) and printed nothing --
+	   which proves only that THAT BRANCH was not taken, not that the loop is idle. Placed at the
+	   function entry, before any branch, so silence here means the update genuinely does not run.
+	   BOB_TRACE_LOOP=1; default off. */
+	if (getenv("BOB_TRACE_LOOP")) {
+		static long calls = 0;
+		if ((calls++ % 600) == 0)
+			fprintf(stderr, "[loop] MoveList calls=%ld PlayerSeenAC=%p entry=%p isplayer=%d\n",
+			        calls, (void*)Persons2::PlayerSeenAC, (void*)entry,
+			        entry == Persons2::PlayerSeenAC), fflush(stderr);
+		/* per-entry: does the PLAYER ever reach this function, and by which path? Counting is the
+		   point -- an absence at one call site proved nothing twice today. */
+		if (entry == Persons2::PlayerSeenAC) {
+			static long pn = 0;
+			if ((pn++ % 300) == 0)
+				fprintf(stderr, "[loop] PLAYER entry seen %ld times, movecode=%d\n",
+				        pn, (int)entry->movecode), fflush(stderr);
+		}
+	}
+#endif
 #ifdef _OLDWORLD														//CSB 7Aug00
 	static bool firstframe = true;
 	if(firstframe)					//CSB 7Aug00
@@ -429,6 +498,10 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 // in accel need to move as no delta packets will arrive
 
 						entry->movecode=AUTO_COMMSACCEL;
+						if (getenv("BOB_TRACE_LOOP") && entry == Persons2::PlayerSeenAC) {
+							static long a1 = 0;
+							if ((a1++ % 300) == 0) fprintf(stderr, "[loop] player -> MoveItem SITE-A (accel) %ld\n", a1), fflush(stderr);
+						}
 						MoveItem(entry,world);
 					}
 
@@ -474,6 +547,22 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 					enginedesc.power = (Persons2::PlayerSeenAC->fly.rpm*255)/Persons2::PlayerSeenAC->classtype->maxrpm;
 					if (enginedesc.power > 255)	enginedesc.power = 255;
 
+#if BOB_LINUX
+					/* 2026-09-04: is the player's flight model being STEPPED? The QM scramble sits
+					   at Speed 0 with Power 90, and the engine-starter theory was refuted (the
+					   starter is only polled under FD_ENGINEMANAGMENT, which is not a default).
+					   This block runs every frame for the player, so it is the honest place to
+					   ask. rpm > 0 means the engine turns; vel changing means the model integrates.
+					   BOB_TRACE_MOVE=1; default off. */
+					if (getenv("BOB_TRACE_MOVE")) {
+						static int mn = 0;
+						if ((mn++ % 120) == 0)
+							fprintf(stderr, "[move] rpm=%d vel=%d thrust%%=%d\n",
+							        (int)Persons2::PlayerSeenAC->fly.rpm,
+							        (int)Persons2::PlayerSeenAC->vel_,
+							        (int)Persons2::PlayerSeenAC->fly.thrustpercent), fflush(stderr);
+					}
+#endif
 					enginedesc.rpm_engine = Persons2::PlayerSeenAC->fly.rpm;
 					enginedesc.rpm_starter = 0;
 					enginedesc.rattle = adptr->ENGINELEFT;			

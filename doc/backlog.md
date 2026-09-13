@@ -1646,3 +1646,48 @@ crash), the R3.7 logged-child close path over two ~14-minute runs, and the R18 m
 
 `PLAYER DATA: untouched` matters too: every arm ran in a scratch tree, so a day of gate runs left the
 PO's install alone.
+
+
+### MP-6 (2026-09-13) — ⭐⭐ peers never become visible to each other, and MA has the identical defect
+
+A new item, distinct from MP-5: MP-5 was *"the client times out entering 3-D"* and is fixed and
+green. MP-6 is *"the two players cannot see each other once they are there"* — which MP-5 never
+claimed and nothing had tested.
+
+**Measured, in a run that passes every MP-5 assertion** (both instances in the 3-D, the client
+clearing the random-list wait):
+
+    [addplayer] calls, host:   0
+    [addplayer] calls, client: 0
+
+`DPlay::AddPlayerToGame` — the only place a remote player is made visible — is **never called on
+either side**.
+
+**The chain, identical in both ports:**
+
+| step | BoB | MiG Alley |
+|---|---|---|
+| makes the peer visible | `AddPlayerToGame` (`WINMOVE.CPP:3751`) | `AddPlayerToGame` (`WINMOVE.CPP:5464`) |
+| called from | `case PID_IAMIN` (`COMMS.CPP:1393`) | `case PID_IAMIN` (`COMMS.CPP:2116`) |
+| message sent by | `SendEnteringGameMessage()` (`WINMOVE.CPP:3803`) | `SendEnteringGameMessage()` (`WINMOVE.CPP:5606`) |
+| sent only under | `if (Joining)` (`WINMOVE.CPP:196`) | `if (_DPlay.Implemented) { if (_DPlay.Joining) …` (`WINMOVE.CPP:2355`) |
+| `Joining=TRUE` set only in | `JoinGame()`, reached via *"if game in progress then join, otherwise dont do anything"* | `JoinGame()`, reached via the **same comment** |
+
+⭐ **When both players start together neither is "joining", so neither announces itself, so neither
+is ever made visible.** Everything else works in both games: same session, both in the 3-D, state
+packets crossing (MA measured ~1,900 a side).
+
+⭐⭐ **So this is a shared Rowan comms design, not a port defect in either game** — the same flag, the
+same single sender, the same one-line gate, the same silent `if (!thisac) return;` in
+`AddPlayerToGame`, and the same comment in the source. One fix serves both ports:
+
+1. make the **late-join** path complete — cont.18's `LATEJOIN` arm showed BoB's client finds the
+   host's session and never gets in, so this is itself unfinished work; or
+2. send `SendEnteringGameMessage()` for a peer that starts **alongside** the host, not only one that
+   arrives after it. Smaller, and where the evidence points.
+
+⚠️ **The census oracle does not work for this, and the source now says so.** `AddPlayerToGame`
+CLAIMS a pre-allocated aircraft (`ConvertPtrUID` then clear invisible/dead) rather than creating one,
+so `ACList` length is identical whether the peer is claimed or not. MA's S18 concluded "the peer is
+not built" from `8 == 8` and had to withdraw it; the note is now in both ports' sources so the next
+reader does not repeat it.

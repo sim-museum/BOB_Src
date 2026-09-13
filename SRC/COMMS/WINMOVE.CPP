@@ -3752,6 +3752,30 @@ void	DPlay::AddPlayerToGame(ULong slot,ULong actype,ULong id)
 {
 	AirStrucPtr thisac=(AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)id);
 
+#if defined(BOB_LINUX)
+	/* MP-6 (2026-09-13): the peer-visibility path, and it is IDENTICAL to MiG Alley's.
+	   MA's MP-2 S19 traced its chain end to end: AddPlayerToGame is called only from case PID_IAMIN;
+	   PID_IAMIN is sent only by SendEnteringGameMessage(); that is called only under `if (Joining)`
+	   (here, WINMOVE.CPP:196); and Joining is set only in JoinGame(), reached only via "if game in
+	   progress then join, otherwise dont do anything". So when both players start TOGETHER neither
+	   announces itself and neither is ever made visible -- while everything else works.
+	   BoB has the same gate, the same one-line sender, and the same silent bail below. This trace
+	   turns "the code is identical" into a measurement: a passing two-instance run should show ZERO
+	   calls here, exactly as MA's did.
+	   Note the census oracle does NOT work for this: AddPlayerToGame CLAIMS a pre-allocated aircraft
+	   rather than creating one, so ACList length is unchanged either way -- the mistake MA's S18 made
+	   and had to withdraw. BOB_TRACE_ADDPLAYER=1. */
+	if (getenv("BOB_TRACE_ADDPLAYER"))
+	{
+		static long n = 0;
+		if (n++ < 16)
+			fprintf(stderr, "[addplayer] slot=%lu actype=%lu id=%lu -> ConvertPtrUID %s\n",
+			        (unsigned long)slot, (unsigned long)actype, (unsigned long)id,
+			        thisac ? "FOUND (peer will be made visible)" : "NOT FOUND -- silent return, peer stays invisible"),
+			        fflush(stderr);
+	}
+#endif
+
 	if (!thisac)
 		return;
 
