@@ -1606,3 +1606,43 @@ existing AT-START pair. Four R1 arms now run in the suite, all scratch-tree.
 **R1 closes its pass at 4 sprints** (S441 both AT-START arms green + control fixed, S442
 `BOB_SDL_KEY_MS`, S443 ON-TRIGGER proven, S444 both modes in the suite). Both gun-camera modes are
 covered by a test that can fail for the right reason.
+
+
+### Regression check (2026-09-13) — ✅ the full gate suite is GREEN after a day of changes
+
+Today changed a lot in BoB, and several of the changes are in paths no single gate targets. Ran
+`tools/bob_gates.sh` end to end against `build/bob` (md5 `5d73e805...`):
+
+    24 gates, 0 FAIL
+    ### PLAYER DATA: untouched by this run
+    ### RUNS: all clean (no crashes, no non-zero exits)
+    ### DONE
+
+**What it covers from today specifically:**
+
+| change | the gate that would have caught a regression |
+|---|---|
+| MP-5 cont.16 — gating `Implemented=FALSE` on `GameRunning` in `UIUpdateMainSheet` | GATE mp_connect / mp_packet / **mp_uijoin** ("PASS: the game's Join list is populated from a real host", 1 session enumerated) |
+| MP-5 cont.17 — the joining branch's random-list read | (not covered — that path is still unexercised, as recorded) |
+| R3 S440 — the ACMI object cap and truncation warning in `REPLAY.CPP` | GATE R11 ACMI export orientation, GATE 1's 14 clean exits |
+| R1 S444 — the `MODE=` refactor of the combo recipe | **GATE SET** (settings-UI combo dispatch, the same `#1075` machinery) and all four R1 arms |
+| S442 — `BOB_SDL_KEY_MS` in `bob_video.cpp` | GATE 3 (dummy vs real GL **byte-identical**), GATE 4 flight frame 92.9 % non-black |
+
+⭐ **All four R1 arms now run in the suite and all four pass:**
+
+    r1_continuous(positive):         PASS      (AT-START, 183,217 bytes)
+    r1_continuous(control):          PASS      (combo -> 0, 0 bytes)
+    r1_continuous(ontrigger):        PASS      (combo -> 1 + trigger, 31,222 bytes)
+    r1_continuous(ontrigger control): PASS     (combo -> 1, trigger withheld, 0 bytes)
+
+So the ON-TRIGGER result does not rest on the single hand-run of S443 — the suite reproduces both
+modes with their controls independently.
+
+**Also green and worth naming**, because they are the ones that would have caught a subtle break:
+`dummy==GL BYTE-IDENTICAL` (GATE 3), `terrain tiles textured blackTex=0` (GATE 4b), the German
+convoy campaign end to end, the strategic soak (37 waypoint executions, 52 interceptor sightings, no
+crash), the R3.7 logged-child close path over two ~14-minute runs, and the R18 move timer holding
+40.000 ms/period against the legacy 40.696.
+
+`PLAYER DATA: untouched` matters too: every arm ran in a scratch tree, so a day of gate runs left the
+PO's install alone.
