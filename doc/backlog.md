@@ -1463,3 +1463,47 @@ now does, and it echoes the timings it chose so the next reader can see the arm 
 
 That first run is otherwise uninformative and should not be cited: `host enters 3D PASS`,
 `client enters 3D FAIL` on a 150 s budget where the client had barely started.
+
+
+### MP-5 cont. 18 (result, 2026-09-13) — the late-join arm runs; the client does NOT join a game in progress
+
+With the arm placed correctly it announces its own timings, which is how it can be trusted this time:
+
+    [latejoin] host flies at 70000ms; client starts at +140s; 420s total
+    host enters 3D                                 PASS
+    client enters 3D                               FAIL
+
+**The client never reaches `SendInitPacket` at all** — the `Joining` gate line is absent from its
+log — so cont.17's fix remains unexercised. What the client does instead is enumerate, repeatedly:
+
+    [dplay] EnumSessions: probing 127.0.0.1:47624
+    [dplay] EnumSessions: found "BoB"
+    [dplay] EnumSessions -> 1 session(s)          (over and over)
+
+It finds the host's session and never joins it. So **joining a game already in progress does not
+work**, and that is a genuine user-facing gap: it is the ordinary "my friend is already flying, let
+me in" case.
+
+⚠️ **A wrong reading of mine, corrected here before it got written up as a defect.** The client's log
+carries 1,503 lines of
+
+    [mp] UIUpdateMainSheet: packet from=1 aggID=1 len=5 -> DROPPED as aggregator traffic
+
+and pid 1 is also the first player the host creates, so this looked like an id collision eating real
+traffic. It is not. Both arms mint the same ids — host `CreatePlayer -> pid 1` then `-> pid 3`, byte
+for byte identical in the passing run — and in the passing arm the host transmits from **pid 3**
+while pid 1 is the aggregator, exactly as the filter assumes. The passing arm logs **0** such drops
+and the late-join arm logs 1,503 **because the late-joining client is never admitted**, so the only
+traffic that ever reaches it is aggregator traffic. The drops are downstream of the failed join, not
+its cause. (The causal direction was the whole claim, and I had it backwards.)
+
+**MP-5 is at 4 of 4 sprints (cont.15-18) and rotates off.** State handed over:
+
+- cont.16's fix is measured and green for the normal arm (`MP-5 TWO-INSTANCE: PASS`).
+- cont.17's joining-branch fix is reasoned but still **unexercised** — this arm was meant to cover it
+  and cannot until the client joins at all.
+- **Next, and it is a UI question rather than a comms one:** find what the client's autoclick
+  sequence (`BOB_AUTOCLICK=2,2,1,1`, per-screen) actually lands on when it starts at +140 s against
+  a host already in 3-D. The screens differ from the both-fly-together case, and FULLPANE.CPP:556
+  shows the join is only attempted when `H2H_Player[0].status == CPS_3D` is seen from the right
+  screen. Dump the client's menus at that point before changing any comms code.
