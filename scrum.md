@@ -3969,3 +3969,36 @@ screen), then read the `[grey]` lines. One more display slot, with a specific st
 than a general flight.
 
 **R20: 1 sprint this pass.**
+
+## R20 S2 (Opus 5, 2026-09-14) — ⛔ the mirror hypothesis is NOT supported; two real-GL flights, no square
+
+S1 flew a campaign sortie on real GL and found no dark square. S2 tested the best remaining
+hypothesis before spending more slots on guesses.
+
+**The hypothesis.** The PO's square is ONE flat colour, RGB (40,52,52), and their own frame's ground
+band is (34,44,48) — six units apart. BoB renders the rear-view mirror by drawing the landscape into
+a 128x128 render target (`BOB_MIRROR` gates it, and MIRROR-1 measured the pass running 4,136 times in
+a 70 s flight). **A landscape-shaded quad drawn in the world instead of in the cockpit is exactly a
+flat dark square floating in the sky**, and it would explain the colour matching the ground.
+
+**MEASURED: the same campaign flight with `BOB_MIRROR=1`.** The frame is indistinguishable from S1's
+— same cockpit, same sea and sky, same in-flight menu panel, **no dark square** — and the `[grey]`
+trace again reports exactly one distinct untextured draw shape, the same red 2-D quad.
+**Hypothesis not supported.**
+
+⚠️ **One number in this sprint is worthless and I am saying so rather than quoting it.** A colour
+search for "pixels within 25 of (40,52,52)" in the upper half returned **137,704**, which looks like a
+finding and is not: the bounding box spans the full frame width and the matches are **the sea**,
+which is that colour. A colour window wide enough to catch a shade is wide enough to catch a whole
+ocean. The visual check is what settles this frame, not that count.
+
+**Where this leaves R20.** Two real-GL campaign flights, two frames, no reproduction, and the one
+instrument that could name the draw says only one untextured shape exists in a normal flight. The
+PO's evidence file is named `inflight_gfx_blacksquare.png` and their note says *"may have hit a
+nearby button first"* — **so the reproduction depends on an action only they can name.**
+
+**S3 should not be another guessed state.** Ask the PO what was pressed just before that screenshot,
+or whether the square is still there in the current build. The instrument is ready and one informed
+run would finish it; three uninformed ones would not.
+
+**R20: 2 sprints this pass.**
