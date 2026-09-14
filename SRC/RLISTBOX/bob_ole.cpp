@@ -298,6 +298,10 @@ static void bob_ole_note_origin(CWnd* dialog, int ox, int oy) {
    time the briefing is closed -- so it could never show the pane the PO is complaining about, and
    comparing it proved nothing about this fix. This arms on the dialog itself. */
 int g_bob_dump_dlg_armed = -1;   /* -1 = not armed; else presents remaining */
+/* R21(3) S4 (2026-09-14): the caller knows WHICH dial slot and which screen art it paints; the
+   detector does not. Filled in by FULLPSYS before each panel draw, so an "empty panel at the corner"
+   report names the slot the SCREEN declared rather than only a pixel position. */
+extern "C" { int g_bob_dial_idx = -1; long g_bob_dial_art = -1; }
 extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
     int n = 0;
     bob_ole_note_origin(dialog, ox, oy);   /* R3.8: so the frontend repaint can replay this exactly */
@@ -661,9 +665,9 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             /* No hosted controls means no dlgId to name it by, so ask the object what it is. */
             if (dialog) cls = typeid(*dialog).name();
 #endif
-            fprintf(stderr, "[origin-dialog] class=%s dlgId=%d dialog=%p drawn at (%d,%d) with ZERO controls drawn"
+            fprintf(stderr, "[origin-dialog] class=%s dlgId=%d dialog=%p dial-slot=%d screen-art=%ld drawn at (%d,%d) with ZERO controls drawn"
                             " -- this is R21(3)'s stray title bar; name it here rather than from a screenshot\n",
-                    cls, dlgIdHere, (void*)dialog, ox, oy);
+                    cls, dlgIdHere, (void*)dialog, g_bob_dial_idx, g_bob_dial_art, ox, oy);
             fflush(stderr);
         }
         }

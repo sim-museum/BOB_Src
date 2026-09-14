@@ -571,6 +571,9 @@ static void bob_fp_repaint(RFullPanelDial* fp)
 		if (bobOleDraw()) {
 			int ox = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].X;
 			int oy = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].Y;
+			{ extern int g_bob_dial_idx; extern long g_bob_dial_art;
+			  g_bob_dial_idx = d;
+			  g_bob_dial_art = fp->m_currentscreen ? (long)fp->m_currentscreen->resolutions[fp->m_currentres].artwork : -1; }
 			bob_ole_draw_panel((CWnd*)fp->pdial[d], ox, oy);
 			bob_fp_draw_nested(fp->pdial[d], ox, oy);   /* S133: nested DialList rows (QS OOB) */
 		}

@@ -4121,3 +4121,31 @@ drawn? That is one trace on the path that is left, now that the control path is 
 measurement rather than by argument.
 
 **R21(3): 3 sprints.**
+
+## R21 defect (3) S4 (Opus 5, 2026-09-14) — the fragment's position is the SCREEN'S OWN dial slot, and the report now names it
+
+S3 ruled out the control path: the placeholder hosts nothing and nothing was filtered. S4 asks where
+(44,20) comes from, because a position that is not chosen by a control must be chosen by a layout.
+
+**It is `dials[1]` of the current screen.** `bob_fp_repaint` draws each panel at
+`fp->m_currentscreen->resolutions[res].dials[d].X/Y`, so the detector now records which slot and
+which screen it was painting:
+
+    [origin-dialog] class=8RDEmptyD dlgId=-1 dial-slot=1 screen-art=27922 drawn at (44,20) with ZERO controls drawn
+
+⭐ **So the chain is complete: the screen declares a dial slot at (44,20); the panel placed in it is
+an `RDEmptyD` placeholder whose real content hangs off it as `fchild`; and the panel's own
+`DoPaint()` runs regardless of whether anything is in it.** In this session that paints nothing
+visible; in the PO's it painted a title bar with the map showing through.
+
+⭐ **And the report is now actionable without reproducing the state.** The next time the PO sees the
+fragment, one grep gives the screen's art id and the slot index — which screen, which dial, which
+class. Three sprints ago this was a screenshot with no way in.
+
+**S5 (the fix, and it is a choice):** suppress the frame when a placeholder's content lives in a
+child, or draw the placeholder where its child is. The second is only right if the child is meant to
+be in that slot; the first is safe either way. Decide with the gold: the reference screens for this
+port show what a dial slot looks like when its panel is empty.
+
+**R21(3): 4 sprints — AT THE CAP. From "a title bar in a screenshot with no reproduction" to
+"screen-art 27922, dial slot 1, class RDEmptyD", entirely from ordinary runs.**
