@@ -351,10 +351,37 @@ bool	DPlay::CommsGameSync()
 			}
 		}
 
+#ifdef BOB_LINUX
+		/* Cross-port from MA, same day (EPIC M / MP S4): MA renders nothing in multiplayer because
+		   _DPlay.csync stays 0, and the stall traced to InitSyncPhase never succeeding (~840,000
+		   failed calls a second on the host). BoB was measured to hold every frame on the identical
+		   csync gate (130/130 samples), so the same chain is instrumented here rather than assumed
+		   to match -- the cross-port note explicitly said verify, not assume. BOB_TRACE_SYNC=1. */
+		{
+			static int s_on = -1;
+			if (s_on < 0) s_on = getenv("BOB_TRACE_SYNC") ? 1 : 0;
+			if (s_on)
+			{
+				static int lastS = -1, lastC = -1; static time_t last = 0;
+				const int sy = synched ? 1 : 0, cs = csync ? 1 : 0;
+				time_t now = time(0);
+				if (sy != lastS || cs != lastC || now != last)
+				{ lastS = sy; lastC = cs; last = now;
+				  fprintf(stderr, "[sync] synched=%d csync=%d\n", sy, cs), fflush(stderr); }
+			}
+		}
+#endif
 		if (!synched)
 		{
 			if (!InitSyncPhase())
-				return false; 
+			{
+#ifdef BOB_LINUX
+				{ static int o=-1; if(o<0) o=getenv("BOB_TRACE_SYNC")?1:0;
+				  if(o){ static long n=0; static time_t l=0; time_t w=time(0); n++;
+				    if(w!=l){ l=w; fprintf(stderr,"[sync] InitSyncPhase FAILED %ld/s\n",n),fflush(stderr); n=0; } } }
+#endif
+				return false;
+			} 
 #ifdef SYNCDATA 
 			FILE* fp=fopen("resync.txt","at");
 			fprintf(fp,"initsyncphase OK CP=%d\n",_DPlay.CurrPlayers);
@@ -365,7 +392,14 @@ bool	DPlay::CommsGameSync()
 		if (!csync && synched)
 		{
 			if (!SecondSyncPhase())
+			{
+#ifdef BOB_LINUX
+				{ static int o=-1; if(o<0) o=getenv("BOB_TRACE_SYNC")?1:0;
+				  if(o){ static long n=0; static time_t l=0; time_t w=time(0); n++;
+				    if(w!=l){ l=w; fprintf(stderr,"[sync] SecondSyncPhase FAILED %ld/s\n",n),fflush(stderr); n=0; } } }
+#endif
 				return false;
+			}
 #ifdef SYNCDATA 
 			FILE* fp=fopen("resync.txt","at");
 			fprintf(fp,"2ndsyncphase OK CP=%d\n",_DPlay.CurrPlayers);

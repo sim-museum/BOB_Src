@@ -3659,3 +3659,35 @@ upstream term. The same structure should be checked in BoB before assuming it ma
 seats players, enters the 3-D and exchanges state — and shows a waiting screen rather than a world.
 Everything previously reported as "multiplayer works" was measured on comms and entity state, never
 on a rendered frame.
+
+## MP / cross-port S2 (Opus 5, 2026-09-14) — ✅ BoB stalls in the SAME phase as MA: `InitSyncPhase` never succeeds in either port
+
+The previous cross-port entry measured BoB holding every multiplayer frame on the same `_DPlay.csync`
+gate as MA (130/130 samples), and explicitly said the chain BELOW that gate should be verified in BoB
+rather than assumed to match MA's. MA's MP S4 then traced its stall to `InitSyncPhase`. This verifies
+BoB with the identical probe (`BOB_TRACE_SYNC=1`).
+
+**MEASURED, BoB's own two-instance harness:**
+
+    host    130 samples  [sync] synched=0 csync=0     InitSyncPhase FAILED ~60/s
+    client  129 samples  [sync] synched=0 csync=0     InitSyncPhase FAILED ~60/s
+
+✅ **Same phase, both ports.** `InitSyncPhase` never succeeds, so `synched` never becomes TRUE,
+`SecondSyncPhase` never runs, `csync` stays 0, and the render gate holds every frame. The assumption
+was right — and it was still worth the run, because the two ports differ in a way that only the
+measurement shows.
+
+⭐ **The difference: the RETRY RATE.** BoB fails **60 times a second** — once per frame, a polite
+per-frame retry. MA's host fails **~840,000 times a second**. Same logical stall, but MA additionally
+spins inside the frame, which is a separate MA-side defect (an unbounded retry loop where BoB has a
+bounded one) and explains the CPU burn in MA's harness runs. Worth carrying back to MA as its own
+item; it is not part of the shared sync bug.
+
+**Where this leaves multiplayer across the pair.** Both games: discover ✅, join ✅, seat both players
+✅, enter the 3-D ✅, exchange state ✅, **sync ❌ → render ❌**. One function in each port, the same
+one, standing between the current state and a working multiplayer picture.
+
+**Next (either port, the work is shared):** `MA_TRACE_DPLAY` / the BoB equivalent already report the
+shim's DirectPlay traffic. Ask whether the aggregate sync packet `InitSyncPhase` waits on is ever SENT
+and ever DELIVERED. MP-6 S2/S3 already found and fixed one packet the shim dropped because it ignored
+a receive filter the game depends on — check that fix's shape first.
