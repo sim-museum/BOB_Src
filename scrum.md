@@ -3781,3 +3781,40 @@ seen: …`), which names what that caller actually gets. In MA the same instrume
 caller stealing the traffic, and BoB has more receive sites than MA does.
 
 **BoB MP: 3 sprints this pass.**
+
+## MP S8 (Opus 5, 2026-09-14) — the host's game half gets ONE of every NINE looped-back packets; two candidate causes ruled out by measurement
+
+S7 found the host's own player feeding the aggregator for a few seconds and then stopping, which
+means its `InitSyncPhase` stopped receiving the aggregate packet. S8 ported MA's receive census to
+see what that caller actually gets.
+
+**MEASURED, same session, the two sides side by side:**
+
+    host    [agg] loopback 9/s  from=1 to=2          (the aggregator's packet IS queued locally)
+    host    [agg] InitSyncPhase received 1 msg/s  aggID=1  From seen: 1
+    host    [agg] InitSyncPhase got-agg-packet 0-2/s   no-packet 58-60/s
+    client  [agg] InitSyncPhase received 9-11 msg/s aggID=1  From seen: 1 3
+    client  [agg] InitSyncPhase got-agg-packet 8-9/s
+
+⭐ **The packet is queued nine times a second and the caller that wants it sees one.** The client,
+which has no local aggregator competing for its queue, sees all of them and clears its half. So the
+loss is host-local and it is a DELIVERY problem, not a send problem.
+
+**Two candidate causes tested, both REFUTED:**
+
+1. ⛔ **The aggregator's own drain stealing group traffic.** MA's MP-6 S4 rule (a KNOWN group is
+   routed by MEMBERSHIP; only an unknown id falls through to the permissive catch-all) was missing
+   here, so this looked certain. Ported it — `BOB_MP_LOOSEGROUP=1` reverts — and re-ran: the host
+   still sees **1-2 msg/s**, unchanged. The rule is kept for parity with MA's measured behaviour and
+   because the two-instance gate still passes, but **it fixed nothing here and is not credited.**
+2. ⛔ **Shim queue overflow.** ⚠️ S7 reported "0 queue full" — that claim was UNSOUND: the drop
+   message is gated on `BOB_TRACE_DPLAY`, which that run did not set, so it was measured with the
+   instrument switched off. The drop counter now also reports under `BOB_TRACE_AGG`, and with the
+   instrument proven able to speak the answer is a real **zero drops on both sides**.
+
+**S9 (next pass): name the thief.** MA has `ma_recv_caller`, a tag each call site sets before
+`Receive` so a delivery can be attributed; **BoB has no equivalent** (`grep recv_caller` finds
+nothing). Add it, tag every BoB receive site, and print which caller takes each looped-back aggregate
+packet. MA's MP-6 S2 solved the identical class of question in one run with exactly that instrument.
+
+**BoB MP: 4 sprints this pass (S5–S8). AT THE CAP — rotating the item off.**

@@ -121,7 +121,19 @@ class BobDPlay4 : public IDirectPlay4
 
     void qpush(unsigned f, unsigned t, const char* d, unsigned n) {
         int nx = (qt + 1) % MAXQ;
-        if (nx == qh) { DPT("queue full, dropping a packet\n"); return; }
+        if (nx == qh) {
+            DPT("queue full, dropping a packet\n");
+            /* MP S8 (2026-09-14): the drop message was gated on the DPlay trace, so an earlier
+               sprint's "0 queue full" was measured with the instrument switched OFF and proved
+               nothing. Report drops under the aggregate trace too, once a second. */
+            if (getenv("BOB_TRACE_AGG")) {
+                static long nd = 0; static time_t last = 0; time_t now = 0; ::time(&now); nd++;
+                if (now != last) { last = now;
+                    fprintf(stderr, "[agg] shim queue FULL: dropped %ld packets/s (MAXQ=%d)\n", nd, MAXQ);
+                    fflush(stderr); nd = 0; }
+            }
+            return;
+        }
         q[qt].from = f; q[qt].to = t; q[qt].len = n > sizeof(q[qt].data) ? sizeof(q[qt].data) : n;
         memcpy(q[qt].data, d, q[qt].len); qt = nx;
         noteAnnounce("QUEUED", f, t, d, n);
@@ -448,6 +460,10 @@ public:
         }
         return false;
     }
+    bool isKnownGroup(unsigned gid) const {
+        for (int gi = 0; gi < ngroups; gi++) if ((unsigned)groups[gi] == gid) return true;
+        return false;
+    }
     bool isKnownPlayer(unsigned pid) const {
         if (isLocalPlayer(pid)) return true;
         if (pid == (unsigned)myPid) return true;
@@ -495,7 +511,19 @@ public:
                    The filter still does its job: traffic addressed to ANOTHER KNOWN PLAYER (the
                    aggregator included, which is what ReceiveNextMessageToMe's comment is about)
                    stays queued for that caller. */
-                if (dst == want || dst == 0 || inGroup(dst, want) || !isKnownPlayer(dst)) { found = i; break; }
+                /* MP S8 (2026-09-14), ported from MA's MP-6 S4: a KNOWN group must be routed by
+                   MEMBERSHIP. Without this, a group id is not a known PLAYER, so the permissive
+                   catch-all below hands group traffic to whichever caller polls first -- including
+                   the aggregator's own drain, which passes to=aggID and by its own comment wants
+                   only what was sent to it. MEASURED here before the change: the host's
+                   InitSyncPhase saw 1-2 msg/s of an aggregate packet the aggregator was looping
+                   back 9/s, while the client (which has no local aggregator competing for the
+                   queue) saw 9-10/s and synced its half fine. BOB_MP_LOOSEGROUP=1 reverts. */
+                const bool strict = !getenv("BOB_MP_LOOSEGROUP");
+                const bool ok = (dst == want) || (dst == 0) ||
+                                ((strict && isKnownGroup(dst)) ? inGroup(dst, want)
+                                                               : (inGroup(dst, want) || !isKnownPlayer(dst)));
+                if (ok) { found = i; break; }
             }
             if (found < 0) return DPERR_NOMESSAGES;
             idx = found;

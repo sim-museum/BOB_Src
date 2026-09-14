@@ -3076,6 +3076,26 @@ Bool	DPlay::InitSyncPhase()
 	From=aggID;
 	while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_TOPLAYER))
 	{
+#ifdef __linux__
+		/* MP S8 cross-port (2026-09-14): S7 measured the host's OWN player feeding the aggregator
+		   for a few seconds and then stopping, which means this phase stopped receiving the
+		   aggregate packet it waits for. Census what it actually gets: how many messages a second
+		   and from which senders, against the aggID it is looking for. The same instrument in MA
+		   showed another caller taking the traffic. BOB_TRACE_AGG=1. */
+		{
+			static int a_on = -1;
+			if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+			if (a_on) { static long nmsg = 0; static unsigned seen[8]; static int nseen = 0;
+				static time_t last = 0; time_t now = 0; ::time(&now); nmsg++;
+				{ int f = 0; for (int k = 0; k < nseen; k++) if (seen[k] == (unsigned)From) f = 1;
+				  if (!f && nseen < 8) seen[nseen++] = (unsigned)From; }
+				if (now != last) { last = now;
+					fprintf(stderr, "[agg] InitSyncPhase received %ld msg/s  aggID=%u  From seen:",
+							nmsg, (unsigned)aggID);
+					for (int k = 0; k < nseen; k++) fprintf(stderr, " %u", seen[k]);
+					fprintf(stderr, "\n"); fflush(stderr); nmsg = 0; nseen = 0; } }
+		}
+#endif
 		if (From==DPID_SYSMSG)
 			ProcessSystemMessage(Buffer);
 		else if (From==aggID)
@@ -3096,6 +3116,17 @@ Bool	DPlay::InitSyncPhase()
 		}
 	}
 
+#ifdef __linux__
+	{
+		static int a_on = -1;
+		if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+		if (a_on) { static long nok = 0, nfail = 0; static time_t last = 0; time_t now = 0; ::time(&now);
+			if (got) nok++; else nfail++;
+			if (now != last) { last = now;
+				fprintf(stderr, "[agg] InitSyncPhase got-agg-packet %ld/s  no-packet %ld/s\n", nok, nfail);
+				fflush(stderr); nok = 0; nfail = 0; } }
+	}
+#endif
 	if (!got)
 		return FALSE;
 
