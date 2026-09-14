@@ -3937,3 +3937,35 @@ running may be hiding those too. **S4 should ask why it never runs** — but the
 black band regardless of the answer, which is what the PO reported.
 
 **R21(2): 3 sprints.**
+
+## R20 S1 (Opus 5, 2026-09-14) — one real-GL campaign flight, and the square does NOT appear; the instrument speaks, and says there was only ONE untextured draw shape
+
+R20 has been waiting on "one display slot" since S409, which measured that the 3-D draw path does not
+execute under `SDL_VIDEODRIVER=dummy`. S1 spent that slot: a full campaign flight on real GL
+(`BOB_TRACE_GREY=1`, `BOB_DUMP_FRAME=400`), reaching `InThe3D=1` and dumping a 1920x1080 frame.
+
+**RESULT — the defect did not reproduce.**
+
+* The captured frame is a clean Hurricane cockpit over the Channel: canopy, gunsight glass and
+  reticle, sea, sky, the artificial horizon, and the in-flight menu panel at the top centre.
+* **No dark square.** The one grey box in the frame is that menu panel, measured at RGB
+  ≈(165,165,165) against a sky of (138,169,197) — nothing like the PO's (40,52,52).
+* The trace reported exactly **one distinct untextured draw shape** in the whole flight:
+  `prim=6 count=4 fvf=3c4 is2D=1, flat colour 0xffff0000 = R255 G0 B0`.
+
+⭐ **And the instrument is not the reason.** It dedups on `(fvf, prim, count)`, not on the surface —
+S397 already fixed the earlier version that collapsed every texturing-disabled draw onto one entry —
+so "one line" here means **one distinct shape occurred**, not "one was recorded". A red 2-D quad is
+not the PO's square, and nothing else untextured was drawn.
+
+**So the square needs a state this flight did not reach**, and the PO's own note says which:
+*"when I pressed printscreen (may have hit a nearby button first)"*, and their evidence file is named
+`inflight_gfx_blacksquare.png` — **the GFX dialog raised over the 3-D**. A dialog over the flight view
+is exactly the kind of state that adds an overlay quad, and it is also consistent with the square's
+colour matching the ground band rather than any sky or cockpit shade.
+
+**S2:** fly the same campaign flight and RAISE THE GFX DIALOG over it (the PO's screenshot names the
+screen), then read the `[grey]` lines. One more display slot, with a specific state this time rather
+than a general flight.
+
+**R20: 1 sprint this pass.**
