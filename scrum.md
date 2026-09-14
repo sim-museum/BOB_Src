@@ -3751,3 +3751,33 @@ received by the aggregator, or received and not mapped to a slot. MA's census an
 question in one run.
 
 **BoB MP: 2 sprints this pass. Rotating off.**
+
+## MP S7 (Opus 5, 2026-09-14) — the host's OWN player stops feeding the aggregator after the first few seconds
+
+S6 left BoB with the right player count but `num=1`: the aggregate carries a dummy for one player
+only. MA's aggregator census was ported to answer which player, and whether its packets are never
+sent, never received, or received and not mapped (`BOB_TRACE_AGG=1`).
+
+**MEASURED, host, one second per line:**
+
+    [agg] aggregator received  1 msg/s  right-size 1  mapped-to-slot 1  from: 3
+    [agg] aggregator received  3 msg/s  right-size 3  mapped-to-slot 3  from: 4
+    [agg] aggregator received 10 msg/s  right-size 10 mapped-to-slot 10 from: 3 4
+    [agg] aggregator received  8 msg/s  right-size 8  mapped-to-slot 8  from: 4      <- and 4 only, thereafter
+
+⭐ **Every packet that arrives is the right size and maps to a slot, so nothing is being dropped or
+mis-addressed. The host's own player (pid 3) simply stops sending** after the first few seconds,
+while the remote client (pid 4) keeps going. That is exactly one dummy in the aggregate, which is
+what the gate sees.
+
+The chain explains itself: a player sends its dummy only AFTER it receives an aggregate packet, so
+the host's game half has stopped receiving them. The loopback is still firing at 8–9/s
+(`loopback from=1 to=2`), the shim's queue never overflows (0 "queue full"), and the ids are the same
+shape as MA's (aggregator pid 1, game player pid 3, group 2 = {3,4}). So the packet is being queued
+and not delivered to the caller that wants it.
+
+**Next: port MA's InitSyncPhase receive census** (`[agg] InitSyncPhase received N msg/s aggID=… From
+seen: …`), which names what that caller actually gets. In MA the same instrument showed another
+caller stealing the traffic, and BoB has more receive sites than MA does.
+
+**BoB MP: 3 sprints this pass.**

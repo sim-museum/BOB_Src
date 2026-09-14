@@ -643,6 +643,30 @@ void	Aggregator::GetAllMessages()
 
 		if (res==DP_OK)
 		{
+#ifdef __linux__
+			/* MP S6/S7 cross-port (2026-09-14): BoB's aggregate carries a dummy for ONE player only
+			   (num=1 on 42/42 samples), so one player's packets are not being aggregated. Report
+			   what arrives, whether it is the size the aggregator accepts, and whether the sender
+			   maps to a slot -- an unmapped sender is dropped silently here. The same census
+			   answered the same question in MA in one run. BOB_TRACE_AGG=1. */
+			{
+				static int a_on = -1;
+				if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+				if (a_on) { static long nm = 0, nsize = 0, nslot = 0; static time_t last = 0;
+					static unsigned seen[8]; static int nseen = 0;
+					time_t now = 0; ::time(&now); nm++;
+					if (BufferLen==sizeof(ACPACKET)) nsize++;
+					{ int f = 0; for (int k = 0; k < nseen; k++) if (seen[k]==(unsigned)from) f = 1;
+					  if (!f && nseen < 8) seen[nseen++] = (unsigned)from; }
+					if (_DPlay.DPID2Slot(from)!=MAXPLAYERS) nslot++;
+					if (now != last) { last = now;
+						fprintf(stderr, "[agg] aggregator received %ld msg/s  right-size %ld  mapped-to-slot %ld  from:",
+								nm, nsize, nslot);
+						for (int k = 0; k < nseen; k++) fprintf(stderr, " %u", seen[k]);
+						fprintf(stderr, "  sizeof(ACPACKET)=%lu\n", (unsigned long)sizeof(ACPACKET));
+						fflush(stderr); nm = 0; nsize = 0; nslot = 0; nseen = 0; } }
+			}
+#endif
 			if (BufferLen==sizeof(ACPACKET))
 			{
 				n=_DPlay.DPID2Slot(from);
