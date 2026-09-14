@@ -627,6 +627,48 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
             fflush(stderr);
         }
     }
+    /* R21(3) S2 (2026-09-14): THE DETECTOR FOR "A DIALOG DRAWN AT THE ORIGIN WITH NO BODY".
+       The PO photographed a stray title bar with `? / tick / cross` at (0,18)-(232,40) over the
+       campaign map, and S1 could not reproduce it: three BoB defects now only appear in a state
+       reached by clicking, which the harness does not reach. Hunting states is expensive; NOTICING
+       the condition is cheap. A panel asked to draw at the top-left corner that draws NOTHING is
+       exactly that fragment, and the port can say so the moment it happens -- so the next time the
+       PO sees it, the log names the dialog instead of a screenshot starting another search.
+       Always on: it costs one comparison per panel draw and prints at most once per dialog. */
+    /* The threshold is env-overridable ONLY so the detector can be proven able to speak: a check
+       that has never fired is indistinguishable from one that cannot. BOB_ORIGIN_DLG_Y=<n> widens
+       the y limit (and BOB_ORIGIN_DLG_X the x), so a run can be made to trip it on purpose. */
+    {
+        static int lim_y = -1, lim_x = -1;
+        if (lim_y < 0) { const char* e = getenv("BOB_ORIGIN_DLG_Y"); lim_y = e ? atoi(e) : 64; }
+        /* S2: the default x limit was 2 and the condition really occurs at x=44 -- proving the
+           detector could speak (BOB_ORIGIN_DLG_X=9999) found a zero-control panel at (44,20) in an
+           ordinary campaign-map session, which is within a few pixels of the PO's fragment at
+           (0,18)-(232,40). A threshold set from the screenshot's left edge would have missed it. */
+        if (lim_x < 0) { const char* e = getenv("BOB_ORIGIN_DLG_X"); lim_x = e ? atoi(e) : 64; }
+        if (ox <= lim_x && oy <= lim_y && drawn == 0)    {
+        static const void* warned[32]; static int nwarn = 0; int seenIt = 0;
+
+        for (int k = 0; k < nwarn; k++) if (warned[k] == (const void*)dialog) { seenIt = 1; break; }
+
+        if (!seenIt && nwarn < 32)
+        {
+            warned[nwarn++] = (const void*)dialog;
+            int dlgIdHere = -1;
+            for (auto& kv3 : hosts()) if (kv3.second->parentDlg == dialog) { dlgIdHere = kv3.second->dlgId; break; }
+            const char *cls = "?";
+#ifdef __GNUC__
+            /* No hosted controls means no dlgId to name it by, so ask the object what it is. */
+            if (dialog) cls = typeid(*dialog).name();
+#endif
+            fprintf(stderr, "[origin-dialog] class=%s dlgId=%d dialog=%p drawn at (%d,%d) with ZERO controls drawn"
+                            " -- this is R21(3)'s stray title bar; name it here rather than from a screenshot\n",
+                    cls, dlgIdHere, (void*)dialog, ox, oy);
+            fflush(stderr);
+        }
+        }
+    }
+
     return n;
 }
 

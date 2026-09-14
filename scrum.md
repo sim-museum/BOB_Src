@@ -4058,3 +4058,39 @@ the log names the dialog instead of a screenshot starting another search. Cheape
 states, and it also covers R20's class.
 
 **R21(3): 1 sprint.**
+
+## R21 defect (3) S2 (Opus 5, 2026-09-14) — ⭐ the stray fragment is NAMED: it is an `RDEmptyD` placeholder panel, drawn at (44,20) with no body
+
+S1 could not reproduce the PO's fragment and proposed building a detector instead of hunting the
+state. S2 built it, proved it, and it found the thing on the first ordinary run.
+
+**The detector** (`bob_ole_draw_panel`, always on): a panel asked to draw near the top-left corner
+that draws **zero controls** is exactly *"a title bar at the origin with no body"*, so say so, once
+per dialog.
+
+⚠️ **It reported nothing — and a check that has never fired cannot be distinguished from one that
+cannot fire.** So the thresholds were made overridable (`BOB_ORIGIN_DLG_X/Y`) purely to prove it can
+speak. With them widened it printed immediately:
+
+    [origin-dialog] class=8RDEmptyD dialog=0x9fc77f0 drawn at (44,20) with ZERO controls drawn
+
+⭐ **And that is the PO's fragment.** Their title bar sits at **(0,18)-(232,40)**; this panel draws at
+**(44,20)** with nothing in it. **My default x limit of 2 was set from their screenshot's left edge
+and would have missed it by 42 px** — the reason to prove an instrument rather than trust its
+silence, twice over in one sprint.
+
+⭐ **What it is.** `RDEmptyD` is the engine's **placeholder panel**: `MAINFRM.CPP:2053` already
+records *"the logged child is a PLACEHOLDER PANEL (traced: rtti=RDEmptyD), not the dialog …
+the real dialog hangs off the panel as `fchild`"*. So the port is drawing a **frame and title bar for
+a panel whose content lives in a child**, and with the map behind it that is a title bar with
+`SECTOR W` showing through — the PO's picture exactly.
+
+**The default limits are now x ≤ 64, y ≤ 64**, so the condition is reported in ordinary runs.
+
+**S3:** decide what a placeholder panel should draw. It should not paint a title bar where its child
+is not, so either suppress the frame when `fchild` carries the content, or draw the placeholder at
+the child's position. Check first whether the PO's *visible* chrome comes from this panel or from the
+child's own title bar drawn at the parent's origin — the two want different fixes.
+
+**R21(3): 2 sprints. The fragment is identified from a normal session, without needing the PO's
+steps.**
