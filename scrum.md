@@ -4094,3 +4094,30 @@ child's own title bar drawn at the parent's origin — the two want different fi
 
 **R21(3): 2 sprints. The fragment is identified from a normal session, without needing the PO's
 steps.**
+
+## R21 defect (3) S3 (Opus 5, 2026-09-14) — the placeholder hosts NOTHING, so its chrome cannot come from the control path
+
+S2 named the fragment as an `RDEmptyD` placeholder panel drawn at (44,20) with zero controls. S3 asks
+the obvious follow-up before proposing a fix: are its controls being SKIPPED (a filter problem, which
+would be fixable there) or does it genuinely host none?
+
+**MEASURED, the skip census for that exact object:**
+
+    [skip] dlgId=-1 dialog=0x9072bb0 hosted-for-this-dialog=0 DREW=0 |
+           not-visible=0 dead-sweep-row=0 not-in-template=0 no-DLU-rect=0
+
+⭐ **Zero hosted, zero drawn, and zero skipped by any of the four filters.** The panel is empty in
+every sense — nothing was dropped on the way to the screen. So **no control path can be drawing the
+PO's `? ✓ ✗` title bar**, and the fix is not in the control filters.
+
+**What that leaves.** A panel's own ART is blitted separately from its hosted controls
+(`SetDIBitsToDevice`, the path S173's clip works on). A placeholder with a title-bar art file and no
+controls would paint exactly what the PO photographed: chrome with the map showing through where a
+body should be. In this session it paints nothing visible, so either it has no art assigned here or
+the art draw is skipped — and those are different bugs.
+
+**S4:** trace the panel-ART blit for this object — does `RDEmptyD` get an art FileNum, and is it
+drawn? That is one trace on the path that is left, now that the control path is ruled out by
+measurement rather than by argument.
+
+**R21(3): 3 sprints.**
