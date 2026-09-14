@@ -3626,3 +3626,36 @@ faithfully — was never reachable while nothing fired. With rounds leaving the 
 against the gold is now a normal sprint.
 
 **R3.7: 4 sprints — at cap, rotating off UNBLOCKED rather than parked.**
+
+## MP / cross-port (Opus 5, 2026-09-14) — ⭐⭐ BoB holds every multiplayer frame too: the csync gate is a SHARED Rowan defect
+
+MA's EPIC M harness-validity S3 (same day) found MA multiplayer rendering nothing because
+`STUB3D.CPP`'s only live `render()` call is gated on `!_DPlay.Implemented || _DPlay.csync`, and csync
+measured 0 on 87 of 87 host samples. BoB is the same engine lineage, so the gate was checked here
+rather than assumed — and BoB carries it verbatim, at `STUB3D.CPP:1682/1730/1739`.
+
+**Measured with the identical probe, over BoB's own two-instance harness:**
+
+    host    130 samples   ALL  DPlay.Implemented=1 csync=0 -> held (waiting/resync)
+    client  130 samples   ALL  DPlay.Implemented=1 csync=0 -> held (waiting/resync)
+
+⭐⭐ **Both ports hold every multiplayer frame.** Neither game renders a world in a two-instance
+session; both exchange packets steadily while doing it. That is now two shared Rowan comms defects
+found in this codebase pair — the other is MP-2 S19's `Joining` flag, where only a JOINING peer
+announces itself, identical in both.
+
+**A difference that looked like the answer and is not.** BoB sets `csync=true` at 3-D entry
+(`STUB3D.CPP:1234`) where MA has no equivalent — which read like BoB's advantage until the code
+around it is taken whole: it is set true, then `WaitEndDraw(D_YES)` twice, then set **false** again
+at `:1240`. It is a transient for the mode change, not a persistent enable. So MA is not missing a
+setter BoB has; both depend on the comms sync phase completing, and in both it does not.
+
+**Where the fix lives, for whoever takes it.** In MA the chain is visible: `csync=true` is reached
+only inside the second sync phase (`WINMOVE.CPP:4478`), which runs only from
+`if (!csync && synched) { if (!SecondSyncPhase()) return false; … }` (`:299`). So `synched` is the
+upstream term. The same structure should be checked in BoB before assuming it matches.
+
+⚠️ **Worth the PO knowing plainly:** on this evidence multiplayer in BOTH ports connects, joins,
+seats players, enters the 3-D and exchanges state — and shows a waiting screen rather than a world.
+Everything previously reported as "multiplayer works" was measured on comms and entity state, never
+on a rendered frame.

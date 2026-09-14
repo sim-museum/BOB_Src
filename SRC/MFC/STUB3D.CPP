@@ -1679,6 +1679,31 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 //DeadCode AMM 8Sep00 				static UWord doit=0;							//AMM 07Jul99
 //DeadCode AMM 8Sep00 				static UWord stage=0;							//AMM 07Jul99
 
+#ifdef BOB_LINUX
+				/* Cross-port from MA, same day (EPIC M harness-validity S3): MA's multiplayer
+				   renders NOTHING because this identical gate holds every frame -- measured 87/87
+				   samples csync=0 on the host. BoB carries the same gate, so the question is
+				   whether BoB is in the same state or whether BoB's extra csync=true at 3-D entry
+				   (STUB3D.CPP:1234, which MA has no equivalent of) keeps it open. Report both
+				   terms, on change and once a second. BOB_TRACE_RENDERGATE=1. */
+				{
+					static int s_on = -1;
+					if (s_on < 0) s_on = getenv("BOB_TRACE_RENDERGATE") ? 1 : 0;
+					if (s_on)
+					{
+						static int lastI = -1, lastC = -1; static time_t last = 0;
+						const int impl = _DPlay.Implemented ? 1 : 0, cs = _DPlay.csync ? 1 : 0;
+						time_t now = time(0);
+						if (impl != lastI || cs != lastC || now != last)
+						{
+							lastI = impl; lastC = cs; last = now;
+							fprintf(stderr, "[rendergate] DPlay.Implemented=%d csync=%d -> %s\n",
+							        impl, cs, (!impl || cs) ? "RENDER" : "held (waiting/resync)");
+							fflush(stderr);
+						}
+					}
+				}
+#endif
 				if (!_DPlay.Implemented || _DPlay.csync)		//DAW 22Jun99
 					Three_Dee.render(Master_3d.g_lpLib3d,This->View_Point,This->inst->world);
 //DeadCode AMM 8Sep00 				else if (doit&0x1000)							//AMM 08Jul99
