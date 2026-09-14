@@ -880,12 +880,19 @@ Bool ImageMap::LoadImageMap(SuperMap*	supermap, UWord file_no,Bool is16bit, Bool
 				int _dir = -1;
 				for (int _d = 0; _d < MaxMapDirs; _d++)
 					if (&superimagemaptable[_d] == supermap) { _dir = _d; break; }
+				/* R3.9 S5: the last step of the identity chain. S309 stopped at the FileNum,
+				   which is a number, and the PO cannot be shown a number. namenumberedfile()
+				   is the game's own FileNum -> path composer (the one the fileblock below is
+				   about to use), so the trace can print the file it is actually going to open.
+				   LessFail because a bad FileNum must not assert inside a diagnostic. */
+				const char* _path = File_Man.NameNumberedFileLessFail(imagemapfile);
 				fprintf(stderr,"[imagemap] ptr=%p dir=%d file=%u ImageMapNumber=0x%04x "
-				               "FileNum=%d (%s, off8=%u off16=%u)\n",
+				               "FileNum=%d (%s, off8=%u off16=%u) path=%s\n",
 				        (void*)imgp, _dir, (unsigned)file_no,
 				        (unsigned)((_dir << 8) | file_no), (int)imagemapfile,
 				        is16bit ? "16bit" : "8bit",
-				        (unsigned)supermap->offset_8bit, (unsigned)supermap->offset_16bit);
+				        (unsigned)supermap->offset_8bit, (unsigned)supermap->offset_16bit,
+				        _path ? _path : "(null)");
 			}
 
 			fileblock	fblock = imagemapfile;

@@ -4149,3 +4149,51 @@ port show what a dial slot looks like when its panel is empty.
 
 **R21(3): 4 sprints — AT THE CAP. From "a title bar in a screenshot with no reproduction" to
 "screen-art 27922, dial slot 1, class RDEmptyD", entirely from ordinary runs.**
+
+## R3.9 S5 (Opus 5, 2026-09-14) — ⭐⭐ THE SPRITE IS NAMED: image map 525 is `MskMap16\THREAT01.X8`, and its ONLY draw site is the HUD
+
+The 2026-09-03 cycle ended with *"turn dir 2 / file 13 into a filename — log the path the image-map
+LOADER opens"*. That is what this sprint does, and the answer arrives with a second answer attached.
+
+**The trace now prints the path, from the game's own composer.** `LoadImageMap` computes a `FileNum`
+and hands it to a `fileblock`; `fileman::namenumberedfile()` is the function that turns that number
+into a path, so the S309 probe now calls it (`LessFail`, so a bad number cannot assert inside a
+diagnostic) and prints what is about to be opened:
+
+    [imagemap] ptr=0xdaa94680 dir=2 file=13 ImageMapNumber=0x020d FileNum=39693 (16bit,
+               off8=38912 off16=39680) path=...\mskmap16\THREAT01.x8
+
+⭐ **Image map 525 is `MskMap16\THREAT01.X8`** — confirmed present on disk. And the number alone
+could never have said so: **dir 2 has TWO file lists**, `maskmap\` at `off8=38912` and `mskmap16\` at
+`off16=39680`, and the same `file=13` names a different file in each. Only the FileNum actually used
+resolves it, which is why four sprints of arithmetic on `ImageMapNumber` could not finish this.
+
+⭐ **And `THREAT01NO` has exactly ONE reference in the whole source tree:**
+
+    SRC/3D/OVERLAY.CPP:7805   ImageMapDesc* pmap = Image_Map.GetImageMapPtr(THREAT01NO);   // COverlay::DoThreat()
+
+`DoThreat()` is called from the overlay pass at `OVERLAY.CPP:680`, immediately after
+`LoadIdentity(MATRIX_OBJECT/VIEWER/PROJECTION)` and `GiveHint(HINT_2DRENDER)`, and only when
+`Save_Data.gamedifficulty[GD_HUDINSTACTIVE]` is set. **It is a HUD instrument — a threat indicator,
+drawn in 2D, screen-pinned by construction.**
+
+⚠️ **Which contradicts what this item measured in September, and the contradiction is the defect.**
+The earlier cycle established by backtrace that the shape is drawn from `RenderTPolyList` inside
+`render3d`, that it is NOT screen-pinned, and that its x moves between frames. Both observations can
+be true at once in exactly one way: **the HUD's transparent poly is QUEUED under identity matrices
+and FLUSHED later, inside the 3D pass, under the WORLD matrices.** A 2D instrument drawn with a
+world transform is precisely "a grey shape floating in the sky that drifts between frames".
+
+**S6, two experiments, both cheap and both falsifiable:**
+1. Turn `GD_HUDINSTACTIVE` off. If the shape goes with it, the identity is settled end to end.
+2. Trace the matrix state at `BeginPoly` (queue) and at `RenderTPolyList` (flush) for this material.
+   If they differ, the fix is to flush the 2D list with the matrices in force when it was queued.
+
+*(And the four-sprint caveat can now be put to the PO as a question with a name in it: "the object is
+the threat indicator from the HUD — do you have HUD instruments switched on?" — better than asking
+them to describe a square again.)*
+
+The probe is inside the existing `BOB_TRACE_IMAGEMAP` block, so nothing changes with the trace off;
+the campaign flight that produced the line above ran 240 s with no crash.
+
+**R3.9: 1 sprint this pass. The shape has a filename and a single draw site.**
