@@ -4025,3 +4025,36 @@ both passed.
 
 **R21(2): 4 sprints — AT THE CAP. The defect the PO reported is fixed, verified against the value
 that used to break it, and regression-checked.**
+
+## R21 defect (3) S1 (Opus 5, 2026-09-14) — the stray dialog fragment does not appear in a campaign-map session either
+
+R21's third defect is *"a title bar with `? ✓ ✗` at roughly (0,18)-(232,40), with SECTOR W beneath —
+a second dialog drawn at the origin with no body"*. S1 looked for it with the census that would
+catch it.
+
+**MEASURED, campaign map reached headlessly, `BOB_DUMP_HITTARGETS=1`:**
+
+    [hittargets] menu rects: n=2
+    [hittargets]   menu[0] = (35,710 76x54)
+    [hittargets]   menu[1] = (111,710 83x54)
+    [hittargets] panel 1 hosted controls:
+    [hittargets]   (0 hosted controls for this dialog)
+
+**No dialog at the origin, and nothing near (0,18)-(232,40).** The map capture from the same session
+has the map drawn to its own left edge with a `SECTOR E` label there — the label the PO saw *beneath*
+their fragment is normal map furniture; what they had **above** it was a dialog title bar, and this
+session has none.
+
+⭐ **A pattern worth naming, because it is now three items.** R20 (the floating square), R21(3) (this
+fragment), and the PO's GFX-dialog-over-flight state all reproduce only in a session state the
+harness does not reach, and in all three the PO's own note points at an interaction they made. The
+port's own screens are reproducible headlessly and these are not, which is itself information: **they
+are states reached by clicking, not states the game enters on its own.**
+
+**S2 — build the detector instead of hunting the state.** A dialog whose title bar draws at the
+origin, or whose body has zero extent, is a condition the port can NOTICE: one line at the dialog
+draw when `rect.left == 0 and rect.top < 64 and body height == 0`. Then the next time the PO sees it,
+the log names the dialog instead of a screenshot starting another search. Cheaper than guessing
+states, and it also covers R20's class.
+
+**R21(3): 1 sprint.**
