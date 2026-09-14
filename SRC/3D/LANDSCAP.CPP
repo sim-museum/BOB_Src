@@ -698,6 +698,42 @@ void LandScape::RenderMirrorLandscape( void )
 
 		g_lpLib3d->VisibleCheck(horizPoint,_horizonPoints*_horizonPoints,flags);
 
+		/* MIRROR-1 S4 (2026-09-13): S3 proved the mirror accepts 2 of 961 horizon cells where the
+		   FORWARD pass accepts 124 of the same 961 -- a cull fault. S4 asks WHICH PLANE does the
+		   killing, because the answer picks the fix and the candidates are opposite:
+		     BACK dominant  -> the far plane (RANGE_FAR_MIRROR) is too near for a horizon grid;
+		     LEFT|RIGHT     -> the field of view / the 2.5 aspect passed to the mirror's 4-arg
+		                       SetProjectionMatrix overload (the forward pass uses the 3-arg one);
+		     TOP|BOTTOM     -> the pitch/height setup;
+		     FRONT dominant -> the grid is BEHIND the mirror eye, i.e. the view is not reversed.
+		   ClipCodeFBLRTB returns exactly these bits, so a histogram of the flags the pass already
+		   computes settles it with no new geometry. BOB_TRACE_RTT=1. */
+		if (getenv("BOB_TRACE_RTT"))
+		{
+			static long nnM = 0;
+			if ((nnM++ % 600) == 0)
+			{
+				/* CLIP_* is an enum local to LIB3D.CPP, not a shared header -- mirror the
+				   values here rather than depend on a symbol this file cannot see. */
+				const ULong kR=0x1, kL=0x2, kT=0x4, kBo=0x8, kBack=0x10, kFront=0x20;
+				long in=0, cF=0, cB=0, cL=0, cR=0, cT=0, cBo=0;
+				const ULong tot = _horizonPoints*_horizonPoints;
+				for (ULong q = 0; q < tot; q++)
+				{
+					ULong f = flags[q];
+					if (!f) { in++; continue; }
+					if (f & kFront)  cF++;
+					if (f & kBack)   cB++;
+					if (f & kL)   cL++;
+					if (f & kR)  cR++;
+					if (f & kT)    cT++;
+					if (f & kBo) cBo++;
+				}
+				fprintf(stderr, "[clip] mirror  of %lu cells: inside=%ld  FRONT=%ld BACK=%ld LEFT=%ld RIGHT=%ld TOP=%ld BOTTOM=%ld\n",
+				        (unsigned long)tot, in, cF, cB, cL, cR, cT, cBo), fflush(stderr);
+			}
+		}
+
 		ULong *lowf=flags, *lowf2;
 		DoPointStruc* offPos2;
 
@@ -1100,6 +1136,42 @@ void LandScape::SetUpVisibleCones(	CLib3D *lib3d,
 //DeadCode MS 15Aug00 	Mono_Text.Print((UByte*)"SUVC: visiblecheck ");
 
 		g_lpLib3d->VisibleCheck(horizPoint,_horizonPoints*_horizonPoints,flags);
+
+		/* MIRROR-1 S4 (2026-09-13): S3 proved the mirror accepts 2 of 961 horizon cells where the
+		   FORWARD pass accepts 124 of the same 961 -- a cull fault. S4 asks WHICH PLANE does the
+		   killing, because the answer picks the fix and the candidates are opposite:
+		     BACK dominant  -> the far plane (RANGE_FAR_MIRROR) is too near for a horizon grid;
+		     LEFT|RIGHT     -> the field of view / the 2.5 aspect passed to the mirror's 4-arg
+		                       SetProjectionMatrix overload (the forward pass uses the 3-arg one);
+		     TOP|BOTTOM     -> the pitch/height setup;
+		     FRONT dominant -> the grid is BEHIND the mirror eye, i.e. the view is not reversed.
+		   ClipCodeFBLRTB returns exactly these bits, so a histogram of the flags the pass already
+		   computes settles it with no new geometry. BOB_TRACE_RTT=1. */
+		if (getenv("BOB_TRACE_RTT"))
+		{
+			static long nnF = 0;
+			if ((nnF++ % 600) == 0)
+			{
+				/* CLIP_* is an enum local to LIB3D.CPP, not a shared header -- mirror the
+				   values here rather than depend on a symbol this file cannot see. */
+				const ULong kR=0x1, kL=0x2, kT=0x4, kBo=0x8, kBack=0x10, kFront=0x20;
+				long in=0, cF=0, cB=0, cL=0, cR=0, cT=0, cBo=0;
+				const ULong tot = _horizonPoints*_horizonPoints;
+				for (ULong q = 0; q < tot; q++)
+				{
+					ULong f = flags[q];
+					if (!f) { in++; continue; }
+					if (f & kFront)  cF++;
+					if (f & kBack)   cB++;
+					if (f & kL)   cL++;
+					if (f & kR)  cR++;
+					if (f & kT)    cT++;
+					if (f & kBo) cBo++;
+				}
+				fprintf(stderr, "[clip] FORWARD of %lu cells: inside=%ld  FRONT=%ld BACK=%ld LEFT=%ld RIGHT=%ld TOP=%ld BOTTOM=%ld\n",
+				        (unsigned long)tot, in, cF, cB, cL, cR, cT, cBo), fflush(stderr);
+			}
+		}
 
 		ULong *lowf=flags, *lowf2;
 

@@ -6566,7 +6566,26 @@ void	ThreeDee::RenderMirror()
 //TempCode JON 2Nov00 	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_PITCH,(Angles)(-(int)Persons2::PlayerSeenAC->pitch/*+(int)ANGLES_180Deg*/));
 //TempCode JON 2Nov00 	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_ROLL,(Angles)(int)Persons2::PlayerSeenAC->roll);
 
-	g_lpLib3d->SetProjectionMatrix( mirrorFoV,5.f/2.f,NON_COCKPIT_NEARZ, D3DVALUE(RANGE_FAR_MIRROR) );
+	/* MIRROR-1 S4 (2026-09-13): the clip histogram says the mirror's cull is VERTICAL. Same grid,
+	   same frame: FORWARD inside=94 TOP=29 BOTTOM=1; mirror inside=0 TOP=485 BOTTOM=486. LEFT/RIGHT
+	   are the forward pass's numbers mirrored (387/367 vs 367/387), so the horizontal field is
+	   right and the reversal works -- it is the vertical extent that rejects everything.
+	   _SetProjectionMatrix builds h = aspect * w and puts h in _22, so this second argument IS the
+	   vertical scale. 5/2 is the aspect of a WIDE mirror STRIP, which is what a rear-view mirror
+	   is -- but this port renders the mirror into a SQUARE 128x128 FBO, for which the matching
+	   value is 1.0. A 2.5x vertical scale pushes sy outside +-w for almost every horizon cell.
+	   A/B RAN, and it is not a matter of degree -- the mirror FBO was CAPTURED in both arms:
+	     aspect 2.5 : inside=0  TOP=481 BOTTOM=482  drawn=2   FBO mean 79.4 sd 0.78 distinct 20
+	     aspect 1.0 : inside=24 TOP=10  BOTTOM=5    drawn=41  FBO mean 100.6 sd 43.21 distinct 693
+	   At 2.5 the 128x128 mirror is a uniform olive fill -- the PO's flat mirror. At 1.0 it holds
+	   sky, a horizon line and ground. Default is now 1.0; BOB_MIRROR_ASPECT=2.5 restores the old
+	   behaviour. Follow-up named in the scrum entry: whether the ideal value is exactly 1.0 (the
+	   FBO's own shape) or the aspect of the cockpit mirror QUAD the texture is finally mapped to. */
+	{
+		static float ma = -1.0f;
+		if (ma < 0.0f) { const char* e = getenv("BOB_MIRROR_ASPECT"); ma = e ? (float)atof(e) : 1.0f; }
+		g_lpLib3d->SetProjectionMatrix( mirrorFoV,D3DVALUE(ma),NON_COCKPIT_NEARZ, D3DVALUE(RANGE_FAR_MIRROR) );
+	}
 
 	R3DMATRIX	vmat;
 	g_lpLib3d->GetMatrix(MATRIX_VIEWER,vmat);

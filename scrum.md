@@ -3434,3 +3434,57 @@ and 101 lines/sec of stderr is not obviously enough to stall a frame loop on its
 retry the same path on this build**; if it still hangs, the flood was a passenger and the hang needs
 its own diagnosis — the live-process method used here (state, %CPU, wchan, log growth rate) is the
 one to repeat, because it distinguished "spinning" from "deadlocked" in seconds.
+
+## MIRROR-1 S4 (Opus 5, 2026-09-13) — ⭐⭐ ROOT CAUSE AND FIX: the mirror's projection used a 5:2 aspect against a SQUARE render target
+
+S3 proved the cull is a fault (124 of 961 cells forward, 2 of 961 in the mirror, same grid, same
+frame) and named S4's question: which view is in force when the mirror's `VisibleCheck` runs.
+
+**First, a correction I nearly shipped as a finding.** Reading `3DCODE.CPP:6547` I saw
+`//TempCode JON 2Nov00 g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_HEADING,...)` commented out and was
+about to report "the view is never reversed". The **live** heading rotate is three lines above it
+(`-hdg + ANGLES_180Deg`); the commented line is a superseded duplicate. A commented-out line that
+looks like the answer is not the answer — read the whole block.
+
+**The instrument.** `VisibleCheck` culls with `ClipCodeFBLRTB`, which returns one bit per plane, so
+a HISTOGRAM of the flags each pass already computes names the guilty plane with no new geometry.
+Added to both horizon passes (`BOB_TRACE_RTT=1`):
+
+    [clip] FORWARD of 1024 cells: inside=94  FRONT=497 BACK=56  LEFT=367 RIGHT=387 TOP=29  BOTTOM=1
+    [clip] mirror  of 1024 cells: inside=0   FRONT=527 BACK=219 LEFT=387 RIGHT=367 TOP=485 BOTTOM=486
+
+⭐ **The mirror's cull is VERTICAL.** LEFT/RIGHT are the forward pass's own numbers mirrored
+(387/367 against 367/387) — so the horizontal field is right and the 180° reversal works. TOP and
+BOTTOM go from 29/1 to 485/486: essentially every cell is rejected above or below. Note also
+`inside=0`, not 2 — the "drawn=2" of S2/S3 is the pass's own four-corner test, which is more
+permissive than "all corners inside".
+
+⭐⭐ **The cause.** `_SetProjectionMatrix` builds `h = aspect * w` and puts `h` in `_22`, so the
+second argument IS the vertical scale. The forward pass calls the 3-arg overload, which supplies
+the screen's `aspectRatio`. The mirror calls the 4-arg one with a hardcoded **`5.f/2.f`** — the
+aspect of a wide mirror STRIP, which is what a rear-view mirror looks like in the cockpit — but this
+port renders the mirror into a **square 128x128 FBO**. A 2.5x vertical scale puts `sy` outside `±w`
+for almost every horizon cell.
+
+**A/B, and the mirror FBO CAPTURED in both arms — not merely counted:**
+
+| aspect | inside | TOP | BOTTOM | horizon drawn | mirror FBO |
+|---|---|---|---|---|---|
+| 2.5 (shipped) | 0 | 481 | 482 | 2 | mean 79.4 **sd 0.78** distinct 20 — uniform olive |
+| **1.0** | 24 | 10 | 5 | **41** | mean 100.6 **sd 43.21** distinct 693 — **sky, horizon line, ground** |
+
+`bobmirror_ab.png` is the pair. The left half is the PO's flat mirror; the right half is a rear
+view. This is the capture the item has needed since June — every earlier sprint measured counts.
+
+**Shipped:** default aspect is now **1.0**; `BOB_MIRROR_ASPECT=<float>` A/Bs it and `=2.5` restores
+the old behaviour. Verified with the default and no override: `mean=100.5 sd=43.33 distinct=694`.
+Low risk regardless — the mirror is still gated on the Reflections setting (`BOB_MIRROR`), off by
+default, so the PO opts in.
+
+**Not claimed.** That 1.0 is the *ideal* value. It is the FBO's own shape and it demonstrably works;
+whether the geometrically right number is 1.0 or the aspect of the cockpit mirror QUAD the texture
+is finally mapped onto is a display-side question this sprint did not touch. A cockpit capture was
+attempted (`BOB_SHOT=520`) and did not land in the window the run had; the FBO capture stands on its
+own and the cockpit view is the first thing to look at next.
+
+**MIRROR-1: 4 sprints — at cap, and rotating off with the defect fixed rather than parked.**
