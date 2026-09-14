@@ -3818,3 +3818,48 @@ nothing). Add it, tag every BoB receive site, and print which caller takes each 
 packet. MA's MP-6 S2 solved the identical class of question in one run with exactly that instrument.
 
 **BoB MP: 4 sprints this pass (S5–S8). AT THE CAP — rotating the item off.**
+
+## R21 defect (2) S1 (Opus 5, 2026-09-14) — ⭐ the black band is the terrain loop RUNNING OUT OF TILES, and the prediction lands on the pixel
+
+The PO's zoomed campaign map is black from x≈1190 of 1852 while the squadron icons keep drawing
+across the whole width. R21 recorded that mismatch as "two layers, one extent each, disagreeing" and
+left it there.
+
+**The terrain loop's own bound** (`MIGVIEW.CPP`, `BOB_TRACE_MAPEXT=1`):
+
+    [mapext] rect=(0,0)-(1024,768) scroll=(500,800) zoom=2 zsq=256 area=(8,8) sstart=(1,3) end=(6,7)
+
+so the terrain can cover `(areax − scroll.x/zsq) × zsq − (scroll.x mod zsq)` pixels and no more. With
+the default scroll that is 1280 px into a 1024 px pane — wider than the pane, which is why the
+harness's own screens have never shown the defect.
+
+⚠️ **Fitting that formula to the PO's 1190 px needs one free parameter (their scroll), so it is not
+evidence.** Instead a scroll override was added (`BOB_MAP_SCROLL="x,y"`, a test hook, not a fix), the
+prediction was written down first, and then it was run:
+
+* set `scroll.x = 1124` → `sstartx = 4`, `(8−4)×256 − 100` = **terrain must end at x = 924**.
+
+**MEASURED, colour profile across row y=300 of the capture:**
+
+| x | RGB | what |
+|---|---|---|
+| 860 | 140,124,60 | brown land |
+| **924** | **127,147,137** | the terrain STOPS, to the pixel |
+| 976 | 232,199,70 | the scale ruler |
+
+⭐ **924, exactly as predicted.** The terrain's right edge is the tile loop's arithmetic, nothing else.
+
+⭐ **And the colour at 924 names the second half of the answer.** `RGB(127,147,137)` is the map
+code's own `FillSolidRect` backdrop — the one it paints only when **more than four tiles have not
+loaded yet**. It is not an out-of-extent fill. So when the tiles ARE loaded, as in the PO's session,
+nothing paints the uncovered area at all and it stays **BLACK**, while the overlay — which is not
+bounded by the tile grid — keeps drawing its icons over it. That is the PO's frame exactly, including
+"the icons cover ground the terrain does not".
+
+**The fix is a choice, and it should be made deliberately:** clamp the scroll so the pane is always
+covered (what the original almost certainly does, and it needs checking against the gold), or paint
+the uncovered region unconditionally instead of only as a loading backdrop. The first is correct; the
+second is safe. **Not shipped this sprint** — no fix goes in on the strength of a mechanism alone
+when the gold can settle which behaviour is right.
+
+**R21(2): 1 sprint.**

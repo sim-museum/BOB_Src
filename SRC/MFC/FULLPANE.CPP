@@ -2191,6 +2191,25 @@ Bool	RFullPanelDial::LaunchMapFirstTime(FullScreen*&fs)
 	m_pView->m_size.cy=256*4*m_pView->m_zoom-5;
 	m_pView->m_oldzoom=m_pView->m_zoom;
 	m_pView->m_scrollpoint=CPoint(500,800);
+
+#ifdef BOB_LINUX
+	/* R21 defect (2) (2026-09-14): a test hook, not a fix. The terrain loop covers
+	   (areax - scroll.x/zsq) * zsq - (scroll.x % zsq) pixels and the overlay is not bounded by it,
+	   so scrolling east far enough must leave a black band whose left edge that formula predicts.
+	   BOB_MAP_SCROLL="x,y" sets the initial scroll so the prediction can be TESTED rather than
+	   fitted to the PO's screenshot. */
+	if (getenv("BOB_MAP_SCROLL"))
+	{
+		int sx = 500, sy = 800;
+
+		if (sscanf(getenv("BOB_MAP_SCROLL"), "%d,%d", &sx, &sy) == 2)
+		{
+			m_pView->m_scrollpoint = CPoint(sx, sy);
+			fprintf(stderr, "[mapext] BOB_MAP_SCROLL -> scrollpoint=(%d,%d)\n", sx, sy);
+			fflush(stderr);
+		}
+	}
+#endif
 	
 	CampaignZero::Fav	fav=MMC.fav;
 //DEADCODE RDH 11/05/00 	Todays_Packages.WipeAll();

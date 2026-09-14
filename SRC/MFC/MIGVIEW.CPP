@@ -3350,6 +3350,30 @@ void CMIGView::UpdateBitmaps(CDC* pDC,CRect bounds)
 	int sstarty=max((m_scrollpoint.y+rect.top)/zoomsquaresize,0);
 	int endx=min((m_scrollpoint.x+rect.right+zoomsquaresize-1)/zoomsquaresize,areax);
 	int endy=min((m_scrollpoint.y+rect.bottom+zoomsquaresize-1)/zoomsquaresize,areay);
+
+#ifdef BOB_LINUX
+	/* R21 defect (2) (2026-09-14): the PO's zoomed campaign map is BLACK from x~1190 of 1852 --
+	   the terrain covers only the left ~64% while the squadron overlay covers the whole width.
+	   This is the terrain loop's own bound: it stops at `areax` tiles of `zoomsquaresize` pixels,
+	   so if that product minus the scroll offset is narrower than the rect, the remainder is never
+	   painted. Report the terms, so "the map data ran out" and "the port computes a smaller tile"
+	   can be told apart. BOB_TRACE_MAPEXT=1, once a second. */
+	if (getenv("BOB_TRACE_MAPEXT"))
+	{
+		static time_t last = 0; time_t now = 0; ::time(&now);
+		if (now != last)
+		{
+			last = now;
+			fprintf(stderr, "[mapext] rect=(%ld,%ld)-(%ld,%ld) scroll=(%ld,%ld) zoom=%d zsq=%d "
+					"area=(%d,%d) sstart=(%d,%d) end=(%d,%d)  covered_x=%d of %ld\n",
+					(long)rect.left, (long)rect.top, (long)rect.right, (long)rect.bottom,
+					(long)m_scrollpoint.x, (long)m_scrollpoint.y, (int)mzoom, (int)zoomsquaresize,
+					(int)areax, (int)areay, sstartx, sstarty, endx, endy,
+					(int)((endx - sstartx) * zoomsquaresize), (long)(rect.right - rect.left));
+			fflush(stderr);
+		}
+	}
+#endif
 	BYTE* pData;
 
 	if (mzoom>=ZOOMTHRESHOLD3)
