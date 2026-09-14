@@ -10236,7 +10236,10 @@ void TransObj::ControlKeybWeap(AirStrucPtr ac,WorldStuff& world)
 		{
 			static int _ftn = 0;
 			if (getenv("BOB_TRACE_FIRE") && _ftn < 20) {
-				bool k1 = Key_Tests.KeyPress3d(SHOOT), k2 = Key_Tests.KeyPress3d(secondaryfirekey);
+				/* R3.7 S2: was KeyPress3d, which CONSUMES the oneshot bit -- so this trace ate the
+				   very keypress the gate below then failed to see, and S1's "KeyPress3d(SHOOT)=0"
+				   was partly self-inflicted. Peek instead. */
+				bool k1 = Key_Tests.KeyPeek3d(SHOOT), k2 = Key_Tests.KeyPeek3d(secondaryfirekey);
 				if (k1 || k2 || (_ftn == 0)) { _ftn++;
 					fprintf(stderr, "[fire] KeyPress3d(SHOOT)=%d secondary=%d ShootDelay=%ld frametime=%ld\n",
 					        (int)k1, (int)k2, (long)ac->weap.ShootDelay, (long)frametime);

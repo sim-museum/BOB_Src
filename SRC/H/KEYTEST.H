@@ -191,6 +191,9 @@ void	Reg3dConv(FileNum);
 void	Reg3dConv(KeyMapping*,int);
 bool	KeyHeld3d(KeyVal3D);
 bool	KeyPress3d(KeyVal3D);
+#ifdef __linux__
+bool	KeyPeek3d(KeyVal3D);	/* R3.7 S2: non-consuming read, for diagnostics only */
+#endif
 void	KeyFake3d(KeyVal3D,Bool held,Bool hit);
 //ScreenXY&	mousepos();
 void	InsertUIKey(UIKeyNoMouse& keyfake);

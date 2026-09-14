@@ -3488,3 +3488,55 @@ attempted (`BOB_SHOT=520`) and did not land in the window the run had; the FBO c
 own and the cockpit view is the first thing to look at next.
 
 **MIRROR-1: 4 sprints — at cap, and rotating off with the defect fixed rather than parked.**
+
+## R3.7 S2 (Opus 5, 2026-09-13) — ⚠️ S1's probe was DESTROYING the event it measured; fixed, and the binding is now proven from the live table
+
+R3.7 was parked as "blocked on the PO: fly a sortie and see whether the ammo moves". Two of its
+three legs turn out to be answerable here, and one of them was self-inflicted.
+
+⚠️ **The instrument was the bug — in part.** `keytests::KeyPress3d` is **consume-on-read**:
+
+    bool keytests::KeyPress3d(KeyVal3D keyval)
+    { return BITRESET(keymap->bitflags, keyval+1); }     // clears the bit, returns its OLD value
+
+That is faithful to the original (`btr` + `setc al`) and correct for a oneshot. But S1's `[fire]`
+trace called it to REPORT the gate:
+
+    bool k1 = Key_Tests.KeyPress3d(SHOOT), k2 = ...;     // eats the hit bit
+    ...
+    if (Key_Tests.KeyPress3d(SHOOT) || ...)              // the real gate, two lines below, now reads 0
+
+So **with `BOB_TRACE_FIRE=1` the guns could not fire even if the key had been pressed**, and S1's
+headline measurement `[fire] KeyPress3d(SHOOT)=0` was partly its own damage. Added
+`keytests::KeyPeek3d` (non-consuming, `BITTEST`) and the trace now uses it. Exactly the banked
+[[measuring-can-hide-the-bug]] shape, and worth re-reading before adding any probe to a
+consume-on-read API.
+
+**It was not the whole cause.** Re-run with the corrected probe: `[fire] KeyPress3d(SHOOT)=0
+secondary=0 ShootDelay=0 frametime=4` — the hit bit is still never set. Honest position: the probe
+defect is real and fixed; it did not unblock the item.
+
+⭐ **What IS now settled, and S1 asserted it without measuring.** S1 said *"KEYMAPS.H binds
+KeyAll(SHOOT, space) ... so the binding is right"* — read from the header, not from the running
+game. Dumped the LIVE table (`BOB_DUMP_BINDINGS`, 550 entries):
+
+    0x39,0,112      <- space, shiftstate 0, action 112 = SHOOT (KeyName(56,SHOOT), KeyVal = 56*2)
+    0x39,6,576
+    0x39,7,1310
+
+The binding is correct **in the running game**. That eliminates the hypothesis, and it also surfaces
+something S1 could not have seen from the header: **space is bound to two OTHER actions at
+shiftstates 6 and 7.**
+
+**S3 — two candidates left, one run splits them.** `Inst3d::OnKeyDown` sets the hit bit from
+`commonkeymaps->mappings[keynum]`, so either
+  (a) the synthetic key never reaches `OnKeyDown` at all, or
+  (b) it arrives with `currshifts` not 0, selecting action 576 or 1310 instead of SHOOT.
+Trace `OnKeyDown` — scancode in, `currshifts`, and every index it sets. Do not add a probe that
+calls `KeyPress3d`.
+
+⚠️ **The PO sortie is still worth doing and is NOT superseded:** everything above concerns the
+synthetic path. Whether a human pressing space fires the guns remains untested, and that is the
+question that decides whether this is a harness limitation or a shipped gameplay gap.
+
+**R3.7: 2 sprints.**

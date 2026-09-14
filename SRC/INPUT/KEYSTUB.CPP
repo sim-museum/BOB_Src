@@ -561,6 +561,20 @@ KeyMap3d*
 		keymap=(KeyMap3d*) reftable3d.flat;
 		return(BITRESET((keymap->bitflags),keyval+1));
 }
+#ifdef __linux__
+/* R3.7 S2 (2026-09-13): KeyPress3d is CONSUME-ON-READ -- BITRESET clears the oneshot bit and
+   returns its old value, which is the original btr/setc semantics and is correct. That makes it
+   unusable from a diagnostic: R3.7 S1's [fire] trace called it to report the gate, ate the bit,
+   and the real firing test two lines below then read 0. With BOB_TRACE_FIRE=1 the guns could never
+   fire, and the trace was measuring its own damage. A probe must not consume the event it reports,
+   so give diagnostics a non-destructive peek. */
+bool	keytests::KeyPeek3d(KeyVal3D keyval)
+{
+KeyMap3d*
+		keymap=(KeyMap3d*) reftable3d.flat;
+		return(BITTEST((keymap->bitflags),keyval+1));
+}
+#endif
 
 //������������������������������������������������������������������������������
 //Procedure		KeyFake3d
