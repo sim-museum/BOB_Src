@@ -862,6 +862,18 @@ int CMIGApp::Run()
 		   run the game's own teardown + OnFlyingClosed on the main thread, then InThe3D()
 		   goes false and the loop resumes OnIdle/the front-end on the same window. */
 		if (getenv("BOB_FRONTEND")) bob_process_flight_close();
+		/* R27: the application's ONLY exit. MFC leaves this loop via `if (!PumpMessage())`
+		   below, but compat's ::PeekMessage is a `return FALSE` stub, so the compiler proves
+		   that whole while-body dead and DELETES the PumpMessage call -- verified with nm:
+		   _MFC.CPP.o had no reference to it at all. Fixing PostQuitMessage/PumpMessage alone
+		   was therefore inert, the same trap DD_RestoreDisplayMode hit. Test the flag here,
+		   where the port already hooks this loop. Quit -> CMainFrame::OnClose ->
+		   CFrameWnd::OnClose -> bob_request_quit -> this. BOB_NO_QUIT=1 reverts. */
+		if (bob_quit_requested()) {
+			TRACE0("MessageLoop exitting (quit requested)...\n");
+			fprintf(stderr, "[quit] leaving CMIGApp::Run -> ExitInstance()\n"); fflush(stderr);
+			return ExitInstance();
+		}
 #endif
 
 		int result;

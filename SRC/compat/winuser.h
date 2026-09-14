@@ -564,7 +564,14 @@ static inline BOOL PeekMessageA(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT
 }
 static inline BOOL TranslateMessage(const MSG *lpMsg) { (void)lpMsg; return TRUE; }
 static inline LRESULT DispatchMessageA(const MSG *lpMsg) { (void)lpMsg; return 0; }
-static inline void PostQuitMessage(int nExitCode) { (void)nExitCode; }
+/* R27: was a no-op. Routes to the shared quit flag CWinApp::PumpMessage reads, so the
+   game can actually leave CMIGApp::Run(). See afxwin.h CFrameWnd::OnClose. */
+#ifdef __cplusplus
+extern "C" void bob_request_quit(int);
+#else
+extern void bob_request_quit(int);
+#endif
+static inline void PostQuitMessage(int nExitCode) { bob_request_quit(nExitCode); }
 /* PostGameMessage is defined in main_linux.cpp - routes messages to the game queue */
 #ifdef __cplusplus
 extern "C++" void PostGameMessage(unsigned int msg, WPARAM wParam, LPARAM lParam);

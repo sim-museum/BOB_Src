@@ -1144,9 +1144,12 @@ void CMainFrame::OnClose()
 {
 	// TODO: Add your message handler code here and/or call default
 	m_doIExist=false;
+	fprintf(stderr,"[onclose] entered; calling ChangeMode(UIR_FIRST)\n"); fflush(stderr);
 	Save_Data.ChangeMode(SaveData::UIR_FIRST);
+	fprintf(stderr,"[onclose] ChangeMode RETURNED; calling CFrameWnd::OnClose()\n"); fflush(stderr);
 
 	CFrameWnd::OnClose();
+	fprintf(stderr,"[onclose] CFrameWnd::OnClose returned\n"); fflush(stderr);
 }
 
 void CMainFrame::OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI) 

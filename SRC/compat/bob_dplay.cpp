@@ -78,6 +78,14 @@ class BobDPlay4 : public IDirectPlay4
     int  isHost;
     DPID nextPid;
     DPID myPid;
+    /* MP S5, ported from MA 77299a7 (2026-09-14). This process can own MORE THAN ONE player:
+       measured in MA, the host creates the AGGREGATOR as a player and then its own game player,
+       and the two talk to each other inside the one process. A shim that remembers only the
+       last-created id mis-handles both directions -- traffic addressed to the other local player
+       is not recognised as a known player, so the receive filter's catch-all hands it to the
+       wrong caller, and a send between two local players leaves on the wire and is never
+       delivered at home. The two shims share their ancestry, so the defect is shared too. */
+    DPID localPids[8]; int nlocal;
     DPID assignedPid;      /* R6.3: what the host gave us (client side); 0 until it answers */
     DPID groups[8]; int gmembers[8]; DPID gplayers[8][8]; int ngroups;   /* R6.4 */
     /* MP-5 (PO 2026-09-05): pids this HOST has handed to joining clients. The game only ever
@@ -210,7 +218,7 @@ class BobDPlay4 : public IDirectPlay4
         return 1;
     }
 public:
-    BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0), assignedPid(0),
+    BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0), nlocal(0), assignedPid(0),
                   havePeer(0), ngroups(0), njoined(0), qh(0), qt(0) {
         memset(&peer, 0, sizeof(peer)); memset(sessName, 0, sizeof(sessName));
         memset(&sessGuid, 0, sizeof(sessGuid));
@@ -346,6 +354,7 @@ public:
     HRESULT STDMETHODCALLTYPE CreatePlayer(LPDPID pid, LPDPNAME nm, HANDLE, LPVOID, DWORD, DWORD) override {
         /* R6.3: a client uses the id the HOST gave it; only the host mints ids. */
         myPid = (!isHost && assignedPid != 0) ? assignedPid : nextPid++;
+        if (nlocal < 8) localPids[nlocal++] = myPid;   /* MP S5: every local player, not just the last */
         if (pid) *pid = myPid;
         DPT("CreatePlayer \"%s\" -> pid %u\n",
             (nm && nm->lpszShortNameA) ? nm->lpszShortNameA : "(unnamed)", (unsigned)myPid);
@@ -367,6 +376,25 @@ public:
          * line; the two shims share their ancestry, so the defect is shared too.
          * BOB_STRICT_SEND=1 restores the old behaviour as the negative control. */
         noteAnnounce("SENT", (unsigned)from, (unsigned)to, (const char*)data, (unsigned)len);
+        /* MP S5, ported from MA 77299a7: LOCAL LOOPBACK. Measured in MA the same day -- the host's
+           aggregator sent the sync packet to a group containing the host's own game player twelve
+           times a second, the shim put it on the wire and nothing else, and the host's game half,
+           which waits for exactly that packet, therefore never synchronised. Deliver a copy into
+           the local queue when the destination is a local player other than the sender, or a group
+           with a local member; the receive filter then routes it by membership exactly as it routes
+           the wire copy. BOB_NO_LOOPBACK=1 reverts. */
+        if (!getenv("BOB_NO_LOOPBACK") && (unsigned)to != (unsigned)from &&
+            (isLocalPlayer((unsigned)to) || isGroupWithLocalMember((unsigned)to)))
+        {
+            qpush((unsigned)from, (unsigned)to, (const char*)data, (unsigned)len);
+            if (getenv("BOB_TRACE_AGG")) {
+                static long n = 0; static time_t last = 0; time_t now = time(0); n++;
+                if (now != last) { last = now;
+                    fprintf(stderr, "[agg] loopback %ld/s  from=%u to=%u (local player or group)\n",
+                            n, (unsigned)from, (unsigned)to);
+                    fflush(stderr); n = 0; }
+            }
+        }
         if (fd < 0) return DPERR_NOCONNECTION;
         if (!havePeer) {
             if (getenv("BOB_STRICT_SEND")) return DPERR_NOCONNECTION;
@@ -398,7 +426,20 @@ public:
      * for the caller it belongs to. DPRECEIVE_ALL / flags 0 keep the old take-the-head behaviour.
      * BOB_NO_RECV_FILTER=1 restores it as the negative control. */
     /* every player id this side has seen: our own, the host's, and any joiner the host handed a pid. */
+    bool isLocalPlayer(unsigned pid) const {
+        for (int i = 0; i < nlocal; i++) if ((unsigned)localPids[i] == pid) return true;
+        return false;
+    }
+    bool isGroupWithLocalMember(unsigned gid) const {
+        for (int gi = 0; gi < ngroups; gi++) {
+            if ((unsigned)groups[gi] != gid) continue;
+            for (int k = 0; k < gmembers[gi]; k++)
+                if (isLocalPlayer((unsigned)gplayers[gi][k])) return true;
+        }
+        return false;
+    }
     bool isKnownPlayer(unsigned pid) const {
+        if (isLocalPlayer(pid)) return true;
         if (pid == (unsigned)myPid) return true;
         for (int i = 0; i < njoined; i++) if ((unsigned)joined[i] == pid) return true;
         return false;

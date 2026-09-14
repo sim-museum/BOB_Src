@@ -1031,6 +1031,14 @@ Campaign::TimeColours	Campaign::TimeColour(int timetotest)
 	return TimeColours((timetotest/(SECSPERMIN*5))%3);
 }
 
+/* PO 2026-09-04 (fresh test machine): "the bob campaign screen had no icons". The same AppImage
+   draws them here, and its bundled game data is byte-identical to the install it was built from
+   (7194 files both), so this is not a missing asset. That leaves two very different faults which
+   look identical from the outside: the icons are never DRAWN (no items pass the visibility/bounds
+   test), or they are drawn and not VISIBLE (the blit lands somewhere else, or with the wrong
+   colour key). A count separates them, and costs two increments.
+   BOB_TRACE_ICONS=1 reports per map paint. */
+long g_bobIconsBlitted = 0, g_bobIconsSkipped = 0;
 void	CMIGView::DrawIcon(CDC* pDC,int px,int py,IconsUI f)
 {
 	if (f>=0x10000)
@@ -1040,9 +1048,11 @@ void	CMIGView::DrawIcon(CDC* pDC,int px,int py,IconsUI f)
 		int dx=wh.x/2,dy=wh.y/2;
 		CPoint _mip(px-m_scrollpoint.x-dx,py-m_scrollpoint.y-dy+1);	// MaskIcon takes CPoint& (no temp bind on GCC)
 		icon.MaskIcon(pDC  ,_mip);
+		g_bobIconsBlitted++;
 	}	   
 	else
 	{
+		g_bobIconsSkipped++;
 //DEADCODE AMM 15/12/99 
 //DEADCODE AMM 15/12/99 		fileblock	block(f);
 //DEADCODE AMM 15/12/99 		BYTE*				pData=(BYTE*)getdata(block);
@@ -3135,6 +3145,24 @@ FileNum  CMIGView::DrawIconTest(ItemBasePtr p, UniqueID i, bool hilight,bool ref
 //� DCB_DISABLE
 void CMIGView::DrawIcons( CDC* pDC,CRect& bounds)
 {	
+	/* BOB_TRACE_ICONS: report the previous pass's tally, then reset. Printed here rather than at
+	   the blit so it is one line per paint instead of one per icon. A zero here with a non-zero
+	   candidate count means the icons ARE being reached and the blit is the suspect; zero for both
+	   means nothing got as far as drawing. */
+	{
+		extern long g_bobIconsBlitted, g_bobIconsSkipped;
+		static int trace = -1;
+
+		if (trace < 0) trace = getenv("BOB_TRACE_ICONS") ? 1 : 0;
+
+		if (trace)
+		{
+			fprintf(stderr, "[icons] map paint: blitted=%ld skipped(low id)=%ld\n",
+			        g_bobIconsBlitted, g_bobIconsSkipped);
+			fflush(stderr);
+			g_bobIconsBlitted = g_bobIconsSkipped = 0;
+		}
+	}
 	ItemBasePtr p;
 	int px,py;
 	IconsUI  f;

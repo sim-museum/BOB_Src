@@ -5648,6 +5648,22 @@ void ViewPoint::ImpactToggle()
 void ViewPoint::HandleZoom(ZmRtFlags flags)
 {
 	SLong	viewrangestep;
+#if BOB_LINUX
+	/* R28 (BOB_TRACE_ZOOM, default-off): the PO reports numpad PAN works but numpad ZOOM does
+	   nothing (2026-09-03). Pan and zoom dispatch from the SAME table, so the divergence is here.
+	   Zoom only moves currentviewrec->range, clamped to [modViewRangeMin, viewrangemax]; if the
+	   cockpit view has min==max the key arrives and provably changes nothing. Print the values
+	   rather than reason about them. */
+	if (getenv("BOB_TRACE_ZOOM")) {
+		static int n = 0;
+		if (n++ < 24) {
+			fprintf(stderr, "[zoom] HandleZoom flags=0x%x range=%ld min=%ld max=%ld\n",
+			        (unsigned)flags, (long)(currentviewrec ? currentviewrec->range : -1),
+			        (long)modViewRangeMin, (long)viewrangemax);
+			fflush(stderr);
+		}
+	}
+#endif
 
 	//set zoom step based on the current zoom - larger steps
 	//when further away.

@@ -498,6 +498,20 @@ void ManualPilot::GetComplexEngineKeys(AirStrucPtr const ControlledAC)
 		}
 
 
+#if BOB_LINUX
+		/* 2026-09-04: is the engine actually TURNING? The QM scramble sits at Speed 0 with the
+		   throttle applied (Power 90), and the starter is only reachable as a device button --
+		   so the open question is whether this set-piece is SUPPOSED to start with the engine
+		   running. rpm answers it directly. BOB_TRACE_ENGINE=1; default off. */
+		if (getenv("BOB_TRACE_ENGINE")) {
+			static int n = 0;
+			if ((n++ % 120) == 0 && ControlledAC)
+				fprintf(stderr, "[engine] rpm=%d maxrpm=%d starting=%d held=%d\n",
+				        (int)ControlledAC->fly.rpm, (int)ControlledAC->classtype->maxrpm,
+				        pEngine0 ? (int)pEngine0->Starting : -1,
+				        Key_Tests.KeyHeld3d(FK_ENGINESTARTER0) ? 1 : 0), fflush(stderr);
+		}
+#endif
 		if(Key_Tests.KeyHeld3d(FK_ENGINESTARTER0))
 		{
 			if (!pEngine0->Starting)

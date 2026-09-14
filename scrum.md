@@ -3691,3 +3691,36 @@ one, standing between the current state and a working multiplayer picture.
 shim's DirectPlay traffic. Ask whether the aggregate sync packet `InitSyncPhase` waits on is ever SENT
 and ever DELIVERED. MP-6 S2/S3 already found and fixed one packet the shim dropped because it ignored
 a receive filter the game depends on — check that fix's shape first.
+
+## MP S5 cross-port (Opus 5, 2026-09-14) — BoB had MA's missing local delivery too, and now reads the SAME next gate
+
+MA's MP S5 (ma 77299a7) found its DirectPlay shim delivering nothing locally: a send from one local
+player to another, or to a group with a local member, went on the wire and nowhere else, so the
+host's game half never received the sync packet its own in-process aggregator produced. BoB's shim
+(`SRC/compat/bob_dplay.cpp`) carries the same `Send` and the same one-`myPid` assumption — the two
+shims share their ancestry — so both fixes were ported: `localPids[]` records EVERY player this
+process creates, and a local copy is queued when the destination is a local player or a group with a
+local member (`BOB_NO_LOOPBACK=1` reverts).
+
+**MEASURED, two-instance session (`BOB_TRACE_AGG=1`), and the defect was real here too:**
+
+    host    [agg] loopback 9/s  from=1 to=2 (local player or group)
+    client  [agg] loopback 2-3/s  from=4 to=2
+
+Same topology as MA: an in-process player 1 addressing group 2, whose traffic previously never
+reached this side's own game half. The two-instance gate still PASSES (both sides in 3-D, random
+list clears), so nothing regressed.
+
+⚠️ **BoB still does not sync**, exactly like MA: `synched=0 csync=0`, `InitSyncPhase FAILED 60/s`.
+The gate probe was ported as well rather than assuming the two ports fail alike, and they do:
+
+    bob  host    [agg] GATE num=1 CurrPlayers=4  IDCodes: 194 196 194 ...  (DUMMY=196)
+    bob  client  [agg] GATE num=1 CurrPlayers=4
+    ma   host    [agg] GATE num=1 CurrPlayers=4
+
+⭐ **`CurrPlayers=4` in a TWO-player session, character for character the same as MA's.** So the
+remaining defect is shared engine bookkeeping, not a port difference, and whichever port it is
+solved in should fix both. MA's entry names the two counting sites to check (`CountPlayers()`
+recounting from `H2H_Player[].status` vs a bare `CurrPlayers++` per allocated player).
+
+**BoB MP: 1 sprint this pass (cross-port). Rotating off.**

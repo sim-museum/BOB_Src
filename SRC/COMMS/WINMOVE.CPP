@@ -3166,6 +3166,22 @@ Bool	DPlay::InitSyncPhase()
 	fclose(sp);
 #endif
 
+#ifdef __linux__
+	/* MP S5 cross-port (2026-09-14): MA measured this gate reading num=1 CurrPlayers=4 in a
+	   TWO-player session once the aggregate packet finally arrived. Report the same terms here so
+	   the two ports can be compared directly rather than assumed alike. BOB_TRACE_AGG=1. */
+	{
+		static int a_on = -1;
+		if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+		if (a_on) { static time_t last = 0; time_t now = time(0);
+			if (now != last) { last = now;
+				fprintf(stderr, "[agg] GATE num=%lu CurrPlayers=%lu  aggCount=%lu myFrame=%lu  IDCodes:",
+						(unsigned long)num, (unsigned long)CurrPlayers,
+						(unsigned long)packet.Count, (unsigned long)FrameCount);
+				for (ULong q=0;q<MAXPLAYERS;q++) fprintf(stderr, " %d", (int)packet.player[q].IDCode);
+				fprintf(stderr, "  (DUMMY=%d)\n", (int)PIDC_DUMMYPACKET); fflush(stderr); } }
+	}
+#endif
 	{
 		if (num!=CurrPlayers)
 		{

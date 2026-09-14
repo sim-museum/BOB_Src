@@ -193,8 +193,21 @@ void CSelectSession::OnSelectRlistSelectsession(long row, long column)
 	{
 		if (strcmp(temp->sname,_DPlay.SessionName))					  //RDH 03/04/99
 		{
-			strncpy(&_DPlay.SessionName[0],temp->sname,59);
-				_DPlay.SessionName[59]=NULL;
+			/* PO 2026-09-05 (two real PCs): "client bob crashed when I selected 'bob' as host".
+			   glibc _FORTIFY_SOURCE aborted here with "*** buffer overflow detected ***" the moment
+			   a session row was clicked -- reproduced under ASAN and symbolised to this line.
+
+			   SessionName is char[SESSIONNAMELEN] and SESSIONNAMELEN is 32 (misssub.h:185). The
+			   copy below wrote up to 59 bytes and then stored a NUL at index 59: 28 bytes past the
+			   end of a 32-byte buffer. The 59 is a STALE CONSTANT -- the line directly above the
+			   enum value records SESSIONNAMELEN was once 128 ("//DeadCode AMM 21Feb100 ... = 128"),
+			   so the buffer was shrunk and this copy never followed.
+
+			   Bound it by the buffer instead of a literal, so it cannot drift again if the enum
+			   moves. strncpy does not guarantee termination when it truncates, hence the explicit
+			   NUL at the LAST valid index. */
+			strncpy(&_DPlay.SessionName[0], temp->sname, SESSIONNAMELEN - 1);
+			_DPlay.SessionName[SESSIONNAMELEN - 1] = '\0';
 		}else
 		{
 //DEADCODE AMM 10/07/99 			FullPanel()->OnSelectRlistbox(1,1);						  //RDH 03/04/99
@@ -237,8 +250,12 @@ void CSelectSession::OnTimer(UINT nIDEvent)
 			{
 				if (_DPlay.singlesession)
 				{
-					strncpy(_DPlay.SessionName,_DPlay.SessionList->sname,59);
-					_DPlay.SessionName[59]=NULL;
+					/* same stale-59 overflow as OnSelectRlistSelectsession above: SessionName is
+					   char[SESSIONNAMELEN] with SESSIONNAMELEN==32. This path (singlesession, the
+					   auto-pick when exactly one host answers) would abort identically -- and it is
+					   the path a user hits WITHOUT clicking anything. */
+					strncpy(_DPlay.SessionName, _DPlay.SessionList->sname, SESSIONNAMELEN - 1);
+					_DPlay.SessionName[SESSIONNAMELEN - 1] = '\0';
 
 					KillTimer(m_timer);
 
