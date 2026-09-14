@@ -384,7 +384,7 @@ public:
            with a local member; the receive filter then routes it by membership exactly as it routes
            the wire copy. BOB_NO_LOOPBACK=1 reverts. */
         if (!getenv("BOB_NO_LOOPBACK") && (unsigned)to != (unsigned)from &&
-            (isLocalPlayer((unsigned)to) || isGroupWithLocalMember((unsigned)to)))
+            (isLocalPlayer((unsigned)to) || isGroupWithLocalMember((unsigned)to, (unsigned)from)))
         {
             qpush((unsigned)from, (unsigned)to, (const char*)data, (unsigned)len);
             if (getenv("BOB_TRACE_AGG")) {
@@ -430,11 +430,21 @@ public:
         for (int i = 0; i < nlocal; i++) if ((unsigned)localPids[i] == pid) return true;
         return false;
     }
-    bool isGroupWithLocalMember(unsigned gid) const {
+    /* MP S6, ported from MA 0c707a8 (2026-09-14): a group send must reach local members OTHER than
+       the sender. The first version asked only "does this group have a local member", which is true
+       of the sender itself, so a player's own broadcast came back to it -- and in MA that was
+       measured turning the entry announcement into a self-join that double-counted the player.
+       BOB_LOOPBACK_SELF=1 restores the looser rule as the negative control. */
+    bool isGroupWithLocalMember(unsigned gid, unsigned exceptPid) const {
+        const bool self = getenv("BOB_LOOPBACK_SELF") != 0;
         for (int gi = 0; gi < ngroups; gi++) {
             if ((unsigned)groups[gi] != gid) continue;
-            for (int k = 0; k < gmembers[gi]; k++)
-                if (isLocalPlayer((unsigned)gplayers[gi][k])) return true;
+            for (int k = 0; k < gmembers[gi]; k++) {
+                const unsigned m = (unsigned)gplayers[gi][k];
+                if (!isLocalPlayer(m)) continue;
+                if (!self && m == exceptPid) continue;
+                return true;
+            }
         }
         return false;
     }

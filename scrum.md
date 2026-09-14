@@ -3724,3 +3724,30 @@ solved in should fix both. MA's entry names the two counting sites to check (`Co
 recounting from `H2H_Player[].status` vs a bare `CurrPlayers++` per allocated player).
 
 **BoB MP: 1 sprint this pass (cross-port). Rotating off.**
+
+## MP S6 cross-port (Opus 5, 2026-09-14) — the count fix lands (4 → 2), but BoB still does not sync: only ONE dummy reaches the aggregate
+
+MA's MP S6 (ma 0c707a8) fixed two things behind the shared `num != CurrPlayers` gate: the shim looped
+a group send back to its own sender (so each side processed its own entry announcement and joined
+itself), and `AddPlayerToGame` counted with a bare `CurrPlayers++` on top of a `CountPlayers()` that
+had already counted everyone. Both ported here (`BOB_LOOPBACK_SELF=1`, `BOB_MP_NORECOUNT=1` revert).
+
+**MEASURED, two-instance session:**
+
+    before   [agg] GATE num=1 CurrPlayers=4
+    after    [agg] GATE num=1 CurrPlayers=2      (42/42 samples, both sides)
+
+⭐ **The count is right now** — the half of the gate this sprint owned. MA cleared the whole gate on
+the same two fixes and reached `synched=1`.
+
+⚠️ **BoB does not**, and the difference is the OTHER half: `num` stays **1**. The aggregate packet
+carries a dummy for slot 1 only (`IDCodes: 194 196 194 …`, DUMMY=196) on **every one of 42 samples**,
+where MA's alternated and reached 2 between samples. So one of BoB's two players never gets its
+dummy packet into the aggregate, persistently.
+
+**Next sprint, and the instrument already exists in MA:** port the `[agg] aggregator received …
+mapped-to-slot …` census (ma AGGRGTOR.CPP) and ask whether slot 0's dummy is never SENT, never
+received by the aggregator, or received and not mapped to a slot. MA's census answered exactly that
+question in one run.
+
+**BoB MP: 2 sprints this pass. Rotating off.**

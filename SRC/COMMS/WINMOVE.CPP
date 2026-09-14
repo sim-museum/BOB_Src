@@ -3852,7 +3852,17 @@ void	DPlay::AddPlayerToGame(ULong slot,ULong actype,ULong id)
 		return;
 
 	AllocPacket[slot]=id;
-	CurrPlayers++;
+	/* MP S6, ported from MA 0c707a8: this was a bare CurrPlayers++ and it double-counts. MA measured
+	   CountPlayers() recounting the H2H table correctly (2 players) and then this ++ running once per
+	   announcing player, taking it to 4 -- which is what InitSyncPhase's `num != CurrPlayers` gate
+	   was failing on in BOTH ports (bob measured the identical num=1 CurrPlayers=4). The ++ is only
+	   right for Rowan's original flow, where the announcer is a LATE joiner not yet in the table;
+	   peers who start together are already counted. Recount from the table, which the caller has
+	   just updated. BOB_MP_NORECOUNT=1 restores the ++. */
+	if (getenv("BOB_MP_NORECOUNT"))
+		CurrPlayers++;
+	else
+		CountPlayers(false);
 
 	if (GameType<COMMSQUICKMISSION)
 	{
