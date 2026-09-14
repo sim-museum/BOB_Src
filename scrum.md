@@ -3540,3 +3540,47 @@ synthetic path. Whether a human pressing space fires the guns remains untested, 
 question that decides whether this is a harness limitation or a shipped gameplay gap.
 
 **R3.7: 2 sprints.**
+
+## R3.7 S3 (Opus 5, 2026-09-14) — ⛔ the scaffold never pulled the trigger: "the guns never fire" is not evidenced
+
+S2 fixed the probe that was consuming the keypress and proved the binding correct in the live table,
+leaving two candidates: the synthetic key never reaches `Inst3d::OnKeyDown`, or it arrives with the
+wrong shift state. S3 answers with a third possibility neither sprint considered.
+
+**`OnKeyDown` is never called at all** — `BOB_TRACE_KEY` (which already existed; no new probe needed)
+printed **0 lines for every key** across a 190 s autofly run. Instrument proven able to speak first:
+the format string is in the binary and `BOB_LINUX` is defined by `CMakeLists.txt:50`. That is not a
+SHOOT-specific fault, and it is not the shift state — the scaffold does not use that path at all. It
+pushes `kb_push()` (the DirectInput buffer) and calls `bob_fake_shoot()`.
+
+⛔ **And neither of those runs either.** Both autofly branches are gated on `g_bob_flight_active`, and
+instrumenting the gate itself rather than inferring it:
+
+    [fire] autofly shoot branch: g_bob_flight_active=0 cnt=1
+    [fire] autofly shoot branch: g_bob_flight_active=0 cnt=2
+    [fire] autofly shoot branch: g_bob_flight_active=0 cnt=3
+    [fire] KeyPress3d(SHOOT)=0 secondary=0 ShootDelay=0 frametime=4
+
+The trace reports on CHANGE as well as on the first ticks, so a single 0 is not a sample — the flag
+never became 1 for the whole run. Meanwhile `frametime=4` shows TRANSITE's firing code executing, so
+the aircraft IS flying as far as the sim is concerned while the port-side flag says otherwise.
+
+⭐ **So the trigger was never pulled.** R3.7 S1's headline — *"BLOCKED BEFORE THE EFFECTS: the guns
+never fire"*, with its table of "ammo 2800 at frame 900 and 2800 at frame 2500" — measured a scaffold
+that does nothing in this configuration. S1's own careful wording was *"two SYNTHETIC paths fail"*;
+the truth is that **neither synthetic path ever executed**. The port has NOT been shown unable to
+fire, and that claim should not be repeated.
+
+**Not claimed:** that S1's runs had the flag at 0 too. They used the same recipe, which makes it the
+parsimonious reading, but it was not measured then and cannot be now. What IS established is that the
+evidence on file does not support the conclusion drawn from it.
+
+**S4:** make the gate true before testing anything about firing. `g_bob_flight_active` is set at
+`FULLPSYS.CPP:1463` and `:1575` — find which flight-entry path this recipe misses, reach a flight
+through the path that sets it, and only then ask whether the trigger produces rounds. Until then
+neither "the guns fire" nor "the guns do not fire" is supported.
+
+⚠️ **The PO sortie remains the cleanest answer and is still not superseded** — one quick mission,
+hold the trigger, watch the ammo counter.
+
+**R3.7: 3 sprints.**

@@ -607,6 +607,20 @@ static void pump_events(void)
 		const char* mode=getenv("BOB_AUTOFLY");
 		static int cnt=0; cnt++;
 		if (mode && strstr(mode,"shoot")) {   /* SPACE = SHOOT (KEYMAPS.H: KeyAll(SHOOT, space)) */
+			/* R3.7 S3 (2026-09-14): the whole shoot branch is gated on g_bob_flight_active, and the
+			   [fire] trace shows TRANSITE's firing code running while KeyPeek3d(SHOOT) never reads
+			   set -- which is what it would look like if this branch never executed. Report the gate
+			   itself rather than inferring it: a scaffold that silently does nothing is
+			   indistinguishable from a game that ignores the key. BOB_TRACE_FIRE=1. */
+			if (getenv("BOB_TRACE_FIRE")) {
+				static int said = 0, lastActive = -1;
+				if (g_bob_flight_active != lastActive || said < 3) {
+					lastActive = g_bob_flight_active; said++;
+					fprintf(stderr, "[fire] autofly shoot branch: g_bob_flight_active=%d cnt=%d\n",
+					        g_bob_flight_active, cnt);
+					fflush(stderr);
+				}
+			}
 			/* R3.7 (2026-09-03): the original pushed DOWN and UP in the SAME tick, so whether the
 			   game ever saw the key depended on when it polled between the two -- and measured, it
 			   never did: gun ammo read 2800 at frame 900 AND at frame 2500, i.e. not one round was
