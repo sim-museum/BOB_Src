@@ -3863,3 +3863,42 @@ second is safe. **Not shipped this sprint** — no fix goes in on the strength o
 when the gold can settle which behaviour is right.
 
 **R21(2): 1 sprint.**
+
+## R21 defect (2) S2 (Opus 5, 2026-09-14) — ⚠️ S1's experiment used an ILLEGAL scroll; the game DOES clamp, and the clamp is skipped on any page but 0
+
+S1 explained the PO's black band as the terrain loop running out of tiles, and predicted the edge to
+the pixel by setting `scroll.x = 1124` through a new test hook. S2 checked two things S1 did not.
+
+**1. The gold never shows it.** Sampling the PO's own gold video (`bob_convoy_campaign.mp4`, one frame
+every 4 s) and keeping the frames that are actually the strategic map: **13 consecutive map frames,
+black area 0.0%**. Whatever the original does, it does not leave black on the map.
+
+⭐ **2. The game clamps the scroll, and S1's experiment violated that clamp.** `CMIGView::UpdateScrollbars`
+(`MIGVIEW.CPP:3693`):
+
+    m_scrollpoint.x = min(m_scrollpoint.x, m_size.cx - rect.right);
+    m_scrollpoint.x = max(m_scrollpoint.x, 0);
+
+With `m_size.cx = 256*4*zoom - 5` = **2043** at zoom 2 and a 1024-wide client, the largest legal
+scroll is **1019** — and S1 set **1124**. ⚠️ **So S1 demonstrated the mechanism in a state the game's
+own rules forbid, and its write-up does not say so.** The correction matters because the clamp is
+exactly sized to prevent the defect: at the PO's ~1852-wide window the limit is 2043−1852 = 191,
+which leaves the terrain covering 8×256 − 191 = **1857 px of an 1852 px pane** — i.e. the clamp
+guarantees coverage with 5 px to spare.
+
+⭐ **So the defect is not "the map can be scrolled past its edge". It is that the clamp did not hold
+in the PO's session** — and the code says where that can happen:
+
+    void CMIGView::UpdateScrollbars() {
+        if (m_currentpage != 0) { hide both scrollbars; }      // <-- returns without clamping
+        else { ...the clamp above... }
+
+**On any page other than 0 the scroll is never clamped at all.** The PO's frames have the Messages
+dialog open over the map, which is a page change. That is the prime suspect and it is one trace away.
+
+**S3:** report `m_currentpage`, `m_size`, the client rect and `m_scrollpoint` on every map paint
+(extend `BOB_TRACE_MAPEXT`), reach the PO's state (campaign → convoys → Messages), and see whether
+the scroll exceeds `m_size − client` while `m_currentpage != 0`. If it does, the fix is to clamp
+regardless of page rather than to touch the drawing at all.
+
+**R21(2): 2 sprints.**
