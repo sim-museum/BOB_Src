@@ -593,6 +593,7 @@ static int bob_scale_ui(void) {
 }
 extern int g_uiOffX, g_uiOffY;
 extern "C" void bob_fake_shoot(int);   /* R3.7: drive SHOOT into the 3D key map (KEYSTUB.CPP) */
+extern "C" int  bob_in_the_3d(void);   /* R3.7 S4: the game's own "am I flying" (STUB3D.CPP) */
 
 extern "C" int bob_fp_key(int ch, int isText);
 extern "C" void bob_comms_shutdown(void);
@@ -604,6 +605,11 @@ static void pump_events(void)
 	   BOB_AUTOFLY=throttle (or 1): tap '0' (DIK 0x0B = RPM_00 = 100% throttle) a few
 	   times so the parked aircraft should spool up and accelerate down the runway. */
 	if (getenv("BOB_AUTOFLY") && g_diKbAcquired) {
+		/* R3.7 S4: keep g_bob_flight_active honest. It is set only by the two synthetic 3-D
+		   bridges, so a naturally-entered flight left it 0 and every autofly branch below became a
+		   no-op -- which is what R3.7 S1 measured and reported as "the guns never fire". Take the
+		   game's own answer instead. BOB_NO_INTHE3D=1 reverts to the bridge-only behaviour. */
+		if (!getenv("BOB_NO_INTHE3D") && bob_in_the_3d()) g_bob_flight_active = 1;
 		const char* mode=getenv("BOB_AUTOFLY");
 		static int cnt=0; cnt++;
 		if (mode && strstr(mode,"shoot")) {   /* SPACE = SHOOT (KEYMAPS.H: KeyAll(SHOOT, space)) */

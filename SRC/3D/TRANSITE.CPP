@@ -10248,6 +10248,22 @@ void TransObj::ControlKeybWeap(AirStrucPtr ac,WorldStuff& world)
 		}
 		if (Key_Tests.KeyPress3d(SHOOT) || Key_Tests.KeyPress3d(secondaryfirekey))						//RJS 10Jun97
 		{
+#ifdef BOB_LINUX
+			/* R3.7 S4: the gate is now PASSED (S1-S3 never got here). Report the ammo either side of
+			   the burst, because "the gate opened" is not "rounds left the guns" -- S1's own metric
+			   was the ammo counter, so close it in the same currency. BOB_TRACE_FIRE=1. */
+			if (getenv("BOB_TRACE_FIRE")) {
+				static long n = 0; static SLong first = -1;
+				/* the ammo counters live on PolyPitAnimData (AnimData.h), not MinAnimData */
+				PolyPitAnimData* _mad = (PolyPitAnimData*)ac->Anim;
+				SLong now = _mad ? (SLong)_mad->acgunammoleft : -1;
+				if (first < 0) first = now;
+				if (n < 6 || (n % 200) == 0)
+					fprintf(stderr, "[fire] GATE PASSED #%ld gunammo=%ld (started %ld, spent %ld)\n",
+					        n, (long)now, (long)first, (long)(first - now)), fflush(stderr);
+				n++;
+			}
+#endif
 			ClearWeaponChain(ac);								//RJS 15Nov99
 			SLong	timeleft = ac->weap.ShootDelay-frametime;//RJS 10Jun97
 			if (timeleft<0)

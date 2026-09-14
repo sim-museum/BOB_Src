@@ -1553,6 +1553,16 @@ void Inst3d::OnKeyInput()
 			OnKeyUp(keynum);
 	}						   
 }
+#if BOB_LINUX
+/* R3.7 S4 (2026-09-14): g_bob_flight_active is set in exactly two places, and BOTH are synthetic
+   bridges into the 3-D (FULLPSYS.CPP:1463 and :1575). A flight entered by the game's OWN path -- the
+   frontend auto-click reaching Fly, which is what BOB_BOOT_FRONTEND does -- sets neither, so the flag
+   reads 0 while the sim is demonstrably flying (S3: frametime=4 in TRANSITE, and no [frontend]
+   (bridge) or [startfly] line in the log). Every autofly branch is gated on that flag, so the
+   scaffold silently did nothing and R3.7 spent three sprints measuring it.
+   Expose the game's own notion of being in the 3-D so the scaffold can gate on the truth. */
+extern "C" int bob_in_the_3d(void) { return Inst3d::InThe3D() ? 1 : 0; }
+#endif
 void	Inst3d::OnKeyDown(int keynum)
 {
 	int	index=commonkeymaps->mappings[keynum][commonkeymaps->currshifts];

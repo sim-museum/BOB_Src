@@ -3584,3 +3584,45 @@ neither "the guns fire" nor "the guns do not fire" is supported.
 hold the trigger, watch the ammo counter.
 
 **R3.7: 3 sprints.**
+
+## R3.7 S4 (Opus 5, 2026-09-14) — ✅ THE GUNS FIRE. The blocker was the scaffold's gate, and R3.7 can finally start.
+
+S3 found both autofly branches gated on `g_bob_flight_active` and that flag reading 0 all run. S4
+asks why, fixes it, and re-runs the measurement in S1's own currency.
+
+**Why the flag was 0.** It is set in exactly two places, `FULLPSYS.CPP:1463` and `:1575`, and **both
+are synthetic bridges into the 3-D**. A flight entered by the game's OWN path — the frontend
+auto-click reaching Fly, which is what `BOB_BOOT_FRONTEND` produces — sets neither. Confirmed rather
+than assumed: S3's log contains no `[frontend] (bridge)` and no `[startfly]` line, so neither bridge
+ran, while the sim was demonstrably flying. **The flag records "we bridged into the 3-D", not "a
+flight is live"** — and every autofly branch hangs off it.
+
+**The fix.** `Inst3d::InThe3D()` is the game's own answer to the question the flag was trying to
+approximate. Exposed it as `bob_in_the_3d()` (STUB3D.CPP) and the pump now takes the game's word:
+
+    if (!getenv("BOB_NO_INTHE3D") && bob_in_the_3d()) g_bob_flight_active = 1;
+
+**MEASURED, same recipe as S1, and closed in S1's own metric — the ammo counter:**
+
+    [fire] autofly shoot branch: g_bob_flight_active=1 cnt=1
+    [fire] KeyPress3d(SHOOT)=1 secondary=1 ShootDelay=0 frametime=4
+    [fire] GATE PASSED #0   gunammo=2800 (started 2800, spent 0)
+    [fire] GATE PASSED #1   gunammo=2787 (spent 13)
+    [fire] GATE PASSED #5   gunammo=2735 (spent 65)
+    [fire] GATE PASSED #200 gunammo=200  (spent 2600)
+    [fire] GATE PASSED #400 gunammo=0    (spent 2800)
+
+✅ **2,800 rounds down to zero.** S1's table read *"gun ammo 2800 at frame 900 and 2800 at frame
+2500 — not one round"*; the same counter now empties the magazine. **The port can fire. It always
+could.** Three sprints of "BLOCKED BEFORE THE EFFECTS: the guns never fire" measured a test scaffold
+that was switched off.
+
+**What this retires.** The claim itself, and the PO sortie that was being held as the tie-breaker —
+it is no longer needed for THIS question (it remains the only way to test a human's trigger, but the
+port's firing path is now demonstrated).
+
+**R3.7 can finally begin.** Its actual story — do tracers, muzzle flash, smoke and flak render
+faithfully — was never reachable while nothing fired. With rounds leaving the guns, that comparison
+against the gold is now a normal sprint.
+
+**R3.7: 4 sprints — at cap, rotating off UNBLOCKED rather than parked.**
