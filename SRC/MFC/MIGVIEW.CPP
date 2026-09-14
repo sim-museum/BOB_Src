@@ -3346,6 +3346,26 @@ void CMIGView::UpdateBitmaps(CDC* pDC,CRect bounds)
 	hDC = pDC->GetSafeHdc( );  // gets and stores handle of mapdlg DC	
 	assert(areax==1 || startx<areax)
 	assert(areay==1 || starty<areay)
+#ifdef BOB_LINUX
+	/* R21 defect (2) S3 (2026-09-14): CLAMP THE SCROLL WHERE IT IS USED.
+	   The game's only clamp is in CMIGView::UpdateScrollbars, and S3 measured that function running
+	   ZERO times in a 900-tick map session -- the map opens, paints and scrolls without it ever
+	   being called, so nothing bounds m_scrollpoint on the paint path. An unbounded scroll is
+	   exactly what leaves the terrain short of the pane with the rest unpainted (black in the PO's
+	   frames, because the grey-green fill above is only a tiles-not-loaded backdrop).
+	   This applies the game's own bound -- scroll <= size - client, and >= 0 -- at the point of use,
+	   so it holds however the scroll got there. BOB_NO_MAPCLAMP=1 reverts. */
+	if (!getenv("BOB_NO_MAPCLAMP"))
+	{
+		const long maxx = (long)m_size.cx - (long)rect.right;
+		const long maxy = (long)m_size.cy - (long)rect.bottom;
+
+		if (maxx > 0 && m_scrollpoint.x > maxx) m_scrollpoint.x = maxx;
+		if (maxy > 0 && m_scrollpoint.y > maxy) m_scrollpoint.y = maxy;
+		if (m_scrollpoint.x < 0) m_scrollpoint.x = 0;
+		if (m_scrollpoint.y < 0) m_scrollpoint.y = 0;
+	}
+#endif
 	int sstartx=max((m_scrollpoint.x+rect.left)/zoomsquaresize,0);
 	int sstarty=max((m_scrollpoint.y+rect.top)/zoomsquaresize,0);
 	int endx=min((m_scrollpoint.x+rect.right+zoomsquaresize-1)/zoomsquaresize,areax);
@@ -3694,6 +3714,28 @@ void CMIGView::UpdateScrollbars()
 {
 
 	if (!m_mapdlg.m_hWnd) return;
+#ifdef BOB_LINUX
+	/* R21 defect (2) S3 (2026-09-14): S2 found the scroll clamp lives in the ELSE branch of this
+	   test, so on any page but 0 the scroll is never bounded -- and an unbounded scroll is exactly
+	   what leaves the terrain short of the pane and the rest black. Report the page and the clamp
+	   terms every time this runs, on change and once a second. BOB_TRACE_MAPEXT=1. */
+	if (getenv("BOB_TRACE_MAPEXT"))
+	{
+		static int lastpage = -99; static time_t last = 0; time_t now = 0; ::time(&now);
+		CRect r; GetClientRect(r);
+		if (m_currentpage != lastpage || now != last)
+		{
+			lastpage = m_currentpage; last = now;
+			fprintf(stderr, "[mapext] UpdateScrollbars page=%d scroll=(%ld,%ld) size=(%ld,%ld) client=(%ld,%ld)"
+					"  limit=(%ld,%ld) %s\n",
+					(int)m_currentpage, (long)m_scrollpoint.x, (long)m_scrollpoint.y,
+					(long)m_size.cx, (long)m_size.cy, (long)r.right, (long)r.bottom,
+					(long)(m_size.cx - r.right), (long)(m_size.cy - r.bottom),
+					m_currentpage != 0 ? "-> SKIPS THE CLAMP" : "-> clamps");
+			fflush(stderr);
+		}
+	}
+#endif
 	if (m_currentpage!=0)
 	{
 		m_rHorzScrollBar.ShowWindow(SW_HIDE);

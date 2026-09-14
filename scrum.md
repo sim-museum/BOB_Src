@@ -3902,3 +3902,38 @@ the scroll exceeds `m_size − client` while `m_currentpage != 0`. If it does, t
 regardless of page rather than to touch the drawing at all.
 
 **R21(2): 2 sprints.**
+
+## R21 defect (2) S3 (Opus 5, 2026-09-14) — ✅ FIXED: the only clamp in the game never runs on the paint path, so the scroll is now bounded where it is USED
+
+S2 found the game's scroll clamp (`CMIGView::UpdateScrollbars`) and noted it sits in the else-branch
+of `if (m_currentpage != 0)`, making the page the prime suspect. S3 instrumented that function to
+find out which branch runs.
+
+⭐ **It runs NEITHER. `UpdateScrollbars` was called ZERO times in a 900-tick map session** — the map
+opens, paints and scrolls without the clamp ever executing. Its callers are the scrollbar handlers,
+`OnSize` and the zoom path, and none of them fired here. So the page hypothesis was not even reached:
+**nothing bounds `m_scrollpoint` on the path that paints the map.**
+
+That is the defect. An unbounded scroll leaves the tile loop short of the pane, and the remainder is
+unpainted — black in the PO's frames, because the grey-green fill in that code is only a
+"tiles still loading" backdrop (S1) and not an out-of-extent fill.
+
+**FIX** (`MIGVIEW.CPP`, the tile-draw path, `BOB_NO_MAPCLAMP=1` reverts): apply **the game's own
+bound** — `0 <= scroll <= size − client` — at the point of use, so it holds however the scroll got
+there.
+
+**VERIFIED with a stated prediction.** Setting the scroll to 1124, which S2 showed is illegal at a
+1024-wide client (limit 2043 − 1024 = **1019**):
+
+| | before the fix | after |
+|---|---|---|
+| scroll reported | 1124 | **1019**, exactly the game's limit |
+| terrain coverage | 924 px of a 1024 px pane | **1280 px**, pane fully covered |
+| colour at x=924 | 127,147,137 (the loading backdrop) | brown land, continuous to the ruler at 976 |
+
+⚠️ **What this does not do:** it treats the symptom at the paint, not the cause of `UpdateScrollbars`
+never being called. That function also sizes and shows the scrollbars, so whatever keeps it from
+running may be hiding those too. **S4 should ask why it never runs** — but the map now cannot show a
+black band regardless of the answer, which is what the PO reported.
+
+**R21(2): 3 sprints.**
