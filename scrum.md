@@ -4002,3 +4002,26 @@ or whether the square is still there in the current build. The instrument is rea
 run would finish it; three uninformed ones would not.
 
 **R20: 2 sprints this pass.**
+
+## R21 defect (2) S4 (Opus 5, 2026-09-14) — the map clamp is regression-checked: parity 8/8 byte-identical, campaign gate green
+
+S3 shipped the paint-path scroll clamp on the strength of one A/B. S4 checks it against the suites
+before it reaches the PO, because a bound applied on the paint path touches every map draw.
+
+| gate | result |
+|---|---|
+| `bob_parity.sh` (screens vs references) | **PASS — 8 screens byte-identical** |
+| `bob_convoy_campaign.sh` (Luftwaffe Convoys, map → directives → Fly) | **PASS — Fly reached 3D, no fatal error** |
+
+⚠️ **What the parity gate does and does not cover, stated so the green is not over-read.** Its eight
+screens are the main menu and the config tabs — **the campaign map is not among them**, so those
+byte-identical results say the change did not leak into the front end, not that the map is right. The
+map's own coverage is the campaign gate above, which drives the real screen and reaches 3-D.
+
+⚠️ **The full `bob_gates.sh` suite did NOT complete** — my 900 s timeout killed it mid-run (exit 143)
+after it had written its captures. That is a harness limit of mine, not a failure of the suite, and it
+is recorded rather than glossed: the two gates that bear on this change were then run individually and
+both passed.
+
+**R21(2): 4 sprints — AT THE CAP. The defect the PO reported is fixed, verified against the value
+that used to break it, and regression-checked.**
