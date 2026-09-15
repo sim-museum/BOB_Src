@@ -4513,3 +4513,40 @@ are rows 2210+, the list is being truncated by a missing template entry and the 
 template parse; if they are something else, the visible-flag six are the next suspects.
 
 **R3.8: 1 sprint this pass. The item's central question is answered with a number.**
+
+## R3.8 S2 (Opus 5, 2026-09-14) — the aircraft list is ctrls **2203–2214: seven drawn, five marked NOT VISIBLE**; and the ids were already in last sprint's log
+
+S1 ended with *"the skip counters COUNT but do not NAME — S2 should print the ctrlId of every skipped
+control"*. ⚠️ **They already do.** `bob_skip_name()` emits a `[skipid]` line per (dialog, control,
+reason) under the same `BOB_TRACE_SKIP` that produced S1's totals, and those lines were sitting in
+S1's own log. *(Sixth time this session that the next question was already answered by output
+already on disk — the standing rule is to read every tag in the log before proposing an instrument.)*
+
+**The pre-3D dialog's ten losses, named:**
+
+    [skipid] dlgId=1164 ctrl=1479 not-in-template      [skipid] dlgId=1164 ctrl=2145 not-visible
+    [skipid] dlgId=1164 ctrl=1923 not-in-template      [skipid] dlgId=1164 ctrl=2210 not-visible
+    [skipid] dlgId=1164 ctrl=2061 not-in-template      [skipid] dlgId=1164 ctrl=2211 not-visible
+    [skipid] dlgId=1164 ctrl=2123 not-in-template      [skipid] dlgId=1164 ctrl=2212 not-visible
+                                                       [skipid] dlgId=1164 ctrl=2213 not-visible
+                                                       [skipid] dlgId=1164 ctrl=2214 not-visible
+
+⭐⭐ **Line them up with the drawn ones and the list appears.** S1 measured the drawn rows as
+**2203–2209** — seven 96×16 DLU rows. The not-visible ones are **2210–2214**. **So the aircraft list
+is controls 2203…2214 — twelve rows — of which seven are drawn and five are switched off by the
+`visible` flag.** The list is not absent and not unpopulated: **it is half hidden.**
+
+**The campaign map's losses are periodic**, which is worth recording next to it: on dlgId 1032 the
+skipped ids run `2220, 2230, 2240 … 2320` (not-in-template) interleaved with
+`2227, 2247, 2267 …` (dead-sweep-row) — **one id per 10, i.e. a repeating per-row group**, so those
+17+11 losses are one structure failing twelve times, not 28 unrelated controls.
+
+⚠️ **And the PO sees NO list, while seven rows do draw.** That is the next fork: either the seven
+draw with **empty captions** (a populated-but-blank list looks exactly like a missing one), or they
+draw text that lands somewhere invisible.
+
+**S3:** print each drawn row's caption at the draw site — one line per control, id and string. An
+empty string on 2203–2209 means the rows exist and the model behind them is empty, which is a
+different fix again from the `visible` flag on 2210–2214.
+
+**R3.8: 2 sprints this pass.**
