@@ -2508,8 +2508,8 @@ static void upload_texture(GLSurface7* s) {
 		/* R3.9 S3 (this pass): print the SURFACE POINTER too. BOB_PIXPROBE names the texture that
 		   covers a pixel by pointer, and without it here the two traces cannot be joined -- "one of
 		   the 128x128 uploads has no alpha" is not the same statement as "THREAT01 has no alpha". */
-		fprintf(stderr,"[texfmt] surf=%p %dx%d bpp16 A=0x%04x R=0x%04x G=0x%04x B=0x%04x flags=0x%x\n",
-			(void*)s,s->w,s->h,(unsigned)pf.dwRGBAlphaBitMask,(unsigned)pf.dwRBitMask,(unsigned)pf.dwGBitMask,
+		fprintf(stderr,"[texfmt] surf=%p glTex=%u %dx%d bpp16 A=0x%04x R=0x%04x G=0x%04x B=0x%04x flags=0x%x\n",
+			(void*)s,(unsigned)s->glTex,s->w,s->h,(unsigned)pf.dwRGBAlphaBitMask,(unsigned)pf.dwRBitMask,(unsigned)pf.dwGBitMask,
 			(unsigned)pf.dwBBitMask,(unsigned)pf.dwFlags); }
 	int hasAlpha = 0;
 	if (s->bpp==16) {
@@ -2893,10 +2893,10 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 				for (int k=0;k<nseen;k++) if (seen[k]==(const void*)pt) { dup=1; break; }
 				if (!dup && nseen<32) { seen[nseen++]=(const void*)pt;
 					fprintf(stderr,"[pixprobe] (%d,%d) covered by prim=%d count=%lu fvf=0x%lx "
-						"bbox=(%.0f,%.0f)-(%.0f,%.0f) tex=%p %dx%d bpp=%d isRTT=%d ckey=%d "
+						"bbox=(%.0f,%.0f)-(%.0f,%.0f) tex=%p glTex=%u %dx%d bpp=%d isRTT=%d ckey=%d "
 						"uniqueTextID=0x%04x (type=%u idx=%u) masked=%u isLand=%lu\n",
 						px,py,(int)prim,(unsigned long)count,(unsigned long)fvf,x0,y0,x1,y1,
-						(void*)pt, pt?pt->w:0, pt?pt->h:0, pt?pt->bpp:0,
+						(void*)pt, pt?(unsigned)pt->glTex:0u, pt?pt->w:0, pt?pt->h:0, pt?pt->bpp:0,
 						pt?pt->isRTT:0, pt?pt->ckeyOn:0,
 						(unsigned)g_lib3d_uniqueTextID,
 						(unsigned)(g_lib3d_uniqueTextID & 0xC000),   /* TIT_MASK_TYPE, not >>11 */

@@ -4885,3 +4885,35 @@ pointer — a GL name is the same integer on both sides of the hop — and then 
 mask directly. If it is `A=0x0000`, the fix is at the surface build, not in `DoThreat`.
 
 **R3.9: 3 sprints this pass.**
+
+## R3.9 S4 this pass (Opus 5, 2026-09-15) — the join works, and it immediately killed a false lead: `glTex=0` at probe time is the PROBE's position, not a missing upload
+
+S3 could not join `[pixprobe]` to `[texfmt]`: the surface pointer the draw binds never appeared in the
+upload trace. Both traces now print the **GL texture name**, which is the same integer on both sides
+of the CPU/GPU hop.
+
+**What the join says:** the 128×128 surface covering (180,165) reports **`glTex=0`**, while other
+draws in the same probe report real names (2, 12, 20, 21, 24, …). Read alone, that is "the sprite was
+never uploaded and binds texture 0", which would have been a clean root cause.
+
+⛔ **It is wrong, and the control that says so ran in the SAME flight.** `BOB_TRACE_GREY`'s condition
+is exactly `(!t || !t->glTex)` — the canary for this very fault — and it fires **twice in the whole
+run**, on an unrelated red 2-D quad, never on this surface. Two readings of the same field inside the
+same function disagree, so the field changes between them: `[pixprobe]` sits **before** the bind and
+`[grey]` **after**, and the GL texture is created at bind time. **`glTex=0` in the pixel probe is a
+statement about where the probe stands, not about the texture.**
+
+⭐ **So the sprite IS textured when it paints**, and S3's "the uploaded surface has no alpha channel"
+remains the live candidate rather than being replaced by a missing upload.
+
+**METHOD:** this is the third instrument fault in three sprints on this item (a colour window that
+produced a false zero, then a false trend; a table capped at 24 that went quiet; now a field read
+before it is set). None of them was wrong about the game — all three were wrong about the
+instrument. **When a new probe produces a clean, satisfying answer, look for a second instrument that
+already measures the same thing and check they agree before writing it down.**
+
+**S5:** read THREAT01's alpha mask where the surface is BUILT (`LIB3D.CPP:6686/6865`,
+`body + palette + alpha`) rather than at upload, and print `dwRGBAlphaBitMask` for that specific map
+by joining on the GL name the canary sees.
+
+**R3.9: 4 sprints this pass — AT THE CAP.**
