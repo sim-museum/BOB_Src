@@ -1368,6 +1368,20 @@ extern "C" void bob_frontend_tick(void)
 				}
 			}
 			int flyIdx = g_bobMenuN > 0 ? g_bobMenuN - 1 : 2;   /* Fly is the last menu item */
+			/* ASPECT-1 S8 (2026-09-15): apply BOB_MIRROR HERE too. The hook that forces
+			   COCK3D_SKYIMAGES (the Reflections setting, default OFF) lives in MIG.CPP inside
+			   `if (getenv("BOB_BOOT_FRONTEND"))`, so it has only ever applied on the QUICK-MISSION
+			   boot path -- while R3.4, MIRROR-1 and ASPECT-1 all measure the mirror through
+			   tools/bob_realgl_flight.sh, which is the CAMPAIGN path and sets BOB_FRONTEND, not
+			   BOB_BOOT_FRONTEND. Every one of those measurements ran with Reflections OFF while
+			   believing them on, and the tell was in every log: "[boot] BOB_MIRROR: ... enabled"
+			   never printed once. UseMirror and dodrawreflectpoly tracing ZERO calls (S7, S8) is
+			   the same fact seen from the other end. */
+			if (getenv("BOB_MIRROR") && !(Save_Data.cockpit3Ddetail[COCK3D_SKYIMAGES])) {
+				Save_Data.cockpit3Ddetail|=COCK3D_SKYIMAGES;
+				fprintf(stderr,"[boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled (campaign path)\n");
+				fflush(stderr);
+			}
 			fprintf(stderr,"[campfly] Fly: playersquadron=%d gamestate=%d menuN=%d -> OnSelectRlistbox(%d)\n",
 				(int)MMC.playersquadron, (int)RFullPanelDial::gamestate, g_bobMenuN, flyIdx);
 			g_campfly_flown = 1;   /* after this mission, don't headlessly fast-forward the map sim */

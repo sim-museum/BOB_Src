@@ -5697,3 +5697,49 @@ re-run wrote its frames under `/home` instead, where there are 2.2 TB free.
 
 **ASPECT-1: 7 sprints. The reflection opcode is eliminated; the mirror is ordinary geometry and the
 search is down to two possibilities.**
+
+## ASPECT-1 S8 (Opus 5, 2026-09-15) — ⛔⛔ **`BOB_MIRROR` has never applied on the campaign path.** Every mirror measurement this project has taken ran with Reflections OFF
+
+S7 found `dodrawreflectpoly` never fires. S8 tried to identify the mirror polygon by its material,
+printing `ThreeDee::mirrorMaterial` from `UseMirror` — and **`UseMirror` never fires either.** Two
+mirror opcodes, zero calls. That is not a coincidence; it is a switch.
+
+⛔ **The switch is `BOB_MIRROR`, and it is in the wrong block.** `MIG.CPP` sets
+`Save_Data.cockpit3Ddetail |= COCK3D_SKYIMAGES` inside
+
+    if (getenv("BOB_BOOT_FRONTEND")) { ... if (fullMission) { ... BOB_MIRROR here ... } }
+
+— the **Quick-Mission** boot path. But `tools/bob_realgl_flight.sh`, which R3.4, MIRROR-1 **and**
+ASPECT-1 all use, drives the **CAMPAIGN** path and sets `BOB_FRONTEND`, not `BOB_BOOT_FRONTEND`.
+**So the Reflections setting was never turned on in any of those flights**, and `RenderMirror`,
+`UseMirror` and `dodrawreflectpoly` — all gated on it — correctly did nothing.
+
+⚠️ **And the tell was in every single log.** `[boot] BOB_MIRROR: ... enabled` **never printed once**
+in a campaign flight. I greped for it twice this session, saw nothing, and moved on both times
+because the mirror was visibly there on screen. It was there because it is **painted cockpit
+artwork** — a 128x128 masked imagemap on a quad — which is exactly what S7 and S8's zero traces say.
+
+✅ **Fixed.** The same hook now also runs on the campaign Fly path (`FULLPSYS.CPP`, beside the
+`[campfly] Fly` action), and it announces itself:
+
+    [boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled (campaign path)
+
+⚠️ **`UseMirror` STILL traces zero calls with Reflections on**, so a second question is now open and
+it is a better one: **does the Bf 109's cockpit shape contain a `docreatemirror` opcode at all?** If
+it does not, this aircraft has no modelled mirror in the port and everything measured is the painted
+art.
+
+🔴 **What this puts in doubt, stated plainly.** R3.4 S5 closed "the mirror shows a live horizon like
+the gold" on content statistics taken in these flights. **Those flights had Reflections off.** Its
+own numbers hinted at it — our frame-to-frame delta was **3–11** against the gold's **8–73**, which
+S5 attributed to a scenario difference (straight-and-level against a manoeuvring sortie). That
+explanation is no longer the simplest one: painted art versus a live reflection fits better.
+**R3.4 should be re-opened, not quietly amended.**
+
+**S9:** re-run R3.4's exact measurement now that the switch works, and in the same sprint dump the
+Spitfire and Hurricane cockpit shapes for the `docreatemirror` opcode. Two results, one run plus one
+headless scan: either the disc comes alive (and R3.4's conclusion survives on corrected evidence), or
+it does not and the 109 has no mirror to show.
+
+**ASPECT-1: 8 sprints. A switch that was never on is the reason two items' worth of measurements
+need re-taking.**

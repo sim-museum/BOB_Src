@@ -643,6 +643,22 @@ BOOL CMIGApp::InitInstance()
 			Save_Data.gamedifficulty|=GD_HUDINSTACTIVE;
 			fprintf(stderr,"[boot] BOB_HUD: HUD info bar (altitude/speed) enabled\n");
 		}
+		/* BOB_MIRROR: force COCK3D_SKYIMAGES (the "Reflections" setting, default OFF) on so the
+		   rear-view mirror activates -- RenderMirror, UseMirror and dodrawreflectpoly are all gated
+		   on it.
+
+		   ASPECT-1 S8 (2026-09-15) MOVED THIS OUT OF THE `fullMission` (Quick-Mission) BLOCK. It had
+		   been inside it, so it applied on the QM boot path ONLY -- and every mirror measurement
+		   this project has taken on the CAMPAIGN path (tools/bob_realgl_flight.sh, which is what
+		   R3.4, MIRROR-1 and ASPECT-1 all use) ran with Reflections OFF while believing them on.
+		   The tell was there all along and nobody read it: `[boot] BOB_MIRROR: ... enabled` never
+		   appeared in a single campaign flight log. What those sprints measured as "the mirror" is
+		   the cockpit's PAINTED mirror artwork, which is why UseMirror and dodrawreflectpoly both
+		   traced zero calls. */
+		if (getenv("BOB_MIRROR")) {
+			Save_Data.cockpit3Ddetail|=COCK3D_SKYIMAGES;
+			fprintf(stderr,"[boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled\n");
+		}
 		Node_Data.BuildTargetTable();      // set up node/squad tables FIRST (cold start)
 		Node_Data.LoadCleanNodeTree();
 		Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;
@@ -665,13 +681,6 @@ BOOL CMIGApp::InitInstance()
 			MMC.playeracnum=q.plac;
 			fprintf(stderr,"[boot] QM: idx=%d title=%d plside=%d plwave=%d plgrp=%d plac=%d playersquadron=%d\n",
 				qi,(int)q.titlename,(int)q.plside,(int)q.plwave,(int)q.plgrp,(int)q.plac,(int)MMC.playersquadron);
-		}
-		/* BOB_MIRROR: force COCK3D_SKYIMAGES (the "Reflections" setting, default OFF) on so the
-		   rear-view mirror activates -- RenderMirror + UseMirror are both gated on it. Lets us
-		   A/B the mirror RTT path (pDDS7MirrorRT) which is otherwise never exercised in QM boot. */
-		if (getenv("BOB_MIRROR")) {
-			Save_Data.cockpit3Ddetail|=COCK3D_SKYIMAGES;
-			fprintf(stderr,"[boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled\n");
 		}
 		/* BOB_GROUNDSHADE: the terrain's 2nd/3rd detail-texture stage (ground shading) is gated on
 		   DETAIL3D_GROUNDSHADING, which defaults OFF -> stage-1 COLOROP=DISABLE, flat single-textured

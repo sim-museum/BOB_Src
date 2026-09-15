@@ -5510,6 +5510,18 @@ void ThreeDee::UseMirror(SWord	material, COORDS3D& pos,SWord dx,SWord dy,SWord d
 {
 	mirrorSeen = true;
 
+	/* ASPECT-1 S8 (2026-09-15): name the mirror's MATERIAL. S7 eliminated dodrawreflectpoly (it
+	   never fires), so the 192.000 x 144.000 quad is an ordinary textured cockpit polygon carrying
+	   this material -- and identifying it by material is the only way left to find the polygon in
+	   the shape stream. Print the number once so it can be matched against the imagemap
+	   BOB_PIXPROBE reports for the covering draw. BOB_TRACE_ASPECT=1. */
+	if (getenv("BOB_TRACE_ASPECT")) { static int once = 0; if (!once++) {
+		fprintf(stderr, "[aspect] UseMirror: mirrorMaterial = %d (imagemap dir %d file %d), "
+		                "pos (%ld, %ld, %ld) normal (%d, %d, %d) fov %u\n",
+		        (int)material, (int)(material >> 8), (int)(material & 0xFF),
+		        (long)pos.X, (long)pos.Y, (long)pos.Z, (int)dx, (int)dy, (int)dz, (unsigned)fov);
+		fflush(stderr); } }
+
 	mirrorMaterial = material;
 	mirrorPos = pos;
 	mirrorOri.X = dx;
