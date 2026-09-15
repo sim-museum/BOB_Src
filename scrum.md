@@ -4964,3 +4964,46 @@ compare it with a branch that visibly renders. The question has moved from "is a
 to "what does the listener draw?", which is a much smaller search.
 
 **R3.7: 1 sprint this pass.**
+
+## R3.7 S2 this pass (Opus 5, 2026-09-15) — ⭐ the flash switch guards **`dosetmaterialtype`**, and that call ends in a lighting flag that can be silently CLAMPED
+
+S1 established the chain up to the branch: the muzzle-flash bit is set, a `doswitch` tests it
+(byte 141, bit 2, expects 1) and the branch is taken. S2 asks what the taken branch leads to.
+
+**The interpreter's loop reads `*instr_ptr` as the next opcode**, so the probe prints it for the
+141/bit-2 switch only:
+
+    [flashbit] after the bit-2 switch the next opcode is 146
+    [flashbit] after the bit-2 switch the next opcode is 6        (the not-taken path)
+
+**Opcode 146 is `dosetmaterialtypeno`** (`SHPINST` in `SHPINSTR.H`, counted through the enum;
+the probe's own printed constants — `dopointno=1 dopolygonno=2 doretno=6 doswitchno=32` — confirm the
+numbering). So **the muzzle flash is a MATERIAL change, not a piece of geometry** — which is why four
+sprints of looking for a missing mesh found nothing.
+
+**And `dosetmaterialtype` (3DCOM.CPP:12341) does exactly one thing:**
+
+    LIGHTFLAG lf = LIGHTFLAG(GetLightingType(ptr->flags));
+    g_lpLib3d->SetObjectLighting(lf);
+
+⭐ **`Lib3D::SetObjectLighting` (LIB3D.CPP:6287) opens with a CLAMP:**
+
+    if ( lf > masterLightFlag )
+        lf = masterLightFlag;
+
+**A shape can therefore ask for a brighter lighting mode than the current master allows and be
+silently downgraded** — no error, no trace, the polygons simply draw in whatever mode survives the
+clamp. For an effect whose whole appearance IS its lighting mode, that is a candidate root cause of
+exactly the right shape: the flash's geometry draws, in the wrong material.
+
+⚠️ **Candidate, not conclusion.** Nothing yet shows what `GetLightingType(ptr->flags)` asks for at
+this call site, what `masterLightFlag` is at that moment, or whether the clamp actually bites. Three
+values, one print.
+
+**S3:** print `requested / masterLightFlag / applied` inside `dosetmaterialtype` when the caller is
+the flash switch. If requested > master, the clamp is the defect and the fix is to raise the master
+for the effect (or to stop routing an emissive effect through a mode the master can veto). If they
+agree, the flash's material is being set correctly and the search moves to what the following
+polygons draw with it.
+
+**R3.7: 2 sprints this pass.**

@@ -3874,6 +3874,19 @@ void shape::doquikpoly(UByte *& instr_ptr)
 				break;
 		}
 	}
+	/* R3.7 S2 (this pass): what does the TAKEN branch lead to? The interpreter's loop reads
+	   `*instr_ptr` as the next opcode, so this is the instruction the muzzle-flash switch guards.
+	   Printed once per distinct opcode for the 141/bit-2 switch only. BOB_TRACE_FLASHBIT=1. */
+	if (ptr->animoff == 141 && ptr->bitoffset == 2 && getenv("BOB_TRACE_FLASHBIT")) {
+		static unsigned char opseen[256]; 
+		unsigned op = (unsigned)*instr_ptr;
+		if (!opseen[op & 0xff]) { opseen[op & 0xff] = 1;
+			fprintf(stderr, "[flashbit] after the bit-2 switch the next opcode is %u"
+			                "   (dopolygonno=%u dopointno=%u doretno=%u doswitchno=%u)\n",
+			        op, (unsigned)dopolygonno, (unsigned)dopointno, (unsigned)doretno,
+			        (unsigned)doswitchno);
+			fflush(stderr); }
+	}
 }
 
 //������������������������������������������������������������������������������
