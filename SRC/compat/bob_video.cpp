@@ -2499,9 +2499,17 @@ static void upload_texture(GLSurface7* s) {
 	int wantMip = getenv("BOB_NOMIP") ? 0 : (getenv("BOB_MIP")!=0 || s->mip!=NULL);
 	if (wantMip) glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 	const DDPIXELFORMAT& pf = s->desc.ddpfPixelFormat;
-	if (getenv("BOB_TRACE_TEXFMT") && s->bpp==16) { static int n=0; if(n++<24)
-		fprintf(stderr,"[texfmt] %dx%d bpp16 A=0x%04x R=0x%04x G=0x%04x B=0x%04x flags=0x%x\n",
-			s->w,s->h,(unsigned)pf.dwRGBAlphaBitMask,(unsigned)pf.dwRBitMask,(unsigned)pf.dwGBitMask,
+	/* R3.9 S3: the cap is a SETTING, not 24. This trace went quiet before THREAT01's upload and
+	   the join by pointer came back empty -- a full table announcing nothing, which is the house
+	   instrument-lie. BOB_TRACE_TEXFMT=<n> sets the cap (default 24). */
+	if (getenv("BOB_TRACE_TEXFMT") && s->bpp==16) { static int n=0, cap=-1;
+		if (cap<0) { cap=atoi(getenv("BOB_TRACE_TEXFMT")); if (cap<=1) cap=24; }
+		if(n++<cap)
+		/* R3.9 S3 (this pass): print the SURFACE POINTER too. BOB_PIXPROBE names the texture that
+		   covers a pixel by pointer, and without it here the two traces cannot be joined -- "one of
+		   the 128x128 uploads has no alpha" is not the same statement as "THREAT01 has no alpha". */
+		fprintf(stderr,"[texfmt] surf=%p %dx%d bpp16 A=0x%04x R=0x%04x G=0x%04x B=0x%04x flags=0x%x\n",
+			(void*)s,s->w,s->h,(unsigned)pf.dwRGBAlphaBitMask,(unsigned)pf.dwRBitMask,(unsigned)pf.dwGBitMask,
 			(unsigned)pf.dwBBitMask,(unsigned)pf.dwFlags); }
 	int hasAlpha = 0;
 	if (s->bpp==16) {

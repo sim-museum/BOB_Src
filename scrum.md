@@ -4836,3 +4836,52 @@ probe: report every shape the frame draws with its projected screen bbox, then l
 bbox is (49,141)-(313,189). That names the object in one flight instead of one per guess.
 
 **R3.9: 2 sprints this pass.**
+
+## R3.9 S3 this pass (Opus 5, 2026-09-15) — ⚠️ **I re-litigated a solved item**, and the one new thing is a picture of the sprite: a tan ellipse on green chroma
+
+⚠️ **ORIENTATION FIRST, because this is the expensive mistake of the session.** R3.2 S4 described the
+ellipse as *"a candidate for R3.9 / PO-73, which has never had a reproduction"*. **That was wrong.**
+R3.9 **S5-S8 (2026-09-14)** had already named the sprite (`MskMap16\THREAT01.X8`, image map 525),
+found its single draw site (`COverlay::DoThreat`), measured the quad it occupies
+(`(30.0,16.9)-(330.0,316.9)` at 1920×1080 — the same bbox this sprint's pixel probe reports), counted
+its 33 blips, and measured the art as a two-tone stencil with an alpha plane. **S1 and S2 of this pass
+spent five 260-second flights eliminating shadows, the sun, sprite clouds, layer clouds and the
+cockpit — a question that was closed the day before.**
+
+The tell was in the tree and I walked past it twice: `BOB_NO_ACSHADOW` carried an R3.9 comment dated
+2026-09-03, and `BOB_PIXPROBE` carried an R3.9 comment saying *"four sprints of R3.9 reasoned from the
+shape of a grey ellipse and got the wrong answer twice"*. **Before designing an experiment, grep the
+source for the ITEM'S OWN NAME** — this repo writes its sprint history into the code.
+
+**WHAT IS ACTUALLY NEW — S8 asked for the uploaded texels; here they are.** `BOB_PIXPROBE` dumps the
+bound texture, and rendered it is unambiguous:
+
+* **a flat tan ellipse on a solid green field**, 128×128 — exactly the "distinct=2" stencil S8
+  measured at load time, now visible as a picture rather than as a histogram.
+
+⭐ **And that settles S7/S8's fork.** S8's branch *"if the key is not honoured the whole texture paints
+as an opaque 300×300 panel"* is **not** what happens: on screen the green field is gone and the sky
+shows through it, so the transparency IS honoured. **What paints is the stencil's second tone** — the
+ellipse itself. The PO's grey shape is not a missing key; it is the scope's backing shape rendering
+with none of the detail the alpha plane is supposed to add.
+
+**LEADING CANDIDATE for that, stated as a candidate:** the uploaded surface has **no alpha channel**.
+Every 128×128 upload in the run reports either `A=0x0000` (RGB565) or `A=0xf000` (ARGB4444), and the
+dumped THREAT01 texels decode cleanly as 565 — which a 4444 buffer could not. The loader says
+`alpha=yes` for this map. ⚠️ **Not proven**, because the join failed: see below.
+
+⚠️ **Two instrument faults found and fixed on the way.**
+* `[texfmt]` printed no surface pointer, so it could not be joined to `[pixprobe]`'s `tex=`. Added.
+* `[texfmt]` was capped at **24 lines** and went quiet long before this sprite's upload — the
+  full-table-goes-silent failure this project has hit three times. The cap is now
+  `BOB_TRACE_TEXFMT=<n>`.
+* **And even uncapped (463 lines) no `[texfmt]` line matches the pointer the draw binds.** So the
+  surface the draw uses is not the surface that path uploads, and *that* is the next thread —
+  `g_devTex[0]` at draw time vs `s` at upload time may be different objects around the same GL
+  texture.
+
+**S4:** join them. Print the GL texture NAME (`s->glTex`) in both traces instead of the surface
+pointer — a GL name is the same integer on both sides of the hop — and then read THREAT01's alpha
+mask directly. If it is `A=0x0000`, the fix is at the surface build, not in `DoThreat`.
+
+**R3.9: 3 sprints this pass.**
