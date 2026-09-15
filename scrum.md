@@ -5743,3 +5743,46 @@ it does not and the 109 has no mirror to show.
 
 **ASPECT-1: 8 sprints. A switch that was never on is the reason two items' worth of measurements
 need re-taking.**
+
+## ASPECT-1 S9 (Opus 5, 2026-09-15) — ⛔⛔ **`docreatemirror` is never REACHED: the Bf 109 has no modelled mirror.** The disc is painted artwork, and R3.4 is refuted
+
+S8 fixed the switch and `UseMirror` still traced zero calls, leaving two readings: the opcode is
+absent from the 109's cockpit shape, or it is present and the gate is still false. S9 traces the
+opcode's **entry, outside its gate**.
+
+⛔ **Nothing. A full real-GL campaign flight, 26 frames dumped, Reflections confirmed on —**
+
+    [boot] BOB_MIRROR: reflections/mirror (COCK3D_SKYIMAGES) enabled (campaign path)
+    (no [aspect] docreatemirror REACHED line, ever)
+
+**The opcode is not in the shape.** Which closes the whole family at once:
+
+| trace | result | reading |
+|---|---|---|
+| `docreatemirror` entry (ungated) | **0 calls** | the 109's cockpit shape has no mirror object |
+| `UseMirror` | 0 calls | consequence — only `docreatemirror` calls it |
+| `dodrawreflectpoly` | 0 calls | consequence — no reflection polygon either |
+| the disc on screen | 128x128 **masked imagemap** on a quad | **painted cockpit artwork** |
+
+🔴 **So R3.4 is REFUTED, not merely in doubt.** Its S5 closed *"the mirror shows a live horizon, and
+the port now matches the gold"* on content statistics — ~1,000 distinct colours, sd ~35 — taken from
+**a painted texture in an aircraft that has no mirror**. Its own numbers carried the warning: our
+frame-to-frame delta was **3–11** against the gold's **8–73**, which S5 explained as a scenario
+difference. The simpler explanation was the right one. **R3.4 goes back to open.**
+
+⚠️ **And what the gold shows is now the interesting question.** The gold's 109 mirror content swings
+by a factor of two across frames (mean 91 → 200), which is a live reflection, not paint under
+changing light. If the original's 109 has a working mirror and ours has no mirror opcode at all,
+then **either the shape we load is not the one the original loads** (an LOD, a variant, or a
+cockpit-file mismatch) **or the opcode is being skipped by our shape interpreter**. That is a
+data-identity question, and it is the first thing S10 should settle — by dumping the opcode histogram
+of the cockpit shape we load and looking for the mirror opcode's byte at all.
+
+⭐ **What survives from this item's nine sprints, all measured:** the projection is correct and
+matches the viewport; the display mode is irrelevant; the vertices arrive pre-transformed in final
+screen pixels; the gunsight is round while the mirror quad is an exact 192.000 x 144.000; and the
+mirror is painted art, not a reflection. **The remaining question is a data one, not a rendering
+one.**
+
+**ASPECT-1: 9 sprints, 5 in this pass — OVER THE CAP. Parked here deliberately**, with R3.4 re-opened
+and S10 named as a data-identity check rather than more rendering work.

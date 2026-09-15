@@ -12638,6 +12638,15 @@ void shape::doanimtransform(UByte *& instr_ptr)
 //------------------------------------------------------------------------------
 void shape::docreatemirror(UByte *& instr_ptr)
 {
+	/* ASPECT-1 S9 (2026-09-15): is this opcode in the 109's cockpit shape AT ALL? S8 found
+	   UseMirror never called even with Reflections genuinely on (the BOB_MIRROR switch had never
+	   applied on the campaign path until S8 fixed it), which leaves two readings: the opcode is
+	   absent from the shape, or it is present and the gate below is still false. Trace the ENTRY,
+	   outside the gate, so the two can be told apart. BOB_TRACE_ASPECT=1. */
+	if (getenv("BOB_TRACE_ASPECT")) { static int once = 0; if (!once++) {
+		fprintf(stderr, "[aspect] docreatemirror REACHED (SKYIMAGES=%d)\n",
+		        (int)(Save_Data.cockpit3Ddetail[COCK3D_SKYIMAGES] ? 1 : 0));
+		fflush(stderr); } }
 	if (Save_Data.cockpit3Ddetail[COCK3D_SKYIMAGES])			//RJS 21Sep00
 	{
 		DOCREATEMIRROR_PTR	ptr = (DOCREATEMIRROR_PTR )instr_ptr;
