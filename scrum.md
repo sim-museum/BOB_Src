@@ -5049,3 +5049,44 @@ mathematically invisible while every trace upstream — flag, switch, branch, ma
 which is exactly the shape of this item's whole history.
 
 **R3.7: 3 sprints this pass.**
+
+## R3.7 S4 this pass (Opus 5, 2026-09-15) — the alpha theory dies too: `globAlpha = 255`, and LF_LIGHTSOURCE geometry is drawn in QUANTITY
+
+S3 reduced the flash to "a white, alpha-blended polygon whose visibility is `globAlpha` and the blend
+state". S4 measures both, and neither is the fault.
+
+**New `BOB_TRACE_LSPOLY` prints every vertex coloured by the `LF_LIGHTSOURCE` path** — the one the
+flash's material selects:
+
+    [lspoly] LF_LIGHTSOURCE vertex 1 at (  6.6,  11.8, 72.7501) globAlpha=255
+    [lspoly] LF_LIGHTSOURCE vertex 2 at (  6.6, -12.8, 72.7507) globAlpha=255
+    [lspoly] LF_LIGHTSOURCE vertex 3 at ( -6.6, -12.8, 72.7507) globAlpha=255
+    [lspoly] LF_LIGHTSOURCE vertex 4 at ( -6.6,  11.8, 72.7501) globAlpha=255
+    [lspoly] LF_LIGHTSOURCE vertex 5 at ( -1.0,   1.0,  0.0000) globAlpha=255
+    …
+    128 report lines (the trace prints the first 12, then every 5,000th)
+
+⛔ **`globAlpha` is 255 — fully opaque.** The flash's polygons are not transparent. That kills S3's
+candidate as cleanly as S3 killed S2's.
+
+⭐ **And LF_LIGHTSOURCE geometry is emitted in bulk** — the every-5,000th counter reaches 128 lines in
+one 200 s sortie, i.e. of order half a million vertices. **So this lighting mode is used by far more
+than the muzzle flash** (lights, tracers, the sun, HUD elements all plausibly share it), which is why
+counting it as a whole cannot answer the question. *The first quad it sees is a clean
+(±6.6, −12.8…11.8) rectangle at z ≈ 72.75 — the right shape and place for a flash billboard, but
+nothing here proves it IS one.*
+
+**Where that leaves the item after four sprints this pass:** the flag is set, the switch tests it, the
+branch is taken, the guarded instruction is `dosetmaterialtype`, it requests `LF_LIGHTSOURCE`, the
+request is not clamped, the mode is implemented, the geometry is opaque, and vertices do flow through
+that path. **Every link in the chain is now measured and sound** — which means the fault is in
+something none of these instruments scopes to: WHICH geometry belongs to the flash, and where it
+lands.
+
+**S5 (next pass), and it is ~10 lines:** `g_bob_flash_guard_hot` already marks the guarded
+`dosetmaterialtype`. Latch a *"flash material in force"* flag there, clear it at the next material
+change or `doret`, and count/locate **only** the LF_LIGHTSOURCE vertices emitted while it is set. That
+turns half a million vertices into the handful that are the flash, with their screen positions — one
+flight, one number.
+
+**R3.7: 4 sprints this pass — AT THE CAP.**

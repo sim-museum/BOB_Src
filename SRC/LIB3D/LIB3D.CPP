@@ -10652,6 +10652,19 @@ inline void Lib3D::SetVertexCol( SVertex* sVertex, const LIGHTFLAG localLF )
 		case LF_LIGHTSOURCE:
 			sVertex->color=0xAAFFFFFF;  // the AA is the alpha - about to be set
 			SetColAlpha( sVertex->color, globAlpha );
+			/* R3.7 S4: DOES ANY GEOMETRY ACTUALLY COME THROUGH HERE? The muzzle flash sets this
+			   lighting mode (measured) and the flash is not in the picture, so the next question is
+			   whether vertices are coloured by it at all -- and if so, where they land on screen.
+			   Counted, with the first few positions printed. BOB_TRACE_LSPOLY=1. */
+			if (getenv("BOB_TRACE_LSPOLY")) {
+				static long n = 0;
+				if (n++ < 12)
+					fprintf(stderr, "[lspoly] LF_LIGHTSOURCE vertex %ld at (%.1f, %.1f, %.4f) globAlpha=%u\n",
+					        n, (double)sVertex->x, (double)sVertex->y, (double)sVertex->z,
+					        (unsigned)globAlpha), fflush(stderr);
+				else if ((n % 5000) == 0)
+					fprintf(stderr, "[lspoly] %ld LF_LIGHTSOURCE vertices so far\n", n), fflush(stderr);
+			}
 
 			sVertex->specular=0x00000000;
 		break;
