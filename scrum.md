@@ -5090,3 +5090,38 @@ turns half a million vertices into the handful that are the flash, with their sc
 flight, one number.
 
 **R3.7: 4 sprints this pass — AT THE CAP.**
+
+## R3.6 S4 (Opus 5, 2026-09-15) — ✅ VERIFIED on the current build: the system box's close button draws `ICON_CROSS`, and I re-made the exact misreading the fix was written to prevent
+
+R3.6's three earlier sprints ended with a fix keyed on **(dialog, control)** rather than control id
+alone, because *"control ids are only unique WITHIN a dialog, and the SYSTEM BOX (dlgId 823) numbers
+its buttons 1001/1002/1003 — the same ids the files toolbar uses"*. S4 checks that on the build that
+exists now.
+
+**New `[btnart]` / `[btnall]` traces** print the dialog AND the control for every hosted button —
+matched or not, because a trace that speaks only on a match cannot show a control the table misses.
+
+    [sysbox] panel 34x50 DLU -> 51x81 px at (965,8): 3 controls drawn
+    [btnall] dlg=823 ctrl=1001        [btnall] dlg=823 ctrl=1002        [btnall] dlg=823 ctrl=1003
+    [btnart] dlg=823 ctrl=1003 -> ICON_CROSS = 0x10022
+
+⭐ **The system box is dialog 823, it hosts exactly the three controls the fix expects, and its close
+button takes the real X.** 1001 and 1002 take no icon, deliberately — the sprite sheet has no
+TOOLBAR_HIDE or SCREENSIZE equivalent and *"guessing a near-match is exactly what produced this
+defect"*. **R3.6 is fixed and now verified rather than assumed.**
+
+⚠️ **AND I WALKED STRAIGHT INTO THE ORIGINAL MISREADING.** My first instrument printed
+`m_NormalFileNum` at the DRAW, with no dialog id. Two values appeared right after the sysbox paint
+line — `0x10004` and `0x10002`, i.e. `ICON_ZOOM` and `ICON_SAVE` — and I read them as the system
+box's, which is exactly the PO's reported symptom. They are the **files toolbar's** (dlg 942,
+ctrl 1003/1004/1005). **An art number without its dialog is unattributable in this codebase**, and
+that is the very sentence the fix's own comment opens with.
+
+**Two process notes, and this is the second time today:**
+* **Read the SPRINT NOTES, not the backlog row.** R3.6's row still narrates the investigation
+  ("the art-guard suspect is eliminated…"); the fix landed three sprints later. R3.9 cost five
+  flights to the same mistake this morning.
+* **An instrument that identifies a thing by one half of its key will confirm whatever you already
+  believe.** The trace that settled this prints both halves, for every control, matched or not.
+
+**R3.6: verified. The item can be closed on this evidence.**

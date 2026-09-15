@@ -87,10 +87,28 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
             {823,1003,"ICON_CROSS"},
         };
         int forced = 0;
+        /* R3.6 verification: print EVERY hosted button's (dlg,id), matched or not. A trace that
+           speaks only when the table matches cannot show a control the table MISSES -- and the
+           whole defect is about a control whose (dlg,id) pair the table may not name. */
+        if (getenv("BOB_TRACE_BTNART")) {
+            static int seen[256][2]; static int nseen = 0; int dup = 0;
+            for (int i = 0; i < nseen; i++) if (seen[i][0]==dlgId && seen[i][1]==ctrlId) { dup=1; break; }
+            if (!dup && nseen < 256) { seen[nseen][0]=dlgId; seen[nseen][1]=ctrlId; nseen++;
+                fprintf(stderr, "[btnall] dlg=%d ctrl=%d\n", dlgId, ctrlId); fflush(stderr); }
+        }
         for (unsigned k = 0; k < sizeof kBtnIcon/sizeof kBtnIcon[0]; k++)
             if (kBtnIcon[k].id == ctrlId &&
                 (kBtnIcon[k].dlg == dlgId || getenv("BOB_BTNICON_ANYDLG"))) {
                 int pv = bob_icon_pagenum(kBtnIcon[k].icon);
+                /* R3.6 verification (2026-09-15): say WHICH (dlg,id) took WHICH icon. The fix keys
+                   on the pair because ids repeat across dialogs; without printing both, a trace of
+                   the resulting art number cannot tell the system box's button from the files
+                   toolbar's button with the same id -- which is exactly how this defect was
+                   misdiagnosed in the first place. BOB_TRACE_BTNART=1. */
+                if (getenv("BOB_TRACE_BTNART"))
+                    fprintf(stderr, "[btnart] dlg=%d ctrl=%d -> %s = 0x%x%s\n",
+                            dlgId, ctrlId, kBtnIcon[k].icon, pv, pv ? "" : "  <-- NOT IN THE SHEET"),
+                    fflush(stderr);
                 if (pv) { SetNormalFileNum(pv); forced = 1; } break; }
         char art[48]; int got = bob_dlg_artname(dlgId, ctrlId, art, sizeof art);
         if (!forced && got && art[0]) {

@@ -460,6 +460,22 @@ void CRButtonCtrl::OnDraw(
 		}
 	}
 	long filenum=m_NormalFileNum;
+#ifdef BOB_LINUX
+	/* R3.6 S1 (2026-09-15): WHICH ART does each hosted button ask for? The item has established
+	   that the system box's position and hit-test are correct and only the PICTURE is wrong, and
+	   that `DIALCLASS::OnGetFile` is never called (ON_MESSAGE is a no-op here), so the icon can
+	   only be this control's own `m_NormalFileNum`. Print it per control, once each.
+	   BOB_TRACE_BTNART=1. */
+	if (getenv("BOB_TRACE_BTNART")) {
+		static long seen[64]; static int nseen = 0; int dup = 0;
+		for (int i = 0; i < nseen; i++) if (seen[i] == (long)m_NormalFileNum) { dup = 1; break; }
+		if (!dup && nseen < 64) { seen[nseen++] = (long)m_NormalFileNum;
+			fprintf(stderr, "[btnart] button normalFileNum=0x%lx (%ld) close=%d tick=%d\n",
+			        (unsigned long)m_NormalFileNum, (long)m_NormalFileNum,
+			        (int)m_bCloseButton, (int)m_bTickButton);
+			fflush(stderr); }
+	}
+#endif
 	if (filenum==FIL_NULL)
 	{
 		m_BitMapWithTransparencies=TRUE;
