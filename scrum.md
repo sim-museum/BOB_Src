@@ -5224,3 +5224,63 @@ higher-contrast than the gold's, which is what 192 px of the same art looks like
 not claimed as a defect either. (3) Nothing was changed in the code this sprint.
 
 **R3.4: closed after 5 sprints (4 on 2026-09-03 + this one), by evidence rather than by a fix.**
+
+## ASPECT-1 S1 (Opus 5, 2026-09-15) — ⛔ **the 3D projection is INNOCENT**: it matches the GL viewport exactly, so the 1.333 stretch is somewhere else — and the measurement is sharper than the item was filed with
+
+ASPECT-1 was filed (R3.4 S5, today) on a measurement that has now been repeated on a fresh build: the
+Bf 109's round rear-view mirror is **50x50 px (w/h 1.000)** in the gold under Wine at 800x600 and
+**192x144 (w/h 1.333)** in this port at 1920x1080, in every frame of both. The filed suspicion was
+that a 4:3 projection is rasterised into a 16:9 window.
+
+**S1 printed the projection's own aspect beside the surface it is drawn into** (`BOB_TRACE_ASPECT`,
+in `Lib3D::_SetProjectionMatrix`, keyed on the (aspect, viewport) pair with a TABLE FULL notice):
+
+    [aspect] projection aspect=1.7778 (Lib3D aspectRatio=1.7778)  GL viewport 1920x1080 = 1.7778
+             -> horizontal stretch 1.0000
+
+⛔ **1.0000. The projection is right.** `Lib3D::aspectRatio` is `dwRenderWidth/dwRenderHeight`
+(`LIB3D.CPP:3712`) and it tracks the mode change; `_SetProjectionMatrix` builds `h = aspect*w` with
+`_11 = w`, `_22 = h`, which is the correct widescreen matrix. **A round object drawn through this
+projection comes out round.** The filed mechanism is eliminated.
+
+⚠️ **And the file the item's analysis leaned on is DEAD CODE.** `SRC/HARDWARE/WIN3D.CPP` — the
+`aspectRatio = FoV*(window_height/window_width)` with the integer `virtualXscale`, and
+`viewdata.scalex = window_width/2` — **is not in the build**: `SRC/HARDWARE/CMakeLists.txt` compiles
+only `_HARD.CPP`, and its own header says the legacy `Hardwin` files are commented out of the unity.
+The same is true of `MATRIX.CPP`'s `POLYGON.viewdata.scalex` screen transform, which sits inside a
+`/*DEAD … DEAD*/` block. I wrote a trace into `WIN3D.CPP` first and it never compiled — reverted.
+[[stale-duplicate-sources]] again, and the FULLW/FULLH 4:3 reasoning in ASPECT-1's backlog row is
+about code that does not run.
+
+⭐ **The measurement, restated properly, and it says more than "stretched".** Relative to the window:
+
+| | disc w | disc h | % of width | % of height |
+|---|---|---|---|---|
+| gold, 800x600 | 50 | 50 | 6.25% | 8.33% |
+| port, 1920x1080 | 192 | 144 | 10.00% | 13.33% |
+
+A 4:3 picture scaled to fill 1920x1080 would put the disc at **120x90**. The port draws **192x144** —
+the same 1.333 distortion **and 1.6x larger in both dimensions**. So the port's cockpit is both
+magnified and stretched with respect to the gold's, which is not what a wrong projection aspect does.
+
+**S2, sharply.** The mirror is cockpit geometry, and R3.2 established that the cockpit reaches the
+draw path as **screen-space `XYZRHW` vertices** (that is why the depth sort could delete instrument
+bezels by their RHW z). Screen-space vertices do not pass through the projection matrix at all, so
+their x and y come from whatever the cockpit path computes — and the one live candidate is the
+cockpit's own layout against a fixed canvas. **Print, for one frame, the screen coordinates of the
+mirror quad's four vertices together with the window size**, in `draw_fvf`/`DEV_DrawIndexedPrimitiveVB`
+keyed on the 2D flag. If they are authored against 1024x768 and scaled per-axis to 1920x1080, the
+scale ratio is 1.875/1.40625 = **1.3333**, which is the number — and 1024x768 is exactly the mode
+this port boots in before the campaign resolution changes it.
+
+⚠️ **The A/B arm of this sprint did NOT work, and it must not be re-used as written.**
+`BOB_FORCE_MODE=1440x1080` applies at startup and the campaign resolution immediately overrides it:
+
+    [vid] BOB_FORCE_MODE -> 1440x1080
+    [vid] ChangeDisplaySettings 1440x1080 -> 1920x1080
+
+Both arms therefore flew at 1920x1080 and both measure 192x144 — a control that controlled nothing. A
+4:3 arm has to pin the CAMPAIGN resolution, not the boot mode.
+
+**ASPECT-1: 1 sprint. The filed cause is eliminated by measurement and the search has moved to the
+2D cockpit path.**

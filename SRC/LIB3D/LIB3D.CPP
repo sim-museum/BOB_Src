@@ -6011,8 +6011,44 @@ HRESULT Lib3D::SetProjectionMatrix(const Angles& fov,const D3DVALUE& Zni,const D
 	return _SetProjectionMatrix( fov, aspectRatio, Zni, Zfi, noFog );
 }
 
+extern "C" void bob_gdi_screen_size(int*, int*);   /* ASPECT-1 S1: the real GL surface size */
 inline HRESULT Lib3D::_SetProjectionMatrix(const Angles& fov,const D3DVALUE& aspect,const D3DVALUE& Zni,const D3DVALUE& Zfi,const bool noFog/* = false*/)
 {
+
+	/* ASPECT-1 S1 (2026-09-15). MEASURED (R3.4 S5): the Bf 109's round rear-view mirror is 50x50 px
+	   (w/h 1.000) in the gold under Wine at 800x600 and 192x144 (w/h 1.333) in this port at
+	   1920x1080, in every frame of both. 1.3333 is exactly (16/9)/(4/3).
+
+	   `aspect` reaches the projection as `h = aspect*w`, `_11 = w`, `_22 = h`, and the 3-arg
+	   overload supplies Lib3D's own `aspectRatio`, which is assigned ONCE at device creation
+	   (LIB3D.CPP:3712) as dwRenderWidth/dwRenderHeight. The flight log shows the window going
+	   `1024x768 -> 1920x1080` through ChangeDisplaySettings AFTER that point. If aspectRatio is
+	   still 1.3333 while the GL viewport is 1.7778 wide, the picture is stretched by exactly
+	   1.7778/1.3333 = 1.3333 -- the measured number.
+
+	   So print the projection's own aspect beside the surface it is actually drawn into. Keyed on
+	   the pair so it cannot flood, and it says TABLE FULL rather than going quiet (the R3.8/R3.9
+	   lesson). BOB_TRACE_ASPECT=1. */
+	if (getenv("BOB_TRACE_ASPECT")) {
+		int vw = 0, vh = 0; bob_gdi_screen_size(&vw, &vh);
+		static struct { float a; int w, h; } seen[16]; static int nseen = 0; static int full = 0;
+		int known = 0;
+		for (int i = 0; i < nseen; i++)
+			if (seen[i].w == vw && seen[i].h == vh && seen[i].a == (float)aspect) { known = 1; break; }
+		if (!known) {
+			if (nseen < 16) {
+				seen[nseen].a = (float)aspect; seen[nseen].w = vw; seen[nseen].h = vh; nseen++;
+				fprintf(stderr, "[aspect] projection aspect=%.4f (Lib3D aspectRatio=%.4f)"
+				        "  GL viewport %dx%d = %.4f  -> horizontal stretch %.4f\n",
+				        (double)aspect, (double)aspectRatio,
+				        vw, vh, vh ? (double)vw/(double)vh : 0.0,
+				        (vh && aspect != 0.f) ? ((double)vw/(double)vh)/(double)aspect : 0.0);
+			} else if (!full++) {
+				fprintf(stderr, "[aspect] TABLE FULL -- further distinct (aspect, viewport) pairs are not reported\n");
+			}
+			fflush(stderr);
+		}
+	}
 
 	R3DMATRIX_VAL Zn = Zni;
 	R3DMATRIX_VAL Zf = Zfi;
