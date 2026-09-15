@@ -5424,3 +5424,41 @@ did for the loader screen. **`BOB_PIXPROBE_BT=1` with the same probe point is th
 layout by a single factor and centre it, rather than per-axis.
 
 **ASPECT-1: 4 sprints — AT THE CAP for this pass, and the item is one backtrace from its fix site.**
+
+## R3.8 S1 (Opus 5, 2026-09-15) — the in-flight A/B against Wine `bob.exe` finally EXISTS, and its first pass finds a new user-facing defect and a constraint that ASPECT-1 needs
+
+R3.8 is *"A/B each in-flight view vs Wine `bob.exe`"* and had never been started because there was no
+in-flight gold. There is now: `~/gold standard/bob/bob_convoy_campaign.mp4` (found for R3.4 today) is
+the real game flying the same German/Luftwaffe Convoys campaign our `tools/bob_realgl_flight.sh`
+flies, in the same Bf 109 cockpit. First sweep, gold at 800x600 against ours at 1920x1080, matched on
+"straight and level at altitude over cloud":
+
+| feature | gold | port | verdict |
+|---|---|---|---|
+| rear-view mirror | round, 50x50 px (6.3% of view width) | **192x145, w/h 1.32** | ASPECT-1 |
+| mirror CONTENT | sky / horizon / ground, ~1,100 colours, sd 33–42 | sky / horizon / ground, ~1,000 colours, sd ~35 | ✅ parity (R3.4) |
+| **gunsight reticle** | a **soft ivory painted ring** with four thick radial ticks, on the sight glass, ~39x42 px (**4.9%** of view width) | a **thin bright-orange vector circle** with four thin crosshairs, 141x142 (**7.3%** of view width) | 🔴 **different object — filed as SIGHT-1** |
+
+🔴 **SIGHT-1 (new, 5 pts): the gunsight reticle is the wrong thing, the wrong colour and half again
+too big.** `doc/reference/sight-gold-vs-port-2026-09-15.png` is the pair. The original's sight is
+**artwork on the reflector glass** — ivory, soft-edged, thick ticks; ours is **line-drawn**, crisp,
+bright orange, and 1.5x larger as a fraction of the view. This is on screen in every sortie and it is
+what the player aims with, so it is a first-class parity defect rather than a cosmetic one.
+**S1 for that item:** find whether the port draws it because the reflector's artwork failed to load
+(in which case this is a texture/imagemap bug of the same family as R3.4's mirror) or because a
+compat path substitutes a drawn graticule by design.
+
+⚠️ **And a constraint ASPECT-1 must have before its S5.** The reticle in OUR build measures
+**141 x 142 — round to within a pixel — in the same frame in which the mirror measures 192 x 145.**
+Two objects a few degrees apart in the same cockpit, one round and one 1.32x wide. **So there is no
+global cockpit stretch**, and ASPECT-1 S3's "a fixed 4:3 canvas presented on a 16:9 drawable" cannot
+be the whole story.
+
+⚠️ **But the reticle is NOT a clean control either**, and saying so matters: it is a different object
+from the gold's, drawn by a line path rather than as a textured quad, so it may be produced in a
+square space and be round for reasons that say nothing about the cockpit's geometry.
+**ASPECT-1 S5 needs a round object that is definitely cockpit MODEL geometry** — an instrument dial
+bezel is the obvious candidate, and `BOB_PIXPROBE` at its centre names its quad the same way it named
+the mirror's.
+
+**R3.8: 1 sprint. The gold comparison it was filed for is now runnable, and it paid on its first pass.**
