@@ -1568,6 +1568,7 @@ void shape::dopoint(UByte *& instr_ptr)
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 #ifdef BOB_LINUX
+int g_bob_flash_guard_hot = 0;   /* R3.7 S3: set by the flash doswitch, consumed by dosetmaterialtype */
 /* R3.7 S9: EVERY anim-read site, not just one. S8 instrumented `animoffset` (3DCOM.CPP:2013) and
    found only offset 191 addressed in a firing sortie, with the muzzle-flash byte at 141 -- but said
    so with its scope stated: that is one of several places the interpreter indexes GlobalAdptr.
@@ -3877,6 +3878,12 @@ void shape::doquikpoly(UByte *& instr_ptr)
 	/* R3.7 S2 (this pass): what does the TAKEN branch lead to? The interpreter's loop reads
 	   `*instr_ptr` as the next opcode, so this is the instruction the muzzle-flash switch guards.
 	   Printed once per distinct opcode for the 141/bit-2 switch only. BOB_TRACE_FLASHBIT=1. */
+	/* R3.7 S3: mark the NEXT instruction as "guarded by the muzzle-flash switch", so
+	   dosetmaterialtype can say what the flash asks the lighting for. Set only when the branch was
+	   TAKEN (the interpreter is about to execute the guarded instruction). */
+	if (ptr->animoff == 141 && ptr->bitoffset == 2 && ptr->nobits
+	    && ((GlobalAdptr[ptr->animoff] >> 2) & 1) == (ULong)ptr->value)
+		g_bob_flash_guard_hot = 1;
 	if (ptr->animoff == 141 && ptr->bitoffset == 2 && getenv("BOB_TRACE_FLASHBIT")) {
 		static unsigned char opseen[256]; 
 		unsigned op = (unsigned)*instr_ptr;
@@ -12346,6 +12353,22 @@ void shape::dosetmaterialtype(UByte *& instr_ptr)
 	DOSETMATERIALTYPE_PTR	ptr = (DOSETMATERIALTYPE_PTR)instr_ptr;
 
 	instr_ptr += sizeof(DOSETMATERIALTYPE);
+#ifdef BOB_LINUX
+	/* R3.7 S3: what does the MUZZLE FLASH ask the lighting for? This instruction is the one the
+	   flash's doswitch guards (S2), and all it does is SetObjectLighting(GetLightingType(flags)) --
+	   whose first act is to clamp the request down to masterLightFlag. Print the request here and
+	   let BOB_TRACE_LIGHTCLAMP (LIB3D.CPP) report whether the clamp bit. */
+	if (g_bob_flash_guard_hot) {
+		g_bob_flash_guard_hot = 0;
+		if (getenv("BOB_TRACE_FLASHBIT")) {
+			static int said = 0;
+			if (said < 6) { said++;
+				fprintf(stderr, "[flashbit] guarded dosetmaterialtype: flags=0x%lx -> lighting type %d\n",
+				        (unsigned long)ptr->flags, (int)GetLightingType(ptr->flags));
+				fflush(stderr); }
+		}
+	}
+#endif
 
 	if (	(ptr->flags == STEXT_REFLECTIVE)							//RJS 30Aug00
 		&&	!Save_Data.cockpit3Ddetail[COCK3D_SKYIMAGES]	)

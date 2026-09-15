@@ -5007,3 +5007,45 @@ agree, the flash's material is being set correctly and the search moves to what 
 polygons draw with it.
 
 **R3.7: 2 sprints this pass.**
+
+## R3.7 S3 this pass (Opus 5, 2026-09-15) — ⛔ the CLAMP is innocent, and the flash turns out to be an **alpha-blended white polygon**
+
+S2 named `SetObjectLighting`'s `if (lf > masterLightFlag) lf = masterLightFlag` as a candidate: a
+silent downgrade would leave the flash's polygons in the wrong material. S3 measured it, and it is
+not the defect.
+
+**Two prints, one flight** (`BOB_TRACE_FLASHBIT` + new `BOB_TRACE_LIGHTCLAMP`):
+
+    [flashbit] guarded dosetmaterialtype: flags=0x4 -> lighting type 1      (x6)
+    (no [lightclamp] lines at all)
+
+⛔ **The clamp never fired.** `masterLightFlag` is initialised to `LF_SPECULAR` (7) in
+`SetDriverAndMode`, the flash asks for **1**, and 1 < 7 — so the request is applied unchanged. S2's
+candidate is dead; killed in one run rather than argued about.
+
+⭐ **And lighting type 1 is `LF_LIGHTSOURCE`** (`LIB3D.H:310` — `LF_ALPHA, LF_LIGHTSOURCE, LF_VERTEX,
+LF_FONT, LF_DEPTH, LF_AMBIENT, LF_LIGHTING, LF_SPECULAR`). That is exactly the right request for a
+muzzle flash: *this object is a light source, do not shade it*.
+
+⭐⭐ **What the port then does with it is the new thread.** `LF_LIGHTSOURCE` is implemented, in two
+places, and both say the same thing:
+
+    case LF_LIGHTSOURCE:                          // LIB3D.CPP:10652
+        sVertex->color = 0xAAFFFFFF;              // white, alpha 0xAA...
+        SetColAlpha( sVertex->color, globAlpha ); // ...immediately replaced by globAlpha
+        sVertex->specular = 0x00000000;
+
+    if (lightflag == LF_LIGHTSOURCE)              // LIB3D.CPP:12014
+        sVertex->color = 0xAAFFFFFF;
+    …
+    sVertex->color.alpha = globAlpha;
+
+**So the muzzle flash is a WHITE, ALPHA-BLENDED polygon whose visibility is `globAlpha` and the blend
+state.** Not a mesh, not a texture, not a lighting mode that got downgraded — an alpha value.
+
+**S4, and it is two numbers:** print `globAlpha` at the moment the flash's polys are built, and check
+what the GL shim has bound for blending on that draw. `globAlpha = 0` would make the flash
+mathematically invisible while every trace upstream — flag, switch, branch, material — reads correct,
+which is exactly the shape of this item's whole history.
+
+**R3.7: 3 sprints this pass.**

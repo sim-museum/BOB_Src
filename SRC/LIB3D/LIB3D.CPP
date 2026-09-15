@@ -6291,8 +6291,22 @@ HRESULT Lib3D::SetObjectLighting(LIGHTFLAG& lf)
 		INT3;
 #endif
 
+	/* R3.7 S3: does this clamp ever bite? A shape asking for a brighter lighting mode than the
+	   current master is silently downgraded here -- which for an effect whose whole appearance IS
+	   its lighting mode (the muzzle flash, dosetmaterialtype) would be invisible everywhere else.
+	   BOB_TRACE_LIGHTCLAMP=1 reports each distinct (requested, master) pair once. */
 	if ( lf>masterLightFlag )
+	{
+		if (getenv("BOB_TRACE_LIGHTCLAMP")) {
+			static unsigned char seen[16][16];
+			int r = (int)lf & 15, m = (int)masterLightFlag & 15;
+			if (!seen[r][m]) { seen[r][m] = 1;
+				fprintf(stderr, "[lightclamp] requested %d > master %d -> applied %d\n",
+				        (int)lf, (int)masterLightFlag, (int)masterLightFlag);
+				fflush(stderr); }
+		}
 		lf = masterLightFlag;
+	}
 
 	if ( lf!=lightflag )
 		NextLmFlag();
