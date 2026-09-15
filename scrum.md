@@ -4473,3 +4473,43 @@ leave it as the original behaves — is the whole of what is left.
 
 **R3.7: 4 sprints this pass — AT THE CAP. Tracers proven working, the flash proven absent from the
 picture, and its absence now being proven at the mechanism rather than in a text search.**
+
+## R3.8 S1 this pass (Opus 5, 2026-09-14) — the pre-3D screen hosts 22 controls and draws 12: **10 are lost to FILTERS, not to an empty list**
+
+The backlog entry sets the fork: *"zero rows means the list was never populated; rows present with a
+drawn rect means it is populated and mis-drawn. Those are different fixes."* Ran the campaign recipe
+to the pre-3D screen with `BOB_TRACE_SYSBOX` and `BOB_TRACE_SKIP`, and the answer is **neither**.
+
+    [skip] dlgId=1164 hosted-for-this-dialog=22 DREW=12 | not-visible=6 not-in-template=4 ...
+    [skip] dlgId=1032 hosted-for-this-dialog=184 DREW=156 | dead-sweep-row=11 not-in-template=17 ...
+
+⭐ **The pre-3D dialog (1164) hosts 22 controls and paints 12.** Six are skipped because `visible` is
+false and **four because the dialog TEMPLATE has no entry for them**, so the port has no rect to draw
+them in. The list is populated; a filter is eating it.
+
+**What the drawn twelve are** (`BOB_TRACE_SYSBOX`, DLU rects):
+
+    1481  (5,42,449,86)      a 449x86 pane -- the list's own frame
+    2146  (67,15,80,17)      a title
+    2200  (49,134,96,16)     2201 (5,153) 2202 (105,152)
+    2203  (370,138,96,16)    2204 (379,146)  2205 (389,155)  2206 (398,164)
+    2207  (407,172,96,16)    2208 (417,181)  2209 (426,189)
+
+⭐ **2203–2209 are seven 96×16 rows stepping (+9,+8) each** — a diagonal cascade, which is what a
+squadron drawn in echelon looks like, and 96×16 DLU is a text row. **This is the aircraft list, and
+it is being hosted with sensible geometry.**
+
+⚠️ **The 17 + 4 "not-in-template" losses are the thread**, and they are not unique to this screen —
+the campaign map (1032) loses 17 the same way. A control the game creates but the dialog template
+does not describe gets no rect and is dropped silently. **That is a systematic 21-control loss across
+two screens in one run.**
+
+*(Recorded because it has bitten before: an earlier attempt at this item reported "hosts zero
+controls" — an artefact of a 64-entry dedup table that filled and went quiet. It hosts 22.)*
+
+**S2:** the skip counters COUNT but do not NAME. Print the `ctrlId` of every skipped control with its
+reason, then compare the four "not-in-template" ids on 1164 against the aircraft rows. If the four
+are rows 2210+, the list is being truncated by a missing template entry and the fix is in the
+template parse; if they are something else, the visible-flag six are the next suspects.
+
+**R3.8: 1 sprint this pass. The item's central question is answered with a number.**
