@@ -4764,3 +4764,51 @@ report's word "drifting".
 
 **R3.2: 4 sprints this pass - AT THE CAP. The item is not disproved; it has never been tested, and
 now the reason is a number.**
+
+## R3.9 S1 this pass (Opus 5, 2026-09-15) — the grey ellipse is MEASURED and FOUR candidates are eliminated, including the one this repo had written into the source as its hypothesis
+
+R3.2 S4 caught a flat grey ellipse pinned to the same screen rows for a whole sortie. This sprint
+A/Bs it. The real-GL flight is frame-deterministic (same recipe -> the same frame numbers and the
+same pixel counts to within 0.4%), which is what makes single-arm comparisons trustworthy here.
+
+**WHAT IT IS, measured** (frame 15,000 of a 260 s campaign flight, 1920x1080):
+
+| property | value |
+|---|---|
+| screen rows | **y 141-189**, identical in every arm and every frame |
+| horizontal extent | grows over the sortie: x 49-122 at f.6000, 49-273 at f.9000, **49-313** from f.12000 on |
+| colour | **flat and uniform**: (146,146,146) under the cloudy sky, (103,123,143) with the sprite clouds suppressed |
+| shading | none - no gradient, no texture, one colour across the whole shape |
+
+⭐ **It is LIT by the scene** — the colour tracks the sky's illumination between arms — so it is not a
+2-D blit pasted after the 3-D pass; it goes through the lighting path like world geometry.
+
+**FOUR ARMS, four eliminations** (each a new test switch, default off):
+
+| arm | switch | ellipse |
+|---|---|---|
+| aircraft shadows off | `BOB_NO_ACSHADOW` (already in the tree, never run) | **unchanged** (7,120 px vs 7,094) |
+| sun object off | `BOB_NO_SUN` (new) | **unchanged** (7,091 px) |
+| sprite cloud field off | `BOB_NO_FLUFFY` (new) | **still there** — the white puffs vanish, the ellipse does not |
+| distant layer clouds off | `BOB_NO_STRATUS` (new) | **unchanged** |
+
+⭐⭐ **The aircraft-shadow hypothesis is REFUTED, and it was the one written into the source.**
+`Add_Shadow` carries a comment from 2026-09-03 reasoning that "an aircraft shadow IS an ellipse" and
+that an unresolved ground height would leave it floating in the sky; `BOB_NO_ACSHADOW` was added then
+to test it and **never could be run**, because no harness reached a real-GL cockpit in flight until
+R3.2 S3. The switch has now been used for the purpose it was written for, and the answer is no.
+
+⚠️ **AND ONE OF MY OWN MEASUREMENTS WAS WRONG FOR A SPRINT-TYPICAL REASON.** The first pass scored
+the `BOB_NO_FLUFFY` arm as **0 grey pixels** — "the clouds off, the ellipse gone, case closed". The
+detector was a fixed colour window (`100<r<170`, near-neutral). With the cloud field suppressed the
+whole scene relights and the ellipse becomes (103,123,143) — `|r-b|` = 40, outside the window. The
+object never moved; **my instrument stopped being able to see it**, and it said so as a zero. Caught
+by looking at the picture. The replacement is relative: sample the ellipse row against the sky 55 px
+above it in the SAME frame, which cannot be fooled by a global colour shift.
+
+**S2:** the remaining candidates are the overlay/HUD layer and the horizon band. Test the overlay
+first — it is one switch — and if the ellipse survives that too, bisect by draw order rather than by
+guessing objects: dump the framebuffer at successive points in the frame and find the first dump that
+contains it.
+
+**R3.9: 1 sprint this pass.**

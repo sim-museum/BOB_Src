@@ -1860,6 +1860,12 @@ inline void LandScape::DrawCloudLayer( const int hx, const int hz, D3DVECTOR* po
 
 void LandScape::DistDrawClouds(SLong layerNumber )
 {
+	/* R3.9 S1: BOB_NO_STRATUS=1 suppresses the distant LAYER clouds (the DrawCloudLayer mesh), as
+	   distinct from BOB_NO_FLUFFY's sprite field. Third A/B arm for the flat ellipse at
+	   x 49-313, y 141-189: the shadow and sun arms both left it untouched, and the fluffy arm
+	   removed the white puffs while leaving it. Test switch only. */
+	if (getenv("BOB_NO_STRATUS"))
+		return;
 	ImageMapDescPtr cloudImg;
 	SLong layerAltitude, halfLayerWidth;
 	SLong xoff,zoff;
@@ -9188,6 +9194,13 @@ void LandScape::CloudLayer(ViewPoint* vp)
 {
 #ifndef _NOCLOUDS_
 #ifndef _NO_FLUFFY_CLOUDS_
+	/* R3.9 S1: BOB_NO_FLUFFY=1 suppresses the sprite cloud field. A/B control for the flat grey
+	   ellipse pinned at x 49-313, y 141-189 through a whole sortie. The field is regenerated
+	   around the VIEWPOINT's sector every frame, so a cloud at a constant sector offset is fixed
+	   in screen space however far the aeroplane flies -- which is the property that made the
+	   ellipse look like it could not be scenery. Test switch only. */
+	if (getenv("BOB_NO_FLUFFY"))
+		return;
 
 	if (Save_Data.hardwareconfig[HW_FLUFFYCLOUDS])
 //DEADCODE JIM 12/06/00 	if (Cloud_Flag==0)

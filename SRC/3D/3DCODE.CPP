@@ -1750,7 +1750,16 @@ void ThreeDee::Add_Sun(rotitem* vp,WorldStuff *worldptr)
 
 		adptr->fader = horizfade;
 
+ 		/* R3.9 S1: BOB_NO_SUN=1 skips the sun object. A/B control for the flat grey ellipse that
+		   R3.2 S4 measured pinned to x 49-312, y 141-189 for a whole sortie -- the sun is drawn at
+		   the sun's world direction, which is fixed in screen space while the heading holds, so it
+		   is the first candidate and this is the cheapest way to rule it in or out. */
+		if (!getenv("BOB_NO_SUN"))
  		do_object_dummy(sunItemP,STATIC_OBJECT,sunItemP);					//RJS 30May00
+		if (getenv("BOB_TRACE_SUN")) { static long _ns=0; if ((_ns++ % 600)==0)
+			fprintf(stderr, "[sun] world=(%ld,%ld,%ld) fader=%ld state=%d\n",
+			        (long)sunpos.X, (long)sunpos.Y, (long)sunpos.Z, (long)adptr->fader,
+			        (int)adptr->itemstate); }
 	}
 
  	Land_Scape.fade_band_end=oldfaderange;				//PD 27Nov96
