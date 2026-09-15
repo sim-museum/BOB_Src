@@ -4278,3 +4278,41 @@ defect, and both numbers come from one run.
 
 **R3.9: 3 sprints this pass. Two candidate explanations closed, one sharpened, and the item's oracle
 situation is now on the record.**
+
+## R3.9 S8 (Opus 5, 2026-09-14) — ⭐ THREAT01 is a two-tone STENCIL with an alpha plane: what it looks like is decided entirely by the alpha, and the loader and the drawn material disagree about masking
+
+S7 narrowed the item to the art. S8 measured it, at load time, from the game's own loader:
+
+    [imagemap] ... path=...\mskmap16\THREAT01.x8
+    [imagemap]   128x128 isMasked=0 alpha=yes  index0=0 of 16384 (0.0%)  distinct=2
+
+⭐ **Two distinct byte values in the whole 128×128 body.** This is not a picture — it is a
+**stencil**: one value for the scope, one for everything around it, with an **alpha plane** carrying
+the actual shape. Neighbouring maps from the same directories, measured in the same run, show what
+normal art looks like:
+
+| map | size | distinct | index 0 |
+|---|---|---|---|
+| `THREAT01.x8` | 128×128 | **2** | 0.0% |
+| `BRIST2.x8` | 128×128 | 138 | 0.0% |
+| `HURWING.x8` | 1024×1024 | 254 | 22.2% |
+
+⭐⭐ **So the whole appearance of this sprite is decided by the alpha plane.** Honour it and the scope
+is a thin ring over the sky; ignore it and a 300×300 box of ONE flat colour lands in the top-left
+corner — **which is precisely a "floating grey square", and explains why four sprints of looking for
+geometry found none: there is no wrong geometry, only a missing transparency.**
+
+⚠️ **And the two masking flags do not agree.** The loaded map reports **`isMasked=0`**, while R3.9's
+pixel probe recorded the DRAWN material as **`masked=2`**. One of those decides whether the sprite is
+composited with transparency. That disagreement is now the shortest thread in the item.
+
+**S9:** follow the alpha plane to the screen. `LIB3D.CPP:6686/6865` builds the texture from
+`body + palette + alpha`, and the port then uploads that surface through `bob_video`'s GL path
+(`BOB_DUMP_TEX` already dumps uploaded surfaces). Dump the THREAT01 upload and count how many texels
+are transparent: **if the disk art is an alpha stencil and the uploaded surface has no transparency,
+the defect is in the upload and the fix is there.** This is the GPU-hop rule — the CPU-side numbers
+are all in hand and none of them can show what the texel became.
+
+**R3.9: 4 sprints this pass — AT THE CAP, and the item has gone from "an unidentified floating grey
+shape" to "a named sprite, a named draw site, a measured two-tone stencil and one disagreement left
+to resolve".**

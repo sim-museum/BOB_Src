@@ -899,6 +899,27 @@ Bool ImageMap::LoadImageMap(SuperMap*	supermap, UWord file_no,Bool is16bit, Bool
 
 			imgp->FixLbmImageMap(&fblock);
 
+#ifdef BOB_LINUX
+			/* R3.9 S8: is THREAT01 mostly colour-key? A masked sprite drawn WITHOUT its key is an
+			   opaque panel, which is what the PO's "floating grey square" would be. Report the
+			   loaded map's size, its masked flag and how much of it is palette index 0 (the key).
+			   Same BOB_TRACE_IMAGEMAP gate as the identity line above. */
+			if (getenv("BOB_TRACE_IMAGEMAP") && imgp->body && imgp->w > 0 && imgp->h > 0) {
+				const int _n = imgp->w * imgp->h;
+				int _zero = 0, _distinct = 0; int _seen[256];
+				for (int _i = 0; _i < 256; _i++) _seen[_i] = 0;
+				for (int _i = 0; _i < _n; _i++) {
+					const unsigned char _c = ((const unsigned char*)imgp->body)[_i];
+					if (_c == 0) _zero++;
+					if (!_seen[_c]) { _seen[_c] = 1; _distinct++; }
+				}
+				fprintf(stderr, "[imagemap]   %dx%d isMasked=%d alpha=%s  index0=%d of %d (%.1f%%)  distinct=%d\n",
+				        (int)imgp->w, (int)imgp->h, (int)imgp->isMasked,
+				        imgp->alpha ? "yes" : "no", _zero, _n, 100.0 * _zero / (double)_n, _distinct);
+				fflush(stderr);
+			}
+#endif
+
 			total_image_mem += imgp->w * imgp->h;
 
 #ifdef	_IMAP_TEXTURE_MEM_
