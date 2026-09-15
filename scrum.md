@@ -5462,3 +5462,60 @@ bezel is the obvious candidate, and `BOB_PIXPROBE` at its centre names its quad 
 the mirror's.
 
 **R3.8: 1 sprint. The gold comparison it was filed for is now runnable, and it paid on its first pass.**
+
+## SIGHT-1 S1 (Opus 5, 2026-09-15) — the reticle is ART, not a drawn graticule; the game's own gunsight code is COMPILED OUT; and the measured difference is **colour**: the gold's ring is pure white, ours is orange
+
+R3.8 S1 filed this from a picture and read it as *"ours is line-drawn, the gold's is painted"*.
+S1 checks that, and it is **wrong in the useful direction**.
+
+⭐ **1. The game's own gunsight code does not exist in this build.** `shape::dogunsight`
+(`3DCOM.CPP:2383`) is wrapped in
+
+    #ifndef _ACTIVEGUNSIGHT_
+    #pragma warnmsg("**** MiG Alley GUN-SIGHT code removed //CSB ****")
+    #else
+    ... 200 lines of vector gunsight ...
+
+and **`_ACTIVEGUNSIGHT_` is not defined anywhere in the tree** (one grep, one hit — the `#ifndef`
+itself). So the opcode is an empty function. Whatever we see is not that.
+
+⭐ **2. It is a textured cockpit quad, and the probe names it.** `BOB_PIXPROBE="960,540"` on a
+real-GL flight:
+
+    [pixprobe] (960,540) covered by prim=6 count=4 fvf=0x3c4 bbox=(883,463)-(1037,624)
+               tex=... 128x128 bpp=16 masked=2  imagemap number = 784 (dir 3, file 16)
+
+and the dumped texture (`doc/reference/sight-imagemap784-art-2026-09-15.png`) is exactly what is on
+screen: **an orange ring with a four-arm cross, on a green chroma key**. So the port draws the art it
+was given, correctly. My "line-drawn" reading is retracted.
+
+⭐⭐ **3. The real difference is COLOUR, measured rather than described.** Ring pixels against the
+glass they sit on, each within its own frame:
+
+| | ring RGB | glass around it |
+|---|---|---|
+| **gold** (`bob.exe`/Wine) | **(254.8, 254.6, 253.8)** — pure white, saturated | (244.3, 244.1, 246.2) |
+| **port** | **(199.1, 149.4, 74.8)** — orange | (144.4, 169.8, 192.8) |
+
+**The original's reticle is WHITE on a near-white glass; ours is ORANGE on a duller one.**
+
+⭐ **And that points somewhere specific: the blend.** A reflector gunsight is an *illuminated*
+overlay. An orange graticule drawn **additively** over a bright sky saturates to white — which is
+precisely the gold's (255, 255, 254) on a 244 background. Drawn **modulated/opaque**, the same art
+stays orange, which is ours. **Same texture, different blend state** is the hypothesis, and it is the
+same family as R3.7's white-opaque `LF_LIGHTSOURCE` polygons.
+
+**S2:** print the blend/alpha state of the draw that carries imagemap 784 (the `BOB_TRACE_COL` and
+alpha-state traces already exist in `draw_fvf`) and compare it with a known-additive overlay. Then
+A/B an additive blend for that one material and re-measure the ring against the gold's (255,255,254).
+
+⭐ **Two by-products for ASPECT-1, and both matter:**
+* the reticle quad is **155 x 162 px — near square (0.957)** in the very frame where the mirror quad
+  is **192 x 145 (1.32)**. Two textured cockpit quads, drawn by the same path, one square and one
+  stretched. **Whatever ASPECT-1 is, it is not a global cockpit stretch** — this is the second
+  independent witness.
+* ours is 8.1% of the view width against the gold's 4.9% — **1.6x too large**, the same factor the
+  mirror showed. ASPECT-1's "magnification" half now has two witnesses too, and they agree.
+
+**SIGHT-1: 1 sprint. Root cause narrowed from "wrong object" to "right art, wrong blend", with the
+colour measured on both sides.**
