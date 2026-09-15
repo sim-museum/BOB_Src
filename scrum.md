@@ -4351,3 +4351,43 @@ same burst — muzzle flash, wing smoke and the rounds' departure are all in fra
 comparison is against the PO's description rather than against nothing.
 
 **R3.7: 1 sprint this pass. The item finally has a picture.**
+
+## R3.7 S6 (Opus 5, 2026-09-14) — ⭐ tracers confirmed from OUTSIDE; ⚠️ **the muzzle flash does not render**, measured against a control
+
+S5 saw tracers from the cockpit and noted the Spitfire's wing guns are out of that frame. S6 built
+the two harness pieces that were missing and took the capture from outside.
+
+**Two harness fixes, both of which hid the answer:**
+* `shoot` and `view<hex>` were **mutually exclusive** — the shoot test is `strstr` and comes first,
+  so `BOB_AUTOFLY=view40shoot` fired and never changed view. The shoot branch now accepts a
+  `view<hex>` anywhere in the mode string and taps it once before the burst (`shootview40`).
+* **`BOB_DUMP_ON_FIRE=1`** dumps the first frame in which the trigger is actually HELD. The burst is
+  20 ticks on in every 60, so a fixed frame index lands in the quiet phase **two times in three** —
+  and an effects capture that misses the burst is indistinguishable from an effect that is not drawn.
+  *(The first attempt of this sprint dumped nothing at all, because the dumper's early-return guard
+  did not know about the new variable. Fifth harness silence of the session.)*
+
+**MEASURED — one frame with the trigger held (ammo 2475, mid-burst) and one control frame at the
+same index with the guns silent, same camera, bright orange/yellow pixels:**
+
+| region | firing | control |
+|---|---|---|
+| sky (rounds in flight) | **25** | **0** |
+| wings (muzzle flash) | 198 | **191** |
+
+⭐ **Tracers render from the external view as well** — 25 hot pixels in the sky, none at all in the
+control, a round visible in flight above the aircraft.
+
+⚠️ **The muzzle flash does NOT.** The wing band differs by **7 pixels out of ~191**, and that band is
+full of the aircraft's orange-brown camouflage, its roundels and a hangar on the horizon. Firing four
+wing guns produces no emission there the control does not already have. **That is a real, visible
+gap in R3.7's subject: the rounds are drawn, the guns that fire them are not.**
+
+*(Capture filed: `parity/r37_s6_external_firing_260914.png`, 1920×1080, real GL, trigger held.)*
+
+**S7:** find the muzzle-flash draw. The gun positions are known to the sim (`Guns`/`TRANSITE`
+fires from them), so the question is whether an effect is spawned at all or spawned and not drawn —
+the same fork R3.9 had to resolve, and the same two instruments answer it: a counter at the spawn
+site, then a pixel at the draw.
+
+**R3.7: 2 sprints this pass. One effect confirmed working, one confirmed missing — both measured.**

@@ -556,6 +556,7 @@ extern "C" int bob_gdi_get_click(int* x, int* y) {
 /* R2.4: 1 while a flight is live (set by the Launch3d bridge in FULLPSYS, cleared when
    OnFlyingClosed returns). Lets BOB_AUTOQUIT re-arm per mission when chaining (BOB_REFLY). */
 int g_bob_flight_active = 0;
+int g_bob_shoot_held = 0;   /* R3.7 S6: 1 while the autofly trigger is held (BOB_DUMP_ON_FIRE) */
 static long g_frameNo = 0;   /* incremented each 3D present; the frame-based BOB_AUTOQUIT timer reads it */
 /* R9: forward decls -- the click handler in pump_events runs long before these are defined. */
 static int bob_centre_ui(void);
@@ -632,11 +633,27 @@ static void pump_events(void)
 			   never did: gun ammo read 2800 at frame 900 AND at frame 2500, i.e. not one round was
 			   fired, while the other autofly modes (throttle, trim) work. HOLD the key instead:
 			   down for a burst, then up. A one-tick tap is not an input, it is a race. */
+			/* R3.7 S6 (2026-09-14): "shoot" and "view<hex>" were mutually exclusive -- the shoot
+			   test is checked first with strstr, so BOB_AUTOFLY=view40shoot fired without ever
+			   switching view. S5's tracer capture was therefore stuck in the cockpit, where the
+			   Spitfire's WING guns are out of frame and muzzle flash cannot appear at all. Accept
+			   a "view<hex>" anywhere in the mode string here too and tap it once, before the
+			   burst, so the same run can shoot AND watch from outside.
+			   e.g. BOB_AUTOFLY=shootview40  (F6 = external). */
+			{
+				const char* vs = strstr(mode, "view");
+				if (vs && cnt == 100) {
+					int dik = (int)strtol(vs + 4, 0, 16); if (dik <= 0) dik = 0x40;
+					fprintf(stderr, "[view] tap DIK 0x%02x (cnt=%d kbAcq=%d) for the firing capture\n",
+					        dik, cnt, g_diKbAcquired); fflush(stderr);
+					kb_push(dik,1); kb_push(dik,0);
+				}
+			}
 			if (g_bob_flight_active) {
 				int ph = cnt % 60;
-				if (ph == 0)       { kb_push(0x39,1); bob_fake_shoot(1); }
-				else if (ph == 20) { kb_push(0x39,0); bob_fake_shoot(0); }
-				else if (ph < 20)  bob_fake_shoot(1);   /* hold the action bit through the burst */
+				if (ph == 0)       { kb_push(0x39,1); bob_fake_shoot(1); g_bob_shoot_held = 1; }
+				else if (ph == 20) { kb_push(0x39,0); bob_fake_shoot(0); g_bob_shoot_held = 0; }
+				else if (ph < 20)  { bob_fake_shoot(1); g_bob_shoot_held = 1; }  /* hold the action bit through the burst */
 			}
 		}
 		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->
@@ -1174,7 +1191,7 @@ static HRESULT SURF_GetPixelFormat(IDirectDrawSurface7* This, LPDDPIXELFORMAT pf
 static GLuint g_presentTex = 0;
 static void present_dbg(const char* path)
 {
-	if (!getenv("BOB_TRACE_PRESENT") && !getenv("BOB_DUMP_FRAME")) return;
+	if (!getenv("BOB_TRACE_PRESENT") && !getenv("BOB_DUMP_FRAME") && !getenv("BOB_DUMP_ON_FIRE")) return;
 	static int frames=0; frames++;
 	if (getenv("BOB_TRACE_PRESENT") && (frames<=3 || (frames%60)==0)) {
 		unsigned char px[3]={0,0,0};
@@ -1182,8 +1199,20 @@ static void present_dbg(const char* path)
 		fprintf(stderr,"[present] frame %d via %s centre rgb=(%d,%d,%d) glErr=%d\n",
 			frames,path,px[0],px[1],px[2],(int)glGetError());
 	}
+	/* R3.7 S6 (2026-09-14): BOB_DUMP_ON_FIRE=1 dumps the first frame in which the trigger is
+	   actually HELD, instead of a fixed frame number. The autofly burst is 20 ticks on in every
+	   60, so a fixed index lands in the quiet phase two times in three -- and an effects capture
+	   that misses the burst is indistinguishable from an effect that is not drawn. Falls back to
+	   BOB_DUMP_FRAME when unset. */
 	const char* df = getenv("BOB_DUMP_FRAME");
-	if (df && frames == atoi(df)) {
+	bool wantDump = (df && frames == atoi(df));
+	if (getenv("BOB_DUMP_ON_FIRE")) {
+		extern int g_bob_shoot_held;                 /* set by the autofly shoot branch */
+		static int firedump = 0;
+		if (g_bob_shoot_held && !firedump && frames > 200) { firedump = 1; wantDump = true;
+			fprintf(stderr, "[present] BOB_DUMP_ON_FIRE: trigger held at frame %d\n", frames); }
+	}
+	if (wantDump) {
 		int w=g_scrW,h=g_scrH; unsigned char* buf=(unsigned char*)malloc(w*h*3);
 		/* Cross-port (adopted from MiG Alley S45): the PPM writer emits w*3 bytes/row, but the default
 		   GL_PACK_ALIGNMENT=4 pads glReadPixels rows to a 4-byte multiple. For a non-4-divisible width
