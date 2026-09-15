@@ -5828,3 +5828,59 @@ install holds, by name and by size, before writing another line of renderer code
 
 **R3.4: 6 sprints (2 in this pass). The rendering explanation is exhausted; the data explanation is
 now the only one left standing.**
+
+## R3.4 S7 (Opus 5, 2026-09-15) — ⭐⭐ **the mirror opcode IS in the data — in exactly 2 of 253 shapes, and they are the SPITFIRE and the HURRICANE. The Bf 109 we fly has none, which is historically correct.**
+
+S6 said *"docreatemirror is not in the shapes THIS FLIGHT loaded"* and named the honest version of
+that sentence as the next step: walk the whole archive. `BOB_OPCENSUS_ALL=1` (new, `3DCODE.CPP`,
+right after `MaxShapeCount` is read) loads every shape the game ships before the flight starts.
+
+⭐ **All 253 shapes, every instruction walked:**
+
+    [opcensus] loading ALL 253 shapes...
+    [opcensus] docreatemirror IN SHAPE 65  (instr #440)
+    [opcensus] docreatemirror IN SHAPE 172 (instr #3822)
+    [opcensus] loaded 253 of 253 shapes
+
+**Two shapes carry it. `shapenum.g` names them:**
+
+    const ShapeNum CPT1 = (ShapeNum)  65;
+    const ShapeNum CPT4 = (ShapeNum) 172;
+
+⭐⭐ **And `FLYINIT.CPP`'s `pit1 shp` field says who flies them:**
+
+| cockpit shape | aircraft | modelled mirror |
+|---|---|---|
+| **CPT1** | **Spitfire A, Spitfire B, Defiant, Blenheim** | **YES** |
+| **CPT4** | **Hurricane A, Hurricane B** | **YES** |
+| CPT2 | **Bf 109**, He 59 | no |
+| CPT3 | Ju 87 | no |
+| CPT5 | Bf 110 | no |
+
+**Only the RAF fighters have a modelled rear-view mirror — which is exactly right.** The Spitfire and
+the Hurricane carried a mirror on the windscreen frame; the Bf 109E did not.
+
+✅ **So the port is DATA-CORRECT and ASPECT-1 S9's finding is explained rather than merely confirmed.**
+Our flight is the Luftwaffe *German Convoys* campaign — the gold video's own allocation screen lists
+**Me109 / Me110 / Do17** — so we fly CPT2, there is no mirror object to create, `RenderMirror` bails
+on `!mirrorSeen` (`3DCODE.CPP:6487`), and the disc on the windscreen is painted artwork. Nothing is
+broken.
+
+⚠️ **Which means R3.4's gold comparison was never comparing a live mirror.** Looking again at
+`doc/reference/mirror-gold-vs-port-2026-09-15.png`: **both** discs carry the same white curved
+markings. S5 read the gold's ~1,100 distinct colours and sd 33–42 as proof of a live reflection; on a
+Luftwaffe flight it is the same painted texture ours draws, at 800x600 and with different lighting.
+**S5's "the mirror shows a live horizon and the port now matches" is withdrawn a second time** — this
+time with the reason, not just the doubt.
+
+⭐ **And the item now has a PREDICTION, which is what it has lacked for six sprints.** Fly an **RAF**
+mission — Spitfire or Hurricane — and `docreatemirror` must execute. The traces to watch already
+exist (`[aspect] docreatemirror REACHED`, `UseMirror`, `dodrawreflectpoly`), all three have only ever
+printed zero, and all three should fire. **If they do, the live mirror can finally be compared
+against a gold frame of the same aircraft; if they do not, there is a real defect and it is in shape
+65, not in the renderer.**
+
+**S8:** fly the RAF side and state the prediction before the run.
+
+**R3.4: 7 sprints (3 in this pass). The data question is answered; the port is exonerated for the
+109; and the comparison has been aimed at the right aeroplane for the first time.**

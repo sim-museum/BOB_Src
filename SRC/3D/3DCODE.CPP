@@ -561,6 +561,22 @@ void ThreeDee::Init3D(CLib3D *lib3d,ViewPoint*	vp)
 	pTMake->Init(vp->World.X,vp->World.Z,lib3d);
 	OverLay.LoaderScreen((2<<8)+128+96);
 	MaxShapeCount = FILEMAN.filesindir(DIR_SHAPES) - 1;
+	/* R3.4 S7 (2026-09-15): BOB_OPCENSUS_ALL=1 -- load EVERY shape the game ships, so the opcode
+	   census in SHAPES.CPP covers the whole data set rather than the shapes one flight happened to
+	   need. S6 answered "the mirror opcode is not in the shapes THIS FLIGHT loaded"; the honest
+	   version of that sentence needs the whole archive walked, and the archive says how many there
+	   are (MaxShapeCount) one line above. Loading is idempotent -- LoadShape returns immediately for
+	   a shape already in shapetable -- and this only runs when the env var is set. */
+	if (getenv("BOB_OPCENSUS_ALL")) {
+		fprintf(stderr, "[opcensus] loading ALL %d shapes...\n", (int)MaxShapeCount); fflush(stderr);
+		int loaded = 0;
+		for (int sn = 1; sn <= (int)MaxShapeCount; ++sn) {
+			/* GetShapePtr is the public entry and loads on demand (LoadShape is private). */
+			if (SHAPESTUFF.GetShapePtr((ShapeNumber)sn)) loaded++;
+		}
+		fprintf(stderr, "[opcensus] loaded %d of %d shapes\n", loaded, (int)MaxShapeCount);
+		fflush(stderr);
+	}
 	MaxShape2Count = 255 + FILEMAN.filesindir(DIR_MOBSHPS);
 	MaxGroupCount = 511 + FILEMAN.filesindir(DIR_GROUPS);
 	MaxGroup2Count = 767 + FILEMAN.filesindir(DIR_MOBGROUPS);	//RJS 13Dec99
