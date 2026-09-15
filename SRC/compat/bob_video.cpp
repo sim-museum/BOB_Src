@@ -2696,6 +2696,7 @@ static void ensure_rtt_fbo(GLSurface7* s) {
    second explains a flat result. Count primitive draws that land while an RTT is current, and
    report the tally when the target is switched away. */
 extern "C" long bob_imagemap_number_of(const void*);   /* R3.9: pointer -> ImageMapNumber */
+extern "C" const void* bob_imagemap_ptr_of(long);      /* SIGHT-1 S2: ImageMapNumber -> pointer */
 static long g_rttDraws = 0;
 static long g_rttDrawsPhase[3] = {0,0,0};   /* R3.4: [0] other, [1] mirror landscape, [2] mirror objects */
 extern int g_bob_mirror_phase;
@@ -3224,6 +3225,66 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	}
 	if (getenv("BOB_NOBLEND")) glDisable(GL_BLEND);
 	else if (g_devAlphaBlend) { glEnable(GL_BLEND); glBlendFunc(g_srcBlend,g_dstBlend); }
+
+	/* SIGHT-1 S2 (2026-09-15). S1 measured the gold's gunsight ring at RGB (254.8, 254.6, 253.8)
+	   -- pure white, saturated -- on a 244-bright glass, while ours draws the SAME art (imagemap
+	   784, an orange ring with a cross on a green chroma key) at (199.1, 149.4, 74.8). A reflector
+	   gunsight is an ILLUMINATED overlay: drawn additively over a bright sky an orange graticule
+	   saturates to white; drawn modulated it stays orange.
+	     BOB_TRACE_SIGHT=1        report the blend state of imagemap 784's draws (once)
+	     BOB_SIGHT_ADD=<imagemap> force GL_SRC_ALPHA/GL_ONE for that imagemap
+	   Both default off; unset leaves shipped behaviour untouched.
+
+	   WARNING, learned the expensive way: the first version of this called
+	   bob_imagemap_number_of() on EVERY 2D draw. That helper scans MaxMapDirs x 256 entries
+	   through Image_Map.GetImageMapPtrDontLoad, so it (a) made the flight slow enough that no
+	   frame dump was ever reached and (b) SEGV'd inside the accessor, deterministically, in 2 runs
+	   of 2 (addr2line: GetImageMapPtrDontLoad <- draw_fvf <- DEV_DrawPrimitiveVB). Resolve the
+	   wanted imagemap to its DESC POINTER once and compare pointers per draw instead -- O(1), and
+	   the scan only runs once a textured draw has already handed us a live map pointer. */
+	{
+		static int sightInit = 0; static long sightWant = -1; static int sightTrace = 0;
+		static int sightForce = 0;
+		static const void* sightPtr = 0; static int sightTries = 0;
+		if (!sightInit) { sightInit = 1;
+			sightTrace = getenv("BOB_TRACE_SIGHT") ? 1 : 0;
+			const char* e = getenv("BOB_SIGHT_ADD");
+			/* SHIPPED (S2): the reflector sight blends ADDITIVELY by default. Measured over four
+			   frames of a real-GL flight, ring pixels against the sky inside the reticle:
+			      alpha (was)  ring (192-205, 150-163, 86-99)  lum 143-156, sky 167-198  -> 25-42 DARKER
+			      additive     ring (248-250, 246-247, 197-209) lum 231-234, sky 172-211 -> 24-60 BRIGHTER
+			      gold         ring (254.8, 254.6, 253.8) on a 244 glass
+			   The shipped alpha blend draws the gunsight DARKER than the sky behind it; the gold's
+			   is bright white. BOB_SIGHT_NOADD=1 restores the old blend; BOB_SIGHT_ADD=<imagemap>
+			   applies the same treatment to a different material. */
+			sightForce = getenv("BOB_SIGHT_NOADD") ? 0 : 1;
+			sightWant = e ? atol(e) : 784; }
+		if (sightWant >= 0 && is2D && count >= 3) {
+			extern const void* g_lib3d_map0;
+			const void* m0 = g_lib3d_map0;
+			if (m0) {
+				if (!sightPtr && g_bob_flight_active) {
+					/* one forward lookup, not a scan per draw (see the warning above). Retried
+					   every draw until it resolves, because the image map is not resident during
+					   the loading screen -- a bounded 64 tries all fell in that window and the
+					   hook then stayed silent for the whole flight. Gated on the flight being
+					   live so the accessor is never touched during early boot, which is where the
+					   scan version crashed. */
+					sightTries++;
+					sightPtr = bob_imagemap_ptr_of(sightWant);
+				}
+				if (sightPtr && m0 == sightPtr) {
+					if (sightTrace) { static int once = 0; if (!once++) {
+						fprintf(stderr, "[sight] imagemap %ld drawn with alphaBlend=%d src=0x%x dst=0x%x "
+						                "(GL_ONE=0x%x GL_SRC_ALPHA=0x%x GL_ONE_MINUS_SRC_ALPHA=0x%x)\n",
+						        sightWant, g_devAlphaBlend, (unsigned)g_srcBlend, (unsigned)g_dstBlend,
+						        (unsigned)GL_ONE, (unsigned)GL_SRC_ALPHA, (unsigned)GL_ONE_MINUS_SRC_ALPHA);
+						fflush(stderr); } }
+					if (sightForce) { glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE); }
+				}
+			}
+		}
+	}
 
 	/* BOB_FOG experiment: GL linear fog over screen-space z, using the game's FOGCOLOR.
 	   The game's world-space FOGSTART/END target the dead hardware path, so we use a

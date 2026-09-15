@@ -5519,3 +5519,56 @@ A/B an additive blend for that one material and re-measure the ring against the 
 
 **SIGHT-1: 1 sprint. Root cause narrowed from "wrong object" to "right art, wrong blend", with the
 colour measured on both sides.**
+
+## SIGHT-1 S2 (Opus 5, 2026-09-15) — ✅ **FIXED: the reflector sight blends ADDITIVELY.** The shipped blend drew the gunsight DARKER than the sky behind it
+
+S1 narrowed this to "right art, wrong blend" and named the experiment. S2 ran it.
+
+⭐ **1. The blend, printed.** `BOB_TRACE_SIGHT=1` on a real-GL flight:
+
+    [sight] imagemap 784 drawn with alphaBlend=1 src=0x302 dst=0x303
+            (GL_SRC_ALPHA / GL_ONE_MINUS_SRC_ALPHA)
+
+Ordinary alpha blending — so the orange art is composited over the sky as paint, not as light.
+
+⭐⭐ **2. The A/B, four frames each, ring pixels on the reticle annulus against the sky inside it:**
+
+| arm | ring RGB | ring lum | sky lum | ring − sky |
+|---|---|---|---|---|
+| **alpha (shipped)** | (192–205, 150–163, 86–99) | 143–156 | 167–198 | **−25 to −42 (DARKER)** |
+| **additive** | (248–250, 246–247, 197–209) | 231–234 | 172–211 | **+24 to +60 (BRIGHTER)** |
+| **gold** | (254.8, 254.6, 253.8) | — | 244 glass | bright |
+
+**The shipped build draws the gunsight darker than the sky.** A reflector sight is a projected light;
+the gold's is saturated white. Additive puts ours on the right side of the background and within a
+few counts of the gold on R and G.
+
+✅ **Shipped: additive is the default for imagemap 784.** `BOB_SIGHT_NOADD=1` restores the old blend;
+`BOB_SIGHT_ADD=<imagemap>` applies the same treatment elsewhere. **Verified with no env set at all**
+(the rule that a default only exercised through an override is not a default): ring (248.1, 246.1,
+208.7) / (249.0, 246.9, 203.9) / (249.2, 246.7, 202.0), +23.6 / +54.6 / +55.6 against the sky, 64
+frames, no crash. `doc/reference/sight-fix-gold-before-after-2026-09-15.png` is gold | before | after.
+
+⚠️ **What is NOT claimed.** Our ring's blue channel is **197–209 against the gold's 254** — ours is
+slightly warm because the source art is orange and additive adds that orange to the sky, while the
+gold's saturates to neutral white. Closer in kind and direction, not identical. Whether the original
+also drove the sight's brightness from a lamp setting is untested.
+
+⛔ **And a self-inflicted detour worth recording, because it cost three flights.** The first version
+of this hook called `bob_imagemap_number_of()` on **every 2D draw**. That helper scans
+`MaxMapDirs x 256` entries through `Image_Map.GetImageMapPtrDontLoad`, so it (a) starved the frame
+loop — "NO FRAMES" in both arms, which reads as a harness failure — and (b) **SEGV'd inside the
+accessor, deterministically, 2 runs of 2** (`addr2line`: `GetImageMapPtrDontLoad <- draw_fvf <-
+DEV_DrawPrimitiveVB <- Lib3D::RenderTPolyList`). Fixed by adding the forward lookup
+`bob_imagemap_ptr_of(number)` (`IMAGEMAP.CPP`) and comparing pointers — O(1) per draw — and gating the
+lookup on `g_bob_flight_active` so the accessor is never touched during boot. **A diagnostic that is
+cheap in a one-shot probe can be fatal in a per-draw hook**; the crash was mine, not the game's.
+
+⚠️ **One more, and it is the third time this year.** Re-applying the hook with
+`open(p,'wb').write(s.encode('latin-1'))` where the new comment contained a non-latin-1 character
+**emptied `bob_video.cpp` — 4,337 lines to 0.** The rule that saved it: `wc -l` the file immediately
+after any failed edit. Recovered with `git checkout --` (the file's last commit was ASPECT-1 S2, so
+only this hook's first draft was lost) and re-applied with the encode done **before** the open, and
+the comment kept ASCII. [[shell-edit-commit-traps]].
+
+**SIGHT-1: 2 sprints. Fixed and verified against the gold.**

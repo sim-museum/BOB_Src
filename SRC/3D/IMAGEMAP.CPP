@@ -1500,6 +1500,16 @@ void ImageMap::UnLoadImageMaps()
    carries the ImageMapDesc pointer itself, and THAT is addressable: superimagemaptable[dir][file]
    is the authoritative map, so scanning it turns the pointer into (dir,file) -- the image map's
    own number, which names the artwork. Returns -1 if the pointer is not in the table. */
+/* SIGHT-1 S2 (2026-09-15): the FORWARD direction, number -> pointer. bob_imagemap_number_of below
+   scans MaxMapDirs x 256 entries, which is fine for a one-shot probe and fatal in a per-draw hook
+   (it both starved the frame loop and SEGV'd inside the accessor). One lookup answers the same
+   question when the caller already knows which imagemap it wants. Returns 0 if not resident. */
+extern "C" const void* bob_imagemap_ptr_of(long number)
+{
+	if (number < 0) return 0;
+	return (const void*)Image_Map.GetImageMapPtrDontLoad((ImageMapNumber)number);
+}
+
 extern "C" long bob_imagemap_number_of(const void* p)
 {
 	if (!p) return -1;
