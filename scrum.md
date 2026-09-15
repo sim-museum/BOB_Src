@@ -4812,3 +4812,27 @@ guessing objects: dump the framebuffer at successive points in the frame and fin
 contains it.
 
 **R3.9: 1 sprint this pass.**
+
+## R3.9 S2 (Opus 5, 2026-09-15) — a fifth elimination (not the cockpit), and **S1's "it grows over the sortie" is WITHDRAWN**: the ellipse is the same size in every frame
+
+⚠️ **CORRECTION FIRST.** S1 reported the ellipse growing — x 49-122 at f.6000, 49-273 at f.9000,
+49-313 from f.12000. **It does not grow.** Cropping the frames shows it at full size in the EARLIEST
+capture (f.3000) and unchanged thereafter. The "growth" was the fixed colour window (`100<r<170`,
+near-neutral) clipping a lit gradient differently as the scene's light changed — **the same
+instrument that produced S1's false zero on the `BOB_NO_FLUFFY` arm, now producing a false TREND.**
+One bad detector, two wrong facts, in the same item. A colour window is not a shape detector.
+
+**Corrected description: a flat grey ellipse, ~265 x 48 px, at x 49-313 / y 141-189, present in every
+frame of every arm from the first capture onward.**
+
+**FIFTH ARM — the external view (`BOB_AUTOFLY=view40`, F6):** with the cockpit not drawn at all, the
+ellipse is **in the same screen position**, and against the clean sky there it reads as a grey DISC
+with a small dark mark at its centre. So it is not cockpit geometry, and the list of things it is not
+now reads: aircraft shadow, sun, sprite clouds, layer clouds, cockpit.
+
+**S3 — stop guessing objects.** Five arms have each cost a 260 s flight to eliminate one candidate,
+and the remaining candidates are not enumerable by reading source. The next instrument is a DRAW-LIST
+probe: report every shape the frame draws with its projected screen bbox, then look for the one whose
+bbox is (49,141)-(313,189). That names the object in one flight instead of one per guess.
+
+**R3.9: 2 sprints this pass.**
