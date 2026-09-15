@@ -4197,3 +4197,48 @@ The probe is inside the existing `BOB_TRACE_IMAGEMAP` block, so nothing changes 
 the campaign flight that produced the line above ran 240 s with no crash.
 
 **R3.9: 1 sprint this pass. The shape has a filename and a single draw site.**
+
+## R3.9 S6 (Opus 5, 2026-09-14) — ⭐⭐ the "floating grey shape" is the THREAT INDICATOR, drawn where it belongs; and S5's mechanism is ruled out by a `#define`
+
+S5 named the texture (`MskMap16\THREAT01.X8`) and its one draw site (`COverlay::DoThreat`), and
+proposed a mechanism for the contradiction — a 2D HUD quad queued under identity matrices and flushed
+later under the world matrices. S6 tested both halves.
+
+⛔ **The mechanism is impossible in this build, and reading settles it without a run.** The deferred
+path is the hardware-T&L branch in `Lib3D::PrepareForClipping` — the one that stores
+`sPolygon->transMat = transMatPos` and defers the transform to `RenderTPolyList`. It sits under
+`#ifndef NO_HARD_TNL`, and **`LIB3D.CPP:134` is `#define NO_HARD_TNL`.** Transparent polys therefore
+take the software path: `CombineMatrices()` and a CPU transform **at submission**, so a poly carries
+the matrices in force when it was built. *(Confirming it: that branch calls `CombineTranspMat()`,
+whose only definition in the tree is commented out — it would not link if it were compiled.)*
+
+⭐ **And the positive half is better than the hypothesis it replaces.** `DoThreat()` runs in an
+ordinary campaign flight (no special difficulty setting needed), and the new `[dothreat]` probe
+prints the rect it occupies:
+
+    [dothreat] surface=1920x1080 SCX=3.000 SCY=1.688 quad=(30.0,16.9)-(330.0,316.9)
+
+**A 300 x 300 screen-fixed box in the top-left corner.** R3.9's pixel probe sampled the grey shape at
+**(180,165)** — **inside that box**.
+
+⭐⭐ **So the object is not stray and is not lost in world space: it is the threat indicator,
+rendered at its intended position and size.** The comment above the function has said so since 2000
+("display threat indicator in the top left corner of the screen"); four sprints of treating it as an
+unidentified floating sprite were chasing an instrument. **The defect the PO sees is in how it LOOKS
+— a large pale box over the sky — not in where it is.**
+
+⚠️ **One scaling oddity, recorded but not yet a defect claim.** Both axes divide by 640:
+`SCX = physicalWidth/640`, `SCY = physicalHeight/640`. The X factor is a clean 3.0 at 1920; the Y
+factor is 1.688, and the quad then uses `sRADIUS` (an X-scaled length) for BOTH its width and its
+height, so the box stays square while its ORIGIN moves by the Y factor. That is self-consistent, but
+it means the indicator's top-left Y drifts with aspect in a way its size does not.
+
+**S7 goes to the gold, which is what this item has been missing:** capture the same view under Wine
+at the same resolution and compare the top-left 330 x 320 corner. Either the original draws the same
+box — and the PO's complaint is that a HUD instrument they did not expect is on screen — or it draws
+something different there, and the difference IS the defect. Also print the threat COUNT the function
+computes (`cnt` from the `MAX_THREATS` scan), because a scope with no blips on it is exactly a plain
+pale box.
+
+**R3.9: 2 sprints this pass. The unidentified sprite is identified, sited, and demoted to an
+instrument.**

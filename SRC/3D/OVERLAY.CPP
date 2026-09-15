@@ -7803,6 +7803,25 @@ void COverlay::DoThreat()
 //DeadCode JON 13Jun00 	const Float scaled_oriy=scaled_y+scaled_h*.5;
  
 	ImageMapDesc* pmap=Image_Map.GetImageMapPtr(THREAT01NO);
+
+#ifdef BOB_LINUX
+	/* R3.9 S6: THREAT01 (image map 525) has exactly one draw site and this is it -- the threat
+	   indicator, which the comment above says lives "in the top left corner of the screen".
+	   Print the rect it actually occupies, because at 1280 wide the 640-relative (10,10)+100
+	   box scales to (20,20)-(220,220), and R3.9's pixel probe sampled the grey shape at
+	   (180,165) -- INSIDE that box. Print it rather than assert it. BOB_TRACE_THREAT=1. */
+	if (getenv("BOB_TRACE_THREAT")) {
+		static int said = 0;
+		if (said < 3) {
+			said++;
+			fprintf(stderr, "[dothreat] surface=%dx%d SCX=%.3f SCY=%.3f quad=(%.1f,%.1f)-(%.1f,%.1f) pmap=%p\n",
+			        (int)physicalWidth, (int)physicalHeight, (double)SCX, (double)SCY,
+			        (double)sTOP_LEFT_X, (double)sTOP_LEFT_Y,
+			        (double)(sRADIUS*2+sTOP_LEFT_X), (double)(sRADIUS*2+sTOP_LEFT_Y), (void*)pmap);
+			fflush(stderr);
+		}
+	}
+#endif
  
 //DEADCODE JON 5/22/00 	R3DVERTEX *dp;
 //DEADCODE JON 5/22/00 	g_lpLib3d->BeginPoly(HMATERIAL(pmap),4,dp);
