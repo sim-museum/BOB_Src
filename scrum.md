@@ -4550,3 +4550,46 @@ empty string on 2203–2209 means the rows exist and the model behind them is em
 different fix again from the `visible` flag on 2210–2214.
 
 **R3.8: 2 sprints this pass.**
+
+## R3.8 S3 (Opus 5, 2026-09-14) — ⭐⭐⭐ **THE AIRCRAFT LIST IS THERE**: ten callsigns, real text, drawn at real rects
+
+S2 left the fork: the seven-to-ten drawn rows either carry **empty captions** (a blank list looks
+exactly like a missing one) or draw text somewhere invisible. S3 read the captions at the draw site —
+`HostREdtBt::draw()` assigns `captiontext = InternalGetText()` immediately before the game's own
+`OnDraw`, so the string is right there.
+
+**MEASURED (`BOB_TRACE_DRAWID=1`, one line per control):**
+
+    [caption] dlgId=1164 ctrl=2200 REdtBt text="Bob" (len=3)
+    [caption] dlgId=1164 ctrl=2201 REdtBt text=" Tomato 2" (len=9)
+    [caption] dlgId=1164 ctrl=2202 REdtBt text=" Tomato 3" (len=9)
+    [caption] dlgId=1164 ctrl=2203 REdtBt text=" Tomato 4" (len=9)
+    [caption] dlgId=1164 ctrl=2204 REdtBt text=" Tomato 5" (len=9)
+    [caption] dlgId=1164 ctrl=2205 REdtBt text=" Cabbage Leader" (len=15)
+    [caption] dlgId=1164 ctrl=2206 REdtBt text=" Cabbage 2" (len=10)
+    [caption] dlgId=1164 ctrl=2207 REdtBt text=" Cabbage 3" (len=10)
+    [caption] dlgId=1164 ctrl=2208 REdtBt text=" Cabbage 4" (len=10)
+    [caption] dlgId=1164 ctrl=2209 REdtBt text=" Cabbage 5" (len=10)
+
+⭐⭐ **Ten aircraft, two sections — Tomato and Cabbage — with the player as "Bob" at the top.** They
+are `HostREdtBt` controls (the name buttons you click to take an aircraft or give it to a pilot),
+each **144×26 px**, drawn at real screen rects inside the window: (93,237), (27,268), (177,267),
+(575,244) … (659,327).
+
+⭐ **So R3.8's premise does not hold on this build.** *"Before entering 3D the screen should list the
+aircraft you can fly, or join as gunner; it shows only the background art and the Back / Sim Config /
+Fly menu row."* — **the list is present, populated and painted.** Something between the PO's
+2026-08-28 screenshot and today has fixed it; the item has been carrying a diagnosis
+("`bob_ole_count_hosted()` does not exist", "zero rows means never populated") for a symptom that no
+longer reproduces.
+
+⚠️ **Not closed by me.** The PO's screen may differ — a different campaign, a squadron with no
+aircraft assigned, or a resolution this recipe does not use. And *fixed in dev is not fixed in the
+AppImage they run*. **S4 is a question, not a run: show the PO this capture and ask whether their
+pre-flight screen still looks bare.**
+
+*(Third item today whose PO-reported symptom fails to reproduce on the current build — TERRAIN-1 in
+both its scenarios, PO-37 at the gold's own resolution, and now R3.8. Worth a single batched question
+to the PO rather than three separate ones.)*
+
+**R3.8: 3 sprints this pass, from "zero rows or mis-drawn?" to ten callsigns on screen.**

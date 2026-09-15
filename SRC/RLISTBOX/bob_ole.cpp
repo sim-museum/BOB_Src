@@ -605,6 +605,22 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
                 fflush(stderr);
             }
         }
+        /* R3.8 S3 (2026-09-14): the PO sees no aircraft list while seven of its rows DO draw
+           (S2). Before asking "is the caption empty", say what KIND of control each drawn row is --
+           typeid is free and needs no new virtual. A row that is an RStatic draws a caption; a row
+           that is something else draws whatever that something else draws.
+           BOB_TRACE_DRAWID=1, one line per (dialog, control). */
+        if (getenv("BOB_TRACE_DRAWID")) {
+            static const void* seenD[256]; static int nSeenD = 0; int dup = 0;
+            for (int k = 0; k < nSeenD; k++) if (seenD[k] == (const void*)host) { dup = 1; break; }
+            if (!dup && nSeenD < 256) {
+                seenD[nSeenD++] = (const void*)host;
+                fprintf(stderr, "[drawid] dlgId=%d ctrl=%d type=%s rect=(%d,%d %dx%d)\n",
+                        host->dlgId, host->ctrlId, typeid(*host).name(),
+                        host->sx, host->sy, host->sw, host->sh);
+                fflush(stderr);
+            }
+        }
         drawn++;
         n++;
     }

@@ -44,6 +44,21 @@ struct HostREdtBt : public CREdtBtCtrl, public OleHost {
         CRect rc(0, 0, w, h);
         m_FirstSweep = TRUE;                 /* skip parent-artwork re-blit (panel bg already drawn) */
         captiontext = InternalGetText();     /* OnDraw draws this member; only refreshed in handlers */
+        /* R3.8 S3: the pre-3D aircraft list is ten of THESE (ctrl 2200-2209, measured), all of them
+           drawn at real rects -- so "the list is missing" is now a question about what they SAY.
+           OnDraw paints `captiontext`; an empty one paints an empty button, which from a cockpit is
+           indistinguishable from no list at all. Print it once per control. BOB_TRACE_DRAWID=1. */
+        if (getenv("BOB_TRACE_DRAWID")) {
+            static const void* seenC[256]; static int nSeenC = 0; int dupC = 0;
+            for (int k = 0; k < nSeenC; k++) if (seenC[k] == (const void*)this) { dupC = 1; break; }
+            if (!dupC && nSeenC < 256) {
+                seenC[nSeenC++] = (const void*)this;
+                const char* t = captiontext;
+                fprintf(stderr, "[caption] dlgId=%d ctrl=%d REdtBt text=\"%s\" (len=%d)\n",
+                        dlgId, ctrlId, t ? t : "(null)", t ? (int)strlen(t) : -1);
+                fflush(stderr);
+            }
+        }
         OnDraw(pdc, rc, rc);
     }
     void dispatch(DISPID id, VARTYPE, void*, va_list) override {
