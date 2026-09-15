@@ -4593,3 +4593,43 @@ both its scenarios, PO-37 at the gold's own resolution, and now R3.8. Worth a si
 to the PO rather than three separate ones.)*
 
 **R3.8: 3 sprints this pass, from "zero rows or mis-drawn?" to ten callsigns on screen.**
+
+## R3.2 S1 this pass (Opus 5, 2026-09-14) — the cloud/cockpit draw order is CORRECT in a real-GL frame; and the same frame is R3.9's first capture from our own build
+
+R3.2 is a 13-point spike — *"fluffy-cloud billboards paint over the cockpit"* — with two failed
+attempts behind it. Before spending the spike, the cheapest thing is to ask whether the premise still
+holds. Captured a real-GL cockpit frame (`BOB_BOOT_FRONTEND=1`, frame 1400, 1920×1080,
+`parity/r32_s1_cockpit_clouds_260914.png`).
+
+⭐ **In this frame the order is right.** The canopy pillars, the coaming, the gunsight and its
+reflector glass all occlude the cloud deck behind them; no cloud paints over any cockpit surface.
+
+⚠️ **Scope, and it is a real limit.** The aircraft is **parked** — `Speed 0 Kts, Alt 4 ft`;
+`BOB_AUTOFLY=throttle` does not get this airframe rolling — so this is a ground-level view of clouds
+*above* the aeroplane, not a cockpit *inside or beside* a cloud. **The defect may need the billboard
+close to or straddling the near plane, which this frame cannot produce.** R3.2 is not cleared by it;
+what is established is that the ordinary case is ordered correctly.
+
+⭐⭐ **And the same frame answers a different item for free.** There is a flat grey ellipse at the
+top left, and R3.9 S6 measured the threat indicator's quad at exactly **(30,17)–(330,317)** at this
+resolution. **The ellipse is inside it.** Measured against the sky in the same rows:
+
+| region | mean rgb | R−B | stdev |
+|---|---|---|---|
+| the ellipse (inside the threat quad) | **[161,162,160]** | **+1** | 27.0 |
+| sky, same rows | [189,195,203] | −14 | 7.1 |
+| sky, right of frame | [142,179,223] | **−81** | 33.5 |
+
+**A neutrally grey patch (R ≈ G ≈ B) in a blue sky, inside the threat indicator's rect.** That is the
+PO's *"floating light/dark grey square"*, captured from our own build for the first time, and it is
+exactly what R3.9 S8 predicted a **two-tone stencil drawn without its alpha plane** would look like.
+*(R3.9 is at its 4-sprint cap this pass; recorded here so the evidence is not lost, and its S9 can
+open with a picture instead of a hypothesis.)*
+
+**S2 for R3.2:** get the aeroplane INTO the weather before spending the spike — the cloud deck sits
+above a parked aircraft, so the test needs altitude. The BoB campaign path reaches 3D in flight
+(`bob_combat_soak.sh`'s recipe) but runs under `SDL_VIDEODRIVER=dummy`, where `draw_fvf` never
+executes; the real-GL path starts on the runway. **Bridging those two is the prerequisite for R3.2,
+and it is the same gap R3.7 S5 hit.**
+
+**R3.2: 1 sprint this pass — premise partly checked, and the spike deliberately not started.**
