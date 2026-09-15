@@ -5284,3 +5284,48 @@ Both arms therefore flew at 1920x1080 and both measure 192x144 — a control tha
 
 **ASPECT-1: 1 sprint. The filed cause is eliminated by measurement and the search has moved to the
 2D cockpit path.**
+
+## ASPECT-1 S2 (Opus 5, 2026-09-15) — the control arm exists now, and it produces a **bit-identical** mirror: the distortion does not depend on the display mode at all
+
+S1's 4:3 arm was overridden by the campaign resolution, so both arms flew 16:9. `BOB_PIN_MODE=WxH`
+(new, in `bob_change_display_mode`) refuses every later mode change, which is what a 4:3 arm needs:
+
+    [vid] BOB_FORCE_MODE -> 1440x1080
+    [vid] ChangeDisplaySettings 1024x768 -> 1440x1080
+    [centre] UI content 1024x768 in window 1440x1080 -> offset (208,156)
+    [vid] BOB_PIN_MODE: refusing 1920x1080, staying 1440x1080
+
+**The pin holds — and the picture does not change by a single pixel.**
+
+| arm | mode the game ends up in | dumped frame | mirror disc |
+|---|---|---|---|
+| default | 1920x1080 | 1920x1080 | x 1698..1889, y 23..166, **1.333** |
+| pinned 4:3 | **1440x1080** | 1920x1080 | x 1698..1889, y 23..166, **1.333** |
+
+⭐ **Bit-identical bounding box across a genuine display-mode change.** That eliminates every
+mechanism of the form "the picture is authored at one resolution and scaled per-axis to the window":
+such a mechanism would have to move the disc when the mode moves. It does not move at all.
+
+⚠️ **And the run exposes a second, independent defect on the way.** The front end's centring code
+sees a **1440x1080** window in the same run in which the projection trace and the frame dump both
+report **1920x1080**:
+
+    [centre] UI content 1024x768 in window 1440x1080 -> offset (208,156)
+    [aspect] ... GL viewport 1920x1080 = 1.7778
+
+**The mode the game believes it has and the surface it actually renders into have diverged** —
+`ensure_window` sets `g_scrW/g_scrH` and calls `SDL_SetWindowSize`, yet the drawable the 3D pass
+reads (and `bob_gdi_screen_size` reports) stayed at the desktop size. A resolution change can be
+accepted by the front end and ignored by the renderer. That is worth an item of its own: it is the
+shape of the PO's old "setting campaign resolution at 1920x1080 has no effect" (S182), seen from the
+other direction.
+
+**S3:** find what actually sizes the 3D drawable. `Lib3D` takes `dwRenderWidth/dwRenderHeight` from
+`windowRect` at device creation (`LIB3D.CPP:3680`) and the aspect it derives there is correct for
+1920x1080, so something re-establishes the desktop size after `ensure_window` shrinks it.
+`BOB_TRACE_VID=1` already prints deferred/off-thread resizes; add the caller to it and run the pinned
+arm again. **Until the drawable itself is 4:3, no 4:3 control exists** — and the disc being
+mode-invariant says the answer is not in the mode at all but in how the cockpit's own geometry is
+sized.
+
+**ASPECT-1: 2 sprints.**

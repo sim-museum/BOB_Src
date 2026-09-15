@@ -389,6 +389,18 @@ extern "C" int bob_change_display_mode(int w, int h, int test)
 		}
 		return 0;
 	}
+	/* ASPECT-1 S2: S1's control arm did not control anything -- BOB_FORCE_MODE applies at startup
+	   and the campaign resolution immediately changed the mode back to 1920x1080, so both arms
+	   flew 16:9 and both measured the same 1.333 mirror. BOB_PIN_MODE=WxH pins the mode against
+	   every later ChangeDisplaySettings, which is what a 4:3 arm actually needs. Test hook; unset
+	   leaves shipped behaviour untouched. */
+	{ static const char* pin = getenv("BOB_PIN_MODE");
+	  if (pin) { int pw=0, ph=0;
+	    if (sscanf(pin, "%dx%d", &pw, &ph)==2 && pw>0 && ph>0 && (pw!=w || ph!=h)) {
+	      fprintf(stderr, "[vid] BOB_PIN_MODE: refusing %dx%d, staying %dx%d\n", w, h, pw, ph);
+	      fflush(stderr);
+	      if (g_scrW == pw && g_scrH == ph) return 1;
+	      w = pw; h = ph; } } }
 	if (w == g_scrW && h == g_scrH) return 1;
 	fprintf(stderr, "[vid] ChangeDisplaySettings %dx%d -> %dx%d\n", g_scrW, g_scrH, w, h);
 	ensure_window(w, h);
