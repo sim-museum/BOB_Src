@@ -4665,3 +4665,43 @@ then take R3.2's real measurement — a cockpit frame at altitude, in or beside 
 
 **R3.2: 2 sprints this pass. The spike is still unstarted, and the thing that was stopping it from
 even being tested is fixed.**
+
+## R3.2 S3 (Opus 5, 2026-09-15) — ⭐⭐ AIRBORNE on real GL at last: the campaign recipe minus `SDL_VIDEODRIVER=dummy`. And in that frame the clouds still do not paint over the cockpit
+
+S2 got the aeroplane rolling but not flying — no keyboard elevator exists (`ELEVATOR_BACK/FORWARD`
+are dead-coded in `KEYMAPS.H:70-71`; pitch is an analogue axis), so the runway start cannot reach
+altitude from the harness. S3 took the other route.
+
+⭐⭐ **The campaign recipe already reaches a flight IN THE AIR — it was only ever run headless.**
+`bob_combat_soak.sh` sets `SDL_VIDEODRIVER=dummy`, where `draw_fvf` never executes and no capture is
+possible. **Dropping that one variable and running the same clicks on `DISPLAY=:0` gives:**
+
+    Alt 4854ft   Hdg 256   Speed 190Kts   Power 70   Gun Ammo. 1000
+
+**A cockpit at 4,854 ft and 190 knots, on real GL, with a dumped frame**
+(`parity/r32_s3_airborne_realgl_260915.png`). **That is the bridge R3.2, R3.7 and R3.9 have all been
+blocked on** — the campaign path for the flight, the real-GL path for the pixels, in one run.
+
+**MEASURED in that frame — bright, near-neutral (cloud-coloured) pixels by band:**
+
+| band | count | share |
+|---|---|---|
+| above the horizon (where the clouds are) | 4,552 | 0.2% |
+| the cockpit structure (lower 28%) | 1,470 | 0.1% |
+| gunsight glass, mean rgb | **[52,62,61]** | dark |
+
+⭐ **No evidence of clouds painting over the cockpit here either.** The 1,470 bright pixels in the
+cockpit band are consistent with the gunsight's own chrome barrel and reflector rim, and the glass
+itself reads dark, not cloud-filled. **Two frames now — parked and airborne — with the order correct.**
+
+⚠️ **Still not a clearance.** This aircraft is at 4,854 ft over the sea with the cloud deck above it;
+the PO's defect plausibly needs the aeroplane **inside or level with** a cloud, which neither frame
+has. **What changed is that it is now reachable:** the campaign flight runs for minutes on real GL,
+so a later frame — or a climb — can put the cockpit in the deck.
+
+**S4:** dump several frames across the campaign flight rather than one, and score each for
+cloud-coloured pixels inside the cockpit silhouette. The first frame where that count rises above the
+chrome baseline is R3.2's repro — and if none does across a whole sortie, the item should be put to
+the PO as "not reproducible on this build" alongside the other three.
+
+**R3.2: 3 sprints this pass. The spike is still unstarted; its blocker is gone.**
