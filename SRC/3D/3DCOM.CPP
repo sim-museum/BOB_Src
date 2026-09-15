@@ -1982,6 +1982,31 @@ void shape::dopolygon(UByte *& instr_ptr)
 	SWord			rwidth, rheight;
 	SLong			maxshift=0;
 
+#ifdef BOB_LINUX
+	/* R3.7 S8: S7 concluded the muzzle-flash bit is "read nowhere" from a name search. THIS LINE
+	   is why that is not sufficient -- the shape interpreter reads the anim data by BYTE OFFSET
+	   supplied by the .3do, so a shape can read the byte holding `muzzleflash` without any C++
+	   identifier naming it. Record which offsets shapes actually address, so the question can be
+	   settled by measurement instead of by grep. BOB_TRACE_ANIMOFF=1 prints the set once it has
+	   seen enough draws. */
+	if (getenv("BOB_TRACE_ANIMOFF")) {
+		static unsigned char seen[256]; static int nseen = 0, said = 0;
+		if (!said) { said = 1;
+			fprintf(stderr, "[animoff] AircraftAnimData: aclightclock2 at %d, so the "
+			                "lighttoggle/hassmoked/MUZZLEFLASH/cannonflash byte is offset %d\n",
+			        (int)offsetof(AircraftAnimData, aclightclock2),
+			        (int)offsetof(AircraftAnimData, aclightclock2) + 1);
+			fflush(stderr);
+		}
+		if (ptr->animoffset < 256 && !seen[ptr->animoffset] && nseen < 40) {
+			seen[ptr->animoffset] = 1; nseen++;
+			fprintf(stderr, "[animoff] shape reads anim byte offset %d (nobytes=%d)\n",
+			        (int)ptr->animoffset, (int)ptr->nobytes);
+			fflush(stderr);
+		}
+	}
+#endif
+
 	switch (ptr->nobytes)
 	{
 	case 1:

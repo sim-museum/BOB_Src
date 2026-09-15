@@ -4437,3 +4437,39 @@ artefact GMOBJ-1 has been waiting for in the FreeFalcon tree.
    labelled as one.
 
 **R3.7: 3 sprints this pass. Two effects examined: tracers work, the flash has no draw path.**
+
+## R3.7 S8 (Opus 5, 2026-09-14) — ⚠️ S7's "read nowhere" was reached by the wrong method; measured properly, the flash byte is still never addressed
+
+S7 concluded the muzzle-flash bit has no consumer **from a name search**. S8 found the reason that is
+not sufficient, and then did the measurement anyway.
+
+⚠️ **The correction.** `3DCOM.CPP:1988` reads the anim data **by BYTE OFFSET supplied by the shape
+file**:
+
+    val = GlobalAdptr[ptr->animoffset];       // nobytes 1/2/4
+
+**A `.3do` can therefore read the byte holding `muzzleflash` without any C++ identifier naming it**,
+and every grep in S7 would miss it. "No reader by name" is not "no reader" in an engine whose
+animation is data-driven.
+
+⭐ **MEASURED instead, in a full firing sortie (real GL, the S6 recipe):**
+
+    [animoff] AircraftAnimData: aclightclock2 at 140, so the
+              lighttoggle/hassmoked/MUZZLEFLASH/cannonflash byte is offset 141
+    [animoff] shape reads anim byte offset 191 (nobytes=2)
+
+**One offset addressed in the whole flight — 191 — and the flash byte is 141.** The shapes in this
+sortie never read the byte the flash lives in.
+
+⚠️ **Scope, stated because it is narrower than it looks.** This is *one* of the interpreter's
+anim-reading sites; `3DCOM.CPP:2311` reads `animoffsrc` and there may be others. So what is
+established is **"no shape addressed offset 141 through the `animoffset` path during a firing
+flight"** — much stronger than a grep, and not yet the whole claim.
+
+**S9:** instrument the remaining anim-read sites (`animoffsrc`, and anything else indexing
+`GlobalAdptr`) the same way. If none of them touches 141 either, *"the flash flag has no consumer"*
+is established by measurement and S7's question to the PO — implement one as a labelled FEATURE, or
+leave it as the original behaves — is the whole of what is left.
+
+**R3.7: 4 sprints this pass — AT THE CAP. Tracers proven working, the flash proven absent from the
+picture, and its absence now being proven at the mechanism rather than in a text search.**
