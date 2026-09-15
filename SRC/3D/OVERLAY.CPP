@@ -834,6 +834,19 @@ void COverlay::DrawTopText()
 #endif
 #ifndef	_XYCHEAT_
 
+	/* R3.2 S4: BOB_TRACE_HUD prints what the HUD is about to draw. S3 established the real-GL
+	   campaign flight gets AIRBORNE by reading "Alt 4854ft" off a dumped frame by eye -- which
+	   cannot be done by a script, so no run could assert that it had reached the state it claims
+	   to test. The numbers are right here; print them. Every 120th call (~2 s of flight). */
+	if (getenv("BOB_TRACE_HUD")) {
+		static long _nh = 0;
+		if ((_nh++ % 120) == 0) {
+			fprintf(stderr, "[hud] alt=%ld%s hdg=%d speed=%ld%s thrust=%d\n",
+			        (long)altitude2, heightUnitStr, (int)heading, (long)speed2, speedUnitStr,
+			        (int)thrust);
+			fflush(stderr);
+		}
+	}
 	sprintf(temp, "%s %5d%s", OAltitudeText.text, altitude2, heightUnitStr);
 	xpos = x_offsets[g_languageIndex][ALTITUDE_X];						//RJS 7Dec00
 	PrintAt2(xpos, TOPLINE_Y, temp);
