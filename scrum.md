@@ -5617,3 +5617,45 @@ is code, whereas the sight is plain model geometry. That is the fork worth spend
 
 **ASPECT-1: 5 sprints. Re-aimed from "the view is stretched" to "the mirror quad is", with both
 halves measured in both games.**
+
+## ASPECT-1 S6 (Opus 5, 2026-09-15) — the mirror quad is an **exact 192.000 x 144.000 axis-aligned screen rectangle** — 10.000% x 13.333% of the window — and it arrives through the ordinary polygon batch
+
+S5 showed the distortion is per-quad. S6 prints the quads themselves (`BOB_PIXPROBE` now reports the
+four screen vertices, not just the bbox).
+
+**The mirror quad** (128x128 masked texture, `uniqueTextID` idx 1981):
+
+    v0 = (1698.0,  22.5)    v1 = (1890.0,  22.5)
+    v3 = (1698.0, 166.5)    v2 = (1890.0, 166.5)
+
+**192.000 x 144.000, axis-aligned, ratio 1.33333 — exactly 4:3, to three decimals.** As a fraction of
+the window that is **10.000% of the width by 13.333% of the height**.
+
+**Its neighbour, the gunsight glass** (128x128, idx 1989), in the same frame:
+
+    v0 = (1190.8, 288.9)    v1 = (1190.8, 780.6)    v2 = (729.2, 780.6)
+
+**461.6 x 491.7, ratio 0.939** — nothing round about it, and taller than it is wide.
+
+⭐ **So one cockpit polygon lands on a perfect 4:3 rectangle and the one beside it does not.** A
+rounded-off 4:3 is not what perspective does to a quad; it is what a computed rect looks like.
+
+⚠️ **And it is NOT drawn by a special path.** `BOB_PIXPROBE_BT=1` (extended this sprint: the existing
+backtrace sat inside the texture-dump guard, so a draw whose texture has no CPU bits — the mirror's —
+never produced one) names the caller:
+
+    draw_fvf <- DEV_DrawPrimitiveVB <- Lib3D::RenderTPolyList <- Lib3D::EndScene
+             <- ThreeDee::render3d <- ThreeDee::render <- View3d::drawloop
+
+**The ordinary batched polygon list, exactly like every other cockpit polygon.** So nothing downstream
+singles the mirror out: the 4:3 shape is already in the vertices handed to `Lib3D`.
+
+**S7 — one print, and it forks cleanly.** The reflection polygon has its own shape opcode,
+`shape::dodrawreflectpoly` (`3DCOM.CPP:4961`), which copies `newco[*vertexp++]` — the shape
+interpreter's already-transformed vertices — into `BeginPoly`. Print those four `newco` entries for
+this polygon. **If they are already 4:3 there**, the shape interpreter or the cockpit model is the
+source and the search moves to `newco`'s producer; **if they are not**, something between that opcode
+and `RenderTPolyList` reshapes them, and the list is short.
+
+**ASPECT-1: 6 sprints. The defect is now a single polygon whose four screen coordinates are known to
+a tenth of a pixel.**

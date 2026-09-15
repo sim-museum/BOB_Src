@@ -2915,6 +2915,23 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 						(unsigned)(g_lib3d_uniqueTextID & 0xC000),   /* TIT_MASK_TYPE, not >>11 */
 						(unsigned)(g_lib3d_uniqueTextID & 0x07FF),   /* TIT_MASK_INDEX */
 						(unsigned)g_lib3d_isMasked, (unsigned long)g_lib3d_isLand);
+					/* ASPECT-1 S6 (2026-09-15): the bbox alone cannot tell a stretched QUAD from a
+					   stretched picture inside a square one. S5 measured our gunsight ROUND
+					   (141x142) in the same frame as our mirror at 192x145, so the distortion is
+					   per-quad; print the four screen vertices so the quad's own shape is on the
+					   record rather than inferred from its bounding box. */
+					{ for (DWORD vi = 0; vi < count && vi < 8; vi++) {
+						const float* qv = (const float*)(base + (size_t)vi*L.stride + L.posOff);
+						fprintf(stderr, "[pixprobe]   v%lu = (%.1f, %.1f, %.4f)\n",
+						        (unsigned long)vi, qv[0], qv[1], qv[2]); }
+					  /* ASPECT-1 S6: and NAME THE CALLER. The existing BOB_PIXPROBE_BT block sits
+					     inside the texture-dump guard, so a draw whose texture has no CPU bits --
+					     the mirror's -- never got one. Fire it here, outside that guard. */
+					  if (getenv("BOB_PIXPROBE_BT")) {
+						  fprintf(stderr, "[pixprobe]   --- caller ---\n"); fflush(stderr);
+						  void* bt2[24]; int nb2 = backtrace(bt2, 24); backtrace_symbols_fd(bt2, nb2, 2);
+					  }
+					  fflush(stderr); }
 					{ long imn = bob_imagemap_number_of(g_lib3d_map0);
 					  if (imn >= 0) fprintf(stderr,"[pixprobe]   imagemap number = %ld (dir %ld, file %ld)\n",
 					                        imn, imn >> 8, imn & 0xFF);
