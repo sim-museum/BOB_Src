@@ -4986,6 +4986,31 @@ void shape::doweaponoff(UByte *& instr_ptr)								//RJS 13Jul98
 		}
 #ifndef	_NOPOLYS_
 
+		/* ASPECT-1 S7 (2026-09-15): the reflection polygon -- the rear-view mirror -- reaches the
+		   screen as an EXACT 192.000 x 144.000 axis-aligned rectangle (S6), i.e. 4:3 to three
+		   decimals, while the gunsight quad beside it is 461.6 x 491.7. The backtrace showed it
+		   arriving through the ordinary RenderTPolyList batch, so the 4:3 is already in the
+		   vertices handed to Lib3D. THIS is where they are handed over: newco[] -> BeginPoly.
+		   Print them, once.
+		   Read through a memcpy of the leading floats rather than by field name: R3DVERTEX2's
+		   members are protected outside _INSIDE_LIB3D_, and a diagnostic is not worth widening an
+		   engine class's access for. The first four floats are the vertex's sx, sy, sz, hw --
+		   confirmed by LIB3D.CPP's own PROJECT_LINE, which writes pp->sx/sy/sz/rhw in that order. */
+		if (getenv("BOB_TRACE_MIRRORPOLY")) {
+			static int once = 0;
+			if (!once++) {
+				fprintf(stderr, "[mirrorpoly] dodrawreflectpoly: %lu vertices\n",
+				        (unsigned long)numVertices);
+				for (ULong q = 0; q < numVertices && q < 8; q++) {
+					float f[4];
+					memcpy(f, (const void*)&pRVerts[q], sizeof f);
+					fprintf(stderr, "[mirrorpoly]   v%lu raw floats: %.3f %.3f %.3f %.3f\n",
+					        (unsigned long)q, f[0], f[1], f[2], f[3]);
+				}
+				fflush(stderr);
+			}
+		}
+
 		g_lpLib3d->EndPoly();
 #endif
 		g_lpLib3d->SetObjectLighting(lf);

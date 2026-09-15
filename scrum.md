@@ -5659,3 +5659,41 @@ and `RenderTPolyList` reshapes them, and the list is short.
 
 **ASPECT-1: 6 sprints. The defect is now a single polygon whose four screen coordinates are known to
 a tenth of a pixel.**
+
+## ASPECT-1 S7 (Opus 5, 2026-09-15) — ⛔ **`dodrawreflectpoly` never fires.** The mirror is an ORDINARY textured cockpit polygon, so its 4:3 shape is in the model or in the shape interpreter's transform
+
+S6 left the fork: are the mirror's vertices already 4:3 where `shape::dodrawreflectpoly` copies
+`newco[]` into `BeginPoly`, or does something reshape them later? `BOB_TRACE_MIRRORPOLY` (new, in
+that opcode) prints the polygon's vertices once.
+
+⛔ **It printed nothing.** A full real-GL flight with `BOB_MIRROR=1` — 82 HUD samples, the mirror
+visibly rendering — produced **zero** `[mirrorpoly]` lines.
+
+**And the silence is meaningful, not a dead instrument.** `dodrawreflectpoly`'s body is gated on
+`Save_Data.cockpit3Ddetail[COCK3D_SKYIMAGES]`, and that flag is demonstrably ON in this run: the
+mirror pass is gated on the same flag (`3DCODE.CPP:6475`), and with it off the mirror texture is
+merely wiped — yet the disc measures ~1,000 distinct colours with sd 35 (R3.4 S5), which is real
+reflected content. **So the opcode is not in the 109's cockpit shape at all.**
+
+⭐ **Therefore the mirror is drawn as an ordinary textured polygon** that happens to carry the mirror
+material — consistent with S6's backtrace, which showed it arriving through `RenderTPolyList` exactly
+like every other cockpit polygon, and with S5, which showed the gunsight (also ordinary) coming out
+round in the same frame.
+
+**Where that leaves the item.** The 192.000 x 144.000 rectangle is either
+(a) the shape's own geometry — the cockpit model really does hold a 4:3 mirror quad, in which case
+the ORIGINAL draws the same quad round and the difference is in the transform; or
+(b) introduced by the shape interpreter's transform of that polygon.
+**S8 separates them by identifying the polygon by its MATERIAL rather than by an opcode** — the
+mirror's material is recorded in `ThreeDee::mirrorMaterial` by `UseMirror` — and printing its
+vertices both before and after the interpreter's transform.
+
+⚠️ **Housekeeping, recorded because it stopped the sprint dead.** The build failed mid-sprint with
+`fatal error: error writing to /tmp/cck1cUeQ.s: Disk quota exceeded`, and even `pwd` could not write.
+**The session scratchpad had reached 5.4 GB of a 7.6 GB tmpfs**, almost all of it 1920x1080 PPM frame
+dumps at ~6 MB each. Deleting them freed 4.4 GB (tmpfs back to 22%). The standing rule "never
+materialise game data into /tmp" covers this — **frame dumps are game data** — and this sprint's
+re-run wrote its frames under `/home` instead, where there are 2.2 TB free.
+
+**ASPECT-1: 7 sprints. The reflection opcode is eliminated; the mirror is ordinary geometry and the
+search is down to two possibilities.**
