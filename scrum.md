@@ -4242,3 +4242,39 @@ pale box.
 
 **R3.9: 2 sprints this pass. The unidentified sprite is identified, sited, and demoted to an
 instrument.**
+
+## R3.9 S7 (Opus 5, 2026-09-14) — the scope is NOT blank (33 contacts), the off-by-one is not one, and ⚠️ **this item has no gold to be compared against**
+
+S6 sited the object and asked three questions. S7 answers all three, two of them by reading.
+
+**1. The scope has content.** The blip count is now printed rather than guessed:
+
+    [dothreat] blips=33 (GetThreatData last index 32; 0 blips = background sprite only)
+
+**33 contacts** in an ordinary convoy-campaign flight, drawn as red/blue sticks over the sprite. So
+"a scope with no blips on it is exactly a plain pale box" — S6's own suggestion — is **wrong**, and
+the pale box the PO sees is not an empty instrument.
+
+**2. `if (++cnt>0)` is not an off-by-one**, which is what it looks like. `ViewPoint::GetThreatData`
+starts `count=-1` and PRE-increments before each store, so it returns the LAST INDEX; `++cnt` turns
+that into a count, and with no contacts it yields 0 and the loop is skipped. Checked by reading, at
+zero run cost, before it could become a sprint.
+
+⚠️ **3. There is no BoB gold for this.** The gold set is **19 screenshots and one 185 s video**;
+sampled every screenshot and five points across the video, **every one is the front end or the
+campaign map** — Directives, Target List, the phase-select screen, the strategic map. **Not one
+in-flight 3D frame exists.** So R3.9 cannot be settled the way MA's GOLD3D-1 was this morning, and
+any sprint that plans to "compare with the gold" here should stop and read this line first.
+
+⭐ **Which leaves the art, and it is the sharpest remaining hypothesis.** `THREAT01.X8` is a 128×128
+**colour-keyed** sprite (the pixel probe recorded `masked=2`) stretched over a 300×300 screen box. If
+the key is honoured, the scope is a ring and a few marks over the sky; **if it is not, the whole
+texture paints as an opaque 300×300 panel in the top-left corner — which is precisely "a floating
+grey square".**
+
+**S8:** dump the decoded `THREAT01` texels and count how many are the key colour, then read the same
+region out of a rendered frame. A sprite that is 80% key on disk and 0% transparent on screen is the
+defect, and both numbers come from one run.
+
+**R3.9: 3 sprints this pass. Two candidate explanations closed, one sharpened, and the item's oracle
+situation is now on the record.**

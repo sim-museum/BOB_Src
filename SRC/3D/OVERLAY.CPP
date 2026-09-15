@@ -7890,6 +7890,22 @@ void COverlay::DoThreat()
 
 	pvp->GetThreatData(cnt,crd,col,THREAT_RANGE);
 
+#ifdef BOB_LINUX
+	/* R3.9 S7: how many blips does the scope actually have? GetThreatData returns the LAST INDEX
+	   (it starts at -1 and pre-increments), so `++cnt` below is a count, not an off-by-one -- read
+	   rather than assumed, because `if (++cnt>0)` looks exactly like one. A scope with zero blips
+	   draws nothing but its 300x300 background sprite, which is what a "floating grey square" in
+	   the top-left corner would be. */
+	if (getenv("BOB_TRACE_THREAT")) {
+		static int said = 0;
+		if (said < 3) { said++;
+			fprintf(stderr, "[dothreat] blips=%d (GetThreatData last index %d; 0 blips = background sprite only)\n",
+			        (int)cnt + 1, (int)cnt);
+			fflush(stderr);
+		}
+	}
+#endif
+
 	if (++cnt>0)
 	{
 		for (int i=0;i<cnt;i++)
