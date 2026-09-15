@@ -710,7 +710,24 @@ static void pump_events(void)
 				dik, cnt, g_diKbAcquired); fflush(stderr); kb_push(dik,1); kb_push(dik,0); } }
 		else if (mode && mode[0]=='s') { static int sweep=1;
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
-		else { if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); } }  /* full throttle */
+		else {
+			/* R3.2 S2 (2026-09-14): full throttle alone never moves this aeroplane -- every real-GL
+			   capture this session reads `Speed 0 Kts, Alt 4 ft` after a minute at full power,
+			   because the WHEEL BRAKES are still on. BoB maps them to comma/stop
+			   (KEYMAPS.H:1185-6, LEFTWHEELBRAKE/RIGHTWHEELBRAKE = DIK 0x33/0x34), and this branch
+			   never touched them. Release them ONCE: they toggle, so tapping twice puts them
+			   straight back on -- which is exactly the trap MA's own autofly recorded
+			   ("released the brakes and put them back, which looks like the brakes never
+			   released"). Without this, R3.2 (clouds at altitude), R3.7 (muzzle flash in flight)
+			   and R3.9 (the grey square in a dogfight) cannot be captured on real GL at all.
+			   BOB_NO_BRAKE_TAP=1 reverts. */
+			if (cnt == 60 && !getenv("BOB_NO_BRAKE_TAP")) {
+				kb_push(0x33,1); kb_push(0x33,0);
+				kb_push(0x34,1); kb_push(0x34,0);
+				fprintf(stderr, "[autofly] wheel brakes released at cnt=%d\n", cnt); fflush(stderr);
+			}
+			if ((cnt%30)==0 && cnt<600) { kb_push(0x0B,1); kb_push(0x0B,0); }  /* full throttle */
+		}
 	}
 	/* BOB_AUTOQUIT=<sec>: R1.1b inc 4.3 headless test of the return path. After ~<sec> seconds
 	   of flight, hold F12 (DIK 0x58 = KEY_CONFIGMENU) for a few frames so the per-frame

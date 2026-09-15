@@ -4633,3 +4633,35 @@ executes; the real-GL path starts on the runway. **Bridging those two is the pre
 and it is the same gap R3.7 S5 hit.**
 
 **R3.2: 1 sprint this pass — premise partly checked, and the spike deliberately not started.**
+
+## R3.2 S2 (Opus 5, 2026-09-14) — ⭐⭐ the aeroplane ROLLS: the wheel brakes were never released, and that unblocks R3.2, R3.7 and R3.9 on real GL
+
+S1 could only test clouds ABOVE a parked aeroplane, because every real-GL capture this session reads
+`Speed 0 Kts, Alt 4 ft` after a minute at full throttle. S2 asks why, and the answer is one key.
+
+⭐ **BoB maps the wheel brakes to comma and stop** (`KEYMAPS.H:1185-6`,
+`LEFTWHEELBRAKE`/`RIGHTWHEELBRAKE` = DIK 0x33/0x34), and `BOB_AUTOFLY=throttle` **never touched
+them** — it taps full throttle and nothing else, so the aircraft sits at full power with the brakes
+on. Released once at `cnt=60` (`BOB_NO_BRAKE_TAP=1` reverts):
+
+| | HUD readout at frame 2000 |
+|---|---|
+| before | `Alt 4ft  Speed 0Kts  Power 70` |
+| **after** | `Alt 5ft  Hdg 269  **Speed 80Kts**  Power 70` |
+
+⭐⭐ **80 knots on the takeoff roll, from a standstill.** *(Released ONCE on purpose: they toggle, so
+a second tap puts them straight back on — the exact trap MA's own autofly records, where tapping at
+two checkpoints "released the brakes and put them back, which looks like the brakes never
+released".)*
+
+⭐ **This is a harness fix with three items behind it.** R3.2 needs the cockpit *in* the weather, not
+under it; R3.7's muzzle-flash capture was taken on a parked aircraft; R3.9's grey square is reported
+*"during a campaign dogfight"* and the only real-GL path available started on the runway and stayed
+there. **All three were blocked on the same key.**
+
+⚠️ **Not airborne yet** — `Alt 5 ft` at frame 2000, and the heading has drifted to 269, so the roll
+needs more runway and probably some elevator. **S3: hold the throttle longer and add a rotate input,
+then take R3.2's real measurement — a cockpit frame at altitude, in or beside a cloud.**
+
+**R3.2: 2 sprints this pass. The spike is still unstarted, and the thing that was stopping it from
+even being tested is fixed.**
