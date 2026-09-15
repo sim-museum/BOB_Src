@@ -4316,3 +4316,38 @@ are all in hand and none of them can show what the texel became.
 **R3.9: 4 sprints this pass — AT THE CAP, and the item has gone from "an unidentified floating grey
 shape" to "a named sprite, a named draw site, a measured two-tone stencil and one disagreement left
 to resolve".**
+
+## R3.7 S5 (Opus 5, 2026-09-14) — ⭐⭐ **THE TRACERS RENDER.** First positive result the item has ever had, with a control
+
+S4 unblocked this item by proving the guns fire; four sprints before that were spent on a scaffold
+that was switched off. S5 asks R3.7's actual question for the first time: **does anything appear?**
+
+**MEASURED, one firing frame and one control frame at the same frame index:**
+
+| run | bright orange/yellow pixels in the sky right of the gunsight |
+|---|---|
+| `BOB_AUTOFLY=shoot` (magazine emptying, `Gun Ammo: 1695` on the HUD) | **1,518** |
+| same recipe, guns silent | **0** |
+
+⭐ **A tracer streak, drawn in the sky, gone when the guns are not firing.** The capture
+(`parity/r37_s5_tracers_260914.png`, 1920×1080, real GL) also shows the gunsight reticle and its
+reflector glass rendering, the gyro instrument, the panel and the HUD ammo readout counting down
+through the burst. **R3.7 is no longer blocked and no longer hypothetical.**
+
+⚠️ **The recipe matters, and the wrong one says "nothing fires".** The campaign path under
+`SDL_VIDEODRIVER=dummy` — the recipe every other BoB item in this tree uses — **never arms the shoot
+branch**: one `[fire]` line, `KeyPress3d(SHOOT)=0`, no gate at all. The working recipe is S1's, on
+REAL GL: `DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_AUTOFLY=shoot`. **Written down here because this is the
+fourth harness in one session whose silence looked like a defect.**
+
+⛔ **One blind alley closed by reading, at no run cost.** `SMK_TRACER` looks like the tracer
+mechanism and is not: `3DCOM.CPP:27769` is `case SMK_TRACER: break;` — empty — the other reference is
+commented-out old code, and **nothing in the tree ever PRODUCES the value.** It is a dead enum, so the
+empty case is not a missing draw. Whatever draws these tracers is elsewhere, and it works.
+
+**S6, now that something is on screen:** this camera cannot see the muzzles (the Spitfire's guns are
+in the wings, out of the cockpit view), so the next capture should be an external view during the
+same burst — muzzle flash, wing smoke and the rounds' departure are all in frame there. Then the
+comparison is against the PO's description rather than against nothing.
+
+**R3.7: 1 sprint this pass. The item finally has a picture.**
