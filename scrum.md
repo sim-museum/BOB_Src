@@ -277,7 +277,8 @@ list for `UIR_FRAG` and why it produces nothing — `hisquad=0` in the same line
 neighbour, given R4.3 already had to set `MMC.playersquadron` at Fly time because a just-scrambled
 interceptor falls outside the briefing's flyable-status gate. | 5 | ☐ |
 | R3.9 | **Floating light/dark grey square during campaign dogfight (PO 2026-08-28)** — screenshots `Screenshot From 2026-08-28 21-40-46.png` and `21-44-32.png`. An untextured grey quad appears intermittently in the 3D view. ⚠️ **Likely the same family as the cockpit/mirror RTT work**: an untextured or unbound quad reads as flat grey. Suspects, in order — a render-target surface drawn as geometry (`BOB_DUMP_RTT` dumps each RTT FBO), the `InfiniteStrip` horizon backdrop (known garbage `v` texcoords, R3.4), and a sprite whose texture failed to bind. `BOB_TRACE_RTT` / `BOB_CHECK_SURF` are the existing instruments. <br>◐ **CANARY ADDED (2026-08-29): `BOB_TRACE_GREY`.** A flat grey square IS an untextured quad, and the draw path has TWO ways to produce one, needing different fixes: `t == NULL` → texturing disabled, quad draws in vertex colour; `t && !t->glTex` → texturing ENABLED bound to texture 0 because `upload_texture` produced nothing, so GL samples white (the quiet one). Both are now reported, in `draw_fvf` AND `DEV_DrawIndexedPrimitiveVB`, keyed PER SURFACE with a `TABLE FULL` notice — not per call (a per-call trace in this codebase once wrote 24.7 M lines and starved the run) and never silent when full (that exact silence caused an R3.8 finding to be retracted). <br>⚠️ **First run: 0 untextured 3D draws — and that is NOT evidence of absence.** It was a QUICK-MISSION flight (`BOB_BOOT_FRONTEND=1`, dump at frame 400); the PO saw the square **during a CAMPAIGN dogfight** and says it appears *"sometimes"*. Wrong scenario and a short window. The existing `[texfail] summary: 0 uploads bailed` agrees, which is consistent but equally scoped. **Next: drive the campaign to 3D (the R4.3 loop) with `BOB_TRACE_GREY=1` over a long combat soak, and only then treat silence as meaningful.** <br>◐ **RUN 2 (2026-08-29): campaign → 3D on REAL GL, full 10 minutes, `InThe3D=1` — still 0 untextured draws.** Note `tools/bob_combat_soak.sh` could NOT have been reused for this: it runs `SDL_VIDEODRIVER=dummy`, so `draw_fvf` never executes and the canary cannot fire there at all. <br>⚠️ **But run 2's silence is also only partial evidence, because the canary filtered `!is2D`.** That assumed a square floating in the 3D view must be 3D geometry — it need not be: an RTT blit or an overlay quad carries `BFVF_XYZRHW` and would have been excluded from the very trace written to find it. **Widened to include 2D-flagged draws** (still keyed per surface, so it cannot flood; `is2D` is now reported per hit). Re-run before drawing any conclusion. <br>**If it stays silent with 2D included**, the square is not an untextured quad at all and the search moves to the other two suspects in this entry — an RTT surface drawn as geometry (`BOB_DUMP_RTT`) and the `InfiniteStrip` horizon (R3.4's garbage `v` texcoords). <br>⭐ **RUN 3 (2026-08-29) — A HIT, AND ONLY BECAUSE THE `!is2D` FILTER WAS DROPPED:** <br>`[grey] draw_fvf NO texture (texturing disabled)  surf=(nil) prim=6 count=4 fvf=3c4 is2D=1` <br>Exactly one untextured draw in a 10-minute real-GL campaign flight, and it is **a 4-vertex triangle fan in SCREEN SPACE — i.e. a quad**, drawn with texturing disabled. `fvf=0x3c4` decodes as `XYZRHW|DIFFUSE|SPECULAR|TEX2`: **the vertex format declares TWO texture coordinate sets and nothing is bound**, so it paints flat. A screen-space untextured quad is precisely "a floating light/dark grey square". <br>⚠️ The earlier `!is2D` filter would have hidden this permanently — the assumption "a square floating in the 3D view must be 3D geometry" was wrong, and two runs reported a clean 0 under it. <br>**Next: a one-shot `backtrace()` at that site (added) names the caller.** The fix depends on which it is — a draw that should have bound a texture and did not, versus a draw that should not be happening at all. Do NOT simply skip untextured quads: that would hide a legitimately-untextured overlay if one exists. <br>⛔ **RUN 4 — THE HIT IS A FALSE LEAD, AND THE CANARY WAS HIDING THE REST.** `addr2line` on the backtrace: <br>`draw_fvf ← DEV_DrawPrimitiveVB ← Lib3D::RenderPlainPolyList (LIB3D.CPP:15022) ← Lib3D::EndScene ← COverlay::LoaderScreen (OVERLAY.CPP:2924) ← View3d::MakePassive ← Launch3d ← bob_frontend_tick` <br>It is the **LOADING SCREEN**, drawn through `RenderPlainPolyList` — *plain* = untextured **by design**, and it happens at load, not in a dogfight. Exactly the "legitimately-untextured overlay" this entry warned about one line above. <br>⚠️ **AND IT WAS MASKING EVERYTHING ELSE.** The canary deduped on the surface pointer, which is `(nil)` for EVERY texturing-disabled draw — so all of them collapsed to a single entry and only the FIRST was ever printed. The loader screen took that slot at startup and silently swallowed every later untextured draw, including whatever the PO sees. Two runs' "1 hit" actually meant "one of an unknown number". Same failure family as the R3.8 trace that stopped recording once its table filled. **Fixed: keyed on the DRAW (`fvf`/`prim`/`count`), 128 entries, `TABLE FULL` when exhausted.** Re-run before drawing any conclusion. <br>◐ **RUN 5, with the keying repaired: still exactly ONE distinct untextured signature — the loader screen's (`fvf=3c4 prim=6 count=4 is2D=1`). So in this scenario the grey square is NOT an untextured `draw_fvf` quad.** <br>**SPRINT LIMIT (4) REACHED. State of the three suspects:** <br>1. ~~untextured quad in the FVF draw path~~ — **eliminated for this scenario** by a sound instrument (both draw entry points, 2D and 3D, keyed per draw, table-full announced). <br>2. **RTT surface drawn as geometry** — untested. `BOB_DUMP_RTT` dumps each FBO. <br>3. **`InfiniteStrip` horizon** (R3.4's garbage `v` texcoords) — untested. <br>⚠️ **ONE SCOPE CAVEAT THAT MUST NOT BE FORGOTTEN:** the run drives the campaign into 3D and soaks for 10 minutes, but it is NOT established that actual COMBAT occurred, and the PO's words are *"during campaign dogfight… can SOMETIMES be seen"*. Elimination (1) is therefore sound for "campaign flight" and not proven for "campaign dogfight". Before spending a sprint on suspects 2 or 3, get a run where combat demonstrably happens (`BOB_TRACE_ACM` shows the ACM tree engaging) and re-run the canary there — it is cheap and it is the difference between eliminating a suspect and eliminating a scenario. | 5 | ☐ |
-| R3.4 | **Rear-view mirror horizon UVs** — `InfiniteStrip` garbage v-texcoords (compat sanitiser or game-side) so the mirror shows the horizon, not a flat edge texel. | 5 | ☐ |
+| R3.4 | **Rear-view mirror horizon UVs** — ☑ **CLOSED 2026-09-15 (S5), against the gold.** The filed cause (`InfiniteStrip` garbage v-texcoords) was wrong; the defect was MIRROR-1's 5:2 projection aspect against a square FBO, fixed 2026-09-13. Cockpit confirmation at last: `~/gold standard/bob/bob_convoy_campaign.mp4` (real `bob.exe` under Wine, same Luftwaffe Convoys campaign) shows a live mirror — sky, horizon, tan ground, ~1100 distinct colours, sd 33-42 — and the port now measures sd ~35 with ~1000 distinct against its old flat 19. `doc/reference/mirror-gold-vs-port-2026-09-15.png`. The gold mirror is a **circle** (50x50, w/h 1.000), which also settles MIRROR-1's open question: aspect 1.0 is right, not merely workable. | 5 | ☑ |
+| ASPECT-1 | 🔴 **The 3D view is stretched 1.333x horizontally on a widescreen display (found 2026-09-15 by R3.4 S5; affects every flight the PO makes).** The Bf 109's round rear-view mirror measures **50x50 (w/h 1.000)** in the gold at 800x600 and **192x144 (w/h 1.333)** in the port at 1920x1080, stable in every frame of both. 1.3333 = (16/9)/(4/3): the port builds a **4:3** projection and rasterises it into a 16:9 window, so every circle in the game — reticle, dials, sun, mirror — is 33% too wide and the horizontal FoV is wrong to match. Machinery: `DOSDefs.H` `FULLW 25600`/`FULLH 19200` (a hardcoded 4:3 virtual space), `HARDWIN.CPP:253` integer `virtualXscale`, `WIN3D.CPP:3433` `aspectRatio=FoV*(window_height/window_width)`. The integer division alone predicts only 3.7% at 1920x1080, so the prime suspect is the projection not being rebuilt after `ChangeDisplaySettings 1024x768 -> 1920x1080`. **S1: trace `window_width/window_height/aspectRatio/FoV` at `Set3dWindow` and at the 3D projection setup, once per mode change, and A/B against `BOB_FORCE_MODE=1440x1080` (4:3) where the disc must measure 1.000.** Do not change the aspect before that trace says which mechanism is in force. | 5 | ☐ |
 | R3.5 | **Trilinear mipmaps** — ☑ **DONE (2026-06-21).** The `CopyMapToSurface` NULL-deref was a missing **attached mip-level chain**: for `HINT_TRILINEAR` the game makes a `DDSCAPS_COMPLEX|DDSCAPS_MIPMAP` texture and walks `GetAttachedSurface(DDSCAPS_MIPMAP)` to upload each level; compat created no sub-levels → NULL target. Fixed in `bob_video.cpp`: `make_surface` builds the `dwMipMapCount` sub-surface chain (`GLSurface7::mip`), `GetAttachedSurface` returns + AddRefs each level (DX semantics; prevents the mid-walk free), `SURF_Release` tears it down, `upload_texture` auto-generates GL mips (+anisotropy) for chained surfaces only. Bilinear pins (R1.3c) lifted → trilinear is the faithful default; `BOB_BILINEAR`/`BOB_NOMIP` A/B. `BOB_FILTER=2` SIGSEGV→clean flight; default boots `filtering=2`, 88.8% non-black, no stripes. | 5 | ☑ |
 | R3.6 | **Terrain detail combiner + over-tiling** — ◐ **ADDRESSING DONE (2026-06-21).** `DEV_SetTextureStageState` (was a no-op) now captures `D3DTSS_ADDRESS/U/V`; `draw_fvf` applies the game's per-stage MIRROR/CLAMP/WRAP as the GL wrap mode at draw time (matches D3D sticky sampler state) instead of GL_REPEAT everywhere → stops terrain over-tiling. `BOB_NOADDR` reverts. The 2-stage detail-texture *combiner* (multi-texture blend) is the remaining sub-item (separate from addressing). | 5 | ◐ |
 | R3.7 | **In-flight effects** — smoke/contrails/tracers/muzzle-flash/explosions/flak render faithfully (transient sprites). | 5 | ☐ |
@@ -5125,3 +5126,101 @@ that is the very sentence the fix's own comment opens with.
   believe.** The trace that settled this prints both halves, for every control, matched or not.
 
 **R3.6: verified. The item can be closed on this evidence.**
+
+## R3.4 S5 this pass (Opus 5, 2026-09-15) — ⭐⭐ the gold the item has been "blocked on the PO" for since June was **already in `gold standard/bob/`**, it says the mirror is FIXED, and the same picture exposes a much bigger defect: **the whole 3D view is stretched 1.333x horizontally**
+
+R3.4 S4 (2026-09-03) ended: *"the next question is about the TARGET, not the code ... one gold
+capture of the cockpit mirror answers whether a flat sky-grey mirror is correct behaviour"*, and
+parked the item at its 4-sprint cap awaiting the PO.
+
+⚠️ **That capture existed the whole time.** `~/gold standard/bob/` holds 19 stills **and
+`bob_convoy_campaign.mp4` — 3:05 of the real `bob.exe` running under Wine** (`[wine_runner] Using
+runner: lutris-5.7-11-x86_64 ... TUE/BattleOfBritain/battleOfBritain.sh` is legible in the frame),
+Luftwaffe Convoys, the *same campaign the port's own flight harness flies*. This is the third time
+this pass that "blocked on the PO" turned out to mean "nobody looked in the repo"
+([[blocked-on-po-may-be-in-the-repo]]).
+
+**What the gold says the mirror shows.** Sampling the Bf 109 cockpit segment (1 fps, t=60-150 s) at
+the mirror disc:
+
+| gold frame | mean | distinct colours | sd | change vs previous frame |
+|---|---|---|---|---|
+| seq_031 | 200.6 | 1135 | 33.1 | - |
+| seq_033 | 158.8 | 1135 | 54.6 | 50.6 |
+| seq_034 | 91.0 | 999 | 26.6 | 72.8 |
+| seq_047 | 150.3 | 1095 | 42.2 | 65.0 |
+| seq_069 | 187.1 | 1045 | 33.8 | 34.4 |
+
+A **live** mirror: sky band, a horizon, tan ground with linear features, and the aircraft's own
+structure, all of it moving with the aeroplane. So "a flat grey mirror" was never correct behaviour.
+
+⭐ **And the port now does the same thing.** A 280 s real-GL German Convoys flight with `BOB_MIRROR=1`
+(54 dumped 3D frames, HUD 5302 -> 4597 ft, so the run proved it was airborne before anything was
+measured):
+
+| port frame | mean | distinct | sd | d(prev) |
+|---|---|---|---|---|
+| f.3000 | 194.2 | 815 | 35.6 | - |
+| f.6000 | 186.1 | 1867 | 37.8 | 11.2 |
+| f.9000 | 193.3 | 891 | 34.9 | 10.6 |
+| f.12000 | 190.7 | 1256 | 34.8 | 2.9 |
+| f.15000 | 189.4 | 1610 | 35.2 | 4.1 |
+
+Same order of structure as the gold (sd ~35 against 33-42; ~1000 distinct colours in both), and it
+changes frame to frame. Compare with what R3.4 measured on 2026-09-03: **mean 213.5, range 209-215,
+19 distinct colours.** `doc/reference/mirror-gold-vs-port-2026-09-15.png` is the pair, and both
+discs show sky / horizon / tan ground / the same white graticule.
+
+**R3.4 is therefore CLOSED, and it was MIRROR-1 S4 that closed it** (the 5:2 projection aspect
+against a square FBO, fixed 2026-09-13). This sprint is the cockpit-side confirmation MIRROR-1 S4
+said it could not get: *"a cockpit capture was attempted (`BOB_SHOT=520`) and did not land"*. The
+filed cause -- `InfiniteStrip` garbage v-texcoords -- was wrong, as S3 had already shown.
+
+⭐ **MIRROR-1's one open question is also answered by the gold.** S4 declined to claim 1.0 was the
+*right* aspect rather than merely a working one: *"whether the geometrically right number is 1.0 or
+the aspect of the cockpit mirror QUAD"*. **The gold mirror is a circle -- 50 x 50 px, w/h = 1.000, in
+three separate frames.** A round mirror wants a square render target. 1.0 is right.
+
+## ⭐⭐ THE FINDING THIS SPRINT DID NOT GO LOOKING FOR: the port's 3D view is 1.333x too wide
+
+Measuring the mirror disc's bounding box to compare the two pictures produced this, and it is stable
+in every frame of both runs:
+
+| | disc bbox | w/h |
+|---|---|---|
+| gold (`bob.exe`/Wine, 800x600 window) | 50 x 50, 50 x 50, 55 x 55 | **1.000** |
+| port (`build/bob`, 1920x1080 window) | 192 x 144 in f.6000, f.9000, f.12000 | **1.333** |
+
+**1.3333 is exactly (16/9) / (4/3).** The mirror is cockpit geometry, so it goes through the same
+projection as the world: the port computes a 4:3 projection and rasterises it into a 16:9 window.
+Every circle in the game -- gunsight reticle, instrument dials, the sun, the mirror -- is 33% too
+wide on a widescreen display, and the horizontal field of view is wrong to match. **This is on the
+PO's screen every time they fly**, and it is the kind of defect that is invisible until something
+known to be round is measured.
+
+Where it comes from, as far as this sprint got without a rebuild:
+
+* `DOSDefs.H`: `FULLW 25600`, `FULLH 19200` -- a hardcoded **4:3** virtual coordinate space.
+* `HARDWIN.CPP:253`: `virtualXscale = (FULLW+window_width-1)/window_width` -- **integer** division.
+* `WIN3D.CPP:3433`: `aspectRatio = FoV*(window_height/window_width)` where
+  `window_width = VirtualWidth/virtualXscale`.
+* The flight log shows `SDL2 window 1024x768` then `ChangeDisplaySettings 1024x768 -> 1920x1080`.
+  Both of those are the *window*; whether `Set3dWindow` is re-run after the mode change, and what
+  the two integer scales are at 1920x1080, decides between "the projection is built 4:3 and never
+  recomputed" and "it is recomputed but the integer division mangles it". The arithmetic at
+  1920x1080 (scales 14 and 18) predicts only a 3.7% error, **so the integer division alone does not
+  explain 33.3%** -- which points at the projection not being rebuilt after the mode change.
+
+**Filed as ASPECT-1 (5 pts) at the top of the BoB queue, with S1 named**: print
+`window_width/window_height/aspectRatio/FoV` at `Set3dWindow` and at the 3D projection setup, once
+per mode change, and A/B against a 4:3 forced mode (`BOB_FORCE_MODE=1440x1080`) -- the disc must
+measure 1.000 there. Do not "fix" the aspect before that trace says which of the two mechanisms is
+in force; a guess here changes the field of view of every view in the game.
+
+**Honest limits of this sprint.** (1) The gold clip is a manoeuvring sortie and the port flight is
+straight and level on autopilot, so the gold's larger frame-to-frame motion (8-73 against 3-11) is a
+scenario difference and is not claimed as a defect. (2) The port's mirror graticule is sharper and
+higher-contrast than the gold's, which is what 192 px of the same art looks like next to 50 px;
+not claimed as a defect either. (3) Nothing was changed in the code this sprint.
+
+**R3.4: closed after 5 sprints (4 on 2026-09-03 + this one), by evidence rather than by a fix.**
