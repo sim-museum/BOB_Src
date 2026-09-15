@@ -4391,3 +4391,49 @@ the same fork R3.9 had to resolve, and the same two instruments answer it: a cou
 site, then a pixel at the draw.
 
 **R3.7: 2 sprints this pass. One effect confirmed working, one confirmed missing — both measured.**
+
+## R3.7 S7 (Opus 5, 2026-09-14) — ⭐⭐ ROOT CAUSE: the muzzle-flash bit is computed every frame and **read nowhere**
+
+S6 measured no emission at the wings while the guns fired. S7 traced the chain, and it ends in mid-air.
+
+**The chain, all of it original Rowan code:**
+
+    TRANSITE.CPP:4073   acadptr->cannonshooting = 1;   // LT_CANNON
+    TRANSITE.CPP:4075   acadptr->gunshooting    = 1;   // LT_BULLET
+    3DCOM.CPP:17570     if (adptr->gunshooting)  adptr->muzzleflash = !adptr->muzzleflash;
+    3DCOM.CPP:17579     if (adptr->cannonshooting) adptr->cannonflash = !adptr->cannonflash;
+
+**And then nothing.** Searching the whole tree (`grep -a`, both filename cases, `.CPP`/`.cpp`/`.H`):
+
+| bit, same bitfield in `ANIMDATA.H` | references | has a READER |
+|---|---|---|
+| `lighttoggle` | 7 | **yes** — `3DCOM.CPP:24082  if (adptr->lighttoggle)` |
+| `hassmoked` | many | **yes** — `3DCOM.CPP:24830, 25051, 25060` |
+| **`muzzleflash`** | **4** | **NO — every one is a write** |
+| **`cannonflash`** | **4** | **NO — every one is a write** |
+| `rearshooting` | 1 | no — the declaration only |
+
+⭐ **The two neighbours in the same byte are read; the two flash bits are not.** That is not a search
+artefact — it is the same grep, over the same struct, in the same file, finding readers for the bits
+that have them. **The engine computes a per-frame muzzle-flash flicker that nothing draws**, which is
+exactly what S6 measured in pixels: 198 hot pixels at the wings while firing, 191 with the guns
+silent.
+
+⚠️ **This is very probably UPSTREAM, not a port regression.** Every line above carries an original
+`//RJS 25Aug00` comment, and the port has not touched any of them. So the honest reading is *"the
+1999 code sets a flash flag whose consumer is absent from this source tree"* — which could mean the
+consumer was lost before the source we have, or that the shipped game does not draw one either.
+
+⛔ **And BoB cannot settle that from its gold**, because R3.9 S7 established there is no in-flight
+frame in the gold set at all — 19 screenshots and a 185 s video, every one front-end or campaign map.
+**The only oracle that could answer "does the original flash?" is the Wine build**, which is the same
+artefact GMOBJ-1 has been waiting for in the FreeFalcon tree.
+
+**S8, and it is a choice for the PO rather than a bug to fix quietly:**
+1. **Ask.** "The guns fire and the tracers draw; the original's muzzle-flash flag has no consumer in
+   this source. Do you see a flash under Wine?" One answer closes the item either way.
+2. **Or implement one**, flag-gated, since the flicker is already computed: draw a short bright quad
+   at the gun positions while `muzzleflash` is set. That is a FEATURE, not a repair, and it must be
+   labelled as one.
+
+**R3.7: 3 sprints this pass. Two effects examined: tracers work, the flash has no draw path.**
