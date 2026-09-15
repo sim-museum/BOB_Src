@@ -5369,3 +5369,58 @@ cockpit geometry itself is the suspect. **Either way the vertex range also gives
 scale**, which is statement (2).
 
 **ASPECT-1: 3 sprints.**
+
+## ASPECT-1 S4 (Opus 5, 2026-09-15) — ⭐⭐ the mirror quad MEASURED at the draw call: a **128x128 square texture on a 192x145 screen rectangle**, and the coordinates arrive already in final-frame pixels
+
+S3 named the instrument and the tree already had it: `BOB_PIXPROBE="x,y"` (R3.9) reports every
+pre-transformed primitive whose screen bbox covers a pixel, with its bound texture. Aimed at the
+mirror's centre (1793,94) on a real-GL campaign flight with `BOB_MIRROR=1`:
+
+    [pixprobe] (1793,94) covered by prim=6 count=4 fvf=0x3c4 bbox=(1698,22)-(1890,167)
+               tex=0xd9da2ba0 128x128 bpp=16 isRTT=0 masked=1 uniqueTextID=0x07bd
+
+⭐ **A 128x128 SQUARE, masked (chroma-keyed) texture — the round mirror art — drawn onto a
+192 x 145 screen rectangle.** That is the ellipse, measured at the draw call rather than off the
+frame buffer: the ratio is 1.324, and the bbox matches the 192x144 rim measured in the dumped frames
+to a pixel.
+
+⭐ **And `fvf=0x3c4` is `XYZRHW`: the vertices arrive PRE-TRANSFORMED, in final 1920x1080 frame
+pixels.** So nothing downstream stretches them — the game itself computed a 192x145 rectangle for a
+square texture. That also explains why S1's projection trace was innocent and S2's mode change moved
+nothing: **the mirror never goes through the projection matrix at all.**
+
+⭐ **The same probe names three more draws over that pixel, and one of them is the shape of the whole
+answer:**
+
+    bbox=(0,0)-(1920,164)      256x256 texture   <- the cockpit's top bar, full frame width
+    bbox=(1681,0)-(1920,246)   256x256 texture   <- imagemap 547
+    bbox=(960,0)-(1920,1080)   256x256 texture   <- imagemap 1007: EXACTLY the right HALF of the frame
+
+**The cockpit is laid out in fractions of the window and painted from 256x256 art**: one quad covering
+x 0.500–1.000 and y 0.000–1.000 of the frame. A layout expressed as fractions of a 16:9 window, when
+the fractions were authored for 4:3, stretches every circle in it by exactly (16/9)/(4/3) = 1.3333.
+
+**And the mirror quad fits that reading to a pixel.** Carry its 192x145 back onto a 4:3 canvas:
+
+| authoring canvas | the quad would be |
+|---|---|
+| 640 x 480 | **64.0 x 64.4** |
+| 800 x 600 | 80.0 x 80.6 |
+| 1024 x 768 | 102.4 x 103.1 |
+
+**Square to within half a pixel at every 4:3 size** — a 64x64 quad for a 128x128 texture at 640x480
+being the tidiest of them.
+
+**So ASPECT-1's mechanism is now located to a layer:** the cockpit's own layout computes screen
+rectangles as **per-axis fractions of the window**, from art and coordinates authored for 4:3. Not
+the projection (S1), not the display mode (S2), not a blit (this sprint: the vertices are already
+final-frame).
+
+**S5:** find where the cockpit turns its layout into those XYZRHW coordinates — the draw is
+`prim=6 count=4` (a triangle fan quad) reaching `draw_fvf` through `DEV_DrawPrimitiveVB`, so a
+one-shot `backtrace()` at the covering draw names the caller, exactly as R3.9's `BOB_PIXPROBE_BT=1`
+did for the loader screen. **`BOB_PIXPROBE_BT=1` with the same probe point is the whole experiment**
+— it is already implemented and needs no rebuild. The fix, once the site is known, is to scale the
+layout by a single factor and centre it, rather than per-axis.
+
+**ASPECT-1: 4 sprints — AT THE CAP for this pass, and the item is one backtrace from its fix site.**
