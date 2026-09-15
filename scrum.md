@@ -5572,3 +5572,48 @@ only this hook's first draft was lost) and re-applied with the encode done **bef
 the comment kept ASCII. [[shell-edit-commit-traps]].
 
 **SIGHT-1: 2 sprints. Fixed and verified against the gold.**
+
+## ASPECT-1 S5 (Opus 5, 2026-09-15) — ⭐⭐ **it is not an aspect defect at all: in the same frame our gunsight is ROUND and our mirror is 1.32 wide.** The item belongs with MIRROR-1
+
+S4 measured the mirror quad at the draw call and left one question: is anything else in the cockpit
+stretched? SIGHT-1 answered it as a by-product, and S5 measures both sides properly.
+
+**Two round objects, two games, measured the same way:**
+
+| object | gold (`bob.exe`/Wine, 800x600) | port (1920x1080) |
+|---|---|---|
+| **gunsight ring** | 42 x 42–44 px, **w/h 0.955–1.000** | 141 x 142, **w/h 0.993** |
+| **rear-view mirror** | 50 x 50 px, **w/h 1.000** | 192 x 145, **w/h 1.324** |
+
+⭐⭐ **In our own build, in one frame, a few degrees apart: the gunsight is round and the mirror is
+1.32 wide. In the gold both are round.** Two textured cockpit quads through the same `draw_fvf` path,
+both carrying a 128x128 SQUARE texture, and only one of them is stretched.
+
+**So every negative result this item has collected now makes sense together:**
+
+* S1 — the projection's aspect matches the GL viewport exactly (stretch 1.0000). Innocent, and it
+  had to be: the gunsight proves the path is not stretching things.
+* S2 — a genuinely pinned 4:3 display mode changes the mirror by **zero pixels**. Of course: the
+  defect is not in the mode.
+* S3 — "square on any 4:3 canvas" was arithmetic that fitted, and fitted for the wrong reason.
+* S4 — the vertices arrive pre-transformed in final-frame pixels, so nothing downstream stretches
+  them.
+
+**ASPECT-1 is therefore a MIRROR defect, and its home is MIRROR-1's family** — the same quad whose
+projection aspect MIRROR-1 S4 had to correct from a hardcoded 5:2 to 1.0 to make the reflection
+render at all. The name "ASPECT-1" is now actively misleading and the row should say so.
+
+⚠️ **The magnification half does NOT resolve the same way, and must not be folded in.** Scaling both
+objects from the gold's 800x600 to our 1080-row frame: the gunsight ring should be ~76 px and we draw
+**141** (x1.86); the mirror should be ~90 px tall and we draw **145** (x1.6). **Two different
+magnification factors** — so it is not one wrong field of view either. That is a separate question
+with its own measurement, and it is not answered here.
+
+**S6:** print the **four screen vertices** of the mirror quad and of the gunsight quad in the same
+frame (`BOB_PIXPROBE` already finds both draws; it currently reports only the bbox). If the mirror's
+four corners form a 1.32:1 rectangle while the sight's form a square, the difference is in the
+geometry those two draws are handed — and the mirror is built by `docreatemirror`/`UseMirror`, which
+is code, whereas the sight is plain model geometry. That is the fork worth spending a sprint on.
+
+**ASPECT-1: 5 sprints. Re-aimed from "the view is stretched" to "the mirror quad is", with both
+halves measured in both games.**
