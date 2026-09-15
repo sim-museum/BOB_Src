@@ -1567,6 +1567,26 @@ void shape::dopoint(UByte *& instr_ptr)
 //Externals
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
+#ifdef BOB_LINUX
+/* R3.7 S9: EVERY anim-read site, not just one. S8 instrumented `animoffset` (3DCOM.CPP:2013) and
+   found only offset 191 addressed in a firing sortie, with the muzzle-flash byte at 141 -- but said
+   so with its scope stated: that is one of several places the interpreter indexes GlobalAdptr.
+   This records the offset at each site, keyed by (site, offset) so a busy site cannot drown a rare
+   one, and prints each pair once. BOB_TRACE_ANIMOFF=1. */
+void bob_animoff_seen(int off, const char* site)
+{
+    static const char* sites[16]; static unsigned char seen[16][256]; static int nsites = 0;
+    if (off < 0 || off > 255 || !site) return;
+    int si = -1;
+    for (int i = 0; i < nsites; i++) if (sites[i] == site) { si = i; break; }
+    if (si < 0) { if (nsites >= 16) return; si = nsites++; sites[si] = site; }
+    if (seen[si][off]) return;
+    seen[si][off] = 1;
+    fprintf(stderr, "[animoff] site=%-14s reads anim byte offset %d\n", site, off);
+    fflush(stderr);
+}
+#endif
+
 void shape::dopolygon(UByte *& instr_ptr)
 {
 #ifdef	_PROCDEBUG_
@@ -1647,6 +1667,7 @@ void shape::dopolygon(UByte *& instr_ptr)
 
 	ImageMapDescPtr imptr = Image_Map.GetImageMapPtr(imapno);
 
+	if (getenv("BOB_TRACE_ANIMOFF")) bob_animoff_seen((int)dscptr->flagname, "flagname");
 	flag = GlobalAdptr[dscptr->flagname];						//RJS 16Apr99
 //DeadCode RJS 12Feb97 	flag = *(animflags+flag);
 
@@ -2333,6 +2354,7 @@ void shape::doscalesize(UByte *& instr_ptr)
 #endif
 	DOSCALESIZE_PTR	ptr = (DOSCALESIZE_PTR) instr_ptr;
 //DeadCode RJS 21Apr99 	UByteP	adptr = (UByteP) object_obj3d->AnimPtr;
+	if (getenv("BOB_TRACE_ANIMOFF")) bob_animoff_seen((int)ptr->animoffsrc, "animoffsrc");
 	SLong	frameno = GlobalAdptr[ptr->animoffsrc];				//RJS 16Apr99
 	UByte	animscale = ptr->animscale;
 
@@ -2953,6 +2975,7 @@ void shape::doquikpoly(UByte *& instr_ptr)
 #endif
 	DOFADEENVELOPE_PTR	ptr = (DOFADEENVELOPE_PTR) instr_ptr;
 //DeadCode RJS 21Apr99 	UByteP	adptr = (UByteP) object_obj3d->AnimPtr;
+	if (getenv("BOB_TRACE_ANIMOFF")) bob_animoff_seen((int)ptr->birthtimeoffset, "birthtime");
 	SLong	btime = *((SLongP)&GlobalAdptr[ptr->birthtimeoffset]);
 	SLong	lastval, thisval;
 	SLong	totval = ptr->attackval;
@@ -3803,7 +3826,26 @@ void shape::doquikpoly(UByte *& instr_ptr)
 #endif
 	DOSWITCH_PTR	ptr = (DOSWITCH_PTR) instr_ptr;				//RJS 13Mar98
 //DeadCode RJS 21Apr99 	UByteP			adptr = (UByteP) object_obj3d->AnimPtr;		//RJS 13Mar98
+	if (getenv("BOB_TRACE_ANIMOFF")) bob_animoff_seen((int)ptr->animoff, "animoff");
 	ULong			flag = GlobalAdptr[ptr->animoff];					//RJS 13Mar98
+	/* R3.7 S9: byte 141 is the lighttoggle/hassmoked/MUZZLEFLASH/cannonflash byte, and this
+	   doswitch DOES read it (measured). Which BIT does the shape test, what does it expect, and
+	   what is actually there? Printed once per (bitoffset,value) pair, plus the first 8 times the
+	   tested bit is SET -- a branch that never sees its bit set is the difference between "no
+	   consumer" and "a consumer that never fires". BOB_TRACE_FLASHBIT=1. */
+	if (ptr->animoff == 141 && getenv("BOB_TRACE_FLASHBIT")) {
+		static unsigned char pairseen[8][2]; static int npair = 0; static int nset = 0;
+		int bo = (int)ptr->bitoffset, vv = (int)ptr->value;
+		int dup = 0;
+		for (int i = 0; i < npair; i++) if (pairseen[i][0] == bo && pairseen[i][1] == vv) { dup = 1; break; }
+		if (!dup && npair < 8) { pairseen[npair][0] = (unsigned char)bo; pairseen[npair][1] = (unsigned char)vv; npair++;
+			fprintf(stderr, "[flashbit] doswitch on byte 141: nobits=%d bitoffset=%d expects value=%d\n",
+			        (int)ptr->nobits, bo, vv); fflush(stderr); }
+		if (ptr->nobits && ((flag >> bo) & 1) && nset < 8) { nset++;
+			fprintf(stderr, "[flashbit] byte141=0x%02x -> bit %d IS SET (expected %d) -> branch %s\n",
+			        (unsigned)(flag & 0xff), bo, vv,
+			        (((flag >> bo) & 1) == (ULong)vv) ? "TAKEN" : "skipped"); fflush(stderr); }
+	}
 																//RJS 13Mar98
 
 	instr_ptr += sizeof(DOSWITCH);								//RJS 27May98
@@ -3964,6 +4006,7 @@ void shape::dopoint2x(UByte *& instr_ptr)
 	}															//RJS 15May98
 	else														//RJS 15May98
 	{
+		if (getenv("BOB_TRACE_ANIMOFF")) bob_animoff_seen((int)dic_ptr->flag, "dic_flag");
 		animbyte = GlobalAdptr[dic_ptr->flag];
 		offset = (animbyte * realcnt)/255;						//RJS 20Mar00
 
@@ -4980,6 +5023,7 @@ void shape::doweaponoff(UByte *& instr_ptr)								//RJS 13Jul98
 #endif
 	DOSPIN_PTR	ptr = (DOSPIN_PTR) instr_ptr;
 //DeadCode RJS 21Apr99 	UByteP		adptr = (UByteP) object_obj3d->AnimPtr;
+	if (getenv("BOB_TRACE_ANIMOFF")) bob_animoff_seen((int)ptr->animoff, "animoff_ang");
 	UWordP		anglep = (UWordP)&GlobalAdptr[ptr->animoff];
 	UWord		currentangle = *anglep;
 	UWord		spinspeed = *((UWordP)&GlobalAdptr[ptr->speedoff]);

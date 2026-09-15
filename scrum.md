@@ -4917,3 +4917,50 @@ already measures the same thing and check they agree before writing it down.**
 by joining on the GL name the canary sees.
 
 **R3.9: 4 sprints this pass — AT THE CAP.**
+
+## R3.7 S1 this pass (Opus 5, 2026-09-15) — ⛔⛔ **S7 AND S8 ARE BOTH OVERTURNED: the muzzle-flash bit HAS a consumer, it is reached, and its branch is TAKEN**
+
+S7 concluded *"the muzzle-flash bit is computed every frame and read nowhere"* from a name search.
+S8 corrected the METHOD (the interpreter reads anim data by byte offset, so a grep cannot see it),
+measured **one** read site, found only offset 191 addressed, and stated its own scope honestly:
+*"`3DCOM.CPP:2311` reads `animoffsrc` and there may be others… what is established is that no shape
+addressed 141 **through the `animoffset` path**"*. S9 does the rest of that list.
+
+**Every site that indexes `GlobalAdptr` is now instrumented** — `flagname`, `animoffsrc`,
+`birthtimeoffset`, `animoff` (twice) and `dic_ptr->flag` — each keyed by (site, offset) so a busy
+site cannot drown a rare one. One firing sortie, real GL:
+
+    [animoff] site=animoff        reads anim byte offset 141      <-- THE FLASH BYTE
+    [animoff] site=dic_flag       reads anim byte offset 114, 119, 120, 122, 215, 216, 225, …
+    [animoff] shape reads anim byte offset 172, 191               (S8's site, unchanged)
+
+⭐⭐ **Offset 141 is read — by `shape::doswitch`** (`3DCOM.CPP:3806`), the interpreter's conditional:
+it takes a byte, extracts a bit, and skips the next instruction when the bit does not match. So the
+shape data DOES branch on the muzzle flash; S7's "no consumer" and S8's narrower version are both
+wrong, and the reason is the one S8 itself named — there was more than one read site.
+
+**And the branch fires.** New `BOB_TRACE_FLASHBIT` prints the switch's own parameters and the byte:
+
+    [flashbit] doswitch on byte 141: nobits=1 bitoffset=2 expects value=1
+    [flashbit] doswitch on byte 141: nobits=1 bitoffset=5 expects value=0
+    [flashbit] byte141=0x04 -> bit 2 IS SET (expected 1) -> branch TAKEN     (x8)
+
+`ANIMDATA.H:192-199` gives byte 141 as `lighttoggle:1, hassmoked:1, **muzzleflash:1**, rearshooting:1,
+enginestart:1, ejected:1, cannonflash:1, pad:1` — so **bit 2 is `muzzleflash`** and bit 5 is
+`ejected`. `byte141 = 0x04` is exactly muzzleflash set and nothing else.
+
+⭐ **So the chain is intact up to the draw:** the flag is set, a shape tests it, the test passes, the
+branch is taken. **The flash's absence from the picture (S6, measured against a control) is therefore
+DOWNSTREAM of the branch** — in whatever the taken branch draws: its geometry, its image map, its
+colour or its scale.
+
+⚠️ **One thing NOT claimed.** The eight `byte141=0x04` lines are only printed when the bit is SET (the
+probe's condition), so they do not show whether the flag ever CLEARS. "The flash flag is stuck on" is
+a different statement and this run cannot make it.
+
+**S2:** follow the taken branch. `doswitch` leaves `instr_ptr` pointing at the next shape
+instruction — log what that instruction IS (opcode, image map, colour) for the 141/bit-2 switch, and
+compare it with a branch that visibly renders. The question has moved from "is anything listening?"
+to "what does the listener draw?", which is a much smaller search.
+
+**R3.7: 1 sprint this pass.**
