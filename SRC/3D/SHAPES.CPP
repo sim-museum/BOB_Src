@@ -76,6 +76,8 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //------------------------------------------------------------------------------
 
 	#include	"DOSDefs.h"
+#include	<stdio.h>									/* R3.4: BOB_OPCENSUS */
+#include	<stdlib.h>
 #define F_GRAFIX												//DAW 05Aug96
 #define F_SOUNDS
 #define F_BATTLE
@@ -750,6 +752,29 @@ void shapestuff::FixInstrData(UByte *& ptr, ULong& datalen)
 
 //DeadCode RJS 23Apr97 		lastinstr = instr;
 
+		/* R3.4 (2026-09-15): a LOAD-TIME opcode census. ASPECT-1 S9 proved the interpreter never
+		   reaches docreatemirror, which has two readings -- the opcode is absent from the shape, or
+		   it is present and a runtime branch skips it. THIS walk is the one that cannot be fooled:
+		   it visits every instruction in every shape file at load, with no gate and no branch, so a
+		   count of zero here means the byte is not in the data at all. BOB_OPCENSUS=1 tallies the
+		   two opcodes this question needs and names the shapes that carry them. */
+		if (getenv("BOB_OPCENSUS")) {
+			static unsigned mirr=0, refl=0, shapes=0, total=0;
+			total++;
+			if (instr==(UWord)docreatemirrorno) { mirr++;
+				fprintf(stderr,"[opcensus] docreatemirror IN SHAPE %d (instr #%d)\n",
+				        (int)ShapeFixing, instrcnt); fflush(stderr); }
+			if (instr==(UWord)dodrawreflectpolyno) { refl++;
+				fprintf(stderr,"[opcensus] dodrawreflectpoly IN SHAPE %d (instr #%d)\n",
+				        (int)ShapeFixing, instrcnt); fflush(stderr); }
+			/* PROVE THE INSTRUMENT CAN SPEAK (memory: instrument-bookkeeping-lies). The first
+			   instruction walked says so out loud, and every 50,000 after it reports the running
+			   tally -- so "no mirror opcode" can be told apart from "the census never ran". */
+			if (total==1 || (total % 50000)==0)
+				fprintf(stderr,"[opcensus] %u instructions walked (shape %d): docreatemirror=%u dodrawreflectpoly=%u\n",
+				        total, (int)ShapeFixing, mirr, refl), fflush(stderr);
+			(void)shapes;
+		}
 		ptr += (size = fixuptable[instr].skipsize);
 
 		datalen -= (size+1);

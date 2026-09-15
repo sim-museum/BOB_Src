@@ -5786,3 +5786,45 @@ one.**
 
 **ASPECT-1: 9 sprints, 5 in this pass — OVER THE CAP. Parked here deliberately**, with R3.4 re-opened
 and S10 named as a data-identity check rather than more rendering work.
+
+## R3.4 S6 (Opus 5, 2026-09-15) — ⭐⭐ **the data answers: `docreatemirror` is not in ANY shape this port loads.** The census walked every instruction at load time and found zero
+
+ASPECT-1 S9 proved the interpreter never reaches `docreatemirror` and named the two readings: the
+opcode is absent from the data, or it is present and a runtime branch skips it. That is a data
+question, so it is asked of the LOADER, not the renderer.
+
+⭐ **`BOB_OPCENSUS=1` (new, `SHAPES.CPP: FixInstrData`)** counts opcodes on the **load-time fixup
+walk** — the one pass that visits every instruction of every shape file with no gate, no branch and
+no runtime condition. If the byte is in the data this walk sees it.
+
+⛔ **A full real-GL campaign flight, airborne at 5,302 ft, 97 HUD samples:**
+
+    [opcensus]     1 instructions walked (shape 690): docreatemirror=0 dodrawreflectpoly=0
+    [opcensus] 50000 instructions walked (shape 184): docreatemirror=0 dodrawreflectpoly=0
+    docreatemirror IN SHAPE ...  : never printed
+
+⭐ **And the instrument was made to prove it can speak first** (memory: *instrument-bookkeeping-lies*).
+The first version printed only every 200,000 instructions and every mirror hit — it produced **no
+output at all**, which is exactly what a census that never ran looks like. The heartbeat at
+instruction 1 was added for that reason, and the re-run shows the walk covering 50,000+ instructions
+across shapes 690 and 184 while still reporting zero.
+
+**So the mirror opcode is not in the shapes, full stop** — and with it the whole chain:
+`docreatemirror` → `UseMirror` → `SetMirrorSeen` → `ThreeDee::RenderMirror` (which bails on
+`!mirrorSeen`, `3DCODE.CPP:6487`). Our 109 draws a **painted 192×144 disc** and no render-to-texture
+mirror exists to fill.
+
+⚠️ **The limit of this measurement, stated plainly:** BoB loads shapes on demand, so the census sees
+the shapes THIS flight loaded — the same recipe, the same squadron (126) and the same cockpit
+ASPECT-1 measured the disc in, which is the population the question is about, but it is not every
+shape in the game. A flight in a different aircraft would need its own census.
+
+⭐ **What this leaves R3.4 with.** The gold's 109 mirror content swings by a factor of two across
+frames (mean 91 → 200) — a live reflection. Ours cannot be one. The remaining possibilities are
+narrow and all about DATA rather than rendering: the original loads a different cockpit shape
+(a variant or LOD we do not pick), or our shape files are not the ones the original ships. **S7 is a
+file-level question** — compare the cockpit shape file our loader opens against what the gold
+install holds, by name and by size, before writing another line of renderer code.
+
+**R3.4: 6 sprints (2 in this pass). The rendering explanation is exhausted; the data explanation is
+now the only one left standing.**
