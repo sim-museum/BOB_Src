@@ -5329,3 +5329,43 @@ mode-invariant says the answer is not in the mode at all but in how the cockpit'
 sized.
 
 **ASPECT-1: 2 sprints.**
+
+## ASPECT-1 S3 (Opus 5, 2026-09-15) — the disc is **exactly square on any 4:3 canvas**, which separates the item into two numbers: a 4:3→16:9 stretch and a 1.6x cockpit magnification
+
+S2 left the distortion mode-invariant and pointed at the cockpit's own geometry. S3 takes the
+measurement apart arithmetically before spending another flight on it.
+
+**The disc measures 192 x 144 px in a 1920x1080 frame**, i.e. **10.00% of the width and 13.33% of the
+height**. Carry those two fractions onto a 4:3 canvas:
+
+| canvas | disc becomes |
+|---|---|
+| 1024 x 768 (this port's BOOT window) | **102.4 x 102.4** |
+| 800 x 600 (the gold's window) | **80.0 x 80.0** |
+
+⭐ **Square to the first decimal, and square on ANY 4:3 canvas** — which is what "the cockpit is laid
+out against a fixed 4:3 space and presented on a 16:9 drawable" predicts exactly, and is consistent
+with S2's mode-invariance: the layout space does not move when the display mode does. It is the same
+1.3333 the item was filed with, but located in the presentation of a fixed canvas rather than in the
+projection matrix S1 exonerated.
+
+⭐ **And the second number falls out cleanly, which the item had been conflating with the first.**
+On that same 800x600 canvas our mirror is **80 px** where the gold's is **50 px**: the port's cockpit
+is **1.6x magnified** with respect to the shipped game, independently of the stretch. A narrower
+horizontal field of view, a different cockpit scale, or a different eye position would each do that,
+and none of them is the aspect bug.
+
+**So ASPECT-1 is two defects and they should be measured separately from here:**
+1. **the stretch** — a 4:3 cockpit canvas presented on a 16:9 drawable (circles 33% too wide);
+2. **the magnification** — the cockpit drawn 1.6x larger than the original at the same canvas.
+
+⚠️ **Both of the above are arithmetic on one measured pair, not an instrumented observation**, and
+this project's own record says not to bank that. **S4 is the instrument, and it settles both at
+once:** print the screen-space coordinates of the mirror quad's four vertices in `draw_fvf` /
+`DEV_DrawIndexedPrimitiveVB` for the 2D-flagged draws, together with the window size. If they arrive
+as `XYZRHW` in a 1024x768 (or other fixed) range, statement (1) is confirmed at the source and the
+fix is a per-axis scale; if they arrive already in window pixels, the canvas theory is dead and the
+cockpit geometry itself is the suspect. **Either way the vertex range also gives the cockpit's own
+scale**, which is statement (2).
+
+**ASPECT-1: 3 sprints.**
