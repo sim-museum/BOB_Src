@@ -1,0 +1,18 @@
+I started on a number of these JU87 insignia some time ago when only the .x8 editor was available.
+Those emblem 3 files that are 256x256 are the original rowan resolution.  With the new skinners pack
+I have been able to increase resolution to 512x512.  Eventually all files will be 512x512.
+
+I have attempted to research these insignia and believe all included were involved in the BOB 
+I have also tried to incorporate the historically correct spinner colors and patteren along with 
+their insignia.
+Due to Rowan coding most insignia are place somewhat forward of their actual positions.
+
+All Emblem3 and Emblem3_trans pcx files are to be placed into the maskmap file in your .dir
+
+All JU87ULWN pcx files are to be placed into the imagemap file.
+
+Backup all files.
+
+Redband
+
+Redband151@hotmail.com

@@ -1,0 +1,14 @@
+#Aircraft setup file {
+Model { 2152 180 0 0 } # pitch alt CoG zPos
+ENGINE { piston 990 2600 450 30000000 } # horsepower maxrpm minrpm inertia
+MainPlane { 75250 230 345 33000 165 215 # area0 chord0 span0 area1 chord1 span1
+ DragPolar { 0.02715 0.061718 } # cdo l
+}
+ModelAnim { aileronr }
+ModelAnim { aileronl 32767 -32768 }
+ModelAnim { elevator 32767 -32768 }
+ModelAnim { rudder }
+ModelAnim { rpm 0 425 }
+MassInertias { 10000 10000 10000 }
+}
+

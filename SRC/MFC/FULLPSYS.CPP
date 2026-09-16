@@ -1025,10 +1025,17 @@ extern "C" void bob_frontend_tick(void)
 				ld_done = true;
 				const char* nm = getenv("BOB_SAVE_NAME"); if (!nm || !*nm) nm = "Auto Save.BSR";
 				int before = (int)MMC.currtime;
+				fprintf(stderr,"[campload] entering CFiling::LoadGame(\"%s\")\n",nm); fflush(stderr);
 				bool ok = CFiling::LoadGame(nm);
-				fprintf(stderr,"[campload] CFiling::LoadGame(\"%s\") -> %s (currtime %d -> %d, localplayer=%d gamestate=%d)\n",
+				/* GOLDVID-BOB-2 S2: the units bit travels INSIDE the save (SaveDataSoftware
+				   carries gamedifficulty), and the game keeps one autosave per side
+				   (.BSR = RAF, .BSL = Luftwaffe -- MAINTBAR.CPP:677). Print GD_UNITS after the
+				   load so a per-side units difference can be read off the FILES. */
+				fprintf(stderr,"[campload] CFiling::LoadGame(\"%s\") -> %s (currtime %d -> %d, localplayer=%d gamestate=%d GD_UNITS=%d[%s])\n",
 					nm, ok?"OK":"FAIL", before, (int)MMC.currtime,
-					(int)Todays_Packages.localplayer, (int)RFullPanelDial::gamestate);
+					(int)Todays_Packages.localplayer, (int)RFullPanelDial::gamestate,
+					(int)Save_Data.gamedifficulty[GD_UNITS],
+					Save_Data.gamedifficulty[GD_UNITS] ? "metric" : "imperial");
 				/* LoadGame restores Miss_Man but does NOT rebuild the world (the real flow does that
 				   via LaunchMap->StartUpMapWorld next); fast-forwarding the sim over the loaded-but-
 				   un-rebuilt world then crashes in the SAG AI (R4.5 family). Stop the headless

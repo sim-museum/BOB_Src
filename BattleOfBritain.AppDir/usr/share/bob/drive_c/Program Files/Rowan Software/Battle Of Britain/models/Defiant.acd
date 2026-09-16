@@ -1,0 +1,86 @@
+# model file for Defiant
+plane
+WeightEmpty 323700
+MaxIntFuel 53600
+FuelTankCap { 17600 17600 9200 9200 }
+FuelTankXPos { -210 310 -310 210 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 2
+ShadowShpNo 355
+Visible 17
+SAGsubshape 369
+CommsVisible 17
+FuelAboff 88
+Maxvel 1360000
+Minvel 500000
+Cruisevel 1220000
+BestClimbVel 900000
+BestClimbPitch 1185
+MaxDiveVel 2000000
+MaxAccel 6000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 65
+GunnerPit1 {65 0 0 }
+GunnerPit2 {65 0 0 }
+GunnerPit3 {65 0 0 }
+GunnerPit4 {65 0 0 }
+CockpitScale 0.25
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 0
+FinlhdgMin 0
+FinlhdgMax 0
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9995
+AerobaticFactor 1
+DeckAngle 2002
+DeckShunt 150
+MaxRollRate 16384
+MaxPitchRate 3641
+LandingSpeed 350000
+MaxDiveRPM 3900
+FreeRPM 500
+MaxRPM 3000
+MinRPM 500
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 762000
+AbsCeiling 950000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 8110000
+GunSnd { 29459 65535 65535 65535 29529 }
+EngineSnd 29447
+EngineSubSnd 29445
+EngineStartSnd 29455
+NoGuns 6
+GunIdx1 0
+GunIdx2 0
+GunDelay 24
+GunFrequency 72
+NumACinFlight 3
+MaxFlights 4
+NumEngines 1
+NumPilots 1
+RoleType 0
+IsLarge 0
+EngineCutout 0
+RetractableGear 1
+Playable 0
+Nationality 1
+Cockpit 0
+AIType 0
+MaxHeadX 25
+InstType 0
+ACFlags 4
+BestClimbAng { 1185 1193 1207 1227 1098 912 730 540 367 189 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 850000 }
+MaxVelsl { 1100000 1160000 1218000 1274000 1322000 1360000 1360000 1333000 1277000 1182000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 }
+MaxvelDive_0km 1750000
+MaxvelDive_11km 1750000
+MaxvelDive_20km 1750000
+Version 1
+AcmName "Defiant"

@@ -1,0 +1,10 @@
+08/21/26, 20:24:14
+File 'E:\bdg_untouched\bob\SRC\files\..\FILES\Fileman.cpp', line 1220:
+
+File does not exist for reading(6b05=\Program Files\Rowan Software\Battle Of Britain\artwork\dial640\title.bmp).
+__________________
+08/21/26, 20:24:14
+File 'E:\bdg_untouched\bob\SRC\files\..\FILES\Fileman.cpp', line 1220:
+
+File does not exist for reading(6b05=\Program Files\Rowan Software\Battle Of Britain\artwork\dial640\title.bmp).
+__________________

@@ -1,0 +1,13 @@
+
+I have attempted to research these insignia and believe all included were involved in the BOB 
+I have not included correct spinners as of this time
+
+many of these were started with the.x8 editor and so are still in 256x256 resolution.  These will be updated to 
+512x512 resolution as time permits with the new skinners pack
+
+All Emblem2 and Emblem2_trans pcx files are to be placed into the maskmap folder in the BOB.dir
+Backup all files.
+
+
+Redband
+Redband151@hotmail.com

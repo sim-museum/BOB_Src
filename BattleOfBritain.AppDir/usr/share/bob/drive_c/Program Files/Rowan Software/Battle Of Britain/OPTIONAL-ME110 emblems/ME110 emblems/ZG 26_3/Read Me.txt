@@ -1,0 +1,10 @@
+
+ZG26 3rd staffel
+
+Unit emblem introduced as a result of the units' strafing activities in Poland 1939
+
+Back up files first.
+Place Emblem2 and Emblem2_trans in maskmap file in BOB dir
+
+Created by Redband
+Redband151@hotmail.com

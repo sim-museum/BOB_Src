@@ -1,0 +1,86 @@
+# model file for He111
+plane
+WeightEmpty 875000
+MaxIntFuel 254200
+FuelTankCap { 74800 74800 52300 52300 }
+FuelTankXPos { 150 -150 425 -425 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 5
+ShadowShpNo 361
+Visible 20
+SAGsubshape 375
+CommsVisible 20
+FuelAboff 137
+Maxvel 1100000
+Minvel 500000
+Cruisevel 950000
+BestClimbVel 700000
+BestClimbPitch 1113
+MaxDiveVel 2000000
+MaxAccel 6000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 147
+GunnerPit1 {147 0 0 }
+GunnerPit2 {148 -32768 3641 }
+GunnerPit3 {149 -32768 0 }
+GunnerPit4 {147 0 0 }
+CockpitScale 0.125
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 1729
+FinlhdgMin 32658
+FinlhdgMax 32876
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9993
+AerobaticFactor 0
+DeckAngle 1820
+DeckShunt 200
+MaxRollRate 5461
+MaxPitchRate 1820
+LandingSpeed 450000
+MaxDiveRPM 3600
+FreeRPM 400
+MaxRPM 2400
+MinRPM 400
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 762000
+AbsCeiling 825000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 7470000
+GunSnd { 29462 29462 29462 65535 29531 }
+EngineSnd 29451
+EngineSubSnd 29449
+EngineStartSnd 29458
+NoGuns 1
+GunIdx1 0
+GunIdx2 0
+GunDelay 24
+GunFrequency 120
+NumACinFlight 5
+MaxFlights 3
+NumEngines 2
+NumPilots 5
+RoleType 1
+IsLarge 1
+EngineCutout 0
+RetractableGear 1
+Playable 2
+Nationality 2
+Cockpit 0
+AIType 0
+MaxHeadX 25
+InstType 0
+ACFlags 4
+BestClimbAng { 1113 973 834 695 556 417 278 139 0 0 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 700000 }
+MaxVelsl { 900000 950000 1000000 1050000 1090000 1100000 1075000 975000 800000 800000 800000 800000 800000 800000 800000 800000 800000 800000 800000 800000 800000 }
+MaxvelDive_0km 1450000
+MaxvelDive_11km 1450000
+MaxvelDive_20km 1450000
+Version 1
+AcmName "He111"

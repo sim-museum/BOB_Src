@@ -1,0 +1,79 @@
+#Aircraft setup file {
+Model { 1944 229 -335 -6000 } # pitch alt CoG zPos
+Thrustpoint { prop 0 0 -45 0 0 } # x y z pitch yaw
+ENGINE { piston 1140 2100 400 30000000 # horsepower maxrpm minrpm inertia
+ Curves { COMM Power0 COMM Power1 JU87B PowerAlt }
+ Propeller { 165 13613 0.477 1 } # radius area ratio dir
+ PropInertia { 15000000 15000000 30000000 } # ixx iyy izz
+ PropType { 2pitch 40 50 } # minpitch maxpitch
+ Starter 2
+ MagType 1
+}
+MainPlane { 119000 293 425 40950 182 260 # area0 chord0 span0 area1 chord1 span1
+ Position { 167 -42 -348 503 -8 -342 } # x0 y0 z0 x1 y1 z1
+ Orientation { 4.25 0 5.0 4.25 0 10.0 } # x0 y0 z0 x1 y1 z1
+ DragPolar { 0.040856 0.061718 } # cdo l
+ Curves { JU87B Cl Cd none none Cm } 
+ buffetAoa0 10.0
+ buffetAoa1 17.5
+ buffetM0 1
+ buffetM1 1
+ ACMmaxaoa 15.0
+ Control { aileron 20 0.33 0.45 } # Chord scalepos scaleneg
+ Slipstream { 1 1 0 } # Thrust1 Thrust2 Percentage 
+}
+Surface { 1 8 25725 245 # type description area span
+ Position { 123 60 -966 } # x y z
+ Orientation { 1.0 0 0 } # x y z
+ Curves { JU87B TailCl COMM TailCd }
+ Control { elevator 25 0.40 0.50 } # Chord scalepos scaleneg
+ Slipstream { 1 45 } # Thrust Percentage
+}
+Surface { 1 8 25725 245 # type description area span
+ Position { -123 60 -966 } # x y z
+ Orientation { 1.0 0 0 } # x y z
+ Curves { JU87B TailCl COMM TailCd }
+ Control { elevator 25 0.40 0.50 } # Chord scalepos scaleneg
+ Slipstream { 1 45 } # Thrust Percentage
+}
+Surface { 1 9 33300 185 # type description area span
+ Position { 0 64 -961 } # x y z
+ Orientation { 0 0 -90 } # x y z
+ Curves { JU87B FinCl COMM TailCd }
+ Control { rudder 40 0.25 0.25 } # Chord scalepos scaleneg
+ Slipstream { 1 95 } # Thrust Percentage
+}
+Cylinder { 270 95 118 0 4 -200 0 0 0 } # length diax diay x y z ox oy oz
+Cylinder { 240 95 165 0 28 -455 0 0 0 } # length diax diay x y z ox oy oz
+Cylinder { 470 55 85 0 0 -810 0 0 0 } # length diax diay x y z ox oy oz
+Aerodevice { 2 0 3 0.5 0.25 -0.25 0.1 4 55 306 304 63 flaps 16384 -16384 }
+Aerodevice { 6 0 1 0 0.02 0 0.00 2 120 310 310 999 canopy }
+Aerodevice { 5 0 3 -0.1 0.015 0.075 0.00 2 164 312 312 250 break }
+#Gear {ident stiffness damping rollres friction brakepower key gear/void min max }
+Gear { port 45000 450000 0.05 0.4 5000 nullkey void 0 255 }
+Gear { stbd 45000 450000 0.05 0.4 5000 nullkey void 0 255 }
+Gear { tail 12500 125000 0.05 0.4 0 nullkey void 0 255 }
+ModelAnim { aileronr }
+ModelAnim { aileronl 32767 -32768 }
+ModelAnim { elevator 32767 -32768 }
+ModelAnim { rudder }
+ModelAnim { rpm 0 425 }
+Trim { 8100 0 0 }
+MassInertias { 30953 51023 21874 }
+FuelCockTanks { 0 false false false false }
+FuelCockTanks { 1 true  false false false }
+FuelCockTanks { 2 false true  false false }
+FuelCockTanks { 3 true  true  false false }
+Data {
+ FuelCockType 1 
+ SlipstreamRudder 3400
+ ControlForce 100
+ BuffetForce 100
+ PowerBoost 1.5
+ ContrailDuration 1.0
+ ControlLossV0 175
+ ControlLossV1 200
+}
+
+}
+

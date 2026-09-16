@@ -1,0 +1,86 @@
+# model file for Blenheim
+plane
+WeightEmpty 450000
+MaxIntFuel 100000
+FuelTankCap { 100000 0 0 0 }
+FuelTankXPos { 0 0 0 0 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 3
+ShadowShpNo 358
+Visible 45
+SAGsubshape 372
+CommsVisible 45
+FuelAboff 220
+Maxvel 1250000
+Minvel 500000
+Cruisevel 1100000
+BestClimbVel 750000
+BestClimbPitch 1043
+MaxDiveVel 1750000
+MaxAccel 7000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 65
+GunnerPit1 {65 0 0 }
+GunnerPit2 {65 0 0 }
+GunnerPit3 {65 0 0 }
+GunnerPit4 {65 0 0 }
+CockpitScale 0.25
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 0
+FinlhdgMin 0
+FinlhdgMax 0
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9995
+AerobaticFactor 0
+DeckAngle 2002
+DeckShunt 200
+MaxRollRate 8192
+MaxPitchRate 1820
+LandingSpeed 400000
+MaxDiveRPM 3900
+FreeRPM 500
+MaxRPM 3000
+MinRPM 500
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 762000
+AbsCeiling 850000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 8110000
+GunSnd { 29459 65535 65535 65535 29530 }
+EngineSnd 29447
+EngineSubSnd 29445
+EngineStartSnd 29458
+NoGuns 6
+GunIdx1 0
+GunIdx2 0
+GunDelay 24
+GunFrequency 120
+NumACinFlight 3
+MaxFlights 4
+NumEngines 2
+NumPilots 2
+RoleType 1
+IsLarge 1
+EngineCutout 0
+RetractableGear 1
+Playable 0
+Nationality 1
+Cockpit 0
+AIType 0
+MaxHeadX 25
+InstType 0
+ACFlags 4
+BestClimbAng { 1043 913 782 652 522 391 261 130 0 0 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 }
+MaxVelsl { 1050000 1100000 1150000 1200000 1250000 1250000 1200000 1125000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 }
+MaxvelDive_0km 1600000
+MaxvelDive_11km 1600000
+MaxvelDive_20km 1600000
+Version 1
+AcmName "Blenheim"

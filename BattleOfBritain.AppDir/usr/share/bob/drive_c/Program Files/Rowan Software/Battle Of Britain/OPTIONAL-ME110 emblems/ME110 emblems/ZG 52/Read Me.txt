@@ -1,0 +1,11 @@
+
+ZG 52
+
+Formed during late 1939, Saw action during Battle of France and possibly some of the early channel action as ZG52
+
+Renamed as II/ ZG 2 during BOB, Some AC continued to carry ZG52 white dragon
+
+Back up files first.
+Place Emblem2 and Emblem2_trans in maskmap file in BOB dir
+
+Redband

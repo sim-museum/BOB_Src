@@ -1,0 +1,23 @@
+# model file for Train
+tank
+WeightEmpty 5539
+MaxIntFuel 130000000
+FuelTankCap { 200000000 200000000 200000000 200000000 }
+FuelTankXPos { -32767 -32767 -32767 -32767 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 3
+ShadowShpNo 258
+Visible 258
+SAGsubshape 258
+CommsVisible 258
+FuelAboff 198
+Maxvel 402300
+Minvel 67050
+Cruisevel 268200
+BestClimbVel 134100
+BestClimbPitch 715853369
+MaxDiveVel 447000
+MaxAccel 1000
+TurnPercs 10923
+RadiusTurn 100000

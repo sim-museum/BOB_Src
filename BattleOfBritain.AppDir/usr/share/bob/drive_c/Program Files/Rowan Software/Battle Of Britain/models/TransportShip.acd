@@ -1,0 +1,23 @@
+# model file for TransportShip
+tank
+WeightEmpty 5539
+MaxIntFuel 130000000
+FuelTankCap { 200000000 200000000 200000000 200000000 }
+FuelTankXPos { -32767 -32767 -32767 -32767 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 4
+ShadowShpNo 258
+Visible 258
+SAGsubshape 258
+CommsVisible 258
+FuelAboff 198
+Maxvel 67050
+Minvel 4470
+Cruisevel 44700
+BestClimbVel 67050
+BestClimbPitch 5963959
+MaxDiveVel 67050
+MaxAccel 1000
+TurnPercs 91
+RadiusTurn 60000

@@ -1,0 +1,473 @@
+<html>
+	<head>
+		<title>BDG Advisor Readme</title>
+	</head>
+	<body>
+		<a name="top">
+			<h1>BDG Advisor v0975 Manual</h1>
+		</a>
+		<h2>Table of Content</h2>
+		<a href="#intro">Introduction</a><br>
+		<a href="#firststart">First Start</a><br>
+		</be><a href="#main_dlg">Main Dialogue</a><br>
+		<a href="#boolean_dlg">Boolean Dialogue</a><br>
+		<a href="#int_dlg">Integer Dialogue</a><br>
+		<a href="#float_dlg">Float Dialogue</a><br>
+		<a href="#hex_dlg">Colour Dialogue</a><br>
+		<a href="#cardbase_dlg">CardBase Dialogue</a><br>
+		<a href="#custom_cardbase_dlg">Custom CardBase Dialogue</a><br>
+		<a href="#advanced_dlg">Advanced Options Dialogue</a><br>
+		<a href="#modder">Introduction for brave people who want to write scripts</a><br>
+		<br>
+		<p>If you have any questions feel free to post them at the <b>BDG Messageboard</b> which 
+			can be found at <a href="http://bob-ma.org">the BDG website</a></p>
+		<a href="#top">Top</a>
+		<hr>
+		<h2><a name="intro">Introduction</a></h2>
+		<p>The Advisor is a script-driven application that should help the user navigate 
+			through the increasingly complex bdg configuration files. This is done by 
+			presenting several dialogue screens which directly relate to lines in the 
+			configuration files. Each dialogue presents an explantion of the line, a 
+			suggested value and even the possibility of ignoring that setting alltogether. 
+			The scripts are (relatively) simple XML files that can be created with notepad, 
+			so that everyone is able to write his own scripts.</p>
+		<p>Or, in Osram큦 words:<br>
+			Think of the Advisor as a person that knows about (some of) the BoB config 
+			files and that can help you with certain jobs. The Advisor can just do a 
+			general check/update of your settings or answer more specific questions like 
+			"How do I get more frames per second ?". The Advisor can also ask YOU 
+			questions, for example whether you see stutter. After the interaction took 
+			place, you can "save" to use the advice or you can decide to simply ignore it.
+		</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<h2><a name="firststart">First Execution</a></h2>
+		<p>Upon first start, you will be confronted by this screen</p>
+		<p align="center"><img src="./pic/registry.jpg" alt="Registry Question"></p>
+		<p>The Advisor stores its current location in the windows registry in order to ease 
+			access to used files.. just <b>OK</b> this warning. Please note that this 
+			message will appear everytime you move its location on your harddrive.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="main_dlg">
+			<h2>Main Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/main.jpg" alt="Main Window"></p>
+		<p>This is the main screen of the BDG Advisor, here you can select which script to 
+			execute, you can start a specific script and you can decide whether to save 
+			your changes ot to discard them. In addition, you can go to the <a href="#advanced_dlg">
+				Advanced Options Dialogue</a>, or the <a href="#about_dlg">About Dialogue</a>. 
+			To top it off, the BDG even supplied a "<b>Close</b>" button to quit the screen 
+			!</p>
+		<p>A typical use-case looks like this:
+			<ul>
+				<li>
+					Click on the listbox in the upper third of the dialogue and select a question</li>
+				<li>
+					Click on the "<b>Start</b>" button to start the Advisor, which will take to 
+					through various dialoge screens (like the <a href="#boolean_dlg">Boolean Dialogue</a>,
+					<a href="#int_dlg">Integer Dialogue</a>, <a href="#float_dlg">Float Dialogue</a>,
+					<a href="#hex_dlg">Colour Dialogue</a> or <a href="#cardbase_dlg">CardBase Dialogue</a>).</li>
+				<li>
+					After the Advisor has finished, you can elect to save all changes by pressing 
+					the "<b>Save</b>" button. If that succeeds, you should see a confirmative 
+					messagebox.</li></ul>
+		</p>
+		<p>If you press the "<b>Close</b>" button without saving first, the Advisor will 
+			ask you for confirmation:</p>
+		<p align="center"><img src="./pic/quit.jpg" alt="Quit Window"></p>
+		<p>Note that some script files will save automatically, in which case you will quit 
+			without being asked for confirmation.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="boolean_dlg">
+			<h2>Boolean Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/bool.jpg" alt="Boolean Window"></p>
+		<p>This dialogue type presents you a simple Yes/No or On/Off question. By pressing 
+			the "<b>OK</b>" button you will accept the current selection, pressing "<b>Skip 
+				this</b>" will make the program ignore the question, pressing "<b>default</b>" 
+			will reset the radioboxes to its suggested value. Pressing the "<b>Stop Advisor</b>" 
+			button will bring you immediately back to the main screen.</p>
+		<p>As you can hardly enter any invalid values in this screen, pressing "<b>OK</b>" 
+			will never bring up any error messages.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="int_dlg">
+			<h2>Integer Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/int.jpg" alt="Integer Window"></p>
+		<p>This dialogue lets you input an integer number. If you enter and invalid value, 
+			the Advisor will (well, should) get back to you with an error message. Ther 
+			rest of the interface is as with the float and boolean dialogues.</p>
+		<p>By pressing the "<b>OK</b>" button you will accept the current selection, 
+			pressing "<b>Skip this</b>" will make the program ignore the question, pressing 
+			"<b>default</b>" will reset the radioboxes to its suggested value. Pressing the 
+			"<b>Stop Advisor</b>" button will bring you immediately back to the main 
+			screen.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="float_dlg">
+			<h2>Float Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/float.jpg" alt="Floating Point Window"></p>
+		<p>The "Floating Point Dialogue" prompts yout to enter a floating point variable 
+			(hence its name). By pressing the "<b>OK</b>" button you will accept the 
+			current selection, pressing "<b>Skip this</b>" will make the program ignore the 
+			question, pressing "<b>default</b>" will reset the radioboxes to its suggested 
+			value. Pressing the "<b>Stop Advisor</b>" button will bring you immediately 
+			back to the main screen.</p>
+		<p><b>Important:</b> Take care to enter a '.' (period) as the decimal point, other 
+			characters (such as ',' will (at least) result in a truncation of the entered 
+			value (et '50,3' might become '50.0') or in an error message.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="hex_dlg">
+			<h2>Colour Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/hex.jpg" alt="Colour Window"></p>
+		<p>This dialogue is used to configure the label-colours inside the game. Those are 
+			defined as hexadecimal RGB (red green blue) values, where each colour can have 
+			a value between 0 (0x00 in hex) and 255 (0xFF). You can enter your desired 
+			choice either by using the 3 sliders on this screen or by entering the value 
+			directly and pressing the "<b>Copy to slider</b>" button. If you elect to do 
+			the latter, please note that you can omit leading zeores (eg '0000FF' is equal 
+			to 'FF').</p>
+		<p>The box to the left of the sliders will give you feedback on your current 
+			seleted colour, however note that, with the 'fading labels' option seleted, 
+			these colours might differ quite a bit while in-game (as they 'fade in' - 
+			become less transparent - with diminishing distance.</p>
+		<p>By pressing the "<b>OK</b>" button you will accept the current selection, 
+			pressing "<b>Skip this</b>" will make the program ignore the question, pressing 
+			"<b>default</b>" will reset the radioboxes to its suggested value. Pressing the 
+			"<b>Stop Advisor</b>" button will bring you immediately back to the main 
+			screen.</p>
+		</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="cardbase_dlg">
+			<h2>CardBase Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/cardbase.jpg" alt="CardBase Window"></p>
+		<p>The cardbase dialogue is a graphical user interface for the "cardbase.rc" file, 
+			which includes various tweaks and settings for the multitude of grapics cards 
+			out there.</p>
+		<ul>
+			<li>
+				<p>The first step is entering a 'maximum FPS (Frames Per Second) cap' value, which 
+					is the cure for most of the stuttering problems encountered in BoB. Entering a 
+					value between 25 and 40 might be a good idea, the minimum value is 1, the 
+					maximum possible value is 100. If you fail to enter a value (of if you enter an 
+					invalid one, you will be confronted by this (or a similar) screen:</p>
+				<p align="center"><img src="./pic/cardbase_fps.jpg" alt="CardBase FPS-Error Window"></p>
+			</li>
+			<li>
+				<p>As the next step, you are required to select your graphics card:<br>
+					Upon entering this screen, the Advisor will query your graphics card, and 
+					generates a "DeviceID", which is then used to look up the card in a database. 
+					Should the card be found, it will be marked in the list in the lower right 
+					corner of the dialogue. Should no card be listed, please mark the card that 
+					most closely matches your graphics card.</p>
+			</li>
+		</ul>
+		<p>These two steps done, press "<b>Create new cardbase.rc</b>" and the file should 
+			be created in your "Battle of Britain" folder (which gets looked up 
+			automatically). If the saving was successful, you will see this message:</p>
+		<p align="center"><img src="./pic/cardbase_saveok.jpg" alt="CardBase Save-OK Window"></p>
+		<p>Pressing the "<b>Cancel</b>" button will bring you back to the main Advisor 
+			screen <b>without</b> creating a new cardbase.rc, pressing the "<b>Custom</b>" 
+			button brings you to the <a href="#custom_cardbase_dlg">Custom CardBase Dialogue</a>
+			which will be discussed later.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="custom_cardbase_dlg">
+			<h2>Custom CardBase Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/customcardbase.jpg" alt="Custom CardBase Window"></p>
+		<p>This screen is nothing for the faint of heard, and should not ordinarily be used 
+			by 'mere' users. Here one can create 'custom' card fixes and the corresponding 
+			entries for a XML script in order to 'enhance' the database of fixes.</p>
+		<p>In the upper left corner you see all available fixes which can be activated by 
+			checking the checkbox to the left of the fix. Note that the entries in the 
+			editboxes in the bottom four fixes is only evaluated if the corresponding 
+			checkbox is clicked ! By clicking on one of the entries in the list on the 
+			right you can get information from Rowan on the effects of specific fixes.</p>
+		<p>In the lower right corner you find editboxes regarding the 'identification' of a 
+			specific fix:<br>
+			A typical cardbase.rc line looks like this:<br>
+			GeForce_DDR 0101 NO_TEXTURE_TARGET LOCK_TARG_FMT_TO_BACK_BUFF,<br>
+			,the corresponding edit boxes in the dialogue screen are:<br>
+			<ul>
+				<li>
+					CardName: This is the name that gets printed into the cardbase.rc and is for 
+					reference only (it is disregarded by the program</li>
+				<li>
+					CardID: This hexadecimal number identifies the card, BoB uses this number to 
+					identify a card. You can use the "Find my card큦 DeviceID" button to determine 
+					the ID of your card (see below).</li>
+				<li>
+					the list of fixes, which gets automatically printed by the advisor, according 
+					to the activated checkboxes.</li></lu></ul>
+			The "popular card name" is the name you will see in the list in the 'ordinary' 
+			cardbase.rc Dialogue, you can pretty much write whatever you want here.</p>
+		<p>The big edit box in the lower left corner can be used to input the text that 
+			appears in the 'ordinary' cardbase.rc - here you can write what kind of fixes 
+			you added, what the preferred FPS cap might be etc..</p>
+		<p><b>Important:</b> Note that the controls in this dialogue will be initialized 
+			with the fixes of the card currently marked in the 'ordinary' cardbase.rc 
+			dialogue (where you started this dialogue), this can be used to quickly 
+			generate multiple, slightly different fixes for a specific card (family?). A 
+			consequence of this is that (if you press "<b>OK</b>" or "Build XML chunk", see 
+			below) every change you do to this dialogue will carry back to the 'ordinary' 
+			cardbase.rc dialogue (but NOT into the advisor-xml-script), so take card if you 
+			really want to press 'create new cardbase.rc' once you are back in the 
+			'ordinary' cardbase.rc screen.</p>
+		<p>The "<b>Find my card큦 DeviceID</b>" buttons in the lower border displays the 
+			DeviceID of your card, this number is used by BoB to look up the correct fix in 
+			the cardbase.rc</p>
+		<p align="center"><img src="./pic/deviceid.jpg" alt="CardID Window"></p>
+		<p>the "<b>Build XML Chunk</b>" button will create a file called "XMLChunk.xml" 
+			that includes a XML fragment with the your current fixes, ready to be pasted 
+			into the existing cardbase-advisor-script.</p>
+		<p>The "<b>OK</b>" button will take all your edits and apply them to the currently 
+			selected card, the "<b>Cancel</b>" button will discard all your changes.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="advanced_dlg">
+			<h2>Advanced Options Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/advanced.jpg" alt="Advanced Options Window"></p>
+		<p>The main (and most commonly used) feature of this screen is the ability to 
+			configure the Advisor큦 language settings. This is done by clicking one of the 
+			radiobuttons on the right. On leaving this screen the setting will be saved in 
+			the system registry, so that the Advisor can remember your choice the next time 
+			you start it. Please note that currently only english and german are supported</p>
+		<p>The rest of this screen provides features for script-writers; the two 
+			radiobuttons on the bottom govern which program is used to open the various XML 
+			files, you can decide between notepad and internet explorer. The reason no 
+			other browsers are supported here is that XML files seem to be best displayed 
+			by this program, and the fact that the W3C Validation website seems only to 
+			work with IE).</p>
+		<p>The remaining six buttons on this screens have the following function (going 
+			clockwise, starting with the upper-left:
+			<ul>
+				<li>
+					<b>Browse:</b><br>
+					Lets you browse for a script file outside of the current working directory as 
+					set by the registry. Usefulness is in doubt.</li>
+				<li>
+					<b>W3C XML Validation Website:</b><br>
+					Clicking this button will open an internet explorer window to the XML validator 
+					of the W3C consortium. Here you can check a self-created XML file against its 
+					DTD (see later), in order to determine if it is valid.</li>
+				<li>
+					<b>Create new XML file:</b><br>
+					Pressing this button will create a new 'rump' XML file, containing a DTD and a 
+					minimal XML body to work.</li>
+				<li>
+					<b>Edit Advisor XML file:</b><br>
+					This opens the currently selected XML file to browse and/or edit. You will NOT 
+					have to re-select this file before parsing; though saving your changes 
+					beforehand might be helpful...</li>
+				<li>
+					<b>Open Advisor-created file:</b><br>
+					NOTE: this button will only work after you have stopped parsing, but BEFORE you 
+					have saved! This will open the file that holds all the newly-created lines. 
+					Used primarily for script-developers to check their doings.</li>
+				<li>
+					<b>Edit merged file:</b><br>
+					Only valid after you have parsed at least once, this will open the file where 
+					your changes were merged into (for an explanation of what the 'merged file' 
+					even is, see below..).</li>
+			</ul>
+		</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="about_dlg">
+			<h2>The About Dialogue</h2>
+		</a>
+		<p align="center"><img src="./pic/about.jpg" alt="AboutWindow"></p>
+		<p>Displays version information and acknowlegdments. Clicking on the "<b>Expat</b>" 
+			button will take you to the project website.</p>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<a name="modder">
+			<h2>Introduction for brave people who want to write scripts ("modders")</h2>
+		</a>
+		<p>Please note that this information is not necessarily totally up-to-date as the 
+			advisor is evolving rapidly.. I큞l try to consolidate it all once things have 
+			stabilized..</p>
+		<p>The Advisor is a little program that reads a script from a XML file and executes 
+			certain commands as specified in that file. The commands include instructions 
+			to pop up dialogue fields, to control the 'flow' of the instruction stream 
+			within the XML, and the automatic creation of text (without the user큦 
+			knowledge/consent (ha!)). Here is what happens using a test file:</p>
+		<ul>
+			<li>
+				With 'Choose the question', you can tell the Advisor what to do.</li>
+			<li>
+				After choosing your question, press 'Start' to start the interactive process of 
+				finding optimal settings for you.</li>
+			<li>
+				First you will see a little dialogue with a message. 'ok' that one, but please 
+				keep in mind that whoever writes a script can create such little informational 
+				screens.</li>
+			<li>
+				The next screen will ask you if you want to start the Advisor. Tick the 
+				checkmark in order to proceed, the lesson here is that the script-writer can 
+				easily create 'fork' decisions.</li>
+			<li>
+				The following screen will ask you another yes/no question; tick the checkmark 
+				for the next screen.
+			</li>
+			<li>
+				This dialogue is a so-called 'integer-sub-dialogue' which presents the user 
+				with the possibility of entering an integer number, which may or may not be 
+				constricted to a certain range. It is also possible to create 
+				forking-conditions based on the output of an integer-sub-dialogue, but not in 
+				this case.</li>
+			<li>
+				Complete the other 2 integer-sub-dialogues.</li>
+			<li>
+				The following screen allows the user to configure labels by using either 3 
+				sliders or by entering a hex number directly. This is the second implemented 
+				type is sub-dialogues, called the 'hex-sub-dialogue'
+			</li>
+			<li>
+				Complete the second hex-sub-dialogue</li>
+			<li>
+				The next screen looks quite unspectacular (just another binary-fork), but, 
+				unknowingly to the user, a follow-on instruction is being written into the 
+				bdg.txt if he presses 'ok'. Do that.</li>
+			<li>
+				The last screen in this Advisor-script is again a boolean sub-dialogue, just 
+				enter anything.</li>
+			<li>
+				Now we are back at the main dialogue. Up to now, no change to the bdg.txt will 
+				have taken place. If you look into the folder where you placed the Advisor, you 
+				will notice a newly created file named 'the_Advisor_created_file.txt' which 
+				holds all the newly-created text-lines.</li>
+			<li>
+				Press 'save' and a pup-up box should tell you of the successful save. Note that 
+				the 'temp.txt' will be deleted automatically, as all changes are merged into 
+				your bdg.txt</li>
+			<li>
+				Press ok to leave the Advisor.</li>
+		</ul>
+		<a href="#top">Top</a>
+		<hr>
+		<h2>Reference: the XML file</h2>
+		<h3>A few notes about XML files...</h3>
+		<p>They are always 'well formed', which means that for every opening element (like 
+			' &lt;hello &gt;') there must be a closing element ' &lt;/hello &gt;' and 
+			sometimes 'valid', which means that they conform to a certain standard as 
+			defined by something called 'DTD' (or 'Schema' but that뭩 something different 
+			and not used here). A DTD tells whoever reads the XML how the different 
+			elements within the XML relate to each other, and which elements may be nested 
+			in other elements. Some elements have 'attributes', which means they look like 
+			this ' &lt;hello mood=&quot;friendly&quot; &gt;'. You can see that an attribute 
+			always has a name and a value. Not all elements allow attributes of any value!</p>
+		<h3>The Advisor XML</h3>
+		<p>The root element HAS TO be called &lt;Advisor &gt;</p>
+		<p>Immediately after the root element HAS To come the &lt;config &gt; element which 
+			contains the elements 'file' (used to declare the file to merge the changes 
+			into), 'info' currently unused data-field, 'separator' and 'comment' Better not 
+			touch the latter two elements, just include '=' and '#' between them, 
+			respectively.</p>
+		<p>After the config element, your are pretty much free to do as you please.</p>
+		<p>However:</p>
+		<h4>Decision elements</h4>
+		<ul>
+			<li>
+				You can at a maximum nest 10 decision into each other</li>
+			<li>
+				After a decision element HAS TO come a ' &lt;choice case=&quot;start&quot; 
+				&gt;' element</li>
+			<li>
+				Before the closing decision element HAS TO come a ' &lt;choice 
+				case=&quot;default&quot; &gt;' element</li>
+		</ul>
+		<h4>Choice elements</h4>
+		<p>Using decision and choice elements you can confront the user with a decision. 
+			The flow through the script gets controlled by the return values of the 
+			selected sub-dialogue. E.g. if the start-choice contains a binary sub-dialogue, 
+			then the expected return values are ON or OFF, so you don뭪 really have to put 
+			elements into the default choice as it should not happen (expect in the case 
+			that you provide no ON or OFF choices ! But please note that you have to put in 
+			the default element IN ANY CASE! If your start choice contains an integer 
+			dialogue, then the possible return values are only limited by the actual limits 
+			of the integer-data type (something like +-1 million values or such), in case 
+			you didn뭪 specify allowed minimum and maximum values (more about this later)</p>
+		<p>A choice with for example "startfromfile=USE_HIRES_LANDSCAPE_TILES" means you 
+			split up the instruction flow depending on the current value in the bdg.txt of 
+			the variable "USE_HIRES_LANDSCAPE_TILES". Have a look at the sample script "My 
+			framerate is ok, I want higher quality.xml".</p>
+		<b>a choice can contain one or more dialogues, messages and auto elements</b>
+		<h4>Dialogue elements</h4>
+		<p>The real meat of the Advisor, the dialogue elements provide the user with the 
+			means to interactively work his way through a configuration file. Dialogues may 
+			contain the following elements, IN THE FOLLOWING ORDER</p>
+		<ul>
+			<li>
+				text<br>
+				Here you can write what a specific setting does</li>
+			<li>
+				bdgline<br>
+				Specifies the variable-name as it appears in the configuration file</li>
+			<li>
+				suggested_value<br>
+				Specifies the default (or suggested value)</li>
+			<li>
+				minimum (OPTIONAL)<br>
+				Specifies the minimum value, only valid (or evaluated) in integer dialogues. 
+				Note that if you specify a minimum value, you have to specify a maximum too!</li>
+			<li>
+				maximum (OPTIONAL)<br>
+				As above, BUT: if you specify a minimum value, you MUST specify a maximum too 
+				(and vice versa!)</li>
+			<li>
+				ignore (OPTIONAL)<br>
+				This element MUST be empty, and tells the Advisor NOT to write the return value 
+				into any file. Use this if you pose the user a 'rhetoric' decision message 
+				whose return value has no place in the configuration file, like &quot;do you 
+				feel well today&quot; or such</li>
+		</ul>
+		<h4>auto</h4>
+		<p>Data located inside one of these elements will be written automatically into the 
+			output file. Use this for 'no-brainer' follow-up configuration settings.</p>
+		<h4>message</h4>
+		<p>This element allows you to pop up a message box displaying the data within the 
+			elements</p>
+		<hr>
+		<a href="#top">Top</a>
+		<h2>Limitations of the Advisor</h2>
+		<ul>
+			<li>
+				as of now, you should not try to modify the separator and comment settings in 
+				the config section of the XML.</li>
+			<li>
+				the Advisor can not <b>remove</b> any lines from the bdg.txt</li>
+			<li>
+				the Advisor can not add any lines into the bdg.txt that are not already 
+				included there. E.g. if the bdg.txt contains TRACKIR=ON but the Advisor says 
+				TRACKIR=OFF then everything is fine, but if the Advisor says TRACKIR_NEW=ON (a 
+				variable that is not included in the bdg.txt) then the Advisor can뭪 add it.</li></ul>
+		<br>
+		<a href="#top">Top</a>
+		<hr>
+		<p>By Retro (16:43 20.09.2003)</p>
+		<br>
+		<a href="#top">Top</a>
+	</body>
+</html>

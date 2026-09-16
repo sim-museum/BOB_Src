@@ -1,0 +1,86 @@
+# model file for Ju88
+plane
+WeightEmpty 1000000
+MaxIntFuel 130000
+FuelTankCap { 50000 50000 30000 30000 }
+FuelTankXPos { 150 -150 450 -450 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 4
+ShadowShpNo 359
+Visible 22
+SAGsubshape 373
+CommsVisible 22
+FuelAboff 63
+Maxvel 1250000
+Minvel 500000
+Cruisevel 1100000
+BestClimbVel 750000
+BestClimbPitch 1182
+MaxDiveVel 2000000
+MaxAccel 5000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 150
+GunnerPit1 {150 0 0 }
+GunnerPit2 {151 -32768 3641 }
+GunnerPit3 {152 -32768 0 }
+GunnerPit4 {150 0 0 }
+CockpitScale 0.125
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 1684
+FinlhdgMin 32676
+FinlhdgMax 32858
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9992
+AerobaticFactor 0
+DeckAngle 2367
+DeckShunt 190
+MaxRollRate 5461
+MaxPitchRate 1820
+LandingSpeed 450000
+MaxDiveRPM 3600
+FreeRPM 400
+MaxRPM 2400
+MinRPM 400
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 762000
+AbsCeiling 825000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 7470000
+GunSnd { 29462 29462 29462 65535 29531 }
+EngineSnd 29451
+EngineSubSnd 29449
+EngineStartSnd 29458
+NoGuns 1
+GunIdx1 0
+GunIdx2 0
+GunDelay 24
+GunFrequency 120
+NumACinFlight 5
+MaxFlights 3
+NumEngines 2
+NumPilots 5
+RoleType 1
+IsLarge 1
+EngineCutout 0
+RetractableGear 1
+Playable 2
+Nationality 2
+Cockpit 0
+AIType 0
+MaxHeadX 25
+InstType 0
+ACFlags 4
+BestClimbAng { 1182 1043 904 765 626 487 348 209 70 0 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 }
+MaxVelsl { 1100000 1150000 1200000 1250000 1290000 1300000 1275000 1225000 1125000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 1000000 }
+MaxvelDive_0km 1750000
+MaxvelDive_11km 1750000
+MaxvelDive_20km 1750000
+Version 1
+AcmName "Ju88"

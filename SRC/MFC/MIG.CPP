@@ -672,6 +672,19 @@ BOOL CMIGApp::InitInstance()
 			// QuickDef::trans terminates the loaded array on titlename==0 (the
 			// IDS_CONFIGIGNORED "hot shot" entry isn't in this data version), so just
 			// pick a valid quick mission by index (BOB_QM_INDEX, default 0).
+			/* GOLDVID-BOB-2 S2: BOB_QM_LIST prints the whole quick-mission table with each
+			   entry's plside (0 = RAF, 1 = Luftwaffe) and exits, so a side-vs-units test can
+			   pick one mission of each side without flying the table one index at a time. */
+			if (getenv("BOB_QM_LIST")) {
+				for (int _qi = 0; CSQuick1::quickmissions[_qi].missionname != NULL; _qi++) {
+					const QuickDef& _q = CSQuick1::quickmissions[_qi];
+					const char* _t = LoadResString(_q.missionname);
+					fprintf(stderr,"[qmlist] idx=%d plside=%d title=%d mission=%d \"%s\"\n",
+					        _qi,(int)_q.plside,(int)_q.titlename,(int)_q.missionname,_t?_t:"(null)");
+				}
+				fflush(stderr);
+				exit(0);
+			}
 			const char* qix = getenv("BOB_QM_INDEX");
 			int qi = qix ? atoi(qix) : 0;
 			CSQuick1::currquickmiss=qi;

@@ -1,0 +1,86 @@
+# model file for Bf110C4
+plane
+WeightEmpty 530000
+MaxIntFuel 95000
+FuelTankCap { 28000 28000 19500 19500 }
+FuelTankXPos { -120 120 -120 120 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 1
+ShadowShpNo 363
+Visible 24
+SAGsubshape 377
+CommsVisible 24
+FuelAboff 187
+Maxvel 1640000
+Minvel 500000
+Cruisevel 1450000
+BestClimbVel 900000
+BestClimbPitch 1275
+MaxDiveVel 2000000
+MaxAccel 10500
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 178
+GunnerPit1 {98 0 0 }
+GunnerPit2 {98 0 0 }
+GunnerPit3 {98 0 0 }
+GunnerPit4 {98 0 0 }
+CockpitScale 0.125
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 0
+FinlhdgMin 0
+FinlhdgMax 0
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9990
+AerobaticFactor 2
+DeckAngle 2002
+DeckShunt 130
+MaxRollRate 24576
+MaxPitchRate 5461
+LandingSpeed 450000
+MaxDiveRPM 3500
+FreeRPM 400
+MaxRPM 2400
+MinRPM 400
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 914400
+AbsCeiling 1000000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 5490000
+GunSnd { 29461 29460 29462 29580 29530 }
+EngineSnd 29443
+EngineSubSnd 29441
+EngineStartSnd 29458
+NoGuns 6
+GunIdx1 1
+GunIdx2 255
+GunDelay 24
+GunFrequency 120
+NumACinFlight 4
+MaxFlights 3
+NumEngines 2
+NumPilots 2
+RoleType 2
+IsLarge 1
+EngineCutout 0
+RetractableGear 1
+Playable 1
+Nationality 2
+Cockpit 4
+AIType 4
+MaxHeadX 40
+InstType 0
+ACFlags 4
+BestClimbAng { 1275 1275 1275 1275 1217 1043 869 695 522 348 174 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 }
+MaxVelsl { 1300000 1350000 1400000 1440000 1480000 1510000 1525000 1525000 1470500 1375000 1250000 1100000 1100000 1100000 1100000 1100000 1100000 1100000 1100000 1100000 1100000 }
+MaxvelDive_0km 2000000
+MaxvelDive_11km 2000000
+MaxvelDive_20km 2000000
+Version 1
+AcmName "Bf110C4"

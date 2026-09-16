@@ -1,0 +1,19 @@
+
+I have attempted to research these insignia and believe all included were involved in the BOB 
+I have also tried to incorporate the historically correct spinner colors and patteren along with 
+their insignia where possible.
+
+In order to offset distortion of insignia I have changed resolution to non-standard sizes
+
+
+All JU88NSE, JU88ENG, HE111FU, DOBOD, HERWING, and DORW pcx files are to be placed into the imagemap folder in your BOB .dir
+All HE11LCOC, HE11LCOC_trans, HE11RCOC, and HE11RCOC_trans pcx files are to be placed into the MskMap16 folder
+
+Backup all files.
+
+If you have comments, suggestions or historical information you can contact me at
+
+Redband151@hotmail.com
+
+
+Redband

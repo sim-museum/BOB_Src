@@ -1,0 +1,86 @@
+# model file for He59
+plane
+WeightEmpty 150000
+MaxIntFuel 25000
+FuelTankCap { 12500 12500 0 0 }
+FuelTankXPos { -100 100 0 0 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 0
+ShadowShpNo 354
+Visible 25
+SAGsubshape 368
+CommsVisible 25
+FuelAboff 110
+Maxvel 1640000
+Minvel 500000
+Cruisevel 1000000
+BestClimbVel 750000
+BestClimbPitch 1043
+MaxDiveVel 1500000
+MaxAccel 6000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 98
+GunnerPit1 {98 0 0 }
+GunnerPit2 {98 0 0 }
+GunnerPit3 {98 0 0 }
+GunnerPit4 {98 0 0 }
+CockpitScale 0.25
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 0
+FinlhdgMin 0
+FinlhdgMax 0
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9985
+AerobaticFactor 0
+DeckAngle 909
+DeckShunt 150
+MaxRollRate 8192
+MaxPitchRate 2731
+LandingSpeed 350000
+MaxDiveRPM 3900
+FreeRPM 500
+MaxRPM 3000
+MinRPM 500
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 304800
+AbsCeiling 350000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 7470000
+GunSnd { 29462 65535 65535 65535 29531 }
+EngineSnd 29443
+EngineSubSnd 29441
+EngineStartSnd 29455
+NoGuns 8
+GunIdx1 2
+GunIdx2 255
+GunDelay 24
+GunFrequency 120
+NumACinFlight 4
+MaxFlights 3
+NumEngines 1
+NumPilots 1
+RoleType 0
+IsLarge 0
+EngineCutout 0
+RetractableGear 1
+Playable 0
+Nationality 2
+Cockpit 3
+AIType 3
+MaxHeadX 30
+InstType 0
+ACFlags 4
+BestClimbAng { 1043 782 522 261 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 400000 }
+MaxVelsl { 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 600000 }
+MaxvelDive_0km 1000000
+MaxvelDive_11km 1000000
+MaxvelDive_20km 1000000
+Version 1
+AcmName "He59"

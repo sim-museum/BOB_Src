@@ -1,0 +1,23 @@
+# model file for Truck
+tank
+WeightEmpty 5539
+MaxIntFuel 130000000
+FuelTankCap { 200000000 200000000 200000000 200000000 }
+FuelTankXPos { -32767 -32767 -32767 -32767 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 0
+ShadowShpNo 258
+Visible 258
+SAGsubshape 258
+CommsVisible 258
+FuelAboff 1100
+Maxvel 223500
+Minvel 22350
+Cruisevel 178800
+BestClimbVel 89400
+BestClimbPitch 715857920
+MaxDiveVel 268200
+MaxAccel 1000
+TurnPercs 10923
+RadiusTurn 1000

@@ -1,0 +1,11 @@
+
+III Gruppe ZG26
+
+Gruppe saw extensive action during BOB
+
+Back up files first.
+Place Emblem2 and Emblem2_trans in maskmap file in BOB dir
+
+created by Redband 11/13/02
+Redband151@hotmail.com
+

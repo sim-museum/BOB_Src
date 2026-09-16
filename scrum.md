@@ -6649,3 +6649,99 @@ worlds.
 side already agrees.
 
 **GOLDVID-BOB-2: 1 sprint. The "lowest priority" video produced the only open question of the three.**
+
+## SAVELOAD-REAL-1 — ⛔ **our loader CRASHES on the real game's campaign saves** (found by GOLDVID-BOB-2 S2)
+
+Loading a saved campaign is a core feature, and every save/load proof this project has (R4.4 S1–S3)
+used saves **our own build wrote**. The PO's install also holds two saves written by the REAL game
+(BDG 0.99 under Wine). Our build aborts on both with heap corruption inside `CFiling::LoadGame`.
+
+Priority: **high, user-facing**. A player with an existing BoB campaign cannot bring it to this port,
+and the failure mode is an abort, not a message.
+
+## GOLDVID-BOB-2 S2 (Opus 5, 2026-09-16) — ✅ **S1's "nationality units" candidate is CLOSED: the game keeps one autosave PER SIDE, so no nationality logic is needed** — and the run to prove it turned up a crash on the real game's saves
+
+S1 found the gold's HUD metric for the Luftwaffe and imperial for the RAF, and listed three
+explanations. S1's own decision rule: fly both sides from the same save and read the units.
+
+**The A/B, run exactly as specified.** A new default-off scaffold `BOB_QM_LIST` (MIG.CPP) dumps the
+quick-mission table with each entry's `plside`, which turns up an ideal pair **inside the same
+mission family** (title=2237, the "turkey shoot" group the third gold video comes from):
+
+```
+[qmlist] idx=14 plside=0 ... "RAF Advantage"
+[qmlist] idx=15 plside=1 ... "LUF Advantage"
+```
+
+Same binary, same boot, same `Save_Data`, only `BOB_QM_INDEX` differs. The boot line confirms the
+side really changed (`plside=0 playersquadron=0` vs `plside=1 playersquadron=6`), and the HUD trace:
+
+| run | boot | first HUD sample |
+|---|---|---|
+| idx=14 RAF | `plside=0 playersquadron=0` | `alt=11509ft hdg=6 speed=303Kts` |
+| idx=15 LUF | `plside=1 playersquadron=6` | `alt=13694ft hdg=153 speed=245Kts` |
+
+**Both imperial.** Per S1's rule that means our build has no side-switching — as the source said it
+could not — and the gold's behaviour must come from the saves or the patch.
+
+⭐ **It is the saves, and the mechanism is in our own tree.** `MAINTBAR.CPP:677`:
+
+```c
+if (Todays_Packages.localplayer==NAT_RAF) CFiling::SaveGame("Auto Save.BSR");
+else                                      CFiling::SaveGame("Auto Save.BSL");
+```
+
+**The game keeps one autosave per side — `.BSR` = RAF, `.BSL` = Luftwaffe** (`FILING.CPP:193` names the
+timed saves the same way). And the units bit travels inside the file: `SAVEGAME.CPP:466` writes
+`bos << (SaveDataSoftware&)Save_Data`, and `SaveDataSoftware` — commented in the header *"Only this
+portion is saved in a savegame"* — **contains `gamedifficulty`**, which is where `GD_UNITS` lives.
+
+The PO's install carries both files, and their timestamps bracket the recordings:
+
+```
+Auto Save.BSR  21:18     RAF video recorded 21:20
+Auto Save.BSL  21:22     German video recorded 21:24, turkey-shoot German 21:30
+```
+
+So each campaign restores its own units and **no nationality logic is needed to produce what the gold
+shows**. S1's explanation #1, confirmed from the code and the file naming, not guessed. **Not a defect.
+Item closed at 2 sprints.**
+
+⛔ **What the last step found instead.** To read `GD_UNITS` straight out of the two files I loaded each
+through our own deserialiser (`BOB_CAMPAIGN_LOAD` + `BOB_SAVE_NAME`, with a new pre-call print to
+bracket it). **Both aborted**, inside `CFiling::LoadGame`:
+
+```
+[campload] entering CFiling::LoadGame("Auto Save.BSR")
+[savegame] version string differs (Rowan Savegame: V 002 != Rowan Savegame: Sep 14 2026) -- loading anyway
+malloc(): invalid size (unsorted)
+=== CRASH: signal 6 ===  ... operator new ... CFiling::LoadGame
+```
+
+A control run of the identical campaign drive **without** the load completes cleanly, so this is the
+load, not the map path.
+
+**Root cause, and why the accommodation backfired.** `SAVEGAME.CPP:121` stamps saves with
+`"Rowan Savegame: " __DATE__` — the **build date**. Stock code refuses a mismatch outright
+(`_Error.ReallyEmitSysErr("Savegame version dates differ")`). Our `#if BOB_LINUX` path prints and
+continues, justified — reasonably — by "our own build's date changes daily but the layout agrees".
+**That justification does not hold for a foreign save**, and the PO's files are foreign: they are
+stamped **`V 002`**, not a date at all. BDG 0.99 replaced the `__DATE__` stamp with a fixed version
+token (fixing this very design flaw), so a BDG 0.99 save now sails past our guard into a raw
+`bis.read((char*)&campaign+…, sizeof(Campaign)-…)` of a layout we have no reason to believe matches.
+
+**The fix has to distinguish two cases the current guard conflates:** *our own build, different day*
+(accept — the layout is ours) versus *a different game version* (refuse cleanly, with a message, the
+way stock does). The `V 002` token is exactly the discriminator, and it is sitting in the file.
+Filed as **SAVELOAD-REAL-1**; not fixed here because it needs its own sprint and a decision about
+whether to support reading BDG 0.99 saves at all.
+
+**Shipped:** `BOB_QM_LIST` (MIG.CPP, default-off) — prints `idx / plside / title / mission name` for the
+whole quick-mission table and exits; `[campload]` now prints `GD_UNITS` and brackets the `LoadGame`
+call.
+
+**Method note.** The A/B was worth running even though the source already said `SetUnits()` has no
+side term. It cost two 90-second flights and it is what makes "not a defect" a measurement rather than
+a reading. The crash was found only because the sprint went one step past the answer.
+
+**GOLDVID-BOB-2: 2 sprints, CLOSED.**

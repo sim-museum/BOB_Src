@@ -1,0 +1,329 @@
+﻿<?xml version="1.0"?>
+<!DOCTYPE advisor [
+  <!ELEMENT advisor          (config,(auto|dialogue|decision|message)*)>
+  <!ELEMENT config           (file,info,(separator?),(comment?))>
+  <!ELEMENT file             (#PCDATA)>
+  <!ELEMENT info             (#PCDATA)>
+  <!ELEMENT separator        (#PCDATA)>
+  <!ELEMENT comment          (#PCDATA)>
+  <!ELEMENT decision         (choice,(decision|choice)*)>
+  <!ELEMENT choice           (auto|dialogue|decision|message)*>
+  <!ELEMENT dialogue         (((card*)|((text),(bdgline),(suggested_value?),(minimum?),(maximum?),(ignore?))))>
+  <!ELEMENT auto             (#PCDATA)>
+  <!ELEMENT message          (#PCDATA)>
+  <!ELEMENT bdgline          (#PCDATA)>
+  <!ELEMENT card             (popname,name,id,(help?),(option*))>
+  <!ELEMENT popname          (#PCDATA)>
+  <!ELEMENT name             (#PCDATA)>
+  <!ELEMENT help             (#PCDATA)>
+  <!ELEMENT id               (#PCDATA)>
+  <!ELEMENT option           (#PCDATA)>
+  <!ELEMENT text             (#PCDATA)>
+  <!ELEMENT suggested_value  (#PCDATA)>
+  <!ELEMENT minimum          (#PCDATA)>
+  <!ELEMENT maximum          (#PCDATA)>
+  <!ELEMENT ignore           EMPTY>
+
+  <!ATTLIST choice case CDATA #REQUIRED>
+  <!ATTLIST dialogue type (binary|colour|float|integer|cardbase) #REQUIRED>
+]>
+<advisor>
+   <config>
+      <file>bdg.txt</file>
+      <info>BDG Advisor</info>
+      <separator>=</separator>
+      <comment>#</comment>
+   </config>
+   <message>This Advisor is designed to assist you with tweaking some extra BoB settings.  You'll notice many dialogs in the advisor.  If you are uncertain of any settings, just hit the "skip" button.</message>
+   <auto>VERSION = 3</auto>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Are you using Windows XP?</text>
+            <bdgline/>
+            <suggested_value>ON</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="integer">
+            <text>If you experience a flickering screen in the main dialogues, you can set your desired refresh rate for Battle of Britain. (Units are Hz)</text>
+            <bdgline>UI_REFRESH</bdgline>
+            <suggested_value>75</suggested_value>
+         </dialogue>
+         <message>You might also want to disable all videos, if you experience problems starting BoB.</message>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Do you want to disble in-game videos? If you select yes, the next few dialog boxes will provide options to disable only the intro video, all in-game vidoes or only the videos for quickmissions.</text>
+            <bdgline/>
+            <suggested_value>OFF</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="binary">
+            <text>Do you want play the intro video?</text>
+            <bdgline>INTRO_VIDEO</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to skip ALL videos (except the intro video)?</text>
+            <bdgline>SKIP_VIDEOS</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to skip only the quickvideos? This makes browsing through all available quick missions much faster.</text>
+            <bdgline>SKIP_QUICKVIDEOS</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Do you want to configure the available Field of View variables? (Generally, there is a small amount of adjustment, most noticeable in the amount of cockpit and gauges seen while flying).</text>
+            <bdgline/>
+            <suggested_value>ON</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="integer">
+            <text>This variable will adjust the narrow (zoomed in) cockpit view when pressing the default keyboard command Ctrl-F9 in the game.  </text>
+            <bdgline>FOV_SMALL</bdgline>
+            <suggested_value>25</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This variable will adjust the midsize cockpit view when pressing Ctrl-F10 in the game.</text>
+            <bdgline>FOV_MEDIUM</bdgline>
+            <suggested_value>50</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This variable will adjust the widest (zoomed out) cockpit view when pressing Ctrl-F11 in the game. </text>
+            <bdgline>FOV_LARGE</bdgline>
+            <suggested_value>80</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This value will adjust the narrow (zoomed in) cockpit view when pressing Ctrl-F12 in the game.</text>
+            <bdgline>FOV_TOGGLE_SMALL</bdgline>
+            <suggested_value>35</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This value will adjust the large (zoomed out) cockpit field of view when pressing Ctrl-F12 in the game.</text>
+            <bdgline>FOV_TOGGLE_LARGE</bdgline>
+            <suggested_value>70</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This value will adjust your initial cockpit view size (typically, your default view), or when pressing the F5 button in game.</text>
+            <bdgline>FOV_INITIAL</bdgline>
+            <suggested_value>60</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This is the lower boundary of the narrow (zoomed in) cockpit view; it is not advisable to adjust this below the default setting of 18 or view anomalys may occur.</text>
+            <bdgline>FOV_MINIMAL</bdgline>
+            <suggested_value>18</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This is the upper boundary of the wide (zoomed out) cockpit field of view; if you adjust this above the default setting of 80 view anomalies may occur, but you might still want the ultra wide view.</text>
+            <bdgline>FOV_MAXIMAL</bdgline>
+            <suggested_value>80</suggested_value>
+         </dialogue>
+         <message>This is the end of the Field of View changes. (There were alot of BDG options weren't there?)</message>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Do you want to customize the Padlock Center Enemy function ?  (This will allow you to customize padlocking enemy aircraft directly ahead of your aircraft).</text>
+            <bdgline/>
+            <suggested_value>ON</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="integer">
+            <text>This value will adjust half the width of the area in which you will be able to padlock aircraft. The units are angles, and smaller values will narrow the focus of your padlock.</text>
+            <bdgline>PC_PITCH</bdgline>
+            <suggested_value>10</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This will adjust half the height of the area in which you will be able to padlock aircraft.  The units are angles, and smaller values will again narrow the focus of your padlock.</text>
+            <bdgline>PC_HDG</bdgline>
+            <suggested_value>10</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to have your padlock view outlined by a red rectangle ?</text>
+            <bdgline>DRAW_PADLOCK_CENTER_BOX</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Are you going to use the padlock view with the keyboard/joystick hat button?  If so, press YES.  If you want to use the mouse for padlock view press NO.</text>
+            <bdgline>PC_USING_KEYBOARD</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Do you want to enable the enemy position indicator (EPI=the small oval showing enemy and friendly aircraft in a 3d representation; located in the upper left screen while flying).</text>
+            <bdgline>ENEMY_POSITION_INDICATOR</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="integer">
+            <text>This value adjusts the width of the Enemy Position Indicator (50 is default; smaller values will decrease the width of the EPI, while larger values will increase the width size).</text>
+            <bdgline>EPI_RADIUS</bdgline>
+            <suggested_value>50</suggested_value>
+         </dialogue>
+         <dialogue type="integer">
+            <text>This value adjusts the height of the Enemy Position Indicator (10 is default; smaller values will decrease the height of the EPI, while larger values will increase the height size).</text>
+            <bdgline>EPI_Y_RADIUS</bdgline>
+            <suggested_value>10</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Are you interested in adjusting the aircraft labels?  (colored labels identifying aircraft)</text>
+            <bdgline/>
+            <suggested_value>ON</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <decision>
+            <choice case="start">
+               <dialogue type="binary">
+                  <text>Do you want aircraft labels to appear gradually?  </text>
+                  <bdgline>FADING_LABELS</bdgline>
+                  <suggested_value>ON</suggested_value>
+               </dialogue>
+            </choice>
+            <choice case="ON">
+               <dialogue type="integer">
+                  <text>This value adjusts the range (in meters) at which aircraft labels will begin to appear.  NOTE: Press the skip button if you are uncertain about changing these values.</text>
+                  <bdgline>LABEL_ZERO_ALPHA</bdgline>
+                  <suggested_value>6000</suggested_value>
+                  <minimum>0</minimum>
+                  <maximum>7000</maximum>
+               </dialogue>
+               <dialogue type="integer">
+                  <text>This value adjusts the range (in meters) at which aircraft labels will appear with dim coloration.  NOTE: Press the skip button if you are uncertain about changing these values.</text>
+                  <bdgline>LABEL_HALF_ALPHA</bdgline>
+                  <suggested_value>4000</suggested_value>
+                  <minimum>0</minimum>
+                  <maximum>4000</maximum>
+               </dialogue>
+               <dialogue type="integer">
+                  <text>This value adjusts the range at which aircraft labels will appear with full coloration.  NOTE: Press the skip button if you are uncertain about changing these values.</text>
+                  <bdgline>LABEL_FULL_ALPHA</bdgline>
+                  <suggested_value>2000</suggested_value>
+                  <minimum>0</minimum>
+                  <maximum>7000</maximum>
+               </dialogue>
+            </choice>
+            <choice case="default"/>
+         </decision>
+         <dialogue type="colour">
+            <text>This value adjusts the colour of the labels of allied planes.</text>
+            <bdgline>LABELCOLOUR_FRIENDLY</bdgline>
+            <suggested_value>0000FF</suggested_value>
+         </dialogue>
+         <dialogue type="colour">
+            <text>This value adjusts the colour of the labels of enemy planes.</text>
+            <bdgline>LABELCOLOUR_ENEMY</bdgline>
+            <suggested_value>FF0000</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to display only aircraft type labels?  Setting this to off/disable will display callsigns of allied planes outside your squadron.</text>
+            <bdgline>SHORTENED_LABELS</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Are you interested in adjusting the infoline ? (This is the small bar at the bottom of the screen that displays various information, such as heading, altitude, etc.).</text>
+            <bdgline/>
+            <suggested_value>ON</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="binary">
+            <text>Do you want to disable the black background of the infoline, making it a bit less intrusive?</text>
+            <bdgline>SHOW_INFOLINE_BACKGROUND</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to see an ammo counter while flying RAF planes? Historically, they did not have an ammo counter in early aircraft, so you'll need to estimate your ammo.</text>
+            <bdgline>HIDE_AMMO_COUNTER</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to see your current throttle setting displayed in the info line?  Selecting off/disable will require you to use cockpit gauges.</text>
+            <bdgline>HIDE_POWER_INFO</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>Do you want to display imperal units while flying RAF planes, and metric units while flying for the Luftwaffe? </text>
+            <bdgline>USE_NATIONAL_UNITS</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Are you interested in changing BoB´s Artificial Intelligence of computer controlled aircraft ?</text>
+            <bdgline/>
+            <suggested_value>ON</suggested_value>
+            <ignore/>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="binary">
+            <text>Enabling this makes AI pilots bail out on engine damage</text>
+            <bdgline>BOB_FIGHTERFIX</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+         <dialogue type="binary">
+            <text>This feature enables stragglers, and more varied damage behaviour for bombers.</text>
+            <bdgline>BOB_BOMBERFIX</bdgline>
+            <suggested_value>ON</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+   <decision>
+      <choice case="start">
+         <dialogue type="binary">
+            <text>Do you want to use TrackIR with BoB? (TrackIR is an alternative screen control/viewing technology requiring specific hardware; Do not adjust unless you have this hardware).</text>
+            <bdgline>TRACKIR</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="ON">
+         <dialogue type="binary">
+            <text>Do you want to the padlock to override TrackIR?  (Allows padlocking by keypress or joystick to override TrackIR viewing)</text>
+            <bdgline>PADLOCK_OVERRIDES_TRACKIR</bdgline>
+            <suggested_value>OFF</suggested_value>
+         </dialogue>
+      </choice>
+      <choice case="default"/>
+   </decision>
+</advisor>

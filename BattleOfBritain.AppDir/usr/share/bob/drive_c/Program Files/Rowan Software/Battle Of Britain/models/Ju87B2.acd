@@ -1,0 +1,86 @@
+# model file for Ju87B2
+plane
+WeightEmpty 339000
+MaxIntFuel 35900
+FuelTankCap { 17950 17950 0 0 }
+FuelTankXPos { -100 100 0 0 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 2
+ShadowShpNo 357
+Visible 32
+SAGsubshape 371
+CommsVisible 393
+FuelAboff 49
+Maxvel 1050000
+Minvel 450000
+Cruisevel 750000
+BestClimbVel 550000
+BestClimbPitch 1600
+MaxDiveVel 1500000
+MaxAccel 7000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 174
+GunnerPit1 {174 0 0 }
+GunnerPit2 {174 0 0 }
+GunnerPit3 {174 0 0 }
+GunnerPit4 {174 0 0 }
+CockpitScale 0.25
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 0
+FinlhdgMin 0
+FinlhdgMax 0
+FinrhdgMin 0
+FinrhdgMax 0
+PhraseName 9991
+AerobaticFactor 1
+DeckAngle 2002
+DeckShunt 190
+MaxRollRate 10923
+MaxPitchRate 3641
+LandingSpeed 300000
+MaxDiveRPM 3500
+FreeRPM 400
+MaxRPM 2400
+MinRPM 400
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 762000
+AbsCeiling 825000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 7470000
+GunSnd { 29460 29462 65535 65535 29530 }
+EngineSnd 29443
+EngineSubSnd 29441
+EngineStartSnd 29458
+NoGuns 3
+GunIdx1 1
+GunIdx2 2
+GunDelay 24
+GunFrequency 36
+NumACinFlight 3
+MaxFlights 3
+NumEngines 1
+NumPilots 2
+RoleType 1
+IsLarge 1
+EngineCutout 0
+RetractableGear 0
+Playable 1
+Nationality 2
+Cockpit 5
+AIType 5
+MaxHeadX 40
+InstType 0
+ACFlags 4
+BestClimbAng { 1600 1400 1200 1000 800 600 400 200 0 0 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 650000 }
+MaxVelsl { 950000 975000 1000000 1025000 1050000 1025000 975000 900000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 }
+MaxvelDive_0km 1750000
+MaxvelDive_11km 1750000
+MaxvelDive_20km 1750000
+Version 1
+AcmName "Ju87B2"

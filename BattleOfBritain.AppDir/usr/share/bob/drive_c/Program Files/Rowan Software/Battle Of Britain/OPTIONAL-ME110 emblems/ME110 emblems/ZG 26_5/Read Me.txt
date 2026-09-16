@@ -1,0 +1,11 @@
+
+ZG 26 5th staffel
+
+
+Back up files first.
+Place Emblem2 and Emblem2_trans in maskmap file in BOB dir
+
+
+
+Created by Redband
+redband151@hotmail.com

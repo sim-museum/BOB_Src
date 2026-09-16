@@ -1,0 +1,12 @@
+
+Erprobungsgruppe 210 
+
+Experimental gruppe put together to deveolp fighter bomber tactics during BOB
+Succesful raids on Manston,  and CH radar, Although suffered heavy losses during and around Black Thursday
+
+Back up files first.
+Place Emblem2 and Emblem2_trans in maskmap file in BOB dir
+
+Created by Redband
+
+Redband151@hotmail.com

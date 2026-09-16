@@ -1,0 +1,322 @@
+<?xml version="1.0"?>
+<!DOCTYPE advisor [
+  <!ELEMENT advisor          (config,(auto|dialogue|decision|message)*)>
+  <!ELEMENT config           (file,info,(separator?),(comment?))>
+  <!ELEMENT file             (#PCDATA)>
+  <!ELEMENT info             (#PCDATA)>
+  <!ELEMENT separator        (#PCDATA)>
+  <!ELEMENT comment          (#PCDATA)>
+  <!ELEMENT decision         (choice,(decision|choice)*)>
+  <!ELEMENT choice           (auto|dialogue|decision|message)*>
+  <!ELEMENT dialogue         (((card*)|((text),(bdgline),(suggested_value?),(minimum?),(maximum?),(ignore?))))>
+  <!ELEMENT auto             (#PCDATA)>
+  <!ELEMENT message          (#PCDATA)>
+  <!ELEMENT bdgline          (#PCDATA)>
+  <!ELEMENT card             (popname,name,id,(help?),(option*))>
+  <!ELEMENT popname          (#PCDATA)>
+  <!ELEMENT name             (#PCDATA)>
+  <!ELEMENT id               (#PCDATA)>
+  <!ELEMENT help             (#PCDATA)>
+  <!ELEMENT option           (#PCDATA)>
+  <!ELEMENT text             (#PCDATA)>
+  <!ELEMENT suggested_value  (#PCDATA)>
+  <!ELEMENT minimum          (#PCDATA)>
+  <!ELEMENT maximum          (#PCDATA)>
+  <!ELEMENT ignore           EMPTY>
+
+  <!ATTLIST choice case CDATA #REQUIRED>
+  <!ATTLIST dialogue type (binary|colour|float|integer|cardbase) #REQUIRED>
+]>
+<advisor>
+	<config>
+		<file>delete_me.txt</file>
+		<info>This is a cardbase advisor file</info>
+		<separator>=</separator>
+		<comment>#</comment>
+	</config>
+	<dialogue type="cardbase">
+		<card>
+			<popname>Voodoo2</popname>
+			<name>Voodoo2</name>
+			<id>0002</id>
+			<option>W_16BIT</option>
+			<option>VERTEX_FOG</option>
+			<option>NO_TEXTURE_BLEND</option>
+			<option>NO_TEXTURE_TARGET</option>
+		</card>
+		<card>
+			<popname>VoodooBanshee</popname>
+			<name>VoodooBanshee</name>
+			<id>0003</id>
+			<option>W_16BIT</option>
+			<option>VERTEX_FOG</option>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>NO_TEXTURE_BLEND</option>
+		</card>
+		<card>
+			<popname>Voodoo3</popname>
+			<name>Voodoo3</name>
+			<id>0005</id>
+			<option>W_16BIT</option>
+			<option>VERTEX_FOG</option>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>NO_TEXTURE_BLEND</option>
+		</card>
+		<card>
+			<popname>Voodoo5</popname>
+			<name>Voodoo5</name>
+			<id>0009</id>
+			<option>W_16BIT</option>
+			<option>VERTEX_FOG</option>
+			<option>FAKE_W_BUFFER</option>
+		</card>
+		<card>
+			<popname>Voodoo5</popname>
+			<name>Voodoo5</name>
+			<id>0009</id>
+			<help>The same fix as the default Voodoo5, the additional option of NO_TEXTURE_TARGET eliminates blue landscape tiles.</help>
+			<option>W_16BIT</option>
+			<option>VERTEX_FOG</option>
+			<option>FAKE_W_BUFFER</option>
+			<option>NO_TEXTURE_TARGET</option>
+		</card>
+		<card>
+			<popname>OxygenVX1</popname>
+			<name>OxygenVX1</name>
+			<id>000C</id>
+			<help>3dLabs Oxygen VX1 Cards are a bit of a pain. If you are using 32Bit then you just need VERTEX_FOG ALWAYS_USE_W . This is a setup for 32Bit Displays.</help>
+			<option>VERTEX_FOG</option>
+			<option>ALWAYS_USE_W</option>
+		</card>
+		<card>
+			<popname>OxygenVX1</popname>
+			<name>OxygenVX1</name>
+			<id>000C</id>
+			<help>3dLabs Oxygen VX1 Cards are a bit of a pain. If you are using 16bit then you have you add NO_TEXTURE_TARGET SLOW_TEXTURE_DOWNLOAD</help>
+			<option>VERTEX_FOG</option>
+			<option>ALWAYS_USE_W</option>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+		</card>
+		<card>
+			<popname>Kyro</popname>
+			<name>Kyro</name>
+			<id>0010</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+			<option>VERTEX_FOG</option>
+		</card>
+		<card>
+			<popname>Riva_TNT</popname>
+			<name>Riva_TNT</name>
+			<id>0020</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+		</card>
+		<card>
+			<popname>Riva_TNT2</popname>
+			<name>Riva_TNT2</name>
+			<id>0028</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>Riva_TNT2_Ultra</popname>
+			<name>Riva_TNT2_Ultra</name>
+			<id>0029</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>Riva_TNT2_Vanta</popname>
+			<name>Riva_TNT2_Vanta</name>
+			<id>002C</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>Riva_TNT2</popname>
+			<name>Riva_TNT2</name>
+			<id>0028</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+			<option>NO_DEVICE_VALIDATION</option>
+		</card>
+		<card>
+			<popname>Riva TNT2-Pro-64</popname>
+			<name>RIVA_TNT2_PRO_64</name>
+			<id>002d</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>Matrox_G200_AGP</popname>
+			<name>Matrox_G200_AGP</name>
+			<id>0521</id>
+			<option>NO_DEVICE_VALIDATION</option>
+		</card>
+		<card>
+			<popname>FireGL_1KPro</popname>
+			<name>FireGL_1KPro</name>
+			<id>3D07</id>
+			<option>STIPPLE_ALPHA</option>
+			<option>SLOWEST_TEXTURE_DOWNLOAD</option>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>NO_DEVICE_VALIDATION</option>
+		</card>
+		<card>
+			<popname>ATI_Rage_Pro</popname>
+			<name>ATI_Rage_Pro</name>
+			<id>4742</id>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+			<option>MAX_TEXTURE_WIDTH 256</option>
+			<option>MAX_TEXTURE_HEIGHT 256</option>
+		</card>
+		<card>
+			<popname>ATI_Radeon</popname>
+			<name>ATI_Radeon</name>
+			<id>5144</id>
+			<option>FAKE_W_BUFFER</option>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+			<option>NO_TEXTURE_TARGET</option>
+		</card>
+		<card>
+			<popname>ATI 7200 VIVO</popname>
+			<name>ATI_7200_VIVO</name>
+			<id>000</id>
+		</card>
+		<card>
+			<popname>ATI 8500</popname>
+			<name>ATI_8500</name>
+			<id>000</id>
+		</card>
+		<card>
+			<popname>ATI 9500 Pro</popname>
+			<name>ATI_9500_PRO</name>
+			<id>4e45</id>
+		</card>
+		<card>
+			<popname>Radeon 9600 128MB</popname>
+			<name>ATI_9600</name>
+			<id>4150</id>
+			<help>Note this is the non-pro version. No cardbase entry needed except to set Time Frame to 40.</help>
+		</card>
+		<card>
+			<popname>ATI 9700 Pro</popname>
+			<name>ATI_9700_PRO</name>
+			<id>000</id>
+		</card>
+		<card>
+			<popname>ATI 9800 Pro</popname>
+			<name>ATI_9800_PRO</name>
+			<id>000</id>
+		</card>
+		<card>
+			<popname>S3_Savage4</popname>
+			<name>S3_Savage4</name>
+			<id>8A22</id>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>ALWAYS_USE_W</option>
+		</card>
+		<card>
+			<popname>GeForce</popname>
+			<name>GeForce</name>
+			<id>0100</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>SLOW_TEXTURE_DOWNLOAD</option>
+		</card>
+		<card>
+			<popname>GeForce</popname>
+			<name>GeForce</name>
+			<id>0100</id>
+			<help>As the above, but with LOCK_TARG_FMT_TO_BACK_BUFF instead of SLOW_TEXTURE_DOWNLOAD</help>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>GeForce_DDR</popname>
+			<name>GeForce_DDR</name>
+			<id>0101</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>GeForce2</popname>
+			<name>GeForce2</name>
+			<id>0150</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>GeForce2DDR</popname>
+			<name>GeForce2DDR</name>
+			<id>0151</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>GeForce2MX</popname>
+			<name>GeForce2MX</name>
+			<id>0110</id>
+			<option>NO_TEXTURE_TARGET</option>
+			<option>LOCK_TARG_FMT_TO_BACK_BUFF</option>
+		</card>
+		<card>
+			<popname>GeForce4 Ti4600</popname>
+			<name>GF4_TI46</name>
+			<id>250</id>
+		</card>
+		<card>
+			<popname>Leadtek GeForce 4 Ti4200</popname>
+			<name>LEAD_GF4_TI42</name>
+			<id>000</id>
+		</card>
+		<card>
+			<popname> Leadtek GeForce 4 Ti4600</popname>
+			<name>LEAD_GF4_TI46</name>
+			<id>000</id>
+		</card>
+		<card>
+			<popname>NVIDIA GeForce4 Ti 4200</popname>
+			<name>NVID_GF4_TI42</name>
+			<id>253</id>
+			<help>No cardbase entry needed except to set Time Frame to 40.</help>
+		</card>
+		<card>
+			<popname>nVidia GF4 Ti4400</popname>
+			<name>NVID_GF4_TI44</name>
+			<id>251</id>
+		</card>
+		<card>
+			<popname>Asus GF3 TI500</popname>
+			<name>ASUS_GF3_TI50</name>
+			<id>000</id>
+		</card>
+	</dialogue>
+</advisor>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

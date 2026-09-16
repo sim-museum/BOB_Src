@@ -1,0 +1,86 @@
+# model file for Do17
+plane
+WeightEmpty 550000
+MaxIntFuel 171500
+FuelTankCap { 52500 52500 66500 0 }
+FuelTankXPos { 175 -175 0 0 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 3
+ShadowShpNo 360
+Visible 19
+SAGsubshape 374
+CommsVisible 19
+FuelAboff 159
+Maxvel 1100000
+Minvel 500000
+Cruisevel 1000000
+BestClimbVel 750000
+BestClimbPitch 1113
+MaxDiveVel 2000000
+MaxAccel 7000
+TurnPercs 0
+RadiusTurn 0
+Cockpit1 153
+GunnerPit1 {153 0 0 }
+GunnerPit2 {154 -32768 3641 }
+GunnerPit3 {155 -32768 0 }
+GunnerPit4 {153 0 0 }
+CockpitScale 0.125
+HdgArc 8192
+PitchMax 8192
+PitchMin 8192
+FinPitch 1229
+FinlhdgMin 29764
+FinlhdgMax 30219
+FinrhdgMin 35316
+FinrhdgMax 35771
+PhraseName 9994
+AerobaticFactor 0
+DeckAngle 2002
+DeckShunt 200
+MaxRollRate 5461
+MaxPitchRate 1820
+LandingSpeed 450000
+MaxDiveRPM 3600
+FreeRPM 400
+MaxRPM 2400
+MinRPM 400
+MovableFirezoneType -1
+Damage 8738
+FightCeiling 762000
+AbsCeiling 825000
+MaxTurnRateAoaSL 0.2618
+MuzzleVelocity 7470000
+GunSnd { 29462 29462 29462 65535 29531 }
+EngineSnd 29451
+EngineSubSnd 29449
+EngineStartSnd 29458
+NoGuns 1
+GunIdx1 0
+GunIdx2 0
+GunDelay 24
+GunFrequency 120
+NumACinFlight 5
+MaxFlights 3
+NumEngines 2
+NumPilots 5
+RoleType 1
+IsLarge 1
+EngineCutout 0
+RetractableGear 1
+Playable 2
+Nationality 2
+Cockpit 0
+AIType 0
+MaxHeadX 25
+InstType 0
+ACFlags 4
+BestClimbAng { 1113 973 834 695 556 417 278 139 0 0 0 0 0 0 0 0 0 0 0 0 0 }
+BestClimbSpeed { 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 750000 }
+MaxVelsl { 1000000 1050000 1100000 1150000 1190000 1200000 1175000 1100000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 900000 }
+MaxvelDive_0km 1550000
+MaxvelDive_11km 1550000
+MaxvelDive_20km 1550000
+Version 1
+AcmName "Do17"

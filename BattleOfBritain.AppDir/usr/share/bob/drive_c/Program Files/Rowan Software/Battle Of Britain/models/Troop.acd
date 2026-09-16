@@ -1,0 +1,23 @@
+# model file for Troop
+tank
+WeightEmpty 5539
+MaxIntFuel 130000000
+FuelTankCap { 200000000 200000000 200000000 200000000 }
+FuelTankXPos { -32767 -32767 -32767 -32767 }
+FuelTankType { 0 0 0 0 }
+FuelConsumption 1
+Statbin 2
+ShadowShpNo 258
+Visible 258
+SAGsubshape 258
+CommsVisible 258
+FuelAboff 198
+Maxvel 35760
+Minvel 1490
+Cruisevel 13410
+BestClimbVel 4470
+BestClimbPitch 1610623659
+MaxDiveVel 44700
+MaxAccel 1000
+TurnPercs 24576
+RadiusTurn 100

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<!DOCTYPE advisor [
+  <!ELEMENT advisor          (config,(auto|dialogue|decision|message)*)>
+  <!ELEMENT config           (file,info,(separator?),(comment?))>
+  <!ELEMENT file             (#PCDATA)>
+  <!ELEMENT info             (#PCDATA)>
+  <!ELEMENT separator        (#PCDATA)>
+  <!ELEMENT comment          (#PCDATA)>
+  <!ELEMENT decision         (choice,(decision|choice)*)>
+  <!ELEMENT choice           (auto|dialogue|decision|message)*>
+  <!ELEMENT dialogue         (((card*)|((text),(bdgline),(suggested_value?),(minimum?),(maximum?),(ignore?))))>
+  <!ELEMENT auto             (#PCDATA)>
+  <!ELEMENT message          (#PCDATA)>
+  <!ELEMENT bdgline          (#PCDATA)>
+  <!ELEMENT card             (popname,name,id,(help?),(option*))>
+  <!ELEMENT popname          (#PCDATA)>
+  <!ELEMENT name             (#PCDATA)>
+  <!ELEMENT id               (#PCDATA)>
+  <!ELEMENT help             (#PCDATA)>
+  <!ELEMENT option           (#PCDATA)>
+  <!ELEMENT text             (#PCDATA)>
+  <!ELEMENT suggested_value  (#PCDATA)>
+  <!ELEMENT minimum          (#PCDATA)>
+  <!ELEMENT maximum          (#PCDATA)>
+  <!ELEMENT ignore           EMPTY>
+
+  <!ATTLIST choice case CDATA #REQUIRED>
+  <!ATTLIST dialogue type (binary|colour|float|integer|cardbase) #REQUIRED>
+]>
+<advisor>
+	<config>
+		<file>bdg.txt</file>
+		<info>blubb</info>
+		<separator>=</separator>
+		<comment>#</comment>
+	</config>
+	<decision>
+		<choice case="startfromfile=USE_HIRES_LANDSCAPE_TILES">
+		</choice>
+		<choice case="OFF">
+    	<dialogue type="binary">
+				<text>Do you want to enable HiRes Landscape tiles ?</text>
+				<bdgline>USE_HIRES_LANDSCAPE_TILES</bdgline>
+				<suggested_value>ON</suggested_value>
+			</dialogue>
+    </choice>
+		<choice case="ON">
+		</choice>
+		<choice case="default">		
+		</choice>
+	</decision>
+</advisor>
