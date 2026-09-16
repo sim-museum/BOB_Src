@@ -6257,3 +6257,61 @@ Spitfire may simply never build one in this code path. That is a five-minute che
 
 **ASPECT-1: 15 sprints. The manoeuvre is solved. The mirror evidence does not exist yet, and the next
 sprint is a shape-id check, not a flight.**
+
+---
+
+# NEW GOLD STANDARD VIDEOS (PO, 2026-09-15) — three BoB captures, and one of them REVIVES a dead item
+
+`~/gold standard/bob/` gained three videos tonight. All three are **1920×1080 ~60 fps screen
+recordings of the whole desktop**, with the game running in a window — not clean full-screen
+captures. That shapes every item below (see the caveat at the end).
+
+| file | length | size |
+|---|---|---|
+| `260915_bob_raf_campaign.mp4` | 2m 48s | 17 MB |
+| `260915_bob_german_campaign.mp4` | 3m 44s | 33 MB |
+| `260915_bob_turkey_shoot_german.mp4` | 1m 34s | 23 MB |
+
+## GOLDVID-BOB-1 — ⭐⭐ **the RAF campaign video UNBLOCKS ASPECT-1**, which S13 declared un-gradeable
+
+⛔ **S13 recorded, correctly at the time:** *"the BoB gold store has no RAF cockpit imagery at all —
+19 stills, all front-end screens, and one video which is a Luftwaffe campaign. So ASPECT-1's mirror
+can never be pixel-compared to gold."* That is now **out of date**. `260915_bob_raf_campaign.mp4` is
+RAF, so a Spitfire/Hurricane cockpit — and therefore **a real mirror** — should be on screen.
+
+**First task is to confirm the premise before building anything on it:** step the video and find
+frames where (a) the cockpit is an RAF type, and (b) the rear-view mirror is visible. R3.4 S7–S9
+established `docreatemirrorno` lives in shapes **65 (CPT1) and 172 (CPT4) only**, so the mirror's
+presence is aircraft-dependent even in an RAF sortie. **If no frame shows the mirror, say so and stop
+— do not grade a mirror against a video that has none.**
+
+**If the mirror IS visible, this is the acceptance test ASPECT-1 has never had:**
+* does the real game's mirror show sky above and terrain below, as ours does (S10)?
+* does its content **roll with the aircraft** in a turn? That is the discriminator paint cannot
+  fake, and the entire point of S11–S15.
+* rough content scale — our mirror changes 14–58 per step (R3.4 S9); what does the gold do?
+
+## GOLDVID-BOB-2 — the German campaign video, a second Luftwaffe reference
+
+`bob_convoy_campaign.mp4` (Aug) was the only campaign reference. A second one at a different date is
+worth having for the parts of the front end and the campaign map that S-series work keeps grading by
+eye. **Lowest priority of the three** — it is more of the same team we already have.
+
+## GOLDVID-BOB-3 — "turkey shoot", 94 s, and the likely candidate for the FLICKER report
+
+The PO's 2026-09-04 report was *"in bob appImage dogfight the screen flickered baddly"*, and
+`tools/bob_vsync_pace.sh` exists because of it. A **turkey shoot is a dogfight**, and this is the
+first gold video of one. **Check whether the gold capture flickers.** That decides which way the
+defect points:
+* gold steady, ours flickers → our present/vsync path, as the gate assumes;
+* gold flickers too → it is in the original game and the gate is measuring the wrong thing.
+The gate's own header says the control matters more than the fix; this video IS a control.
+
+⚠️ **Caveat that applies to all three, measured not assumed.** These are desktop recordings with the
+game windowed, so the game area is a sub-rectangle of the frame and the art is scaled. **Any pixel
+comparison must locate the game window first** and must not assume our render resolution. Verified on
+the sibling FreeFalcon captures tonight: large HUD digits read cleanly at this scale, small ones do
+not. [[gate-frame-must-match-the-eye]]
+
+**Status: 3 items filed, 0 sprints. GOLDVID-BOB-1 is the one that matters — it reopens a question
+that was closed as unanswerable.**
