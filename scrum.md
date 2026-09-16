@@ -5884,3 +5884,48 @@ against a gold frame of the same aircraft; if they do not, there is a real defec
 
 **R3.4: 7 sprints (3 in this pass). The data question is answered; the port is exonerated for the
 109; and the comparison has been aimed at the right aeroplane for the first time.**
+
+## R3.4 S8 (Opus 5, 2026-09-15) — ⭐⭐ **THE PREDICTION HELD. In a Spitfire the mirror chain fires — three traces that had printed zero in every run this item has ever made.**
+
+S7 ended with a prediction written down before the run: *"Fly an RAF mission — Spitfire or Hurricane
+— and `docreatemirror` must execute."* The quick-mission boot (`BOB_BOOT_FRONTEND=1`) flies a
+Spitfire, which is CPT1 = shape 65, one of the two shapes the archive census found carrying the
+opcode.
+
+⭐⭐ **One flight, and the whole chain comes alive:**
+
+    [opcensus] docreatemirror IN SHAPE 65 (instr #440)          <- the shape is loaded
+    [aspect]   docreatemirror REACHED (SKYIMAGES=1)             <- the opcode EXECUTES
+    [aspect]   UseMirror: mirrorMaterial = 284 (imagemap dir 1 file 28),
+               pos (0, -148, 219) normal (0, -32767, 0) fov 8192
+
+**`docreatemirror REACHED`, `UseMirror` and the mirror render pass had each printed ZERO in every
+previous run of this item and of ASPECT-1** — nine sprints of zeros, explained in S7 and now
+converted into a positive result by changing the aeroplane rather than the code.
+
+⭐ **And the Spitfire's mirror is a different object from the 109's disc**, as the data said it would
+be: material **284** (imagemap dir 1, file 28), mounted at (0, −148, 219) with a normal straight up
+(0, −32767, 0) and a 45° field of view — a real mirror object with a position, an orientation and a
+render target, not a texture painted on the windscreen.
+
+⚠️ **One observation, flagged rather than claimed.** The mirror pass reports
+
+    [aspect] projection aspect=1.0000 (Lib3D aspectRatio=1.7778) GL viewport 1920x1080 -> horizontal stretch 1.7778
+
+The "stretch" figure compares the pass's square projection against the MAIN viewport, which is not
+the mirror's render target — MIRROR-1 established that a square projection is correct for a square
+mirror FBO. **This is not evidence of a defect until the FBO's own dimensions are printed beside it**,
+and saying otherwise would repeat exactly the mistake S5 made with the painted disc.
+
+⭐ **What R3.4 now has, for the first time in eight sprints:** a live mirror, in a known aircraft,
+with its material and mount identified — and therefore a comparison that can be made against a gold
+frame **of a Spitfire**, which is the aircraft the reference must now come from. The Luftwaffe
+convoy video cannot serve; it never shows one.
+
+**S9:** capture the Spitfire mirror and score its content the way S5 tried to — but with the
+frame-to-frame delta as the discriminator, since a LIVE mirror must change between frames and paint
+cannot. S5's own numbers already carried that test (ours 3–11 against the gold's 8–73) and it was
+explained away; run it again now that there is something live to measure.
+
+**R3.4: 8 sprints (4 in this pass — AT THE CAP, parked here).** The mirror is alive, in the right
+aeroplane, and the next sprint is a measurement rather than a search.
