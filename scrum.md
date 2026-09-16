@@ -6896,3 +6896,75 @@ frame against the gold's t=44→54 sequence.** The gold reference is committed; 
 missing now.
 
 **GOLDVID-BOB-1: 2 sprints. The item was blocked on the PO this morning and is not blocked any more.**
+
+## GOLDVID-BOB-1 S3 (Opus 5, 2026-09-16) — ✅ **our mirror rolls too.** The comparison S2 set up is made, and it passes — ⚠️ **and my first look at our own data said the opposite, because I sampled it instead of censusing it**
+
+S2 established from the gold that the mirror's content rolls with the aeroplane, and left our half
+undone. Done here: an RAF Spitfire (QM 14), `BOB_MIRROR=1`, `BOB_AUTOFLY=bank:60` **plus
+`BOB_AUTOFLY_ELEV=1`** — the held elevator is what turns S2's spiral dive into an actual turn:
+
+```
+[hud] alt=11509ft hdg=  6 speed=303Kts      <- entry
+[hud] alt= 8923ft hdg= 18 speed=165Kts
+[hud] alt= 5362ft hdg=119 speed=160Kts      <- 113 deg of heading change
+[hud] alt= 1842ft hdg=127 speed=154Kts
+[hud] alt=  663ft hdg=331 speed=153Kts
+```
+
+694 mirror dumps from the 128×128 RTT surface.
+
+✅ **The result** (`doc/reference/260916_ours_mirror_roll_qm14.png`, dumps 0020→0048): the sky/ground
+boundary inside our mirror swings from a shallow diagonal, through progressively steeper ones, to
+**past vertical** — the same progression the gold shows through its turn
+(`doc/reference/260915_gold_mirror_roll_t44-54.png`). **Our mirror's content rolls with the
+aircraft.** Whatever else is wrong with the mirror, this is not.
+
+⚠️⚠️ **And the method note is the important part of this sprint.** My first pass took eight dumps
+spread evenly across the 694 and rendered them: **every one was plain sky and cloud, no horizon at
+all.** That reads as a clean, publishable negative — "our mirror never shows the ground during a
+descent from 11,500 ft" — and it is **false**. A per-frame census of all 694 dumps (fraction of
+pixels where blue is not the dominant channel) found the median frame is 0.3% non-sky but that dumps
+0032–0040 are **61–76% non-sky**. The horizon is in a narrow window of frames, and a uniform sample
+of eight walked straight past it.
+
+**An evenly-spaced sample is not a census, and on a short-lived event it is worse than no
+measurement** — it produces a confident negative. This is the third time this session that a sampling
+or rounding instrument has produced a clean wrong answer (MA's weather truncation hidden by a
+rounding printf; JR-2's tie-ranking; now this). [[instrument-bookkeeping-lies]]
+
+⚠️ **Not claimed, deliberately:**
+* **The roll is not frame-synchronised to the HUD.** The dump indices and the HUD's 120-call sampling
+  are different clocks; the rotation and the heading change occupy the same early part of the run,
+  which is correlation, not registration. **Direction and rate are therefore NOT compared** — only
+  that rotation occurs in both.
+* **Appearance is not compared.** Ours is hazy with a lot of pale cloud; the gold's is crisper. S1
+  described the gold's own content as *"flat horizontal bands, no detail, a banded gradient"*, and
+  the two captures are different weather at different places. No conclusion is drawn from that.
+* The aircraft still flies into the ground at the end of the run. The autofly gives a turn, not a
+  sustained level turn; a cleaner comparison wants the aeroplane still flying at the end.
+
+**S4:** register the two clocks — print the aircraft's roll angle beside the mirror dump index — and
+compare roll *rate* and *direction*, which is the part that could still be wrong (a mirror rolling
+the right way at the wrong rate, or mirrored left-right, both look "correct" at this resolution).
+
+---
+
+**FTOI-1 cross-port check (Opus 5, 2026-09-16)** — FreeFalcon's FTOI-1 tonight found `FloatToInt32`
+truncating on Linux where the Windows arm's `fistp` rounds, across 881 call sites, and recommended a
+sweep here. **Done, and BoB is clean.** Every x87 float→int conversion in this tree was ported
+correctly:
+
+| site | Linux arm |
+|---|---|
+| `FASTMATH.H:189` `FloatToInt` | `__builtin_lrint` ✅ (Windows: `frndint` + `fistp`) |
+| `LIB3D.CPP:1038` | `__builtin_lrint` ✅ |
+| `MATRIX.CPP:200` `ASMBody2Screen` | `__builtin_lrint` ×2 ✅ |
+| `COLLIDED.CPP` | Watcom/MSVC arms only; the Linux path is C |
+| `ACMAI.CPP:3777` `SLong deltapitch = … / 1000.0` | truncates — but 1000.0 is exactly representable and it truncated on Windows too. No divergence |
+| `ACMSIMPL.CPP` `/182.04` ×8 | consumed by `PrintVar("%.1f", …)`; printf rounds |
+
+**MiG Alley is clean for the same reason** (`MATRIX.CPP:208`, `COLLIDED.CPP:130` both
+`__builtin_lrint`). The Rowan ports converted the x87 rounding deliberately; FreeFalcon's fallback was
+written as a one-line `static_cast`. Both ports checked, nothing to fix.
+
+**GOLDVID-BOB-1: 3 sprints.**
