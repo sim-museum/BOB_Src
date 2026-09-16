@@ -8138,3 +8138,74 @@ both opt-in.
 and the same clamp will be truncating other tables in this port.
 
 **BOBFONT-1: 3 sprints.**
+
+## BOBFONT-1 S4 (Opus 5, 2026-09-16) — ⛔ **S3's "the listbox rect is too narrow" is DISPROVED by a trace** — ⭐⭐ the real cause is a per-draw `Shrink()` that overwrites the game's own `AddColumn` calls, and with it stopped the four columns are **even**, as the gold's are
+
+S3 got the first three column pitches onto the gold's 137, watched the fourth collapse to 97, and
+wrote: *"that is the clamp at `RLISTBXC.CPP:805` — the listbox's own rect is too narrow to hold four
+full columns."* That was arithmetic, not a reading. **`BOB_TRACE_LISTCOL` reads it.**
+
+### ⛔ The rect is not too narrow, and the clamp never fires
+
+```
+[listcol] col 0: rc=673x139 offset=0   offset2=104 ...      (BOB_LISTCOL_SCALE off)
+[listcol] col 1: rc=673x139 offset=104 offset2=106 ...
+[listcol] col 2: rc=673x139 offset=210 offset2=71  ...
+[listcol] col 3: rc=673x139 offset=281 offset2=65  ...
+```
+
+**673 px wide** — four 143-px columns need 576 — and the trace's `<- CLAMPED` marker **does not appear
+on any column, in either arm**. ⚠️ *A number I derived agreed with a story I liked, and the
+instrument disagreed with both.*
+
+### ⭐⭐ What the trace actually says
+
+The stored column sizes are **104 / 106 / 71 / 65**, not the four **100**s `BoBFrag::SetUpUnitDetails`
+asks for with `AddColumn(100)`. Something overwrites them — and `bob_ole_rlistbox.cpp` names it:
+
+```c
+if (!bagCols) Shrink();          /* per-draw, in the host's draw() */
+```
+
+`bagCols` is set when the columns come from the **authored property bag**. S125 added that guard
+because shrinking authored columns tight-packed the campaign phase-tab row, and its comment states
+the rule correctly: *"Windows only `Shrink()`s when the game asks (`PositionRListBox`)."*
+
+⭐ **But the guard only protects one of the two ways a control gets columns.** The briefing's roster
+sets its columns at **runtime**, from the game's own code, and to this guard that is indistinguishable
+from having none — so they are shrunk to content every frame, behind the game's back.
+
+### ✅ `BOB_LISTCOL_NOSHRINK=1` — shrink only a control that has no columns at all
+
+```c
+if (!bagCols && m_sizeList.GetCount() == 0) Shrink();
+```
+
+### ⭐⭐⭐ Measured, with S3's multiply as well
+
+| | column starts | pitches |
+|---|---|---|
+| **gold** | 29 · 165 · 303 · 440 | **136 · 138 · 137** |
+| ours, neither flag | 28 · 131 · 238 · 309 | 103 · 107 · 71 |
+| `+BOB_LISTCOL_SCALE` | 28 · 170 · 316 · 413 | 142 · 146 · **97** |
+| **`+BOB_LISTCOL_NOSHRINK`** | 28 · **172** · **318** · **463** | **144 · 146 · 145** |
+
+**The columns are now even, which is the structural property the gold has and we did not.** The
+residual is a uniform **+8 px (5.8 %)** per column — `100 * 22/16 = 137.5` is the gold and the stored
+size is behaving like ~105, so `AddColumn` is applying a scale of its own at add time. That is one
+number, not a shape, and it is S5.
+
+(`doc/reference/260916_ours_briefing_evencols.png`.)
+
+### Gates
+
+`tools/bob_parity.sh` default arm **8 of 8 byte-identical**; both new flags opt-in.
+
+⚠️ **`BOB_LISTCOL_NOSHRINK` has the widest blast radius of the four flags** — it changes every
+multi-column listbox in the front end, not just this one — which is exactly why it is off, and why
+S125's original guard was written narrowly in the first place.
+
+**S5:** `AddColumn`'s own runtime scaling. The stored value is ~105 where the game passed 100, and
+that 5 % is the last of the briefing's column geometry.
+
+**BOBFONT-1: 4 sprints — at cap.**

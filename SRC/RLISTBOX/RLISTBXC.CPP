@@ -811,6 +811,20 @@ void CRListBoxCtrl::OnDraw(
 					AlignOffset=0;
 					pOffScreenDC->SetTextAlign(TA_LEFT | TA_TOP);
 				}
+				/* BOBFONT-1 S4 (2026-09-16): say what the column layout is actually working with.
+				   S3 got the first three column pitches onto the gold's 137 and the FOURTH still
+				   collapsed to 97, and blamed "the listbox rect is too narrow" -- from arithmetic,
+				   not from a reading. rc, offset and offset2 are all right here; print them once per
+				   draw and the clamp stops being a guess. BOB_TRACE_LISTCOL=1. */
+				if (getenv("BOB_TRACE_LISTCOL")) {
+					static int n = 0;
+					if (n++ < 12)
+						fprintf(stderr, "[listcol] col %d: rc=%ldx%ld offset=%ld offset2=%ld "
+						        "scroll=%ld tmH=%ld%s\n", x, (long)(rc.right-rc.left),
+						        (long)(rc.bottom-rc.top), (long)offset, (long)offset2,
+						        (long)m_lHorzScrollPos, (long)tm.tmHeight,
+						        (offset+offset2-m_lHorzScrollPos > rc.right-rc.left) ? "  <- CLAMPED" : "");
+				}
 				if (offset+offset2-m_lHorzScrollPos>rc.right-rc.left) 
 					offset2=rc.right-rc.left-offset+m_lHorzScrollPos;
 				if (offset2==0) 

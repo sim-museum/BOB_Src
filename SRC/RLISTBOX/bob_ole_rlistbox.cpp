@@ -78,7 +78,24 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
            Shrink()s when the game asks (PositionRListBox); shrinking the authored
            columns is what tight-packed the phase-tab row (#16). */
         g_bobListFontH = pdc->m_bobTextH;
-        if (!bagCols) Shrink();
+        /* BOBFONT-1 S4 (2026-09-16): the bagCols guard protects AUTHORED columns and not the ones
+           the GAME sets at runtime -- and BoBFrag's unit-details roster is the second kind. It calls
+           AddColumn(100) four times in SetUpUnitDetails, this per-draw Shrink() overwrites all four
+           with content-tight widths, and the briefing's four columns come out irregular where the
+           gold's are an even 137 px.
+           Measured with BOB_TRACE_LISTCOL: the stored sizes are 104/106/71/65, not the four 100s the
+           game asked for -- and 100*22/16 = 137.5 is exactly the gold's pitch.
+           It also disproves S3's guess that "the listbox rect is too narrow": rc is 673x139, four
+           143-px columns need 576, and the CLAMPED marker never fires on any column.
+           S125's own comment already names the rule -- "Windows only Shrink()s when the game asks
+           (PositionRListBox)" -- so a control that HAS columns, from either source, must not be
+           shrunk behind the game's back. BOB_LISTCOL_NOSHRINK=1 (opt-in, with the same care as the
+           other font flags: it changes every multi-column listbox in the front end). */
+        {
+            static int ns = -1; if (ns < 0) ns = getenv("BOB_LISTCOL_NOSHRINK") ? 1 : 0;
+            if (ns) { if (!bagCols && m_sizeList.GetCount() == 0) Shrink(); }
+            else    { if (!bagCols) Shrink(); }
+        }
         CRect rc(0, 0, w, h);
         OnDraw(pdc, rc, rc);
     }
