@@ -6968,3 +6968,60 @@ correctly:
 written as a one-line `static_cast`. Both ports checked, nothing to fix.
 
 **GOLDVID-BOB-1: 3 sprints.**
+
+## GOLDVID-BOB-2 S3 (Opus 5, 2026-09-16) — **REOPENED and re-censused, for the same reason MiG Alley's item was**: all three BoB gold videos were read by spot-checking, and a mechanical census finds **45 distinct scenes** across them — including a full-screen mission briefing, a campaign phase-selection screen and at least six map dialogs that no sprint has ever mentioned
+
+Tonight's MiG Alley GOLDVID-MA-1 S4 reopened a closed item because its screen inventory had been built
+by stepping to interesting-looking timestamps, and the weather panel it missed later produced a real
+shipped fix. **The three BoB videos were read exactly the same way** — BOB-1 S1 recorded "the mirror
+exists, the aeroplane is parked", BOB-2 S1 recorded three HUD strips, BOB-3 read flicker — so the
+same census was run here.
+
+⭐ **Method, identical to MA's:** frames every 3 s, each reduced to a 16×16 luma signature, grouped by
+Hamming distance.
+
+| video | length | frames | distinct scenes |
+|---|---|---|---|
+| `260915_bob_raf_campaign` | 168 s | 56 | **18** |
+| `260915_bob_german_campaign` | 224 s | 75 | **17** |
+| `260915_bob_turkey_shoot_german` | 94 s | 31 | **10** |
+
+Contact sheets committed as `doc/reference/260915_gold_scenes_{raf,german}.png`.
+
+⭐ **What is in them that no sprint has listed:**
+
+| | screen |
+|---|---|
+| both campaigns | **the title screen** — and it is where BOB-1 S1 read `BDG 0.99` |
+| RAF, t=15 | ⛔ **a campaign phase-selection screen** — sepia art, two commander portraits, `Commander: RAF`, a date range `10th July – August 11th` |
+| both, t=21–51 | ⛔ **at least six distinct map sub-dialogs**: a squadron/OOB table with a portrait, a smaller table with a photo, a bomber-photo intel panel with a data table, a wide multi-column table, and a left-hand list beside a right-hand table |
+| German, t=21 | ⛔ **a raid-planning panel** — `Morning / Mid-day / Afternoon`, an aircraft type (`Ju87`), then target categories `Airfields · Docks · RDF · Convoys · London · Factories`, and `Resting`; over a named strategic map (Southampton, Bournemouth) with airfield, factory and RDF icons, the front line and a mission route |
+| both, t=81–90 | ⛔ **a full-screen mission briefing** with `Back · Sim Config · Fly` |
+| German, t=84 | ⛔ **a bomber cockpit** (yoke and instrument panel) — our port's cockpit work has only ever had fighter references |
+| turkey shoot | the airborne sortie GOLDVID-BOB-1 S2 used |
+
+⚠️ **Identifications are from thumbnails and are provisional.** Each of these needs a full-resolution
+look before a sprint grades anything against it; the RAF video also shows a small white dialog at
+t=153–162 that may be the game's own or the desktop's, and I am not guessing which.
+
+⭐ **Why this matters more for BoB than it did for MiG Alley.** Three of these screens sit directly on
+top of open port work that has had **no gold reference at all**:
+* the **OOB / squadron table dialogs** — S113–S117 built OOB dialog rendering and graded it by eye;
+* the **campaign map's raid planning** — S83–S98 built the strategic map and its toolbar;
+* the **bomber cockpit** — every cockpit capture this project owns is a fighter.
+
+**Each of those is now gradeable against the real game**, which is exactly the leverage the weather
+panel gave MiG Alley four sprints ago.
+
+⚠️ **And the standing lesson, now recorded twice in one night in two different projects.** A gold
+capture read by stepping to interesting timestamps is a **sample**, and a sample of a long capture
+reliably produces confident wrong inventories. **Census first, mechanically, before any sprint reads
+a gold video** — 160 frames and a 16×16 signature across all three videos cost under two minutes.
+[[parity-captures-must-record-their-state]]
+
+**S4 candidates, in value order:** (1) the **OOB/squadron table** at full resolution against our
+S113–S117 rendering; (2) the **mission briefing** screen, which is text-heavy and therefore gradeable
+field by field; (3) the **bomber cockpit**.
+
+**GOLDVID-BOB-2: 3 sprints. Closed at S2 on a reading of three HUD strips; reopened with 45 scenes on
+the table.**
