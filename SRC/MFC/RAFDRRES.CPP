@@ -652,6 +652,28 @@ int	RAFDirectivesResults::InterceptSanctioned(int pack, int raid)
 	int	packnum=-1;
 	int firstpacknum=-1;
 	Profile& pk = Todays_Packages.pack[pack];
+#if BOB_LINUX
+	/* GOLDVID-BOB-2 S8 (2026-09-16): refuse the whole operation when the package has no raid
+	   entries, instead of walking a NULL array.
+	   Measured on the RAF campaign map (BOB_SIDE=raf BOB_MAP_DIRECTIVES): the Intercept-offered
+	   dialog opens and its OnOK fires ITSELF from the R24 timer (S420 -- before that sprint every
+	   OnTimer in this tree was dead code, so this path has only been live since), arriving here
+	   with `pk.raidnumentries == NULL`:
+	     [raidnum] REFUSED MinSq(entry=0): raidnumentries=(nil)
+	     Profile::RaidNumEntriesMinSq  package.h:325  <- InterceptOffered::OnOK  IntOff.cpp:161
+	       <- bob_timers_tick  <- bob_msg_wait
+	   Guarding the ACCESSOR alone was not enough and the run still died three lines later at
+	   `pk.raidnumentries[raid].raidintercepted = true` (fault_addr moved 0x2 -> 0x3e) -- a null
+	   base is not one bad read, it is every read in the function. So the check belongs here, once,
+	   at the entry: with no raid entries there is nothing to sanction.
+	   BOB_NO_RAIDNUM_GUARD=1 restores the original behaviour for a bisect. */
+	if (!pk.raidnumentries && !getenv("BOB_NO_RAIDNUM_GUARD")) {
+		fprintf(stderr, "[raidnum] InterceptSanctioned(pack=%d, raid=%d) REFUSED:"
+		        " this package has no raidnumentries -- nothing to sanction\n", pack, raid);
+		fflush(stderr);
+		return -1;
+	}
+#endif
 	int squadnum = pk.RaidNumEntriesMinSq(raid);
 	int	squadmax = pk.RaidNumEntriesMaxSq(raid);
 	for (int sqt=squadnum;sqt<=squadmax;sqt++)

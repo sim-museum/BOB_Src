@@ -8209,3 +8209,82 @@ S125's original guard was written narrowly in the first place.
 that 5 % is the last of the briefing's column geometry.
 
 **BOBFONT-1: 4 sprints — at cap.**
+
+## GOLDVID-BOB-2 S8 (Opus 5, 2026-09-16) — ⭐⭐⭐ **a SEGV on the RAF campaign map, found while chasing a census screen, and FIXED** — the Intercept-offered dialog's timer-driven `OnOK` runs against a package whose `raidnumentries` is NULL
+
+S7 named the census's remaining leads. Going after the RAF map's sub-dialogs to read one of them, the
+port crashed instead — which is the better find.
+
+### ⭐ What I was doing
+
+The census listed *"at least six distinct map sub-dialogs"* unread. The RAF gold at **t=30** is one of
+them: **`Proposed Patrols`** — red serif title with `?` `✓` `✗`, an officers-over-a-map-table photo,
+orange `Size` / `Target` headers and six white rows of `Squadron or less` → `PILOT` / `JAUNTY`
+(`doc/reference/260915_gold_proposed_patrols.png`).
+
+⚠️ **Two dead ends recorded so the next sprint skips them.** `IDS_PROPOSEDPATROLS` ("Proposed
+Patrols") exists in the string table with **no code reference at all** — the title comes from a
+template or the directives-results family, not from a named site. And `BOB_SHOT=60` and `=400` both
+fired on the **front end**: the state banner's `autoclick=3/5` says the sequence that opens the map had
+not finished, so the shot raced it. `BOB_SHOT=3000` reaches the map.
+
+### ⭐⭐⭐ And at 3000 it crashed
+
+```
+=== CRASH: signal 11  fault_addr=0x2  edi=00000002 ===
+  Profile::RaidNumEntriesMinSq(int)   SRC/H/package.h:325
+  InterceptOffered::OnOK()            SRC/MFC/IntOff.cpp:161
+  bob_timers_tick                     SRC/RLISTBOX/bob_ole.cpp:1420
+  bob_msg_wait                        SRC/compat/bob_video.cpp:218
+```
+
+Reachable headlessly with `BOB_SIDE=raf BOB_MAP_DIRECTIVES=6`. The **Intercept-offered** dialog opens
+on the map and its `OnOK` fires **itself** from the R24 timer — and this path has only been live since
+**S420**, which cross-ported the timer MA found (*"28 OnTimer overrides and 29 SetTimer callers in this
+tree were dead code"*). **A sprint that made 28 handlers live made this one crash.**
+
+### ⭐⭐ The instrument named it, and then disproved my first fix
+
+A guard on the accessor, with a trace:
+
+```
+[raidnum] REFUSED MinSq(entry=0): raidnumentries=(nil)
+```
+
+**`raidnumentries` is NULL** — measured, not inferred, and the index was fine. ⛔ **But the run still
+died**, three lines later at `pk.raidnumentries[raid].raidintercepted = true`, with the fault address
+moved from `0x2` to `0x3e`. *A null base is not one bad read; it is every read in the function.*
+
+### ✅ So the guard belongs at the entry, once
+
+`RAFDirectivesResults::InterceptSanctioned(pack, raid)` now refuses when the package has no raid
+entries — with no raid entries there is nothing to sanction:
+
+```
+[raidnum] InterceptSanctioned(pack=3, raid=0) REFUSED: this package has no raidnumentries
+[raidnum] InterceptSanctioned(pack=4, raid=0) REFUSED: this package has no raidnumentries
+[shot] frontend tick 3000 -> ours_patrols5.ppm (nonblack=785619) -- exiting      exit=0
+```
+
+**The RAF map now survives**, the sim runs on past midnight to **11 July 06:30**, and the teletype
+reports `Gravesend AF Fighter Quota Received` / `JAUNTY Asset Damaged`
+(`doc/reference/260916_ours_raf_map_survives.png`).
+⭐ **`JAUNTY` is one of the two target names in the gold's Proposed Patrols table** — our campaign is
+generating the same targets, which is a small independent check that the RAF directives logic is
+doing the right work.
+
+`BOB_NO_RAIDNUM_GUARD=1` restores the crash for a bisect. The accessor guard stays as
+defence-in-depth, the same shape as S43's `operator[]` guard.
+
+⚠️ **What this does NOT do:** explain *why* the package has no raid entries. The guard makes the map
+survivable and names the condition; whether those packages should have entries is the next question.
+
+### Gates
+
+`tools/bob_parity.sh` **8 of 8 byte-identical**; `tools/bob_convoy_campaign.sh` under `gl-lock`
+**PASS** — the German campaign still reaches 3D, which is the path that shares this code.
+
+**S9:** why `pack=3` and `pack=4` have no `raidnumentries`. They are the packages the RAF side creates
+for its own patrols, and `MakeRAFPatrols`/`SetPatrols` (`misssub.h:1125`) is where they are built.
+
+**GOLDVID-BOB-2: new pass, sprint 4 of 4 — at cap.**

@@ -290,3 +290,16 @@ char *compiledate = (char *)__DATE__;
    Lib3D::AllocateLandscapeTexture increments these when its band is exhausted; the tile trace
    reports them. Defined here so both TUs share one instance. */
 long g_bobLandTexFail[8] = {0,0,0,0,0,0,0,0};
+
+/* GOLDVID-BOB-2 S8 (2026-09-16): the refusal reporter for Profile::RaidNumEntriesMinSq's guard.
+   Out of line so package.h -- included very widely -- needs no <stdio.h>/<stdlib.h>.
+   BOB_TRACE_RAIDNUM=1 prints every refusal (throttled); BOB_NO_RAIDNUM_GUARD=1 is handled by the
+   caller and restores the original crash for a bisect. */
+extern "C" void bob_raidnum_refused(int entry, const void* base)
+{
+    static int on = -1, n = 0;
+    if (on < 0) on = getenv("BOB_TRACE_RAIDNUM") ? 1 : 0;
+    if (!on) return;
+    if (n++ < 20)
+        fprintf(stderr, "[raidnum] REFUSED MinSq(entry=%d): raidnumentries=%p\n", entry, base);
+}

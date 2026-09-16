@@ -20,6 +20,11 @@
 
 
 #include	"bitcount.h"
+
+#if BOB_LINUX
+/* GOLDVID-BOB-2 S8: out-of-line so this header needs no <stdlib.h>/<stdio.h>. */
+extern "C" void bob_raidnum_refused(int entry, const void* base);
+#endif
 #include	"uniqueid.h"		// enum UniqueID — used by the ONLYFIELD(UWord,UniqueID,..) members
 #include	"movement.h"		// enum value wpacnoactionno (waypoint action) used below
 enum FileNum : int;
@@ -322,7 +327,27 @@ struct	Profile
  	RaidNumEntry*	raidnumentries;	
 	ULong	firstsquaddiaryentry;
 					//max 13: 10 bomber targs + close,high,return escort. 
+#if BOB_LINUX
+	/* GOLDVID-BOB-2 S8 (2026-09-16): GUARD, with a trace. This accessor indexes raidnumentries
+	   with no check on the pointer or the index, and it SEGVs on the RAF campaign map:
+	     Profile::RaidNumEntriesMinSq(int)   package.h:325      fault_addr=0x2  edi=2
+	       <- InterceptOffered::OnOK()        IntOff.cpp:161
+	       <- bob_timers_tick                 bob_ole.cpp:1420
+	       <- bob_msg_wait                    bob_video.cpp:218
+	   Reached headlessly with BOB_SIDE=raf BOB_MAP_DIRECTIVES: the Intercept-offered dialog opens
+	   on the map and its OnOK fires ITSELF from the R24 timer (S420 -- before that sprint every
+	   OnTimer in this tree was dead code, so this path has only been live since), calling
+	   RAFDirectivesResults::InterceptSanctioned.
+	   Same shape as S43's operator[] guard: refuse the read, say why, and let the campaign carry on
+	   rather than take the process down. BOB_TRACE_RAIDNUM=1 prints every refusal;
+	   BOB_NO_RAIDNUM_GUARD=1 restores the crash for a bisect. */
+	int	RaidNumEntriesMinSq(int entry)	{
+		if (!raidnumentries || entry < 0) { bob_raidnum_refused(entry, (const void*)raidnumentries); return 0; }
+		return raidnumentries[entry].squadliststart;
+	}
+#else
 	int	RaidNumEntriesMinSq(int entry)	{return raidnumentries[entry].squadliststart;}
+#endif
 	int	RaidNumEntriesMaxSq(int entry);	//this is more complicated
 	SquadListRef		squadlist;	//Pointer to array of Squad
 	Squad&		operator[](int i)	{return squadlist[i];}
