@@ -5929,3 +5929,48 @@ explained away; run it again now that there is something live to measure.
 
 **R3.4: 8 sprints (4 in this pass — AT THE CAP, parked here).** The mirror is alive, in the right
 aeroplane, and the next sprint is a measurement rather than a search.
+
+## ASPECT-1 S10 (Opus 5, 2026-09-15) — ⭐⭐ **the port's mirror WORKS: sky, horizon and terrain rendered into the 128x128 FBO, ~750 distinct colours.** Nine sprints were spent measuring a dead path in an aeroplane that has no mirror
+
+R3.4 S8 produced a live mirror by flying a Spitfire. S10 photographs it. `BOB_DUMP_RTT_DIR=<dir>`
+(new) turns the existing single-file RTT dump into a numbered sequence — and puts it under `/home`,
+where frames belong on this box.
+
+⭐⭐ **5,077 mirror renders from one Spitfire flight, and the picture is unambiguous:**
+
+    sky band   RGB 129 162 184      (pale blue, upper third)
+    ground band RGB  82  85  23     (olive green, below the horizon)
+    mean 91.3   sd 62.3   ~740 distinct colours
+
+`doc/reference/mirror-spitfire-live-2026-09-15.png` — **a rear view with a horizon across it.** No
+ladder markings, no flat wash.
+
+⛔⛔ **Set that against what this item has been measuring since June.** R3.4's own numbers for the
+mirror were **mean 79.2, sd 0.71, FOUR distinct values** — a blank grey square — and MIRROR-1, R3.4
+S1–S5, ASPECT-1 S1–S9 all chased why. **They were all flying the Bf 109, whose cockpit shape (CPT2)
+carries no mirror opcode at all** (R3.4 S7). The renderer was never broken; the aircraft had no
+mirror to render, and the grey square was an unfilled buffer nothing was asked to fill.
+
+✅ **And the geometry question is closed with it.** The mirror render target is **128x128 — square**
+(`LIB3D.CPP:2229`), and the pass sets a matching viewport:
+
+    [rtt] MIRROR pass: mirrorRect L=0 T=0 R=128 B=128 -> viewport x=0 y=0 w=128 h=128
+
+So **a projection aspect of 1.0000 is correct**, exactly as MIRROR-1 concluded, and S8's
+"horizontal stretch 1.7778" was the trace comparing the mirror pass against the MAIN viewport —
+a number about the wrong rectangle. Flagging it rather than reporting it was the right call.
+
+⚠️ **What is NOT shown here.** The content changes only slowly (mean 90.6 → 92.0 over 4,000 frames,
+frame-to-frame delta 0.3–0.8), which is what a straight-and-level quick mission should look like and
+is therefore **not** evidence either way about responsiveness. A manoeuvring flight is needed before
+anyone claims the mirror tracks the aeroplane.
+
+⚠️ **And there is still no gold for this.** The PO's BoB video is a Luftwaffe campaign — Me109 /
+Me110 / Do17 — so it can never show a Spitfire mirror. **Comparing this against gold needs a new
+capture of the real game flying an RAF fighter**, which is a PO request, not a sprint.
+
+**S11:** fly the Spitfire through a turn with the same dump and show the mirror content following the
+horizon — the responsiveness test, which needs no gold at all.
+
+**ASPECT-1: 10 sprints (1 in this pass). The mirror renders, the square target is confirmed correct,
+and the item's long grey-square mystery is retired as a wrong-aircraft measurement.**

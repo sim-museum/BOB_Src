@@ -501,6 +501,20 @@ static int g_kbHead=0, g_kbTail=0;     /* ring buffer */
 static unsigned g_kbSeq=0;
 static void* g_diKbNotify=0;           /* htable[EVENT_KEYS] from SetEventNotification */
 static int g_diKbAcquired=0;
+/* ASPECT-1 S10 (2026-09-15): where an RTT dump lands, and whether it is a SEQUENCE.
+   R3.4 S8 finally produced a LIVE mirror (Spitfire, CPT1), and the one question paint cannot
+   fake is whether the content CHANGES between frames -- which needs more than one dump of the
+   same surface. BOB_DUMP_RTT_DIR=<dir> gives numbered frames in that directory; unset keeps
+   the old single /tmp file so every existing recipe behaves exactly as before. /home is where
+   frames belong on this box: its /tmp is a 7.6 GB tmpfs a capture run has filled once. */
+static void bob_rtt_dump_path(char* out, size_t n, const void* s)
+{
+	const char* d = getenv("BOB_DUMP_RTT_DIR");
+	unsigned long tag = (unsigned long)((size_t)s & 0xffffff);
+	if (d && *d) { static int seq = 0; snprintf(out, n, "%s/rtt_%lx_%04d.ppm", d, tag, seq++); }
+	else snprintf(out, n, "/tmp/rtt_%lx.ppm", tag);
+}
+
 static void kb_push(unsigned dik, int down) {
 	if (!dik) return;
 	int nt=(g_kbTail+1)%BOB_KBQ;
@@ -1174,7 +1188,7 @@ static HRESULT SURF_Lock(IDirectDrawSurface7* This, LPRECT, LPDDSURFACEDESC2 d, 
 		   rear-view-mirror content) to /tmp/rtt_<ptr>.ppm -- a direct view of what the RTT path
 		   produced, independent of cockpit compositing. Overwrites (last = steady state). */
 		if (getenv("BOB_DUMP_RTT") && s->bits) {
-			char path[64]; snprintf(path,sizeof(path),"/tmp/rtt_%lx.ppm",(unsigned long)((size_t)s & 0xffffff));
+			char path[512]; bob_rtt_dump_path(path,sizeof(path),s);
 			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
 			if (fd>=0){ char h[64]; int hn=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",s->w,s->h); if(write(fd,h,hn)<0){}
 				const unsigned char* sb=(const unsigned char*)s->bits;
@@ -2706,7 +2720,7 @@ static void dump_rtt_fbo(GLSurface7* s) {
 	if (!buf) return;
 	glReadBuffer(GL_COLOR_ATTACHMENT0); glPixelStorei(GL_PACK_ALIGNMENT,1);
 	glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
-	char path[64]; snprintf(path,sizeof(path),"/tmp/rtt_%lx.ppm",(unsigned long)((size_t)s & 0xffffff));
+	char path[512]; bob_rtt_dump_path(path,sizeof(path),s);
 	int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
 	if(fd>=0){ char hd[64]; int hn=snprintf(hd,sizeof(hd),"P6\n%d %d\n255\n",w,h); if(write(fd,hd,hn)<0){}
 		for(int y=h-1;y>=0;y--) if(write(fd,buf+(size_t)y*w*3,w*3)<0){} close(fd); }
