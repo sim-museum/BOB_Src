@@ -7285,3 +7285,52 @@ reference Sprint 142 did not have.
 
 **OCXHOST-1: 2 sprints. The item found no gap; it found a stale doc that had already cost two sprints
 tonight, and fixed it.**
+
+## OCXHOST-1 S3 (Opus 5, 2026-09-16) — ✅ **the retraction confirmed by rendering, not by reading**: our Directives panel comes up fully populated, with spin buttons, tick boxes, combos and a button all drawing
+
+S2 proved from `find` and `ninja -t deps` that all eight R* hosts exist and compile. That is an
+argument about files. This sprint made the panel draw.
+
+⭐ **The hook was already there too** — `BOB_MAP_DIRECTIVES` (`FULLPSYS.CPP:1226`), tagged in its own
+comment *"S137: gold #18"*. Captured with the standing campaign drive plus `BOB_SHOT=900`
+(`doc/reference/260916_ours_lw_directives.png`):
+
+```
+[map] LaunchMap done -> strategic map active
+[directives] OpenDirectivetoggle(NULL)
+[directives]   child 0xa3b0400 rtti=19DirectivesNoResults -- firing OK
+[shot] frontend tick 900 -> ours2.ppm
+```
+
+⭐⭐ **Every control class S1 claimed was missing is visibly drawing:**
+
+| class | on screen |
+|---|---|
+| **CRSpinBut** | ~40 red ± spinners on Bomber Allocation, Ground Attack Gruppen, Escort Gruppen, Resting |
+| **CRButton** (check style) | the Attached/Detached Escort boxes — `Above` and `High` ticked red, the rest clear |
+| CRCombo | `Maintain %`, `1:1`, `Consecutive`, six × `1 Gruppe` |
+| CRStatic | every label, heading and numeric readout |
+| button | `Rest All` |
+
+**S1's "two hosts would take coverage from 59% to 97%" described work that was finished and is
+visibly on screen.** The retraction is now confirmed twice over — by the build, and by the pixels.
+
+⚠️ **It is the LUFTWAFFE panel, not the gold's RAF one, so no diff against that gold is made here.**
+The campaign drive puts the port on the LW side (`localplayer=2`, consistent with the SAVELOAD-REAL-1
+runs), and `LWDirect.h` and `RAFDir.h` are different dialogs. Reaching the RAF Directives panel needs
+an RAF-side campaign, which this recipe does not produce.
+
+⭐ **That said, the LW panel is the harder demonstration.** OCXHOST-1 S1's own census puts
+**`lwdirect.h` at 130 declared members — the largest single dialog in the game**, against `rafdir.h`'s
+23. If hosting were broken, this is the screen where it would show.
+
+⭐ **One free consistency check.** Our footer reads **`10 July 12:55 x1`**; the gold's RAF strategic
+map (`doc/reference/260915_gold_strategic_map_10jul.png`) reads **`10 July 06:30 x0`**. **Same campaign
+date**, different time of day and time-acceleration — i.e. both builds start the same campaign on the
+same day, which is a small but real agreement nobody had checked.
+
+**S4:** drive an **RAF** campaign to its Directives panel and diff it against
+`doc/reference/260915_gold_raf_directives.png` field by field — the comparison GOLDVID-BOB-2 S4 set up
+and that S1/S2 detoured around. The gold gives all 23 values.
+
+**OCXHOST-1: 3 sprints. A wrong gap report became a verified capability and a real reference pair.**
