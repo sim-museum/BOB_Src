@@ -726,6 +726,22 @@ static void pump_events(void)
 			   1205 ft climb) and the heading NEVER moved off 0 for the whole flight. So each
 			   trim now presses and releases Ctrl around itself, and nothing else ever sees it. */
 			if (bc == 20) { kb_push(0x0B,1); kb_push(0x0B,0); }            /* 100% throttle */
+			/* ASPECT-1 S15: BOB_AUTOFLY_ELEV=1 holds the ELEVATOR instead of trimming. S14
+			   measured that nose-up trim under Ctrl buys only ~243 ft before the aeroplane
+			   descends into the terrain at 280+ kts, so the turn never develops. KEYMAPS.H:1253
+			   binds ELEVATOR_BACK (pull back = nose up) to J_movedown = DIK_DOWN (0xD0). Held,
+			   with NO modifier, so it cannot repeat S14's Ctrl+Left mistake. The trim path is
+			   left exactly as it was so the two are an A/B, not a replacement. */
+			static int belev = -1;
+			if (belev < 0) belev = getenv("BOB_AUTOFLY_ELEV") ? 1 : 0;
+			if (belev) {
+				if (bc == 30) { kb_push(0xD0,1);
+					fprintf(stderr,"[autofly] bank: holding ELEVATOR_BACK (DIK 0xD0) from tick 30 (frame %u)\n", g_bob_frames);
+					fflush(stderr); }
+				if (bc == bat && !bsent) { kb_push(0xCB,1); bsent = 1;
+					fprintf(stderr,"[autofly] bank: holding AILERON_LEFT (DIK 0xCB) from tick %d (frame %u)\n", bat, g_bob_frames);
+					fflush(stderr); }
+			} else {
 			/* Ctrl is HELD across the whole trim phase (a down+up inside one pump leaves the
 			   immediate-state overlay at 0, so GetDeviceState never sees it -- measured: the
 			   climb fell from 243 ft to 49 ft when the hold was collapsed into one pump), and
@@ -744,6 +760,7 @@ static void pump_events(void)
 				if (ph == 0) kb_push(0x1D,1);
 				else if (ph == 1) { kb_push(0xC7,1); kb_push(0xC7,0); }
 				else if (ph == 2) kb_push(0x1D,0); }
+			}   /* !belev (S15) */
 			}   /* badvance */
 		}
 		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->

@@ -6205,3 +6205,55 @@ cockpit in the gold store, so the test is internal consistency, not pixel parity
 
 **ASPECT-1: 14 sprints. The input path is now correct in three separate respects; the manoeuvre is
 not yet.**
+
+## ASPECT-1 S15 (Opus 5, 2026-09-15) — ⭐ **the aeroplane finally MANOEUVRES: a held elevator climbs 1,685 ft and swings the heading 180°, where trim managed 48 ft and 4°** — ⛔ **and not one mirror surface was captured, so there is still nothing to measure**
+
+S14 left the item with a correct input path and an aeroplane that would not turn: nose-up *trim*
+under a held Ctrl bought at most 243 ft of climb before the Spitfire mushed into the terrain at
+280+ kts, and the heading never moved more than 4°.
+
+⭐ **The fix is to stop trimming and fly it.** `KEYMAPS.H:1253` binds `ELEVATOR_BACK` (pull back =
+nose up) to `J_movedown` = `DIK_DOWN` (0xD0). `BOB_AUTOFLY_ELEV=1` holds that key from tick 30 with
+**no modifier at all**, so it cannot repeat S14's Ctrl+Left mistake. The trim path is left exactly as
+it was, so the two are an A/B rather than a replacement.
+
+**Two runs, same mission (`BOB_QM_INDEX=7`, the airborne Spitfire), read off the HUD:**
+
+| arm | climb | heading | speed |
+|---|---|---|---|
+| trim, Ctrl held (S14) | +243 ft | **exactly 0, always** | 283 → 256 |
+| trim, Ctrl scoped (S14) | +48 ft | 0 → 357 (≤4°) | 283 → 275 |
+| **elevator held, run 1** | **+601 ft** | 0 → 353 → 314 → 309 → **297** | 283 → 108 |
+| **elevator held, run 2** | **+1,685 ft** (962 → 2,647) | 0 → **233 → 240 → 210 → 176** | 283 → 81 |
+
+**Run 2 swings the heading through roughly 180°** and climbs 1,685 ft. The traces confirm both inputs
+landed on their own frames — `ELEVATOR_BACK … from tick 30 (frame 44)` and `AILERON_LEFT … from tick
+60 (frame 74)`. The aeroplane stalls (283 → 81 kts) and eventually reaches the ground, which is what
+a full held elevator at 70% thrust does with no pilot; it is not a defect and not the point. **The
+point is that ASPECT-1 at last has a flight worth measuring a mirror against.**
+
+⛔⛔ **And the mirror was not measured, because none of the dumps is the mirror.** The run wrote
+**618 surfaces**. Every one of them is **256×256**, and all 618 carry a single surface tag:
+
+```
+618 P6 256 256 255 …      distinct surface tags: 1  (e13080)
+```
+
+**256×256 is the LANDSCAPE render target. The mirror is 128×128.** So the count is impressive and the
+content is irrelevant — this is the third time this item has come within one step of scoring the
+wrong surface, and the only reason it did not is that the sizes were checked before the pixels.
+[[gate-frame-must-match-the-eye]]
+
+⚠️ **A harness fault found on the way, worth writing down.** The dump is gated on **`BOB_DUMP_RTT`**;
+**`BOB_DUMP_RTT_DIR` only chooses the destination.** Setting the directory alone produces a run that
+looks correct, logs nothing unusual and writes zero files. The first S15 flight was lost to exactly
+that. *A switch needs its own printed term* — the same lesson the FF harness taught.
+
+**What S16 must establish first, before any more flying:** *does this aircraft have a mirror at all?*
+R3.4 S7–S9 found `docreatemirrorno` in **shapes 65 (CPT1) and 172 (CPT4) only**, and **the S15 flight
+log contains no mirror trace whatsoever** — no creation, no RTT bind, nothing. Quick mission 7's
+Spitfire may simply never build one in this code path. That is a five-minute check against
+`FLYINIT.CPP`'s `pit1 shp` mapping and it gates everything else in this item.
+
+**ASPECT-1: 15 sprints. The manoeuvre is solved. The mirror evidence does not exist yet, and the next
+sprint is a shape-id check, not a flight.**
