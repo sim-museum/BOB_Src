@@ -8344,3 +8344,74 @@ fallback means some controls take the WM_GETSTRING path and some the `bob_dlg_ca
 controls take which has never been counted, and the two can disagree.
 
 **XPORT-CAPTION-1: 1 sprint.**
+
+## XPORT-CAPTION-1 S2 (Opus 5, 2026-09-16) — ⭐⭐ **counted at last: 63 of BoB's 66 captions come from `WM_GETSTRING`, 3 from a runtime `SetString`, and ZERO from the design bag** — the fallback MiG Alley depends on entirely is dead code here — ⛔ **and my first cut of the instrument reported a tidy 66/66 that was inferred from a field rather than observed**
+
+**Story:** XPORT-CAPTION-1 (cross-port caption resolution). **Sprint 2.**
+
+S1 left the question: *"BoB's own `streamed && GetResourceNumber()` early-return means some controls
+take the WM_GETSTRING path and some the `bob_dlg_caption` path. Which controls take which has never
+been counted, and the two can disagree."*
+
+### The instrument
+
+`BOB_TRACE_CAPPATH=1` (`SRC/RSTATIC/bob_ole_rstatic.cpp`) prints one line per `(dlg,id)` **after
+`OnDraw`** — because the `WM_GETSTRING` fetch happens *inside* it — with three columns, so a
+disagreement is visible rather than inferred:
+
+* **shown** — what `m_string` actually holds, i.e. what the player sees;
+* **table** — what the string table returns for this control's `ResourceNumber`;
+* **bag** — what `bob_dlg_caption` would have supplied.
+
+### The count — 11 headless recipes, 8 dialogs, 66 RStatic controls
+
+| path | controls |
+|---|---|
+| `WM_GETSTRING` (the control's own runtime fetch) | **63** |
+| runtime `SetString` from the screen's own code | **3** |
+| `bob_dlg_caption` — the design/DLGINIT bag | **0** |
+
+**AGREE 64 · DISAGREE 0 · n/a 2.**
+
+Two results, and the second is the one MiG Alley needs:
+
+1. **The design-bag fallback is dead on every screen measured here.** The genuine control path
+   carries everything BoB draws.
+2. **The two sources never disagree.** On the 64 controls where both a string-table entry and a bag
+   entry exist, the text is identical. MiG Alley's captions come *only* from the bag — so on this
+   evidence the bag is not a **wrong-text** risk there, it is a **coverage** risk. That is exactly
+   the shape of GOLDSCREENS-MA-1 S7's result on the other side of the fence.
+
+### ⛔ My first cut was wrong, and it was wrong in the tidiest possible way
+
+It labelled the path `rn ? "WM_GETSTRING" : "bag"` and reported **66/66 WM_GETSTRING, 0 bag, 0
+disagreements** — a clean, quotable, *inferred* number. Two things break it:
+
+* **`IDS_NONE` is 8, not 0** (`SRC/MFC/RESOURCE.H:15`). A control can carry a non-zero
+  `ResourceNumber` and still have `CRStaticCtrl::GetParentWndInfo` write `""`.
+* **There is a THIRD source** the two-way split has no room for: a runtime `SetString`. It supplies
+  the long phase/training descriptions — and the joystick label, `dlg=958 id=1818`, whose design
+  caption is `"Stick"` and whose displayed text is `"4 axes, 1 hat(s), 12 Buttons"`.
+
+The rewritten version classifies by **comparing what the control ended up holding** against each
+candidate, and the answer moved: 63/3/0, not 66/0/0. It also flattens newlines — the first run's
+phase description spilled across two lines and took its own `DISAGREE` verdict off the end of the
+record, where `grep` could not see it.
+
+That joystick control is worth keeping: it is the concrete case MiG Alley's S58 narrowing exists to
+protect — a design-time caption that **must** be overwritten at runtime. S58 argued it; this is one.
+
+### ⚠️ Not claimed
+
+That 66 is the whole game. This is 8 dialogs reachable from 11 headless recipes; the campaign map's
+own dialogs are not in the sweep, and the count could move when they are.
+
+### Gates
+
+Instrument only, default-off; no behaviour change. `notes-sync` green (the measured table is in
+`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` and its MiG Alley copy).
+
+**S3:** run the same sweep over the campaign-map dialogs, where MiG Alley's 53 refused captions live,
+and see whether the 0-disagreement result survives contact with them.
+
+**XPORT-CAPTION-1: 2 sprints.**
