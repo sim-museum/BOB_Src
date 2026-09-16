@@ -6014,3 +6014,52 @@ bank input and the dump sequence are all in place; only the mission is wrong.
 
 **ASPECT-1: 11 sprints (2 in this pass). A test that could not run, said so, and took one of my own
 explanations down with it.**
+
+## R3.4 S9 (Opus 5, 2026-09-15) — ⭐⭐⭐ **the airborne RAF flight exists — quick mission 7 — and the Spitfire's mirror TRACKS THE HORIZON: sky, clouds and a banked skyline, changing 14–58 per step**
+
+S11 said the missing piece was "an airborne RAF flight" and called it a PO request. **It was in the
+game the whole time.** `FULLPSYS.CPP:640` seeds the flight from `BOB_QM_INDEX`, and
+`QMISS.CPP`'s table lists *"FAMILIARISATION : Free Flight"* — `PT_SPIT_A, 1, SKILL_REGULAR,
+FT_1000` — **a lone Spitfire at 1,000 feet, already flying.** It is index 7.
+
+⭐ **`BOB_QM_INDEX=7`, and everything this item has wanted for eleven sprints arrives at once:**
+
+    [hud]    alt=962ft hdg=0 speed=283Kts thrust=70        <- AIRBORNE, unlike the parked default boot
+    [aspect] docreatemirror REACHED (SKYIMAGES=1)
+    [aspect] UseMirror: mirrorMaterial = 284 ... pos (0, -148, 219) fov 8192
+
+⭐⭐ **And the mirror MOVES.** 64 renders of the 128x128 surface through the flight:
+
+| frame | mean | sd | distinct colours | change vs previous |
+|---|---|---|---|---|
+| 0073 | 200.2 | 19.9 | 1563 | — |
+| 0107 | 206.1 | 11.4 | 1124 | **14.7** |
+| 0139 | 159.2 | 65.4 | 1317 | **58.0** |
+| 0173 | 176.0 | 53.2 | 1257 | **55.6** |
+| 0205 | 202.9 | 21.8 | 559 | **33.2** |
+
+**Against 0.30–1.19 per step on the parked Spitfire (ASPECT-1 S11).** The content is not just live, it
+is tracking the aeroplane — and `doc/reference/mirror-spitfire-airborne-banked-2026-09-15.png` shows
+what it is tracking: **sky, two cumulus clouds, and a horizon running diagonally across the frame**
+because the aircraft is banked. **Up to 1,563 distinct colours**, where the 109's dead mirror gave
+four.
+
+⚠️ **Read the surface tag before the numbers.** This run dumped two RTT surfaces and the larger one
+(`rtt_f79e20`, **256x256**) is the LANDSCAPE render target, not the mirror. Measuring it first gave a
+plausible-looking table that was about the wrong buffer entirely. The mirror is the 128x128 one
+(`rtt_1df030`), and the table above is from that.
+
+⚠️ **The flight ends on the ground** — `alt=962ft` to `alt=0ft` over the run, with the heading barely
+moving (0 → 359), so `BOB_AUTOFLY=bank:200` did not produce a sustained turn before the aircraft flew
+into the terrain. **The attitude change measured above is the descent, not a commanded turn**, which
+is enough for "the mirror responds" and not enough for "the mirror tracks a roll".
+
+⭐ **What this unblocks.** R3.4 can now compare a LIVE Spitfire mirror against gold — and ASPECT-1 S12
+has its harness. **What it still cannot do is compare against the PO's video**, which is a Luftwaffe
+campaign and can never show a Spitfire mirror. That request stands.
+
+**S10:** keep the aeroplane flying (the bank tick needs to be early enough, and something must hold
+the nose up) and show the horizon line rotating with commanded roll.
+
+**R3.4: 9 sprints (4 in this pass — AT THE CAP, parked).** The mirror is alive, airborne, and
+demonstrably responsive; the aircraft that carries it is the one the PO has never filmed.
