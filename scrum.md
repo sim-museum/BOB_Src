@@ -8288,3 +8288,59 @@ survivable and names the condition; whether those packages should have entries i
 for its own patrols, and `MakeRAFPatrols`/`SetPatrols` (`misssub.h:1125`) is where they are built.
 
 **GOLDVID-BOB-2: new pass, sprint 4 of 4 — at cap.**
+
+## XPORT-CAPTION-1 S1 (Opus 5, 2026-09-16) — **BoB does NOT have MiG Alley's caption bug, and the reason is one line of call-site placement** — the sister port's S7 fix is already implemented and proven here
+
+MiG Alley's GOLDSCREENS-MA-1 S6 (today) found that **every** design-time `IDS_` caption in that port
+resolves to nothing: its template resolver runs at control **creation**, before the resource module is
+loaded, so `bob_load_string` returns 0 for every id and each caption silently falls back to its
+literal template label. The two ports share this machinery, so the question is whether BoB does too.
+
+### ⭐ It does not, and the code says why
+
+`SRC/RSTATIC/bob_ole_rstatic.cpp` resolves at **first draw**:
+
+```c
+/* runtime caption resolves genuinely: GetParentWndInfo -> WM_GETSTRING
+   (ResourceNumber) -> BDG string table, at first draw. ... */
+char cap[64];
+if (bob_dlg_caption(dlgId, ctrlId, cap, sizeof cap) && cap[0]) SetString(cap);
+```
+
+and `bob_load_string(NULL, …)` falls back to `g_resModule`, which by first draw **is** loaded. The
+resolver itself (`bob_dlgtemplate.cpp:802`) is the same shape as MiG Alley's — IDS-name → string
+table → literal. **Only the moment of the call differs.**
+
+⭐ **And it is verified in this session's own captures, not from a 70-sprint-old note**: the campaign
+briefing screenshots taken for GOLDVID-BOB-2 S5–S7 show **`Return to Player`** drawn, which is
+`IDC_RETURNTOPLAYER`'s design-time caption resolving through exactly this path.
+
+### ⭐⭐ What this hands the sister port
+
+MiG Alley's S7 does not need a new mechanism — it needs BoB's call site. Recorded in the shared
+lessons doc (`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`, resynced to `~/ma/port/BOB_PORT_LESSONS.md`,
+notes-sync gate green) along with two things worth carrying:
+
+* **Years of argument were about an unreachable path.** MA's S57 applied captions broadly and was
+  reverted; S58, S109 and S136 each narrowed *which* controls deserve one — all reasoning about a
+  resolver that could never return a string. *When a policy debate keeps producing regressions,
+  check that the thing being gated actually works.*
+* **A silent fallback is indistinguishable from a success with a different answer.** MA's resolver
+  now prints its two steps **with a control string known to load**, so a zero is readable. Neither
+  port had that.
+
+### ⚠️ Not claimed
+
+That BoB's captions are all *correct* — only that the path returns strings rather than falling back.
+A caption that resolves to the wrong string would look identical from here, and nothing in this
+sprint checked the text against the gold.
+
+### Gates
+
+No code changed in this port. `notes-sync` green.
+
+**S2 (for whoever picks it up):** BoB's own `streamed && GetResourceNumber()` early-return above the
+fallback means some controls take the WM_GETSTRING path and some the `bob_dlg_caption` path. Which
+controls take which has never been counted, and the two can disagree.
+
+**XPORT-CAPTION-1: 1 sprint.**
