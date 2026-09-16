@@ -515,8 +515,17 @@ static void bob_rtt_dump_path(char* out, size_t n, const void* s)
 	else snprintf(out, n, "/tmp/rtt_%lx.ppm", tag);
 }
 
+/* ASPECT-1 S13 (2026-09-15): synthetic keys reached ONLY the buffered DI queue, so a key the
+   harness HOLDS was invisible to every reader of the immediate 256-byte DIK state -- and that is
+   how modifiers are read. BOB_AUTOFLY=bank presses Ctrl (0x1D) at tick 30 and holds it for the
+   whole flight to make Home mean "nose-up trim"; DIDEV_GetDeviceState built its array purely from
+   SDL_GetKeyboardState (the PHYSICAL keyboard), so Ctrl read as UP on every frame and the trim was
+   never modified. Mirror every kb_push into an overlay array and OR it in there. */
+static unsigned char g_kbSynth[256];
+
 static void kb_push(unsigned dik, int down) {
 	if (!dik) return;
+	if (dik < 256) g_kbSynth[dik] = down ? 0x80 : 0x00;   /* immediate-state overlay */
 	int nt=(g_kbTail+1)%BOB_KBQ;
 	if (nt==g_kbHead) return;          /* full: drop oldest-style */
 	g_kbq[g_kbTail].ofs=dik; g_kbq[g_kbTail].data=down?0x80:0x00;
@@ -3982,6 +3991,8 @@ static HRESULT DIDEV_GetDeviceState(IDirectInputDeviceA* This, DWORD cb, LPVOID 
 		int n; const Uint8* st=SDL_GetKeyboardState(&n);
 		unsigned char* d=(unsigned char*)buf;
 		for (int sc=0;sc<n;sc++) if (st[sc]) { int dik=sdl_to_dik(sc); if(dik&&dik<256) d[dik]=0x80; }
+		/* ASPECT-1 S13: OR in synthetic holds (BOB_AUTOFLY), else a held modifier reads UP. */
+		for (int dik=0;dik<256;dik++) if (g_kbSynth[dik]) d[dik]=0x80;
 	}
 	/* joystick immediate state: fill the game's custom data-format buffer from SDL. */
 	if (This==&g_diJoystick && buf && g_sdlJoy) {

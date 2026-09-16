@@ -6097,3 +6097,54 @@ not turning cannot answer anything, and that is now twice.
 
 **ASPECT-1: 12 sprints (3 in this pass). A failed test, honestly failed, and a wrong number caught by
 looking at the image.**
+
+## ASPECT-1 S13 (Opus 5, 2026-09-15) — ⭐ **no synthetic key could ever be HELD: `kb_push` fed only the buffered DI queue, while every modifier is read from the immediate state array.** Fixed. And the BoB gold store is confirmed to contain **no RAF cockpit imagery at all**
+
+**The blocker S12 left.** S11 and S12 both tried to fly a banking turn with `BOB_AUTOFLY=bank`, which
+presses **Ctrl (DIK 0x1D) at tick 30 and holds it for the rest of the flight** so that Home (0xC7)
+means *nose-up trim*. The trim never took, and S12's "47° horizon rotation" was a line fit to a hazy
+flat band that was withdrawn on sight of the frames.
+
+⭐ **Root cause, and it is general.** `kb_push` appends to `g_kbq` — the **buffered** DirectInput
+queue drained by `GetDeviceData`. But `DIDEV_GetDeviceState` builds the 256-byte immediate DIK array
+**purely from `SDL_GetKeyboardState`**, i.e. the *physical* keyboard:
+
+```c
+int n; const Uint8* st=SDL_GetKeyboardState(&n);
+for (int sc=0;sc<n;sc++) if (st[sc]) { int dik=sdl_to_dik(sc); if(dik&&dik<256) d[dik]=0x80; }
+```
+
+So a synthetic **tap** works (the game sees the buffered event), and a synthetic **hold is invisible**
+to every reader of the immediate state — which is exactly how modifiers are checked. Ctrl read as UP
+on every frame of every autofly run this item has ever made.
+
+**The fix** is an overlay array that `kb_push` maintains and `GetDeviceState` ORs in:
+
+```c
+static unsigned char g_kbSynth[256];
+...  if (dik < 256) g_kbSynth[dik] = down ? 0x80 : 0x00;   /* in kb_push */
+...  for (int dik=0;dik<256;dik++) if (g_kbSynth[dik]) d[dik]=0x80;   /* in GetDeviceState */
+```
+
+Builds clean. This unblocks every autofly mode that holds a key, not just `bank` —
+[[no-synthetic-keys-under-wayland]] recorded that xdotool cannot reach the game window, so the env
+hook IS the only input path, and half of it was not wired up.
+
+⛔ **And a standing PO question is now answered, negatively.** ASPECT-1 has been waiting on "a gold
+capture of the real game flying an RAF fighter". `~/gold standard/bob/` holds **19 PNGs and one
+33 MB video**. The video is the Luftwaffe convoy campaign. **All 19 stills are front-end screens** —
+options pages (Controls, GFX, Sound) and the campaign phase-selection page; not one is a cockpit.
+
+**So ASPECT-1's mirror can never be pixel-compared against gold**, and no amount of waiting changes
+that. The item must be validated on **internal consistency** instead — does the mirror image change
+when the aeroplane rolls, and does it change in the right direction — which is what R3.4 S7–S9
+already started (mirror live, changing 14–58 per step). **Filed so the next sprint stops budgeting
+for a comparison that cannot exist.**
+
+⭐ **By-product for other items:** the gold Controls page (`16-55-52.png`) shows the real game's
+input bindings — Stick on "First Joystick Axis 0 & Axis 1", Throttle on "Axis 6", Rudder "Axis 5",
+dead zones "Small", mode "Realistic". That is a **directly comparable gold for the options UI**, and
+it is sitting unused. Worth its own item.
+
+**ASPECT-1: 13 sprints. The input path is fixed; the gold-comparison premise is dead and the item
+needs re-aiming at internal consistency.**
