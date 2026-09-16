@@ -7218,3 +7218,70 @@ how visible each is. A dialog we never open costs nothing today. It is the right
 ready-made acceptance test with a gold reference.
 
 **OCXHOST-1: 1 sprint. The gap is measured, ordered, and its first step has an oracle.**
+
+## OCXHOST-1 S2 (Opus 5, 2026-09-16) — ⛔⛔ **RETRACTION: S1's headline was wrong, and so was GOLDVID-BOB-2 S4's. ALL EIGHT control types are hosted, and have been since Sprint 142.** The gap was in a doc, not in the port
+
+S1 reported *"41% of every hosted control in the game is a class we do not implement"* and ranked
+implementing a `CRButton` host as the single biggest win. Before writing it, I looked for the pattern
+to copy — and found the file already there.
+
+⛔ **`find SRC -name "bob_ole*"` returns eight hosts, not three:**
+
+```
+SRC/RLISTBOX/bob_ole_rlistbox.cpp    SRC/RBUTTON/bob_ole_rbutton.cpp
+SRC/RCOMBO/bob_ole_rcombo.cpp        SRC/RRADIO/bob_ole_rradio.cpp
+SRC/RSTATIC/bob_ole_rstatic.cpp      SRC/RSPINBUT/bob_ole_rspinbut.cpp
+                                     SRC/REDIT/bob_ole_redit.cpp
+                                     SRC/REDTBT/bob_ole_redtbt.cpp
+```
+
+**All eight are compiled** — every one appears in `ninja -C build -t deps`. And this project's own
+history says when and with what evidence:
+
+```
+Sprint  88 (R4.38)  RButton OCX brought up + hosted (4th control); 39 toolbar buttons host, ASan-clean
+Sprint 128          host CRRadioCtrl — Quick-Shots page tabs render
+Sprint 142          host CRSpinBut (8th and LAST R* type) — the Directives grid's numbers render,
+                    matching gold #18 value-for-value
+```
+
+**Sprint 142 already rendered the Directives grid and already compared it against a gold,
+value-for-value.** So GOLDVID-BOB-2 S4's *"20 of its 23 controls are classes our OLE host does not
+implement"* is wrong, S1's 41% is wrong, and the "two hosts take us from 59% to 97%" payoff curve
+describes work finished forty-plus sprints ago.
+
+⚠️ **How it happened, because the mechanism is reusable and worth naming.** Two mistakes compounded:
+
+1. **`CLAUDE.md` said so**, in a note that was 45 sprints out of date: *"Not adopted (verified N/A for
+   BoB): RButton hosting … BoB's dialogs host only RCombo/RListBox/RStatic."* I treated a project doc
+   as current. **Fixed in this commit** — the note now records all eight hosts, when each landed, and
+   where they live.
+2. **I looked only where I already believed.** My search was `ls SRC/compat/ | grep -i ole` (three
+   headers, no hosts) and then `ls SRC/RLISTBOX/ SRC/RCOMBO/ SRC/RSTATIC/ | grep bob_ole` — **the
+   three directories I had already concluded were the only ones.** That is circular: it can only ever
+   confirm the starting belief. The hosts live in the *control* directories, and one unrestricted
+   `find SRC -name "bob_ole*"` would have shown all eight immediately.
+
+**This is the tree's own documented failure mode, in a new costume.** `CLAUDE.md`'s `grep -a` section
+says it outright: *"A zero-result search is not evidence of absence here"* — and the lesson generalises
+past encoding. **A search restricted to where you expect the answer is not a search.**
+[[fixed-in-dev-is-not-shipped]]
+
+⭐ **What survives from S1, and it is not nothing.** The census itself is sound and still useful: the
+de-duplicated counts (1,107 hosted-control members across 107 dialog headers — CRStatic 425,
+CRButton 293, CRCombo 175, CRSpinBut 130, CRListBox 50, CREdit 21, CRRadio 12, CREdtBt 1) are a
+correct map of which classes carry the game's dialog surface, and the twin-deduplication finding (328
+case-variant groups in `SRC/H`, 92 declaring members on both sides; the naive count overstated by
+87%) stands. **Only the coverage conclusion was wrong** — it is 100% of classes, not 59%.
+
+⭐ **And the real question is now the interesting one.** Every class is hosted, so *"does the RAF
+Directives panel render like the gold?"* is no longer a gap analysis but a **measurement**, and
+`doc/reference/260915_gold_raf_directives.png` is the oracle for it. Sprint 142 claimed a value-for-value
+match against "gold #18"; this is a **second, independent gold** of the same panel from a different
+session, which is exactly the sort of check that has caught two wrong "verified" claims tonight.
+
+**S3:** capture our Directives panel and diff it against the new gold — a re-verification with a
+reference Sprint 142 did not have.
+
+**OCXHOST-1: 2 sprints. The item found no gap; it found a stale doc that had already cost two sprints
+tonight, and fixed it.**

@@ -149,9 +149,16 @@ parallel MiG Alley port): `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`.
    *Interaction is live:* clicking a hosted combo cycles its value (`bob_ole_click` →
    `HostRCombo::onClick` → repaint; `SG2C_WRITEBACK` persists it). **Adopted from the MiG Alley
    port (`~/ma`)** this session: **RLE8 (BI_RLE8) BMP decode** in `bob_gdi_setdibits` (was a
-   latent gap — backgrounds now decode). *Not adopted (verified N/A for BoB): RButton hosting +
-   RTTI eventsink — BoB's dialogs host only RCombo/RListBox/RStatic; buttons render via the
-   separate `bob_frontend_tick`/`bob_draw_menu` path, not as OCX.* Shared engine notes:
+   latent gap — backgrounds now decode). ⚠️ **CORRECTED 2026-09-16 (OCXHOST-1 S2).** This
+   used to read *"Not adopted (verified N/A for BoB): RButton hosting + RTTI eventsink — BoB's
+   dialogs host only RCombo/RListBox/RStatic; buttons render via the separate `bob_frontend_tick`/
+   `bob_draw_menu` path, not as OCX."* **Every word of that is now false and it misled two sprints in
+   one night.** ALL EIGHT R* control types are hosted and compiled: RCombo, RListBox, RStatic,
+   **RButton** (Sprint 88 — "39 toolbar buttons host, ASan-clean"), **RRadio** (Sprint 128),
+   **RSpinBut** (Sprint 142 — "8th and LAST R* type"), **REdit** and **REdtBt**. The hosts live in
+   the CONTROL directories (`SRC/RBUTTON/bob_ole_rbutton.cpp`, `SRC/RSPINBUT/bob_ole_rspinbut.cpp`,
+   …), **not** in `SRC/compat/` — which is why a look at `SRC/compat/` alone finds three and
+   concludes wrongly. `find SRC -name "bob_ole*"` lists all eight in one command. Shared engine notes:
    `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` (== `~/ma/port/BOB_PORT_LESSONS.md`, kept in sync);
    cross-port dialogue in PORT.md (newest entries).
 3. Secondary: terrain over-tiling, intro Smacker, audio (DirectSound→OpenAL, stubbed),
