@@ -6421,3 +6421,63 @@ the `BOB_TRACE_FLICKER` scene-per-present census the port already has.
 
 **GOLDVID-BOB-3: 1 sprint. Half the question answered, the other half shown to be out of reach of
 this evidence.**
+
+## GOLDVID-BOB-3 S2 (Opus 5, 2026-09-15) — ⭐⭐ **our build DOES present frames nobody drew, mid-flight — measured by the port's own counter, in a QUIET flight, not even a dogfight**
+
+S1 used the gold video and could only show the original does not *flash*; a desktop recording cannot
+count scenes. S1's own S2 proposal was to run **our** build through a comparable measurement. Done —
+and with a better instrument than the pixel method S1 used.
+
+⭐ **Used the port's existing census rather than dumping frames.** `BOB_TRACE_FLICKER` counts
+**presents with zero `BeginScene` calls since the last one** — a frame nobody drew, which is exactly
+what a flash is. Its own comment explains why this beats the obvious approach: *"two integer ops per
+present, so unlike a `glReadPixels` probe it cannot perturb the timing it is measuring — a per-frame
+readback is a pipeline sync and can mask a timing-dependent flicker outright."* [[measuring-can-hide-the-bug]]
+
+**Result, one flight of quick mission 7 (`BOB_QM_INDEX=7`, airborne Spitfire):**
+
+```
+[flicker] frame    1 presented with ZERO scenes drawn
+[flicker] frame    2 presented with ZERO scenes drawn
+[flicker] frame    3 presented with ZERO scenes drawn
+[flicker] frame 1135 presented with ZERO scenes drawn
+[flicker] frame 1136 presented with ZERO scenes drawn
+```
+
+⚠️ **Read carefully — three of those five are benign.** Frames **1, 2, 3** are start-up, before
+anything has been drawn; counting them as defects would overstate the result threefold. The real
+finding is **frames 1135 and 1136: two CONSECUTIVE mid-flight presents with nothing rendered into
+them.** Two frames in a row showing a buffer nobody wrote is a visible flash, not a statistical
+blip.
+
+**And the scene histogram shows a second, softer version of the same fault:**
+
+```
+scenes-per-frame: 0=3  1=11  2=0  3=0  4=64  5=321  6=32  7=166  8=2  9+=1
+```
+
+The mode is **5 scenes per frame**; **11 frames were presented with only 1**. Those are not empty but
+they are badly under-drawn, and they sit in the same interval as the zero-scene pair.
+
+**Frame timing corroborates a stall rather than a steady slow-down:** `mean 61.62 ms` against
+`median 17.40 ms`. A median of 17 ms is ~57 fps; a mean 3.5× higher means the average is being
+dragged by long pauses, which is the shape that produces a flash on resume.
+
+⭐⭐ **The load-bearing point: this was a QUIET flight.** Quick mission 7 is a lone airborne Spitfire —
+no dogfight, no crowd of aircraft, the *light* case. The PO's report was *"in bob appImage **dogfight**
+the screen flickered baddly"*. **Finding zero-scene presents in the light case makes the heavy case
+worse, not better**, and it means the defect does not need a dogfight to reproduce — which makes it
+far cheaper to chase.
+
+⚠️ **What is still not a gold comparison.** The gold can only be measured through a video, so it can
+be scored for *brightness* but never for *scenes drawn*. **Ours is measured by counter, the gold by
+pixels — different instruments, and S1's "the gold does not flash" does not become "ours flashes and
+the original does not" just because both sentences exist.** The honest statement is: **our build
+presents frames nobody drew, which is a defect on its own terms**, independent of what the original
+does.
+
+**S3:** find what happens around frame 1135 — `per-site swaps: 0=1 1=597 2=0 3=0 4=3 5=0` says nearly
+every present comes from site 1, so the three from site 4 are worth checking against the zero-scene
+frames. If they coincide, the flash has a call site.
+
+**GOLDVID-BOB-3: 2 sprints. The flicker is no longer a report; it is two numbered frames.**
