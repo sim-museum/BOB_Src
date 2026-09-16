@@ -6593,3 +6593,59 @@ established a screen recording **cannot** settle — and the under-drawn/stall s
 
 **GOLDVID-BOB-3: 4 sprints — at cap, rotating off. Two of its own sprints retracted by the fourth,
 which is what the fourth was for.**
+
+## GOLDVID-BOB-2 S1 (Opus 5, 2026-09-16) — ⭐ **the gold's HUD units track NATIONALITY — metric for the Luftwaffe, imperial for the RAF — and our source has no mechanism that can do that**
+
+Filed as the lowest-priority of the three new BoB videos ("more of the same team we already have").
+Used together with the RAF video, they turn out to answer a question nobody had asked.
+
+**Read off the three captures, all recorded within ten minutes:**
+
+| video | time | HUD |
+|---|---|---|
+| `260915_bob_raf_campaign` | 21:20 | `5 ft · Hdg 241 · Speed 0 Kts` — **imperial** |
+| `260915_bob_german_campaign` | 21:24 | `Alt 3224m · Hdg 94 · Speed 514km/h` — **metric** |
+| `260915_bob_turkey_shoot_german` | 21:30 | `Alt 3050m · Hdg 0 · Speed 560km/h` — **metric** |
+
+**The units follow the side, not the clock.**
+
+⛔ **Our source cannot produce that.** `SaveData::SetUnits()` (`SAVEGAME.CPP:2286`) picks metric or
+imperial from **one global bit**:
+
+```c
+if (Save_Data.gamedifficulty [GD_UNITS]) { dist=Distance[METRIC];  alt=Altitude[METRIC];  … }
+else                                     { dist=Distance[IMPERIAL]; alt=Altitude[IMPERIAL]; … }
+```
+
+and `GD_UNITS` is set **once**, in `InitPreferences()`, from the **language resource strings** —
+metric if the localised short-distance abbreviation matches "cm". **There is no reference to the
+player's side anywhere in the unit selection.**
+
+⚠️ **Filed as a CANDIDATE, not a defect — deliberately.** Tonight's CONTROLS-GOLD-1 closed with three
+of four "possible defects" turning out to be the PO's own saved settings, and the same trap applies
+here. Three explanations fit the evidence and I cannot separate them from the videos:
+
+1. **Per-campaign saves.** `GD_UNITS` lives in `gamedifficulty` ⊂ `Save_Data`, which is saved and
+   loaded. If the RAF and Luftwaffe campaigns carry separate saves, each restores its own units and
+   **no nationality logic is needed at all**.
+2. **The BDG 0.99 patch.** The gold's title screen names it, and its code is not in our tree —
+   exactly the shape of tonight's MiG Alley finding, where the missing `BDG` tab turned out to be
+   patch code we do not have.
+3. **The PO changed the setting** between recordings.
+
+⭐ **The test that separates them needs no gold and no PO.** Fly **two sorties in our build from the
+SAME save** — one RAF, one Luftwaffe — and read the HUD:
+
+* **units identical in both** ⇒ our build has no side-switching, and the gold's behaviour comes from
+  either saves or the patch. Look at which save the gold loaded before calling anything a defect.
+* **units differ** ⇒ we already do it and there is nothing here at all.
+
+That is one pair of runs and it is the whole question. **Until it is done, "our units are wrong for
+the Luftwaffe" must not be asserted** — the evidence so far is consistent with three different
+worlds.
+
+⭐ **Incidental, and genuinely useful:** our own RAF flights print `alt=962ft … speed=283Kts` — which
+**matches the gold's RAF sortie exactly**. Whatever the Luftwaffe answer turns out to be, the RAF
+side already agrees.
+
+**GOLDVID-BOB-2: 1 sprint. The "lowest priority" video produced the only open question of the three.**
