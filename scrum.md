@@ -7334,3 +7334,61 @@ same day, which is a small but real agreement nobody had checked.
 and that S1/S2 detoured around. The gold gives all 23 values.
 
 **OCXHOST-1: 3 sprints. A wrong gap report became a verified capability and a real reference pair.**
+
+## OCXHOST-1 S4 (Opus 5, 2026-09-16) — ⭐ **the port can now be driven headlessly on the RAF side at all** (`BOB_SIDE`), and our RAF strategic map matches the gold structurally — ⛔ **the Directives panel itself was pre-empted by an Intercept dialog**
+
+S3 rendered the **Luftwaffe** Directives panel and noted the gold is the **RAF** one, a different
+dialog. The obstacle turned out to be broader than one screen.
+
+⛔ **There was no headless route to the RAF side at all.** The standing campaign drive
+(`BOB_AUTOCLICK="1,1,#1000:0,1,1"`) always lands on the Luftwaffe, so **every campaign-dialog capture
+this project owns is the LW variant**. `RFullPanelDial::gameside` is set by `SetUpLW`/`SetUpRAF`
+(`FULLPANE.CPP:2047`), reached through a button nothing in the recipe presses.
+
+✅ **Shipped: `BOB_SIDE=raf|lw`** (default-off, `FULLPANE.CPP`) — forces the side in those two
+functions and logs it. First run:
+
+```
+[side] BOB_SIDE=raf: SetUpLW -> SIDE_RAF
+```
+
+⭐ **And the RAF campaign map came up** (`doc/reference/260916_ours_raf_map.png`). Against the gold's
+(`260915_gold_strategic_map_10jul.png`):
+
+| | gold | ours |
+|---|---|---|
+| sector labels | `SECTOR Z/E/Y/A/C/B` | `SECTOR Z/Y/A/B/C` ✅ |
+| group label | `No.11 Group` | `No.11 Group` ✅ |
+| named towns | Southampton, Bournemouth, London | Southampton, Bournemouth, Brighton, Dover ✅ |
+| unit icons | green / cyan / yellow classes | same three classes ✅ |
+| Nm ruler | right edge, 0/50/100/150 | right edge, 0/50/100 ✅ |
+| footer | event log + clock + toolbars | `Manston AF – Raid Near Target`, `H801 – New Raid`, `Tangmere AF – Raid Near Target` ✅ |
+| clock | `10 July 06:30 x0` | `10 July 09:49 x1` ✅ same date |
+| toolbar | RAF (blue) | RAF (blue) ✅ |
+
+**Same campaign date, same sector/label vocabulary, same footer structure, and the RAF toolbar rather
+than the Luftwaffe one** — the side override is doing what it says.
+
+⛔ **The Directives panel did not get its capture.** An **Intercept dialog** took the screen first:
+
+```
+Intercept
+  Raid 701 (1/2): Is it OK to scramble against this raid?
+  [ ] Don't show again
+  Task     Ok: 29     Fly     Cancel
+```
+
+The log shows the directives hook firing (`OpenDirectivetoggle`, `child-fire=1`, `firing title-bar OK`)
+and then `accept: nothing logged after 1 pass(es)` — the panel opened and was displaced. **This is the
+case the code already warns about**: `FULLPSYS.CPP:1229` says *"on an ACTIVE campaign day this alone
+is not enough — the two directives dialogs mutually re-open … use `BOB_MAP_NODIRECTIVES` there."*
+
+⭐ **A new screen for free, though.** The Intercept dialog is itself a gradeable RAF campaign screen
+nobody had captured — and it is the scramble decision an RAF player actually makes, with a live raid
+id, a 29-aircraft count and four actions.
+
+**S5:** re-run with `BOB_MAP_NODIRECTIVES` (or a quieter campaign day) to get the RAF Directives panel,
+then diff its 23 values against `doc/reference/260915_gold_raf_directives.png`.
+
+**OCXHOST-1: 4 sprints — at cap, rotating off.** A wrong gap report (S1) became a retraction (S2), a
+rendering proof (S3), and a capability the project did not have (S4).

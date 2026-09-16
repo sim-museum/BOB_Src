@@ -2044,9 +2044,26 @@ Bool	RFullPanelDial::SetUpCommander(FullScreen*&fs)
 	return TRUE;
 }
 
+/* OCXHOST-1 S4 (2026-09-16): BOB_SIDE=raf|lw forces the campaign side, default-off.
+   The standing headless campaign drive (BOB_AUTOCLICK="1,1,#1000:0,1,1") always lands on the
+   LUFTWAFFE, so every capture this project has of a campaign dialog is the LW variant -- and the
+   2026-09-15 gold shows the RAF DIRECTIVES panel, a different dialog (RAFDir.h, not LWDirect.h).
+   Without this there is no headless route to the RAF side at all, so that gold cannot be graded. */
+static int bob_side_override(void)
+{
+	const char* e = getenv("BOB_SIDE");
+	if (!e || !*e) return -1;
+	if (*e == 'r' || *e == 'R') return 0;          /* RAF */
+	if (*e == 'l' || *e == 'L') return 1;          /* Luftwaffe */
+	return -1;
+}
 Bool	RFullPanelDial::SetUpLW(FullScreen*&fs)
 {
 	gameside = SIDE_LW;
+	if (bob_side_override() == 0) {
+		gameside = SIDE_RAF;
+		fprintf(stderr, "[side] BOB_SIDE=raf: SetUpLW -> SIDE_RAF\n");
+	}
 //DeadCode JIM 14Sep00 	CDC* pdc=GetDC();
 //DEADCODE DAW 08/03/00 	IconDescUI::LoadInstances(*pdc,ICON_SET_1_LW);
 	return SetUpCommander(fs);//TRUE;
@@ -2054,6 +2071,10 @@ Bool	RFullPanelDial::SetUpLW(FullScreen*&fs)
 Bool	RFullPanelDial::SetUpRAF(FullScreen*&fs)
 {
 	gameside = SIDE_RAF;
+	if (bob_side_override() == 1) {
+		gameside = SIDE_LW;
+		fprintf(stderr, "[side] BOB_SIDE=lw: SetUpRAF -> SIDE_LW\n");
+	}
 //DeadCode JIM 14Sep00 	CDC* pdc=GetDC();
 //DEADCODE DAW 08/03/00 	IconDescUI::LoadInstances(*pdc,ICON_SET_1);
 
