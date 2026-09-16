@@ -6819,3 +6819,80 @@ behaviour for deliberate experiments.
 importing an existing campaign is feasible at all.
 
 **SAVELOAD-REAL-1: 1 sprint. The user-facing crash is gone; the compatibility question is scoped.**
+
+## GOLDVID-BOB-1 S2 (Opus 5, 2026-09-16) — ⭐⭐ **UNBLOCKED, by a video we already had.** The turkey-shoot capture has the fighter airborne and turning hard with the mirror in frame — and **the gold's mirror content ROLLS WITH THE AIRCRAFT**
+
+S1 ended with *"what would unblock this item is one sentence to the PO: a capture of an RAF fighter
+actually airborne and turning, with the mirror in frame."* Before asking, I checked the other two
+videos from the same evening. **One of them already is that capture.**
+[[blocked-on-po-may-be-in-the-repo]]
+
+⭐ **`260915_bob_turkey_shoot_german.mp4` is a flying sortie, not a parked one.** Reading the HUD strip
+every 5 s (`doc/reference/260915_gold_turkeyshoot_hud_t20-85.png`):
+
+```
+t     20    25    30    35    40    45    50    55    60    65    70    75    80
+Alt  3050  3054  3046  3041  3045  3042  2895  2602  2474  2572  2930  3222  3293 m
+Hdg     0     2   358     1     5    23    57    73    55    54     6   356   354
+Spd   560   543   536   522   505   474   459   499   513   455   336   211   202 km/h
+```
+
+**Heading 5° → 73° in fifteen seconds while descending 570 m** — a hard turn, then a reversal and a
+climbing zoom. Exactly the state S1 could not get.
+
+⭐⭐ **And the answer to the question this item exists for.** Sampling the canopy mirror every 2 s
+through that turn (`doc/reference/260915_gold_mirror_roll_t44-54.png`):
+
+| t | the mirror's content |
+|---|---|
+| 44 | horizon **level** — sky above, ground below |
+| 46 | horizon **level** |
+| 48 | horizon **tilting**, sky moving to the left |
+| 50 | strongly **rotated** — sky left, ground right |
+| 52 | horizon near **vertical** |
+| 54 | rotated the other way, ground dominant |
+
+**The mirror's horizon rolls with the aeroplane, in step with the heading change, while the canopy
+frame around it stays fixed.** That is the discriminator. ASPECT-1 and R3.4 can now be graded against
+a real behaviour instead of an assumption.
+
+⭐ **It also settles S1's other open question — the gold's mirror is LIVE, not a static texture.** S1
+ran a liveness diff and correctly threw it away because the view panned, so a fixed pixel box stopped
+containing the mirror. Here the disc is canopy-mounted and stays inside a fixed crop across all six
+samples, and its content changes *completely* — level horizon, rotated horizon, then filled with
+textured terrain showing fields and roads. **A static texture cannot do that**, and neither can an
+instrument: no attitude indicator renders ploughed fields. [[gate-frame-must-match-the-eye]]
+
+⚠️ **The aircraft's SIDE is inferred, not read, and I am flagging that rather than asserting RAF.**
+The PO's filename says "german" and the HUD is metric — but **GOLDVID-BOB-2 S2 established that the
+HUD's units follow the SAVE, not the nationality**, so metric is no longer evidence of a Luftwaffe
+aircraft. Two things point the other way: the quick-mission table lists **"Turkey Shoot" as
+`plside=0` (RAF)**, and the measurement below shows our own build gives a mirror only to the RAF
+cockpit. A Spitfire flying on a metric save fits every observation; a Bf 109 with a mirror fits none
+of our shape data.
+
+⭐ **Measured this sprint: in our build the mirror is RAF-only.** Same binary, same settings, one
+quick-mission index apart:
+
+```
+QM 14 "RAF Advantage" (plside=0)  ->  rtt 256x256 (landscape)  +  rtt 128x128  <- THE MIRROR
+QM 15 "LUF Advantage" (plside=1)  ->  rtt 256x256 (landscape)  only
+```
+
+which matches R3.4 S7–S9's note that `docreatemirrorno` lives in shapes 65/172.
+
+⭐ **And our mirror is not blank on this path.** 4,455 dumps from the RAF sortie: mean luma 192–210,
+sd 7–24, **up to 173 distinct values**, showing sky and cloud with a band of terrain at the lower edge
+(`doc/reference/260916_ours_mirror_qm14_level.png`). ⚠️ **This contradicts MIRROR-1 S1's "mean 79.2,
+sd 0.71, 4 distinct values"** — and the likely reason is already in the log: ASPECT-1 S8 found that
+the campaign path MIRROR-1 measured had been running with **reflections OFF** the whole time. Both
+numbers are recorded here; whichever is right, they are not measuring the same thing.
+
+⛔ **What is NOT done: the roll comparison on our side.** This RAF run had no autofly, so our mirror's
+horizon sits level in every frame and proves nothing about roll. A first attempt with
+`BOB_AUTOFLY=bank:60` went to the Luftwaffe mission (no mirror surface at all) and flew into the
+ground — `alt=0ft` at ~40 s. **S3: a banked RAF sortie with the mirror dumped, compared frame for
+frame against the gold's t=44→54 sequence.** The gold reference is committed; only our half is
+missing now.
+
+**GOLDVID-BOB-1: 2 sprints. The item was blocked on the PO this morning and is not blocked any more.**
