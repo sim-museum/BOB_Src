@@ -6745,3 +6745,77 @@ side term. It cost two 90-second flights and it is what makes "not a defect" a m
 a reading. The crash was found only because the sprint went one step past the answer.
 
 **GOLDVID-BOB-2: 2 sprints, CLOSED.**
+
+## SAVELOAD-REAL-1 S1 (Opus 5, 2026-09-16) — ✅ **the crash on the real game's saves is fixed: a clean refusal instead of heap corruption** — and the fix had to move BEFORE the load, because refusing mid-stream crashes a different way
+
+GOLDVID-BOB-2 S2 found that loading either of the PO's real (BDG 0.99) campaign autosaves aborted
+with `malloc(): invalid size` inside `CFiling::LoadGame`. This sprint fixes it.
+
+⭐ **The file identifies itself, and the field was designed to be swapped.** `SAVEGAME.CPP:121` stamps
+every save with `"Rowan Savegame: " __DATE__`. The PO's saves are stamped
+`"Rowan Savegame: V 002      "` — **the same 27 characters**, because `__DATE__` is 11 wide
+(`Sep 16 2026`) and so is `V 002      `. BDG 0.99 replaced the date with a version token and kept the
+width, which is exactly the discriminator the port's guard was missing:
+
+| stamp | means | what to do |
+|---|---|---|
+| `Sep 16 2026` (matches this build) | ours, today | load silently |
+| `Jan  2 2020` (a valid `__DATE__`) | **ours, another day** | load — the layout is ours |
+| `V 002      ` (not a date at all) | **a different GAME VERSION** | refuse |
+
+The stock guard refuses any mismatch (`_Error.ReallyEmitSysErr`); the `BOB_LINUX` path relaxed it to
+"loading anyway" because our build date changes daily. Both were right about one case and wrong about
+the other. The new `bob_savegame_stamp_is_own_build()` parses the 11-char field as `Mmm dd yyyy` and
+separates them.
+
+⛔⛔ **The part that could only be learned by running it: refusing MID-STREAM crashes too.** The first
+implementation set `failbit` inside `operator>>(BIStream&, Campaign&)`. That stopped every subsequent
+read — and the run still died, now with **SIGSEGV** instead of SIGABRT:
+
+```
+Diary::GetRaidGroup(SquadronBase*)        SQDDIARY.CPP:1279
+SAGairgrp::SAGExecuteWaypoint             SAGMOVE.CPP:2068
+SAGairgrp::SAGMovementFollowWP            SAGMOVE.CPP:1890
+NodeData::PerformMoveCycle                MapDlg.cpp:1674
+```
+
+**A stream in fail state stops the reads, not the reader's side effects.** `operator>>(BIStream&,
+MissMan&)` goes on to call `Node_Data`'s load, which clears its tables before it reads them — so the
+campaign is left with an emptied world and the SAG AI walks into it on the next move cycle. Trading
+an abort for a segfault is not a fix. **The check moved ahead of `bis>>Miss_Man` entirely**
+(`bob_savegame_stream_version_ok()`: seek to byte 1, read the 27-byte stamp, rewind, decide), and is
+now called at **both** `Miss_Man` load sites — `CFiling::LoadGame` and
+`RFullPanelDial::ReloadBecauseDead`.
+
+⭐ **Verified on four saves, no crash in any of them:**
+
+| save | stamp | result |
+|---|---|---|
+| ours, written by this build | `Sep 16 2026` | loads, silent ✅ |
+| ours, stamp patched to another date | `Jan  2 2020` | `build date differs -- same port, loading` ✅ |
+| ours, stamp patched to the BDG token | `V 002      ` | refused, campaign untouched ✅ |
+| **the PO's real `Auto Save.BSR`** | `V 002      ` | **refused, campaign untouched** ✅ |
+
+`currtime` is unchanged across every refusal (`27720 -> 27720`) — nothing was absorbed — and a control
+run of the identical campaign drive with no load, at matched duration, is also clean, so the earlier
+crashes were the load and not the map path.
+
+⚠️ **What this does NOT do: it does not make BDG 0.99 saves loadable.** It makes the refusal honest.
+Whether the layout is actually different is still open — the only evidence either way is that our own
+save of the same campaign day is 232,988 bytes against the PO's 235,539 and 234,584, and campaign
+content differs between them anyway, so that is weak. Settling it means diffing the two structures
+field by field, which is its own sprint and only worth doing if the PO wants to bring an existing
+BoB campaign into this port.
+
+⚠️ **And one honest limit on the regression:** the "another day" case proves the guard lets our own
+payload through; it does not re-prove that a load works, because only the stamp bytes were patched.
+The save/load round-trip proof remains R4.4 S1–S3.
+
+**Shipped:** `bob_savegame_stamp_is_own_build()` + `bob_savegame_stream_version_ok()` (SAVEGAME.CPP),
+called from `FILING.CPP` and `FULLPANE.CPP`; `BOB_ANY_SAVE_VERSION=1` forces the old load-anyway
+behaviour for deliberate experiments.
+
+**S2 (if the PO wants it):** diff a BDG 0.99 `Campaign`/`Node_Data` block against ours to say whether
+importing an existing campaign is feasible at all.
+
+**SAVELOAD-REAL-1: 1 sprint. The user-facing crash is gone; the compatibility question is scoped.**

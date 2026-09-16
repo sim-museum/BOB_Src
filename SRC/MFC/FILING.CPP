@@ -148,6 +148,15 @@ bool	CFiling::LoadGame(CString	fname)
 	if (!bis.is_open())
 		return false;
 
+#if BOB_LINUX
+	/* SAVELOAD-REAL-1 S1: check the version stamp BEFORE the load -- a mid-stream refusal
+	   leaves a half-cleared world that crashes the SAG AI. See SAVEGAME.CPP. */
+	{
+		extern bool bob_savegame_stream_version_ok(BIStream&, const char*);
+		if (not bob_savegame_stream_version_ok(bis, (const char*)(LPCSTR)fname))
+			return false;
+	}
+#endif
 	bis>>Miss_Man;	//THIS IS THE LOAD
 	m_pView->m_zoom=Save_Data.currzoom;
 	m_pView->m_oldzoom=m_pView->m_zoom;

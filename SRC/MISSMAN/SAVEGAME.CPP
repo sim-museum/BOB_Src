@@ -110,6 +110,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include	"mytime.h"
 #include	"miles.h"
 #include	<string.h>
+#include	<ctype.h>
 #include	"groupitt.h"
 #include	"replay.h"
 #include "gameset.h"
@@ -120,6 +121,75 @@ SaveData	Save_Data;
 DeadStream	Dead_Stream={0};
 char	date[]="Rowan Savegame: " __DATE__ ;
 char	date2[]="Rowan Savegame: " __DATE__ ;
+#if BOB_LINUX
+/* SAVELOAD-REAL-1 S1 (2026-09-16): tell "our own build, a different day" apart from
+   "a different GAME VERSION".
+
+   Both `date` and `date2` are "Rowan Savegame: " __DATE__, so the stock guard passes only
+   for a binary compiled on the same calendar day, and the port relaxed it to "load anyway"
+   because our build date changes daily while the layout does not. That relaxation is right
+   for OUR saves and wrong for a foreign one -- and the PO's install holds two written by
+   BDG 0.99, stamped "Rowan Savegame: V 002      ". BDG kept the field width (11 chars, the
+   same as __DATE__) and replaced the date with a version token, so the discriminator is
+   sitting in the file: a __DATE__ stamp looks like "Sep 14 2026", a version token does not.
+   Letting "V 002" through reaches a raw struct read of a layout we have no reason to trust,
+   and it aborted in operator new (GOLDVID-BOB-2 S2).
+
+   BOB_ANY_SAVE_VERSION=1 forces the old load-anyway behaviour for deliberate experiments. */
+bool bob_savegame_stamp_is_own_build(const char* d)
+{
+	static const char kPrefix[] = "Rowan Savegame: ";
+	const size_t plen = sizeof(kPrefix) - 1;
+	if (!d || strncmp(d, kPrefix, plen) != 0) return false;
+	const char* t = d + plen;                 /* the 11-char __DATE__ field: "Mmm dd yyyy" */
+	size_t n = strlen(t);
+	while (n && (t[n-1] == '\n' || t[n-1] == ' ')) n--;
+	if (n != 11) return false;
+	if (!isupper((unsigned char)t[0]) || !islower((unsigned char)t[1]) || !islower((unsigned char)t[2])) return false;
+	if (t[3] != ' ' || t[6] != ' ') return false;
+	if (!(t[4] == ' ' || isdigit((unsigned char)t[4])) || !isdigit((unsigned char)t[5])) return false;
+	for (int i = 7; i < 11; i++) if (!isdigit((unsigned char)t[i])) return false;
+	return true;
+}
+
+/* SAVELOAD-REAL-1 S1: the ONLY safe place to refuse a foreign save is BEFORE the load.
+   Refusing part-way through `bis>>Miss_Man` still runs the reader's non-stream side effects
+   (Node_Data clears its tables before reading), leaving an emptied world that then segfaults
+   the SAG AI in Diary::GetRaidGroup -- measured, not assumed.
+
+   File layout: MissMan's operator<< writes currcampaignnum (1 byte), then Campaign's writes the
+   27-char stamp "Rowan Savegame: " + __DATE__. BDG 0.99 keeps the field width and writes
+   "V 002      " in place of the date, which is the discriminator.
+   Leaves the stream rewound and clear.  BOB_ANY_SAVE_VERSION=1 forces the attempt. */
+bool bob_savegame_stream_version_ok(BIStream& bis, const char* what)
+{
+	char stamp[64];
+	const size_t slen = strlen(date2);
+	memset(stamp, 0, sizeof(stamp));
+	bis.seekg(1, ios::beg);
+	bis.read(stamp, (slen < sizeof(stamp) - 1) ? (int)slen : (int)(sizeof(stamp) - 1));
+	bis.clear();
+	bis.seekg(0, ios::beg);
+
+	if (strcmp(stamp, date2) == 0)
+		return true;
+	if (bob_savegame_stamp_is_own_build(stamp)) {
+		fprintf(stderr, "[savegame] build date differs (%s != %s) -- same port, loading\n", stamp, date2);
+		return true;
+	}
+	if (getenv("BOB_ANY_SAVE_VERSION")) {
+		fprintf(stderr, "[savegame] FOREIGN save version (\"%s\") -- forced by BOB_ANY_SAVE_VERSION\n", stamp);
+		return true;
+	}
+	fprintf(stderr,
+		"[savegame] REFUSING \"%s\": written by a different version of the game\n"
+		"           (stamp \"%s\", this build \"%s\"). Its campaign layout is not ours to\n"
+		"           read -- loading it corrupts memory. Nothing was loaded.\n"
+		"           BOB_ANY_SAVE_VERSION=1 forces the attempt.\n",
+		what ? what : "(savegame)", stamp, date2);
+	return false;
+}
+#endif
 inline	CString	LoadResString(int resnum)
 {
 	CString s;
@@ -396,11 +466,30 @@ static	BIStream& operator	>>	(BIStream& bis,Campaign& campaign)
 	int dummy;
 	bis>>dummy;
 #if BOB_LINUX
-	// Linux port: the version string embeds the build __DATE__, which never matches
-	// the original game's saves. Load anyway -- the binary save format is what
-	// matters (and it is /Zp1-packed, so our -fpack-struct read matches it).
+	/* SAVELOAD-REAL-1 S1: a mismatched stamp is only safe to ignore when the file was
+	   written by a build of OURS on another day. A foreign version token means a foreign
+	   layout, and reading one as if it were ours corrupted the heap (GOLDVID-BOB-2 S2).
+	   Refuse it the way stock does -- with a message, not an abort. */
+	extern bool bob_savegame_stamp_is_own_build(const char*);
 	if (strcmp(date,date2))
-		fprintf(stderr,"[savegame] version string differs (%s != %s) -- loading anyway\n",date,date2);
+	{
+		if (bob_savegame_stamp_is_own_build(date))
+			fprintf(stderr,"[savegame] build date differs (%s != %s) -- same port, loading\n",date,date2);
+		else if (getenv("BOB_ANY_SAVE_VERSION"))
+			fprintf(stderr,"[savegame] FOREIGN save version (%s != %s) -- forced by BOB_ANY_SAVE_VERSION\n",date,date2);
+		else
+		{
+			fprintf(stderr,"[savegame] REFUSING this save: it was written by a different version of the\n"
+			               "           game (%s), not by this build (%s). Its campaign layout\n"
+			               "           is not ours to read; loading it corrupts memory.\n"
+			               "           BOB_ANY_SAVE_VERSION=1 forces the attempt.\n", date, date2);
+			/* A stream in fail state performs no further reads, so every downstream
+			   >> in operator>>(BIStream&,MissMan&) becomes a no-op and Miss_Man keeps
+			   the running campaign instead of absorbing a foreign layout. */
+			bis.setstate(ios::failbit);
+			return(bis);
+		}
+	}
 #else
 	if (strcmp(date,date2))
 #ifndef NDEBUG

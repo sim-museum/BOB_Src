@@ -2143,7 +2143,17 @@ Bool	RFullPanelDial::ReloadBecauseDead(FullScreen*&fs)
 		BIStream bis(File_Man.namenumberedfile(
 			File_Man.fakefile(FIL_SAVEGAMEDIR,"Auto Save.sav"),buffer));
 		if (bis.is_open())
+#if BOB_LINUX
+		/* SAVELOAD-REAL-1 S1: the second Miss_Man load site. Same pre-check as CFiling::LoadGame:
+		   a foreign save version must be refused before any of the reader's side effects run. */
+		{
+			extern bool bob_savegame_stream_version_ok(BIStream&, const char*);
+			if (bob_savegame_stream_version_ok(bis, "Auto Save.sav"))
+				bis>>Miss_Man;
+		}
+#else
 			bis>>Miss_Man;
+#endif
 
 		return LaunchMap(fs, true);
 
