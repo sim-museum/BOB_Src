@@ -43,7 +43,10 @@ typedef __POSITION* POSITION;
 #endif
 struct CCreateContext;   /* used by CView/CFrameWnd create paths (opaque) */
 /* forward decls (classes reference each other before their definitions) */
-class CDC; class CFont; class CDocument; class CView; class CWnd; class CArchive;
+class CDC; /* BOBFONT (2026-09-16): em-height -> cell-height conversion (bob_gdi_font.cpp); identity unless BOB_FONT_EM=1. */
+extern "C" int bob_gdi_em_to_cell(int faceCode, int emH);
+
+class CFont; class CDocument; class CView; class CWnd; class CArchive;
 class CScrollBar; class CBitmap; class CMenu; class CCommandLineInfo;
 extern "C" void bob_gdi_screen_size(int*, int*);   /* live SDL window size (bob_video.cpp) */
 extern "C" int  bob_gdi_text(int x, int y, const char* str, int pixelH, unsigned color); /* bob_gdi_font.cpp */
@@ -542,12 +545,22 @@ public:
     }
     CFont() {}
     BOOL CreateFontIndirect(const LOGFONT* lf) {
-        if (lf) { long h = ((const long*)lf)[0]; m_height = (int)(h < 0 ? -h : h);
+        if (lf) { long h = ((const long*)lf)[0];
                   const LOGFONT* l = (const LOGFONT*)lf;
-                  m_face = bobFaceKind(l->lfFaceName); m_italic = l->lfItalic ? 1 : 0; }
+                  m_face = bobFaceKind(l->lfFaceName); m_italic = l->lfItalic ? 1 : 0;
+                  int a = (int)(h < 0 ? -h : h);
+                  m_height = (h < 0) ? bob_gdi_em_to_cell(m_face + (m_italic ? 4 : 0), a) : a; }
         return TRUE; }
     BOOL CreateFont(int h, int, int, int, int, BYTE bItalic, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, BYTE, LPCSTR name) {
-        m_height = h < 0 ? -h : h; m_face = bobFaceKind(name); m_italic = bItalic ? 1 : 0;
+        m_face = bobFaceKind(name); m_italic = bItalic ? 1 : 0;
+        /* BOBFONT (2026-09-16): a NEGATIVE lfHeight is the EM height; this layer's renderer scales
+           by CELL height (stbtt_ScaleForPixelHeight), so a negative request came out ~11% small --
+           and MIG.CPP creates every font in the global ladder with a negative height. Convert here,
+           where the sign still exists, instead of threading a flag through every text call site.
+           bob_gdi_em_to_cell returns its input unchanged unless BOB_FONT_EM=1. */
+        {
+          int a = h < 0 ? -h : h;
+          m_height = (h < 0) ? bob_gdi_em_to_cell(m_face + (m_italic ? 4 : 0), a) : a; }
         if (getenv("BOB_TRACE_FONT")) fprintf(stderr, "[font] CreateFont h=%d face=%d ital=%d name=\"%s\"\n", h, m_face, m_italic, name ? name : "");
         return TRUE; }
     BOOL CreatePointFont(int, LPCSTR, CDC* = NULL);

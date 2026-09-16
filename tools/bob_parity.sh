@@ -7,8 +7,16 @@
 #
 # That is not theoretical. MA's identical ETO_CLIPPED change regressed THREE front-end screens
 # (title 4290 px, prefs_3d 77, prefs_others 79) and was caught only because MA's parity_2d compares
-# against gold. The same change in BoB could not be judged, so it had to be defaulted OFF blind
-# (S405). This gate is what would let it be judged.
+# against a committed baseline. The same change in BoB could not be judged, so it had to be
+# defaulted OFF blind (S405). This gate is what would let it be judged.
+#
+# BOBFONT (2026-09-16) CORRECTS ONE WORD ABOVE. This header used to say MA's parity_2d "compares
+# against gold". It does not, and MA's own script said the same thing about itself until
+# CAMPSCREEN-1 S9 checked: port/ref/native/README.md dates every MA oracle to a sprint of THAT PORT,
+# and one of them was re-seeded by the repo in 2026-09. Both ports' parity gates -- this one
+# included -- are REGRESSION oracles: they answer "did this change?", never "is this right?".
+# The real-game captures live in ma/port/reference/wine-gold/ and bob/doc/reference/260915_gold_*.
+# Recorded here because the wrong word had already been copied from one port to the other once.
 #
 # Headless: SDL_VIDEODRIVER=dummy, no GL, no gl-lock -- it runs while someone is playing.
 #

@@ -97,6 +97,36 @@ static int load_face(int code)
 	fprintf(stderr, "[gdifont] FAILED to load face code %d\n", code); fa->state = -1; return 0;
 }
 /* resolve the font to render/measure with -- the current face, ART fallback. */
+/* CAMPSCREEN-1 S9 cross-port (BOBFONT, 2026-09-16): Win32's lfHeight SIGN.
+   A NEGATIVE lfHeight asks for the EM (character) height; a POSITIVE one for the CELL height
+   (ascent + descent). This layer takes `pixelH` and scales with stbtt_ScaleForPixelHeight, which
+   is the CELL-height scaler -- and MIG.CPP's CreatePointFont builds the whole global ladder with
+   `point *= -POINT2PIXMUL`, so every front-end font is a negative (em) request rendered as a cell
+   height, i.e. about 11% small. MiG Alley's twin was measured against two real-game captures in
+   CAMPSCREEN-1 S9: glyph height 15 px where the gold is 17, on two different screens.
+   Rather than thread a flag through every bob_gdi_text call site, convert AT CREATION: given the
+   em height the caller asked for, return the CELL height that makes ScaleForPixelHeight produce it.
+   Returns emH unchanged when the face has no usable metrics, or when the fix is off.
+   BOB_FONT_EM=1 enables it (opt-in: it changes text size on every front-end screen, which the
+   byte-identical parity references would all fail). */
+extern "C" int bob_gdi_em_to_cell(int faceCode, int emH)
+{
+	if (!getenv("BOB_FONT_EM")) return emH;
+	if (emH <= 0) return emH;
+	if (faceCode < 0 || faceCode >= FACE_N) faceCode = 0;
+	if (!load_face(faceCode)) return emH;
+	int asc = 0, desc = 0, gap = 0;
+	stbtt_GetFontVMetrics(&g_faces[faceCode].info, &asc, &desc, &gap);
+	int upem = g_faces[faceCode].info.numGlyphs ? 0 : 0; (void)upem;
+	int cell = asc - desc;                       /* descent is negative */
+	int em   = stbtt_ScaleForMappingEmToPixels(&g_faces[faceCode].info, 1.0f) > 0.0f
+	           ? (int)(1.0f / stbtt_ScaleForMappingEmToPixels(&g_faces[faceCode].info, 1.0f) + 0.5f)
+	           : 0;
+	if (cell <= 0 || em <= 0) return emH;
+	int out = (int)((double)emH * (double)cell / (double)em + 0.5);
+	return out > 0 ? out : emH;
+}
+
 static stbtt_fontinfo* cur_font(void)
 {
 	int k = g_curFace;

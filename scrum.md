@@ -7913,3 +7913,73 @@ build's spellings**, and doing so would be matching the port to a mod rather tha
 owns is a fighter) and the **OOB/squadron table** at full resolution.
 
 **GOLDVID-BOB-2: new pass, sprint 3 of 4.**
+
+## BOBFONT-1 S1 (Opus 5, 2026-09-16) — ⭐⭐ **MiG Alley's font defect is here too, with the same numbers**: the Win32 negative-`lfHeight` (em height) convention is discarded and every front-end font is scaled as a CELL height — ⛔ **and the wrong word about MA's parity gate had already been copied into this one**
+
+MiG Alley's CAMPSCREEN-1 S9 (today) found its front-end text ~11 % small: `CreatePointFont` builds
+the whole global font ladder with `point *= -POINT2PIXMUL`, Win32 reads a **negative** `lfHeight` as
+the **em** height, and the compat layer threw the sign away and scaled with stb's **cell-height**
+scaler. The two ports share this lineage, so it was checked here immediately.
+
+### ⭐ It is the same defect, line for line
+
+```c
+// SRC/MFC/MIG.CPP, CreatePointFont
+point *= -POINT2PIXMUL;                       // every rung created NEGATIVE
+// SRC/compat/afxwin.h, CFont::CreateFont
+m_height = h < 0 ? -h : h;                    // the sign is discarded
+// SRC/compat/bob_gdi_font.cpp
+float scale = stbtt_ScaleForPixelHeight(fnt, (float)pixelH);   // CELL-height scaler
+```
+
+### ✅ `BOB_FONT_EM=1` (opt-in)
+
+MA scales directly at the raster; BoB's renderer takes a bare `pixelH` through **many** call sites, so
+threading a flag through them all would be invasive. Converted **at creation** instead, where the
+sign still exists: `bob_gdi_em_to_cell()` returns the cell height that makes
+`ScaleForPixelHeight` produce the requested em. Identity unless `BOB_FONT_EM=1`. Nothing downstream
+changes.
+
+### ⭐⭐ Measured, and it is MiG Alley's number
+
+The campaign briefing's `43 Squadron` row, `BOB_TRACE_TEXT`:
+
+| | requested `h` | rendered glyph height |
+|---|---|---|
+| `BOB_FONT_EM` off | **18** | **15 px** |
+| `BOB_FONT_EM=1` | **20** | **17 px** |
+
+**20/18 = 1.111** against the predicted cell/em for Liberation Sans of **1.117** (the gap is integer
+rounding: 18 × 1.117 = 20.1). And **15 → 17** is exactly what MiG Alley measured on two different
+screens against two real-game captures.
+
+### ⛔ NOT verified against the BoB gold, and the blocker is named
+
+Our campaign briefing renders on a **1024**-wide canvas; the gold's is **1280**. The font ladder picks
+a *different rung* at each (`>=1280` vs `>=1024`), so the two are not comparable — this is the
+resolution boundary this project parks such comparisons on, and MiG Alley only escaped it today
+because it has `MA_FORCE_RES`. **BoB has no equivalent**: its resolution comes from the display-mode
+enumeration in `HARDWARE/CONFIG.CPP` with no override. That is the next sprint, and it unblocks
+*every* future BoB gold comparison, not just this one.
+
+So the evidence here is: the same code, the same mechanism, the same measured ratio — **not** a direct
+gold reading.
+
+### ⛔ The wrong word had already crossed the ports
+
+`tools/bob_parity.sh`'s own header said MA's `parity_2d` *"compares against gold"*. It does not —
+MA's script said the same about itself until CAMPSCREEN-1 S9 checked the README and found every
+oracle dated to a sprint of **that port**, with one re-seeded by the repo. ⚠️ **The claim was copied
+from one port to the other**, which is how a false authority spreads. Corrected in both scripts
+today. BoB's gate is otherwise honest about itself (*"Seed deliberately with SEED=1 after eyeballing
+the captures"*), and this correction does not change that.
+
+### Gates
+
+`tools/bob_parity.sh` default arm: **8 of 8 byte-identical**. With `BOB_FONT_EM=1`: **DIFF**, as
+expected and for the same reason as MA's — the references are pictures of the port's current text.
+**Not re-seeded**; the fix stays default-off until a 1280 capture path lets the gold arbitrate.
+
+**S2:** a `BOB_FORCE_RES`-equivalent, so the briefing can be captured at the gold's 1280×1024.
+
+**BOBFONT-1: 1 sprint.**
