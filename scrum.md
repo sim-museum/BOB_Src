@@ -7696,3 +7696,124 @@ worked around.*
 **GOLDVID-BOB-2: new pass, sprint 1 of 4.** The census lead paid immediately: a screen that has been
 recorded as CLOSE since Sprint 140 was blank on the path players actually take, and the fix retires
 a retraction that had been standing since R3.8.
+
+## GOLDVID-BOB-2 S6 (Opus 5, 2026-09-16) — ⭐⭐⭐ **the campaign briefing now matches the gold on SEVEN of eight field values, pilot names included** — and S5's "three defects" turn out to be **one harness artefact and no port defect at all**
+
+S5 uncovered the roster and listed three faults: every pilot slot captioned `~0`, the unit-details
+values blank, and slots 3–14 cascading off-screen where the gold draws three. This sprint takes the
+first, and the first explains the other two.
+
+### ⭐ `~0` is not an error string — it is the mark of a caption that was never set
+
+`SRC/REDTBT/REDTBTC.CPP:542` reads a leading `~` as *"this caption has no bitmap"*:
+
+```c
+captiontext = InternalGetText();
+if (!captiontext.IsEmpty() && captiontext[0] == '~') m_bDrawBitmap = FALSE;
+```
+
+So `~0` is the control's **template default**. Slots showing it are slots `SetCaption` never reached.
+
+### ⭐ The trace, and the control that made its zero trustworthy
+
+**Shipped `BOB_TRACE_FRAG=1`** (default-off): `BoBFrag::PositionPilots` prints `totalac`/`acperflight`
+and every slot's SHOW-with-rect or HIDE, and `FillSquadronsFromCamp` prints the squadron-status verdict
+that decides whether `PositionPilots` runs at all.
+
+On the campaign path it printed **nothing**. ⚠️ A silent trace is the shape of a broken instrument, so
+the same binary was run on the **quick-mission** path, where the roster does populate:
+
+```
+[frag] PositionPilots: currsquadoption=0 totalac(pilots)=1 acperflight=1
+[frag]   slot 0 -> SHOW at (100,230)-(1124,998)
+[frag]   slot 1..14 -> HIDE
+```
+
+The instrument speaks. **`PositionPilots()` simply never runs on the campaign path** — and it is the
+function that captions the slots *and* hides the unused ones, so one absence produces all three of
+S5's symptoms.
+
+### ⭐⭐ Why, in the game's own words
+
+`BoBFrag::FillSquadronsFromCamp` counts a squadron only when its status is strictly inside
+`(PS_ACTIVE_MIN, PS_REFUELLING)`, and ends:
+
+```c
+if (squadinfo.currfrag->maxsquadoption) PositionPilots();
+else                                     MMC.playersquadron = -1;
+```
+
+Measured:
+
+```
+[frag] FillSquadronsFromCamp: pack=3 sq=0 numsquads=1 -> maxsquadoption=0  <- PositionPilots() will NOT run
+[frag]   squadron 0: status=8 (need > 12 and < 22) numacleft=3
+```
+
+⛔⛔ **So this is not a port defect.** `BOB_CAMPAIGN_FLY` authorises an interception and raises the
+briefing **on the very next paint**, when the scramble is still **status 8**. The game is declining to
+offer a squadron that has not formed yet — its own rule, and one a player cannot trip through the
+mission folder. S5 reported three defects; there are none. **The harness was photographing the screen
+a minute too early.**
+
+⚠️ Worth recording as its own lesson: *a screen captured in a state the game's own UI cannot reach is
+not evidence about the port.* The `BOB_CAMPFLY_GO` path has known about this status window for
+sprints — it patches `MMC.playersquadron` at Fly time precisely because of it — and the note was
+sitting in `FULLPSYS.CPP` the whole time.
+
+### ✅ Shipped: `BOB_CAMPFLY_READY=1`
+
+Waits for the authorised squadron to enter the flyable window before raising the briefing, instead of
+launching immediately. Needed a small piece of bookkeeping — `cf_pack`/`cf_sq` statics — so that
+waiting does not authorise a **fresh** interception on every paint.
+
+```
+[campfly] READY: waiting on pack 3 sq 0 -- status=8 (need > 12 and < 22), currtime=24240
+[campfly] READY: waiting on pack 3 sq 0 -- status=8 ... currtime=25860
+[campfly] READY: waiting on pack 3 sq 0 -- status=8 ... currtime=27480
+[campfly] READY: pack 3 sq 0 is flyable now (status=13) -- raising the briefing
+[frag] FillSquadronsFromCamp: pack=3 sq=0 numsquads=1 -> maxsquadoption=1
+[frag] PositionPilots: totalac(pilots)=3 acperflight=3
+[frag]   slot 0,1,2 -> SHOW      slot 3..14 -> HIDE
+```
+
+**Default-off**, because the existing recipes (`BOB_CAMPFLY_GO`, the campaign gate) depend on the
+immediate launch and its `playersquadron` patch-up.
+
+### ⭐⭐⭐ The comparison, field by field (`doc/reference/260916_ours_campaign_briefing_populated.png`)
+
+| field | gold | ours | |
+|---|---|---|---|
+| Unit | `43 Squadron` | `43 Squadron` | ✅ |
+| Aircraft | `Hurricane1A` | **`Defiant`** | ⛔ |
+| Duty | `Intercept` | `Intercept` | ✅ |
+| Callsign | `Mitor` | `Mitor` | ✅ |
+| leader slot | `Bob` | `Bob` | ✅ |
+| wingman slots | `Red 2` · `Red 3` | `Red 2` · `Red 3` | ✅ |
+| slot count | 3 | 3 | ✅ |
+| `Return to Player` | present | present | ✅ |
+| footer | `Back · Sim Config · Fly` | same | ✅ |
+
+**Seven of eight values identical, including the squadron number, the duty, the callsign and all three
+pilot names** — on a screen that rendered *nothing at all* one sprint ago.
+
+⛔ **The one divergence: aircraft type.** Gold `Hurricane1A`, ours `Defiant`. 43 Squadron flew
+Hurricanes. Either the campaign state differs (the gold is a different day of a different campaign) or
+the squadron→aircraft lookup is wrong. **Not investigated here**; it is the whole of S7.
+
+⚠️ **Not compared: column spacing.** The gold's four columns are spread across the panel and ours are
+packed left. The gold capture is a **1280**-wide canvas and ours is **1024** — the resolution boundary
+this project has parked such comparisons on before (S102/PO-11). It needs a like-for-like capture, not
+an opinion.
+
+### Gates
+
+* `bob_parity.sh`: **8 of 8 screens byte-identical** to the committed references.
+* `tools/bob_convoy_campaign.sh` under `gl-lock`: **PASS** — the German Convoys campaign still reaches
+  3D with no fatal error, which is the recipe that exercises the `cf_pack` bookkeeping on its
+  **default** (no-wait) path.
+
+**S7:** the `Defiant`. Print the squadron's aircraft type beside `Node_Data[squadnum]`'s own record and
+say whether the briefing is reading the wrong field or reporting a genuinely different campaign state.
+
+**GOLDVID-BOB-2: new pass, sprint 2 of 4.**

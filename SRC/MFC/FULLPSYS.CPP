@@ -1053,6 +1053,10 @@ extern "C" void bob_frontend_tick(void)
 		   separate ~13pt subsystem) with the faithful public entry. BOB_CAMPAIGN_FLY=<paints-to-wait>. */
 		if (getenv("BOB_CAMPAIGN_FLY")) {
 			static int cf_t = 0; static bool cf_done = false;
+			/* GOLDVID-BOB-2 S6 (2026-09-16): remember the package we authorised, so that waiting for
+			   it to become flyable (BOB_CAMPFLY_READY below) does not authorise a NEW interception
+			   on every paint. -1 = nothing authorised yet. */
+			static int cf_pack = -1, cf_sq = 0;
 			if (!cf_done) {
 				int wait = atoi(getenv("BOB_CAMPAIGN_FLY")); if (wait < 1) wait = 1;
 				/* Past the initial wait, RE-SCAN every paint until a flyable mission appears --
@@ -1138,6 +1142,7 @@ extern "C" void bob_frontend_tick(void)
 							(int)Todays_Packages.localplayer, lwPlayer?"LW":"RAF", nNonSpare, nMine, found, enemy, enemySq, (int)MMC.currtime);
 
 					int hipack = found;
+					if (cf_pack >= 0) hipack = cf_pack;   /* S6: authorised on an earlier paint */
 					if (hipack < 0 && enemy >= 0) {
 						Profile& pk = Todays_Packages.pack[enemy];
 						int sq = enemySq;
@@ -1155,10 +1160,45 @@ extern "C" void bob_frontend_tick(void)
 					}
 
 					if (hipack >= 0) {
-						cf_done = true;                       /* committed -- stop scanning */
 						Todays_Packages.hipack = (char)hipack;
 						/* S192: the LIVE squadron, not always 0 (see the scan above). */
-						Todays_Packages.hisquad = (char)((hipack == found) ? foundSq : 0);
+						if (cf_pack < 0) { cf_pack = hipack; cf_sq = (hipack == found) ? foundSq : 0; }
+						Todays_Packages.hisquad = (char)cf_sq;
+						/* GOLDVID-BOB-2 S6 (2026-09-16): OPTIONALLY wait until the squadron is one the
+						   game will actually let the player take.
+						   BoBFrag::FillSquadronsFromCamp counts a squadron only when its status is
+						   strictly inside (PS_ACTIVE_MIN, PS_REFUELLING); if none qualifies it sets
+						   maxsquadoption=0, skips PositionPilots() and sets MMC.playersquadron=-1.
+						   PositionPilots() is what CAPTIONS the pilot slots and what HIDES the unused
+						   ones -- so on a briefing raised too early EVERY slot keeps its template
+						   caption ("~0" -- REDTBTC.CPP reads a leading '~' as "no bitmap", so that
+						   string is the mark of a slot SetCaption never reached) and all fifteen stay
+						   visible. Measured on the unwaited path:
+						     [frag] FillSquadronsFromCamp: pack=3 sq=0 numsquads=1 -> maxsquadoption=0
+						     [frag]   squadron 0: status=8 (need > 12 and < 22) numacleft=3
+						   The scaffold authorises an interception and raises the briefing on the very
+						   next paint, when the scramble is still status 8. That is the GAME'S rule, not
+						   a port defect -- a player cannot reach this state through the mission folder.
+						   BOB_CAMPFLY_READY=1 waits for the status window instead, so the briefing is
+						   captured in the state the gold shows. Default-off: the existing recipes
+						   (BOB_CAMPFLY_GO and the gates that fly a campaign mission) depend on the
+						   immediate launch and its playersquadron patch-up below. */
+						if (getenv("BOB_CAMPFLY_READY")) {
+							int st = (int)Todays_Packages[hipack][cf_sq].status;
+							bool flyable = (st > (int)Profile::PS_ACTIVE_MIN && st < (int)Profile::PS_REFUELLING);
+							if (!flyable) {
+								static int rdy_t = 0;
+								if ((rdy_t++ % 60) == 0)
+									fprintf(stderr,"[campfly] READY: waiting on pack %d sq %d -- status=%d"
+										" (need > %d and < %d), currtime=%d\n",
+										hipack, cf_sq, st, (int)Profile::PS_ACTIVE_MIN,
+										(int)Profile::PS_REFUELLING, (int)MMC.currtime);
+								return;                      /* cf_done stays false: keep ticking the map sim */
+							}
+							fprintf(stderr,"[campfly] READY: pack %d sq %d is flyable now (status=%d) -- raising the briefing\n",
+								hipack, cf_sq, st);
+						}
+						cf_done = true;                       /* committed -- stop scanning */
 						/* R4.5 (S42) diagnostic, default-off: intercept but DON'T fly -- stay in map mode so
 						   BOB_MAP_TIMER keeps ticking the freshly-scrambled interception SAGs. If the S39
 						   GetCruiseAt clamp (BOB_TRACE_SAG) fires on them PRE-flight, the garbage `type` is a

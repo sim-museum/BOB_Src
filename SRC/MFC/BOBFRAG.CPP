@@ -611,6 +611,23 @@ void BoBFrag::SetPlayersPosition(int plyrpos)
 void BoBFrag::PositionPilots()
 {
 	int pilots = squadinfo.currfrag->squadoptions[squadinfo.currfrag->currsquadoption].totalac;
+#if BOB_LINUX
+	/* GOLDVID-BOB-2 S6 (2026-09-16): say what this function was given and what it did with it.
+	   S5 uncovered the campaign briefing's roster and it came up wrong in three ways at once --
+	   every pilot slot captioned "~0", the unit-details values blank, and slots 3..14 drawn in a
+	   diagonal cascade where the gold draws only the flight's three. All three are decided here:
+	   `pilots` bounds the caption loop, and the tail loop below is what HIDES the unused slots.
+	   "~0" is not an error string: REDTBTC.CPP's DoPropExchange treats a leading '~' as
+	   "this caption has no bitmap", so "~0" is the control's TEMPLATE default -- i.e. the mark of
+	   a slot SetCaption never reached. BOB_TRACE_FRAG=1. */
+	const bool _tf = getenv("BOB_TRACE_FRAG") != 0;
+	if (_tf) {
+		fprintf(stderr, "[frag] PositionPilots: currsquadoption=%d totalac(pilots)=%d acperflight=%d\n",
+			(int)squadinfo.currfrag->currsquadoption, pilots,
+			(int)squadinfo.currfrag->squadoptions[squadinfo.currfrag->currsquadoption].acperflight);
+		fflush(stderr);
+	}
+#endif
 	int formation = squadinfo.currfrag->squadoptions[squadinfo.currfrag->currsquadoption].acperflight-3; 
 	if (formation < 0)
 		formation = 0;
@@ -781,6 +798,11 @@ void BoBFrag::PositionPilots()
 		currpos.bottom += currpos.top;
 		b->MoveWindow(currpos);
 		b->ShowWindow(SW_SHOW);
+#if BOB_LINUX
+		if (_tf) fprintf(stderr, "[frag]   slot %d -> SHOW at (%ld,%ld)-(%ld,%ld) flight=%d acinflight=%d\n",
+			i, (long)currpos.left, (long)currpos.top, (long)currpos.right, (long)currpos.bottom,
+			flightnum, acinflight);
+#endif
 
 		i++;
 
@@ -794,6 +816,9 @@ void BoBFrag::PositionPilots()
 	{
 		b=GETDLGITEM(IDC_PILOT_[i]);
 		b->ShowWindow(SW_HIDE);
+#if BOB_LINUX
+		if (_tf) fprintf(stderr, "[frag]   slot %d -> HIDE (b=%p)\n", i, (void*)b);
+#endif
 		i++;
 	}
   	CRListBox* rlistbox;
@@ -1095,6 +1120,25 @@ void BoBFrag::FillSquadronsFromCamp()
 		}
 	}
 	ResetPlayerEntry(0);
+#if BOB_LINUX
+	/* GOLDVID-BOB-2 S6 (2026-09-16): this `if` is why the campaign briefing's roster is empty.
+	   PositionPilots() is what captions the pilot slots AND what hides the unused ones, and it runs
+	   only when at least one squadron in the highlighted package passed the status test above
+	   (strictly inside PS_ACTIVE_MIN..PS_REFUELLING). Print the verdict and the statuses it was
+	   reached on, so "the roster did not populate" names the squadron and the number rather than
+	   the screen. BOB_TRACE_FRAG=1. */
+	if (getenv("BOB_TRACE_FRAG")) {
+		fprintf(stderr, "[frag] FillSquadronsFromCamp: pack=%d sq=%d numsquads=%d -> maxsquadoption=%d%s\n",
+			(int)index, (int)sqindex, (int)numsquads, (int)squadinfo.currfrag->maxsquadoption,
+			squadinfo.currfrag->maxsquadoption ? "" : "  <- PositionPilots() will NOT run");
+		for (ULong q = 0; q < numsquads && q < 8; q++)
+			fprintf(stderr, "[frag]   squadron %d: status=%d (need > %d and < %d) numacleft=%d\n",
+				(int)q, (int)Todays_Packages[index].squadlist[q].status,
+				(int)Profile::PS_ACTIVE_MIN, (int)Profile::PS_REFUELLING,
+				(int)Todays_Packages[index].squadlist[q].numacleft);
+		fflush(stderr);
+	}
+#endif
 	if (squadinfo.currfrag->maxsquadoption)
 		PositionPilots();
 	else
