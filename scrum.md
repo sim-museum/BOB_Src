@@ -6370,3 +6370,54 @@ and no amount of work on our side substitutes.
 
 **GOLDVID-BOB-1: 1 sprint. The mirror is real and looks like ours. The roll question is exactly as
 open as it was this morning.**
+
+## GOLDVID-BOB-3 S1 (Opus 5, 2026-09-15) — the flicker control, measured: **the gold shows no FLASHING** — ⚠️ **and a screen recording cannot settle TEARING at all**, which is the half that matters
+
+`tools/bob_vsync_pace.sh` exists for the PO's 2026-09-04 report, *"in bob appImage dogfight the
+screen flickered baddly"*, and its own header says **the control matters more than the fix**. The
+turkey-shoot video is the first gold recording of a dogfight, so this sprint used it as that control.
+
+**Method, and it needed fixing first.** My initial window detection took the bright region of the
+frame and returned **1913×1028** — the whole desktop, because the terminal text is bright. The game
+window is actually **640×484 at x[68,708] y[32,516]**, about 15% of the frame, so every statistic
+computed over "the bright region" was dominated by a static desktop. Located properly, then measured
+inside it. [[gate-frame-must-match-the-eye]]
+
+**90 consecutive frames (1.5 s at 60 fps) from two sections:**
+
+| | median frame-to-frame diff | frozen frames | brightness spread |
+|---|---|---|---|
+| t=45 s, cockpit, gentle flight | 0.58 | 1 of 89 | **0.82** |
+| **t=74 s, external, manoeuvring combat** | **9.43** | **8 of 89** | **2.75** |
+
+⭐ **No flashing.** Over 1.5 s of violent manoeuvring the frame brightness varies by **2.75 of 255**.
+A flicker of the kind reported — a clear-only buffer, a repeat, a black frame — moves whole-frame
+brightness hard. Nothing here does. The **8 frozen frames of 89** are ~9% duplicates, which is what a
+60 fps recorder does when the game renders a little under 60; it is not flashing.
+
+⛔ **I withdrew my own tear count.** A first pass flagged **34 of 89 frames at t=45** as "candidate
+tears" by looking for one sharp horizontal split between rows that moved and rows that did not.
+**That is the cockpit signature, not tearing**: a Bf 109 canopy and instrument panel are static while
+the sky above them moves, which produces exactly that pattern every frame. The external combat
+section, which has no such split, scores a top/bottom motion ratio of only **1.4×**. The 34 is
+discarded and no tear claim is made from it.
+
+⚠️⚠️ **And the deeper limitation, which decides what this item can ever deliver.** This gold is a
+**desktop screen recording**. A recorder is handed *composited* frames by the display server — so
+tearing that appears on the physical display **need not survive into the video at all**. **This video
+can support "the original does not flash". It cannot show whether the original tears**, and tearing
+is precisely what the gate's header says adaptive vsync causes ("it tears exactly when the scene gets
+heavy"). [[measuring-can-hide-the-bug]]
+
+**So the control is half a control**, and the item should say so rather than bank it:
+* ✅ the gold does **not** show flashing / black frames in a dogfight;
+* ❌ whether the gold **tears** is unanswerable from any screen recording.
+
+**S2, if this is worth pursuing:** the honest comparison is to run **our** build through the same
+measurement — same window-located method, same two statistics — and see whether ours shows
+brightness spikes or black frames the gold does not. That is a like-for-like test of the *flashing*
+half and needs no new capture from the PO. The tearing half needs a camera pointed at a screen, or
+the `BOB_TRACE_FLICKER` scene-per-present census the port already has.
+
+**GOLDVID-BOB-3: 1 sprint. Half the question answered, the other half shown to be out of reach of
+this evidence.**
