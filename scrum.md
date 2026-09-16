@@ -7025,3 +7025,62 @@ field by field; (3) the **bomber cockpit**.
 
 **GOLDVID-BOB-2: 3 sprints. Closed at S2 on a reading of three HUD strips; reopened with 45 scenes on
 the table.**
+
+## GOLDVID-BOB-1 S4 (Opus 5, 2026-09-16) — three of S3's census leads run down: **the mystery white dialog is the GAME's**, our title menu matches the gold on every visible row, and the strategic map now has a dated full-extent reference
+
+S3's census listed screens no sprint had read and flagged one thing it refused to guess at: *"the RAF
+video also shows a small white dialog at t=153–162 that may be the game's own or the desktop's, and I
+am not guessing which."* Resolved, plus two comparisons.
+
+⭐ **The white dialog is the GAME's, and it identifies the build.** At full resolution it reads:
+
+```
+Rowan's Battle Of Britain
+"Your pre-BDG 0.96 configuration file has be…"
+```
+
+A **BDG patch configuration-migration message**. So the same dialog at t=9, 153 and 162 is the game
+talking, not desktop chrome — and it independently corroborates GOLDVID-BOB-1 S1's reading of
+**BDG 0.99** off the menu (the message says the *previous* config predates 0.96).
+
+⭐ **Title menu, ours against the gold, row for row:**
+
+| # | gold | ours |
+|---|---|---|
+| 1 | Quick Shots | Quick Shots ✅ |
+| 2 | Campaigns | Campaigns ✅ |
+| 3 | Multi-Player | Multi-Player ✅ |
+| 4 | Load Game | Load Game ✅ |
+| 5 | Replay | Replay ✅ |
+| 6 | PC Config | PC Config ✅ |
+| 7 | Sim Config | Sim Config ✅ |
+| 8 | Credits | Credits ✅ |
+| 9 | Quit *(S1)* | Quit |
+| 10 | **BDG 0.99** *(S1)* | **Website** |
+
+**Eight of eight visible rows match exactly**, in order and wording. The last row is the only
+divergence, and it is the same shape as MiG Alley's: **the gold's extra/renamed row is patch
+content**, where ours carries the stock `Website`. Rows 9–10 are below my crop and are taken from
+S1's reading, not re-verified here.
+
+⚠️ **A small correction to S1**, which recorded the first row as *"Quick Shot"*: both builds read
+**Quick Shots**, plural. Trivial in itself, and worth fixing because that list is the evidence for the
+BDG identification.
+
+⭐ **Shipped as a reference:** `doc/reference/260915_gold_strategic_map_10jul.png` — the RAF strategic
+map at **full extent**, dated, which S83–S98's campaign-map work has never had at this zoom. It
+carries the sector boundaries and labels (`No.10 Group`, `No.11 Group`, `SECTOR Z/E/Y/A/C/B`), named
+towns, three classes of unit icon, the **Nm ruler** (0/50/100/150), and the complete footer: the clock
+readout **`10 July 06:30 x0`**, the transport controls, two rows of sheet icons, the event-log strip
+and the right-hand cluster.
+
+⛔ **NOT done, and stated rather than implied: our own map was not captured.** `BOB_SHOT=60` fired
+while the build was still on the **title screen** — the capture is real and usable (it is what the
+menu comparison above is made from) but it is not the map. The shot tick has to be later than the map
+load, and I did not re-run. **No map comparison is claimed.**
+
+**S5:** capture our strategic map at a tick past the map load and compare against the new reference —
+specifically the ruler, the sector labels and the footer's clock format, which are the parts that can
+be graded without matching the campaign date.
+
+**GOLDVID-BOB-1: 4 sprints — at cap, rotating off.**
