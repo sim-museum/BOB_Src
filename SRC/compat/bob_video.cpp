@@ -693,9 +693,21 @@ static void pump_events(void)
 			static int bc = 0, bsent = 0, bat = -1;
 			bc++;
 			if (bat < 0) { const char* c = strchr(mode, ':'); bat = c ? atoi(c+1) : 120; if (bat < 1) bat = 120; }
+			/* ASPECT-1 S12 (2026-09-15): the bank alone is not enough. R3.4 S9 flew quick mission 7
+			   (the airborne Spitfire) with bank:200 and the aeroplane went 962 ft -> 0 ft with the
+			   heading barely moving: it descended into the terrain before a turn developed. A
+			   SUSTAINED turn needs power and some nose-up, which the "dive" mode already knows how
+			   to do -- full throttle (DIK 0x0B) and repeated nose-UP trim (Home, 0xC7, under a held
+			   Ctrl 0x1D). Fold those in ahead of the aileron so the aircraft is flying when the roll
+			   arrives, and keep trimming so it holds altitude through the turn. */
+			if (bc == 20) { kb_push(0x0B,1); kb_push(0x0B,0); }            /* 100% throttle */
+			if (bc == 30) kb_push(0x1D,1);                                  /* Ctrl held: trim shift */
+			if (bc > 30 && bc < bat && (bc % 3) == 0) { kb_push(0xC7,1); kb_push(0xC7,0); }  /* nose-UP trim */
 			if (bc == bat && !bsent) { kb_push(0xCB,1); bsent = 1;
 				fprintf(stderr,"[autofly] bank: holding AILERON_LEFT (DIK 0xCB) from tick %d\n", bat);
 				fflush(stderr); }
+			/* keep trimming through the turn, or the bank just spirals the nose down */
+			if (bsent && (bc % 6) == 0) { kb_push(0xC7,1); kb_push(0xC7,0); }
 		}
 		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->
 			   climb steeply -> stall -> fall -> hit the ground (the player-crash path) */

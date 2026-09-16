@@ -6063,3 +6063,37 @@ the nose up) and show the horizon line rotating with commanded roll.
 
 **R3.4: 9 sprints (4 in this pass — AT THE CAP, parked).** The mirror is alive, airborne, and
 demonstrably responsive; the aircraft that carries it is the one the PO has never filmed.
+
+## ASPECT-1 S12 (Opus 5, 2026-09-15) — ⛔ **the turn still did not happen, and a 47° "horizon rotation" I nearly reported was my estimator fitting noise.** Looking at the picture killed it
+
+S11 named the missing piece as an airborne RAF flight; R3.4 S9 found it (`BOB_QM_INDEX=7`) and noted
+the aeroplane flew into the ground before a turn developed. S12 tried to keep it flying.
+
+⭐ **What was added:** the `bank` mode now does what the `dive` mode already knew — full throttle at
+tick 20, Ctrl held at 30, and repeated nose-UP trim (Home) before and through the roll, so the
+aircraft is powered and trimmed when the aileron arrives.
+
+⛔ **It changed nothing measurable.** The flight still reads `alt=962ft hdg=0` to `alt=1ft hdg=359`
+— down to the ground, heading barely moved. The added throttle and trim taps did not hold it up, and
+the likeliest reason is the one MA's `BOB_KEYSEQ` documented at S105: **a synthetic trim key carries
+no modifier state**, so pushing Ctrl down and then Home does not give the engine the shift-state it
+needs — the same trap, in the other port.
+
+⛔⛔ **And the part worth recording is my own near-miss.** I fitted a line to the sky/ground boundary
+per column and got a horizon tilt swinging **−31° → +16°**, which looked exactly like a banking
+aeroplane, and I was one step from reporting *"the mirror rotates through 47°"*. **Then I looked at
+the two frames.** `doc/reference/mirror-spitfire-turn-attempt-2026-09-15.png` and its pair show a
+**flat, horizontal band** in both — the mirror is full of cloud and haze, there is no crisp horizon to
+fit, and the estimator was measuring noise. **The 47° is withdrawn before it ever became a claim.**
+
+⭐ **What IS supported by these 126 mirror renders:** the content keeps changing (mean 196–205,
+sd 13.8–27.1 across the run), consistent with R3.4 S9's finding that the mirror is live. **Nothing
+here says anything about roll tracking, in either direction.**
+
+**S13:** fix the trim input first (give the synthetic Ctrl+Home the modifier handling
+`BOB_KEYSEQ`'s third field already does in MA), and prove the aeroplane holds altitude and changes
+heading — **from the HUD, before any mirror pixel is measured.** A mirror test on an aircraft that is
+not turning cannot answer anything, and that is now twice.
+
+**ASPECT-1: 12 sprints (3 in this pass). A failed test, honestly failed, and a wrong number caught by
+looking at the image.**
