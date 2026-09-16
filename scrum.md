@@ -7441,3 +7441,60 @@ candidates are in `SAVEGAME.CPP`'s `operator>>(BIStream&, Campaign&)` and `Node_
 which read fixed-size blocks.
 
 **SAVELOAD-REAL-1: 2 sprints. The compatibility question is answered: same format, three deltas.**
+
+## SAVELOAD-REAL-1 S3 (Opus 5, 2026-09-16) — the deltas **placed in named blocks**: the `+4` is in `Campaign`'s head, and the `+1,604` is upstream of `Todays_Packages`
+
+S2 measured three localised size differences between our save and the PO's BDG 0.99 one (+4, then a
+further +1,604, then −12) and could only say the +1,604 was "somewhere in the 95 KB before the package
+region". This sprint prints our own block boundaries and places them.
+
+✅ **Shipped: `BOB_TRACE_SAVEOFF=1`** (default-off, `SAVEGAME.CPP`) — logs the stream offset after each
+top-level block of `operator<<(BOStream&, MissMan&)`:
+
+```
+[saveoff] start            @ 0
+[saveoff] currcampaign     @ 1
+[saveoff] Campaign         @ 10602      <- Campaign block: 1 … 10,602   (10,601 bytes)
+[saveoff] Node_Data        @ 86998      <- Node_Data:             76,396 bytes
+[saveoff] Save_Data        @ 88376      <- SaveDataSoftware:       1,378 bytes
+[saveoff] Squad_Diary      @ 94995      <- Squad_Diary:            6,619 bytes
+[saveoff] Todays_Packages  @ 232988     <- Todays_Packages:      137,993 bytes
+```
+
+⭐ **Now S2's markers land in blocks:**
+
+| marker | ours | delta | block it falls in |
+|---|---|---|---|
+| stamp | 1 | +0 | `Campaign` head |
+| `Silver Eagle` | 117 | **+4** | **`Campaign` head** — so Campaign's first ~117 bytes grew by 4 |
+| first `Package battlefield:` | 95,017 | **+1,608** | **`Todays_Packages`** (starts 94,995) |
+| later package | 105,888 | +1,596 | `Todays_Packages` — a **−12** step inside it |
+
+⭐ **So: `+4` inside `Campaign`'s head, and the further `+1,604` accumulates between offset 117 and
+95,017** — i.e. across the rest of `Campaign`, all of `Node_Data`, all of `Save_Data` and all of
+`Squad_Diary`.
+
+⭐ **And one of those four can be ruled out on size alone.** `SaveDataSoftware` is **1,378 bytes**; a
++1,604 cannot fit inside it. Of the remaining three, **`Node_Data` is the leading candidate** — it is
+76 KB, by far the largest, and it is the one that writes **two fixed-size buffers** (`IntelBuffer`,
+`ReviewBuffer`, each carrying `IntelMsg messages[256]`) alongside sentinel-terminated lists. A
+version bump to `BUFFERSIZE`, to `MAXBODYSCRIPT`, or to `IntelMsg`'s layout would show up exactly as
+one constant offset step.
+
+⚠️ **Why it cannot be narrowed further from offsets alone:** S2's alignment found **no printable run at
+all between offset 121 and 95,017**. There is nothing in that 95 KB to align on, which is precisely
+why the localisation stops at four blocks and not one.
+
+⚠️ **The −12 is a separate thing and is NOT explained.** Both offsets bracketing it are inside
+`Todays_Packages`, 41 string-runs apart. A per-package struct difference would move the delta at
+**every** package, not once — so this looks like one item in that span differing by 12 bytes, and
+whether that is layout or content is open. ⚠️ And `Todays_Packages` is the one block whose size is
+genuinely campaign-state-dependent, so S2's structural argument is weakest here.
+
+**S4:** get the same boundaries out of a BDG 0.99 save. Our reader refuses it (S1), but the refusal is
+at the *version check*, not at the parse — reading the four block sizes only needs the offsets our own
+writer produces plus a length-only walk, or `BOB_ANY_SAVE_VERSION=1` on a **copy** with the loader
+instrumented to report offsets before it corrupts anything.
+
+**SAVELOAD-REAL-1: 3 sprints. Four blocks down to three, one ruled out by arithmetic, and a named
+prime suspect.**

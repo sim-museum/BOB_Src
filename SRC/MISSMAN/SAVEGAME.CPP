@@ -550,13 +550,32 @@ BOStream& operator	<<	(BOStream& bos,MissMan& miss_man)
 {
 
 	strcpy(miss_man.camp.CommsPassword,_DPlay.Password);
+#if BOB_LINUX
+	/* SAVELOAD-REAL-1 S3 (2026-09-16): BOB_TRACE_SAVEOFF=1 logs the stream offset after each
+	   top-level block. S2 showed a BDG 0.99 save is our format with three localised size deltas
+	   (+4 early, a further +1604 before the package region, then -12), but offsets alone could
+	   only place the +1604 "somewhere in the 95 KB spanning the rest of Campaign plus Node_Data".
+	   Printing OUR block boundaries turns that into a named block. Default-off. */
+	const bool _so = getenv("BOB_TRACE_SAVEOFF") != 0;
+#	define _SOFF(tag) do { if (_so) { fprintf(stderr, "[saveoff] %-14s @ %ld\n", tag, (long)bos.tellp()); fflush(stderr);} } while (0)
+#else
+#	define _SOFF(tag) do {} while (0)
+#endif
+	_SOFF("start");
 	bos<<(SByte&) miss_man.currcampaignnum;
+	_SOFF("currcampaign");
 	bos<<miss_man.camp;
+	_SOFF("Campaign");
 	Node_Data.Save(bos);
+	_SOFF("Node_Data");
 	bos<<(SaveDataSoftware&)Save_Data;
+	_SOFF("Save_Data");
 //DeadCode JIM 2Nov00 	bos<<Dead_Stream;
 	Squad_Diary.Save(bos);										//RJS 02Feb00
+	_SOFF("Squad_Diary");
 	Todays_Packages.SaveGame(bos);	//must be last thing in savegame!!!
+	_SOFF("Todays_Packages");
+#undef _SOFF
 	return(bos);
 }
 
