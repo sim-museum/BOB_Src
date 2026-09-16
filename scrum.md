@@ -7156,3 +7156,65 @@ acceptance test.
 rather than this one panel's share of it.
 
 **GOLDVID-BOB-2: 4 sprints — at cap, rotating off.**
+
+## OCXHOST-1 — how big is the OCX-hosting gap, really?
+
+GOLDVID-BOB-2 S4 found the RAF Directives panel needs `CRSpinBut`, `CRButton` and `CRRadio`, none of
+which `SRC/compat/` hosts, and noted that one dialog disproves *"BoB's dialogs host only
+RCombo/RListBox/RStatic"* without sizing the problem. This item sizes it.
+
+## OCXHOST-1 S1 (Opus 5, 2026-09-16) — **41% of every hosted control in the game is a class we do not implement** — and **two hosts would take coverage from 59% to 97%**
+
+Counted every `CR*Ctrl` member declared in a dialog header across `SRC/H/`, de-duplicated by
+case-variant twin group.
+
+| control class | members | dialogs | hosted by `SRC/compat/`? |
+|---|---|---|---|
+| CRStatic | 425 | 57 | ✅ `bob_ole_rstatic.cpp` |
+| **CRButton** | **293** | **45** | ❌ |
+| CRCombo | 175 | 34 | ✅ `bob_ole_rcombo.cpp` |
+| **CRSpinBut** | **130** | **10** | ❌ |
+| CRListBox | 50 | 45 | ✅ `bob_ole_rlistbox.cpp` |
+| **CREdit** | **21** | **10** | ❌ |
+| **CRRadio** | **12** | **10** | ❌ |
+| CREdtBt | 1 | 1 | ❌ |
+
+**1,107 members across 107 dialog headers. 650 covered (59%), 457 not (41%).**
+
+⭐ **The payoff curve is steep and front-loaded:**
+
+```
+today                              59.0%
+  + CRButton host                  85.2%     <- one file, +26 points
+  + CRSpinBut host                 96.9%
+  + CREdit host                    98.8%
+  + CRRadio host                   99.9%
+  + CREdtBt host                  100.0%
+```
+
+**Two hosts take the port from 59% to 97%.** Each follows the pattern of the three that already
+exist (`bob_ole_rstatic.cpp` is the smallest model), and `SRC/RBUTTON`, `SRC/RSPINBUT`, `SRC/REDIT`,
+`SRC/RRADIO` all ship the real `CR*Ctrl` implementations — the work is the host + dispid routing, not
+the control.
+
+⭐ **`CRButton` appears in 45 dialogs — as many as `CRListBox`, which we do host.** That settles the
+scale question S4 raised: `CLAUDE.md`'s *"Not adopted (verified N/A for BoB)"* is not wrong about one
+panel, it is wrong about forty-five.
+
+⚠️ **The first number I computed was wrong, and the reason is the trap that bit MiG Alley an hour
+ago.** A naive walk of `SRC/H/*.{h,H}` gave **2,074 members, 47% uncovered**. `SRC/H` holds **328
+case-variant twin groups**, and **92 of them declare members on both sides** — `scontrol.h` three
+times at 56 each, `mapfltrs.h` three times at 31, `lwdirect.h` twice at 130. De-duplicating by
+lowercased basename (taking the richest member of each group) gives the 1,107 above. **The inflated
+figure would have overstated the gap by 87%.** [[stale-duplicate-sources]]
+
+⚠️ **What this count is and is not.** It counts **declarations**, so it measures how much of the
+game's dialog surface needs each class — not how many of those dialogs the port currently reaches, nor
+how visible each is. A dialog we never open costs nothing today. It is the right number for
+*prioritising hosts*, and the wrong number for claiming *"41% of the UI is broken"*.
+
+**S2:** implement the `CRButton` host — the single biggest step, and the RAF Directives panel
+(`doc/reference/260915_gold_raf_directives.png`, 8 of its 23 controls are `CRButton`) is a
+ready-made acceptance test with a gold reference.
+
+**OCXHOST-1: 1 sprint. The gap is measured, ordered, and its first step has an oracle.**
