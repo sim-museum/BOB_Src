@@ -1,3 +1,446 @@
+## 2026-09-04 — R3.4 re-measured: the mirror is still FLAT, but the colour has CHANGED (sky-blue -> green)
+
+Re-captured both RTT FBOs in one run (`BOB_MIRROR=1 BOB_DUMP_RTT=1`, QM boot on real GL):
+
+* **Landscape RTT, 256x256** — real terrain: fields, hedgerows, roads, a river. The RTT machinery,
+  the FBO path and the landscape composite all work. This is the control, and it is in the SAME
+  frame as the mirror, so it rules out "RTT is broken" without a second run.
+* **Mirror RTT, 128x128** — a UNIFORM olive-green fill. No geometry, no horizon band, no detail.
+
+**The symptom has moved since the 2026-06-17 diagnosis**, which recorded the mirror as *"flat
+sky-blue — a clean, uniform sky colour"*. It is now flat GROUND-green. Something between June and
+now changed what the mirror pass produces while leaving it degenerate — plausibly the S118/S119
+depth-sort default or the S120 landscape-texture fix, both of which touched what the mirror's
+camera would see. Worth knowing, because it means the June conclusion ("only the top sky band
+fills the mirror") no longer describes the output and should not be built on.
+
+**What is unchanged:** `RenderMirrorLandscape`'s low-rez landscape grid still does not appear, and
+the mirror shows a single flat colour rather than a scene.
+
+**Caveat on this capture, stated because it bounds the finding:** the aircraft is PARKED on the
+runway, so a rear-view mirror legitimately looks at grass and tarmac — a green-dominated view is
+not itself wrong. What is wrong is that it is perfectly UNIFORM: the landscape RTT from the same
+frame shows this terrain has plenty of detail at 256x256, so a 128x128 mirror of it should not be
+one flat colour. Distinguishing "renders nothing" from "renders correctly but at a viewpoint with
+nothing in it" needs the aircraft moving — which is exactly what the headless-flight item (now
+with Fable 5.1) blocks.
+
+`BOB_MIRROR` + `BOB_DUMP_RTT` remain the right instruments; both dump on the RTT->RTT switch since
+the June tooling fix.
+
+## 🛑 2026-09-04 — HEADLESS FLIGHT (the "aircraft will not roll" item) IS FOR FABLE 5.1
+
+PO rule: 8+ sprints without closing -> hand over, no further sprints. **Count: 9** — powered-flight
+attempt, engine-starter diagnosis, the MoveList loop probe, the "scaffold never runs the update"
+claim, its retraction, the movecode discovery, the AutoToggle attempt, its correction, and the
+movecode-writer search.
+
+### The cause is KNOWN and verified — this is not an open mystery
+
+Under `BOB_BOOT_FRONTEND`, the player's aircraft carries **`movecode = 12 = AUTO_TRAININGTAKEOFF`**
+(measured: `[loop] PLAYER entry seen 601 times, movecode=12`; enum walked from its explicit `=0`
+anchor). An AUTOMATIC training controller owns its movement, so the throttle keystroke is delivered
+and STORED — the HUD reads `Power 90` — while nothing integrates it, and the aircraft sits at
+`Speed 0Kts`. The tower line in the HUD says the same thing: *"You need to practise getting off the
+ground as quickly as possible."* It is a TRAINING set-piece and the scaffold leaves the player in it.
+
+### Four explanations ELIMINATED by measurement — do not revisit
+
+1. **Wheel brakes** — `KEYFLY.CPP:1162` applies them only while held; they default off.
+2. **A stopped engine awaiting the starter** — `FK_ENGINESTARTER0` is only polled from
+   `GetComplexEngineKeys`, called only under `FD_ENGINEMANAGMENT`, which is NOT in
+   `InitPreferences`' defaults (`FD_SPINS | FD_WINDEFFECTS`). A probe inside that block never
+   printed. The starter's bindings (shift-state 5, unreachable; and device button `Raw_A1_b7`) are
+   real but irrelevant on the default difficulty.
+3. **A dead world update** — RETRACTED. `MoveList` runs continuously with `PlayerSeenAC` non-NULL.
+   The earlier claim came from a probe at ONE of two `MoveItem` call sites: silence at one branch
+   is not silence overall.
+4. **`AutoToggle(MANUAL)` "not working"** — RETRACTED as unsupported. `AutoToggleAircraft`
+   (FLYMODEL.CPP:1218) sets `pModel->Controlled` and `controlmode` and is gated
+   `if (mode != controlmode)`; **it never writes `movecode`**, so watching movecode said nothing
+   about whether it took.
+
+### Where the movecode COMES FROM, and therefore the likely fix
+
+`/bin/grep` over the tree finds **no assignment** of `AUTO_TRAININGTAKEOFF` anywhere — every
+occurrence is a comparison (OVERLAY.CPP x5, MSGAI, AAA), and those gate UI behaviour such as
+tower-only radio menus, not any transition. **So the movecode arrives with the mission set-piece
+data.** The fix is therefore most likely to load a DIFFERENT set-piece — one whose player movecode
+is an ordinary flight code — rather than to toggle out of training at runtime. Confirm by dumping
+the player movecode for a non-training mission before writing any code.
+
+### Why this matters beyond one item
+
+Every headless IN-FLIGHT measurement this port wants is blocked on it: R3.2's propeller and
+cloud/canopy cases (already with Fable 5.1), gun effects, ACMI from a real sortie. It is a
+SCAFFOLD limitation, not a game defect — `BOB_BOOT_FRONTEND` was built to bring up the 3D view and
+does that well; it was never shown to fly.
+
+Instruments kept, all default-off: `BOB_TRACE_LOOP` (MoveList entry, player entry, movecode),
+`BOB_TRACE_MOVE`, `BOB_TRACE_ENGINE`, `BOB_MANUAL`, `BOB_FAKE_BTN`.
+
+## ⭐ 2026-09-04 — WHY THE AIRCRAFT WILL NOT ROLL: it is under `AUTO_TRAININGTAKEOFF`, not manual control
+
+After three wrong theories (wheel brakes, a stopped engine awaiting a starter, a dead world
+update — all retracted above), the answer is measured and specific.
+
+Probing `mobileitem::MoveList` at its ENTRY, and reporting the player entry rather than inferring
+from one branch's silence:
+
+    [loop] MoveList calls=1    PlayerSeenAC=0x9cb5ac0 entry=0x9cb5ac0 isplayer=1
+    [loop] PLAYER entry seen 1 times, movecode=12
+    [loop] PLAYER entry seen 301 times, movecode=12
+    (and NO "SITE-A (accel)" line — the player never takes that branch)
+
+`movecode=12` decodes, from `SRC/H/MOVEMENT.H`'s enum walked with its explicit `=0` anchor, to
+**`AUTO_TRAININGTAKEOFF`** (0 AUTO_FOLLOWWP, 1 AUTO_NOPPILOT, 2 AUTO_WAIT4TIME, 3 AUTO_TAXI,
+4 AUTO_TAKEOFF, 5 GROUND_TAXI, 6 AUTO_TELLLEADER, 7 AUTO_FOLLOWTHELEADER, 8 AUTO_SPIRAL2GROUND,
+9 AUTO_RESURRECT, 10 AUTO_DEATHSEQUENCE, 11 AUTO_DEATHGLIDE, **12 AUTO_TRAININGTAKEOFF**).
+
+**So the player's aircraft is being driven by an AUTOMATIC training-takeoff controller, not by the
+manual pilot.** That explains the exact symptom pair that has confused this for months: the
+throttle keystroke IS delivered and stored (`Power 90` in the HUD) because the input path works,
+while the aircraft does not respond to it because an auto movecode owns its movement — and that
+auto takeoff is not progressing, so `Speed 0Kts`.
+
+It also explains the tower message the HUD shows: *"You need to practise getting off the ground as
+quickly as possible"* — this is a TRAINING set-piece, and the scaffold leaves the player in it.
+
+**CORRECTION to Follow-up 1 (2026-09-04, later): my test watched the WRONG VARIABLE.**
+`ManualPilot::AutoToggleAircraft` (FLYMODEL.CPP:1218) sets `pModel->Controlled` and `controlmode`,
+and is gated `if (mode != controlmode)` so it is a no-op when already MANUAL. **It never writes
+`movecode`.** So `movecode` remaining 12 after `AutoToggle(MANUAL)` is EXPECTED and says nothing
+about whether the handover happened — `controlmode` (MANUAL/AUTO, who flies) and `movecode`
+(AUTO_TRAININGTAKEOFF, which movement routine runs) are different fields.
+
+The conclusion "the handover did not work" was therefore unsupported: I measured a field the call
+does not set. What IS still true is the symptom — the aircraft does not roll — and that the
+player's `movecode` stays `AUTO_TRAININGTAKEOFF`.
+
+**So the real requirement is clearer:** flying headlessly needs the MOVECODE changed too (or
+whatever normally clears the training takeoff), not just `controlmode`. Next: trace
+`controlmode` alongside `movecode` to see whether the toggle took at all, and find every writer of
+`movecode` on the player entry — `MoveList` branches on it, so that is what decides which movement
+routine runs.
+
+**Original (superseded) note follows.**
+
+**Follow-up 1 ATTEMPTED and it did NOT work (2026-09-04, same day).** `BOB_MANUAL=1` (added,
+default-off) calls the game's own transition — `Manual_Pilot.AutoToggle(ManualPilot::MANUAL)`,
+the same call OVERLAY.CPP:6297 makes when a player takes over — once, on the first frame the
+player entry appears. It fires:
+
+    [manual] movecode was 12 -> AutoToggle(MANUAL)
+    [loop] PLAYER entry seen 1 times,   movecode=12
+    [loop] PLAYER entry seen 601 times, movecode=12
+
+**and the movecode does not change.** HUD still reads `Alt 4ft Speed 0Kts Power 90`. So
+`AutoToggle(MANUAL)` is either a no-op in this state (it may require preconditions — a live
+`ControlledAC2`, a particular game state) or something re-asserts `AUTO_TRAININGTAKEOFF` every
+frame. Both are testable: trace what `AutoToggle` does with these inputs, and find every writer of
+`movecode` on the player entry. The hook is kept because it is the right mechanism, and because
+its failure is now evidence rather than an untried idea.
+
+**Two follow-ups, and they are different work:**
+1. **The scaffold** should hand the aircraft to manual pilot control when the player takes over
+   (or select a set-piece that starts under manual control), which is what a headless flight
+   harness needs. This is the one that unblocks in-flight captures — the propeller, the
+   cloud/canopy depth case, gun effects, ACMI from a real sortie.
+2. **Why `AUTO_TRAININGTAKEOFF` itself does not advance** is a separate question and may be a real
+   game-side defect worth its own item — a training takeoff that never rolls would be visible to
+   any player who picks that lesson.
+
+`BOB_TRACE_LOOP` is kept, default-off, and now reports the player entry and its movecode.
+
+## 🔴 2026-09-04 — CORRECTION: the entry below is WRONG. The world update DOES run.
+
+The entry titled *"the player's per-frame update never runs"* is retracted. A probe placed at
+`mobileitem::MoveList`'s ENTRY — before any branch — shows the opposite:
+
+    [loop] MoveList calls=1    PlayerSeenAC=0xa196ac0
+    [loop] MoveList calls=1801 PlayerSeenAC=0xa196ac0
+
+**`MoveList` is called continuously and `PlayerSeenAC` is non-NULL.** The world update runs and
+the player aircraft object exists.
+
+**Why the earlier conclusion was wrong, and it is the same mistake twice on one question:** both
+`BOB_TRACE_MOVE` and the first version of `BOB_TRACE_LOOP` were placed at ONE of the two
+`MoveItem(entry,world)` call sites in `MoveList` (446 and 480). Silence at one call site proves
+only that THAT BRANCH was not taken — never that the loop is idle. I inferred "the update never
+runs" from an absence, which is exactly the error that produced the retracted engine-starter
+theory a few hours earlier.
+
+**So the reason the aircraft sits at `Speed 0Kts` with `Power 90` is STILL unknown**, and three
+explanations are now eliminated by measurement: wheel brakes (only applied while held), a stopped
+engine awaiting a starter (that code is not compiled into the default difficulty path), and a
+dead world update (this correction).
+
+Where to look next, with the branch trap in mind: instrument BOTH `MoveItem` call sites and the
+`entry == PlayerSeenAC` test, and report which branch the player takes — then follow the thrust
+into the flight model rather than guessing at the next stage.
+
+## 2026-09-04 — [RETRACTED, see correction above] why the headless scaffold cannot fly
+
+Follow-on from the R3.2 correction (the engine-starter theory was a dead end: the starter is only
+polled under `FD_ENGINEMANAGMENT`, which is not a default). Two probes, both default-off, both
+placed in code that runs EVERY FRAME for the player in normal play:
+
+* `BOB_TRACE_ENGINE` — inside `ManualPilot::GetComplexEngineKeys` (KEYFLY.CPP), prints rpm.
+  **Printed nothing.** Explained: that function is called only under `FD_ENGINEMANAGMENT`.
+* `BOB_TRACE_MOVE` — inside the `if(entry==Persons2::PlayerSeenAC)` block in `MoveAllItems`
+  (MOVEALL.CPP:478), which drives the player's engine SOUND and therefore runs once per frame.
+  Prints rpm, velocity and thrust%. **Also printed nothing, across a full `BOB_AUTOFLY=toext` run.**
+
+The second is the informative one: it has no difficulty gate. Its silence means the player branch
+of the item-update loop is not being taken under `BOB_BOOT_FRONTEND` — so the flight model is not
+being stepped for the player at all. That is a complete explanation for `Speed 0Kts` with
+`Power 90`: the throttle keystroke is delivered and STORED (which is why Power reads 90), and
+nothing ever integrates it.
+
+**Caveat, because this is inference from an absence:** the block is gated on
+`entry == Persons2::PlayerSeenAC`. If `PlayerSeenAC` is simply NULL/unset in this scaffold while
+some other object is the flown aircraft, the trace would be silent even if a model were stepping.
+Distinguishing those is one more probe — print `Persons2::PlayerSeenAC` and the loop's entry count
+once per second — and it should be the first thing done, not assumed.
+
+**Why this matters beyond R3.2:** every headless in-flight measurement this port might want —
+the propeller, the cloud/canopy depth case, gun effects, ACMI export from a real sortie — is
+blocked by the same thing, and it is a SCAFFOLD limitation rather than a game defect. Fixing it
+once unblocks a whole class. `BOB_BOOT_FRONTEND` was built to bring up the 3D view, and it does
+that well; it was never shown to run the sim.
+
+Both traces are kept, default-off.
+
+## 🛑 2026-09-04 — R3.2 IS FOR FABLE 5.1. Eight sprints, not closed. No further sprints.
+
+PO rule: *"If any backlog item has had 8 or more sprints run on it without closing it, mark it as
+for Fable 5.1 and do not run further sprints on it."*
+
+**Sprint count on R3.2: 8** — 2026-06-17 (depth-sort spike, z-mapping + opaque-only write),
+2026-06-21 (propeller regression found), 2026-09-03 (painter-within-opaque + near-free
+mechanisms), and five on 2026-09-04: the NEARFREE measurement, the benefit attempt, powered-flight
+attempt 1, the engine-starter diagnosis, and the synthetic-button attempt.
+
+### What is SETTLED, with numbers — Fable 5.1 should not redo this
+
+* **The cockpit loss is measured and has a setting that removes it.** Frame-150 captures,
+  1920x1080, lower panel (y>=860) against the painter's-order reference:
+  painter 0.0 % / depth sort **6.1 %** (and darker: 29.2 vs 33.3) / depth sort + `BOB_ZD_NEARFREE=0.5`
+  **0.3 %**. Visually: two cylindrical cockpit objects present in painter's order, GONE with the
+  depth sort, BACK with the near-free split. `BOB_ZDEPTH_PAINTER` alone does NOT clear it.
+* **The propeller cannot be assessed from any capture taken so far**, and the reason is not the
+  renderer: the headless boot sits on the runway with no propeller in view.
+
+### What BLOCKS it, precisely
+
+Both remaining questions (the depth-rejected prop blade; whether near-free keeps the
+clouds-off-the-canopy benefit) need an IN-FLIGHT capture, and this port cannot fly headlessly:
+
+* Brakes ruled out — `KEYFLY.CPP:1162` applies wheel brakes only while held.
+* The engine is not running. The starter (`FK_ENGINESTARTER0`) must be **HELD**
+  (`KEYFLY.CPP:501`), and its only bindings are DIK `0x0D` in **shift-state 5** and `0x10B`.
+  Shift state is ASSIGNED, not OR'd (`currshifts = index>>1`, STUB3D.CPP:1563), and every shift
+  key in the table yields only 2, 3 or 4 — **state 5 is unreachable**. `0x10B` is `Raw_A1_b7`, a
+  DEVICE button. `RESTARTENGINE` is NOT BOUND.
+* **Attempted and failed:** `BOB_FAKE_BTN=<n>` (added this sprint, default-off, kept) holds a
+  synthetic SDL joystick button through both DInput read paths. Tried indices 6 and 7 with the
+  stick open (`[joy] opened 'Logitech Extreme 3D': buttons=12`) and full throttle: the HUD still
+  reads `Alt 4ft Speed 0Kts Power 90`. So either the index mapping from `Raw_A1_bN` to an SDL
+  button index is not n-1/n, or the starter has further preconditions (fuel cock, magnetos), or
+  the scaffold never polls the stick on this path. **Not diagnosed — this is where to start.**
+
+### ⚠️ CORRECTION 2026-09-04 (same day, later) — the "engine starter" blocker above is a DEAD END
+
+The section above says the aircraft will not roll because the engine is not running and the
+starter is unreachable. **The binding facts are correct; the conclusion is not.** Do not spend
+Fable 5.1 time on the starter.
+
+`FK_ENGINESTARTER0` is only ever polled from `ManualPilot::GetComplexEngineKeys`, and that is
+called from exactly one place, under a condition (KEYFLY.CPP:362):
+
+    if(Save_Data.flightdifficulty[FD_ENGINEMANAGMENT])
+        GetComplexEngineKeys(ControlledAC);
+
+`SaveData::InitPreferences` (SAVEGAME.CPP:2307) sets `flightdifficulty = FD_SPINS |
+FD_WINDEFFECTS` — **`FD_ENGINEMANAGMENT` is NOT among the defaults.** So on a default quick
+mission the starter, fuel cocks and magnetos are never polled at all, and engine management is
+automatic. Confirmed empirically too: a `BOB_TRACE_ENGINE` probe placed inside that block printed
+NOTHING across a full run, i.e. the code never executes.
+
+**So the reason the aircraft sits at `Speed 0Kts` with `Power 90` is still UNKNOWN**, and it is
+NOT a stopped engine awaiting a starter. The synthetic-button attempt (`BOB_FAKE_BTN`) failed for
+the same reason: it was pressing a control nothing reads.
+
+Where to look instead: whether the flight model is being stepped at all in the
+`BOB_BOOT_FRONTEND` scaffold (Power 90 proves the INPUT arrives and is stored, not that anything
+integrates it), and whether `Persons2::PlayerSeenAC` and the aircraft actually being flown are the
+same object. `BOB_TRACE_ENGINE` is kept, default-off, and will print rpm the moment that block
+does run — useful the day someone enables engine-management difficulty.
+
+### Handover note
+
+A separate question fell out and is NOT R3.2: **should this QM scramble set-piece begin with the
+engine already running?** If yes, an engine that starts stopped is its own PO-visible defect for
+anyone launching a quick mission without a joystick, and fixing THAT would incidentally unblock
+R3.2. Worth answering before more depth-sort work.
+
+`BOB_ZDEPTH` stays gated. The evidence supports the SETTING, never the default.
+
+## 2026-09-04 — R3.2 blocker EXPLAINED: the engine starter is unreachable from the keyboard
+
+Why every headless flight attempt since June has stayed parked (`Speed 0Kts`), even with the
+throttle demonstrably applied (`Power 90`):
+
+* **Not the brakes.** `KEYFLY.CPP:1162` sets `LeftWheelBrake/RightWheelBrake` only while the key
+  is HELD, and clears them otherwise — they default off. Ruled out.
+* **The engine is not running.** `KEYFLY.CPP:501` runs the starter only while
+  `FK_ENGINESTARTER0` is HELD (`pEngine0->Starting = true`), i.e. it is a held control, not a tap.
+* **And that control cannot be pressed on a keyboard.** Its only two bindings in the live key
+  table are `0x0D` in **shift-state 5**, and `0x10B` — which is >0xFF, so a DEVICE button
+  (`Raw_A1_b7`, joystick button 7), not a DIK at all.
+  Shift state here is a MODE, entered by a key whose mapping value is <16 via
+  `currshifts = index>>1` (STUB3D.CPP:1563) — and that is an ASSIGNMENT, not an OR. Dumping every
+  shift key in the table gives values 4, 6 and 8 only, i.e. Alt->2, Ctrl->3, Shift->4.
+  **Nothing yields state 5**, so `0x0D,5` is unreachable. `RESTARTENGINE` (idx 231) is NOT BOUND.
+
+So on a keyboard-only setup the engine starter is reachable only through a joystick button. That
+is consistent with the original game (a 2000 flight sim assumed a stick), but it means the port's
+headless harness — which drives DIK codes through the keyboard queue — can never start an engine,
+and therefore can never fly.
+
+**Consequence for R3.2:** its two open questions (the depth-rejected propeller blade, and whether
+`BOB_ZD_NEARFREE` keeps the clouds-off-the-canopy benefit) both need an in-flight capture, and
+that needs one of:
+ * a synthetic DEVICE-button press for `Raw_A1_b7` (the joystick path already exists — `bob_fake_shoot`
+   injects a synthetic action for SHOOT, so the shape is proven), or
+ * a QM set-piece that starts airborne, or
+ * a test-only hook that sets `pEngine0->Starting` directly.
+The first is the most faithful and reuses machinery that already works.
+
+**Worth checking separately:** whether this QM scramble set-piece is SUPPOSED to begin with the
+engine running. If it is, then an engine that starts stopped is its own defect, independent of
+R3.2, and would be PO-visible to anyone starting a quick mission without a joystick.
+
+## 2026-09-04 — R3.2: the powered-flight repro, attempt 1. Throttle now REACHES the sim; the aircraft still will not roll.
+
+R3.2's two open questions (the depth-rejected propeller blade, and whether `BOB_ZD_NEARFREE` keeps
+the clouds-off-the-canopy benefit) both need one thing: a capture taken IN FLIGHT. Attempted it.
+
+**Reused what exists rather than building new**: `BOB_AUTOFLY=toext` already does takeoff + climb
++ F6 (built for backlog #1) — full throttle at tc=20, Ctrl-held ELEVTRIM, repeated nose-up trim,
+external view at tc=430.
+
+**Result: still parked.** Frame-380 capture with `BOB_HUD=1` reads `Alt 4ft  Speed 0Kts  Power 90`.
+
+**But that is NOT the same as the 2026-06-21 finding, and the difference is the lead.** That note
+recorded *"the headless autofly stays parked (Speed 0, **Power 0**)"*. Power now reads **90**, so
+the throttle keystroke is reaching the game and being applied — input delivery is no longer the
+problem (consistent with R26 fixing the numpad and the wider key path). What is missing is that the
+aircraft does not ROLL with power applied.
+
+**Next lead, from the live key table:** `FK_ENGINESTARTER0` (idx 317) is bound at `0x0D` in
+**shift-state 5** and at `0x10B` (a device button). Shift state is a MODE here, entered by a key
+whose mapping value is <16; dumping those gives only Ctrl->3, Shift->4, Alt->2 — **no single
+modifier reaches state 5**, so the starter may simply be unreachable from the keyboard as bound,
+which would explain an engine that never turns. `RESTARTENGINE` (idx 231) is NOT BOUND at all.
+Worth checking whether the engine is meant to be running already in this QM set-piece (a scramble
+start) and something in the port leaves it stopped — that is a different defect from R3.2 and
+would be worth its own item.
+
+Until the aircraft flies, R3.2 stays gated on evidence, not on opinion.
+
+## 2026-09-04 — R3.2: the depth-sort cockpit loss is MEASURED and BOB_ZD_NEARFREE recovers it
+
+Captured three arms at frame 150 of the QM cockpit boot (`BOB_SHOT3D=150`), 1920x1080, and
+compared them pixel-wise instead of arguing from the code:
+
+| arm | lower panel (y>=860) vs painter's-order reference | mean brightness |
+|---|---|---|
+| `BOB_NO_ZDEPTH=1` (painter's order) | 0.0 % (self) | 33.3 |
+| `BOB_ZDEPTH=1 BOB_ZDEPTH_PAINTER=1` | **6.1 %** | 29.2 (darker) |
+| the same **+ `BOB_ZD_NEARFREE=0.5`** | **0.3 %** | 32.9 |
+
+**What is lost, seen not inferred:** two cylindrical cockpit objects (gun breech / ammo feeds)
+centre-left of the lower panel are PRESENT in painter's order, GONE with the depth sort, and
+BACK with `BOB_ZD_NEARFREE=0.5`. Whole-frame block diff puts 437 differing blocks almost
+entirely in the bottom third (bot-left 6.2 %, bot-right 6.2 %); top-centre differs by 0.1 % with
+identical mean brightness.
+
+So `BOB_ZDEPTH_PAINTER` alone does NOT clear the cockpit-loss blocker — the near/far split does.
+That is a real step: the blocker that has kept `BOB_ZDEPTH` gated is now measured and has a
+setting that removes it.
+
+**Two things this does NOT establish, stated so they are not assumed later:**
+1. **The propeller.** The 2026-06-21 follow-up recorded the lower prop blade being depth-rejected.
+   This capture cannot speak to it: the headless boot sits on the ground (`Speed 0Kts, Power 90`
+   in the HUD) and **no propeller is in view** — the same limitation that note recorded
+   ("the headless autofly stays parked ... still needs a powered-flight repro"). Unchanged.
+2. **The benefit.** Whether the near-free split still stops clouds painting over the canopy — the
+   whole point of the depth sort — was not tested here. If it does not, `NEARFREE` has bought the
+   cockpit back by giving up the fix.
+
+**2026-09-04 follow-up:** tried to test the BENEFIT (clouds not painting over the canopy) from the
+same three captures. It cannot be done from them, for two reasons, and the attempt is recorded so
+nobody repeats it:
+* My sample boxes were wrong — two of the three read (189,198,209) and (144,179,222), i.e. they
+  were on SKY, not on the canopy structure. Only the right-post box was on the frame, and it shows
+  the same pattern as the panel (painter 34,36,22 / depth 28,30,15 / NEARFREE 34,36,22): the depth
+  sort darkens it, NEARFREE restores it.
+* More fundamentally, the original defect is a PILOT-IN-FLIGHT report. Parked on the runway there
+  is no landscape bleeding through the panel and no cloud over the canopy to test.
+
+So **both** remaining R3.2 questions — the propeller blade and the cloud/canopy benefit — reduce to
+the SAME missing capability: a powered-flight repro. Checked for one and there is none: no
+AUTOPILOT binding exists in the live key table (searched AUTOP/AUTOL/LEVEL/TAKEOFF — only ACCELKEY
+on TAB), and the `BOB_BOOT_FRONTEND` scaffold loads a runway set-piece with no start-airborne flag.
+Building that repro is the next R3.2 sprint, and it unblocks both questions at once.
+
+Next: a powered-flight repro (for the prop and the cloud/canopy case together), then the gold A/B.
+Until both, `BOB_ZDEPTH` stays gated — the evidence supports the setting, not yet the default.
+
+## 2026-09-03 — R28: numpad keys. Pan FIXED; zoom is NOT a port defect.
+
+**Pan (fixed, PO-confirmed).** None of the 13 numpad DIK scancodes existed in `sdl_to_dik`
+(`bob_video.cpp`), so every numpad key died in the compat layer and never reached
+`OnKeyDown`. The game side was always ready: the live 3D key table binds all 13 (42
+bindings, dumped with `BOB_DUMP_BINDINGS`) — KP8/2/4/6 ROTUP/DOWN/LEFT/RIGHT, KP7/9/1/3 the
+diagonals, KP5 ROTRESET, KP- ZOOMIN, KP+ ZOOMOUT, KP0/KP. rudder. Added the 13 cases.
+NumLock is irrelevant here: SDL *scancodes* are physical (unlike keycodes), which is why the
+mapping belongs on the scancode. PO confirmed pan now works.
+
+**Zoom: the key arrives and the handler runs — the cockpit simply has no zoom.**
+Measured with `BOB_TRACE_ZOOM` (new, default-off) after booting a flight and tapping
+DIK 0x4A via `BOB_AUTOFLY=view4A`:
+
+    [view] tap DIK 0x4a (cnt=150 kbAcq=1)
+    [zoom] HandleZoom flags=0x1 range=256 min=160 max=1920000
+
+So delivery is fine and `range` is nowhere near its clamp — the value genuinely moves.
+`ViewPoint::HandleZoom` (VIEWSEL.CPP:5648) only adjusts `currentviewrec->range`, and
+`ViewRec` (VIEWSEL.H:195) is `{range, hdg, pitch, roll}` — **there is no FOV field at all.**
+`range` is an orbit distance, meaningful for external/padlock views. `FocusCockpit`
+(VIEWSEL.CPP:9438) sets only `hdg` and `pitch`. Hence pan works in the cockpit and zoom
+cannot: the cockpit view has no distance to change.
+
+**ANSWERED from the game's own data — no PO input needed, and nothing is broken.**
+The engine has TWO zooms, and the numpad carries both:
+
+| keys | action (game's own KeyName comment) | what it changes | where it works |
+|---|---|---|---|
+| `KP-` / `KP+` | `ZOOMIN` (52) / `ZOOMOUT` (53) | `currentviewrec->range`, an ORBIT DISTANCE | external / padlock only |
+| **`Ctrl`+`KP+`** / **`Ctrl`+`KP-`** | **`NEXTSHAPEUP` (144) / `NEXTSHAPEDN` (145) — "Field of View: Zoom In/Out"** | the FIELD OF VIEW | **the cockpit** |
+
+Derived, not guessed: `KEYMAPS.H:144-145` name the second pair *"Field of View: Zoom In/Out"*,
+and the live table binds them at `0x4E,3` and `0x4A,3` — scancode KP+/KP- in **shift-state 3**.
+Shift state is a MODE in this engine, entered by a key whose mapping value is <16
+(`STUB3D.CPP:1563`, `currshifts = index>>1`); dumping the table's shift keys gives
+LEFT/RIGHT CTRL -> 3, SHIFT -> 4, ALT -> 2. So state 3 is **Ctrl**. `OnKeyUp` clears it
+(`STUB3D.CPP:1619`), and `sdl_to_dik` maps both Ctrl scancodes, so the chain is complete.
+
+So the PO's report is explained without a defect: plain numpad zoom in the cockpit adjusts an
+orbit distance the cockpit view does not use (`ViewRec` is `{range,hdg,pitch,roll}` — no FOV
+field, and `FocusCockpit` sets only hdg/pitch). **Ctrl+KP+/KP- is the cockpit zoom.**
+Worth telling the PO rather than building anything. Still worth confirming by hand once.
 # Rowan's Battle of Britain — Linux Native Port
 
 ## 2026-08-28 — S317: R1 IS GREEN — UI preference → flight → recording, in one process
@@ -10444,3 +10887,413 @@ At each `_asm`/`__asm`/`#pragma aux` site add a `#if defined(BOB_LINUX)` branch
    a GCC `__asm__ volatile("call X...": "=a"(r): "a"(),"d"(),"b"(),"c"() :
    "esi","edi","cc","memory")` wrapper (omit ebx/ebp from clobbers when the
    routine preserves them; pass `&ref` for reference args).
+
+
+---
+
+## 🔲 BACKLOG — UI-2: the campaign screen is TALLER than the window, so its bottom row (including the exit) is unreachable
+
+**Symptom (PO, 2026-09-04, live session):** "no way to exit bob after return from 3D, also many
+icons cut off at the bottom of the screen and not useable (you can click on some icons though)."
+
+**Measured in that very session** (`BOB_TRACE_VID=1`):
+
+```
+[centre] UI content 1024x768  in window 1920x1080 -> offset (448,156)     <- front end, fits
+[centre] UI content 1548x1532 in window 1920x1080 -> offset (186,0)       <- campaign map
+```
+
+The campaign screen lays out **1548 x 1532**. The window is 1080 tall, so **452 px falls off the
+bottom** -- the toolbar row the PO photographed as half-cut, and with it the exit control. The Y
+offset reads 0 because centring clamps: `oy = (ey > 0 && g_scrH > ey) ? (g_scrH - ey)/2 : 0`, and
+`g_scrH > ey` is false. The icons that DO respond are the ones above the fold, which is exactly the
+"you can click on some icons though".
+
+**Centring cannot fix this, and that is the point.** R9 offered the PO centre-vs-scale and the PO
+chose CENTRE (2026-09-04). Centring only repositions; it cannot make 1532 px fit in 1080. The
+required ratio is 1080/1532 = 0.70. The only existing mechanism that can show the whole screen is
+`BOB_SCALE_UI=1`, which was built for exactly this and is currently opt-in and OFF.
+
+**So the PO's own choice does not cover this case, and should be re-put to them with these numbers
+rather than silently overridden.** Two candidate dispositions:
+
+1. Keep centre as the default and switch to scale automatically WHEN the content does not fit
+   (`ey > g_scrH || ex > g_scrW`). Centre keeps its 1:1 pixels where it works; the unreachable case
+   stops being unreachable. Hit-testing already divides by the same scale it draws with (R9/S359).
+2. Make scale the default outright. Simpler, but it resamples every screen including the ones that
+   currently fit, which is what the PO was asked to weigh in the first place.
+
+**Not yet done, deliberately:** nothing was changed here on my own authority, because centre-vs-scale
+is the PO's call and they have already answered it once.
+
+**Related but distinct:** the stale-extent bug (canvas positioned from an extent measured at the
+previous display mode) IS fixed and shipped -- the same session shows it firing correctly:
+`[centre] mode changed -- dropping stale content extent 1079x1220`. UI-2 is a separate defect:
+the content genuinely does not fit, whatever offset it is given.
+
+
+---
+
+## 🔲 BACKLOG — MP-3: connecting bob AppImages across a home network is undocumented (the mechanism already exists)
+
+**PO, 2026-09-04:** *"how to get bob multiplayer connected between appImages on different PCs on a
+home network"*. **Evidence:** `/home/admin/Videos/260904_bob_multiplayer.mp4` (12 MB, 23:33).
+
+### This is very likely documentation, not code -- read this before writing any
+
+The DirectPlay compat (`SRC/compat/bob_dplay.cpp`) already implements cross-machine play over plain
+UDP, and exposes it:
+
+| env | default | meaning |
+|---|---|---|
+| `BOB_DPLAY_PORT` | `47624` | DirectPlay's classic port |
+| `BOB_DPLAY_HOST` | **`127.0.0.1`** | CLIENT ONLY: where to look for a host |
+| `BOB_TRACE_DPLAY` | off | log every call, including unimplemented ones |
+| `BOB_NO_DPLAY` | off | negative control for `tools/bob_mp_connect.sh` |
+
+* the HOST binds `INADDR_ANY` (`bob_dplay.cpp:168`), so it is already reachable from the LAN;
+* the client sets `SO_BROADCAST` (`:164`) and probes broadcast-style;
+* **but `BOB_DPLAY_HOST` defaults to `127.0.0.1`**, so out of the box a client looks only at its own
+  machine. That single default is the most likely reason two PCs never see each other.
+
+**First experiment, before any code:** on PC-B run the AppImage with
+`BOB_DPLAY_HOST=<PC-A's LAN IP>` and see whether the Join screen lists PC-A's session. Env passes
+straight through the AppRun, so no repack is needed to try it. If that works, the whole item is a
+documentation fix (plus possibly a friendlier way to enter an address than an env var).
+
+### What already passes, so the transport is not the suspect
+
+| gate | proves |
+|---|---|
+| `tools/bob_mp_connect.sh` | multiplayer gets past its front door (with a `BOB_NO_DPLAY` control) |
+| `tools/bob_mp_packet.sh`  | two processes exchange a DirectPlay packet |
+| `tools/bob_mp_uijoin.sh`  | the game's JOIN screen actually lists a hosted session |
+
+All three run on ONE machine over loopback. **Nothing has ever been tested across two hosts**, so
+what is unproven is specifically: broadcast probes crossing a real LAN segment, and any firewall on
+UDP 47624. Those are the two things a cross-PC test would settle.
+
+### Then decide
+* If `BOB_DPLAY_HOST=<ip>` works: document it in `RUNNING.md` and in the AppImage notes, and
+  consider surfacing an address field rather than an env var.
+* If broadcast discovery does NOT cross the LAN: that is a real defect and the probe needs a
+  directed unicast to `BOB_DPLAY_HOST` as a fallback -- check whether it already does before
+  assuming.
+* Either way a gate spanning TWO hosts cannot run on this box; say so rather than faking it with
+  loopback and calling it cross-PC.
+
+### Not started
+No sprints have been run against this item.
+
+
+### UI-2 addendum — "Select Side is blank" (PO, 2026-09-04). Sprints 1-4, TWO HYPOTHESES ELIMINATED
+
+The screen legitimately has **no text**: its choices are POLYGON hit-areas over the RAF/Luftwaffe
+art (`FULLPSYS.CPP:319`, `g_sideSelectPolys`), and `bob_draw_menu`'s text loop breaks on the
+screen's NULL captions. So "blank" means the ARTWORK is not drawing.
+
+**Eliminated 1 -- the 4:3 scaling is NOT wrong.** I claimed `sy = (resW*3/4)/768` misplaces
+everything at 1920x1080. It does not: `resW` comes from
+`int RFullPanelDial::resolutions[] = {800, 800, 1024}` (`FULLPSYS.CPP:112`) -- the game's own UI
+authoring width, never the display mode. At resW=1024 the scale is exactly 1.0 and the hit-test
+works in native 1024x768 UI space; the canvas->window mapping is a separate layer (bob_video's
+centring). Do not re-open this.
+
+**Eliminated 2 -- `artnum=0` is not the blank screen.** The single `artnum=0` paint in the PO's
+session log sits immediately before `(bridge) StartFlying -> Launch3d`, i.e. it is the transition
+frame into 3D. It is not the side-select screen and not evidence of missing art.
+
+**Still open.** The PO reported this while in MULTIPLAYER, and `SideSelect` as coded here is reached
+from Campaigns -> single player (`FULLPANE.CPP:2807`, `LaunchDial(new SideSelect(0),0)`). Whether
+multiplayer uses this same dialog or a different side-selection screen is UNVERIFIED, and that is
+the next thing to establish -- chasing the single-player dialog's art would be wasted if
+multiplayer never opens it. Note ma reports the same symptom (`ma/scrum.md` MP-2), which suggests a
+shared-engine cause rather than a bob-only one.
+
+**Sprint count on UI-2: 4.** Rotating off per the PO's cadence rule.
+
+
+---
+
+## ✅ DONE — MP-4: cross-PC discovery WORKS; the client aborted when the host session was selected
+
+**PO, 2026-09-04/05, two real machines.** Supersedes the guesswork in MP-3: this is measured.
+
+### Cross-machine multiplayer is NOT broken at the network layer
+
+Client (`m@d`, `BOB_DPLAY_HOST=192.168.254.57`):
+
+```
+[dplay] EnumSessions: probing 192.168.254.57:47624
+[dplay] EnumSessions: found "BoB"
+[dplay] EnumSessions -> 1 session(s)          (repeated ~17x)
+```
+
+Host (`admin@m`, ufw inactive, `ss -lun` shows `0.0.0.0:47624`):
+
+```
+[dplay] host bound to UDP 47624
+[dplay] Open(CREATE) session "BoB"
+[dplay] probe from a client -> offered session "BoB"    (repeated ~17x)
+```
+
+So probes cross the LAN, the host answers, and the client lists the session. **The AP-isolation /
+firewall theories were wrong** -- MP-3's "never tested across two hosts" is now tested, and the
+transport passes. Setting `BOB_DPLAY_HOST` to the host's LAN IP is the documented answer.
+
+### The actual defect: the CLIENT aborts on selecting the host
+
+PO: *"client bob crashed when I selected 'bob' as host"*.
+
+```
+*** buffer overflow detected ***: terminated
+=== CRASH: signal 6 ===
+  ... libc __fortify_fail / __chk_fail ...
+  GameSelect::OnClickedCommander()   SRC/MFC/gameselt.cpp:156
+  CVisitorsBook::OnInitDialog()      SRC/MFC/Visitors.cpp:155
+  bob_frontend_tick                  SRC/MFC/fullpsys.cpp:1620
+  CMIGApp::OnIdle                    SRC/MFC/MIG.cpp:994
+```
+
+(symbolised from the 32-bit AppImage binary md5 `2c55321e87e4`; addr2line on optimised code can be
+approximate, but the top two frames are coherent with the PO's action.)
+
+`CVisitorsBook::OnInitDialog` walks `_DPlay.VisitorsBook` and calls
+`rlistbox->AddString(temp->vis_name, 0)` per entry. A fortified copy aborted.
+
+### Two candidate mechanisms, NEITHER yet confirmed
+
+1. **A name off the wire without a NUL.** `DPlay::AddNameToVisitorsBook` (`COMMS.CPP:1735`) does
+   `vis_name = new char[strlen(name)+1]; strcpy(vis_name, name);`. If `name` came from a network
+   packet and is not NUL-terminated within its buffer, `strlen` runs past the end -- and the later
+   `AddString` copy is what fortify catches. This is the same shape as the FF BALKANS-CRASH
+   (`ReadNameString` reading past a table) and matches the standing "uninit reads fed by stubs"
+   pattern.
+2. **A stale/dangling list.** `VisitorsBook = NULL` appears ONLY inside `DeleteVisitorBook()`
+   (`COMMS.CPP:1868`), which walks and frees first -- so it is not an initialiser. `_DPlay` is a
+   global, so the pointer starts NULL by static zero-init; but after any free/reuse cycle the list
+   could be walked stale.
+
+### Next step, and it is cheap
+
+Run the CLIENT under ASAN. That is what cracked the FF Balkans crash after three failed
+reproductions, and here the crash is 100% reproducible on demand (select the host). ASAN will name
+the overflowing copy and its allocation instead of leaving two hypotheses.
+**Do not "fix" this by bounding the AddString copy** until the source is known -- if a wire name is
+unterminated, the bound hides a protocol bug.
+
+**Sprints so far: 4** (network ruled out, backtrace symbolised, crash site read, init path traced).
+Rotating off per the PO's cadence rule.
+
+
+---
+
+## ✅ MP-4 RESOLVED — the client aborted on session select: a stale `59` against a 32-byte buffer
+
+**PO, 2026-09-05, two real PCs:** *"client bob crashed when I selected 'bob' as host"*.
+
+### Root cause
+
+```c
+SESSIONNAMELEN = 32                          // SRC/H/misssub.h:185
+//DeadCode AMM 21Feb100  SESSIONNAMELEN = 128,   // <- the line IMMEDIATELY above it
+char SessionName[SESSIONNAMELEN];            // SRC/H/winmove.h:686  -> 32 bytes
+
+strncpy(&_DPlay.SessionName[0], temp->sname, 59);   // writes up to 59
+_DPlay.SessionName[59] = NULL;                      // stores 28 bytes PAST the end
+```
+
+The buffer was cut from 128 to 32 and the copies never followed. glibc `_FORTIFY_SOURCE` catches
+the `strncpy` and aborts the instant a session row is clicked. Nothing to do with the network: it
+would abort identically on loopback.
+
+### Four sites, all fixed (bounded by `SESSIONNAMELEN - 1`, so they cannot drift again)
+
+| site | when it fires |
+|---|---|
+| `SRC/MFC/session.cpp:197` | clicking a session row -- the PO's crash |
+| `SRC/MFC/session.cpp:253` | `singlesession` auto-pick -- fires with NO click when one host answers |
+| `SRC/COMMS/COMMS.CPP:1565` | copies the host's advertised name STRAIGHT OFF THE WIRE |
+| `SRC/COMMS/COMMS.CPP:3053`  | same pattern again |
+
+Site 3 is the widest: a host whose session name exceeds 31 characters overflows any client before
+the UI is involved.
+
+### How it was found, and what that says about the method
+
+Symbolising the PO's crash from the SHIPPED (optimised) binary pointed at `Visitors.cpp` /
+`CVisitorsBook::OnInitDialog` -- **wrong**. The ASAN build's real symbols named
+`CSelectSession::OnSelectRlistSelectsession` (`session.cpp:197`) via `bob_evt_fire` /
+`bob_ole_click`. addr2line on optimised 32-bit code is a hint, not evidence.
+
+Reproduced deterministically with `BOB_CLICKXY` (XTEST/xdotool clicks do NOT activate this UI; the
+in-process injector does), driving main menu -> Multi-Player -> Join Game -> click the session row.
+The menu indices came from `BOB_DUMP_MENU=1` rather than guesswork.
+
+**Verified against the PO's live host at 192.168.254.14:** exit 134 (SIGABRT, "buffer overflow
+detected") before; exit 124 with 0 overflow reports after, same clicks, same path.
+
+### Incidental findings, NOT fixed here
+
+* **7 ODR violations** reported by ASAN at startup: duplicate globals in `BOBFRAG.CPP`,
+  `RCOMBOC.CPP`, `Globrefs.cpp`, `bob_ole_rlistbox.cpp`. Suppressed for this hunt with
+  `detect_odr_violation=0`; they are real and unexamined.
+* **Case-duplicate sources.** `SRC/MFC/SESSION.CPP` exists beside `SRC/MFC/session.cpp` and still
+  carries the unfixed stale-59 bug. The build compiles the LOWERCASE one (confirmed from the build
+  deps before patching), so the shipped fix is correct -- but greps land in the dead copy, which is
+  exactly the trap recorded for the ma port. Filed as a follow-up.
+
+
+### ✅ MP-4 follow-up: the 7 ASAN "odr-violation" reports are EXPECTED, not defects
+
+Found while hunting the session-name overflow: an ASAN build reports 7 odr-violations at startup
+(`spptime`, `drawtime` in `RCOMBOC.CPP`; `pselectedsquadron`, `buttonpos` in `BOBFRAG.CPP`;
+`BAD_RV` in `Globrefs.cpp`; `IID_DRListBox`/`IID_DRListBoxEvents` in `bob_ole_rlistbox.cpp`).
+
+**They are a known consequence of an intentional build choice, not a bug.**
+
+```cmake
+CMakeLists.txt:66   $<$<COMPILE_LANGUAGE:C,CXX>:-fcommon>
+CMakeLists.txt:95   # --allow-multiple-definition: -fcommon tentative defs appear in several TUs.
+```
+
+This 1999 codebase writes tentative definitions (`int foo;`) in headers, so the same global lands in
+several translation units. `-fcommon` merges them, which is exactly what ASAN's ODR detector
+reports. The link already carries `--allow-multiple-definition` for the same reason.
+
+**Ruled out while establishing this:** that the build was compiling BOTH halves of a case-duplicate
+pair. It is not -- 98 sources compile and none are case-dupes. (The pairs do exist on disk: 21 of
+them, e.g. `SRC/MFC/BOBFRAG.CPP` + `SRC/MFC/bobfrag.cpp`, `SRC/RCOMBO/RCOMBOC.CPP` +
+`rcomboc.cpp`. Greps land in the dead copy -- the trap already recorded for the ma port -- but the
+build picks one.)
+
+**How to run ASAN on this port:** `ASAN_OPTIONS=detect_odr_violation=0`, otherwise 7 expected
+reports bury the real ones. That is how the MP-4 overflow was isolated.
+
+
+## UI-2 sprints 5-8 (2026-09-05) — BOB_SCALE_UI could never have fixed this, and now there is a flag that can
+
+**Correction to this item's own entry.** It says *"The only existing mechanism that can show the
+whole screen is `BOB_SCALE_UI=1`"*. That is **wrong**: the scale path clamps
+
+    if (sc < 1.0f) sc = 1.0f;    /* never shrink below 1:1 */
+
+and UI-2 needs 1080/1532 = **0.70**. `BOB_SCALE_UI=1` would have been clamped straight back to 1.0,
+left the bottom row off-screen, and looked like a feature that simply did nothing. Had the PO been
+handed that flag as the fix for this, it would have failed in front of them for a reason nobody had
+measured. The clamp is correct for its original purpose (never upscale-blur art that fits); it is
+just fatal for the oversized case.
+
+**Implemented: `BOB_AUTOSCALE_UI=1`, OPT-IN, default unchanged.** Disposition 1 of the two put to the
+PO -- centre where the content fits, scale only where it does not. Deliberately not defaulted:
+centre-vs-scale is the PO's call and they answered it once already; this only makes the alternative
+one flag away instead of a code change.
+
+* The fit test is per FRAME, not a cached env flag -- whether the content fits is a property of the
+  current screen (front end 1024x768 fits; campaign map 1548x1532 does not).
+* On an overflowing screen centring yields and scale takes over, so the two can never both apply.
+* The 1:1 clamp is lifted **only** in that case, so nothing that currently fits is resampled.
+* Clicks already divide by the same `g_uiScale`/`g_uiScaleOff` written by the draw (S359), and that
+  arithmetic is a plain division that works identically for a scale below 1. No hit-test change was
+  needed -- verified by reading the click path, not assumed.
+
+**Instrument proves it can speak.** `[autoscale] ARMED: content WxH window WxH (overflow=N)` prints
+once per run, plus a line on every overflow transition. Measured on the front end:
+
+    [autoscale] ARMED: content 1024x768 window 1024x768 (overflow=0)
+
+i.e. the flag is live and correctly decides NOT to scale where the content fits. Without the ARMED
+line a non-overflowing run would be indistinguishable from the flag being ignored.
+
+**Not yet verified on the failing screen.** The campaign map needs a real GL session driven to it at
+1920x1080; headless never reaches the present path, so those traces cannot fire there. **PO: run the
+AppImage with `BOB_AUTOSCALE_UI=1`, go to the campaign screen after a 3D exit, and see whether the
+bottom toolbar row (and the exit control) is reachable.** Expect `[autoscale] content 1548x1532 vs
+window 1920x1080 -> SCALE (does not fit)` in the terminal, and a whole-screen view at x0.70.
+
+NOTE: this is in the DEV build only -- not in any AppImage yet. Do not ask the PO to run it until
+bob is repacked.
+
+**Sprint count on UI-2: 8.**
+
+
+## MP-3 sprints 1-4 (2026-09-05) — DOCUMENTED; the transport question is answered, cross-PC still unproven
+
+**The item's own leading hypothesis was half wrong.** It says the client "sets `SO_BROADCAST` and
+probes broadcast-style", and lists "broadcast probes crossing a real LAN segment" as one of the two
+unknowns. Reading `EnumSessions` (`bob_dplay.cpp:255`): it builds a `sockaddr_in` from
+`inet_addr(dp_host())` and sends **one directed unicast** to that address. `SO_BROADCAST` is set on
+the socket but nothing sends to a broadcast address. So:
+
+* **broadcast is not involved at all** -- an AP that blocks broadcast cannot be the cause, and the
+  "does broadcast cross the LAN segment" unknown is void;
+* the address in `BOB_DPLAY_HOST` must simply be correct, since there is no discovery fallback;
+* the only firewall surface is **UDP 47624**.
+
+**Why the PO's own first experiment failed.** They ran `BOB_DPLAY_HOST=192.168.254.57` and reported
+"appImages don't seem to know about each other", and their client then aborted with
+`*** buffer overflow detected ***`. That abort is MP-4 -- a session name copied into a 32-byte field
+with a stale 59-byte length -- and it fires ON THE JOIN SCREEN, i.e. before a session list could
+ever appear. **The most likely reading is that MP-3's first experiment never actually got to run**,
+and its apparent failure was MP-4 all along.
+
+Verified the fix is in the artifact the PO runs: `SRC/MFC/SESSION.CPP` and the two further sites in
+`SRC/COMMS/COMMS.CPP` all carry the `SESSIONNAMELEN - 1` form, the `session.cpp` -> `SESSION.CPP`
+symlink is intact (identical md5, mode 120000 preserved), and the 2026-09-05 01:57 AppImage postdates
+the fix. The source mtime of 02:12 is the SYMLINK REPAIR, not a content change -- worth stating,
+because on timestamps alone the image looks stale.
+
+**Deliverable: `RUNNING.md` now carries a "Multiplayer between two PCs" section** -- host steps,
+client steps, the `ss -lun | grep 47624` check, `BOB_TRACE_DPLAY=1` for diagnosis, and an ordered
+list of what to check when the list stays empty. No repack needed: env passes through the AppRun.
+
+**NOT resolved, and deliberately not claimed:** all three multiplayer gates run on ONE machine over
+loopback, so a genuine two-host connection remains unverified and cannot be verified from this box.
+The documented procedure follows from the code, not from a passing cross-PC test. **The PO retrying
+with the current AppImage is what would close this item.**
+
+**Sprint count on MP-3: 4.**
+
+
+## UI-2 — repacked; BOB_AUTOSCALE_UI is now in a shipped image (2026-09-05)
+
+`/home/admin/pkg/BattleOfBritain-x86_64.AppImage` (707 MB). The AppDir binary was from 01:56 and did
+NOT contain the flag; the current build was swapped in and the image rebuilt. Verified by extracting
+the binary from the finished image and matching whole strings:
+
+    BOB_AUTOSCALE_UI       present
+    [autoscale] ARMED      present
+    SessionName (MP-4 fix) present
+
+**The PO's `~/Documents/260904` is untouched** -- this is in `pkg/` awaiting their word, so the
+fresh-install test on the other PC still has the images they tested.
+
+**How to try it** (campaign screen after a 3D exit, at 1920x1080):
+
+    BOB_AUTOSCALE_UI=1 /home/admin/pkg/BattleOfBritain-x86_64.AppImage
+
+Expect in the terminal:
+
+    [autoscale] ARMED: content 1024x768 window 1920x1080 (overflow=0)      <- front end, fits
+    [autoscale] content 1548x1532 vs window 1920x1080 -> SCALE (does not fit)   <- campaign map
+
+and the bottom toolbar row -- including the exit control -- reachable at x0.70. The ARMED line
+prints on every run whether or not anything overflows, so a silent terminal means the flag was not
+picked up, not that the screen fitted.
+
+
+### MP-4 — header corrected to DONE, and re-verified in the current image (2026-09-05)
+
+The fix has been resolved since 2026-09-05 (the `✅ MP-4 RESOLVED` section above), but the item's
+TOP-LEVEL HEADER still read `🔲 BACKLOG`, so every survey of open work counted it as outstanding.
+Corrected. Worth noting as a process point: a resolution buried under an unchanged header is
+invisible to exactly the sweep that is supposed to find it.
+
+Re-verified in the freshly packed `pkg/BattleOfBritain-x86_64.AppImage` (2026-09-05 05:45) by
+extracting the binary and matching strings: the `SessionName` sites are present, the
+`session.cpp -> SESSION.CPP` symlink is intact with identical md5, and `SRC/COMMS/COMMS.CPP` carries
+all four `SESSIONNAMELEN - 1` forms.
+
+**What remains for MP-3/MP-4 is the PO's retry, not code:** cross-PC discovery was already proven by
+their own logs (probes cross the LAN, the host answers, the client lists the session), and the abort
+that stopped them at the Join screen is fixed and shipped. `RUNNING.md` documents the procedure.

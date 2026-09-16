@@ -268,3 +268,71 @@ gold shots as-is = the BDG 0.99 patched build (dialogs/strings read from
   (combo fill) already handled by `m_FirstSweep=TRUE`. **MA note 27 (S70) processed:**
   its listbox-black-fill-is-load-bearing warning heeded (untouched). Shared-doc §8r
   (BoB's adoption + the "not-Japanese/§1-N/A" diagnostic + the italic extension).
+
+
+---
+
+## Multiplayer between two PCs on a home network (MP-3)
+
+Two machines, both running the AppImage. Call them **HOST** (hosts the game) and **CLIENT**.
+Everything below passes straight through the AppImage's AppRun, so **no repack is needed**.
+
+### 1. Find the host's LAN address, on the HOST
+
+    hostname -I | awk '{print $1}'          # e.g. 192.168.254.14
+
+### 2. Start the HOST
+
+    ~/Documents/260904/BattleOfBritain-x86_64.AppImage
+
+Then in game: **Multiplayer -> Host**. The host binds `INADDR_ANY`, so it is reachable from the LAN
+as soon as it is listening; it needs no address of its own and no env var.
+
+Confirm it is actually listening (on the HOST, while the game sits on the hosting screen):
+
+    ss -lun | grep 47624
+    # expect:  UNCONN  0.0.0.0:47624
+
+If that line is absent the game is not hosting yet -- fix that before touching the client.
+
+### 3. Start the CLIENT, pointed at the host's address
+
+    BOB_DPLAY_HOST=192.168.254.14 ~/Documents/260904/BattleOfBritain-x86_64.AppImage
+
+Then in game: **Multiplayer -> Join**. The session list should show the host's game.
+
+**`BOB_DPLAY_HOST` is required on the client and defaults to `127.0.0.1`** -- without it a client
+looks only at its own machine, which is the single most likely reason two PCs never see each other.
+It is a CLIENT-ONLY setting; setting it on the host does nothing.
+
+### What the transport actually does (so the failure modes are predictable)
+
+`EnumSessions` sends a **directed unicast UDP probe** to `BOB_DPLAY_HOST:47624` -- it does NOT rely
+on broadcast discovery, despite the socket having `SO_BROADCAST` set. Consequences:
+
+* the address has to be right; there is no discovery to fall back on;
+* nothing needs to cross a broadcast domain, so an AP that blocks broadcast is NOT a factor;
+* only **UDP 47624** matters. `BOB_DPLAY_PORT` changes it, and must then match on both machines.
+
+### If the session list stays empty
+
+    BOB_TRACE_DPLAY=1 BOB_DPLAY_HOST=<host-ip> ~/Documents/260904/BattleOfBritain-x86_64.AppImage
+
+`[dplay] EnumSessions: probing <ip>:47624` confirms the client is probing the address you meant.
+Then check, in order:
+
+1. `ping <host-ip>` from the client -- basic reachability.
+2. On the host, `sudo ufw status` (a live firewall must allow UDP 47624; `Status: inactive` is fine).
+3. `ss -lun | grep 47624` on the host, as above.
+
+### Known-good state, and one caveat
+
+The client used to **abort** on the Join screen with `*** buffer overflow detected ***` -- a session
+name copied into a 32-byte field with a stale 59-byte length (MP-4). That is fixed
+(`SRC/MFC/SESSION.CPP`, plus two more sites in `SRC/COMMS/COMMS.CPP`) and the fix is in the
+2026-09-05 01:57 AppImage.
+
+**Caveat, stated because it has not been proven:** every multiplayer gate in this tree
+(`tools/bob_mp_connect.sh`, `bob_mp_packet.sh`, `bob_mp_uijoin.sh`) runs on ONE machine over
+loopback. A genuine two-host connection has never been verified here, and cannot be from this box.
+The procedure above follows from the code, not from a passing cross-PC test.
