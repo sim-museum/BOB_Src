@@ -6148,3 +6148,60 @@ it is sitting unused. Worth its own item.
 
 **ASPECT-1: 13 sprints. The input path is fixed; the gold-comparison premise is dead and the item
 needs re-aiming at internal consistency.**
+
+## ASPECT-1 S14 (Opus 5, 2026-09-15) — ⭐⭐ **two more input bugs, both found by S13's fix working**: the autofly tick was a PUMP not a frame (the whole schedule fired in the first instant), and the held Ctrl turned the aileron into **Ctrl+Left** — heading pinned at *exactly* 0 for an entire flight
+
+S13 made a synthetic key HOLD visible to the immediate DIK state for the first time. This sprint flew
+it, and the fix promptly exposed the next two faults in the same path.
+
+⛔ **Fault 1: a tick was a PUMP.** The `BOB_AUTOFLY` schedules live in `pump_events()`, which runs far
+more often than a frame is presented, so `bank:60` meant 60 **pumps** — a fraction of a second. Every
+step (throttle at 20, Ctrl at 30, trim from 30, aileron at 60) fired essentially at once, at the
+instant the flight began. **This is precisely MA's KEYHOLD-1 S3** — *"a tick was a PUMP, not a frame:
+740 pumps passed between two frames"* — in the sibling port, never fixed here. [[shell-edit-commit-traps]]
+
+**Fixed** with an ungated `g_bob_frames`, incremented in `bob_frame_tick()` at every swap site; the
+bank schedule advances only when the frame counter moves. `BOB_AUTOFLY_PUMPTICKS=1` reverts. The
+trace now reports both (`from tick 60 (frame 74)`).
+
+⭐ **It works, and the measurement is unambiguous** — the same flight, same mission (`BOB_QM_INDEX=7`,
+the airborne Spitfire), pump-paced versus frame-paced:
+
+| | alt over the first five HUD samples |
+|---|---|
+| pump-paced (S12 behaviour) | 962 → 479 → **0 ft** — straight into the terrain |
+| **frame-paced** | 962 → 1014 → 1102 → 1182 → **1205 ft** — a real 243 ft climb |
+
+The nose-up trim had never actually had time to act. R3.4 S9's "962 ft → 0 ft" and S12's repeat of it
+were both this, not a flight-model or trim problem.
+
+⛔⛔ **Fault 2, and it is S13's fix biting.** With the climb finally working, the heading stayed at
+**exactly 0 for all 14 samples of the flight** — with `AILERON_LEFT` held from tick 60. Cause: Ctrl
+goes down at tick 30 and was **never released**, so the aileron press arrived as **Ctrl+Left**, a
+different command. Before S13 the held Ctrl was invisible, so `0xCB` was a plain Left — *and the trim
+did not work*. The two bugs had been masking each other.
+
+**Releasing Ctrl before the aileron unpins the heading:**
+
+| arm | climb | heading |
+|---|---|---|
+| Ctrl held throughout | **+243 ft** | **exactly 0, always** |
+| Ctrl pulsed per trim | +49 ft | 0 → 358 → 359 → 356 → 358 |
+| Ctrl held across trim, released before aileron | +48 ft | 0 → 358 → 359 → 357 → 358 |
+
+⭐ **And the climb column is itself a measurement of S13's mechanism.** A Ctrl down *and* up inside one
+pump leaves the immediate-state overlay back at 0, so `GetDeviceState` never sees it — the trim falls
+back to the buffered path and the climb drops from 243 ft to ~48 ft. **A modifier must be held across
+frames to be read.**
+
+⛔ **What this sprint does NOT establish.** The turn still does not develop: heading moves **at most 4°**
+and the aeroplane reaches the ground in every arm. Nose-up *trim* cannot hold this aircraft at 280+
+kts; it needs **elevator**, not trim, and/or a start well above 962 ft. **ASPECT-1 still cannot show a
+mirror responding to a roll**, and that remains the item's actual goal.
+
+**S15:** replace the trim with a held elevator key and re-measure the heading; only once the HUD shows
+altitude held AND heading swinging does a mirror pixel mean anything. (And per S13, there is no RAF
+cockpit in the gold store, so the test is internal consistency, not pixel parity.)
+
+**ASPECT-1: 14 sprints. The input path is now correct in three separate respects; the manoeuvre is
+not yet.**

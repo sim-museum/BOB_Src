@@ -121,6 +121,7 @@ static int bob_write_ppm(const char* path, const unsigned char* px, int w, int h
 long g_bobZeroSceneFrames = 0;   /* presents with no scene drawn since the last one */
 long g_bobSceneHist[10] = {0,0,0,0,0,0,0,0,0,0};
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
+extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
 static void bob_shot3d_maybe(void)
 {
     static long want = -2, every = 0, n = 0;
@@ -699,8 +700,16 @@ static void pump_events(void)
 			   mirror must roll with the aircraft. KEYMAPS.H:1250 binds AILERON_LEFT to J_moveleft =
 			   DIK_LEFT (0xCB); held, not tapped, the same lesson MA's KEYHOLD-1 learned.
 			   BOB_AUTOFLY=bank[:tick] (default 120). */
+			/* ASPECT-1 S14: advance on FRAMES, not pumps (see g_bob_frames above).
+			   BOB_AUTOFLY_PUMPTICKS=1 restores the old pump-counted behaviour. */
 			static int bc = 0, bsent = 0, bat = -1;
-			bc++;
+			static unsigned blastf = 0; static int bpump = -1;
+			if (bpump < 0) bpump = getenv("BOB_AUTOFLY_PUMPTICKS") ? 1 : 0;
+			bool badvance = true;
+			if (bpump) bc++;
+			else if (g_bob_frames != blastf) { blastf = g_bob_frames; bc++; }
+			else badvance = false;                      /* same frame: schedule does not move */
+			if (badvance) {
 			if (bat < 0) { const char* c = strchr(mode, ':'); bat = c ? atoi(c+1) : 120; if (bat < 1) bat = 120; }
 			/* ASPECT-1 S12 (2026-09-15): the bank alone is not enough. R3.4 S9 flew quick mission 7
 			   (the airborne Spitfire) with bank:200 and the aeroplane went 962 ft -> 0 ft with the
@@ -709,14 +718,33 @@ static void pump_events(void)
 			   to do -- full throttle (DIK 0x0B) and repeated nose-UP trim (Home, 0xC7, under a held
 			   Ctrl 0x1D). Fold those in ahead of the aileron so the aircraft is flying when the roll
 			   arrives, and keep trimming so it holds altitude through the turn. */
+			/* ASPECT-1 S14: Ctrl must be SCOPED TO THE TRIM, not held across the aileron.
+			   S13 made a synthetic hold visible to the immediate DIK state for the first time,
+			   and that promptly exposed the next bug: Ctrl went down at tick 30 and was NEVER
+			   released, so the aileron press at tick `bat` arrived as Ctrl+Left -- a different
+			   command -- not AILERON_LEFT. Measured: with Ctrl held, the trim worked (962 ->
+			   1205 ft climb) and the heading NEVER moved off 0 for the whole flight. So each
+			   trim now presses and releases Ctrl around itself, and nothing else ever sees it. */
 			if (bc == 20) { kb_push(0x0B,1); kb_push(0x0B,0); }            /* 100% throttle */
-			if (bc == 30) kb_push(0x1D,1);                                  /* Ctrl held: trim shift */
-			if (bc > 30 && bc < bat && (bc % 3) == 0) { kb_push(0xC7,1); kb_push(0xC7,0); }  /* nose-UP trim */
-			if (bc == bat && !bsent) { kb_push(0xCB,1); bsent = 1;
-				fprintf(stderr,"[autofly] bank: holding AILERON_LEFT (DIK 0xCB) from tick %d\n", bat);
+			/* Ctrl is HELD across the whole trim phase (a down+up inside one pump leaves the
+			   immediate-state overlay at 0, so GetDeviceState never sees it -- measured: the
+			   climb fell from 243 ft to 49 ft when the hold was collapsed into one pump), and
+			   RELEASED one tick before the aileron so the roll is not read as Ctrl+Left. */
+			if (bc == 30) kb_push(0x1D,1);                                  /* Ctrl down, held */
+			if (bc > 30 && bc < bat-1 && (bc % 3) == 0) { kb_push(0xC7,1); kb_push(0xC7,0); }
+			if (bc == bat-1) kb_push(0x1D,0);                               /* Ctrl UP, own tick */
+			if (bc == bat && !bsent) {
+				kb_push(0xCB,1); bsent = 1;
+				fprintf(stderr,"[autofly] bank: holding AILERON_LEFT (DIK 0xCB) from tick %d (frame %u)\n", bat, g_bob_frames);
 				fflush(stderr); }
 			/* keep trimming through the turn, or the bank just spirals the nose down */
-			if (bsent && (bc % 6) == 0) { kb_push(0xC7,1); kb_push(0xC7,0); }
+			/* trim through the turn: Ctrl down one tick, trim the next, Ctrl up the next --
+			   never overlapping the held aileron with a modifier. */
+			if (bsent) { int ph = bc % 9;
+				if (ph == 0) kb_push(0x1D,1);
+				else if (ph == 1) { kb_push(0xC7,1); kb_push(0xC7,0); }
+				else if (ph == 2) kb_push(0x1D,0); }
+			}   /* badvance */
 		}
 		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->
 			   climb steeply -> stall -> fall -> hit the ground (the player-crash path) */
@@ -1393,8 +1421,17 @@ static void bob_present_pace(void)
     last = now;
 }
 
+/* ASPECT-1 S14 (2026-09-15): an ungated FRAME counter. The autofly schedules below live in
+   pump_events(), which runs far more often than a frame is presented, so "tick 60" was 60
+   PUMPS -- a fraction of a second -- and every autofly schedule collapsed into the instant the
+   flight began. MA's KEYHOLD-1 S3 found exactly this ("a tick was a PUMP, not a frame: 740
+   pumps passed between two frames"); BoB has the same harness shape and never got the fix.
+   Incremented at every swap site, before any tracing gate, so it costs one add. */
+unsigned g_bob_frames = 0;
+
 static void bob_frame_tick(int site)
 {
+    g_bob_frames++;
     bob_present_pace();   /* runs at every swap site, before the tracing gate */
     static int on = -1;
     if (on < 0) on = (getenv("BOB_TRACE_FRAMETIME") || getenv("BOB_TRACE_FLICKER")) ? 1 : 0;
