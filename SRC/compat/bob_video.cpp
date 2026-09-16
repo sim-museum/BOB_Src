@@ -1474,7 +1474,8 @@ static void bob_frame_tick(int site)
           sceneHist[d < 9 ? (int)d : 9]++;
           if (d == 0) { zeroFrames++;
               if (loud) { fprintf(stderr, "[flicker] frame %ld presented with ZERO scenes drawn "
-                                          "(nothing was rendered into it)\n", n + 1); fflush(stderr); } }
+                                          "(nothing was rendered into it)  SITE=%d prevSceneCount=%ld\n",
+                                          n + 1, site, prevSc); fflush(stderr); } }
       }
       prevSc = g_bobSceneCount;
       g_bobZeroSceneFrames = zeroFrames;

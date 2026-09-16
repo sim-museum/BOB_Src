@@ -6481,3 +6481,56 @@ every present comes from site 1, so the three from site 4 are worth checking aga
 frames. If they coincide, the flash has a call site.
 
 **GOLDVID-BOB-3: 2 sprints. The flicker is no longer a report; it is two numbered frames.**
+
+## GOLDVID-BOB-3 S3 (Opus 5, 2026-09-15) — ⭐⭐⭐ **the flicker has a CALL SITE: every zero-scene present comes from `bob_gdi_present()`, the 2D front-end blit, firing during a 3D flight**
+
+S2 found two numbered mid-flight frames presented with nothing rendered into them. S2's own next step
+was to check the swap site, because `per-site swaps: 0=1 1=597 2=0 3=0 4=3 5=0` showed nearly every
+present coming from site 1 while three came from site 4. Added the site to the trace and re-flew.
+
+⭐⭐ **Every single zero-scene present is site 4. Without exception.**
+
+```
+[flicker] frame    1 … ZERO scenes drawn  SITE=4 prevSceneCount=0
+[flicker] frame    2 … ZERO scenes drawn  SITE=4 prevSceneCount=0
+[flicker] frame    3 … ZERO scenes drawn  SITE=4 prevSceneCount=0
+[flicker] frame 1140 … ZERO scenes drawn  SITE=4 prevSceneCount=5468
+[flicker] frame 1141 … ZERO scenes drawn  SITE=4 prevSceneCount=5468
+```
+
+**Site 4 is 3 of ~600 swaps in the interval — 0.5% of presents — and 100% of the flashes.** Site 1
+does 597 swaps and produces none. `prevSceneCount` is **unchanged at 5468 across frames 1140 and
+1141**, confirming the scene counter did not advance: nothing was drawn between those two presents.
+
+⭐ **Site 4 is named.** `bob_video.cpp:1869`, the last line of **`bob_gdi_present()`** — the **2D GDI
+path**: it uploads the GDI framebuffer, draws it as a textured quad, and swaps. It is the front-end /
+map presenter, and its callers are:
+
+| caller | what it paints |
+|---|---|
+| `FULLPSYS.CPP:582` | front-end panel — dials + menu, then present |
+| `FULLPSYS.CPP:1257` | **campaign map paint** |
+| `FULLPSYS.CPP:1245` | map paint under `BOB_SHOT` |
+| `RMDLDLG.CPP:444` | a modal dialog |
+
+⭐⭐ **So the mechanism is: while a 3-D flight is running, a 2-D front-end/map paint path calls
+`bob_gdi_present()`, which swaps the window with a frame the 3-D renderer never drew into.** One such
+present is a flash; two consecutive ones (1140, 1141) are a visible one. That is a complete
+explanation of the PO's *"the screen flickered baddly"* — mechanism, call site and frame numbers.
+
+⚠️ **What is NOT yet pinned:** *which* of those four callers fires at frames 1140–1141. All five
+events share SITE=4, but the site is the presenter, not the caller. **S4 is to add the caller to the
+trace** (a `__builtin_return_address(0)` or an explicit tag at each call), which turns a file into a
+line.
+
+⚠️ **And the fix is not "delete the call".** `bob_gdi_present()` is *correct* for the front end and
+the map — that is its whole job. The defect is that it runs **while a flight owns the screen**. The
+shape of the fix is therefore a guard (the port already has `g_bob_flight_active`), but **which
+caller to guard, and whether that path still needs its paint for some other reason, depends on S4.**
+Guarding the presenter itself would be the blunt version and could break the map screen.
+
+⚠️ **Still not a gold comparison, as in S1 and S2.** A screen recording cannot count scenes, so the
+gold cannot be scored this way. This stands on its own: **our build swaps frames nobody drew, from a
+2D path, during 3D flight.**
+
+**GOLDVID-BOB-3: 3 sprints. Report → two numbered frames → a named call site.**
