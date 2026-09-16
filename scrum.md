@@ -7392,3 +7392,52 @@ then diff its 23 values against `doc/reference/260915_gold_raf_directives.png`.
 
 **OCXHOST-1: 4 sprints — at cap, rotating off.** A wrong gap report (S1) became a retraction (S2), a
 rendering proof (S3), and a capability the project did not have (S4).
+
+## SAVELOAD-REAL-1 S2 (Opus 5, 2026-09-16) — ⭐⭐ **a BDG 0.99 save is NOT a different format.** It is our format with **three localised size differences**, and all 1,059 of its string runs align with ours in order
+
+S1 fixed the crash by refusing foreign saves and left the compatibility question explicitly open:
+*"Whether the layout is actually different is still open… settling it means diffing the two structures
+field by field."* Settled, without diffing field by field — by aligning what the two files have in
+common.
+
+⭐ **Method.** Extract every printable run of ≥6 bytes from our own save and from the PO's BDG 0.99
+one, align them in order, and watch the offset delta. Content differences scatter the deltas and
+change the run count; a structural difference shows up as a **small number of step changes**.
+
+```
+runs: ours 1059   theirs 1059          <- identical inventory
+4 offset-delta changes across 1059 aligned runs:
+  run#0     ours@1      theirs@1      delta     +0   'Rowan Savegame: …'
+  run#1     ours@117    theirs@121    delta     +4   'Silver Eagle'
+  run#2     ours@95017  theirs@96625  delta  +1608   'Package battlefield: Duty 0 16, Squads 1…'
+  run#43    ours@105888 theirs@107484 delta  +1596   'Package battlefield: Duty 1 15, Squads 1…'
+```
+
+⭐⭐ **Three localised deltas and nothing else.** `+4` before `Silver Eagle`; a further `+1,604`
+between there and the first package block; then a `-12` inside the package region. **Every one of the
+1,059 runs appears in the same order in both files**, and the *internal* spacing of each block is
+identical (131 and 302 bytes from the package header to `Secondaries:` and `Lolly`, in both).
+
+⭐ **So importing a BDG 0.99 campaign is feasible in principle.** The reader does not face a foreign
+format — it faces our format with three structures that changed size between versions. A
+version-aware reader (the stamp already says which version wrote the file, S1) could read it.
+
+⭐ **And it explains S1's crash precisely.** Reading a block that is 1,604 bytes larger than our struct
+desynchronises every read after it — which is exactly the `malloc(): invalid size` heap corruption
+GOLDVID-BOB-2 S2 hit, rather than a garbled-but-survivable load.
+
+⚠️ **The confound, stated plainly.** The two saves are **different campaign states** — ours a fresh
+campaign at `currtime=27720`, theirs the PO's played one — so in principle some of this is content,
+not layout. Three things argue it is structure: the **run counts are identical** (1,059 = 1,059),
+the runs appear **in the same order**, and the deltas change **only three times** in 1,059
+opportunities. Content differences (a different number of squadrons, packages or raids) would change
+the count and scatter the deltas. ⚠️ **It is strong evidence, not proof** — proof needs two saves of
+the *same* campaign state written by the two builds, which needs the PO to save from BDG at a
+state we can reproduce.
+
+**S3 (if the PO wants campaign import):** find what grew. `+4` and `+1,604` are specific enough to
+hunt — `+4` is one pointer or one added field near the head of `Campaign`; `+1,604` is a table. The
+candidates are in `SAVEGAME.CPP`'s `operator>>(BIStream&, Campaign&)` and `Node_Data.Load`, both of
+which read fixed-size blocks.
+
+**SAVELOAD-REAL-1: 2 sprints. The compatibility question is answered: same format, three deltas.**
