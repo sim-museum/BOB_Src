@@ -122,6 +122,7 @@ long g_bobZeroSceneFrames = 0;   /* presents with no scene drawn since the last 
 long g_bobSceneHist[10] = {0,0,0,0,0,0,0,0,0,0};
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
+extern void* g_bobGdiPresentCaller;     /* GOLDVID-BOB-3 S4: caller of the 2D presenter */
 static void bob_shot3d_maybe(void)
 {
     static long want = -2, every = 0, n = 0;
@@ -1474,8 +1475,9 @@ static void bob_frame_tick(int site)
           sceneHist[d < 9 ? (int)d : 9]++;
           if (d == 0) { zeroFrames++;
               if (loud) { fprintf(stderr, "[flicker] frame %ld presented with ZERO scenes drawn "
-                                          "(nothing was rendered into it)  SITE=%d prevSceneCount=%ld\n",
-                                          n + 1, site, prevSc); fflush(stderr); } }
+                                          "(nothing was rendered into it)  SITE=%d prevSceneCount=%ld caller=%p\n",
+                                          n + 1, site, prevSc,
+                                          site == 4 ? g_bobGdiPresentCaller : (void*)0); fflush(stderr); } }
       }
       prevSc = g_bobSceneCount;
       g_bobZeroSceneFrames = zeroFrames;
@@ -1739,7 +1741,10 @@ extern "C" int bob_gdi_dump_to(const char* path) {
 	return nz;
 }
 
+void* g_bobGdiPresentCaller = 0;   /* GOLDVID-BOB-3 S4: which caller drove the 2D present */
+
 extern "C" void bob_gdi_present(void) {
+	g_bobGdiPresentCaller = __builtin_return_address(0);
 	bob_check_present_rect("bob_gdi_present");   /* S256: the 2D front-end path, where the symptom lives */
 	if (getenv("BOB_BLIT_TEST")) bob_blit_selftest();   /* R6.1: blit the icon sheet (verify screen blit) */
 	if (g_gdiFB && getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection

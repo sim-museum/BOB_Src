@@ -6534,3 +6534,62 @@ gold cannot be scored this way. This stands on its own: **our build swaps frames
 2D path, during 3D flight.**
 
 **GOLDVID-BOB-3: 3 sprints. Report → two numbered frames → a named call site.**
+
+## GOLDVID-BOB-3 S4 (Opus 5, 2026-09-16) — ⛔⛔ **RETRACTION: S2 and S3's "mid-flight" flashes are NOT mid-flight. All five zero-scene presents are legitimate front-end paints, and the census found NO in-flight flash at all**
+
+S3 named the call site as `bob_gdi_present()` and asked which of its four callers fired. Answering
+that question destroyed the finding it was meant to complete.
+
+**The caller, resolved from `__builtin_return_address(0)`:**
+
+```
+caller=0x8251410  ->  RFullPanelDial::LaunchScreen(FullScreen*)   fullpsys.cpp:2083
+caller=0x82519a8  ->  RFullPanelDial::LaunchMain(FullScreen*)     fullpsys.cpp:1734
+```
+
+Both are **front-end screen painters**. And the log around them is decisive:
+
+```
+[startfly] flight close (id=1) -> OnOK + OnFlyingClosed      <- the flight has ENDED
+[flicker]  frame 1149 … ZERO scenes drawn   caller=LaunchScreen
+[frontend] painted screen artnum=27924 + dials + menu + presented
+[flicker]  frame 1150 … ZERO scenes drawn   caller=LaunchScreen
+[frontend] painted screen artnum=27924 + dials + menu + presented
+[startfly] back in front-end (InThe3D=0)
+```
+
+⛔ **The two "mid-flight" frames occur AFTER `OnFlyingClosed`, during the transition back to the front
+end.** The other three are at start-up, before any flight. **A front-end paint legitimately presents
+with zero `BeginScene` calls — the 2D path draws art, dials and menu, and there is no 3D scene to
+count.** Nothing is wrong with any of the five.
+
+**So the following are withdrawn:**
+
+* **S2's headline** — *"our build DOES present frames nobody drew, mid-flight… in a QUIET flight, not
+  even a dogfight"*. They were not mid-flight. I inferred "mid-flight" from a high frame number
+  (1149 of a run) without checking what the game was doing at that moment, which the log states
+  plainly two lines above.
+* **S3's headline** — *"the flicker has a CALL SITE: `bob_gdi_present()` firing during a 3D flight"*.
+  It fires **after** the flight, during a screen change. The call site is right; "during a 3D flight"
+  is wrong.
+* **S2's reasoning that the light case implies a worse heavy case** goes with them. There was no
+  light-case defect to extrapolate from.
+
+⭐ **What survives, and it is worth keeping:**
+
+1. **The instrument is sound.** `BOB_TRACE_FLICKER` counts zero-scene presents correctly and the
+   caller trace works. It is now a *validated* tool rather than an assumed one.
+2. **The census found NO in-flight zero-scene present** across a full flight. That is a real negative
+   result: **our build does not flash by presenting empty buffers during flight.**
+3. **Still unexplained and still worth a look:** the scene histogram's **`1=11`** — eleven frames
+   presented with a single `BeginScene` where the mode is five — and the frame-time
+   **mean 61.62 ms against median 17.40 ms**, which is a stall signature. Neither was shown to be
+   in-flight either, and both need the same "what was the game doing" check before anyone builds on
+   them. **I will not repeat the mistake of reading a frame number as a phase.**
+
+⚠️ **And the PO's report is back to unexplained.** *"In bob appImage dogfight the screen flickered
+baddly"* is not accounted for by zero-scene presents. The remaining candidates are tearing — which S1
+established a screen recording **cannot** settle — and the under-drawn/stall signatures above.
+
+**GOLDVID-BOB-3: 4 sprints — at cap, rotating off. Two of its own sprints retracted by the fourth,
+which is what the fourth was for.**
