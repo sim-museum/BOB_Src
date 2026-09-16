@@ -501,8 +501,23 @@ static	BIStream& operator	>>	(BIStream& bis,Campaign& campaign)
 #endif
 			_Error.ReallyEmitSysErr("Savegame version dates differ %s != %s",date,date2);
 #endif
+#if BOB_LINUX
+	/* SAVELOAD-REAL-1 S4: BOB_TRACE_SAVEOFF also traces the READ side, so the same block
+	   boundaries can be taken from a BDG 0.99 file (with BOB_ANY_SAVE_VERSION=1, on a copy).
+	   S3 got ours from the writer; the deltas only become named fields once both are known. */
+	if (getenv("BOB_TRACE_SAVEOFF")) {
+		fprintf(stderr, "[loadoff] Campaign-head @ %ld (sizeof Campaign-CampaignPtrs = %ld)\n",
+			(long)bis.tellg(), (long)(sizeof(Campaign)-sizeof(CampaignPtrs)));
+		fflush(stderr);
+	}
+#endif
 	bis>>campaign.garbage;
 	bis.read((char*)&campaign+sizeof(CampaignPtrs),sizeof(Campaign)-sizeof(CampaignPtrs));
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_SAVEOFF")) {
+		fprintf(stderr, "[loadoff] Campaign-body @ %ld\n", (long)bis.tellg()); fflush(stderr);
+	}
+#endif
  	bis>>Dead_Stream;
 	strcpy(Save_Data.CommsPlayerName,campaign.PlayerName);
 	//Need to fix currmission and dfltmission pointers
@@ -590,6 +605,9 @@ BIStream& operator	>>	(BIStream& bis,MissMan& miss_man)
 	}
 
 	Persons4::ShutDownMapWorld();
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_SAVEOFF")) { fprintf(stderr,"[loadoff] start @ %ld\n",(long)bis.tellg()); fflush(stderr); }
+#endif
 	bis>>(SByte&) miss_man.currcampaignnum;
 	bis>>miss_man.camp;
 	strcpy(_DPlay.Password,miss_man.camp.CommsPassword);

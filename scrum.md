@@ -7498,3 +7498,59 @@ instrumented to report offsets before it corrupts anything.
 
 **SAVELOAD-REAL-1: 3 sprints. Four blocks down to three, one ruled out by arithmetic, and a named
 prime suspect.**
+
+## SAVELOAD-REAL-1 S4 (Opus 5, 2026-09-16) — the `+4` narrowed to **a named short list of fields**: it is inside `CampaignStatic`, before `PlayerName`
+
+S3 placed the deltas in blocks and left the `+4` as "inside `Campaign`'s head". This sprint reads the
+BDG file with our own reader instrumented, and narrows it to a field group.
+
+✅ **`BOB_TRACE_SAVEOFF` now traces the READ side too** (default-off). Loading a **copy** of the PO's
+`Auto Save.BSL` with `BOB_ANY_SAVE_VERSION=1`:
+
+```
+[savegame] FOREIGN save version ("Rowan Savegame: V 002      ") -- forced by BOB_ANY_SAVE_VERSION
+[loadoff] start @ 0
+[loadoff] Campaign-head @ 32   (sizeof Campaign - sizeof CampaignPtrs = 10558)
+[loadoff] Campaign-body @ 10594
+=== CRASH: signal 6 ===        <- expected; the deltas downstream desynchronise it
+```
+
+⭐ **The layout checks out arithmetically**, which is what makes the rest trustworthy:
+`1` (currcampaignnum) `+ 27` (stamp) `+ 4` = **32** ✓; `32 + 4` (garbage) `+ 10,558` = **10,594** ✓;
+and S3's writer put our `Campaign` block end at **10,602** — exactly 8 bytes later, which is the
+`Dead_Stream` the writer appends. **Reader and writer agree on our own file.**
+
+⭐⭐ **So where is the `+4`?** The `Campaign` body begins at offset **36** in both files, and S2 measured
+`Silver Eagle` at ours **117** / BDG **121**. `Silver Eagle` is the player's name —
+`char PlayerName[PLAYERNAMELEN]` in `CampaignStatic`. So it sits at body offset **81** in ours and
+**85** in BDG: **the four bytes are added among the fields that precede `PlayerName`**, which is a
+short, named list (`missman2.h:97`):
+
+```c
+UniqueID playerhomebase, playertakeoff;   bool firsttime;
+SLong    startdate, ripdate, currdate, lastdate, currtime,
+         currperiodtime, dawntime, dusktime, sunsouth;     <- nine 4-byte date/time fields
+UByte    sl_category;   RankType playerrank;   SkillType newpilotskill;
+SWord    frontdeltastrength, reservesavail, currentplayerslot;
+```
+
+⚠️ **The obvious suspect is a tenth `SLong` in that date/time group** — a patch adding one more
+timestamp is exactly a four-byte change in exactly this place. **That is a hypothesis, not a finding**,
+and this sprint does not test it.
+
+⭐ **And it bounds the rest.** If the `+4` is entirely inside `Campaign`, then BDG's
+`sizeof(Campaign)-sizeof(CampaignPtrs)` is **10,562** against our 10,558, and the remaining
+**+1,600** lies downstream — in `Node_Data` or `Squad_Diary`, consistent with S3 ruling out
+`SaveDataSoftware` on size.
+
+⚠️ **The crash after `Campaign-body` is expected and is not new information**: once a downstream block
+is read at the wrong size, everything after it desynchronises, which is the `malloc(): invalid size`
+S1 fixed by refusing these files in the first place. The run used a **copy**; the PO's saves were not
+touched.
+
+**S5 (only if the PO wants campaign import):** add the same `[loadoff]` line after `Node_Data.Load`
+and `Squad_Diary.Load`. The first of those to print a BDG offset 1,600 past ours names the block, and
+the field hunt then has the same short-list treatment applied to it.
+
+**SAVELOAD-REAL-1: 4 sprints — at cap.** From "the port crashes on the PO's saves" to a four-byte
+difference inside one named field group.
