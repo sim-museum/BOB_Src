@@ -682,6 +682,21 @@ static void pump_events(void)
 				else if (ph < 20)  { bob_fake_shoot(1); g_bob_shoot_held = 1; }  /* hold the action bit through the burst */
 			}
 		}
+		else if (mode && strstr(mode,"bank")) {
+			/* ASPECT-1 S11 (2026-09-15): hold AILERON_LEFT so the aeroplane turns. S10 photographed a
+			   live mirror (sky over terrain, ~740 colours) but could not show it RESPONDS, because a
+			   quick mission flies straight and level and its content drifted only 90.6 -> 92.0 over
+			   4,000 frames. A turn is the discriminator paint cannot fake: the horizon in a live
+			   mirror must roll with the aircraft. KEYMAPS.H:1250 binds AILERON_LEFT to J_moveleft =
+			   DIK_LEFT (0xCB); held, not tapped, the same lesson MA's KEYHOLD-1 learned.
+			   BOB_AUTOFLY=bank[:tick] (default 120). */
+			static int bc = 0, bsent = 0, bat = -1;
+			bc++;
+			if (bat < 0) { const char* c = strchr(mode, ':'); bat = c ? atoi(c+1) : 120; if (bat < 1) bat = 120; }
+			if (bc == bat && !bsent) { kb_push(0xCB,1); bsent = 1;
+				fprintf(stderr,"[autofly] bank: holding AILERON_LEFT (DIK 0xCB) from tick %d\n", bat);
+				fflush(stderr); }
+		}
 		else if (mode && strstr(mode,"dive")) {  /* repro a ground crash: throttle + hard nose-UP trim ->
 			   climb steeply -> stall -> fall -> hit the ground (the player-crash path) */
 			static int dc=0, prevA=0;

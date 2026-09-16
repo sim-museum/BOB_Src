@@ -5974,3 +5974,43 @@ horizon — the responsiveness test, which needs no gold at all.
 
 **ASPECT-1: 10 sprints (1 in this pass). The mirror renders, the square target is confirmed correct,
 and the item's long grey-square mystery is retired as a wrong-aircraft measurement.**
+
+## ASPECT-1 S11 (Opus 5, 2026-09-15) — ⛔ **the responsiveness test could not run, and S10's explanation of its own numbers was WRONG: the Spitfire is PARKED, not flying**
+
+S10 measured the mirror drifting only 90.6 → 92.0 over 4,000 frames and wrote that this "is what a
+straight-and-level quick mission should look like". **It is not, and the reason matters.**
+
+⭐ **`BOB_AUTOFLY=bank[:tick]` (new)** holds `AILERON_LEFT` (DIK 0xCB, `KEYMAPS.H:1250`), held rather
+than tapped. It fires exactly as asked:
+
+    [autofly] bank: holding AILERON_LEFT (DIK 0xCB) from tick 120
+
+⛔ **And the horizon in the mirror does not move — because the aeroplane does not move.** With
+`BOB_TRACE_HUD=1` on the same flight, 29 samples across the whole run:
+
+    [hud] alt=4ft hdg=242 speed=0Kts thrust=70        <- first sample
+    [hud] alt=4ft hdg=242 speed=0Kts thrust=70        <- last sample
+
+**`BOB_BOOT_FRONTEND=1` puts the Spitfire on the ground at 4 ft and 0 knots and leaves it there.**
+Heading 242 for the entire flight. A bank key cannot roll a parked aircraft, and a mirror cannot
+track an attitude that never changes.
+
+⛔ **So S10's sentence is corrected here rather than left standing.** The mirror's near-constant
+content was never evidence about responsiveness in either direction — it is what a stationary
+aeroplane's rear view looks like. **The measurement was fine; the story I told about it was not.**
+
+⭐ **What survives S10, and is if anything stronger.** The mirror renders **sky (129,162,184) over
+terrain (82,85,23) with a horizon**, ~740 distinct colours, into the 128x128 FBO — from an aircraft
+sitting on a runway, which is exactly what a rear view should show there. That is a live render of
+the world, and no painted texture in this game looks like it.
+
+⚠️ **What the responsiveness test actually needs**, now that the boot scaffold is ruled out: the
+real-GL CAMPAIGN recipe (`tools/bob_realgl_flight.sh`), which is proven to reach **5,302 ft airborne**
+— but it flies the Luftwaffe convoys campaign, and R3.4 S7 established the Bf 109 has no mirror. **An
+airborne RAF flight is the missing harness**, and it is the same thing R3.4 S9 will need.
+
+**S12:** get the campaign recipe to fly an RAF squadron, then repeat this test. The instrument, the
+bank input and the dump sequence are all in place; only the mission is wrong.
+
+**ASPECT-1: 11 sprints (2 in this pass). A test that could not run, said so, and took one of my own
+explanations down with it.**
