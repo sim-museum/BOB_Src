@@ -8415,3 +8415,77 @@ Instrument only, default-off; no behaviour change. `notes-sync` green (the measu
 and see whether the 0-disagreement result survives contact with them.
 
 **XPORT-CAPTION-1: 2 sprints.**
+
+## GOLDVID-BOB-3 S1 (Opus 5, 2026-09-16) — the side-select screen measured 1:1 against today's gold: **two of its three labels are half the gold's height, and `RAF` is the wrong SIZE and the wrong COLOUR** — ⛔ **and the mechanism I predicted from the font ladder is real but is NOT the cause, which the measurement said and my reasoning did not**
+
+**Story:** GOLDVID-BOB-3 (the 2026-09-15 gold videos, front-end screens). **Sprint 1.**
+
+### The geometry, established per FRAME before anything was compared
+
+MiG Alley's S8 was a near miss on exactly this: a size claim made before the gold's scale was
+checked, against a video whose scale **changes within the recording**. So, first:
+`260915_bob_raf_campaign.mp4` at t=20 has a non-black extent of **1024×768 at x[448,156]** — which
+is precisely what this port's own **GATE R9** asserts for a 1024 canvas in a 1920 window
+(*"default: lit region (448,156)-(1472,924) as expected"*). The gold runs 1024×768, our captures
+are 1024×768, and the crop is therefore **1:1 with no scaling on either side**. Saved as
+`doc/reference/260915_gold_sideselect_raf.png`.
+
+### The measurement — same crop, same pixels
+
+| label | gold | ours | ratio |
+|---|---|---|---|
+| **RAF** | **white**, 133×46 px, ink 903 | **amber**, 29×12 px, ink 144 | height **0.26×** |
+| **Back** | amber, 81×28 px, ink 1062 | amber, 66×24 px, ink 697 | height 0.86× |
+| **Luftwaffe** | amber, 158×28 px, ink 1825 | amber, ~13 px tall | height **~0.46×** |
+
+In the gold, `Back` and `Luftwaffe` are **the same size as each other** and `RAF` is larger and
+white. In ours, `Back` is nearly right and the other two are half-height — and `RAF` is the wrong
+colour as well as the wrong size.
+
+### ⭐ Two different text heights on one screen, traced
+
+`BOB_TRACE_TEXT` on the same run:
+
+```
+[text] "Back"      at (77,713) h=41 col=ffba00
+[text] "Luftwaffe" at (562,708) h=22 col=ffba00
+[text] "RAF"       at (383,42)  h=22 col=ffba00
+```
+
+**`Back` is drawn at h=41; `RAF` and `Luftwaffe` at h=22.** The title menu, for comparison, draws
+every row at **h=36** (`bob_draw_menu`'s `fh = resW*36/1000`, whose comment says *"~37px at 1024
+wide (matches wine)"*). So `Back` goes through a path sized against the reference and the other two
+do not — on the same screen, in the same paint.
+
+That is the defect, stated as a question a next sprint can answer without guessing: **what draws
+the side-select labels at h=22, and why is it not the path that draws `Back`?**
+
+### ⛔ The mechanism I predicted was real, and was not the cause
+
+Coming off MiG Alley's S8 — where a port shim answered `WM_GETGLOBALFONT` with `0` and hid the
+class's own handler — I looked for the twin here and found a genuine divergence:
+
+* the compat answers centrally, `afxwin.h:1197`: `if (m == 0x403) return bob_dlg_getfont(w);`
+  before any per-class dispatch, and `bob_dlg_getfont` returns **rung [3] unconditionally**
+  (the 2× rung), falling back to [0];
+* the game's own `RFullPanelDial::OnGetGlobalFont` returns `g_AllFonts[fontnum][m_currentres]`,
+  and since `RFullPanelDial::resolutions[] = {800,800,1024}` has only **three** entries, its
+  `if (m_currentres>=3)` branch is **unreachable** — the game never uses [3] on this path;
+* `DIALCLASS::OnGetGlobalFont` picks `m_scalingfactor > 1.5 ? [3] : [0]`.
+
+So the compat hands every caller the 2× rung where the game would hand out [0], [1] or [2]. I
+predicted from this that our front-end text would be **too big**. ⛔ **It is too small** — 0.26×
+and 0.46× — so whatever this divergence costs, it is not what makes this screen wrong. Recorded as
+an observation with its own evidence, not folded into the finding it failed to explain.
+
+### ⚠️ Not claimed
+
+That `Back` is correct: 24 px against the gold's 28 is 0.86×, close but not equal, and this sprint
+did not chase it. That the gold's `RAF` is drawn rather than painted into the art — it is *not* in
+our render of the same art, which is the reason to think the game draws it, but that is an
+inference, not a measurement.
+
+**S2:** find the h=22 draw site. `BOB_TRACE_TEXT` proves the height at the renderer; what it does
+not say is the caller, and on this codebase that is the difference between a fix and a guess.
+
+**GOLDVID-BOB-3: 1 sprint.**
