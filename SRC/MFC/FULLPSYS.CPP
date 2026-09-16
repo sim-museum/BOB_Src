@@ -1189,7 +1189,13 @@ extern "C" void bob_frontend_tick(void)
 						   hung on the same seam. With it removed, this harness exercises the real
 						   handoff, so a regression here fails the gate instead of hiding. */
 						RDialog::m_pView->LaunchFullPane(&RFullPanelDial::bobfrag, SaveData::UIR_FRAG);
-						if (getenv("BOB_CAMPFLY_SHOT")) g_campfly_shot = 12;  /* dump bobfrag after it settles */
+						/* GOLDVID-BOB-1 S5 (2026-09-16): the settle was a hardcoded 12 paints, so
+						   "the briefing rendered nothing" and "the briefing had not populated yet"
+						   were indistinguishable from outside the binary. BOB_CAMPFLY_SHOT=<paints>
+						   lets a caller lengthen it; any non-numeric value keeps the old 12. */
+						if (const char* cs = getenv("BOB_CAMPFLY_SHOT")) {
+							int n = atoi(cs); g_campfly_shot = (n > 0) ? n : 12;
+						}
 						if (getenv("BOB_CAMPFLY_GO"))   g_campfly_go   = 12;  /* then Fly -> campaign flight */
 						return;
 					}
@@ -1346,8 +1352,19 @@ extern "C" void bob_frontend_tick(void)
 	   the framebuffer to a dedicated PPM and exit -- avoids the per-frame BOB_DUMP_GDI race. */
 	if (g_campfly_shot > 0) {
 		if (--g_campfly_shot == 0) {
-			int nz = bob_gdi_dump_to("/tmp/bobfrag_shot.ppm");
-			fprintf(stderr,"[campfly] one-shot bobfrag capture (nonblack=%d) -- exiting\n", nz);
+			/* GOLDVID-BOB-1 S5 (2026-09-16): honour a caller-supplied path. This hook wrote a
+			   hardcoded /tmp/bobfrag_shot.ppm, so successive captures silently overwrote each
+			   other AND the frame landed in this box's 7.6 GB tmpfs, which the standing rule
+			   keeps clear of game data. Same defect class as BOB_SHOT before S143, and as
+			   FreeFalcon's FF_UI_SCREENSHOT before GOLDVID-FF-1 S7 -- a capture hook whose
+			   destination nobody can choose gets used once and then worked around.
+			   BOB_CAMPFLY_SHOT_PATH, else BOB_SHOT_PATH, else the old default. */
+			const char* cp = getenv("BOB_CAMPFLY_SHOT_PATH");
+			if (!cp || !*cp) cp = getenv("BOB_SHOT_PATH");
+			if (!cp || !*cp) cp = "/tmp/bobfrag_shot.ppm";
+			bob_shot_state_banner("campfly");   /* record the state, not just the pixels */
+			int nz = bob_gdi_dump_to(cp);
+			fprintf(stderr,"[campfly] one-shot bobfrag capture -> %s (nonblack=%d) -- exiting\n", cp, nz);
 			fflush(stderr);
 			_exit(0);
 		}
@@ -1729,16 +1746,53 @@ void RFullPanelDial::LaunchMain(FullScreen* startscreen)
 	GetParent()->BringWindowToTop();
 	m_pStartScreen=startscreen;
 	LaunchScreen(startscreen);
+#if BOB_LINUX
+	long lmArt = (long)artnum; int lmRes = m_currentres;   /* what LaunchScreen just painted */
+#endif
 	UpdateSize();
 #if BOB_LINUX
 	// Initial launch: UpdateSize() has now selected the resolution + correct artnum, so paint
 	// the screen (LaunchScreen ran before res selection). No WM_PAINT dispatch on Linux.
+	/* GOLDVID-BOB-1 S5 (2026-09-16) -- FIXED. This repaint ran UNCONDITIONALLY and drew only
+	   art + menu: no dial pass, no hosted-control pass, no panel replay. LaunchScreen (just
+	   above) already draws the COMPLETE frame -- art + the three dial panels + their hosted R*
+	   controls + menu -- so whenever UpdateSize left the resolution alone, this block repainted
+	   the background OVER everything LaunchScreen had drawn, and presented that.
+	   It stayed invisible for 45+ sprints because LaunchMain only ever ran for the MAIN MENU,
+	   whose content IS the menu and so survives an art+menu repaint. It became visible the
+	   moment a campaign LaunchFullPane routed the mission BRIEFING through it: with
+	   BOB_SIDE=raf BOB_CAMPAIGN_FLY the shot-state banner reported dlg=1164(IDD_BOBFRAG):17/22
+	   controls drawn while the presented frame was bare art + the Back/Sim Config/Fly footer.
+	   The same binary reached through LaunchScreen (BOB_BOBFRAG=1) draws the roster fine.
+	   This is exactly the burial R3.8 hypothesised and then RETRACTED as undemonstrated. It is
+	   demonstrated now: under BOB_PANELREPLAY=1 BOB_TRACE_REPLAY=1 the log reads
+	     [replay] 1 panel(s) redrawn after the frontend repaint
+	     [frontend] LaunchMain painted artnum=27917 res=1024 + menu + presented
+	   and the frame is byte-for-byte as bare as without it (nonblack=786311 both ways) -- the
+	   replay happens INSIDE LaunchScreen, upstream of the paint that buries it, so the R3.8
+	   mechanism could never have shown an effect from where it was called.
+	   Fix: repaint only when UpdateSize actually changed what LaunchScreen painted, and when it
+	   did, repaint through the same full pass (bob_fp_repaint = art + dials + hosted controls +
+	   menu + present) rather than art + menu.
+	   BOB_ALWAYS_LAUNCHMAIN_PAINT=1 restores the old unconditional art+menu behaviour for A/B. */
 	if (getenv("BOB_FRONTEND")) {
-		DoPaint(GetDC());
-		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);
-		bob_gdi_present();
-		fprintf(stderr, "[frontend] LaunchMain painted artnum=%d res=%d + menu + presented\n",
-			(int)artnum, (int)resolutions[m_currentres]);
+		bool lmStale = ((long)artnum != lmArt) || (m_currentres != lmRes);
+		if (getenv("BOB_ALWAYS_LAUNCHMAIN_PAINT")) {
+			DoPaint(GetDC());
+			bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);
+			bob_gdi_present();
+			fprintf(stderr, "[frontend] LaunchMain painted artnum=%d res=%d + menu + presented (forced)\n",
+				(int)artnum, (int)resolutions[m_currentres]);
+		} else if (lmStale) {
+			bob_fp_repaint(this);
+			fprintf(stderr, "[frontend] LaunchMain repainted artnum=%d res=%d + dials + menu + presented"
+				" (UpdateSize moved it from artnum=%ld res=%d)\n",
+				(int)artnum, (int)resolutions[m_currentres], lmArt, (int)(lmRes>=0&&lmRes<6?resolutions[lmRes]:0));
+		} else {
+			fprintf(stderr, "[frontend] LaunchMain: UpdateSize left artnum=%d res=%d unchanged"
+				" -- keeping LaunchScreen's full frame\n",
+				(int)artnum, (int)resolutions[m_currentres]);
+		}
 	}
 #endif
 	}

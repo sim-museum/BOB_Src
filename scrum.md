@@ -7554,3 +7554,145 @@ the field hunt then has the same short-list treatment applied to it.
 
 **SAVELOAD-REAL-1: 4 sprints — at cap.** From "the port crashes on the PO's saves" to a four-byte
 difference inside one named field group.
+
+## GOLDVID-BOB-2 S5 (Opus 5, 2026-09-16) — ⭐⭐ **FIXED: the campaign mission briefing drew its whole roster and then buried it under a background repaint** — and this is the burial R3.8 hypothesised, retracted as undemonstrated, and could never have demonstrated from where it was looking
+
+S3's census listed *"a full-screen mission briefing with `Back · Sim Config · Fly`"* as a gold screen no
+sprint had read, and named it the second-most gradeable lead. S4 cashed the first (the Directives
+panel). This sprint reads the briefing — and the comparison stopped at the first field, because
+**there were no fields**.
+
+### The gold (`260915_bob_raf_campaign.mp4` @ 84 s → `doc/reference/260915_gold_raf_mission_briefing.png`)
+
+```
+            ( Return to Player )
+ Unit            Aircraft        Duty        Callsign
+ 43 Squadron     Hurricane1A     Intercept   Mitor
+
+                 [ Bob        ]
+     [ Red 2     ] [ Red 3     ]
+
+ Back   Sim Config   Fly
+```
+
+### Ours, reached the way a campaign player reaches it
+
+`BOB_SIDE=raf` (shipped last sprint by OCXHOST-1 S4) + `BOB_CAMPAIGN_FLY=30` drives the game's own
+`LaunchFullPane(&bobfrag, UIR_FRAG)`. The frame came back as **background art and the
+`Back / Sim Config / Fly` footer, and nothing else** (`260916_ours_campaign_briefing_buried.png`).
+
+⚠️ **And the instrument disagreed with the screen.** The same run's state banner reported
+
+```
+[shot-state] where=campfly ... dialogs=7 dlg=1164:17/22 ...     (1164 = IDD_BOBFRAG)
+```
+
+**17 of 22 controls drawn** — into a frame that shows none of them. Bookkeeping said drawn; pixels
+said absent. Per the standing lesson, the instrument was made to speak before its zero was believed:
+the settle was hardcoded at 12 paints, so "nothing rendered" and "not populated yet" were
+indistinguishable from outside the binary. **`BOB_CAMPFLY_SHOT=<paints>` now takes a count**, and
+12 / 60 / 200 paints all produce `nonblack=786311` — **byte-identical**. Not a settling problem.
+
+⭐ **The decisive A/B was two reach paths on ONE binary.** The quick-mission path
+(`BOB_BOBFRAG=1`, the path every gold-#3 sprint from S135 to S140 used) renders the roster fine —
+`Return to Player`, the `Unit/Aircraft/Duty/Callsign` header with `54 Squadron / Spitfire / Patrol /
+Trumpet`, the `Bob` name box (`260916_ours_qs_briefing.png`). Same binary, same screen, same dialog
+id. **The difference is not the screen; it is how the screen is reached.**
+
+### The cause, read off the two logs side by side
+
+| | quick-mission (`LaunchScreen`) | campaign (`LaunchFullPane` → `LaunchMain`) |
+|---|---|---|
+| last paint | `painted screen artnum=27917 + dials + menu + presented` | `painted screen artnum=27917 + dials + menu + presented` |
+| then | *(nothing)* | **`LaunchMain painted artnum=27917 res=1024 + menu + presented`** |
+
+`LaunchScreen`'s Linux paint block draws **art + the three dial panels + their hosted R\* controls +
+menu**, then presents. `LaunchMain`'s drew **art + menu** — no dial pass, no hosted-control pass —
+and it ran **unconditionally, immediately after calling `LaunchScreen`**. So every frame
+`LaunchScreen` composed, `LaunchMain` painted the background over.
+
+⭐⭐ **This is R3.8's burial, and R3.8 was right.** R3.8 built `bob_ole_replay_panels` to redraw
+non-dial dialogs at their own recorded origins, could not demonstrate an effect, and **retracted it
+to default-off** with the note *"the burial this was written for was NOT demonstrated"*. It is
+demonstrated now — and the reason it never showed is in the call site, not the mechanism:
+
+```
+[replay] 1 panel(s) redrawn after the frontend repaint          <- BOB_PANELREPLAY=1
+[frontend] LaunchMain painted artnum=27917 res=1024 + menu + presented
+   -> nonblack=786311, byte-identical to the run with the replay off
+```
+
+**The replay runs inside `LaunchScreen`, upstream of the paint that buries it.** A correct fix,
+called from the wrong side of the offending paint, produces exactly the "no effect" that got it
+retracted. ⚠️ *A mechanism that shows no effect has two explanations and only one of them is
+"wrong mechanism".*
+
+**Why it hid for 45+ sprints:** `LaunchMain` only ever ran for the **main menu**, whose content *is*
+the menu — which the art+menu repaint redraws. It became visible the first time a campaign
+`LaunchFullPane` routed a screen with **hosted dialog controls** through it.
+
+### ✅ The fix (`SRC/MFC/FULLPSYS.CPP`, `RFullPanelDial::LaunchMain`)
+
+The repaint exists because `UpdateSize()` may select a different resolution *after* `LaunchScreen`
+painted. So: record what `LaunchScreen` painted, and
+
+* **repaint only if `UpdateSize` actually moved it** (artnum or resolution changed), and
+* when it did, repaint through the **same full pass** (`bob_fp_repaint` = art + dials + hosted
+  controls + menu + present) instead of art + menu.
+
+In every path measured, `UpdateSize` changes nothing (`artnum=28937`→`28937`, `27917`→`27917`), so
+the repaint is simply skipped and `LaunchScreen`'s complete frame survives.
+`BOB_ALWAYS_LAUNCHMAIN_PAINT=1` restores the old behaviour for A/B.
+
+**Result** (`260916_ours_campaign_briefing_fixed.png`): the campaign briefing now draws
+`Return to Player`, the `Unit / Aircraft / Duty / Callsign` header, and a **three-slot flight block
+in the gold's own arrangement** — leader above, two wingmen below-left. `nonblack 786311 → 786192`.
+
+### Gates
+
+* Main menu, dummy driver, `BOB_SHOT=8`, new code vs `BOB_ALWAYS_LAUNCHMAIN_PAINT=1`:
+  **byte-identical** — the path that has run this code for 45 sprints is untouched.
+* `tools/bob_gates.sh` under `gl-lock`: Gate 1 **14/14 clean exits**, Gate 1c modal **PASS**,
+  Gate 2 safe default **exit 0**, Gate 3 phase-select **dummy == real GL byte-identical**,
+  Gate 4 flight frame-150 **98.4% non-black**, Gate 4b **blackTex=0**, Gate 5 campaign
+  end-to-end **PASS**, Gate 6 combat soak **1,468,001 dispatches, no crash**, Gate 7 strategic
+  soak **PASS** (raid flew 37 waypoints, RAF tasked, 52 interceptor sightings), Gate 8 R1
+  continuous **PASS**.
+* ⚠️ **The suite did not finish**: I capped the whole run at 25 minutes and the `timeout` cut it
+  during Gate R9 (`exit=124`, `Terminated`). That is my cap, not a failure — but the gates after
+  R9 (R11, MP1–3, R3.7, SET, R16, VSYNC, R1, PARITY, CLIP, R18, NOTES) did not run in that pass.
+  **Re-run separately, all PASS:** `bob_r9_layout.sh` — *all three canvas placements
+  pixel-correct*; `bob_parity.sh` — **8 of 8 screens byte-identical** against the committed
+  references (mainmenu, the four config screens, the three sim screens), which is the gate that
+  would catch a front-end paint regression; `bob_clip_gate.sh` — **PASS**. The untouched
+  remainder are multiplayer, ACMI, timer and soak gates, none of which paint the front end.
+* Captures ran against a **scratch game tree under `/home`**, not the PO's drive_c.
+
+### Also shipped (same class of defect, found on the way in)
+
+`BOB_CAMPFLY_SHOT` wrote a hardcoded `/tmp/bobfrag_shot.ppm` — successive captures overwrote each
+other silently, and the frame landed in this box's 7.6 GB tmpfs that the standing rule keeps clear of
+game data. It now honours **`BOB_CAMPFLY_SHOT_PATH`**, else `BOB_SHOT_PATH`, else the old default,
+and prints the path it wrote plus the state banner. ⚠️ **Third time this exact defect has been
+found in a capture hook** (BoB `BOB_SHOT` before S143, FreeFalcon `FF_UI_SCREENSHOT` in
+GOLDVID-FF-1 S7, this). *A capture hook whose destination nobody can choose gets used once and then
+worked around.*
+
+### ⛔ What the fix uncovered — three named defects, none of them fixed here
+
+1. **The unit-details row is empty.** Gold: `43 Squadron / Hurricane1A / Intercept / Mitor`. Ours
+   draws the header and no values. The QS path fills the same control
+   (`54 Squadron / Spitfire / Patrol / Trumpet`), so this is a **campaign-package population** gap,
+   not a draw gap.
+2. **Pilot-slot captions read `~0`** where gold reads `Bob`, `Red 2`, `Red 3`.
+3. **Twelve extra pilot slots cascade diagonally off-screen.** Gold draws the flight's three; we draw
+   `IDC_PILOT_0..14`, and slots 3..14 step down-right by a fixed offset each — a stray-origin
+   pattern, not the template's layout. Slots 0..2 are in the gold's positions.
+
+**S6:** take (2) first — `~0` is a caption the port is *computing*, so it names its own producer, and
+(1) and (3) may share it. Re-read `BoBFrag::OnInitDialog`'s `SetCaption(playerslotname)` on the
+**campaign** side, where `SetPlayersPositionCamp` (not the QS seeder) supplies the slot data.
+
+**GOLDVID-BOB-2: new pass, sprint 1 of 4.** The census lead paid immediately: a screen that has been
+recorded as CLOSE since Sprint 140 was blank on the path players actually take, and the fix retires
+a retraction that had been standing since R3.8.
