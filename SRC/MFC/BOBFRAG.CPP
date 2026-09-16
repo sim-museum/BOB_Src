@@ -257,10 +257,58 @@ BOOL BoBFrag::OnInitDialog()
 		{
 			BritSquadron* mysq=Node_Data[squadinfo.currfrag->squadoptions[i].squadnum];
 			rlistbox->AddString(mysq->FullName(),0);
-			rlistbox->AddString(RESLIST(SPIT_A, mysq->AcType()),1);
+			/* GOLDVID-BOB-2 S7 (2026-09-16) -- FIXED: the aircraft cell indexes the MARK list, not
+			   the plain one. Measured from the game's OWN boblang.dll (not from this tree's .rc,
+			   which differs):
+			     plain IDS_L_SPIT_A+0..7 : Spitfire Hurricane Defiant Blenheim '' '' Me109 Me110
+			     mark  IDS_L_MK_SPIT_A+0..7: Spitfire IA, Spitfire IB, Hurricane 1A, Hurricane 1B,
+			                                 Defiant 1, Blenheim 1F, ME 109 E4, ME 110 C4
+			   The PLAIN list cannot be indexed by an aircraft type at all -- it drops the A/B mark
+			   variants, so its RAF half is two short and slots +4/+5 are EMPTY. 43 Squadron's
+			   AcType() is 2, which is Hurricane in the enum, and the plain list turned that into
+			   "Defiant" -- the wrong aeroplane, not merely the wrong spelling. The mark list is
+			   complete and aligns with the enum slot for slot.
+			   Both gold videos agree, on both sides: the RAF briefing reads "Hurricane1A" and the
+			   German one reads "Bf109E4" / "Ju87B2" -- MARK designations, where ours read plain
+			   names. (The gold runs BDG 0.99, so its exact spellings are a patched table's and are
+			   NOT chased here; what is being fixed is which list the cell indexes.) */
+			rlistbox->AddString(RESLIST(MK_SPIT_A, mysq->AcType()),1);
 			string.LoadString(squadinfo.currfrag->squadoptions[i].somesortofduty);	//RDH 23/03/00
 			rlistbox->AddString(string,2);
 			rlistbox->AddString(mysq->CallName(),3);		
+			/* GOLDVID-BOB-2 S7 (2026-09-16): the RAF branch had no row trace -- the [fragrow] line
+			   below exists only in the LUFTWAFFE branch, so for the whole life of BOB_TRACE_FRAGLIST
+			   the side this project compares against the gold has been the one it could not print.
+			   Print the RAW AcType() NUMBER as well as the resolved string: the gold's 43 Squadron
+			   flies a Hurricane1A and ours shows a Defiant, and those are two different faults --
+			   a squadron whose campaign record really says Defiant, or a correct AcType resolved
+			   through the wrong RESLIST slot. Only the number separates them. */
+			/* GOLDVID-BOB-2 S7: dump the whole aircraft-name list the row indexes into, ONCE.
+			   The repo's SRC/ENGLISH/BOB.RC says IDS_L_SPIT_A+0..5 is Spitfire, Spitfire,
+			   Hurricane, Hurricane, Defiant, Blenheim -- so AcType()==2 should read "Hurricane",
+			   which is the gold's answer. Ours reads "Defiant", the +4 slot. But the strings the
+			   port actually serves come from the GAME'S OWN boblang.dll via bob_load_string, not
+			   from the .rc in this tree, so the .rc is not the authority here. Print what the
+			   loader returns for each slot and let that settle it. */
+			if (getenv("BOB_TRACE_FRAGLIST")) {
+				static bool _dumped = false;
+				if (!_dumped) { _dumped = true;
+					for (int _k = 0; _k < 8; _k++)
+						fprintf(stderr, "[aclist] plain RESLIST(SPIT_A,%d) = id %d -> '%s'"
+						        "   |   MK_SPIT_A+%d = id %d -> '%s'\n",
+						        _k, (int)(IDS_L_SPIT_A + _k), (LPCTSTR)RESLIST(SPIT_A, _k),
+						        _k, (int)(IDS_L_MK_SPIT_A + _k),
+						        (LPCTSTR)RESLIST(MK_SPIT_A, _k));
+				}
+			}
+			if (getenv("BOB_TRACE_FRAGLIST"))
+				fprintf(stderr, "[fragrow-raf] %d: squadnum=%d unit='%s' AcType()=%d ac='%s'"
+				        " duty=%d('%s') call='%s'\n", i,
+				        (int)squadinfo.currfrag->squadoptions[i].squadnum,
+				        (LPCTSTR)mysq->FullName(), (int)mysq->AcType(),
+				        (LPCTSTR)RESLIST(MK_SPIT_A, mysq->AcType()),
+				        (int)squadinfo.currfrag->squadoptions[i].somesortofduty,
+				        (LPCTSTR)string, (LPCTSTR)mysq->CallName());
 		}
 		else
 		{
@@ -279,7 +327,12 @@ BOOL BoBFrag::OnInitDialog()
 			name = name + CSprintf(" (%i)", staffel + (mystfl->gruppennum*3));	//RDH 28/02/00
 
 			rlistbox->AddString(name,0);
-			rlistbox->AddString(RESLIST(SPIT_A, mystfl->AcType()),1);
+			/* GOLDVID-BOB-2 S7: same list, same reason -- the German gold's briefing (t=84) reads
+			   Ju87B2 and Bf109E4, mark designations, against our plain "Ju87"/"Me109". The LW half
+			   of the plain list lands on the right AIRCRAFT by accident (the two missing RAF marks
+			   are compensated by the two empty slots), so this branch was not visibly wrong -- but
+			   it was reading the same broken table. */
+			rlistbox->AddString(RESLIST(MK_SPIT_A, mystfl->AcType()),1);
 			string.LoadString(squadinfo.currfrag->squadoptions[i].somesortofduty);	//RDH 23/03/00
 			rlistbox->AddString(string,2);
 			rlistbox->AddString(mystfl->CallName() ,3);		
@@ -289,7 +342,7 @@ BOOL BoBFrag::OnInitDialog()
 			   backed by the PE resource loader, so this cannot be settled by reading code. */
 			if (getenv("BOB_TRACE_FRAGLIST"))
 				fprintf(stderr, "[fragrow] %d: unit='%s' ac='%s' duty='%s' call='%s'\n", i,
-				        (LPCTSTR)name, (LPCTSTR)RESLIST(SPIT_A, mystfl->AcType()),
+				        (LPCTSTR)name, (LPCTSTR)RESLIST(MK_SPIT_A, mystfl->AcType()),
 				        (LPCTSTR)string, (LPCTSTR)mystfl->CallName());
 		}
 	}

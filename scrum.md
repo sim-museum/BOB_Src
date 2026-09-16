@@ -7817,3 +7817,99 @@ an opinion.
 say whether the briefing is reading the wrong field or reporting a genuinely different campaign state.
 
 **GOLDVID-BOB-2: new pass, sprint 2 of 4.**
+
+## GOLDVID-BOB-2 S7 (Opus 5, 2026-09-16) — ⭐⭐⭐ **FIXED, and it was the wrong AEROPLANE, not the wrong spelling**: the briefing's aircraft cell indexed the plain name list where the game uses the MARK list — confirmed independently on **both sides** by **both** gold videos, and the RAF briefing now matches the gold on **8 of 8** values
+
+S6 left one divergence: gold `Hurricane1A`, ours `Defiant`, for 43 Squadron.
+
+### ⭐ The RAF branch had no row trace at all
+
+`BOB_TRACE_FRAGLIST` has existed since R3.8 and its `[fragrow]` line sits **only in the Luftwaffe
+branch** — so for its whole life, the side this project compares against the gold was the one it could
+not print. Added `[fragrow-raf]`, and deliberately with the **raw number** beside the string, because
+"our 43 Squadron flies a Defiant" has two completely different causes and only the number separates
+them:
+
+```
+[fragrow-raf] 0: squadnum=33 unit='43 Squadron' AcType()=2 ac='Defiant' duty=3101('Intercept') call=' Mitor'
+```
+
+`AcType()` is **2**. In the aircraft enum 2 is a **Hurricane** — so the campaign record is right and
+the *string lookup* is wrong. That is the whole finding, and it took one number.
+
+### ⭐⭐ Why, from the game's own resources — not from this tree's `.rc`
+
+`RESLIST(SPIT_A, n)` is `LoadResString(IDS_L_SPIT_A + n)`. The repo's `SRC/ENGLISH/BOB.RC` lists
+`Spitfire, Spitfire, Hurricane, Hurricane, Defiant, Blenheim…`, which would make slot 2 a Hurricane.
+⚠️ **But the strings the port serves come from the game's own `boblang.dll`, not from the `.rc` in this
+tree**, so the `.rc` is not the authority. Dumped both lists from the loader:
+
+| slot | plain `IDS_L_SPIT_A+n` | mark `IDS_L_MK_SPIT_A+n` |
+|---|---|---|
+| 0 | Spitfire | Spitfire IA |
+| 1 | Hurricane | Spitfire IB |
+| **2** | **Defiant** | **Hurricane 1A** |
+| 3 | Blenheim | Hurricane 1B |
+| 4 | *(empty)* | Defiant 1 |
+| 5 | *(empty)* | Blenheim 1F |
+| 6 | Me109 | ME 109 E4 |
+| 7 | Me110 | ME 110 C4 |
+
+⭐⭐ **The plain list cannot be indexed by an aircraft type at all.** It collapses the A/B mark
+variants, so its RAF half is two entries short and slots +4/+5 are **empty**. The mark list is
+complete and aligns with the enum slot for slot. A table with holes in it is not the table this cell
+was meant to read.
+
+### ⭐⭐⭐ Both gold videos agree, on both sides
+
+The German gold's briefing (`260915_bob_german_campaign.mp4` @ 84 s, now committed as
+`doc/reference/260915_gold_lw_mission_briefing.png`) reads:
+
+```
+S1/III (9)   Ju87B2    Dive Bomb   Checkerboard III
+J3/I (1)     Bf109E4   High        Panther I
+```
+
+**Mark designations on the Luftwaffe side too.** So the cell indexes the mark list for both sides, and
+the plain list's LW half only *looked* right by accident — the two missing RAF marks are compensated
+by the two empty slots, so `+6`/`+7` land on the correct aeroplanes by coincidence.
+
+### ✅ Fixed — `RESLIST(SPIT_A, …)` → `RESLIST(MK_SPIT_A, …)`, both branches
+
+```
+before   [fragrow-raf] 0: 43 Squadron  AcType()=2  ac='Defiant'
+after    [fragrow-raf] 0: 43 Squadron  AcType()=2  ac='Hurricane 1A'
+```
+
+**The RAF briefing now matches the gold on 8 of 8 values** (`doc/reference/260916_ours_campaign_briefing_markac.png`):
+
+| Unit | Aircraft | Duty | Callsign | leader | wingmen | slots | footer |
+|---|---|---|---|---|---|---|---|
+| 43 Squadron ✅ | **Hurricane 1A** ✅ | Intercept ✅ | Mitor ✅ | Bob ✅ | Red 2 · Red 3 ✅ | 3 ✅ | Back · Sim Config · Fly ✅ |
+
+⭐ **And the Luftwaffe briefing, captured for the first time, matches the gold row for row:**
+
+| gold | ours |
+|---|---|
+| `S1/III (9)  Ju87B2  Dive Bomb  Checkerboard III` | `S1/III (9)  Junkers 87 B2  Dive Bomb  Checkerboard III` |
+| `J3/I (1)  Bf109E4  High  Panther I` | `J3/I (1)  ME 109 E4  High  Panther I` |
+
+**Unit names, duties and callsigns are identical character for character** — `S1/III (10)`, `J3/I (3)`,
+`Dive Bomb`, `High`, `Checkerboard III`, `Panther I`. Ours lists two extra rows at the top
+(`S1/III (7)`, `(8)`), which is a different raid's composition, not a rendering difference.
+
+⚠️ **What is NOT claimed, and why the spellings differ.** Gold `Ju87B2` / `Bf109E4` / `Hurricane1A`
+against our `Junkers 87 B2` / `ME 109 E4` / `Hurricane 1A`. **The gold runs BDG 0.99** — GOLDVID-BOB-1
+S1 read that off its own title screen — so its string table is a patched one. Same aircraft, same
+mark, different words. **This sprint fixes which list the cell indexes; it does not chase a modded
+build's spellings**, and doing so would be matching the port to a mod rather than to the game.
+
+### Gates
+
+`bob_parity.sh` **8 of 8 screens byte-identical**; `tools/bob_convoy_campaign.sh` under `gl-lock`
+**PASS** (the German campaign still reaches 3D).
+
+**S8:** the census's remaining leads — the **bomber cockpit** (every cockpit reference this project
+owns is a fighter) and the **OOB/squadron table** at full resolution.
+
+**GOLDVID-BOB-2: new pass, sprint 3 of 4.**
