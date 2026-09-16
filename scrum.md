@@ -6315,3 +6315,58 @@ not. [[gate-frame-must-match-the-eye]]
 
 **Status: 3 items filed, 0 sprints. GOLDVID-BOB-1 is the one that matters — it reopens a question
 that was closed as unanswerable.**
+
+## GOLDVID-BOB-1 S1 (Opus 5, 2026-09-15) — ⭐ **the RAF mirror EXISTS and we can see it at last** — ⛔ **and the aeroplane never leaves the ground, so the question the item exists for is still unanswered**
+
+The item's first task was to confirm the premise before building on it. Both halves are now answered,
+and they point opposite ways.
+
+⭐ **Confirmed: the RAF cockpit has a mirror, and it is on screen.** At t=115–152 s the video shows a
+Spitfire/Hurricane cockpit with a **circular, dark-rimmed mirror at the TOP-RIGHT of the canopy
+frame**. R3.4 S7–S9's worry — that `docreatemirrorno` lives in shapes 65/172 only, so an RAF sortie
+might still show no mirror — does not bite here. **This is the first sight anyone on this item has
+had of the real game's mirror.**
+
+⭐ **Its content is FLAT HORIZONTAL BANDS**, zoomed at 10×: blue sky at the top, a teal/haze band, a
+pale horizon band, then tan and brown terrain bands. No detail, no objects — a banded gradient.
+
+**That matters, because it retro-justifies a withdrawal.** ASPECT-1 S12 fitted a per-column line to
+our mirror, got a "47° horizon rotation", and withdrew it on looking at the frames, which showed *"a
+flat horizontal band in a hazy mirror"*. **The gold shows a flat horizontal band in a hazy mirror
+too.** Our appearance is not a defect to be tuned away; it is what the original does.
+
+⛔⛔ **But the aeroplane is PARKED for the entire video.** Every sampled frame from 115 s to 152 s
+reads the same, and the game is closed by 160 s of a 168 s recording:
+
+```
+5 ft   Hdg 241   Speed 0 Kts
+```
+
+Heading wanders 240–242 (a view pan, not a turn), altitude 5 ft, airspeed zero throughout.
+
+**So the discriminator this item exists for — does the mirror's content ROLL WITH THE AIRCRAFT in a
+turn — cannot be answered from this video.** A parked aeroplane's mirror shows a level horizon
+whether the code is right or wrong. Sprints S11 through S15 built an autofly harness precisely to get
+our own Spitfire manoeuvring; the gold capture gives us nothing to compare that against.
+
+⚠️ **The gold reproduces our own S11 failure.** S11 was withdrawn because *"the responsiveness test
+could not run — the Spitfire is PARKED, not flying"*. The new gold has the identical problem. Worth
+saying plainly rather than filing it as progress. [[parity-captures-must-record-their-state]]
+
+⚠️ **A liveness test I ran and then discarded.** I diffed the mirror disc across five frames at a
+fixed pixel box to see whether the gold's mirror updates. The numbers (10–107 mean abs diff) look
+decisive and mean nothing: **the view pans between those frames**, so the fixed box stops containing
+the mirror and the diff measures camera motion. A control patch of canopy/sky moved 68 by the same
+measure. **Whether the gold's mirror is live or a static texture is NOT established.** Testing it
+needs frames at a fixed view angle. [[gate-frame-must-match-the-eye]]
+
+⭐ **By-product: the gold build is identified on its own title screen — `BDG 0.99`**, matching
+`RUNNING.md`'s standing note. Its menu is Quick Shot / Campaigns / Multi-Player / Load Game / Replay /
+PC Config / Sim Config / Credits / Quit / **BDG 0.99**.
+
+**What would unblock this item, and it is one sentence to the PO:** *a capture of an RAF fighter
+actually airborne and turning, with the mirror in frame.* 168 s of a parked aeroplane cannot do it,
+and no amount of work on our side substitutes.
+
+**GOLDVID-BOB-1: 1 sprint. The mirror is real and looks like ours. The roll question is exactly as
+open as it was this morning.**
