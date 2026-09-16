@@ -8059,3 +8059,82 @@ not be a port defect at all. Named, not chased.
 
 **BOBFONT-1: 2 sprints.** A sprint that set out to build the thing that would unblock a comparison and
 found the comparison had never been blocked.
+
+## BOBFONT-1 S3 (Opus 5, 2026-09-16) — ⭐⭐ **the briefing's column pitch located to one commented-out multiply**, and re-enabling it moves 103/107/71 to 142/146/97 against the gold's 136/138/137 — ⛔ **and MiG Alley's OS/2 discovery does NOT cross-port, which was worth five minutes to check**
+
+S2 left the column spread as *"a column-width question, not a text-size one"*. This measures it.
+
+### ⭐ The gold's columns are EVEN; ours are not
+
+Header-row column starts, both at the same 1024×768 rung:
+
+| | `Unit` | `Aircraft` | `Duty` | `Callsign` | pitches |
+|---|---|---|---|---|---|
+| **gold** | 29 | 165 | 303 | 440 | **136, 138, 137** |
+| ours (`BOB_FONT_EM=1`) | 28 | 131 | 238 | 309 | **103, 107, 71** |
+
+⭐ **Even pitch means fixed column widths; irregular pitch means ours are not fixed.** The word widths
+are already right (30/56/35/61 against 31/57/36/62), so this is layout, not text — as S2 said.
+
+### ⭐⭐ Located, and it is one disabled multiply
+
+`SRC/RLISTBOX/RLISTBXC.CPP:793`:
+
+```c
+offset2 = m_sizeList.GetNext(position3);   //*tm.tmHeight/16;
+```
+
+`BoBFrag` builds the row with `AddColumn(100)` four times, so with that multiply commented out a
+column is consumed as **100 raw pixels**. And the arithmetic points straight at it: the gold's pitch
+is **137**, and `100 * 22/16 = 137.5`.
+
+### ✅ `BOB_LISTCOL_SCALE=1` (opt-in) — tested rather than argued
+
+| | pitches |
+|---|---|
+| gold | **136, 138, 137** |
+| off | 103, 107, 71 |
+| **on** | **142, 146, 97** |
+
+⭐ **The first two pitches move from 33 px short to 6 px long** — the mechanism is confirmed. The
+residual is `tmHeight` itself: the gold implies 21.9, ours is behaving like 23 (`100*23/16 = 143.75`).
+
+### ⛔ The fourth column still collapses, and that is a different defect
+
+97 against 137 — and it is the clamp at `RLISTBXC.CPP:805`:
+
+```c
+if (offset+offset2-m_lHorzScrollPos > rc.right-rc.left)
+    offset2 = rc.right-rc.left-offset+m_lHorzScrollPos;
+```
+
+**The listbox's own rect is too narrow to hold four full columns.** Four at 137 plus the 29-px margin
+needs 577 px inside a 1024-wide panel, so the gold has room; ours runs out. Invisible until the first
+three were the right size — *a defect that only becomes measurable once the one in front of it is
+fixed.*
+
+### ⛔ MiG Alley's OS/2 finding does not apply here
+
+MAFONT-1 S1 (today) found Windows builds `tmHeight` from OS/2 `usWinAscent/usWinDescent` while stb
+returns the hhea pair, and that MiG Alley's `Intel.ttf` disagrees with itself by 26 %. **Checked all
+three BoB faces before assuming it cross-ported:**
+
+| face | hhea cell/em | OS/2 win cell/em |
+|---|---|---|
+| `LiberationSans-Italic` | 1.1172 | **1.1172** |
+| `LiberationMono-Regular` | 1.1328 | **1.1328** |
+| `g101016_.ttf` (BoB's own art face) | 1.1709 | **1.1709** |
+
+**All three agree with themselves.** MiG Alley's `Intel.ttf` is the odd font out, and the fix that
+mattered there is inert here. ⚠️ *Two ports sharing a lineage is a reason to check, not a reason to
+assume* — and checking cost one script.
+
+### Gates
+
+`tools/bob_parity.sh` default arm **8 of 8 byte-identical**; `BOB_LISTCOL_SCALE` and `BOB_FONT_EM`
+both opt-in.
+
+**S4:** the listbox rect. It is now a named number — four columns need 577 px and ours has fewer —
+and the same clamp will be truncating other tables in this port.
+
+**BOBFONT-1: 3 sprints.**

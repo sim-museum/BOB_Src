@@ -791,6 +791,15 @@ void CRListBoxCtrl::OnDraw(
 			for (int x=0;x<m_list.GetCount();x++)
 			{
 				offset2=m_sizeList.GetNext(position3);//*tm.tmHeight/16;
+				/* BOBFONT-1 S3 (2026-09-16): the `*tm.tmHeight/16` above is commented out, so a
+				   column added as AddColumn(100) is consumed as 100 RAW PIXELS. The gold's mission
+				   briefing puts its four columns on an even 137 px pitch (starts 29/165/303/440),
+				   and 100 * 22/16 = 137.5 -- the disabled multiply, at this listbox's tmHeight.
+				   Ours are irregular (103/107/71) and move with the font, which a raw constant
+				   could not do on its own. Test it rather than argue about it:
+				   BOB_LISTCOL_SCALE=1 re-enables the multiply. Default-off. */
+				{ static int cs = -1; if (cs < 0) cs = getenv("BOB_LISTCOL_SCALE") ? 1 : 0;
+				  if (cs && tm.tmHeight > 0) offset2 = offset2 * tm.tmHeight / 16; }
 				isPicture=m_isPictureList.GetNext(position4);
 				if (m_isRightAlignedList.GetNext(position5))
 				{
