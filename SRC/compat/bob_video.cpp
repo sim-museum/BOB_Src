@@ -220,9 +220,41 @@ extern "C" void bob_apply_pending_resize(void)
 	g_pendingW = g_pendingH = 0;
 	ensure_window(pw, ph);
 }
+/* BOBFONT-1 S2 (2026-09-16): BOB_FORCE_RES=<W>x<H> -- pin the FRONT-END layout resolution at boot.
+   BoB has never had MiG Alley's MA_FORCE_RES, and the want is not cosmetic: every real-game capture
+   this project owns was taken at a 1280-wide canvas, while the port's front end lays out at
+   1024x768, so an element-by-element comparison against the gold crosses a resolution boundary --
+   the class of comparison S102/PO-11 parked in the sister port, and the reason BOBFONT-1 S1 could
+   measure its font fix's RATIO but not check it against the gold.
+   The override is deliberately NOT a special case: RFullPanelDial::GetCurrentRes picks its rung from
+   AfxGetMainWnd()->GetWindowRect(), the compat GetWindowRect reports bob_gdi_screen_size(), and that
+   reports g_scrW/g_scrH -- so setting those at boot makes the game choose the matching rung through
+   its OWN path, exactly as MA_FORCE_RES does.
+   Applied ONCE, at the first window call, so the game's later mode changes (the 3-D view runs
+   800x600 and the front end must get 1024x768 back afterwards) still work. */
+static int g_forceW = -1, g_forceH = -1;      /* -1 = not parsed yet, 0 = none */
+static void parse_force_res(void)
+{
+	if (g_forceW >= 0) return;
+	g_forceW = g_forceH = 0;
+	const char* fr = getenv("BOB_FORCE_RES");
+	if (!fr || !*fr) return;
+	int w = 0, h = 0;
+	if (sscanf(fr, "%dx%d", &w, &h) != 2 || w <= 0 || h <= 0) {
+		fprintf(stderr, "[vid] BOB_FORCE_RES=\"%s\" not understood (want WxH) -- ignored\n", fr);
+		return;
+	}
+	g_forceW = w; g_forceH = h;
+	fprintf(stderr, "[vid] BOB_FORCE_RES: front-end layout pinned to %dx%d\n", w, h);
+	fflush(stderr);
+}
 static void ensure_window(int w, int h)
 {
+	parse_force_res();
 	if (w > 0 && h > 0) { g_scrW = w; g_scrH = h; }
+	/* the pin is applied AFTER the argument, every call -- a one-shot would be undone by the
+	   very next ensure_window(1024,768) the boot path makes. */
+	if (g_forceW > 0) { g_scrW = g_forceW; g_scrH = g_forceH; }
 	if (g_win) {
 		if (g_mainThread && (unsigned long)SDL_ThreadID() != g_mainThread
 		    && !getenv("BOB_WINDOW_ANYTHREAD")) {

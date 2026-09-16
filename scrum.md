@@ -7983,3 +7983,79 @@ expected and for the same reason as MA's — the references are pictures of the 
 **S2:** a `BOB_FORCE_RES`-equivalent, so the briefing can be captured at the gold's 1280×1024.
 
 **BOBFONT-1: 1 sprint.**
+
+## BOBFONT-1 S2 (Opus 5, 2026-09-16) — ⛔⛔ **RETRACTION: S1's blocker does not exist — the gold's BoB briefing is 1024×768, not 1280** — ⭐⭐⭐ so the font fix **is** confirmed against the real game, on two rows, at the same layout rung
+
+S1 shipped `BOB_FONT_EM=1` and said it could not be checked against the gold because *"our campaign
+briefing renders on a 1024-wide canvas; the gold's is 1280"*, and named a `BOB_FORCE_RES` as the
+unblocking step. Both halves of that turned out to be wrong, in opposite directions.
+
+### ✅ `BOB_FORCE_RES=WxH` shipped — and it cannot do what S1 wanted
+
+Deliberately not a special case: `GetCurrentRes()` picks its rung from
+`AfxGetMainWnd()->GetWindowRect()`, the compat `GetWindowRect` reports `bob_gdi_screen_size()`, and
+that reports `g_scrW/g_scrH` — so pinning those makes the game choose through **its own path**, as
+`MA_FORCE_RES` does. Applied after the argument on every `ensure_window` (a one-shot would be undone
+by the very next `ensure_window(1024,768)` the boot path makes).
+
+⛔ **And pinning to 1280×1024 does not give a 1280 front end:**
+
+```
+[vid] BOB_FORCE_RES: front-end layout pinned to 1280x1024
+[shot-state] ... resw=1024 ... dlg=1164:5/22          <- was 17/22
+```
+
+```c
+int RFullPanelDial::resolutions[]={800,800,1024};//,1280};     // FULLPSYS.CPP:112
+```
+
+**The 1280 rung is commented out in Rowan's own source.** `GetCurrentRes()` correctly returns the
+largest rung it has, the canvas is merely bigger than the layout, and the dialog control count falls
+because the panel geometry no longer matches the window. The knob is real and useful; *this* was never
+something it could deliver.
+
+### ⛔⛔ And the premise was wrong anyway — I never measured the BoB frame
+
+The gold's RAF briefing, non-black content bounding box:
+
+```
+x 448..1471  (1024)      y 156..923  (768)
+```
+
+**Exactly 1024×768**, centred in the 1920×1080 recording with black margins. ⚠️ **I asserted 1280 by
+carrying a measurement across projects**: the *MiG Alley* gold campaign screen really is 1280×1024
+(CAMPSCREEN-1 S8 measured it), and I reused that number for a Battle of Britain frame I had not
+measured. Two ports, two golds, one measurement.
+
+### ⭐⭐⭐ So the comparison was always like-for-like, and the fix passes it
+
+Same 1024×768 rung, gold against both arms, on two independent rows
+(`doc/reference/260916_briefing_rows_gold_vs_off_vs_on.png`):
+
+| measurement | gold | `BOB_FONT_EM` **off** | **`BOB_FONT_EM=1`** |
+|---|---|---|---|
+| header `Unit`, ink width | **31** | 27 (0.871) | **30 (0.968)** |
+| header `Unit`, glyph height | **13** | 12 | **13** ✅ |
+| value row `43 Squadron`, glyph height | **17** | 15 | **17** ✅ |
+
+**The glyph height matches the real game exactly on both rows with the fix on**, and the width closes
+from 13 % short to 1 pixel on a 31-pixel word. That is now **four** screens across the two ports
+(MA's campaign list and prefs panel, BoB's briefing header and value row) where honouring the Win32
+`lfHeight` sign lands on the real game's glyph size.
+
+### ⚠️ What is still different, and it is not the font
+
+The gold's four columns are spread across the panel; ours are packed left (visible in the A/B image).
+That is a **column-width** question, not a text-size one — and the gold runs **BDG 0.99**, so it may
+not be a port defect at all. Named, not chased.
+
+### Gates
+
+`tools/bob_parity.sh` default arm **8 of 8 byte-identical** — `BOB_FORCE_RES` is inert when unset and
+`BOB_FONT_EM` stays opt-in. Not re-seeded: as in MA, the fix moves text on every screen, so the
+"every differing pixel accounted for" condition cannot be met.
+
+**S3:** the column widths, now that the layouts are known to match.
+
+**BOBFONT-1: 2 sprints.** A sprint that set out to build the thing that would unblock a comparison and
+found the comparison had never been blocked.
