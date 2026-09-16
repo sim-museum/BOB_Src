@@ -7084,3 +7084,75 @@ specifically the ruler, the sector labels and the footer's clock format, which a
 be graded without matching the campaign date.
 
 **GOLDVID-BOB-1: 4 sprints — at cap, rotating off.**
+
+## GOLDVID-BOB-2 S4 (Opus 5, 2026-09-16) — the census's first lead cashed in: the gold's **RAF Directives panel**, and a sized gap — **20 of its 23 controls are classes our OLE host does not implement** — which also **corrects a standing CLAUDE.md claim**
+
+S3's census listed map sub-dialogs that no sprint had read and ranked the squadron/OOB table first.
+Located it by scanning full-resolution frames for dialog fill rather than by eye (t=28–31, 44% of the
+sampled map region), and it turns out to be something better: the **RAF Directives** panel — the
+screen where an RAF player sets campaign policy. Saved as
+`doc/reference/260915_gold_raf_directives.png`.
+
+⭐ **What is on it** — roughly twenty-five labelled controls of five kinds:
+
+```
+Directives                                        ? ✓ ✕
+  Rest if:  Squadron category is below   C [±]
+            Available a/c is less than   6 [±]
+
+  11 Group Squadrons             10 and 12 Group Squadrons
+    Holes in radar     0 [±]       Patrol 11 Group airfields  0 [±]
+    Over convoys       6 [±]       Patrol aircraft factories  0 [±]
+    Coastal            0 [±]       Patrol Support Industries  0 [±]
+    Intercepts        15           Intercepts                16
+    Front Line Airfields: Coastal ▼
+                                   Patrol size
+  Sanctioned Responses               ( ) Squadron or less
+    [ ] Fighter Sweep                ( ) Paired squadrons
+    [x] Reconn                       ( ) Big Wing
+    [ ] Unescorted Bombers
+    [x] Escorted Bombers           Convoy Support
+    [x] Heavily Escorted             ( ) None   ( ) 30%   ( ) 60%
+    [x] Intercept before target      [x] Matched Response
+    [ ] Automatic Scrambling
+```
+
+⭐⭐ **The gap, taken from the game's OWN header rather than from the picture.** `SRC/H/RAFDir.h`
+declares this panel's members:
+
+| control class | count | hosted by our port? |
+|---|---|---|
+| **CRSpinBut** | **10** | ❌ |
+| **CRButton** | **8** | ❌ |
+| **CRRadio** | **2** | ❌ |
+| CRStatic | 2 | ✅ `bob_ole_rstatic.cpp` |
+| CRCombo | 1 | ✅ `bob_ole_rcombo.cpp` |
+
+**23 controls, and 20 of them are of classes `SRC/compat/` does not implement** — our OLE hosting is
+`bob_ole_rcombo.cpp`, `bob_ole_rlistbox.cpp`, `bob_ole_rstatic.cpp` and nothing else.
+
+⛔ **And this corrects a standing note.** `CLAUDE.md` states: *"Not adopted (verified N/A for BoB):
+RButton hosting + RTTI eventsink — BoB's dialogs host only RCombo/RListBox/RStatic; buttons render via
+the separate `bob_frontend_tick`/`bob_draw_menu` path, not as OCX."* **The RAF Directives panel
+declares eight `CRButton`s as hosted OCX members.** The "verified N/A" is wrong, and it has been
+steering work away from a control class the campaign UI needs. ⚠️ *One dialog disproves "no dialog
+does this"; it does not tell us how many others do.* A census of `DDX_Control` across the MFC tree
+would size that, and is not done here.
+
+⚠️ **A guess I made from the picture and then corrected from the source.** The seven "Sanctioned
+Responses" entries look like tickboxes, and the game ships an `RTICKBOX` library, so I first wrote
+them down as `CRTickBox`. The header says **`CRButton`** — check-style buttons. The picture was
+suggestive and wrong; the declaration is authoritative. (`SRC/` ships RANIBUT, RBUTTON, RCOMBO, REDIT,
+REDTBT, RJOYCFG, RLISTBOX, RRADIO, RSCRLBAR, RSPINBUT, RSPLTBAR, RSTATIC, RTABS, RTICKBOX, RTITLE —
+fifteen control libraries, of which we host three.)
+
+⭐ **Why this is worth more than a rendering comparison.** S113–S117 built OOB dialog hosting and
+graded it by eye with no reference. This gives a **specific, countable target**: to render one real
+campaign policy screen faithfully, the port needs `CRSpinBut`, `CRButton` and `CRRadio` hosts. That is
+three files following the pattern of the three that already exist, and the panel itself is the
+acceptance test.
+
+**S5:** census `DDX_Control` across `SRC/MFC/` by control class, to size the whole OCX-hosting gap
+rather than this one panel's share of it.
+
+**GOLDVID-BOB-2: 4 sprints — at cap, rotating off.**
