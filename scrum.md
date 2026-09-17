@@ -10523,3 +10523,78 @@ fonts or the gold video. **File it as MOUSEMOVE-BOB-1 and rotate it in on its ow
 than growing this item a fifteenth sprint.
 
 **GOLDVID-BOB-3: the caption is explained and the item is done. A new item filed. Sprint 2 of 4.**
+
+## MOUSEMOVE-BOB-1 S1 (Opus 5, 2026-09-17) — ⭐⭐⭐ **the whole message-map surface audited, not one message at a time: the game registers 39 `ON_WM_*` messages and this port delivers FOUR.** A standing tool now finds the next gap in one run instead of six sprints
+
+**Story:** MOUSEMOVE-BOB-1, filed by GOLDVID-BOB-3 S14. BoB rotation: sprint 3 of 4. S14 found
+`ON_WM_MOUSEMOVE()` `#define`d to nothing and said the right response is to **audit the block as a
+whole**, not to fix messages as symptoms surface. Done.
+
+New tool: **`tools/msgmap_audit.sh`**.
+
+### ⭐⭐ The result
+
+```
+   messages the game registers or implements      39
+   messages this port actually DELIVERS            4   -- LBUTTONUP, MOVE, SIZE, TIMER
+   never delivered                                35
+   handler implementations behind them           427
+```
+
+**Delivery is ad-hoc.** `afxwin.h` expands the entire `ON_WM_*()` family to nothing, so every
+registration vanishes at compile time — **silently: no warning, no unresolved symbol, and the game
+source still reads as if the handler is wired.** The port compensates by calling specific entry
+points directly from its own layer.
+
+### ⛔ A number I nearly published, and why it was wrong
+
+An intermediate version of this audit reported **"39 of 39, 100 % dead"**. The port demonstrably
+paints and responds to clicks, so that could not be true — the fault was the liveness test, which
+searched only `SRC/compat/` and counted the empty **stub declaration** (`void OnMouseMove(UINT,
+CPoint) {}`) as evidence of delivery. Widening to the whole tree and excluding `this->OnX(...)` —
+the game calling *itself*, e.g. `RSCRLBRC.CPP:753` — gives the four above.
+**A heuristic that produces a confident, wrong, round number is this project's most reliably
+recurring failure**, and it very nearly produced another headline.
+[[instrument-bookkeeping-lies]]
+
+### ⚖️ "Never delivered" is NOT "defect" — and the tool says so
+
+The port **replaces** some of these rather than routing them. `ON_WM_PAINT` is registered 10 times
+and never delivered, yet the front-end paints — because painting goes through `bob_ole_draw_*` and
+`bob_frontend_tick`, not through `WM_PAINT`. **That is a legitimate port design, not a bug.**
+
+So the list is a **triage queue**, not a defect list. What makes an entry a defect is *"registered,
+not delivered, AND not re-implemented anywhere"* — which needs a human. Two are already confirmed:
+
+| message | cost | found by |
+|---|---|---|
+| `ON_WM_ERASEBKGND` | the campaign map's header band art | a gold comparison, ~6 sprints (MA S17–S25) |
+| `ON_WM_MOUSEMOVE` | every hover affordance, incl. side-select highlighting | MA/BoB S13–S14 |
+
+**Both were found by chasing a pixel difference for several sprints. The tool finds the rest in one
+run**, and that is its whole point.
+
+### ⭐ The candidates that look most likely to matter
+
+From the 35, by registration count and by what the port plainly does not re-implement:
+
+* **`SETCURSOR`** (7 reg / 11 impl) — cursor shape over controls and drag edges. Nothing in the port
+  sets a cursor.
+* **`LBUTTONDOWN`** (17 / 35) — `LBUTTONUP` *is* delivered but **`LBUTTONDOWN` is not**, which is an
+  odd pairing and worth checking: press-and-hold behaviour would be half-wired.
+* **`HSCROLL` / `VSCROLL`** (2 / 5 each) — scrollbars.
+* **`KEYDOWN` / `CHAR`** — BoB's own version of the typing gap MP-1 spent 13 sprints on in FreeFalcon.
+
+### ⚠️ Not claimed
+
+* **That any of the 35 beyond the two confirmed is a defect.** The tool's own output says so. I have
+  not triaged them.
+* **That the counts are exact.** They are grep counts over the game directories; a handler defined in
+  a header, or reached through a vtable rather than by name, would be miscounted. **The tool is a
+  triage aid, not an oracle** — which is precisely the lesson the retracted 100 % teaches.
+* That `LBUTTONUP`-without-`LBUTTONDOWN` is a bug. It is an asymmetry worth one look.
+
+**S2:** triage `SETCURSOR` and the `LBUTTONDOWN`/`LBUTTONUP` asymmetry — the two entries where
+"registered, not delivered, not re-implemented" looks most likely to hold.
+
+**MOUSEMOVE-BOB-1: the surface is mapped and tooled. Sprint 3 of 4.**
