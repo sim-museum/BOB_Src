@@ -11090,3 +11090,66 @@ one line that made it trustworthy.** A gate copied from a good gate is not a goo
   *this run photographed something*, not *that it photographed the right thing*.
 
 **BoB sprint 2 of 4.**
+
+## TMPFS-BOB-1 S3 / GATEHYGIENE-1 S3 (Opus 5, 2026-09-17) — ✅ **the stale-artefact class audited across all 29 BoB tools: exposure was exactly TWO gates, not seven. The second is `bob_blob_bisect` — where the consequence is not a false green but a bisect that names the wrong texture.** Fixed, both arms measured
+
+**Story:** S2 fixed the parity gate and explicitly did **not** claim the others were sound. This
+sprint checks them, and the useful part of the answer is how small it is.
+
+### ⛔ The crude audit said seven. It was wrong, and triaging it is the whole sprint
+
+A mechanical "writes an artefact, reads it back, never calls `rm -f`" scan over all 29 `tools/*.sh`
+returned **seven** suspects. ⭐ **Six were false positives**, for two distinct reasons:
+
+* **`bob_mp_two_instance`, `bob_mp_uijoin`, `bob_r16_viewdt`, `bob_r18_timer`, `bob_settings_nav`,
+  `bob_vsync_pace`** read only **shell-written logs**, and `>` **truncates** on every run. There is
+  no stale state to read.
+* **`bob_combat_soak`, `bob_convoy_campaign`, `bob_detect_probe`, `bob_strategic_soak`** pass a
+  `BOB_SHOT_PATH` but use the **`BOB_SHOT=99999` sentinel** — they never take the shot and never
+  read it back.
+
+⭐ *This port has booked this exact lesson before:* MOUSEMOVE-BOB-1 S1's audit tool *"was wrong in
+3 of its 4 positives"*. Mine was wrong in 6 of 7. **A scan is a shortlist, not a finding.**
+
+### ⛔⛔ The one real second case, and why it is worse than S2's
+
+**`bob_blob_bisect.sh`** writes `$OUT/$tag.ppm` from the game and scores it — with no delete, and
+**tags repeat across invocations**. So a failed arm left the *previous invocation's* frame in place,
+`[ -s ]` passed, and `score()` measured **a different texture set's image**.
+
+⚖️ S2's hole produced a **false green**. This one produces a **wrong answer**: a bisect hunting
+PO-73's ellipse would confidently name the wrong texture, and nothing in the output would look off.
+
+### ✅ Both arms measured, against a planted 200 000-byte stale `baseline.ppm`
+
+| arm | result |
+|---|---|
+| **pre-fix** (copy with the guard stripped) | stale file **accepted** — passed `[ -s ]`, no `NO FRAME`, ran on into `score()` |
+| **post-fix** | **`baseline: NO FRAME -- run failed`**, and the planted file is **deleted** |
+
+⚠️ The pre-fix arm ended in a Pillow `UnidentifiedImageError` only because my plant was random
+noise. **That is the artificial part of the test, and it is the benign case** — a real stale PPM
+from a previous arm is a valid image, so it would have scored **silently** and returned a number
+that looked entirely normal.
+
+### 📋 Final BoB exposure
+
+| gate | artefact | status |
+|---|---|---|
+| `bob_parity.sh` | 14 game-written PPMs | ✅ fixed S2 (control: `/bin/true` → FAIL) |
+| `bob_blob_bisect.sh` | game-written PPM per arm | ✅ fixed S3 (control: planted stale → `NO FRAME`) |
+| `bob_validate.sh` | game-written frame | ✅ already cleared (S1 rewrote it) |
+| `bob_gates.sh`, `bob_r9_layout.sh` | — | ✅ already had `rm -f` |
+| 6 log-only + 4 shot-sentinel gates | — | ✅ not exposed, verified individually |
+
+### ⚠️ Not claimed
+
+* **That `bob_blob_bisect` was re-run for real.** It flies a 300 s arm per texture set and the fix is
+  a delete before a write; it was verified by the control arms above, **not by a full bisect**.
+* That the audit covers hazards other than *stale artefacts* — **it does not**. GATEHYGIENE-1's other
+  two failure modes (a probe in an off-by-default branch; a capture taken at the wrong moment) are
+  still invisible to this scan, exactly as that sprint said.
+* That PO-73 is affected. **No bisect result is being revisited** — no past run is known to have had
+  a failed arm.
+
+**BoB sprint 3 of 4.**

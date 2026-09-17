@@ -41,6 +41,12 @@ pgrep -x bob >/dev/null && { echo "REFUSING: bob already running (pid $(pgrep -x
 # one flight; $1 = tag, $2 = comma-separated glTex set ("" = baseline, skip nothing)
 fly() {
   local tag="$1" set="$2"
+  # TMPFS-BOB-1 S3: clear the previous image first. $OUT persists between invocations and tags
+  # repeat across runs, so without this a failed arm left the LAST invocation's frame in place,
+  # `[ -s ]` passed, and score() measured an image from a different texture set -- a bisect that
+  # confidently names the wrong culprit. Same defect class as bob_parity.sh (S2), which passed
+  # 14/14 with /bin/true; here the consequence is a wrong answer rather than a false green.
+  rm -f "$OUT/$tag.ppm"
   ( cd "$GD" && timeout -k 5 300 env DISPLAY=:0 BOB_BOOT_FRONTEND=1 BOB_TRACE_BLOB=1 \
       ${set:+BOB_BLOB_TEX="$set"} \
       BOB_DUMP_FRAME="$FRAME" BOB_DUMP_PATH="$OUT/$tag.ppm" BOB_EXIT_AFTER_DUMP=1 \
