@@ -20,7 +20,7 @@
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"
 BOB=${BOB:-/home/admin/bob/build/bob}
-OUT=${OUT:-/tmp/bob_vsync_pace}; mkdir -p "$OUT"
+OUT=${OUT:-$HOME/bob-gates/bob_vsync_pace}; mkdir -p "$OUT"
 SECS=${SECS:-42}; QM=${QM:-11}          # QM 11 = title 2237 = IDS_MISTYPE_DOGFIGHTING
 
 arm() { # $1 tag, $2 extra env

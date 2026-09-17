@@ -9,7 +9,7 @@
 # Camera pose comes from env (with land defaults):
 #   CAM_X CAM_Y CAM_Z CAM_PITCH CAM_HDG CAM_ROLL  QM_INDEX
 #
-# Output: /tmp/bobval/<tag>.png  + printed stats (size, distinct colours, samples)
+# Output: $HOME/bob-gates/bobval/<tag>.png  + printed stats (size, distinct colours, samples)
 set -u
 
 TAG="${1:-shot}"
@@ -22,7 +22,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRIVE_C="${BOB_DRIVE_C:-$HOME/sgl/TUE/BattleOfBritain/WP/drive_c}"
 GAME_DIR="$DRIVE_C/Program Files/Rowan Software/Battle Of Britain"
 BOB="${BOB_BIN:-$SCRIPT_DIR/../build/bob}"
-OUT=/tmp/bobval
+OUT=$HOME/bob-gates/bobval
 mkdir -p "$OUT"
 
 # Land defaults: aim at the highest map item (a hill) from above, pitched down.
@@ -34,7 +34,7 @@ CAM_HDG="${CAM_HDG:-0}"
 CAM_ROLL="${CAM_ROLL:-0}"
 QM_INDEX="${QM_INDEX:-0}"
 
-rm -f /tmp/bobframe.ppm
+rm -f "$OUT/bobframe.ppm"
 ( cd "$GAME_DIR" && timeout 25 env \
     DISPLAY=:0 \
     BOB_DRIVE_C="$DRIVE_C" \
@@ -44,20 +44,21 @@ rm -f /tmp/bobframe.ppm
     BOB_CAM_X="$CAM_X" BOB_CAM_Y="$CAM_Y" BOB_CAM_Z="$CAM_Z" \
     BOB_CAM_PITCH="$CAM_PITCH" BOB_CAM_HDG="$CAM_HDG" BOB_CAM_ROLL="$CAM_ROLL" \
     BOB_DUMP_FRAME="$FRAME" BOB_EXIT_AFTER_DUMP=1 \
-    "$BOB" >/tmp/bobval/$TAG.log 2>&1 )
+    BOB_DUMP_PATH="$OUT/bobframe.ppm" \
+    "$BOB" >"$OUT/$TAG.log" 2>&1 )
 
 echo "=== $TAG (landfix=$LANDFIX frame=$FRAME cam=($CAM_X,$CAM_Y,$CAM_Z) pitch=$CAM_PITCH hdg=$CAM_HDG) ==="
-grep -aE '\[present\] dumped|FATAL|assert' /tmp/bobval/$TAG.log | head -3
+grep -aE '\[present\] dumped|FATAL|assert' "$OUT/$TAG.log" | head -3
 
-if [ ! -s /tmp/bobframe.ppm ]; then
-    echo "  NO FRAME captured (see /tmp/bobval/$TAG.log)"
+if [ ! -s "$OUT/bobframe.ppm" ]; then
+    echo "  NO FRAME captured (see "$OUT/$TAG.log")"
     exit 1
 fi
 
-python3 - "$OUT/$TAG.png" <<'PY'
+python3 - "$OUT/$TAG.png" "$OUT/bobframe.ppm" <<'PY'
 import sys
 from PIL import Image
-im = Image.open('/tmp/bobframe.ppm').convert('RGB')
+im = Image.open(sys.argv[2]).convert('RGB')
 im.save(sys.argv[1])
 w,h = im.size
 px = list(im.getdata())

@@ -37,7 +37,7 @@ bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-OUT="${OUT:-/tmp/bob_dialslots}"
+OUT="${OUT:-$HOME/bob-gates/bob_dialslots}"
 TMO="${TMO:-420}"
 CONTROL="${CONTROL:-0}"
 mkdir -p "$OUT"

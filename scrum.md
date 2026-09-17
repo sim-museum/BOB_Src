@@ -10961,3 +10961,63 @@ defect.** The PO's mandate names this exactly. What remains true and worth keepi
   instrument caveat are new. **They are not worth two sprints**, which is the point.
 
 **ASPECT-1: PARKED after 17 sprints. The lesson is the reusable part — read the sprint log, not the filing row. BoB rotation complete (4 sprints) → julia.**
+
+## TMPFS-BOB-1 (Opus 5, 2026-09-17) — ⭐⭐ **cross-ported from MA sprint 4: 18 BoB gates aimed their captures at the 7.6 GB tmpfs, and `bob_validate` dumped a 6 MB 1920×1080 frame to `/tmp/bobframe.ppm` — the path `bob_video.cpp`'s own comment says is SHARED with the MiG Alley port.** Parity re-verified 14/14 byte-identical afterwards
+
+**Story:** BoB's board is groomed and quiet — ASPECT-1 parked after 17 sprints (its own S9 refuted
+the item's founding premise), MOUSEMOVE-BOB-1 parked for want of a symptom, GOLDVID-BOB-3's decision
+packet complete and with the PO. Everything named is parked or blocked, so this sprint carried
+across the defect MA sprint 4 had just found in the sister port.
+
+⭐ **This is not a hypothetical risk in BoB — it is a booked incident.** `bob_use_scratch.sh`'s own
+header records it: *"Running it in a loop during R25's bisection made that visible by helping to
+exhaust the /tmp quota, which broke every shell command until the PO cleared it… **The bulk turned
+out to be accumulated CAPTURE output**, not these trees"*, and S378 records that when `/tmp` last hit
+quota **a gate's backup came out empty and the restore wrote a 0-byte file over the player's
+campaign save.** The port diagnosed the cause and never moved the captures.
+
+### What was found and fixed
+
+**18 gate scripts** defaulted `OUT` to `/tmp` — 47 MB live at the time of the sweep, `bob_parity`
+(19 MB, 14 screens/run) and `bob_r9_layout` (24 MB) the largest. All repointed to
+`$HOME/bob-gates/<name>`, override preserved.
+
+⛔ **And `bob_validate.sh` was worse than the rest, in two ways the `OUT=` sweep alone did not
+reach:**
+
+1. It **hardcoded `/tmp/bobval/...` at four more sites** than its `OUT=` line, so repointing `OUT`
+   *broke it* — `line 38: /tmp/bobval/shot.log: No such file or directory`. **A sed that is not
+   verified by running the thing is a sed that ships a broken gate.**
+2. It was the **only** one of the three `BOB_DUMP_FRAME` scripts that never set `BOB_DUMP_PATH`, so
+   its frame landed on the compiled-in default — `/tmp/bobframe.ppm`, 6 MB at 1920×1080, and
+   `bob_video.cpp:1382` says of that path in as many words: *"so a private path avoids the two
+   instances clobbering each other."* **Both ports were writing frame dumps to the same tmpfs
+   file.** Now `BOB_DUMP_PATH="$OUT/bobframe.ppm"`.
+
+### ✅ Verified by running, not by reading
+
+| check | result |
+|---|---|
+| `bash -n`, 19 modified scripts | OK |
+| `bob_parity.sh` (the biggest capturer, 14 screens) | **PASS — 14/14 byte-identical** |
+| `bob_validate.sh` (the bare-assignment outlier) | **PASS** — `dumped frame 120 to /home/admin/bob-gates/bobval/bobframe.ppm (1920x1080)`, 88 037 distinct colours, terrain bands distinct |
+| tmpfs after | 546 M / 7.6 G; captures now 40 MB under `~/bob-gates` |
+
+⭐ The parity run is the load-bearing one: **14/14 byte-identical** says the references seeded by
+GOLDPROV-BOB-1 S4 and audited at S6 survive the move untouched.
+
+### ⚠️ Not claimed, and one correction
+
+* ⚠️ **Correction to my own first reading.** I reported `bob_validate` "exits 0 while reporting NO
+  FRAME captured". **It does not** — the script has `exit 1` right there; my `| tail -12` pipeline
+  was returning `tail`'s status. **The gate was honest and the instrument was mine.**
+* **The C++ default is unchanged.** `bob_video.cpp` still falls back to `/tmp/bobframe.ppm`. All
+  three scripts that dump frames now override it, so the shared path is only reachable by an
+  ad-hoc manual run — one file, overwritten each time. Moving the default is a wider change and is
+  **deliberately not in this sprint**.
+* **Left alone on measurement:** the scratch game-data trees (`bob_use_scratch.sh`) are 2–3 MB and
+  **self-clean on exit** since S424, and `bob_mp_packet`/`bob_clip_gate` write **logs and a probe
+  binary**, not captures.
+* That this ever bit BoB in *this* session. **It was not measured as active harm; it was removed.**
+
+**BoB sprint 1 of 4.**

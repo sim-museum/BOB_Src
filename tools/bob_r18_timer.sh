@@ -13,7 +13,7 @@
 set -u
 . "$(cd "$(dirname "$0")" && pwd)/bob_use_scratch.sh"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-BOB=/home/admin/bob/build/bob; OUT=/tmp/bob_r18; mkdir -p "$OUT"; SECS=${SECS:-90}
+BOB=/home/admin/bob/build/bob; OUT=$HOME/bob-gates/bob_r18; mkdir -p "$OUT"; SECS=${SECS:-90}
 arm() {  # $1 = tag, $2 = extra env
   ( cd "$GD" && timeout -k 5 -s KILL "$SECS" env BOB_RUN_INIT=1 BOB_DRIVE_C="$BOB_DRIVE_C" \
       BOB_BOOT_FRONTEND=1 BOB_TRACE_TIMER=1 $2 "$BOB" ) > "$OUT/$1.log" 2>&1

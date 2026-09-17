@@ -26,7 +26,7 @@ set -u
 bob_snapshot_pids
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
 BOB="${BOB:-/home/admin/bob/build/bob}"
-OUT="${OUT:-/tmp/bob_settings_nav}"; mkdir -p "$OUT"
+OUT="${OUT:-$HOME/bob-gates/bob_settings_nav}"; mkdir -p "$OUT"
 CLICKS="${CLICKS:-6,3,#1075,#1075,6}"     # Sim Config -> Views -> cycle Gun Camera twice -> Continue
 # R13 (S340): THE EXPECTED VALUE IS DERIVED, NOT HARDCODED.
 # This gate was permanently red on WANT=2, and S331-S4 established why by observation:

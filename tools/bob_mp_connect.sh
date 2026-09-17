@@ -28,7 +28,7 @@ bob_snapshot_pids
 ROOT="/home/admin/bob"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-OUT="${OUT:-/tmp/bob_mp}"; mkdir -p "$OUT"
+OUT="${OUT:-$HOME/bob-gates/bob_mp}"; mkdir -p "$OUT"
 TMO="${TMO:-90}"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 # S418: was `pgrep -x bob >/dev/null && exit 2`. This gate walks Multi-Player -> DirectPlay ->

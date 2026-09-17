@@ -39,7 +39,7 @@ bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-OUT="${OUT:-/tmp/bob_detect}"
+OUT="${OUT:-$HOME/bob-gates/bob_detect}"
 TMO="${TMO:-700}"
 mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }

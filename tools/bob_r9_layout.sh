@@ -18,7 +18,7 @@ set -u
 bob_snapshot_pids
 BOB="${BOB:-/home/admin/bob/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-OUT="${OUT:-/tmp/bob_r9_layout}"; mkdir -p "$OUT"
+OUT="${OUT:-$HOME/bob-gates/bob_r9_layout}"; mkdir -p "$OUT"
 TMO="${TMO:-120}"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 fail=0

@@ -28,7 +28,7 @@ set -u
 ROOT="/home/admin/bob"
 BOB="${BOB:-$ROOT/build/bob}"
 REF="${REF:-$ROOT/doc/ref/native}"
-OUT="${OUT:-/tmp/bob_parity}"
+OUT="${OUT:-$HOME/bob-gates/bob_parity}"
 SEED="${SEED:-0}"
 # S413: RUN AGAINST A SCRATCH TREE, not the player's.
 #

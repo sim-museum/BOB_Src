@@ -28,7 +28,7 @@ set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-OUT="${OUT:-/tmp/bob_blob_bisect}"; mkdir -p "$OUT"
+OUT="${OUT:-$HOME/bob-gates/bob_blob_bisect}"; mkdir -p "$OUT"
 FRAME="${FRAME:-150}"
 # a window generously around the ellipse at 800x600, measured from the S306 baseline capture
 # (ellipse bbox x 18..133, y 62..81). DARK is the luminance below which only the ellipse falls.

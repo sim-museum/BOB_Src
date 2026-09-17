@@ -21,7 +21,7 @@ bob_snapshot_pids
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BOB="${BOB:-$ROOT/build/bob}"
 GD="${GD:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/Program Files/Rowan Software/Battle Of Britain}"
-OUT="${1:-${OUT:-/tmp/bob_realgl_flight}}"
+OUT="${1:-${OUT:-$HOME/bob-gates/bob_realgl_flight}}"
 TMO="${TMO:-600}"
 EVERY="${EVERY:-600}"
 mkdir -p "$OUT"
