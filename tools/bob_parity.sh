@@ -71,17 +71,28 @@ phaseselect:380:BOB_AUTOCLICK=1,1
 entername:520:BOB_AUTOCLICK=1,1,1
 bobfrag:120:BOB_BOBFRAG=1"
 
-fail=0; missing=0; n=0
+fail=0; missing=0; n=0; captured=0
 echo "BoB screen parity -- captures vs $REF"
 while IFS= read -r line; do
     [ -z "$line" ] && continue
     name="${line%%:*}"; rest="${line#*:}"; shot="${rest%%:*}"; xenv="${rest#*:}"
     n=$((n+1))
+    # TMPFS-BOB-1 S2: DELETE THE PREVIOUS CAPTURE FIRST. $OUT persists between runs, so until this
+    # line existed a run that captured NOTHING -- crash, timeout, missing data dir, a scaffold that
+    # never reached the screen -- silently compared the LAST run's file and reported "OK
+    # byte-identical". Demonstrated, not theorised: `BOB=/bin/true bash tools/bob_parity.sh` printed
+    # "PASS: 14 screen(s) byte-identical" from a binary that cannot render. This gate is the port's
+    # only regression oracle, so a green it cannot earn is the worst failure it has.
+    # This is GATEHYGIENE-1's own recommendation applied to the gate it was written about: assert
+    # that the STEP fired, not only that the outcome matched.
+    rm -f "$OUT/$name.ppm"
     ( cd "$GD" && timeout -k 5 240 env $E $xenv BOB_SHOT="$shot" \
         BOB_SHOT_PATH="$OUT/$name.ppm" "$BOB" ) >"$OUT/$name.out" 2>&1
     if [ ! -s "$OUT/$name.ppm" ]; then
-        printf '  %-16s NO CAPTURE\n' "$name"; fail=$((fail+1)); continue
+        printf '  %-16s NO CAPTURE (this run produced no image -- see %s)\n' "$name" "$OUT/$name.out"
+        fail=$((fail+1)); continue
     fi
+    captured=$((captured+1))
     r="$REF/$name.ppm"
     if [ ! -f "$r" ]; then
         if [ "$SEED" = "1" ]; then cp "$OUT/$name.ppm" "$r"; printf '  %-16s SEEDED reference\n' "$name"
@@ -95,6 +106,13 @@ done <<< "$RECIPES"
 
 echo "----------------------------------------"
 [ "$missing" -gt 0 ] && echo "$missing screen(s) have no reference yet -- seed them deliberately, do not auto-accept"
-if [ "$fail" -eq 0 ] && [ "$missing" -eq 0 ]; then echo "PASS: $n screen(s) byte-identical"; exit 0; fi
+# precondition, stated before the verdict: every screen this run claims to have compared must
+# have been photographed BY THIS RUN. Without it "14 byte-identical" can mean "14 files from
+# yesterday".
+if [ "$captured" -ne "$n" ]; then
+    echo "FAIL: only $captured of $n screen(s) were captured by this run -- the game did not render"
+    exit 1
+fi
+if [ "$fail" -eq 0 ] && [ "$missing" -eq 0 ]; then echo "PASS: $n screen(s) byte-identical ($captured captured this run)"; exit 0; fi
 [ "$fail" -eq 0 ] && exit 2
 echo "FAIL: a screen differs from its reference (captures in $OUT)"; exit 1

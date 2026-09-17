@@ -11021,3 +11021,72 @@ GOLDPROV-BOB-1 S4 and audited at S6 survive the move untouched.
 * That this ever bit BoB in *this* session. **It was not measured as active harm; it was removed.**
 
 **BoB sprint 1 of 4.**
+
+## TMPFS-BOB-1 S2 / GATEHYGIENE-1 S2 (Opus 5, 2026-09-17) — ⛔⛔⛔ **BoB's parity gate printed `PASS: 14 screen(s) byte-identical` with `/bin/true` as the game. It compared the PREVIOUS run's files.** ✅ Fixed, both arms proven — and it was the only one of the four ports' gates with the hole
+
+**Story:** GATEHYGIENE-1 ended by scoping its own recommendation — *"retrofitting it across four
+ports' gate suites is not a sprint, and should be done per gate when each is next touched."*
+Sprint 1 touched nineteen BoB gates. So this sprint applies it, starting with the one that matters
+most: `bob_parity.sh`, **the port's only regression oracle**.
+
+### ⛔⛔⛔ The hole, predicted and then demonstrated
+
+`$OUT` persists between runs and the gate never deleted the previous capture. So a run that
+photographed **nothing** compared yesterday's file and called it green. I stated the prediction
+before running it — *"with `BOB=/bin/true`, 14/14 byte-identical, exit 0"* — and that is exactly
+what happened:
+
+```
+$ BOB=/bin/true bash tools/bob_parity.sh
+  mainmenu         OK byte-identical
+  … 14 of them …
+PASS: 14 screen(s) byte-identical        exit=0
+```
+
+**A binary that cannot render passed the gate on every screen.** Anything that prevents capture —
+crash, timeout, a missing data dir, a scaffold that never reaches the screen — read as PASS. This
+is precisely the class GATEHYGIENE-1 named: *the outcome was asserted and the step was not.*
+
+⚠️ And note what it would have done to this very session: **sprint 1 moved `$OUT`.** Had the move
+broken capture, sprint 1's headline evidence — "14/14 byte-identical, so the references survive the
+move" — would have been **the stale files reporting on themselves.**
+
+### ✅ The fix, and both arms
+
+Two lines of substance: `rm -f "$OUT/$name.ppm"` before each run, and a verdict precondition that
+every screen compared was photographed *by this run*.
+
+| arm | result |
+|---|---|
+| `BOB=/bin/true` (**negative control**) | `NO CAPTURE` ×14 → **`FAIL: only 0 of 14 screen(s) were captured by this run — the game did not render`**, exit 1 |
+| real binary | **`PASS: 14 screen(s) byte-identical (14 captured this run)`**, exit 0 |
+
+The count is now printed in the PASS line, so the precondition is visible in the log rather than
+merely enforced.
+
+### ⭐⭐ And it is BoB's alone — the other three ports already guard it
+
+Checked read-only, without touching them (MA's rotation is complete; the mandate is the mandate):
+
+| port | gate | guard |
+|---|---|---|
+| **BoB** | `tools/bob_parity.sh` | ⛔ **was missing** — fixed here |
+| MA | `port/parity_2d.sh:150` | ✅ `rm -f "$ppm"` per screen |
+| julia | `tools/chase_parity_gate.sh:41` | ✅ `rm -f "$OUT"/w*.ppm` |
+| FF | `tools/ff_typing_gate.sh:44` | ✅ explicit `CANNOT MEASURE` preconditions |
+
+⭐ **The sting is in the provenance:** `bob_parity.sh`'s own header says it was written (S407)
+*because* MA had a parity gate and BoB did not — it was modelled on `parity_2d.sh` and **dropped the
+one line that made it trustworthy.** A gate copied from a good gate is not a good gate.
+
+### ⚠️ Not claimed
+
+* **That this ever produced a false green in anger.** No past run is known to have captured nothing.
+  The defect is proven **by construction and by the control arm**, not by a recovered incident.
+* That the other thirteen BoB gates are sound. **They were not audited this sprint** — only the
+  parity gate was fixed, and GATEHYGIENE-1's "do it per gate when touched" rule still applies to the
+  rest.
+* That the fix covers a capture that is **fresh but wrong** (right file, wrong screen). It proves
+  *this run photographed something*, not *that it photographed the right thing*.
+
+**BoB sprint 2 of 4.**
