@@ -8712,6 +8712,13 @@ Width **176 against 158**, +11 %, at identical height and ink. Same glyphs, same
 further apart — an advance-width difference, not a scaling one. That is a much narrower question
 than the one this item started with.
 
+⛔ **RETRACTED by XPORT-FONTEM-1 S2 (same day): there is no +11 %, and the real result is better.**
+The amber mask used here also selects **sunlit background** in this region, in our render but not in
+the gold's photo, so the width figure moved with the crop while the height did not. Re-measured with
+a column-strength criterion (only columns carrying ≥4 lit rows count as glyph), the caption is
+**width 157 against the gold's 156, height 28 against 28, left edge 520 against 522** — a match
+within one pixel in every dimension, not a +11 % tracking error.
+
 ### ⛔ `RAF` is not fixed, and is not the same problem
 
 | `RAF` | gold | ours (with both flags) |
@@ -8814,3 +8821,59 @@ matching height and ink (tracking, not size), and MiG Alley's tab row is ~22 px 
 its own screen (placement, not size).
 
 **XPORT-FONTEM-1: 1 sprint.**
+
+## XPORT-FONTEM-1 S2 (Opus 5, 2026-09-16) — ⛔ **the "+11 % tracking residual" does not exist — it was my mask selecting sunlit grass** — ⭐⭐⭐ and the real result is **better than S4 reported: width 157 vs 156, height 28 vs 28, left edge 520 vs 522**
+
+**Story:** XPORT-FONTEM-1. **Sprint 2.**
+
+S1 named the leftover: *"BoB's `Luftwaffe` is +11 % wide at matching height and ink (tracking, not
+size)."* Chasing it found no tracking bug, because there is no +11 %.
+
+### ⛔ How the artefact worked
+
+The amber mask — `R>170, G>140, B<120` — was chosen for the caption. The caption sits on a **sunlit
+grass** background whose colour satisfies it. Widening the crop from 240 px to 320 px moved our
+measured width from 176 to 237 and our measured **height from 28 to 44**, while the gold's stayed at
+28: the two arms have different backgrounds, so the same mask leaks into one and not the other. The
+**height** was constrained by a tight box and stayed honest; the **width** was not, and drifted.
+
+⚠️ **This is the third mask error in one rotation**, and they share a shape:
+
+* MiG Alley's tab row — a yellow-only mask silently excluded the **selected** tab, which is white,
+  so two different tabs were compared and the offset came out 52 px right instead of 14 px left;
+* BoB's `RAF` — the same yellow-only mask against a **white** gold label, giving numbers that meant
+  nothing;
+* here — an amber mask admitting amber **background**.
+
+**A colour mask chosen for a foreground silently admits background of a similar colour, and the
+error surfaces in whichever dimension the crop does not constrain.**
+
+### ⭐⭐⭐ Re-measured properly
+
+Criterion: a column counts as glyph only if it carries **≥4 lit rows** — background speckle does
+not, glyph stems do.
+
+| | left edge | width | height | ink |
+|---|---|---|---|---|
+| **gold** | **522** | **156** | **28** | 1780 |
+| ours, default | 563 | 66 | 13 | 329 |
+| ours, `+adopt` | 532 | 134 | 24 | 1335 |
+| ours, `+adopt +BOB_FONT_EM` | **520** | **157** | **28** | 1880 |
+
+**Width within 1 px. Height exact. Left edge within 2 px.** The two flags together do not merely fix
+the caption's size — they put it in the right place at the right width, and the only residual is
+**ink +5.6 %**, a weight/antialiasing difference of the kind a threshold sweep would have to settle
+(MAFONT-1 S3's lesson).
+
+So the flags' case is **stronger** than S4 recorded, and the "advance-width difference" S1 sent this
+sprint to investigate was never there.
+
+### Gates
+
+Measurement only; both flags remain default-off, nothing shipped.
+
+**S3:** the `RAF` label, which none of this touches — the gold's is white, 46 px tall, and ours is
+amber at 28. It is the last element on this screen that does not match, and it needs a mask that
+does not repeat today's mistake.
+
+**XPORT-FONTEM-1: 2 sprints.**
