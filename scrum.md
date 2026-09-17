@@ -9321,3 +9321,76 @@ corruption). What remains is **importing** real-game campaign saves, a feature n
 Not started.
 
 **GOLDVID-BOB-3: new pass, sprint 2. XPORT-FONTEM-1: CLOSED (phantom).**
+
+## GOLDPROV-BOB-1 (Opus 5, 2026-09-17) — ⛔ **BoB's gold corpus has MiG Alley's provenance disease too, and it is under numbers I gave the PO TODAY: the committed `260915_gold_sideselect_raf.png` cannot be regenerated from the videos, and how it was made is recorded NOWHERE**
+
+**Story:** cross-port application of MiG Alley's S10–S12. BoB rotation: sprint 1 of 4.
+
+MiG Alley spent three sprints today discovering that its golds are two different corpora with
+different properties, and that one of them has unrecoverable scale. **The same question had never been
+asked of BoB** — so it was asked before any more BoB measurements were built on the answer.
+
+### The corpus, characterised
+
+| | |
+|---|---|
+| `260915_bob_{raf,german}_campaign.mp4`, `turkey_shoot`, `bob_convoy` | **1920×1080, 60 fps** |
+| `Screenshot from 2026-06-24 …png` × 6 | desktop stills |
+| committed extract `doc/reference/260915_gold_sideselect_raf.png` | **1024×768** |
+
+**BoB's videos are fullscreen, exactly like MiG Alley's** — variance over 14 frames gives
+**99.9 % of pixels dynamic**, bbox `x[9..1910] y[5..1074]`, and every margin is live content
+(no black bars). Same finding, independently, in the second port.
+
+⭐ **One point where BoB is in better shape than MiG Alley:** its gold extract is **1024×768**, which
+is our port's *native* render size, so comparisons need no rescaling at all. MiG Alley's stills are
+windowed at an unrecorded size; BoB's extract is at the size the game actually draws.
+
+### ⛔ But nobody can say where that extract came from
+
+```
+grep -a 'ffmpeg|scale=1024|extract.*frame|-vf' scrum.md   ->  ZERO hits
+```
+
+**The extraction method is recorded nowhere.** So it was tested by reproduction — take the video,
+pull a frame, resize to 1024×768, compare:
+
+| source | frames sampled | best mean\|diff\| | shape of the result |
+|---|---|---|---|
+| RAF campaign, 12 s spacing | 14 | 48.04 | flat |
+| RAF campaign, 2 s spacing, first 90 s | 22 | 47.86 | flat |
+| German campaign, 4 s spacing, first 120 s | 30 | 45.89 | flat |
+
+**66 frames, two videos, and the distribution is FLAT at ~46–48.** A near miss looks like one frame
+standing out; a flat distribution is the signature of *no match at all*. **The committed gold is not
+a resized frame of either campaign video.**
+
+### ⭐ The most likely explanation — labelled as inference, not measured
+
+It is probably **a direct screenshot of the game window**, taken the same day as the videos, at the
+game's native 1024×768 — not a video extract at all. That fits three things: the exact 1024×768 size,
+the 1-pixel caption agreement S5/S6 measured (resampling would not be that clean), and MiG Alley S11's
+finding that **a PO screenshot is the only capture method that works on this machine**.
+
+**Not verified.** It explains the evidence; it is not established by it.
+
+### ⚠️ Why this matters, and it is my own work in the firing line
+
+**GOLDVID-BOB-3 S5 and S6 — which I wrote today — measured against this gold**, reported caption
+agreement to 1 px, and on that basis I told the PO the open flags are *"worth the entire defect on
+this caption"*. That recommendation rests on an artefact whose derivation nobody has written down.
+
+⭐ **I am not withdrawing those numbers.** The agreement was too specific to be coincidence — 157 vs
+158 and 28 vs 28 on **two independent captions**, and the earlier `RAF`/`Luftwaffe` phantom was
+resolved by the same gold. **But "it matches well" is not "we know how it was made"**, and today has
+twice shown what the second one costs.
+
+### ⚖️ Recommendation
+
+Every gold in both ports should carry, beside it, **the recipe that produced it** — source file,
+timestamp or capture method, and resolution. Where that cannot be reconstructed, the artefact should
+say so rather than be cited as if it were known. **One line per gold in the reference README**, not a
+sprint.
+
+**GOLDPROV-BOB-1: 1 sprint. BoB's videos characterised; the committed extract's provenance is
+unrecoverable and now says so.**
