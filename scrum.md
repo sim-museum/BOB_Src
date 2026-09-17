@@ -10128,3 +10128,85 @@ face and `BOB_ETOCLIP_XY` alone does the truncating, the packet splits into one 
 to fix — which is a far better thing to hand the PO than a single yes/no.
 
 **GOLDVID-BOB-3: the recommendation withdrawn by the look its own caveat asked for. Sprint 1 of 4.**
+
+## GOLDVID-BOB-3 S10 (Opus 5, 2026-09-17) — ⭐⭐⭐ **`BOB_ETOCLIP_XY` alone changes NOTHING on any of the 14 screens — the entire blast radius is `BOB_FONT_ADOPT_ALL`. And the truncation is a 1024×768 LAYOUT limit, not a font fault: at 1600×1200 all seven tabs fit, `Continue...` included**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 2 of 4. S9 said the two flags had only ever been
+measured together and that separating them was one run. It was two, and both were worth it.
+
+Artefacts: `doc/reference/260917_tabrow_flags_split.png`,
+`doc/reference/260917_tabrow_1024_vs_1600.png`.
+
+### ⭐⭐ The flags separated — one of them is inert
+
+```
+   arm                 result over all 14 screens
+   BOB_ETOCLIP_XY      14/14 OK byte-identical          <- NO EFFECT AT ALL
+   BOB_FONT_ADOPT_ALL  13/14 DIFF                       <- the entire blast radius
+```
+
+```
+   config-gfx tab row    text span     ink
+   OFF                   x  41- 652    2275
+   ETOCLIP only          x  41- 652    2275    <- identical to OFF, byte for byte
+   ADOPT only            x  42-1023   10047
+   BOTH                  x  42-1015    9963
+```
+
+**`BOB_ETOCLIP_XY` does nothing on its own and trims 8 px — one letter — when the face is already
+enlarged.** S8's decision packet and S9's retraction both treated the pair as one change; the pair
+is one change and a rounding error. **The PO has been asked twice to decide about a flag that,
+alone, alters not a single pixel of any of the fourteen screens.**
+
+### ⛔ Correcting S9's attribution
+
+S9 wrote that `Continue` is *"clipped by the control's own rect, which is exactly what
+`BOB_ETOCLIP_XY` governs"*. **Wrong.** `ADOPT` alone already truncates — it runs to `x1023`, the last
+column of a 1024-wide screen. The dominant cause is the enlarged face **overrunning the screen**;
+`ETOCLIP` removes one more letter (`Cont` → `Con`). The right noun is overflow, not clipping.
+
+### ⭐⭐⭐ And the overflow is a resolution limit, not a font fault
+
+Re-ran `ADOPT` with `BOB_FORCE_RES=1600x1200`:
+
+```
+   1024x768   tab text x  42-1015  of 1024    ->  "GFX More GFX Controls Sound 2D Sim Con"
+   1600x1200  tab text x  42-1150  of 1600    ->  "GFX More GFX Controls Sound 2D Sim Continue..."
+```
+
+**At 1600 the whole row fits with 450 px to spare, and the seventh label renders in full as
+`Continue...`** — which is evidently its real caption; at 1024 nobody had ever seen more of it than
+`Continue` at the shrunken size. The adopted face is **not too big in absolute terms**: the text grows
+only 1.13× between those resolutions while the layout grows 1.56×, so the face is near-fixed and the
+row simply has no room at 1024.
+
+### ⚖️ The packet, third revision — and it is a better question now
+
+| | |
+|---|---|
+| `BOB_ETOCLIP_XY` | **inert.** Drop it from the decision entirely, or keep it as a no-op switch |
+| `BOB_FONT_ADOPT_ALL` | the real change: the gold-matched side-select caption (12→28 px vs gold's 28) **and** a tab row that overflows **at 1024 only** |
+| at 1600×1200 | **no overflow** — the flag looks simply correct |
+| at 1024×768 | seventh tab truncated to `Con` |
+| cost to ship | reseed 13 references |
+
+**The decision is no longer "does this font change look right"** — it is *"is 1024×768 a resolution
+this port must render correctly?"* The port's own default is 1024 (`[frontend] … res=1024`), so the
+answer is probably yes, and then the fix is the tab row's spacing at that resolution, not the face.
+
+### ⚠️ Not claimed
+
+* **That the gold runs at 1600.** `GOLD_PROVENANCE.md` records the videos as fullscreen 1920×1080;
+  the 1600×1200 arm here is **a port-side experiment**, not a reproduction of the gold's conditions.
+  It proves the face fits *somewhere*, not that the game ships that way.
+* **That `Continue...` is the correct caption.** It is what our port renders when given room. No gold
+  shows this tab row at all (S9).
+* That the other twelve screens are unaffected by the resolution change — only `config-gfx`'s tab row
+  was examined at 1600.
+* That `BOB_ETOCLIP_XY` is inert in the *game*, only that it is inert across **these fourteen
+  captures**. It may matter on a screen the gate does not reach.
+
+**S11:** measure the tab row's available width against its required width at 1024 — if the row is
+laid out from a fixed table of x positions, widening it is a data change and the flag ships clean.
+
+**GOLDVID-BOB-3: one flag of the two does nothing, and the other's only defect is a 1024 layout. Sprint 2 of 4.**
