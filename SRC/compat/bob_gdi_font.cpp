@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <execinfo.h>   /* GOLDVID-BOB-3 S2: BOB_TRACE_TEXT_BT backtrace */
 
 #pragma pack(push, 8)          /* keep stb's structs native-ABI despite the global -fpack-struct=1 */
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -157,13 +158,26 @@ static stbtt_fontinfo* cur_font(void)
    question for the struck "S" on the Controls screen. */
 static void bob_text_trace(const char* str, int x, int y, int pixelH, unsigned color)
 {
+	/* GOLDVID-BOB-3 S2: WHO asked. S1 measured that the side-select screen draws `Back` at h=41
+	   and `RAF`/`Luftwaffe` at h=22 -- two sizes in one paint, against a gold where two of the
+	   three are the same size. The string, position and height do not say which code drew them,
+	   and on this codebase that is the difference between a fix and a guess (the same reason
+	   BSPSLOT-1 put a backtrace behind FF_DEBUG_SLOT). BOB_TRACE_TEXT_BT=1 adds one. */
 	const char* want = getenv("BOB_TRACE_TEXT");
 	if (want) {
+		int hit = 0;
 		if (want[0] == '1' && !want[1]) {
 			static int n = 0;
-			if (n++ < 24) fprintf(stderr, "[text] \"%s\" at (%d,%d) h=%d col=%06x\n", str, x, y, pixelH, color & 0xffffff);
+			if (n++ < 24) { hit = 1; fprintf(stderr, "[text] \"%s\" at (%d,%d) h=%d col=%06x\n", str, x, y, pixelH, color & 0xffffff); }
 		} else if (strstr(str, want)) {
+			hit = 1;
 			fprintf(stderr, "[text] \"%s\" at (%d,%d) h=%d col=%06x\n", str, x, y, pixelH, color & 0xffffff);
+		}
+		if (hit && getenv("BOB_TRACE_TEXT_BT")) {
+			void* fr[24];
+			int nf = backtrace(fr, 24);
+			backtrace_symbols_fd(fr, nf, 2);
+			fflush(stderr);
 		}
 	}
 	if (getenv("BOB_TRACE_GARBAGE")) {

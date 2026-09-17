@@ -179,8 +179,26 @@ extern "C" void* bob_dlg_getfont(int fontnum) {
     if (fontnum < 0) fontnum = -fontnum;
     if (fontnum >= 14) fontnum = 0;
     /* the front-end panels are drawn scaled-up (template rects x resolution), so the
-       2x font [3] matches the box heights; fall back to [0] when [3] wasn't created. */
+       2x font [3] matches the box heights; fall back to [0] when [3] wasn't created.
+       GOLDVID-BOB-3 S2 (2026-09-16): "fall back" is doing far more work than that comment
+       admits. MIG.CPP's CreatePointFont creates rungs [1], [2] and [3] ONLY under
+       `if (flags & FI_4VER)` -- with the game's own comment "//Don't use these fonts..." --
+       so for every font whose init flags lack FI_4VER, [3] is NULL and this returns the 1x
+       rung [0] while claiming to return the 2x one. BOB_TRACE_FONTSEL=1 reports which. */
     CFont* f = g_AllFonts[fontnum][3];
-    if (!f) f = g_AllFonts[fontnum][0];
+    int rung = 3;
+    if (!f) { f = g_AllFonts[fontnum][0]; rung = 0; }
+    if (getenv("BOB_TRACE_FONTSEL")) {
+        static int seen[14*2]; int k = fontnum*2 + (rung?1:0);
+        if (k >= 0 && k < 28 && !seen[k]) {
+            seen[k] = 1;
+            fprintf(stderr, "[fontsel] fontnum=%d -> rung [%d]  (have [0]=%d [1]=%d [2]=%d [3]=%d)  h=%d\n",
+                    fontnum, rung,
+                    g_AllFonts[fontnum][0] ? 1 : 0, g_AllFonts[fontnum][1] ? 1 : 0,
+                    g_AllFonts[fontnum][2] ? 1 : 0, g_AllFonts[fontnum][3] ? 1 : 0,
+                    f ? f->m_height : -1);
+            fflush(stderr);
+        }
+    }
     return (void*)f;
 }

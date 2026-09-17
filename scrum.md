@@ -8489,3 +8489,102 @@ inference, not a measurement.
 not say is the caller, and on this codebase that is the difference between a fix and a guess.
 
 **GOLDVID-BOB-3: 1 sprint.**
+
+## GOLDVID-BOB-3 S2 (Opus 5, 2026-09-16) — ⭐⭐⭐ **the mechanism, measured end to end: our port refuses the game's own 42 px font because a PORT-INVENTED "box-derived height" says 22** — and the rule that refuses it was added deliberately, on this very dialog, by a sprint that measured the opposite failure
+
+**Story:** GOLDVID-BOB-3 (front-end screens vs the 2026-09-15 golds). **Sprint 2.**
+
+S1 measured the defect (RAF 0.26×, Luftwaffe 0.46×, `Back` 0.86× against the gold) and left one
+question: *"what draws the side-select labels at h=22, and why is it not the path that draws
+`Back`?"* Answered, in three steps, each measured.
+
+### 1. Who draws them — `BOB_TRACE_TEXT_BT=1` (new)
+
+The text trace carried string, position, height and colour but never the **caller**, which on this
+codebase is the difference between a fix and a guess (the same reason BSPSLOT-1 put a backtrace
+behind `FF_DEBUG_SLOT`). Added one; `addr2line` decodes it:
+
+```
+CDC::ExtTextOutA                         afxwin.h:789
+CRButtonCtrl::OnDraw                     RBUTTONC.CPP:646
+HostRButton::draw                        bob_ole_rbutton.cpp:142
+bob_ole_draw_panel                       bob_ole.cpp:512
+RFullPanelDial::LaunchScreen             fullpsys.cpp:2169
+```
+
+**`RAF` and `Luftwaffe` are hosted RButtons.** `Back` is the menu path (`bob_draw_menu`). Two
+subsystems on one screen — which is *why* there are two sizes, and it disposes of S1's suggestion
+that `Back` and the other two should be expected to share a path.
+
+### 2. Which font the ladder hands over — `BOB_TRACE_FONTSEL=1` (new)
+
+```
+[fontsel] fontnum=10 -> rung [3]  (have [0]=1 [1]=1 [2]=1 [3]=1)  h=48
+[fontsel] fontnum=6  -> rung [0]  (have [0]=1 [1]=0 [2]=0 [3]=0)  h=42
+```
+
+⭐ A real finding on the way past: `bob_dlg_getfont`'s comment says it returns "the 2x font [3] …
+fall back to [0] when [3] wasn't created", which understates what happens. `MIG.CPP`'s
+`CreatePointFont` creates rungs **[1], [2] and [3] only under `if (flags & FI_4VER)`** — with the
+game's own comment `//Don't use these fonts...` — so for every font without that flag the "fallback"
+is the *normal* case and the function returns the 1× rung while its comment claims the 2× one.
+`fontnum=6` above is exactly that. Comment corrected in place.
+
+⛔ **But neither is 22.** The only two fonts the ladder hands out in the entire run are **48 px and
+42 px**. So the 22 px does not come from the font ladder at all, and my S1 hypothesis — that the
+compat's unconditional rung [3] makes text the wrong size — is dead in both directions: it does not
+make it too big *and* it is not what makes it too small.
+
+### 3. ⭐⭐⭐ Where 22 comes from — `BOB_TRACE_FONTH`, on the side-select screen
+
+```
+[fonth] dlg=1040 ctrl=1223  box-derived textH=22  real CFont m_height=42
+[fonth] dlg=1040 ctrl=1876  box-derived textH=22  real CFont m_height=42
+[fonth] dlg=1040 ctrl=1914  box-derived textH=41  real CFont m_height=42
+```
+
+`bob_ole.cpp` sizes text from the **control's box** (`h-4`), and `CDC::SelectObject` adopts the
+game's real font **only when it is smaller** — S185's *"SHRINK ONLY"* rule:
+
+```c
+if (f && f->m_height > 0 && m_bobTextH > 0 && f->m_height < m_bobTextH) m_bobTextH = f->m_height;
+```
+
+So ctrl 1223 and 1876 (`RAF`, `Luftwaffe`) have a box-derived **22** against the game's **42**; 42
+is not smaller than 22, the adoption is refused, and they draw at 22 — **0.5×, which is what S1
+measured off the gold before any of this was known.** Ctrl 1914 (`Back`) has a box-derived 41
+against 42, so it draws at 41 and looks nearly right.
+
+### ⛔ And the rule was added deliberately, on this exact dialog
+
+S185's own note lists its measurements, and one line is:
+
+> `dlg=1040/1191  box 26  real 48   <- the one case that must NOT be adopted`
+> *"an ART-face 48px font selected into a 26px box, which is exactly what a naive adopt would blow up."*
+
+**`dlg=1040` is the side-select screen.** S185 measured this dialog, saw a 26-px box against a 48-px
+font, and concluded that adopting would blow it up. It was right that a naive adopt regresses
+`dlg=1103` (a 36-box/14-font message that overflowed past the dialog and over the map). Today's gold
+is the first evidence that on *this* screen the game draws at the font's size and the port's box is
+simply **too small**: the gold's `Luftwaffe` is 158×28 px, and 28 px of glyph does not fit a 26 px
+box at all.
+
+So the defect is probably **not** the font rule, which has its own evidence, but the **box-derived
+height** — a port invention with no counterpart in the game, where a control's rect clips text and
+does not size it.
+
+### ⚠️ Not claimed, and no code changed behind a flag
+
+No behavioural change this sprint: two default-off traces and two comment corrections. Adopting the
+font here would regress exactly what S185 fixed, and "make the box bigger" is a layout claim I have
+not measured — the gold's button rect has not been read, only its text.
+
+### Gates
+
+Trace-only and comment-only. Four headless runs with the new traces on exited 0 with no crash
+banner; no default path changed.
+
+**S3:** measure the gold's side-select button rect and compare it with our template rect for
+ctrl 1223/1876. If our box is too small, that is the fix and S185's rule can stand untouched.
+
+**GOLDVID-BOB-3: 2 sprints.**
