@@ -9255,3 +9255,69 @@ and a 3 % ink difference across two different masks is a threshold artefact, not
 
 **GOLDVID-BOB-3: new pass, sprint 1. Recommendation to the PO unchanged in direction but stronger in
 size: ship `BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY`, which need their own reseed.**
+
+## GOLDVID-BOB-3 S6 / XPORT-FONTEM-1 S5 (Opus 5, 2026-09-17) — ⭐⭐⭐ **`RAF` is NOT a different element and is NOT white: with the adopt flags on, BOTH side-select captions match the gold to within 3 px — 81 vs 80 and 157 vs 157 wide, 28 vs 28 high, at identical y** — ⛔⛔ **the "gold draws `RAF` at 46 px white" that XPORT-FONTEM-1 spent four sprints on was a MISIDENTIFIED OBJECT**
+
+**Story:** GOLDVID-BOB-3 + XPORT-FONTEM-1 — one measurement closes both. BoB rotation: sprint 2 of 4.
+
+S5 completed the flag matrix for `Luftwaffe`. The obvious next question was the *other* caption, which
+two items had left in a strange state: GOLDVID-BOB-3 S4 said *"`RAF` is untouched, because it is a
+different element entirely"*, and XPORT-FONTEM-1 S3 said the gold *"draws one at 46 px white and the
+other at 28 px amber"* — then S4 killed every font explanation for it without re-examining that
+premise. **The premise was the error.**
+
+### ⭐⭐⭐ Both gold captions are amber, both are 28 px
+
+Measured on the same 1024×768 gold frame the item has used throughout:
+
+| caption | GOLD | ours, **adopt+EM** | ours, **shipped default** |
+|---|---|---|---|
+| left (`RAF`) | x[74..153] **w80 h28** y720–747 | x[71..151] **w81 h28** y720–747 | w66 **h24** |
+| right (`Luftwaffe`) | x[521..677] **w157 h28** y706–733 | x[520..676] **w157 h28** y706–733 | w70 **h12** |
+
+**Width within 1 px on both. Height exact on both. y-extents identical on both.** With the adopt
+flags on, our side-select captions *are* the gold's captions — plural. There is no per-control
+distinction for the port to have collapsed.
+
+### ⛔ Where the phantom came from
+
+The gold frame **does** contain a large white element — but it is at **x[680..1008], y[657..748]**,
+h=92, i.e. **to the right of both captions**, not either of them. Comparing it against our amber
+caption is what produced "one white and large, one amber and small".
+
+⭐ **And we already draw that element correctly.** Same region, gold vs ours:
+
+```
+white element  x676-1012 y652-752 :  mean|diff|  8.98
+amber captions x60-680   y700-752 :  mean|diff| 33.14   (shipped default; adopt fixes this one)
+```
+
+The gold is an H.264 frame, so exact-pixel agreement is not available on either — but **8.98 across a
+lossy frame is agreement**, and it is 3.7× tighter than the region that genuinely differs. The
+element XPORT-FONTEM-1 was chasing was never broken.
+
+### ✅ What this closes and what it strengthens
+
+* **XPORT-FONTEM-1 is CLOSED.** Its S3 hypothesis ("the port collapses a per-control distinction the
+  game makes") and its S4 refutation ("the design bag gives both buttons the same font and resource")
+  were both reasoning about a distinction **that does not exist in the gold**. S4's finding that the
+  design bag gives both buttons `FontNum=6`/resource `2620` is not a puzzle — it is **correct, and it
+  matches the gold**, which draws them the same.
+* **GOLDVID-BOB-3's recommendation gets stronger again.** S5 showed the open flags are worth
+  12 → 28 px on `Luftwaffe`. They are *also* worth 24 → 28 px and 66 → 81 px on `RAF`. **The two
+  flags bring the entire side-select caption row onto the gold**, not one word of it.
+
+### ⚠️ Not claimed
+
+That the white element is pixel-perfect — 8.98 is agreement-modulo-compression, not proof, and I have
+not identified *what* the element is (a photo, a banner, a selected-side plate). It did not need
+identifying to show it is not the `RAF` caption, which was the question.
+
+### ⚖️ Grooming note — SAVELOAD-REAL-1 stays parked, by its own terms
+
+It was considered for this slot and declined. Its S4 set the condition itself — *"S5 (only if the PO
+wants campaign import)"* — and S1 already fixed the live defect (a clean refusal instead of heap
+corruption). What remains is **importing** real-game campaign saves, a feature nobody has asked for.
+Not started.
+
+**GOLDVID-BOB-3: new pass, sprint 2. XPORT-FONTEM-1: CLOSED (phantom).**
