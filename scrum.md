@@ -9615,3 +9615,75 @@ Seeded; re-run gives **`PASS: 14 screen(s) byte-identical`**.
   This removes the *reference* gap, not the *scale* one.
 
 **GOLDPROV-BOB-1: parity coverage 8 → 14, the two gold-relevant screens now baselined. Sprint 1 of 4.**
+
+## GOLDPROV-BOB-1 S5 (Opus 5, 2026-09-17) — ⛔ **extending the references to 14 did NOT bridge the gold gap, and the reason is that the gold VIDEOS never show these screens: the "best" pairings are dominated by two flat colours covering 60 % of the frame, where our side-select has no dominant colour at all**
+
+**Story:** GOLDPROV-BOB-1. BoB rotation: sprint 2 of 4.
+
+S4 extended parity 8 → 14 and hoped the new `sideselect` reference would give BoB its first gold
+pairing. Re-inventorying **89** gold frames against the 14 references does produce apparent matches —
+and they do not survive inspection.
+
+### ⚠️ The pairings look better and are not real
+
+```
+8 frames -> sideselect, margin 4.1-5.6, mean|diff| 52-58
+```
+
+Against MiG Alley's confident pairings (**margin 24–36, mean|diff| 26–31**) these are weak on both
+axes. Two checks killed them:
+
+**1. Geometry is not the limiting factor.** Three very different hypotheses for how a 4:3 game becomes
+a 16:9 recording:
+
+```
+stretch inverted (plain resize)   mean|diff| 54.38
+pillarbox (crop 1440 wide)        mean|diff| 54.12
+letterbox (crop 810 tall)         mean|diff| 52.25
+```
+
+**A flat result across three incompatible transforms means the difference is not geometric.** Had the
+round-trip been the issue, one of these would have stood out.
+
+**2. They are not the same screen.**
+
+```
+OURS sideselect   top colours each 0.1 %        -- no dominant colour, detailed art
+GOLD e011         (138,123,60) 42.4 %  +  (141,162,226) 18.9 %   -- two flats = 61 % of frame
+GOLD d015         (138,123,60) 40.9 %  +  (141,162,226) 18.1 %
+```
+
+**Our side-select has no dominant colour; the gold "matches" are 60 % two flat colours.** They are
+different screens entirely, and the margin-5 pairing was an artefact of comparing everything at
+320×240.
+
+### ⭐ What this actually establishes — and it closes a loop from S1
+
+**The 2026-09-15 campaign videos never show the front-end screens at all.** 89 frames sampled across
+three videos (12 s, 2 s and 4 s spacing, covering the first 90–120 s where side-select would occur)
+contain no front end. The recordings begin in campaign play.
+
+⭐ **That independently confirms GOLDPROV-BOB-1 S1's inference.** S1 found the committed
+`260915_gold_sideselect_raf.png` is *not reproducible from either video* and guessed it was a direct
+screenshot. **It had to be** — the videos do not contain that screen. What was an inference from a
+flat 45.9–48.0 distribution is now supported by content: **the corpus simply does not cover the front
+end.**
+
+### ⚖️ Grooming — what would actually bridge it, and what would not
+
+* **More reference screens will not help.** The gate captures 14 front-end screens; the videos show
+  none of them. That direction is exhausted.
+* **What would:** references for the screens the videos *do* show — campaign map, briefing, phase
+  play. **BoB's gate captures none of those**, and adding them is a real piece of work (they need a
+  campaign state, as MiG Alley's `campaign_map` recipe does with its pinned save).
+* **Meanwhile the still-based gold work is unaffected.** GOLDVID-BOB-3's caption measurements use the
+  *screenshot*, not the videos, and S4 just gave that screen a deterministic baseline.
+
+### ⚠️ Not claimed
+
+That the videos contain nothing useful — they are 1920×1080 records of campaign play and are the
+right oracle **for campaign screens**, which is precisely what BoB has no references for. The mismatch
+is one of coverage, not quality.
+
+**GOLDPROV-BOB-1: the video corpus and the reference set cover disjoint screens, confirmed by content.
+Sprint 2 of 4.**
