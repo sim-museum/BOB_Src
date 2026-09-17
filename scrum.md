@@ -9918,3 +9918,59 @@ That either reading is correct, or that 2,063 px matter visually. Nothing here c
 side-select remains at parity.
 
 **GOLDVID-BOB-3: the residual characterised, with a testable prediction attached. Sprint 2 of 4.**
+
+## GOLDVID-BOB-3 S10 (Opus 5, 2026-09-17) — ⛔ **S9's "black crush" is WRONG and withdrawn: the difference runs BOTH WAYS. Where the gold is 0–15 we are +79 BRIGHTER; where we are 0–31 the gold is +20 brighter. Both sides reach true black** — it is localised content, not a transfer curve
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 3 of 4. **No new run.**
+
+S9 found that where **ours** is 0–31 the gold averages 43, and read it as our port crushing blacks —
+while noting the alternative and declining to call a defect. **Bucketing the other way settles it, and
+the answer is neither.**
+
+### ⭐ The converse test
+
+```
+A) bucketed by the GOLD's level
+   gold level   n px     mean gold   mean ours   ours-gold
+     0- 15      1,348         5.4        84.1     +78.78   <-- WE are far brighter
+    16- 31      2,017        25.4        35.8     +10.33
+    32- 47     14,507        42.3        44.5      +2.28
+    48- 63     71,347        57.4        59.1      +1.61
+
+B) does either side contain TRUE black?
+   gold: min=0   px at 0 = 169   px <8 = 926   px <16 = 1,348
+   ours: min=0   px at 0 = 124   px <8 = 180   px <16 =   335
+```
+
+### ⛔ Why that kills the crush reading
+
+* **Both sides reach 0.** Neither has lifted blacks — a lift or a crush is a property of the transfer
+  curve, and a curve that maps 0→0 cannot also map our 23 to the gold's 43.
+* **The difference is bidirectional.** S9 found the gold +20 brighter on *our* dark pixels; this finds
+  us **+79 brighter** on *the gold's* dark pixels. **A systematic crush cannot produce both.**
+* So the dark-region disagreement is **localised content** — small regions where the two renders
+  differ — not a global level difference. ~1.3–2 k pixels each way out of 786,432, in opposite
+  directions.
+
+⭐ **And that is a better result than S9's**, because it removes a systematic bias I had tentatively
+attributed to the port. There is no black-level correction to make: **the only thing here is a little
+dark-region content that differs**, on a screen S8 showed is otherwise at parity within ~1.6 units.
+
+### ⚖️ Grooming — and the prediction S9 left is now unnecessary
+
+S9 closed with *"testable for free: if the same 0–31 bucket shows +20 on a different screen, it is the
+port."* **That test is no longer needed** — the bidirectional result answers it here, without waiting
+for another gold. Withdrawing the prediction rather than leaving it in the backlog for someone to
+spend a sprint on.
+
+**Three sprints, one screen, no new runs**, and the arc is: *at parity* (S8) → *a residual worth
+explaining* (S9) → *the residual is not what it looked like* (S10). The item ends knowing what the
+difference is **not**, which is the part that would otherwise have been quietly assumed.
+
+### ⚠️ Not claimed
+
+* **What the differing dark regions are.** Located by brightness bucket, not by position — I have not
+  mapped where they sit, and 1.3 k scattered pixels may be edge antialiasing rather than any object.
+* That they are worth fixing. Roughly **0.2 % of the frame each way** on a screen already at parity.
+
+**GOLDVID-BOB-3: S9 withdrawn, the residual correctly characterised. Sprint 3 of 4.**
