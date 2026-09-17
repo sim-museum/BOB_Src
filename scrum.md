@@ -9005,3 +9005,64 @@ anywhere in the front end, not just in its own dialog — the difference is real
 is assigned somewhere.
 
 **XPORT-FONTEM-1: 4 sprints — AT CAP.**
+
+## XPORT-ERASEBK-1 S1 (Opus 5, 2026-09-16) — ⭐⭐⭐ **BoB has MiG Alley's dead-background defect and has it worse: `ON_WM_ERASEBKGND()` is empty here too, and this port has 41 registrations and 64 implementations — against MiG Alley's 13 and 18**
+
+**Story:** XPORT-ERASEBK-1 (cross-port: `OnEraseBkgnd` never runs). **Sprint 1.**
+
+MiG Alley's GOLDSCREENS-MA-1 S9 found that the map's toolbar chrome is painted by
+`TitleBar::OnEraseBkgnd`, and that the port never calls it. The obvious cross-port question — does
+BoB have the same? — takes one grep, and the answer is yes, at three and a half times the scale.
+
+### The same two lines, in both trees
+
+```c
+// ma/SRC/compat/afxwin.h:243   and   bob/SRC/compat/afxwin.h:332
+#define ON_WM_ERASEBKGND()                              // expands to nothing
+
+// ma/SRC/compat/afxwin.h:969   and   bob/SRC/compat/afxwin.h:1345
+afx_msg BOOL OnEraseBkgnd(CDC*) { return TRUE; }        // base stub: "already erased"
+```
+
+Nothing in either compat sends `WM_ERASEBKGND`, and no caller exists.
+
+| | registrations | implementations |
+|---|---|---|
+| MiG Alley | 13 | 18 |
+| **Battle of Britain** | **41** | **64** |
+
+The affected classes here are **base classes**: `RDialog`, `CRToolBar`, `CRButtonCtrl`, `CMainFrame`,
+`CMapDlg`, `CSystemBox`, `CListBx`, `CHintBox`, `CScaleBar`, `CThumbnail`, `RMdlDlg`,
+`LWTaskFighter`, `CMIGView`. This is not a handful of screens — it is the dialog base and the
+toolbar base.
+
+### ⭐ Why it survived both ports
+
+The handlers paint **backgrounds**. A stub returning FALSE would have left panels visibly unpainted
+and been found in a week. Returning **TRUE** is the confident answer — *"already done"* — so the only
+thing missing is whatever should have been *behind* something else, and every screen still looks
+populated. This is the same shape as the three other constant-answering shims found this rotation,
+with one difference: the others answered **wrongly**; this one answers **confidently and does
+nothing**, which is why it is the oldest.
+
+### ⚠️ What this sprint does NOT do
+
+**No BoB code changed.** MiG Alley's S10 wired one handler there and learned two things the hard way
+— that an erase must be sited *before* the controls (or it paints over them), and that a default-off
+feature must be off in the **default path**, not merely revertible (`parity_2d` caught that one **by
+SIZE**, a 1600-wide strip growing an 800×600 canvas). Both are now in the shared notes, so whoever
+wires BoB's starts from them rather than repeating them.
+
+⚠️ And MiG Alley's wired handler, once running, **did not match the gold** — it painted the right
+file through the wrong window onto it. So "these handlers are dead" is established; "wiring them
+makes the screen right" is **not**, in either port.
+
+### Gates
+
+Documentation only in this tree; no code changed. `notes-sync` green — the table, the two traps and
+the caveat are in `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` and its MiG Alley copy.
+
+**S2:** pick BoB's one screen where a gold shows the background — the side-select or the campaign map
+— and wire that class alone, with the ordering and guard lessons already paid for.
+
+**XPORT-ERASEBK-1: 1 sprint.**
