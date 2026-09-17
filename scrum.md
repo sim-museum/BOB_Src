@@ -10886,3 +10886,78 @@ projection (the stretch is downstream) or fails to reproduce it at all (the symp
 configuration-specific), and both are answers.
 
 **ASPECT-1: the last surviving mechanism refuted where testable, and the symptom shown to be un-co-located with the measurement. Sprint 3 of 4.**
+
+## ASPECT-1 S16 (Opus 5, 2026-09-17) — ⛔⛔ **I re-derived a sprint that was already done, twice, because I read the backlog TABLE row instead of the sprint log. ASPECT-1 already had FIFTEEN sprints and its own S9 refuted the item's founding premise.** ⚖️ Parking it
+
+**Story:** `ASPECT-1`. BoB rotation: sprint 4 of 4 — rotation complete.
+
+### ⛔⛔ The duplication, plainly
+
+**Today's entries titled "ASPECT-1 S1" and "ASPECT-1 S2" (`scrum.md:10734`, `:10818`) are
+re-derivations. They should be read as S16a/S16b.** The real `ASPECT-1 S1` is at `:5228`,
+dated 2026-09-15, and it reached the same three conclusions:
+
+* the projection is innocent — `[aspect] … horizontal stretch 1.0000`, **the identical trace output**
+* `WIN3D.CPP` is dead code and the backlog row's FULLW/FULLH reasoning is about code that does not run
+* *"I wrote a trace into `WIN3D.CPP` first and it never compiled — reverted."* — **I did exactly that
+  again today**, including the revert
+
+**Cause: I read the backlog table row (`scrum.md:281`) and treated its `S1:` prescription as the next
+step.** That row is the item's *filing text* from 2026-09-15 and it was never updated; fifteen sprints
+of findings sit 5,000 lines further down. **I applied precisely this check for FF's MP-1 two rotations
+ago** — *"before starting it, checked whether anything already does that"* — and did not apply it here.
+
+### ⛔ And the item had already collapsed on its own terms
+
+From its own log, all on 2026-09-15:
+
+| | |
+|---|---|
+| **S8** | *"`BOB_MIRROR` has never applied on the campaign path. Every mirror measurement this project has taken ran with Reflections OFF"* |
+| **S9** | *"`docreatemirror` is never REACHED: **the Bf 109 has no modelled mirror**. The disc is painted artwork, and R3.4 is refuted"* |
+| **S10** | *"Nine sprints were spent measuring a dead path in an aeroplane that has no mirror"* |
+| **S15** | *"not one mirror surface was captured, so there is still nothing to measure"* |
+
+**The item's founding measurement — a round mirror at 50x50 vs 192x144 — is of painted cockpit
+artwork, not a rendered mirror.** S5 had already separated it further: *"in the same frame our
+gunsight is ROUND and our mirror is 1.32 wide"*, which is not an aspect defect at all.
+
+### ⭐ The one new fact today's runs did produce
+
+Running boot-to-flight with `BOB_MIRROR=1`:
+
+```
+   [aspect] docreatemirror REACHED (SKYIMAGES=1)
+   [aspect] UseMirror: mirrorMaterial = 284 … fov 8192
+   [aspect] projection aspect=1.0000 (Lib3D aspectRatio=1.7778) GL viewport 1920x1080 -> stretch 1.7778
+```
+
+* **`docreatemirror` IS reached on the boot-to-flight path** — S8/S9's "never reached" was about the
+  **campaign** path, and this is a different one. A small correction to the record, not a new defect.
+* ⚠️ **The `1.7778` on that line is an instrument artefact, not a finding.** The mirror renders into a
+  **128×128 FBO**, and `BOB_TRACE_ASPECT` reports `bob_gdi_screen_size()` regardless of whether a
+  render target is bound — so it divides a square projection by the *screen* and calls the result a
+  stretch. `aspect=1.0000` for a square FBO is **correct** (MIRROR-1 settled that). **Anyone reading
+  that line as a 1.78× mirror stretch would be chasing the instrument.**
+
+### ⚖️ PARKED
+
+**Seventeen sprints, a refuted founding premise, and a symptom that S5 showed is not an aspect
+defect.** The PO's mandate names this exactly. What remains true and worth keeping:
+
+* the **gunsight is round** while the painted mirror disc is 1.32 wide — *"the item belongs with
+  MIRROR-1"* (S5), and that is where any further work should go
+* `BOB_TRACE_ASPECT` is sound for screen passes and **wrong for RTT passes** — one line to fix if
+  anyone needs it (report the bound target's size, not the screen's)
+* the backlog row at `scrum.md:281` is **stale and actively misleading**; it should be rewritten to
+  point at the sprint log, or the next reader repeats what I just did
+
+### ⚠️ Not claimed
+
+* That the 1.333 measurement was wrong. **It was reproduced on a fresh build** (S1) and is real; what
+  is refuted is that it is a *projection aspect* problem.
+* That the gunsight/mirror discrepancy is explained. It is not — it is simply not this item's.
+* That my two entries today were worthless: the `docreatemirror`-on-boot-path correction and the RTT
+  instrument caveat are new. **They are not worth two sprints**, which is the point.
+
+**ASPECT-1: PARKED after 17 sprints. The lesson is the reusable part — read the sprint log, not the filing row. BoB rotation complete (4 sprints) → julia.**
