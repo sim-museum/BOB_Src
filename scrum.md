@@ -9739,3 +9739,55 @@ stated whenever this decision is discussed.
   difference meaningful — not that the pixels are right.
 
 **GOLDVID-BOB-3: the measurement side of the flag decision is closed. Sprint 3 of 4.**
+
+## GOLDPROV-BOB-1 S6 (Opus 5, 2026-09-17) — ✅ **verifying my own seeding: all 14 references are distinct images and the one outlier is a legitimate screen** — the six blessed in S4 are not hiding a recipe that never advanced
+
+**Story:** GOLDPROV-BOB-1. BoB rotation: sprint 4 of 4 — rotation complete.
+
+S4 blessed six captures as permanent references. **Blessing a reference makes current behaviour the
+standard**, so a broken screen seeded now becomes a bug that future runs certify as correct. The
+review in S4 checked only that each had "real content". That is weaker than it needs to be, and this
+closes the gap before the rotation ends.
+
+### ✅ Check 1 — no duplicates
+
+```
+14 references, 14 distinct images  -- no duplicates
+```
+
+**The failure this rules out is specific:** if a recipe's click sequence never advanced, its capture
+would be byte-identical to an earlier screen's and the gate would still report PASS forever. Two
+recipes producing one image is exactly how a dead recipe hides. None do.
+
+### ✅ Check 2 — the outlier is real
+
+`quickshots` stood out in S4 at **27,885 distinct colours** against 183k–279k for the others, which is
+the profile a blank or fallback screen would also have. It is not one:
+
+```
+coarse map: dark field left and centre, white UI upper-right,
+            and a solid rectangular panel mid-right
+top colour: white at only 1.9 %  -- nothing dominates
+```
+
+The low distinct count comes from a **mostly-dark screen** (many near-black shades compress into few
+distinct values), not from emptiness. Structure is present and plausible for the recipe
+(`BOB_STARTFLYING=click BOB_AUTOCLICK=0`).
+
+### ⚖️ Why this was worth a sprint rather than an assumption
+
+Today produced four cases of an instrument reporting a negative it could not have turned positive.
+**Seeding a reference is the same hazard pointed the other way** — a gate that will report PASS
+forever on whatever it was shown first. The two checks above are the cheap precondition-assertions
+that GATEHYGIENE-1 argued for, applied to my own work from two sprints ago rather than to someone
+else's.
+
+### ⚠️ Not claimed
+
+* **That the six screens are correct.** Distinct and structured is not right. They are a *baseline*,
+  and the standing rule holds: a parity reference compares this port against its own past.
+  [[parity-oracles-are-not-gold]]
+* That `quickshots` shows what its name suggests. Its content is plausible for its recipe; nobody has
+  checked it against the game's intent.
+
+**GOLDPROV-BOB-1: seeding verified. BoB rotation complete (4 sprints) → julia.**
