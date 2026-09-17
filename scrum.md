@@ -8940,3 +8940,68 @@ compare with what the DLGINIT bag holds. If the bag differs and the control does
 defect; if the bag is the same for both, the difference is coming from somewhere else entirely.
 
 **XPORT-FONTEM-1: 3 sprints.**
+
+## XPORT-FONTEM-1 S4 (Opus 5, 2026-09-16) — ⛔ **S3's hypothesis is dead: the design bag gives both buttons the SAME font (`FontNum=6`) and the SAME resource (`2620`), and the game's own `OnInitDialog` sets neither** — our port is faithful to both, and the gold's difference comes from somewhere neither accounts for
+
+**Story:** XPORT-FONTEM-1. **Sprint 4 — at cap.**
+
+S3 proposed: *"dump `GetFontNum()` and `GetForeColor()` after `applyDesignProps` and compare with the
+bag. If the bag differs and the control does not, that is the defect."* No code was needed — the
+host already traces it under `BOB_TRACE_OLE`.
+
+### ⛔ The bag does not differentiate them
+
+```
+[ole] RButton dlg=1040 id=1876 stream: align=0 ResNum=2620 FontNum=6     <- one of the pair
+[ole] RButton dlg=1040 id=1223 stream: align=0 ResNum=2620 FontNum=6     <- the other
+[ole] RButton dlg=1040 id=1914 stream: align=0 ResNum=1150 FontNum=6     <- Back
+```
+
+**All three carry `FontNum=6`.** So the design-time property bag gives `RAF` and `Luftwaffe` the
+same font, and our port applies it to both — **faithfully**.
+
+⭐ Worth noting on the way past: **ids 1876 and 1223 also share `ResourceNumber=2620`** — the same
+string resource for two buttons that display different words. The captions come from elsewhere,
+which the next point explains.
+
+### ⛔ And the game's own runtime code does not either
+
+`SideSelect::OnInitDialog` (SIDESEL.CPP:136–142), the only place these two buttons are configured:
+
+```c
+CRButton* topbut = GETDLGITEM(IDC_RAF);
+CRButton* btmbut = GETDLGITEM(IDC_LUFTWAFFE);
+topbut->SetString(RESSTRING(RAF));
+btmbut->SetString(RESSTRING(LUFTWAFFE));
+```
+
+**`SetString` and nothing else** — no `SetFontNum`, no `SetForeColor`. (It also explains the shared
+`ResNum`: the captions are assigned at runtime, so the design-time resource number is never used.)
+
+### So both obvious sources are eliminated
+
+The bag says "same"; the dialog's init says "same"; our port renders them the same. **Our port is
+correct with respect to every input this sprint can see, and the gold still differs** — white at
+46 px against amber at 28.
+
+That is a genuine narrowing rather than a finding: two mechanisms are now excluded by measurement,
+and S3's hypothesis — *"either the bag is not read for these two, or it is read and not applied"* —
+is **dead**. The bag is read, applied, and identical.
+
+### ⚠️ What is left, unresolved
+
+Something outside the bag and outside `OnInitDialog` gives the gold's `RAF` a different font and
+colour. Candidates not examined here: the screen's background artwork carrying the word (our capture
+shows **no** white `RAF` in the art, which argues against it), a later runtime assignment elsewhere
+in the front-end flow, or a different control entirely drawing over the button. **Not guessed at** —
+this item has spent two sprints today on inferences that measurement then killed.
+
+### Gates
+
+Measurement only, using an existing trace; no code changed. The three flags remain default-off.
+
+**S5 (next pass):** find every `SetFontNum`/`SetForeColor`/`SetString` call that names `IDC_RAF`
+anywhere in the front end, not just in its own dialog — the difference is real, in the gold, and it
+is assigned somewhere.
+
+**XPORT-FONTEM-1: 4 sprints — AT CAP.**
