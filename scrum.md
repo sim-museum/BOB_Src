@@ -10434,3 +10434,92 @@ Strike the colour row from S12's table. `BOB_FONT_ADOPT_ALL` is:
 thing between this screen and "matches the gold, element for element".
 
 **GOLDVID-BOB-3: a defect retracted and the flag's evidence strengthened by the same measurement. Sprint 1 of 4.**
+
+## GOLDVID-BOB-3 S14 (Opus 5, 2026-09-17) — ⭐⭐⭐ **the caption question opened a much bigger one: this port delivers NO MOUSE-MOVE AT ALL. `ON_WM_MOUSEMOVE()` is `#define`d to nothing — 13 registrations and 25 implementations across 8 files are dead** — and it sits ONE LINE above the `ON_WM_ERASEBKGND()` the header work found
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 2 of 4. S13 retracted the caption colour as a state
+difference and asked one small question: *drive our side-select into the highlighted state and
+confirm `RAF` goes white.* **It cannot be driven, and the reason is not small.**
+
+### ⭐ First, the state is identified exactly — polygon hit regions
+
+`SIDESEL.CPP:121` registers three **polygon regions covering the whole screen**:
+
+```
+   RAF          (0,0) (700,0) (300,650) (0,650)
+   Luftwaffe    (1024,0) (1024,768) (300,768) (300,650) (700,0)
+   Back/Cancel  (0,650) (300,650) (300,768) (0,768)
+```
+
+`RDIALOG.CPP:1453`, inside **`RDialog::OnMouseMove`**:
+
+```c
+else if (pl->button) {
+    if (polylist.current) {
+        ((CRButton*)polylist.current->button)->SetPressed(FALSE);
+        ((CRButton*)pl->button)->SetPressed(TRUE);
+    }
+}
+```
+
+→ `RBUTTONC.CPP:656` then draws the caption in `GetBackColor()` instead of `GetForeColor()`.
+
+⭐ **And the gold's cursor lands inside the RAF polygon.** Point-in-polygon on `(345, 322)`:
+`RAF = True`, `Luftwaffe = False`, `Back = False`. **S13's caveat — *"the cursor is nowhere near the
+RAF caption"* — is answered: the region is half the screen, not the caption's box.** The chain from
+cursor position to white text is now complete and mechanical.
+
+### ⛔⛔ And none of it can ever run here
+
+`SRC/compat/afxwin.h:331`:
+
+```c
+#define ON_WM_RBUTTONDOWN()
+#define ON_WM_RBUTTONUP()
+#define ON_WM_MOUSEMOVE()          <-- empty
+#define ON_WM_ERASEBKGND()         <-- the one the header work found
+```
+
+* **`ON_WM_MOUSEMOVE()` expands to nothing**, so all **13** registrations in the game sources vanish
+  at compile time.
+* `SRC/compat/afxwin.h:1351` — the base is `afx_msg void OnMouseMove(UINT, CPoint) {}`, an empty stub.
+* **No `SDL_MOUSEMOTION` handling exists anywhere in `SRC/compat/`.** Nothing generates the event,
+  nothing routes it, nothing handles it.
+
+**25 `::OnMouseMove` implementations across 8 files are dead code**: `RDIALOG` (the polylist hover
+*and* dialog dragging), `RBUTTONC`, `RCOMBOC`, `RSCRLBRC`, `REDTBTC`, `RTOOLBAR`, `MIGVIEW` (the
+campaign map's own mouse tracking) and `THUMNAIL`.
+
+### ⚖️ What this means for the item, and beyond it
+
+* **Our orange `RAF` is correct for a screen with no mouse on it.** The gold's white `RAF` is correct
+  for a cursor in the RAF region. **Both builds are right; the capture states differ** — S13's
+  retraction stands and is now mechanically explained rather than inferred.
+* ⭐ **This is a new defect, larger than the one that found it.** Every hover affordance in the BoB
+  front-end is inert: side-select highlighting, list-box row/column highlight
+  (`SetHilightRow`/`SetHilightCol` in the same handler), combo and scrollbar tracking, toolbar hover.
+* ⛔ **It is the same defect class as `ON_WM_ERASEBKGND`, one line apart in the same block, and it
+  was not noticed when that one was.** A `#define`-to-nothing makes a whole message dead *silently* —
+  no warning, no unresolved symbol, and the code reads as if it is wired.
+  **The right response is to audit that block as a whole**, not to fix messages one at a time as
+  symptoms surface. [[rowan-port-uninit-and-stub-traps]]
+
+### ⚠️ Not claimed
+
+* **That wiring mouse-move would make `RAF` go white.** It is the mechanism, but note the handler's
+  own shape: on the FIRST region entry `polylist.current` is NULL, so `SetPressed(TRUE)` is
+  **skipped** and only `polylist.current = pl` is assigned. Whether that is original behaviour or a
+  latent bug is untested — **a naive wiring may highlight nothing until the second region change.**
+* **That the other 24 handlers are all user-visible.** They are dead; what each one costs is
+  inferred from its call site, not measured. `MIGVIEW`'s and `RDIALOG`'s dragging are the ones most
+  likely to matter.
+* That clicks are affected. Clicks have their own path and work (S156–S158); **this is move only.**
+
+### ⚖️ Grooming — this leaves GOLDVID-BOB-3
+
+The caption question is **closed**: not a defect, mechanism understood, and the flag's evidence is
+stronger for it (S13). The mouse-move gap is a **separate, larger item** that has nothing to do with
+fonts or the gold video. **File it as MOUSEMOVE-BOB-1 and rotate it in on its own merits** rather
+than growing this item a fifteenth sprint.
+
+**GOLDVID-BOB-3: the caption is explained and the item is done. A new item filed. Sprint 2 of 4.**
