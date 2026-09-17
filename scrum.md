@@ -10290,3 +10290,68 @@ while the screen grows, the flag is **resolution-specific by construction** and 
 about 1024 alone — which is a much smaller thing to agree to.
 
 **GOLDVID-BOB-3: the mechanism found, and the tab row shown to be unjudgeable. Sprint 3 of 4.**
+
+## GOLDVID-BOB-3 S12 (Opus 5, 2026-09-17) — ⭐⭐⭐ **the flag matches the gold's caption to within 1 px on both axes (182×45 vs 183×46) — and the gold's caption is WHITE while ours is ORANGE, on both arms. Eleven sprints on this screen and nobody had compared the colour**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 4 of 4 — rotation complete. S11 predicted the adopted
+face is resolution-specific and named the test: side-select at 1600.
+
+Artefact: `doc/reference/260917_sideselect_caption_gold_off_adopt_1600.png` — gold, OFF, ADOPT@1024,
+ADOPT@1600.
+
+### ⭐ The caption, measured with a colour-aware mask
+
+```
+   arm            w    h    WHITE ink   ORANGE ink
+   GOLD @1024   183   46         948            0
+   OFF   @1024  163   38         144          148
+   ADOPT @1024  182   45         144          844
+   ADOPT @1600  182   45         144          844
+```
+
+**1. The flag is right about geometry.** `182×45` against the gold's `183×46` — **within one pixel on
+both axes.** S5/S6 reported 157 vs 158 on width alone; this confirms it on height too and with an
+independent mask. Whatever else is true, `BOB_FONT_ADOPT_ALL` reproduces the gold's caption size.
+
+**2. ⛔ The gold's caption is WHITE. Ours is ORANGE — in BOTH arms.** 948 white pixels and **zero**
+orange in the gold; 844 orange in ours. The flag corrects the size and leaves the colour wrong, and
+**OFF is wrong the same way** — so this is not a regression the flag introduces, it is a defect that
+has been sitting on this screen through eleven sprints of measuring its *dimensions*.
+[[measuring-can-hide-the-bug]]
+
+**3. ⭐ Resolution-invariance confirmed on side-select.** `ADOPT@1600` gives `182×45` and the same
+ink counts as `ADOPT@1024` — **identical, not scaled**. S11's mechanism holds on the screen the flag
+was validated on, so the flag's correctness is pinned to 1024×768 by construction.
+
+### ⚖️ The packet, final form for this rotation
+
+**`BOB_ETOCLIP_XY`** — inert across all 14 screens (S10). Not a decision.
+
+**`BOB_FONT_ADOPT_ALL`** —
+
+* ✅ reproduces the gold's side-select caption to 1 px **at 1024**
+* ⛔ absolute-sized, so correct **only** at 1024 (S11, S12)
+* ⛔ overflows the config tab row at 1024, truncating `Continue...` → `Con` (S9, S10)
+* ⛔ eight of its thirteen affected screens **have no gold at all** (S11)
+* ⛔ does **not** fix the caption's colour, which is wrong in both arms (this sprint)
+
+**The recommendation I would now give the PO:** the flag is a **size** fix that is exact where it can
+be checked. Ship it **if** 1024 is the resolution that matters, and file the tab row and the caption
+colour as separate items — because they are separate defects and bundling them into one yes/no is
+what made S8's packet misleading.
+
+### ⚠️ Not claimed
+
+* **That the caption colour is a port defect rather than a gold artefact.** The gold's derivation is
+  UNKNOWN (`GOLD_PROVENANCE.md`, S1/S5) — 1024×768 and not a resize of either video. A recolour in
+  whatever produced it cannot be excluded. **But 948 white against 844 orange is not a compression
+  difference**, and the same file is the oracle S5/S6's size match rests on: **it cannot be
+  authoritative about size and unreliable about colour.**
+* That the 144 white pixels in our arms are part of the caption — they are constant across all three
+  port arms and are probably the drop shadow or badge, not the glyphs.
+* That side-select at 1600 is otherwise correct; only the caption was measured there.
+
+**S13:** find what sets the caption's colour and whether the game's own data says white — the gold
+says white, both our arms say orange, and this is the screen this whole item is anchored to.
+
+**GOLDVID-BOB-3: geometry confirmed to 1 px, and a colour defect found under eleven sprints of measuring sizes. BoB rotation complete (4 sprints) → julia.**
