@@ -8740,3 +8740,77 @@ Flags only, all default-off. The headless side-select recipe exits 0 with all th
 flags reach. And the +11 % tracking.
 
 **GOLDVID-BOB-3: 4 sprints — AT CAP.**
+
+## XPORT-FONTEM-1 S1 (Opus 5, 2026-09-16) — ⭐⭐⭐ **the font-metric flag is EXACT in both ports, in OPPOSITE directions, and the arithmetic predicts both to within 0.1 px** — the decision packet the PO has been waiting on
+
+**Story:** XPORT-FONTEM-1 (cross-port: the `*_FONT_EM` flag). **Sprint 1.**
+
+`MA_FONT_EM` and `BOB_FONT_EM` are the same change in two ports: treat a negative Win32 `lfHeight`
+as an **em** height, not a **cell** height. Both have been **default-off for sprints**, each waiting
+for evidence, because enabling either moves text on every screen and every parity reference is a
+picture of that port's own past. [[parity-oracles-are-not-gold]]
+
+This rotation measured both against **real-game captures**, a day apart in the same session:
+
+| | screen | before | with the flag | gold |
+|---|---|---|---|---|
+| **BoB** | side-select `Luftwaffe` | 24 px | **28 px**, ink 1824 | **28 px**, ink 1825 |
+| **MiG Alley** | prefs tab row | 31 px | **28 px** | **28 px** |
+
+Exact in both. **And in opposite directions** — it shrinks MiG Alley and enlarges BoB.
+
+### ⭐ Why, with the numbers
+
+The two ports load different art faces, and the flag multiplies glyph size by exactly **`hhea/em`**:
+
+| face | `hhea (asc−desc)/em` | `OS/2 (winAsc+winDesc)/em` | flag factor |
+|---|---|---|---|
+| MiG Alley ART — `Intel.ttf` | **0.9050** | 1.2210 | **×0.905** |
+| BoB ART — `g101016_.ttf` | **1.1709** | 1.1709 | **×1.171** |
+| SANS — `LiberationSans` | 1.1172 | 1.1172 | ×1.117 |
+
+* MiG Alley: 31 × 0.905 = **28.06** → measured **28**
+* BoB: 24 × 1.171 = **28.1** → measured **28**
+
+**Both predicted within 0.1 px of the gold.** The flag is not a tuning knob that happens to look
+better; it is a metric correction whose size is computable from the font file, and the computation
+agrees with the capture in two ports at once.
+
+### ⛔ The trap this closes, which cost a sprint today
+
+MiG Alley's MAFONT-1 S4 reasoned that since S1 measured the front-end as rendering *"~11 % small"*,
+the flag must **enlarge** — and therefore on a screen where our text was already 11 % **large** it
+would make things worse (`+11 % → +23 %`). That 11 % is the **sans** face (factor 1.117). The row in
+question is the **art** face (0.905). The flag makes it *exact*. **Never infer this flag's direction
+from another face, another port, or prose.**
+
+`Intel.ttf` is the outlier that started the whole investigation: it is the only one of the three
+whose `hhea` and `OS/2` tables **disagree** — 0.905 against 1.221, a 35 % gap. For the other two the
+tables are identical, which is why the defect hid on sans-face screens for so long.
+
+### For the PO — what a "yes" costs
+
+Both flags are still **off**. Turning either on:
+
+* moves text on **every** screen in that port;
+* therefore **DIFFs every parity reference**, because those references are captures of the port's
+  own earlier text — a red gate here means "the picture changed", not "the port broke";
+* so a flip is a **re-seed** of both ports' references plus a re-run of the gates that assert
+  geometry (`maximized_nav`, `map_drag`, `dialog_scroll`, `help_click` in MiG Alley), which were
+  green against the old text.
+
+MAFONT-1 S2 assembled the cross-screen case; this adds the part it could not have: **two
+independent real-game captures where the corrected value is not "closer" but exact, and an
+arithmetic model that predicted both before they were compared.**
+
+### Gates
+
+Documentation and measurement only; no code changed, both flags still default-off. `notes-sync`
+green — the table and its arithmetic are in
+`doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` and its MiG Alley copy.
+
+**S2:** the remaining residuals, which the flag does **not** fix — BoB's `Luftwaffe` is +11 % wide at
+matching height and ink (tracking, not size), and MiG Alley's tab row is ~22 px too high relative to
+its own screen (placement, not size).
+
+**XPORT-FONTEM-1: 1 sprint.**
