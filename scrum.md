@@ -11381,3 +11381,78 @@ whole sprint (17/34 at write-up, 0 failures).
 non-zero textured count** (the speak-check), then looking for the step the PO's square would make.
 
 **BoB sprint 2 of 4.**
+
+## R20 S3 / ORCH-1 (Opus 5, 2026-09-17) — ⛔⛔⛔ **my own orchestration produced a FALSE COMPLETION SIGNAL, and acting on it KILLED a running gate's game: `frag_review`'s FAIL is mine, not the product's** — ⭐ and PO-73 grooming retires a tool that hunts a closed non-defect
+
+**Story:** BoB rotation: sprint 3 of 4. The plan was to fly the campaign with the new `[notex]`
+census. **The display never freed, because the suite I thought had finished had not** — and finding
+that out cost a gate.
+
+### ⛔⛔⛔ The false DONE, step by step
+
+I launch long jobs as `setsid nohup bash -c 'timeout … CMD > out; echo EXIT=$? >> out; touch DONE'`.
+For MiG Alley's 34-gate suite that pattern **lied**:
+
+1. `timeout -k 30 -s KILL 3000` killed the **outer wrapper** at 50 min → it wrote **`EXIT=124`** and
+   **touched `DONE`**.
+2. ⛔ But `gates_all.sh` **re-enters through `gl-lock`**, and that inner `bash /home/admin/ma/port/
+   gates_all.sh` (pid 233636) **survived as an orphan and kept running** — appending to the same log
+   through the inherited fd.
+3. So `DONE` meant *"my wrapper died"*, and I read it as *"the suite finished."*
+
+⭐ **Both of my watches then reported a verdict for a job that was still running** — and the log they
+quoted was still growing under them.
+
+### ⛔⛔ And acting on it broke a gate
+
+Seeing a "stray" `wmig`, I checked its **start time** (16:51) against the suite's (16:05), concluded
+it was an orphan from the killed run, and killed it. It was **`frag_review`'s live game**:
+
+```
+### frag_review
+  port/frag_review.sh: line 63: 236049 Killed   ( cd "$RUNDIR" && timeout … "$WMIG" )
+    the mission never reported a flyable aircraft — FAIL
+    pilot roster: 0 distinct name(s)
+  -> FAIL rc=1 (8s)
+```
+
+⚠️ **`frag_review`'s FAIL is an artefact of my kill and must not be read as a regression** — it
+**PASSED twice today** standing alone (12 names, callsign `1 -> 5`, the seat following the slot), and
+it failed here in **8 seconds** against ~200 s when it really runs. **A gate that dies in a
+twentieth of its normal time did not evaluate anything.**
+
+⭐ **The check I skipped was one command.** I verified the process's *age*; I never asked whether
+`gates_all.sh` was still alive — `pgrep -a -x bash | grep gates_all` would have shown it instantly.
+**And the suite's own header warned me**: *"Refuse rather than kill: a stray `wmig` may be the PO's
+own game."* I was right that it was mine and wrong that it was idle.
+
+### ✅ Corrected
+
+* The false `DONE` is deleted; the watch now polls **the real process**, not a marker I write.
+* ⭐ **The lesson generalises to every long job in this session:** *a DONE marker written by a
+  wrapper proves the wrapper exited — nothing about the work.* When the job **re-execs or re-enters
+  through a lock**, those are different facts.
+
+### ⭐ Grooming: `bob_blob_bisect` hunts a CLOSED non-defect
+
+Following R20's note about *"a grey ellipse … in the sky at upper-left"* in the PO's frame: that is
+**PO-73, CLOSED at S309, and NOT A DEFECT** — the game's own threat indicator (`COverlay::DoThreat()`,
+`MskMap16/THREAT01.X8`), blank because the player has no contacts to plot, switched off with the
+HUD-instruments difficulty setting.
+
+⚠️ **`tools/bob_blob_bisect.sh`'s stated purpose is to find it** — *"PO-73: name the draw that
+renders the grey ellipse"* — and **I repaired that tool's stale-frame bug last rotation without
+noticing its question was answered on 2026-08-27.** The repair was right and cheap (and the tool is
+reusable), but its header now points a reader at a closed item. ⭐ **R20's caution — recording the
+ellipse "but NOT claimed as related" — is vindicated: it is unrelated AND not a defect.**
+
+### ⚠️ Not claimed
+
+* **That the suite passed or failed.** **It is still running** — 19 PASS, 1 self-inflicted FAIL, at
+  gate 21 of 34 when this was written. **No `GATES:` verdict line exists yet.**
+* **That `[notex]` was exercised.** ⛔ **Still not run** — sprint 2's caveat stands unchanged, and
+  this sprint added no evidence about it whatsoever.
+* That `bob_blob_bisect` should be deleted. **Retire or re-aim its header; the bisect machinery is
+  sound** and was verified with a control arm last rotation.
+
+**BoB sprint 3 of 4 — no progress on R20 itself, and the reason is worth more than the sprint.**
