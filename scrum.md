@@ -11220,3 +11220,20 @@ correctly, is the one that closes the question.**
 
 **BoB rotation complete — 4 sprints (18 gates off tmpfs + a shared frame-dump path; parity's false
 green; the bisect's wrong answer; the suite runner's false alarm). ⏭ Rotating to julia.**
+
+### ↩ TMPFS-BOB-1 S4 addendum (same day) — the pending r9 run finished: **PASS**
+
+S4 recorded *"`bob_r9_layout.sh` was launched and had **not finished** when this sprint was
+written."* It has now finished, against the repointed `$OUT`:
+
+```
+  default: lit region   (448,156)-(1472,924)   as expected
+  topleft: lit region   (0,0)-(1024,768)       as expected
+  centre:  lit region   (448,156)-(1472,924)   as expected
+  scale:   lit region   (240,0)-(1680,1080)    as expected
+PASS: all three placements are pixel-correct
+```
+
+⭐ This is the **second** frame-capturing gate to pass after the move (with `bob_parity`'s 14/14),
+and r9 is the one that was writing **24 MB per run** into the tmpfs. **The open item from S4 is
+closed; no other S4 caveat changes.**
