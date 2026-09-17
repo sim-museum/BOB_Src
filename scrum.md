@@ -10210,3 +10210,83 @@ answer is probably yes, and then the fix is the tab row's spacing at that resolu
 laid out from a fixed table of x positions, widening it is a data change and the flag ships clean.
 
 **GOLDVID-BOB-3: one flag of the two does nothing, and the other's only defect is a 1024 layout. Sprint 2 of 4.**
+
+## GOLDVID-BOB-3 S11 (Opus 5, 2026-09-17) — ⭐⭐⭐ **the mechanism: `BOB_FONT_ADOPT_ALL` substitutes a RESOLUTION-INVARIANT face — 32 px cap height at 1024 AND at 1600.** ⛔ And the "documented deviation" that would settle the tab row cites gold shots that **do not exist in this project**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 3 of 4. S10 left the tab row's width as the question.
+The answer is upstream of width.
+
+### ⭐⭐⭐ The adopted face does not scale with the layout
+
+Cap height of the white active tab label:
+
+```
+   OFF     @1024    15 px
+   ADOPT   @1024    32 px
+   ADOPT   @1600    32 px      <- identical; a scaled face would be 15.6/1.5625 = 50
+```
+
+**The flag swaps a resolution-scaled face for an absolute one.** That is the single mechanism behind
+everything S9 and S10 measured: the row fits at 1600 not because the face is right there, but because
+the *screen* grew while the face did not. `bob_draw_menu` scales everything else by `resW`
+(`fh = resW*36/1000`, `oleH = resW*26/1000`); the adopted face ignores that.
+
+### ⭐ Good news for S8's justification, checked rather than assumed
+
+`260915_gold_sideselect_raf.png` is **1024×768** — the same resolution the parity gate captures at.
+So S5/S6's caption match (12 → 28 px against the gold's 28) is **apples to apples, and it stands**.
+The flag is genuinely right on the one screen it was validated on.
+
+⛔ **But it is validated at exactly one resolution**, and because the face is absolute, the caption
+will be proportionally wrong at any other. Nobody has looked at side-select at 1600.
+
+### ⛔⛔ The deviation that would settle the tab row cites evidence that is not here
+
+`SRC/MFC/FULLPSYS.CPP:434`:
+
+> *"NB: **the gold shots' config tab bars are additionally SPREAD across the full width**
+> (PositionRListBox column spacing); not reproduced here because the hosted control draws its own
+> tight-packed columns… Documented deviation."*
+
+**I cannot find those gold shots.** Searched:
+
+* `doc/reference/` — 12 gold captures: title menu, side-select, two briefings, directives, patrols,
+  strategic map, two scenes screens, mirror, sight, turkeyshoot HUD. **No config screen** (S9;
+  `260915_gold_bdg_config_dialog.png` is a BDG message box over the title).
+* `/home/admin/bob-goldframes/` — both campaign contact sheets (RAF and German, 12 frames each)
+  read end to end. **Neither video ever opens a config screen.** The closest is a `Back / Sim Config
+  / Fly` footer, which is the `bobfrag` row, not the tab bar.
+
+So the port carries a layout decision — tight-packed columns, knowingly unlike the gold — justified
+by an observation with **no locatable artefact**. *(Same shape as MiG Alley's `S155` comment this
+same night: a written record of the gold that the placement code depends on and that the gold does
+not support. Two ports, one failure mode, and in both cases the code cited its comment rather than
+the capture.)* [[instrument-bookkeeping-lies]]
+
+### ⚖️ The packet, fourth revision — and the honest shape of it
+
+| screen group | gold? | verdict on `BOB_FONT_ADOPT_ALL` |
+|---|---|---|
+| side-select | ✅ 1024×768 | **correct and exact** (28 px vs gold's 28) |
+| config / sim tab rows (8 screens) | ❌ none exists | **unjudgeable.** Only hard fact: the row overflows 1024 and truncates `Continue...` to `Con` |
+| phaseselect, entername, quickshots, bobfrag | ❌ not checked | unexamined |
+
+**The flag should not be judged as one decision** — it is right where there is an oracle and
+unmeasurable where there is not, and the resolution-invariance means even the good result is
+pinned to 1024.
+
+### ⚠️ Not claimed
+
+* **That the `FULLPSYS.CPP:434` comment's author was wrong.** They may have had a shot that was never
+  committed. What is established is that **the evidence is not in the repository today**, so the
+  deviation cannot be re-derived or re-checked by anyone.
+* **That the OFF face scales with resolution.** It is 15 px at 1024; it was not measured at 1600.
+  The contrast drawn above is between ADOPT@1024 and ADOPT@1600, which is measured.
+* That resolution-invariance is a *bug* in the adopted metric rather than a property of the real
+  game's font handling. It is a difference from how `bob_draw_menu` scales everything else.
+
+**S12:** capture side-select at 1600 with the flag on and measure the caption. If it stays 32 px
+while the screen grows, the flag is **resolution-specific by construction** and the PO's decision is
+about 1024 alone — which is a much smaller thing to agree to.
+
+**GOLDVID-BOB-3: the mechanism found, and the tab row shown to be unjudgeable. Sprint 3 of 4.**
