@@ -11237,3 +11237,79 @@ PASS: all three placements are pixel-correct
 ⭐ This is the **second** frame-capturing gate to pass after the move (with `bob_parity`'s 14/14),
 and r9 is the one that was writing **24 MB per run** into the tmpfs. **The open item from S4 is
 closed; no other S4 caveat changes.**
+
+## R20 S1 (Opus 5, 2026-09-17) — ⛔⛔⛔ **`GATE 4b`'s green CANNOT cover the PO's floating dark square, on two independent grounds — and the item's own filing was right to warn against trusting it.** Established by reading, with no display and no run
+
+**Story:** BoB rotation: sprint 1 of 4. ⚖️ **Grooming first, and it eliminated the obvious candidate:**
+MA's S410 hands BoB a cross-port job — *"BoB should take the same Y-only ETO_CLIPPED treatment"* —
+and **it is already done** (`afxwin.h:770`, S413, default ON, slop 2, validated at 8 screens
+byte-identical with `BOB_ETOCLIP_XY=1` as a live negative control). *Checked before proposing it,
+which is the lesson MA's rotation paid for one sprint earlier.*
+
+⭐ That left **R20**, an **open PO defect with a screenshot**: *"bob campaign, fly - there is a black
+square that floats around in the air."* Its filing already measured the square from the PO's own
+frame — **(650,35)-(830,140), exactly ONE colour, RGB (40,52,52)**, within 6 units/channel of the
+ground band — and concluded it is a **flat-shaded untextured quad**, not a failed texture.
+
+⚠️ It also left a warning: *"`GATE 4b` already asserts `blackTex=0` and PASSES, so either this is not
+the terrain-tile path that gate covers, or the gate's scope misses it. **Do not read that green as
+covering this** — establish which before trusting it."* **This sprint establishes it.**
+
+### ⛔ Ground 1 — the gate flies a different mission
+
+```sh
+### GATE 4b: terrain tiles textured (blackTex must be 0)
+  … BOB_BOOT_FRONTEND=1 BOB_QM_INDEX=11 BOB_AUTOFLY=view40 BOB_TRACE_TEXBLACK=20000 …
+```
+
+**`BOB_QM_INDEX=11` is a QUICK MISSION.** The PO's report is *"bob **campaign**, fly"*. Different
+scenery, different objects, different path — **the gate has never flown what the PO flew.**
+
+### ⛔⛔ Ground 2 — the counter is structurally blind to an untextured draw
+
+`bob_video.cpp:3150` gates the entire census:
+
+```c
+if (s_tbEvery > 0 && L.hasTex && count >= 3) {      // <-- hasTex
+    …
+    cnt[cls < 0 ? 3 : cls]++;                        // blackTex / darkTex / normalTex / noTex
+```
+
+⭐⭐⭐ **Every counter, including the one printed as `noTex`, lives INSIDE the `L.hasTex` gate.** So
+`noTex` means *"has a texture, whose bits were unusable"* — **not** *"was drawn untextured"*. A quad
+drawn with **no texture at all** increments nothing and never reaches the classifier.
+
+**The defect R20 describes is precisely an untextured flat-shaded quad.** ⚠️ So `blackTex=0` is not
+weak evidence here — **it is evidence the instrument is incapable of producing**, whatever the state
+of the sky.
+
+⭐ *This is MA's PO-82 lesson, confirmed in BoB's own code:* the filing quotes it — *"MA proved
+handle-0 draws are invisible to a resolver counter (they never reach it)"* — and that is now shown
+to be literally true of this counter too, by its own gating condition.
+
+### ⚖️ What this does and does not settle
+
+* ✅ **`GATE 4b`'s PASS says nothing about R20.** The item may be freely investigated without
+  contradicting a green gate — which is what the warning was protecting.
+* ⛔ **It does NOT mean `GATE 4b` is wrong.** It measures what it claims — *terrain tiles uploading
+  black* — and does that correctly. **Its scope is narrower than a reader would assume from
+  "terrain tiles textured".**
+* ⭐ **The instrument R20 needs does not exist in this port yet:** a census of draws that are
+  untextured, counted *outside* any `hasTex` gate.
+
+### ⚠️ Not claimed
+
+* **That the square IS an untextured draw.** That is the **filing's** analysis from the PO's
+  screenshot (one flat colour, near the ground's shade), and **nothing here re-measured it.** This
+  sprint only shows the existing gate could not tell us either way.
+* **That MA's instrument is ready to cross-port.** ⚠️ I checked: `MA_EXEC_NOTEX` is a **forcing**
+  flag (disable texturing for an A/B), **not** the census the filing describes. `MA_TRACE_TEXFAIL`
+  is the likelier candidate and **has not been read.** *Naming the wrong instrument is how a
+  cross-port starts badly.*
+* That the run would be cheap. **It needs the campaign, real GL and the display** — none of which
+  were available this sprint (MiG Alley's 34-gate suite holds the machine).
+
+**S2:** read `MA_TRACE_TEXFAIL`, and add a census of untextured draws **outside** the `hasTex` gate.
+**Until one exists, R20 has no oracle at all.**
+
+**BoB sprint 1 of 4.**
