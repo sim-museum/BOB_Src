@@ -9471,3 +9471,73 @@ branch, this). The common shape: **an instrument reporting a negative it was str
 turn positive.**
 
 **MP-5: verified green after the flip. Harness default fixed.**
+
+## GATEHYGIENE-1 (Opus 5, 2026-09-17) — the assert-past-timeout defect is **isolated, not systemic** — ⛔ **but the audit that says so only catches ONE of the three harness failures this session, and the real defence is different: a gate should assert that its own STEPS fired, not only that its outcomes happened**
+
+**Story:** cross-cutting, rooted in MP-5 S2. BoB rotation: sprint 4 of 4 — rotation complete.
+
+Three harness-not-port failures in one session is a pattern worth pricing before it costs a fourth.
+
+### The audit, and its result
+
+Every harness in all four ports, comparing each script's **run length** against the **latest event it
+schedules**:
+
+```
+bob   : bob_mp_two_instance.sh  SECS=150  max_event=150000 ms   <- the one fixed in MP-5 S2
+        all others: shot sentinels (99999) or events well inside their timeout
+ma    : no mismatches
+ff    : no mismatches
+julia : no mismatches
+```
+
+**The defect is isolated to the one already fixed.** Good news, and worth having rather than assuming
+either way.
+
+### ⛔ But the audit is a partial net, and saying otherwise would be the same error again
+
+The three failures **were not one mechanism**:
+
+| failure | mechanism | would this audit catch it? |
+|---|---|---|
+| BoB MP-5 | Fly click scheduled at the timeout | **yes** |
+| julia BNDWRECK-1 S10 | probe placed in `AI_PHYSICS`, an **opt-in branch that was off** | **no** |
+| FF GOLDVID-FF-1 S18/S19 | capture taken at t=240 where the view had reverted; **t=110 works** | **no** |
+
+Two of three are invisible to any static comparison of numbers. A clean audit is **not** evidence
+that the class is gone.
+
+### ⭐ The defence that would have caught all three
+
+Each failure was diagnosed the same way — **by finding that a step the gate depends on left no trace**:
+
+* `click (121,747)` appeared **zero** times in the host log;
+* `[ds]` appeared **zero** times because the branch never ran;
+* the pit signature was absent because the view was HUD.
+
+In every case the evidence was already in the log and **the gate did not look at it.** So:
+
+> **A gate should assert its own preconditions, not only its outcomes.** Before asserting "the host
+> entered the 3-D", assert "the Fly click fired". Before reporting "no projection jumps", assert "the
+> probe produced samples". Before measuring a cockpit, assert "the frame is the cockpit".
+
+That is a negative control in the ordinary sense, and this project already has the rule in its notes
+([[instrument-bookkeeping-lies]] — *prove the instrument can speak before believing a zero*). What
+today shows is that the rule is applied to **new** instruments and not to **existing gates**, which
+are exactly the ones trusted enough to be run unattended.
+
+### What was actually changed
+
+Only `tools/bob_mp_two_instance.sh` (MP-5 S2): derives `SECS` from `HOST_FLY_MS`, auto-extends, and
+announces it. **No other harness was edited** — the audit found nothing else to fix, and editing gates
+speculatively is how a green suite becomes untrustworthy.
+
+### ⚠️ Not claimed
+
+* That the other gates are sound. They are sound **against this one defect**; two of today's three
+  failure modes are not statically detectable.
+* That the precondition-assert recommendation has been implemented anywhere. It is a recommendation,
+  scoped deliberately: retrofitting it across four ports' gate suites is not a sprint, and should be
+  done per gate when each is next touched.
+
+**GATEHYGIENE-1: 1 sprint, audit clean, one fix already landed. BoB rotation complete (4 sprints) → julia.**
