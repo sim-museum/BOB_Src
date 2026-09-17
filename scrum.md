@@ -8665,3 +8665,78 @@ Trace/flag only, all default-off. The headless side-select recipe exits 0 with b
 `RFullPanelDial::OnGetGlobalFont` would return for it, against what `bob_dlg_getfont` does return.
 
 **GOLDVID-BOB-3: 3 sprints.**
+
+## GOLDVID-BOB-3 S4 (Opus 5, 2026-09-16) — ⭐⭐⭐ **two default-off flags together reproduce the gold's caption EXACTLY: height 28 = 28, ink 1824 against 1825** — the box-shrink and the em/cell metric were one defect wearing two hats — ⛔ **and `RAF` is untouched, because it is a different element entirely**
+
+**Story:** GOLDVID-BOB-3 (front-end screens vs the 2026-09-15 golds). **Sprint 4 — at cap.**
+
+S3 left a hypothesis with its arithmetic: the residual 24-vs-28 *"is very likely `bob_dlg_getfont`
+returning [0] where the game would return [3]"*. That is **not** what it was.
+
+### ⭐⭐⭐ The measurement
+
+`BOB_FONT_ADOPT_ALL=1 BOB_ETOCLIP_XY=1` (S3) plus **`BOB_FONT_EM=1`**:
+
+| `Luftwaffe` | height | width | ink |
+|---|---|---|---|
+| **gold** | **28** | **158** | **1825** |
+| ours, default | 13 | 132 | 322 |
+| ours, + adopt | 24 | 165 | 1312 |
+| ours, + adopt + `BOB_FONT_EM` | **28** | 176 | **1824** |
+
+**Height exact. Ink 1824 against 1825 — one pixel in eighteen hundred.** An ink count that lands
+that close is not a coincidence of thresholds: the glyph coverage is the same coverage. The caption
+is now the gold's caption.
+
+### ⭐ So it was two defects, and they compose
+
+* **the box-shrink** (S3): the port sized the font to the control's box; the game *clips* with
+  `ETO_CLIPPED` and never resizes. Worth 13 → 24 px.
+* **the em/cell metric** (`BOB_FONT_EM`, MAFONT-1 S1's finding, ported): Windows builds `TEXTMETRIC`
+  from OS/2 `usWinAscent/usWinDescent`, stb_truetype returns the hhea pair, and for the Rowan art
+  face those disagree by ~26 %. Worth 24 → 28 px.
+
+Neither alone reaches the gold; together they land on it. Both have sat **default-off** for sprints,
+each waiting for evidence — and this is the first time either has been measured against a real-game
+capture on a screen where the other was also on.
+
+⚠️ **This is the strongest evidence yet for the font-metric flag in either port**, and it bears
+directly on MiG Alley's blocked PO decision — `MA_FONT_EM` is the same flag on the same engine. It
+does **not** settle it: MiG Alley's own screens must still be measured, and MAFONT-1 S4 found one
+(the prefs tab row at 1280) where our text is already 11 % *larger* than the gold. Two ports, two
+directions, one decision.
+
+### The residual is now tracking, not size
+
+Width **176 against 158**, +11 %, at identical height and ink. Same glyphs, same weight, spaced
+further apart — an advance-width difference, not a scaling one. That is a much narrower question
+than the one this item started with.
+
+### ⛔ `RAF` is not fixed, and is not the same problem
+
+| `RAF` | gold | ours (with both flags) |
+|---|---|---|
+| colour | **white** | **amber** |
+| height | 46 | 28 |
+| width | 133 | 65 |
+| ink | 903 | 842 |
+
+Its ink is close but its extent is twice the size: the gold draws `RAF` as a **large thin** element,
+ours as a compact one, in the wrong colour. Whatever `RAF` is, it is not the same kind of control as
+`Luftwaffe`, and none of this sprint's flags touch it.
+
+### ⚠️ Still not shipped
+
+Both flags remain default-off for the reason S3 gave: enabling the adopt re-admits S185's dlg=1103
+overflow unless the clip is horizontal, and the horizontal clip re-seeds parity references captured
+with the unclipped behaviour. The result above is the *argument* for making that change; it is not
+the change.
+
+### Gates
+
+Flags only, all default-off. The headless side-select recipe exits 0 with all three on.
+
+**S5 (next pass):** `RAF` — find what draws it, since it is neither the menu path nor a caption these
+flags reach. And the +11 % tracking.
+
+**GOLDVID-BOB-3: 4 sprints — AT CAP.**
