@@ -10668,3 +10668,65 @@ speculatively wiring messages the game barely uses is not.
   change nothing without also un-commenting Rowan's code, which is a different decision entirely.
 
 **MOUSEMOVE-BOB-1: one real message delivered of 39, both candidates triaged away, and the tool corrected by its own first use. BoB rotation complete (4 sprints) → julia.**
+
+## MOUSEMOVE-BOB-1 S3 (Opus 5, 2026-09-17) — ⚖️ **PARKED. The defect is real and the symptom is undemonstrated: no PO report, and the one "hover highlight" note in the tree is my own, from 2026-06-15, about an implementation that was superseded three months ago**
+
+**Story:** MOUSEMOVE-BOB-1. BoB rotation: sprint 1 of 4. S2 left one confirmed unfixed defect —
+`ON_WM_MOUSEMOVE` dead, 25 handler implementations unreachable — and the obvious next move was to
+wire it. **Started, then stopped and checked what it would buy.**
+
+### ⛔ What wiring it actually costs
+
+Three things surfaced in the first twenty minutes:
+
+* **`RDialog::OnMouseMove` is `protected`** (`RDIALOG.H:508`). Reaching it needs a gated public
+  forwarder in a game header — the idiom MA's `TITLEBAR.H` uses for `MaPaintBkgnd`, so it is
+  precedented, but it is game-file surgery.
+* ⚠️ **`RowanDialog` — the base every front-end dialog derives from — is not declared anywhere in
+  `SRC/`.** `grep -r` finds `: public RowanDialog` in dozens of headers and **no definition**, so
+  the route from "the active panel" to "an `RDialog*` I can call" is not established.
+* **The handler has a first-entry bug of its own** (S14): `polylist.current` is NULL on the first
+  region entry, so `SetPressed(TRUE)` is skipped. **A naive wiring highlights nothing** until the
+  second region change.
+
+### ⛔⛔ And what it would buy: nothing anyone has reported
+
+Searched the PO's reports across `scrum.md` and `PORT.md`. **There is no PO report of a hover,
+highlight, drag or cursor problem in BoB.** The single hit is `PORT.md:8875`:
+
+> *"navigation works but those screens aren't usable. Also: **hover highlight**, continuous repaint,
+> and the faithful `Intel.ttf`/OLE-RListBox path."*
+
+**That is my own "Next / known gaps" list, dated 2026-06-15**, written when `bob_draw_menu`
+*"bypasses the OLE `RListBox` (no highlight/exact layout yet)"*. **The port moved to real OLE
+RListBox hosting at S123.** The note is stale by three months and describes a component that no
+longer exists in that form.
+
+⭐ **So the item has a mechanism, a measurement, a tool — and no symptom.** S14 found it while chasing
+a gold-frame colour difference that S13 had already shown to be a *capture-state* artefact, not a
+defect. **Nothing in this chain started from something a player saw.**
+
+### ⚖️ Parked, with the un-park condition written down
+
+**Keep:** `tools/msgmap_audit.sh`, and S1/S2's finding that this port delivers **1 of 39** messages
+the game registers. That is durable and it is what makes the next occurrence cheap to diagnose.
+
+**Un-park on any of:** a PO report of hover, highlight, drag or cursor behaviour; a gold comparison
+that needs a hover state to reproduce; or a *second* message from the audit turning out to matter,
+which would make wiring the family worth doing once rather than one at a time.
+
+**Do not un-park to make the side-select chevron white.** S13 measured that as a capture-state
+difference, and S14 traced it to a cursor sitting in the gold's RAF polygon. **That is the gold's
+mouse, not our bug.**
+
+### ⚠️ Not claimed
+
+* **That the 25 dead handlers are harmless.** Dialog dragging (`RDIALOG`) and the campaign map's own
+  mouse tracking (`MIGVIEW`) are the two most likely to matter, and **neither was tested** — parking
+  is a judgement about priority, not a finding of correctness.
+* **That `RowanDialog` does not exist.** It compiles, so it is defined somewhere the search did not
+  reach — through a macro, a generated header, or a path outside `SRC/`. **Unresolved, and recorded
+  as such**, because the next person will hit it in the first five minutes.
+* That the audit's 38 undelivered messages are all inert. S2 triaged two; the rest are a queue.
+
+**MOUSEMOVE-BOB-1: parked on "real mechanism, no reported symptom". Sprint 1 of 4 — the rotation moves to an item with a live complaint.**
