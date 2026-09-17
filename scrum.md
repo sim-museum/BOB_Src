@@ -9106,3 +9106,87 @@ which need their own reseed; `BOB_LISTCOL_SCALE`/`BOB_LISTCOL_NOSHRINK`) remain 
 are NOT covered by this.
 
 **BoB rotation: sprint 1 of 4.**
+
+## XPORT-ERASEBK-1 S2 (Opus 5, 2026-09-16) — ⛔⛔ **RETRACTION: S1's "41 registrations and 64 implementations, three and a half times MiG Alley's" is wrong, and backwards. Both ports have 16 definitions; BoB has FEWER live painters than MiG Alley (4 against 8)** — ⭐ **because most of these handlers are no-ops in ROWAN'S OWN SOURCE, so the port's empty macro is faithful for them**
+
+**Story:** XPORT-ERASEBK-1. **Sprint 2.**
+
+S1 named S2's job: "pick BoB's one screen where a gold shows the background and wire that class
+alone." MiG Alley had already paid for the lesson that wiring a handler does **not** make a screen
+right. So the cheaper question came first — **of these handlers, how many would paint anything at
+all?** Answering it retracts S1's headline.
+
+### ⛔ The numbers were string counts, not definitions
+
+`41` and `64` are not registrations and implementations. **41 is the raw count of the string
+`OnEraseBkgnd` anywhere in BoB's `SRC/` outside compat** (the MiG Alley equivalent is **57**, not 13).
+Counted as actual definitions — `grep -a 'BOOL .*::OnEraseBkgnd('` — and each body then **read**:
+
+| | definitions | Rowan `//DEADCODE` | no-op (`return TRUE` / chains to base) | **actually paint** |
+|---|---|---|---|---|
+| **MiG Alley** | 16 | 0 | 8 | **8** |
+| **Battle of Britain** | 16 | 2 | 10 | **4** |
+
+**Both ports have 16. BoB has the defect LESS than MiG Alley, not "three and a half times" worse.**
+The comparison that made this item look large was a comparison of two different things.
+
+### ⭐⭐ And the classes that made it look structural are empty in the original game
+
+S1's case rested on the affected classes being *base* classes — `RDialog`, `CMainFrame`, `CMapDlg`.
+All three have their bodies **commented out by Rowan themselves**:
+
+```c
+BOOL RDialog::OnEraseBkgnd(CDC* pDC)        // the dialog BASE class
+{ //  return CDialog::OnEraseBkgnd(pDC);    //FIX!!!   <- Rowan disabled it
+  return TRUE; }
+
+BOOL CMainFrame::OnEraseBkgnd(CDC* pDC) { return true;//CFrameWnd::OnEraseBkgnd(pDC); }
+BOOL CMapDlg::OnEraseBkgnd(CDC* pDC)    { /* 8 commented lines */ return TRUE; }
+```
+
+`CSystemBox` and `LWTaskFighter` merely `return CDialog::OnEraseBkgnd(pDC)` — the compat base stub,
+which returns TRUE. **For every one of those, our empty `ON_WM_ERASEBKGND()` is FAITHFUL.** Wiring
+them paints nothing, because there was never anything to paint.
+
+### What is actually left
+
+Four painting handlers in BoB, confirmed present in the binary by `nm -C build/bob` (single
+definitions each, so the `SRC/RBUTTON` vs `SRC/MFC` duplicate pairs are unambiguous):
+
+| class | stmts | what |
+|---|---|---|
+| **`CRToolBar`** | 47 | resolves an art file via `OnGetArt()`, decodes, blits — **the toolbar chrome** |
+| `CHintBox` | 15 | hint-box background |
+| `CMIGView` | 4 | `FillRect(BLACK_BRUSH)` when `m_currentpage!=0` |
+| `CMainFrame` | 1 | `return true;` — counted as painting only by statement count; it is a no-op |
+
+So the real BoB item is **`CRToolBar`, and secondarily `CHintBox`** — the same toolbar-chrome shape
+MiG Alley found, and nothing like a port-wide background failure.
+
+### ⭐ A cross-port consistency check that passes
+
+**`TitleBar::OnEraseBkgnd` is live in MiG Alley (59 stmts) and `//DEADCODE` in BoB.** That is
+independently consistent with **XPORT-CAPTION-1 S1**, which found by a different route that BoB does
+not have MiG Alley's titlebar-chrome bug. Two unrelated sprints agreeing is worth more than either.
+
+### Fixed in both trees
+
+The wrong table had been published to the shared notes. Corrected in **both** copies
+(`bob/doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md`, `ma/port/BOB_PORT_LESSONS.md`) with the retraction
+stated in place, not silently overwritten.
+
+### ⚖️ Grooming
+
+This item was sized off a number that was wrong by an order of magnitude in the wrong direction. At
+its true size it is **one toolbar class**, already understood from MiG Alley. It does not warrant the
+sprint run S1 implied. **Demoted to a single well-defined job** — wire `CRToolBar::OnEraseBkgnd`
+behind a default-off flag, before the controls, on a screen where a gold shows the chrome — to be
+taken when a gold-video item actually needs that chrome, not on its own account.
+
+### ⚠️ Not claimed
+
+That the 4 painting handlers are harmless. They are still dead, and `CRToolBar`'s is still real
+missing chrome. Only that the item is small, and that "64 dead handlers across the dialog base" was
+never true.
+
+**XPORT-ERASEBK-1: 2 sprints. Demoted to a single job. BoB rotation: sprint 2 of 4.**
