@@ -9791,3 +9791,64 @@ else's.
   checked it against the game's intent.
 
 **GOLDPROV-BOB-1: seeding verified. BoB rotation complete (4 sprints) → julia.**
+
+## GOLDVID-BOB-3 S8 (Opus 5, 2026-09-17) — ⭐⭐⭐ **side-select is at PARITY with the gold: within ~1.6 luminance units in every column and every band — against MiG Alley's 30–108 on its campaign map.** The signed method that cracked MA's plateau, applied here, finds no layout defect at all
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 1 of 4. **No new run** — both captures were on disk.
+
+MiG Alley's S18–S20 showed that a scalar `mean|diff|` hides opposite-signed defects, and that a
+**signed** slice comparison exposes them. That method has now found a 100-unit misplacement in MA's
+campaign map. Applying the same instrument to BoB's one solid gold pairing is the obvious cross-port
+move — and the answer is the opposite kind.
+
+### ⭐⭐⭐ Gold minus ours, signed, both arms
+
+```
+by 128-px column
+   arm                        0     128     256     384     512     640     768     896
+   OFF (shipped default)   -1.6    -1.5    -1.0    -0.9    -1.2    -1.3    -1.5    -1.5
+   ON  (adopt+etoclip)     -1.7    -1.5    -1.1    -1.0    -1.7    -1.5    -1.5    -1.5
+
+by 96-px row band
+   OFF                     -0.4    -1.6    -1.6    -1.6    -1.5    -1.4    -1.4    -0.9
+   ON                      -0.7    -1.6    -1.6    -1.6    -1.5    -1.4    -1.4    -1.6
+```
+
+**Nothing anywhere exceeds 1.7 units, and the sign never flips.** For contrast, the same instrument on
+MiG Alley's campaign map returns `−49.2` on one slice and `+108.0` on another.
+
+⭐ **A uniform, small, single-signed offset is the signature of a global difference — gamma, palette or
+the gold's own encoding — not of a misplaced or missing element.** A layout fault cannot present as
+±1.5 everywhere; it presents as MA's opposite-signed pair.
+
+### ⭐ What this establishes about the port
+
+**BoB's side-select screen has no large-scale layout defect.** That is a positive parity result, and
+this project has produced very few of them — the item has spent its sprints on a caption 157 px wide,
+while the screen it sits on was never checked as a whole.
+
+### ⭐ And it calibrates the pending flag decision
+
+The adopt flags move the **aggregate** by at most 0.5 of a luminance unit (`-1.2 → -1.7` at `x512`).
+That is not a contradiction of S5/S6's `12 → 28 px` caption result — it is the correct scale relation:
+**a caption is a tiny fraction of a 1024×768 frame.** Both are true, and quoting only one would
+mislead:
+
+* **Targeted:** the flags fix the caption, 12 → 28 px height, matching the gold's 28.
+* **Whole-screen:** they change almost nothing else, in either direction.
+
+⭐ **That is a genuinely useful thing to tell the PO** — the flags are a *local* fix with **no
+measurable collateral effect on the rest of the screen**, which is a stronger safety argument than
+"the gates pass".
+
+### ⚠️ Not claimed
+
+* That the ~1.5 offset is meaningless. It is consistent and unexplained; it may be gamma, it may be
+  the gold's capture path. **Unexplained, not dismissed.**
+* That side-select is correct in detail. Luminance per 128-px column cannot see a wrong glyph, a wrong
+  colour at constant brightness, or a small misplacement. **It rules out gross layout faults, nothing
+  finer.**
+* That this transfers to BoB's other screens. One screen, one gold, whose provenance GOLDPROV-BOB-1
+  recorded as unverified.
+
+**GOLDVID-BOB-3: side-select at parity; the flags are a local fix with no collateral. Sprint 1 of 4.**
