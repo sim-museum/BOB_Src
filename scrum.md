@@ -10814,3 +10814,75 @@ and the `SHAPE.vd_scale*` consumers, both of which are compiled — and re-deriv
 anyone traces anything.
 
 **ASPECT-1: the symptom is real, all three named mechanisms are dead code, and the item needs its machinery re-derived. Sprint 2 of 4.**
+
+## ASPECT-1 S2 (Opus 5, 2026-09-17) — ⛔ **the stretch hypothesis is REFUTED where it was testable: projection aspect 1.7778, GL viewport 1.7778, horizontal stretch 1.0000** — ⭐ and the instrument already existed, in the right file, written the day the symptom was found
+
+**Story:** `ASPECT-1`. BoB rotation: sprint 3 of 4.
+
+### ⭐ Correcting my own S1
+
+S1 reported that the item's three cited machinery sites are dead code — that stands. But S1 implied
+the trace still had to be written. **It did not.** `LIB3D.CPP:6014` already carries a complete
+`BOB_TRACE_ASPECT=1` instrument, dated **`ASPECT-1 S1 (2026-09-15)`** — the same day `R3.4 S5`
+measured the mirror — keyed per distinct `(aspect, viewport)` pair with a `TABLE FULL` notice, in
+`LIB3D.CPP`, **which is compiled** (`ninja -t deps`: 2).
+
+**The backlog entry's `S1:` text and the code disagree, and the code is two days ahead of it.** The
+entry still names `WIN3D.CPP:3433`; the working instrument sits in `Lib3D::_SetProjectionMatrix`,
+where the projection is actually built. *(Filing text ages; nobody re-read it against the tree.)*
+
+### ⛔ And the hypothesis it was built to test is refuted
+
+The instrument's own comment states it precisely: *"`aspectRatio` is assigned ONCE at device creation
+(`LIB3D.CPP:3712`) as `dwRenderWidth/dwRenderHeight`… If `aspectRatio` is still 1.3333 while the GL
+viewport is 1.7778 wide, the picture is stretched by exactly 1.7778/1.3333 = 1.3333 — the measured
+number."* Ran it on a real-GL boot-to-flight:
+
+```
+   [aspect] projection aspect=1.7778 (Lib3D aspectRatio=1.7778)
+            GL viewport 1920x1080 = 1.7778  ->  horizontal stretch 1.0000
+```
+
+**Projection, `aspectRatio` and viewport all agree at 16:9, and the stretch is 1.0000.** Exactly one
+distinct pair was reported across the run, so **no stale-aspect mode change occurred** — the trace
+would have printed a second pair if it had.
+
+**So in this scenario the projection is correct, and it cannot be what widens the mirror.**
+
+### ⚠️ Why this is not yet "ASPECT-1 is not real"
+
+The symptom and this measurement come from **different configurations**, and that must not be
+glossed:
+
+* The run logged **`[aspect] docreatemirror REACHED (SKYIMAGES=0)`** — **the mirror was not drawn.**
+  It is gated on the Reflections setting, default off (`BOB_MIRROR` forces it).
+* `R3.4 S5` measured a **192x144** mirror, so its run must have had the mirror live.
+* This was `BOB_BOOT_FRONTEND=1`, a 90-second quick-mission boot, not the campaign path the PO flies.
+
+**A projection that is correct in a run where the symptom is not even rendered does not exonerate
+it.** What is established is narrower and still useful: **the projection/viewport mismatch mechanism
+is refuted for the boot-to-flight path at 1920×1080**, which is the one mechanism the item had left
+after S1 killed the other three.
+
+### ⚖️ Where that points
+
+If the projection is 1.0000 and the mirror still measures 1.333, the stretch is **downstream of the
+projection** — the mirror's own RTT pass, or the 2-D blit that composites it. That is a different
+search from the one this item has been set up for, and it is reachable: `BOB_MIRROR=1` plus a frame
+dump puts the symptom and the trace **in the same run**, which is the thing nobody has yet done.
+
+### ⚠️ Not claimed
+
+* **That the mirror is not stretched.** It was not measured here. **Nothing in this sprint contradicts
+  `R3.4 S5`'s numbers**; they are simply from a different configuration.
+* **That no mode change ever happens.** One run, one scenario. The instrument's comment cites a flight
+  log going `1024x768 -> 1920x1080`; **that transition did not occur here**, and a scenario that
+  produces it would be worth running before the mechanism is fully retired.
+* That `BOB_BOOT_FRONTEND` represents the PO's flight. It does not — they fly campaigns.
+
+**S3:** one run with `BOB_MIRROR=1`, `BOB_TRACE_ASPECT=1` and a frame dump — measure the mirror's w/h
+**and** the projection aspect from the same frames. That either reproduces 1.333 with a correct
+projection (the stretch is downstream) or fails to reproduce it at all (the symptom is
+configuration-specific), and both are answers.
+
+**ASPECT-1: the last surviving mechanism refuted where testable, and the symptom shown to be un-co-located with the measurement. Sprint 3 of 4.**
