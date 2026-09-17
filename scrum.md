@@ -10355,3 +10355,82 @@ what made S8's packet misleading.
 says white, both our arms say orange, and this is the screen this whole item is anchored to.
 
 **GOLDVID-BOB-3: geometry confirmed to 1 px, and a colour defect found under eleven sprints of measuring sizes. BoB rotation complete (4 sprints) → julia.**
+
+## GOLDVID-BOB-3 S13 (Opus 5, 2026-09-17) — ⛔⛔ **S12's colour defect is RETRACTED: the gold's `RAF` is white because it is HIGHLIGHTED, and the gold has a mouse cursor on screen to prove it.** ⭐⭐ And checking it turned into the strongest validation `BOB_FONT_ADOPT_ALL` has: **three captions, and the two unhighlighted ones match the gold's ink within 4 %**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 1 of 4. S12 found the gold's side-select caption white
+and ours orange in both arms, and called it *"a defect that has been sitting on this screen through
+eleven sprints of measuring its dimensions."* S13 was to find what sets the colour. The answer is:
+**nothing is wrong.**
+
+Artefact: `doc/reference/260917_sideselect_three_captions.png`.
+
+### ⭐ What actually sets it — `RBUTTONC.CPP:656`
+
+```c
+if (m_b[Pressed])
+    pOffScreenDC->SetTextColor(TranslateColor(GetBackColor()));
+else
+    pOffScreenDC->SetTextColor(TranslateColor(GetForeColor()));
+```
+
+**The caption has two colours by design**, and which one it draws is a control *state*, not a
+palette. So "the gold is white and we are orange" is only a defect if both are in the same state.
+
+### ⛔⛔ They are not — and the gold says so twice over
+
+Looking at the whole gold frame rather than the caption crop S12 measured:
+
+* **`RAF` is white. `Luftwaffe` is orange. `Back` is orange.** Three captions on one screen, in two
+  colours. A palette fault cannot do that.
+* **There is a mouse cursor in the frame**, at roughly `(345, 322)`. The gold is a live screenshot
+  with the pointer on it — the file is even named `..._sideselect_raf.png`.
+
+### ⭐⭐ Measured, all three captions, both builds
+
+```
+   caption            GOLD                  OURS (adopt)          OURS (off)
+   RAF          white  808  orange    0   white 0  orange  844   orange  148
+   Luftwaffe    white    0  orange 1828   white 0  orange 1863   orange  330
+   Back         white    0  orange 1112   white 0  orange 1074   orange  766
+```
+
+* **`Luftwaffe`: 1828 vs 1863 — 1.9 %. `Back`: 1112 vs 1074 — 3.4 %.** Two captions the gold leaves
+  unhighlighted, and our adopt arm reproduces their ink to within a few percent **in the same
+  colour**. **The port's caption colour is correct**, demonstrated on two of three captions.
+* **`RAF`: 808 white against our 844 orange.** Nearly the same *quantity* of ink in the other
+  colour — which is what a state difference looks like, and what a rendering fault does not.
+
+### ⭐ And this is the best evidence the flag has had
+
+S5/S6 matched one caption's box (12→28 px high). S12 matched its geometry to 1 px. **This matches
+three captions' ink against the gold on a single screen**, and the OFF arm fails all three by wide
+margins (148 vs 808, 330 vs 1828, 766 vs 1112). ⚠️ Note `Back` is much less affected by the flag than
+the other two (1.45× against 5.5×) — it is presumably on a different control or font; **not
+investigated, recorded.**
+
+### ⚖️ The packet, fifth revision
+
+Strike the colour row from S12's table. `BOB_FONT_ADOPT_ALL` is:
+
+* ✅ correct on **size** (S12: 1 px) and now on **colour and ink** (this sprint, two captions)
+* ⛔ still absolute-sized, so validated only at 1024 (S11/S12)
+* ⛔ still overflows the config tab row at 1024, truncating `Continue...` (S9/S10)
+* ⛔ still unjudgeable on the eight tab-row screens, which have no gold (S11)
+
+**The flag's case is now stronger and its open problems are unchanged.**
+
+### ⚠️ Not claimed
+
+* **That `Pressed` specifically is the state.** `RBUTTONC.CPP` branches on `m_b[Pressed]`, and the
+  gold's cursor is nowhere near the `RAF` caption — so hover, keyboard focus, or a
+  currently-selected-side flag are all live candidates. **What is established is that the two
+  colours are by design and the gold exercises both**, not which state the gold is in.
+* **That our port would render `RAF` white in that state.** Nothing here put our build into it.
+  **That is the remaining question**, and it is a small one.
+* That `Back`'s different response to the flag is benign. It is measured and unexplained.
+
+**S14:** drive our side-select into the highlighted state and confirm `RAF` goes white — the last
+thing between this screen and "matches the gold, element for element".
+
+**GOLDVID-BOB-3: a defect retracted and the flag's evidence strengthened by the same measurement. Sprint 1 of 4.**
