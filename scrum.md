@@ -11313,3 +11313,71 @@ to be literally true of this counter too, by its own gating condition.
 **Until one exists, R20 has no oracle at all.**
 
 **BoB sprint 1 of 4.**
+
+## R20 S2 (Opus 5, 2026-09-17) — ⭐ **the census R20 has no oracle without: `[notex]`, counted OUTSIDE the `hasTex` gate, cross-ported from MA's proven `MA_TRACE_TEXFAIL`** — ⚠️ **built and NOT YET EXERCISED, and the headless zero proves nothing**
+
+**Story:** BoB rotation: sprint 2 of 4. S1 established that `GATE 4b`'s `blackTex=0` is structurally
+incapable of seeing an untextured draw, and set one task: *"read `MA_TRACE_TEXFAIL`, and add a
+census of untextured draws outside the `hasTex` gate. Until one exists, R20 has no oracle at all."*
+
+### ✅ The instrument was the right one — checked, as S1 insisted
+
+S1 warned that `MA_EXEC_NOTEX` is a **forcing** flag, not a census, and that *"naming the wrong
+instrument is how a cross-port starts badly."* `MA_TRACE_TEXFAIL` is the right one —
+`ma_d3d_exec.cpp:292` prints exactly the three-way split R20's filing described:
+
+```
+[texfail] DRAWS textured=%ld  untextured-handle0=%ld  untextured-resolve-failed=%ld
+```
+
+⭐ **And two of MA's design choices are the reason it works, both kept:**
+
+1. **It classifies at the DRAW SITE, before any texture gate** (`:631`) — *"classify the draw,
+   whether or not it is actually emitted."* That is the entire difference from BoB's `[texblack]`.
+2. **It reports a PER-INTERVAL delta, not just a total.** MA's own note: *"some geometry is
+   legitimately untextured and always has been, so what matters is not the cumulative share but
+   whether that share JUMPS partway through the flight. **A cumulative percentage can only ever
+   drift; a per-interval one can step, and a step is the defect.**"*
+3. And a **`<-- NEVER CALLED`** marker when both counters are zero — so a silent instrument is
+   distinguishable from a clean result.
+
+### ⭐ `[notex]`, added ahead of the existing census
+
+```c
+if (s_ntEvery > 0 && count >= 3) {              /* NO hasTex gate */
+    if (L.hasTex && g_devTex[0]) dTex++; else dNoTex++;
+    …  "[notex] DRAWS textured=%ld untextured=%ld | this interval: +%ld textured +%ld untextured (%.1f%% untextured)%s"
+```
+
+`BOB_TRACE_NOTEX=<n>` reports every nth draw, default off. It sits **immediately before** the
+`[texblack]` block so the two are read together: `[texblack]` answers *"is a bound texture black?"*
+and `[notex]` answers *"was anything bound at all?"* — **the question that had no counter.**
+
+Builds clean.
+
+### ⚠️⚠️ NOT YET EXERCISED — and this is the part to be careful about
+
+A headless front-end run (`SDL_VIDEODRIVER=dummy`, `BOB_FRONTEND=1`, `BOB_TRACE_NOTEX=1`) emitted
+**zero `[notex]` lines**. ⛔ **That is NOT evidence about the census, and must not be recorded as
+"clean":** the 2-D front-end does not go through the D3D quad path at all, so the code never runs.
+**It is the same shape of zero this cycle has caught four times** — MA's `[LoadString]` cap, BoB's
+`[TREEHIT]` id gate, FF's tree-dump allowlist, FF's `state_`. **A zero from a path that did not
+execute says nothing.**
+
+⚖️ **So the instrument is correct BY CONSTRUCTION and unproven BY MEASUREMENT.** The real test needs
+the campaign, real GL and the display — and MiG Alley's 34-gate suite has held the machine for this
+whole sprint (17/34 at write-up, 0 failures).
+
+### ⚠️ Not claimed
+
+* **That `[notex]` works.** **It has never printed a line.** Sprint 3's first job is to make it
+  speak on a flight where the answer is already known, *before* pointing it at the PO's defect.
+* **That the square is untextured.** Still the filing's reading of the screenshot; **still
+  unmeasured.** The census exists to test that, not to assume it.
+* That `[texblack]` should be changed. ⭐ **It is correct for its own question** — S1 said so and
+  nothing here revises it. `[notex]` is an addition, not a repair.
+
+**S3:** run a campaign flight with `BOB_TRACE_NOTEX` — **first proving it reports a plausible
+non-zero textured count** (the speak-check), then looking for the step the PO's square would make.
+
+**BoB sprint 2 of 4.**

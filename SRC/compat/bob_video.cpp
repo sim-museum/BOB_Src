@@ -3144,6 +3144,39 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   turns that inference into an observation: sample each bound texture's system-memory bits once
 	   (cached by surface), classify it black / dark / normal, and count quads drawn with each.
 	   BOB_TRACE_TEXBLACK=<n> reports every nth quad; default off. */
+	/* R20 S2 (2026-09-17): COUNT UNTEXTURED DRAWS, OUTSIDE THE hasTex GATE.
+	   The [texblack] census immediately below is gated on `L.hasTex`, and EVERY one of its four
+	   counters -- including the one printed as `noTex` -- lives inside that gate. So `noTex` means
+	   "has a texture whose bits were unusable", NOT "was drawn untextured": a quad drawn with no
+	   texture at all increments nothing and never reaches the classifier. R20 S1 established that,
+	   which is why GATE 4b's blackTex=0 cannot speak to the PO's floating dark square -- the
+	   filing measures that square as a FLAT-SHADED UNTEXTURED quad (one colour, RGB (40,52,52)).
+	   Cross-ported from MiG Alley's MA_TRACE_TEXFAIL (ma_d3d_exec.cpp:631), which classifies the
+	   draw whether or not it is emitted, and keeps MA's two design choices that matter:
+	     - a PER-INTERVAL delta as well as the total: "some geometry is legitimately untextured and
+	       always has been", so the question is whether the share STEPS partway through a flight,
+	       and a cumulative percentage can only drift;
+	     - a "<-- NEVER CALLED" marker when both counters are zero, so a silent instrument is
+	       distinguishable from a clean result.
+	   BOB_TRACE_NOTEX=<n> reports every nth draw; default off. */
+	{
+		static long s_ntEvery = -2;
+		if (s_ntEvery == -2) { const char* e = getenv("BOB_TRACE_NOTEX"); s_ntEvery = e ? atol(e) : -1; }
+		if (s_ntEvery > 0 && count >= 3) {
+			static long dTex = 0, dNoTex = 0, nCalls = 0;
+			if (L.hasTex && g_devTex[0]) dTex++; else dNoTex++;
+			if (++nCalls % s_ntEvery == 0) {
+				static long pT = 0, pN = 0;
+				const long iT = dTex - pT, iN = dNoTex - pN; pT = dTex; pN = dNoTex;
+				fprintf(stderr, "[notex] DRAWS textured=%ld untextured=%ld   | this interval: +%ld textured "
+				                "+%ld untextured (%.1f%% untextured)%s\n",
+				        dTex, dNoTex, iT, iN,
+				        (iT + iN) ? (100.0 * iN / (double)(iT + iN)) : 0.0,
+				        (dTex == 0 && dNoTex == 0) ? "   <-- NEVER CALLED" : "");
+				fflush(stderr);
+			}
+		}
+	}
 	{
 		static long s_tbEvery = -2;
 		if (s_tbEvery == -2) { const char* e = getenv("BOB_TRACE_TEXBLACK"); s_tbEvery = e ? atol(e) : -1; }
