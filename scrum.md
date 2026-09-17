@@ -10598,3 +10598,73 @@ From the 35, by registration count and by what the port plainly does not re-impl
 "registered, not delivered, not re-implemented" looks most likely to hold.
 
 **MOUSEMOVE-BOB-1: the surface is mapped and tooled. Sprint 3 of 4.**
+
+## MOUSEMOVE-BOB-1 S2 (Opus 5, 2026-09-17) — ⛔ **S1's tool was wrong in 3 of its 4 positives, and I found it by triaging them: the port delivers exactly ONE message, `ON_WM_TIMER`, of 39** — ⭐ and both of S1's named candidates dissolve on inspection
+
+**Story:** MOUSEMOVE-BOB-1. BoB rotation: sprint 4 of 4 — rotation complete. S1 shipped a tool
+reporting 4 delivered messages and named two candidates to triage. **Triaging them broke the tool's
+own number**, which is the best thing that could have happened to it one sprint after shipping.
+
+### ⛔ The three false positives, each checked by reading the line
+
+```
+   LBUTTONUP   CREDITS.CPP:212    FullPanel()->OnLButtonUp(...)   game forwarding to GAME
+   MOVE        MEMAIN2.CPP:1007   VS_Scroll.OnMove(Y)             a DIFFERENT class's OnMove
+   SIZE        RDIALOG.CPP:469    //  dial->OnSize(...)           COMMENTED OUT
+```
+
+Only `TIMER` survives — `SRC/RLISTBOX/bob_ole.cpp:1420`, `due[i].w->OnTimer(due[i].id)`, which is
+genuine **port** code.
+
+**Corrected: this port delivers 1 of the 39 messages the game registers.**
+
+The tool now requires the call site to be **port code** (a `bob_*`/`ma_*` file, or `SRC/compat/`) and
+skips commented-out lines. Game code calling game code cannot substitute for a message the port
+never routes — **nothing invokes the caller either**. S1 said *"the tool is a triage aid, not an
+oracle"*; one sprint later that was literally true, and the fix came from using it rather than
+trusting it.
+
+### ⭐ Candidate 1 — the `LBUTTONDOWN`/`LBUTTONUP` asymmetry: **dissolved**
+
+There is no asymmetry. `LBUTTONUP` was never delivered either; S1's site was `CREDITS.CPP` forwarding
+to `FullPanel()`. **Both are undelivered, and clicks nevertheless work** — because the port routes
+them through its own layer (`bob_ole_click`, `bob_frontend_tick`, S156–S158), which is the
+"replaced, not broken" category the tool's own header warns about. **Nothing to file.**
+
+### ⭐ Candidate 2 — `SETCURSOR`: **not worth pursuing**
+
+```
+   compat_winuser.h:772   SetCursor(HCURSOR)      -> returns NULL, stub
+   afxwin.h:1908/1909     LoadCursor(...)         -> returns NULL, stub
+   RDIALOG.CPP:1768       RDialog::OnSetCursor    -> its logic is COMMENTED OUT by the
+                                                     original authors; falls through to the base
+```
+
+**The game's own handler does almost nothing**, and the entire cursor API is stubbed. Wiring
+`ON_WM_SETCURSOR` would deliver a message to a handler whose body Rowan commented out. **Removed
+from the queue** — this is exactly the "rabbit hole on something unimportant" the PO's mandate names.
+
+### ⚖️ What the item is left with
+
+* **One confirmed, unfixed defect**: `ON_WM_MOUSEMOVE` — every hover affordance, with the
+  side-select mechanism traced end to end (S14).
+* **One confirmed and already fixed**: `ON_WM_ERASEBKGND` (MA S25's band clip).
+* **37 others**, of which the two most obvious candidates have now been triaged away. The remainder
+  should be triaged **only when a symptom points at one** — the tool exists so that triage takes
+  minutes, not sprints.
+
+**That is the honest state, and it argues for stopping**: mapping the surface was worth two sprints;
+speculatively wiring messages the game barely uses is not.
+
+### ⚠️ Not claimed
+
+* **That wiring `ON_WM_MOUSEMOVE` is straightforward.** S14's caveat stands: the handler skips
+  `SetPressed(TRUE)` when `polylist.current` is NULL, so the first region entry may highlight
+  nothing. Anyone wiring it should expect that and check.
+* **That the corrected tool is now right.** It is *less wrong*: it still cannot see a handler reached
+  through a vtable or a function pointer, and it still counts by grep. **Its output remains a queue
+  for a human.**
+* That `SETCURSOR` is harmless — only that the game's own handler is inert, so delivering it would
+  change nothing without also un-commenting Rowan's code, which is a different decision entirely.
+
+**MOUSEMOVE-BOB-1: one real message delivered of 39, both candidates triaged away, and the tool corrected by its own first use. BoB rotation complete (4 sprints) → julia.**

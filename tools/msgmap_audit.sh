@@ -31,10 +31,21 @@ for m in $(grep -a -o '#define ON_WM_[A-Z_]*()' SRC/compat/afxwin.h | sed 's/#de
     imp=$(grep -a -r -o -i "::On${bare}[[:space:]]*(" $GAME 2>/dev/null | wc -l)
     [ "$reg" -eq 0 ] && [ "$imp" -eq 0 ] && continue
     total=$((total+1))
-    # DELIVERY = somebody OUTSIDE the class calls the handler through an object. A call inside the
-    # same file to `this->OnX(...)` is the game talking to itself, not the port delivering.
+    # DELIVERY = PORT code calls the handler through an object.
+    #
+    # S2 CORRECTION. S1's test was "anyone calls On<X> through an object anywhere", and it reported
+    # four delivered messages. Three were false positives, checked one by one:
+    #   LBUTTONUP  CREDITS.CPP:212  FullPanel()->OnLButtonUp(...)   game forwarding to game
+    #   MOVE       MEMAIN2.CPP      VS_Scroll.OnMove(Y)             a DIFFERENT class's OnMove
+    #   SIZE       RDIALOG.CPP:469  //  dial->OnSize(...)           COMMENTED OUT
+    # Only ON_WM_TIMER is really delivered, by bob_ole.cpp:1420. So: require the call site to be
+    # PORT code (a bob_*/ma_* file, or SRC/compat), and drop commented-out lines. Game code calling
+    # game code is the app talking to itself -- it cannot substitute for a message the port never
+    # routes, because nothing invokes the caller either.
     deliv=$(grep -a -r -n -i "[->.]On${bare}[[:space:]]*(" SRC/ --include=*.cpp --include=*.CPP --include=*.h 2>/dev/null \
-            | grep -av -i "::On${bare}" | grep -av -i "this->On${bare}" | wc -l)
+            | grep -av -i "::On${bare}" | grep -av -i "this->On${bare}" \
+            | grep -av ':[^:]*:[[:space:]]*//' \
+            | grep -aE '(^|/)(bob_|ma_)[^/]*:|^SRC/compat/' | wc -l)
     if [ "$deliv" -eq 0 ]; then
         printf '  %-18s %4d %5d  NEVER DELIVERED\n' "$m" "$reg" "$imp"
         undelivered=$((undelivered+1))
