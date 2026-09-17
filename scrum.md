@@ -8588,3 +8588,80 @@ banner; no default path changed.
 ctrl 1223/1876. If our box is too small, that is the fix and S185's rule can stand untouched.
 
 **GOLDVID-BOB-3: 2 sprints.**
+
+## GOLDVID-BOB-3 S3 (Opus 5, 2026-09-16) — ⭐⭐⭐ **the game's own button code settles it: `ExtTextOut(..., ETO_CLIPPED, clipbox, ...)` — the box CLIPS the caption, it never SIZES it** — and with the port's shrink disabled `Luftwaffe` goes from **13 px to 24 px against the gold's 28**, width within 4 %
+
+**Story:** GOLDVID-BOB-3 (front-end screens vs the 2026-09-15 golds). **Sprint 3.**
+
+S2 ended: *"measure the gold's side-select button rect … If our box is too small, that is the fix and
+S185's rule can stand untouched."* The rect turned out to be the wrong thing to measure, and the
+game's own source says why.
+
+### ⭐⭐⭐ The game clips; it does not resize
+
+`CRButtonCtrl::OnDraw` (RBUTTONC.CPP:660) — **game code, not port code**:
+
+```c
+pOffScreenDC->ExtTextOut(xoffset, yoffset, ETO_CLIPPED, clipbox, strCaption, ...);
+if (bClipped) pOffScreenDC->TextOut(rc.right-offset-fullstopswidth, yoffset, "...");
+```
+
+The caption is drawn at the **font's** size and **clipped** to the box, with an **ellipsis** when it
+does not fit. There is no path in which the control's rect changes the glyph size. So the port's
+box-derived `m_bobTextH` is a behaviour with **no counterpart in the game** — and asking whether our
+box is "too small" was the wrong question.
+
+### ⭐ Why the port grew one anyway — the chain, end to end
+
+1. Our `ExtTextOut` **does** honour `ETO_CLIPPED` (S413) — but **vertically only**. The default clip
+   is `(-100000 … +100000)` horizontally. `BOB_ETOCLIP_XY=1` restores the real rect and is off
+   because it *"still breaks config-control by 1187 bytes"* — i.e. it differs from a parity
+   reference, and those are pictures of this port's own past. [[parity-oracles-are-not-gold]]
+2. With no horizontal clip, over-wide captions **overflowed** — S185's motivating case, dlg=1103's
+   *"Is it OK to scramble against this raid?"* running past the dialog and over the map.
+3. S185 fixed the overflow by making the DC **shrink the font to the box**.
+4. That shrink is what draws `RAF` and `Luftwaffe` at half size: box 22, font 42, and 42 is not
+   smaller than 22, so the game's own font is refused.
+
+Each step is defensible; the sequence is what produced the defect. **S185 is not overturned here —
+it is explained.** Its own note already named `dlg=1040` as the case it was choosing to lose.
+
+### ⭐ Measured, on the gold's own screen
+
+`BOB_FONT_ADOPT_ALL=1` (new, default-off — adopt the game's height in **both** directions) with
+`BOB_ETOCLIP_XY=1`:
+
+| `Luftwaffe` | height | width | ink |
+|---|---|---|---|
+| **gold** | **28** | **158** | 1825 |
+| ours, before | 13 | 132 | 322 |
+| ours, `ADOPT_ALL` | **24** | **165** | 1312 |
+
+**0.46× → 0.86× of the gold's height, and the width lands within 4 %** — which the half-size render
+never could, so this is not a scaling artefact.
+
+⚠️ The remaining 24-vs-28 is consistent with the **rung**, not the rule: S2 measured the ladder
+handing out 42 px (rung [0], the non-`FI_4VER` fallback) and 48 px (rung [3]). A 42 px cell gives
+~24 px of cap; 48 px gives ~28. So the last gap is very likely `bob_dlg_getfont` returning [0] where
+the game's `RFullPanelDial::OnGetGlobalFont` would return [3] at `m_scalingfactor==2`. Stated as a
+hypothesis with its arithmetic, not as a finding.
+
+### ⚠️ Not shipped, and why
+
+`BOB_FONT_ADOPT_ALL` is **default-off**. Turning it on re-admits exactly the overflow S185 measured,
+and it is only safe once the clip is horizontal too — which in turn re-seeds parity references that
+were captured with the unclipped behaviour baked in. That is the same shape as MiG Alley's four font
+flags: a change that is right against the gold and wrong against an oracle made of our own past, and
+therefore a **PO decision**, not a unilateral flip.
+
+`RAF` is untouched by this: the gold's is **white** and ours is amber, so the yellow-mask numbers for
+it are meaningless and no claim is made.
+
+### Gates
+
+Trace/flag only, all default-off. The headless side-select recipe exits 0 with both flags on.
+
+**S4:** the rung hypothesis — instrument which `fontnum` the side-select buttons ask with, and what
+`RFullPanelDial::OnGetGlobalFont` would return for it, against what `bob_dlg_getfont` does return.
+
+**GOLDVID-BOB-3: 3 sprints.**

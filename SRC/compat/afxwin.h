@@ -681,6 +681,20 @@ public:
            selected into a 26px box, which is exactly what a naive adopt would blow up.
 
            BOB_NO_FONT_ADOPT=1 restores the box-derived height for A/B. */
+        /* GOLDVID-BOB-3 S3 (2026-09-16): BOB_FONT_ADOPT_ALL=1 adopts the game's font height in
+           BOTH directions. It exists because the game's own CRButtonCtrl::OnDraw
+           (RBUTTONC.CPP:660) draws with `ExtTextOut(..., ETO_CLIPPED, clipbox, ...)` and an
+           ellipsis when it does not fit: the box CLIPS the caption, it never SIZES it. Shrinking
+           to the box is a port behaviour with no counterpart in the game, and on the side-select
+           screen it is what renders `RAF` and `Luftwaffe` at half the gold's height (box 22 vs
+           font 42). Default-off: adopting in both directions is exactly what S185 measured as
+           blowing up dlg=1103, and that overflow is only safe to re-admit once the clip is
+           horizontal too (see the ETO_CLIPPED block above -- ours clips VERTICALLY only). */
+        static int adoptAll = -1;
+        if (adoptAll < 0) adoptAll = getenv("BOB_FONT_ADOPT_ALL") ? 1 : 0;
+        if (adoptAll) {
+            if (f && f->m_height > 0) m_bobTextH = f->m_height;
+        } else
         if (f && f->m_height > 0 && m_bobTextH > 0 && f->m_height < m_bobTextH) {
             static int noAdopt = -1;
             if (noAdopt < 0) noAdopt = getenv("BOB_NO_FONT_ADOPT") ? 1 : 0;
