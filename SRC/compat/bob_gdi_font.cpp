@@ -112,7 +112,11 @@ static int load_face(int code)
    byte-identical parity references would all fail). */
 extern "C" int bob_gdi_em_to_cell(int faceCode, int emH)
 {
-	if (!getenv("BOB_FONT_EM")) return emH;
+	/* 2026-09-16: DEFAULT ON, by PO decision -- see the MiG Alley twin in ma_gdi.cpp.
+	   Measured here: the side-select caption goes 24 px -> 28 px against the gold's 28, ink
+	   1824 vs 1825, width 157 vs 156, left edge 520 vs 522. References re-seeded with it on.
+	   BOB_NO_FONT_EM=1 reverts. */
+	if (getenv("BOB_NO_FONT_EM")) return emH;
 	if (emH <= 0) return emH;
 	if (faceCode < 0 || faceCode >= FACE_N) faceCode = 0;
 	if (!load_face(faceCode)) return emH;

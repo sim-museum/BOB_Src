@@ -9066,3 +9066,43 @@ the caveat are in `doc/ROWAN_ENGINE_LINUX_PORT_NOTES.md` and its MiG Alley copy.
 — and wire that class alone, with the ordering and guard lessons already paid for.
 
 **XPORT-ERASEBK-1: 1 sprint.**
+
+## FONTEM-BOB S6 (Opus 5, 2026-09-16) — ✅ **the `BOB_FONT_EM` default flip is verified: the full gate suite is green, 14/14 recipes + modal + both GL paths + the German Convoys campaign end-to-end**
+
+**Story:** the PO's "flip the font flags and reseed both ports' references."
+
+The flip itself and the reseed landed earlier this session; the one thing still outstanding was the
+full suite, which was running when the flip was reported. It has now finished, **exit 0**:
+
+```
+GATE 1  14-recipe headless sweep ............ PASS (14/14 clean exits, no crash banners)
+GATE 1c modal message box ................... PASS
+GATE 2  safe default (BOB_NO_RUN) ........... exit 0
+GATE 3  phase select, dummy AND real GL ..... exit 0 / exit 0
+GATE 4  flight frame-150 (real GL) .......... exit 0
+GATE 4b terrain tiles textured .............. blackTex=0 PASS
+GATE 5  German (Luftwaffe) Convoys campaign .. PASS, reaches 3D
+```
+
+Every recipe in GATE 1 paints front-end text, so this is the flip exercised across the whole 2D UI,
+not a spot check — **and it includes the two paths a font change is most likely to break**: the modal
+message box (its own font selection) and the campaign run that ends in 3D.
+
+**So the flip is complete on the BoB side:** code (`bob_gdi_font.cpp`, `BOB_NO_FONT_EM=1` reverts),
+references reseeded (`doc/ref/native/*.ppm`, 8 files, READMEd), and now the gates.
+
+### ⚠️ What this does and does not establish
+
+**Does:** nothing regressed, and the reseeded references are consistent with a green suite.
+
+**Does NOT:** that the new glyph metrics are *right*. Per the standing rule, **`bob_parity.sh`
+compares this port against its own past** — and its past was just re-seeded *from this build*. A green
+parity gate after a reseed is close to a tautology. The evidence that the flip is correct is the
+`hhea/em` derivation and the predicted-vs-measured check made when it was flipped, **not** these
+gates. These gates only say it did not break anything.
+
+**FONTEM-BOB: closed.** ✅ The open BoB font decisions (`BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY`,
+which need their own reseed; `BOB_LISTCOL_SCALE`/`BOB_LISTCOL_NOSHRINK`) remain separate items and
+are NOT covered by this.
+
+**BoB rotation: sprint 1 of 4.**
