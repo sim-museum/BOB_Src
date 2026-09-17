@@ -9687,3 +9687,55 @@ is one of coverage, not quality.
 
 **GOLDPROV-BOB-1: the video corpus and the reference set cover disjoint screens, confirmed by content.
 Sprint 2 of 4.**
+
+## GOLDVID-BOB-3 S7 (Opus 5, 2026-09-17) — ✅ **the caption numbers behind the PO's pending flag decision are EXACT, not approximate: the capture they were measured from is byte-identical to the reference seeded five hours later by a different harness**
+
+**Story:** GOLDVID-BOB-3 / GOLDPROV-BOB-1. BoB rotation: sprint 3 of 4.
+
+S5 and S6 measured the side-select captions and I gave the PO a recommendation on
+`BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY` based on them. S4 has since seeded `sideselect` as a committed
+reference. **Those two artefacts can be compared, and the answer bears directly on how much weight
+that recommendation carries.**
+
+```
+/home/admin/bob-fontcheck/default.ppm   00:09   hand-rolled run, GOLDVID-BOB-3 S5
+doc/ref/native/sideselect.ppm           05:08   seeded by tools/bob_parity.sh S4
+
+cmp -> BYTE-IDENTICAL   (2,359,312 bytes)
+```
+
+### ✅ What that settles
+
+**Five hours apart, through two different harnesses, on a scratch `drive_c` built twice — not one
+byte differs.** So:
+
+* **GOLDVID-BOB-3 S5/S6's caption measurements are exact.** `w=157 h=28` for `Luftwaffe` and
+  `w=81 h=28` for `RAF` are not "157±noise"; there is no noise.
+* **The flag A/B is an exact effect.** 12 → 28 px height and 70 → 157 px width for the adopt flags
+  are attributable entirely to the flags.
+* **The 1-px agreements with the gold hold their weight.** 157 vs 158 and 81 vs 80 were already
+  striking; they are not now going to move under re-capture.
+
+⭐ This is the same property MiG Alley established in S16 (repeat spread 0 px) — but **stronger
+evidence**, because it was not a deliberate repeat: it is two captures made hours apart for unrelated
+reasons that happen to agree bit for bit.
+
+### ⚖️ What it does and does not do for the PO decision
+
+**Does:** removes measurement uncertainty from the recommendation. When I said the open flags are
+*"worth the entire defect on this caption"*, the numbers under that are exact.
+
+**Does NOT:** make the gold trustworthy. GOLDPROV-BOB-1 S1 found
+`260915_gold_sideselect_raf.png` has **no recorded derivation**, and S5 confirmed by content that the
+videos do not contain that screen — so it is almost certainly a direct screenshot, but nobody wrote
+that down. **Our side is exact; the oracle's provenance is still inferred.** Both halves should be
+stated whenever this decision is discussed.
+
+### ⚠️ Not claimed
+
+* That determinism extends beyond this screen and this path. S4 showed all 14 front-end screens are
+  byte-identical on repeat; the 3-D and real-GL paths are untested and must not inherit it.
+* That byte-identity implies correctness. It means *reproducible*, which is what makes a small
+  difference meaningful — not that the pixels are right.
+
+**GOLDVID-BOB-3: the measurement side of the flag decision is closed. Sprint 3 of 4.**
