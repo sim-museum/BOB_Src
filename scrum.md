@@ -8877,3 +8877,66 @@ amber at 28. It is the last element on this screen that does not match, and it n
 does not repeat today's mistake.
 
 **XPORT-FONTEM-1: 2 sprints.**
+
+## XPORT-FONTEM-1 S3 (Opus 5, 2026-09-16) — ⭐⭐⭐ **`RAF` and `Luftwaffe` draw IDENTICALLY in our port — same height, same colour, same code path — and the gold draws one at 46 px white and the other at 28 px amber** — the port collapses a per-control distinction the game makes
+
+**Story:** XPORT-FONTEM-1. **Sprint 3.**
+
+S2 left `RAF` as the last element on this screen that does not match, with a warning not to repeat
+the day's mask mistakes. Measured with the column-strength criterion, in **both** colours separately:
+
+| | colour | x-range | width | height | ink |
+|---|---|---|---|---|---|
+| **gold `RAF`** | **white** | 291–432 | **142** | **46** | 899 |
+| ours `RAF` | **amber** | 367–431 | 65 | 28 | 849 |
+| gold `RAF` in amber | — | **none** | — | — | — |
+
+### ⭐ Our port draws the two labels the same; the gold does not
+
+`BOB_TRACE_TEXT` on the same run, with all three flags on:
+
+```
+[text] "RAF"       at (364,29) h=49 col=ffba00
+[text] "Luftwaffe" at (518,695) h=49 col=ffba00
+```
+
+**Identical height request (49) and identical colour (amber).** And the backtrace puts them on the
+same path — `CRButtonCtrl::OnDraw ← HostRButton::draw ← bob_ole_draw_panel` — so they are the same
+kind of control drawn the same way.
+
+The gold renders **`Luftwaffe` at 28 px amber** and **`RAF` at 46 px white**. XPORT-FONTEM-1 S2
+showed our `Luftwaffe` now matches its gold within a pixel in every dimension. So the flags are
+right, the path is right, and what is missing is that **the game gives these two buttons different
+fonts and different colours and our port gives them the same**.
+
+### ⭐ The anchor is already correct
+
+Gold's `RAF` ends at x=432; ours ends at **x=431**. **One pixel.** The label is right-aligned to the
+same point and simply renders smaller — so nothing is wrong with where the control is or how it is
+aligned, only with what it is told to draw with.
+
+Ink is 899 against 849 at less than half the extent: the gold's `RAF` is **large and light**, ours
+is **compact**. That is two different faces or two different sizes of one, not a scaling of the same
+render.
+
+### The mechanism to test
+
+A `CRButtonCtrl`'s `FontNum` and `ForeColor` are **design-time properties**, replayed from the
+control's RT_DLGINIT bag by `applyDesignProps`. If ours draws both buttons at the same size and
+colour, either the bag is not being read for these two, or it is read and the values are not applied.
+`BOB_TRACE_FONTSEL` showed the ladder handing out only **two** distinct fonts in the whole run
+(fontnum 10 → 48 px, fontnum 6 → 42 px), which is consistent with the per-control number never
+varying.
+
+⚠️ Stated as the hypothesis with its test, not as a finding — this sprint measured that the two
+labels come out identical and that the gold's do not; it did not read the bag.
+
+### Gates
+
+Measurement only; the three flags remain default-off.
+
+**S4:** dump `GetFontNum()` and `GetForeColor()` for both buttons after `applyDesignProps`, and
+compare with what the DLGINIT bag holds. If the bag differs and the control does not, that is the
+defect; if the bag is the same for both, the difference is coming from somewhere else entirely.
+
+**XPORT-FONTEM-1: 3 sprints.**
