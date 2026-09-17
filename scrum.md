@@ -9190,3 +9190,68 @@ missing chrome. Only that the item is small, and that "64 dead handlers across t
 never true.
 
 **XPORT-ERASEBK-1: 2 sprints. Demoted to a single job. BoB rotation: sprint 2 of 4.**
+
+## GOLDVID-BOB-3 S5 (Opus 5, 2026-09-17) — ⭐⭐⭐ **the flag matrix completed, and it changes what the remaining PO decision is worth: `BOB_FONT_EM` — the flag already shipped — does LITERALLY NOTHING on this screen (0 differing pixels) until the box-shrink is disabled** — so the outstanding flags are worth the whole **12 → 28 px**, not S4's "24 → 28"
+
+**Story:** GOLDVID-BOB-3. **New pass, sprint 1.** BoB rotation: sprint 1 of 4.
+
+The PO flipped `BOB_FONT_EM` default-on yesterday. S4 had measured that flag as worth **24 → 28 px**
+on the side-select caption *when `BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY` were also on* — but never
+measured it **alone**, which is now the shipping configuration. That missing cell is the difference
+between "the flip already bought us most of this screen" and "the flip is dormant here".
+
+### ⭐⭐⭐ The completed matrix — `Luftwaffe`, side-select, 1024×768
+
+| arm | width | height | amber ink |
+|---|---|---|---|
+| **default** (EM **on** — as shipped) | 70 | **12** | 316 |
+| `BOB_NO_FONT_EM=1` (old default) | 70 | **12** | 316 |
+| adopt + `BOB_NO_FONT_EM=1` | 134 | 24 | 1284 |
+| adopt + EM (**shipped EM** + the open flags) | **157** | **28** | 1760 |
+| **GOLD** | **158** | **28** | **1825** |
+
+⭐ **The first two rows are the same row.** A whole-frame diff of the default build against
+`BOB_NO_FONT_EM=1` returns **`bbox=None`, 0 differing pixels** — the shipped flag changes *nothing at
+all* on this screen, not merely nothing measurable on this caption.
+
+### ⭐ The mechanism, and it is consistent
+
+`BOB_FONT_EM` changes the metric the font is *requested* at; the **box-shrink then clamps the result
+to the control's box**, so the requested size is discarded and both EM arms land on the identical
+12 px. Disable the shrink (`BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY`) and EM becomes load-bearing
+again — 24 → 28 px and 134 → 157 px, exactly S4's figures.
+
+**So EM is not useless here; it is *masked*.** It is doing real work on screens where the shrink does
+not dominate (BOBFONT-1's briefing), and none on this one.
+
+### ⚖️ What this is worth to the PO
+
+S4 presented the open flags as worth **24 → 28**. Against the *shipped* build they are worth
+**12 → 28 in height and 70 → 157 in width** — the entire defect on this caption, with EM's own
+contribution only unlockable behind them. That is a materially stronger case for the decision than
+the one the PO was given, which is the point of the sprint.
+
+### ✅ And unlike MiG Alley's twin, this one reproduces
+
+MiG Alley's parallel measurement (PREFSLAYOUT-1 S2) turned out to be **unreproducible** — its sprint
+recorded the click sequence but not the settings state that set the render size (MA S9, today). This
+BoB recipe was re-run from scratch today and **hit S4's numbers on the nose** — width 157, height 28,
+left edge 520 — because the recipe is fully determined by things that are written down:
+
+```
+tools/bob_scratch_gamedir.sh <real drive_c> <out>/drive_c     # player tree never touched
+cd "<out>/drive_c/Program Files/Rowan Software/Battle Of Britain"
+BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy \
+BOB_DRIVE_C=<out>/drive_c BOB_AUTOCLICK=1 BOB_SHOT=250 BOB_SHOT_PATH=... build/bob
+```
+
+Recorded here so it stays that way.
+
+### ⚠️ Not claimed
+
+That the ink gap (1760 vs the gold's 1825) is meaningful — my amber mask is not S4's (it read 1824),
+and a 3 % ink difference across two different masks is a threshold artefact, not a finding.
+[[instrument-bookkeeping-lies]] Height and width are the numbers that matter and both land.
+
+**GOLDVID-BOB-3: new pass, sprint 1. Recommendation to the PO unchanged in direction but stronger in
+size: ship `BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY`, which need their own reseed.**
