@@ -9394,3 +9394,80 @@ sprint.
 
 **GOLDPROV-BOB-1: 1 sprint. BoB's videos characterised; the committed extract's provenance is
 unrecoverable and now says so.**
+
+## MP-5 S2 / GOLDPROV-BOB-1 S3 (Opus 5, 2026-09-17) — ✅ **BoB multiplayer is green after the font flip: 3/3, both sides in the 3-D** — ⛔ **but the first run said FAIL, and it was the HARNESS: its shipped defaults schedule the Fly click at the exact second the run ends**
+
+**Story:** MP-5 (multiplayer, standing PO priority). BoB rotation: sprint 3 of 4.
+
+`BOB_FONT_EM` was flipped default-on today, and MiG Alley got its multiplayer regression check
+(MP-2 S20, 9/9). BoB had not. **And BoB's harness is the more sensitive of the two:** MiG Alley's
+recipe resolves clicks through `ma_ole_control_point_p()` from the *live control*, while BoB's clicks
+**raw pixels** — `(121,747)` for the host's Fly, `(156,747)` for the client's session row. A layout
+shift moves those. So the test is genuinely capable of failing on a font change.
+
+### ⛔ It failed — and the failure was the instrument
+
+```
+host enters 3D                        FAIL
+client enters 3D                      FAIL
+client clears the random-list wait    PASS      <- the KNOWN defect passed
+MP-5 TWO-INSTANCE: FAIL
+```
+
+**The known open defect passing while two basic steps failed** is what made this suspicious rather
+than convincing. The logs settled it:
+
+* the host **did** reach the Ready Room — `[frontend] click (156,747) -> menu item 1` then
+  `painted screen artnum=27918`;
+* the client **did** find the session — `EnumSessions: found "BoB"`, repeatedly;
+* and the host log contains **`click (121,747)` ZERO times.**
+
+```
+SECS="${SECS:-150}"                       # run length
+HOST_FLY_MS="${HOST_FLY_MS:-150000,...}"  # fly click at 150 s
+```
+
+**The Fly click is scheduled at the exact moment the timeout expires.** The gate asserts on a step its
+own defaults prevent from happening. The `LATEJOIN=1` path in the same script is coherent
+(`SECS=420`, fly at `70000`), so it is specifically the **default** path that cannot pass — the shape
+of a script last run with an override that never made it into the defaults.
+
+### ✅ With the timing corrected, the port is fine
+
+```
+SECS=270:   host enters 3D  PASS    client enters 3D  PASS
+            client clears the random-list wait  PASS
+            MP-5 TWO-INSTANCE: PASS          (fly click fired exactly once)
+```
+
+**Both instances reach the 3-D after the font-flag flip**, on the port's most pixel-sensitive harness.
+That is the regression answer, and it is a real one — this recipe *could* have caught a layout shift.
+
+### Fixed, not just diagnosed
+
+`tools/bob_mp_two_instance.sh` now derives the constraint instead of trusting two constants to stay
+in step:
+
+```sh
+fly_s=$(( ${HOST_FLY_MS%%,*} / 1000 ))
+if [ "$SECS" -le "$fly_s" ]; then
+    echo "  NOTE: SECS=$SECS does not outlast the fly click at ${fly_s}s -- extending to $((fly_s + 120))s"
+    SECS=$((fly_s + 120))
+fi
+```
+
+Auto-extends **and announces it**, so the failure cannot silently return. `bash -n` clean; guard
+verified to turn 150 into 270.
+
+### ⚠️ Not claimed
+
+* That multiplayer is unaffected in ways this gate does not test — it checks both sides reaching the
+  3-D and the random-list wait, not gameplay.
+* That the old default never worked. It may have passed when the fly click landed earlier in the
+  boot; what is certain is that **today it cannot**, and the gate did not say so.
+
+**Third harness-not-port failure today** (FF's `FF_VIEW_SCRIPT` capture time, julia's `AI_PHYSICS`
+branch, this). The common shape: **an instrument reporting a negative it was structurally unable to
+turn positive.**
+
+**MP-5: verified green after the flip. Harness default fixed.**

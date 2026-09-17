@@ -50,6 +50,18 @@ if [ "${LATEJOIN:-0}" = "1" ]; then
 fi
 CLIENT_CLICKS="${CLIENT_CLICKS:-2,2,1,1}"
 CLIENT_ROW_MS="${CLIENT_ROW_MS:-20000,156,747}"
+
+# MP-5 (2026-09-17): SECS must OUTLAST the fly click, or the run ends at the exact moment of the
+# step this gate asserts on. The shipped defaults were SECS=150 with HOST_FLY_MS=150000 -- the click
+# fired as the timeout expired, the host log contained ZERO occurrences of its coordinates, and the
+# gate reported "host enters 3D FAIL / client enters 3D FAIL" while the known SIP defect PASSED.
+# That is a harness failure wearing a port failure's clothes. With SECS=270 the same build scores
+# 3/3. Auto-extend rather than fail, and say so, so this cannot silently return.
+fly_s=$(( ${HOST_FLY_MS%%,*} / 1000 ))
+if [ "$SECS" -le "$fly_s" ]; then
+    echo "  NOTE: SECS=$SECS does not outlast the fly click at ${fly_s}s -- extending to $((fly_s + 120))s"
+    SECS=$((fly_s + 120))
+fi
 export BOB_DPLAY_PORT="${BOB_DPLAY_PORT:-47624}"
 mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
