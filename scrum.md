@@ -10730,3 +10730,87 @@ mouse, not our bug.**
 * That the audit's 38 undelivered messages are all inert. S2 triaged two; the rest are a queue.
 
 **MOUSEMOVE-BOB-1: parked on "real mechanism, no reported symptom". Sprint 1 of 4 — the rotation moves to an item with a live complaint.**
+
+## ASPECT-1 S1 (Opus 5, 2026-09-17) — ⛔⛔ **the item's prescribed trace CANNOT RUN: both machinery sites it names are in files this port does not compile, and the one live function with the right name has an EMPTY body.** The 1.333× stretch is real; its stated mechanism is not
+
+**Story:** `ASPECT-1` 🔴 — *"the 3-D view is stretched 1.333× horizontally on a widescreen display…
+affects every flight the PO makes."* BoB rotation: sprint 2 of 4 (S3 parked MOUSEMOVE-BOB-1 for want
+of a symptom; this item has the opposite problem — a measured symptom and a wrong mechanism).
+
+The item names its machinery precisely and forbids changing anything before a trace confirms it:
+
+> *"Machinery: `DOSDefs.H` `FULLW 25600`/`FULLH 19200`, **`HARDWIN.CPP:253`** integer
+> `virtualXscale`, **`WIN3D.CPP:3433`** `aspectRatio=FoV*(window_height/window_width)`.
+> **S1:** trace `window_width/window_height/aspectRatio/FoV` at `Set3dWindow` and at the 3-D
+> projection setup… Do not change the aspect before that trace says which mechanism is in force."*
+
+**I wrote that trace. It cannot execute.**
+
+### ⛔ `WIN3D.CPP` is not compiled
+
+```
+   ninja -C build -t deps | grep -c WIN3D.CPP        0
+   nm -C build/bob | grep -c direct_3d::SetViewParams 0
+```
+
+The edit went in, `ninja` reported **"no work to do"**, and that is what prompted the check.
+*(Asking the linker rather than the grep is the rule both ports learned the expensive way.)*
+
+### ⛔⛔ And the live function of the same name is EMPTY
+
+`nm` does find **`matrix::SetViewParams`** — a *different* function, `SRC/MATH/MATRIX.CPP:1850`. Its
+entire body is commented out by the original authors:
+
+```c
+void matrix::SetViewParams(Window* win,ANGLES viewCone,SLong viewRange)
+{
+//DEADCODE PD 03/12/99   aspectRatio=Float(win->VirtualHeight)/Float(win->VirtualWidth);
+//DEADCODE PD 03/12/99   aspectRatio*=FoV;
+//DEADCODE PD 03/12/99   win->DoSetAspectRatio(aspectRatio,FoV);
+}
+```
+
+**The aspect calculation the item blames is dead twice over** — once because its file is excluded from
+the build, once because Rowan themselves commented out the surviving copy in 1999.
+
+### ⭐ Why: the whole Windows 3-D/DirectDraw layer is commented out of the unity
+
+`_HARD.CPP`'s **active** includes are only the audio files — `digdrvr`, `sample`, `music`, `Sound`,
+`Rchatter`, `Sfonts` — which is exactly what `ninja -t deps` lists. `Ddrwinit`, `Hardpub`,
+**`Hardwin`** and **`Win3d`** sit there as `//#include` lines, replaced wholesale by the port's compat
+layer. **Both of the item's cited sites are in that replaced-out half.**
+
+⭐ And the third mechanism goes the same way: the **only** live mention of `virtualXscale` in the
+compiled sources is `VIEWSEL.CPP:8493`, **itself commented out** (`//TempCode PD 18Nov97`).
+
+### ⚖️ What survives, and what does not
+
+| | |
+|---|---|
+| **the symptom** | **stands** — mirror `50x50` (1.000) in the 800×600 gold against `192x144` (1.333) at 1920×1080, stable across frames. Measured, not inferred |
+| `WIN3D.CPP:3433` aspectRatio | ⛔ not compiled |
+| `HARDWIN.CPP:253` virtualXscale | ⛔ not compiled; the one live mention is commented out |
+| `matrix::SetViewParams` | ⛔ compiled, and empty |
+| **the cause** | **unknown — and NOT any of the three the item names** |
+
+**This is why the item's own instruction was right and its content was wrong.** Someone following S1
+literally would have added a trace, seen nothing, and had to decide whether "no output" meant "not
+this mechanism" or "instrument broken" — the exact ambiguity that has cost this project sprints
+elsewhere. **It means neither: the code is not there.**
+
+### ⚠️ Not claimed
+
+* **That the port has no aspect handling.** It must produce a projection somehow — the GL side is all
+  `glOrtho(0,1,0,1,-1,1)` 2-D compositing, so the perspective is the game's own software transform
+  feeding screen-space vertices. **Where that transform gets its scale is the open question**, and it
+  is now the right question.
+* **That the 4:3 virtual space is innocent.** `FULLW 25600`/`FULLH 19200` is still a hardcoded 4:3
+  and still a plausible origin; what is refuted is that the cited *code* applies it.
+* That `VIEWSEL.CPP` is the answer — it is merely the only live file that mentions the constant, on a
+  dead line.
+
+**S2:** find where the live path computes screen-space X and Y scale — start at `matrix::body2screen`
+and the `SHAPE.vd_scale*` consumers, both of which are compiled — and re-derive the mechanism before
+anyone traces anything.
+
+**ASPECT-1: the symptom is real, all three named mechanisms are dead code, and the item needs its machinery re-derived. Sprint 2 of 4.**
