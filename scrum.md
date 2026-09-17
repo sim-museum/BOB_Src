@@ -9974,3 +9974,69 @@ difference is **not**, which is the part that would otherwise have been quietly 
 * That they are worth fixing. Roughly **0.2 % of the frame each way** on a screen already at parity.
 
 **GOLDVID-BOB-3: S9 withdrawn, the residual correctly characterised. Sprint 3 of 4.**
+
+## GOLDVID-BOB-3 S11 (Opus 5, 2026-09-17) — ✅ **THE DECISION PACKET, COMPLETE: the adopt flags touch 13 of 14 screens but only 0.5–2.8 % of pixels each, with a uniformly POSITIVE luminance shift of +0.13 to +0.55 — the signature of text drawn at its proper size, not of a layout change**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 4 of 4 — rotation complete.
+
+The PO has had `BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY` pending all session, and the evidence was
+scattered across S5–S10. This measures the one thing nobody had — **the blast radius** — and puts the
+whole case in one place.
+
+### ⭐ Blast radius: every screen, measured
+
+```
+   screen           px differing   mean|diff|   luminance shift
+   config-control        2.80 %       2.648         +0.398
+   config-gfx2           2.71 %       2.630         +0.411
+   config-sound          2.71 %       2.561         +0.337
+   config-gfx            2.70 %       2.547         +0.265
+   sim-views             2.49 %       2.350         +0.463
+   sim-mission           2.49 %       2.394         +0.546
+   sim-flight            2.49 %       2.416         +0.516
+   sim-game              2.49 %       2.354         +0.472
+   phaseselect           1.97 %       1.595         +0.409
+   entername             1.39 %       1.114         +0.185
+   bobfrag               1.26 %       1.314         +0.340
+   sideselect            0.83 %       0.666         +0.126
+   quickshots            0.54 %       0.443         +0.268
+   mainmenu              0.00 %       0.000         +0.000
+```
+
+⭐ **Three things this shows that no earlier sprint could:**
+
+1. **13 of 14 screens change** — so the reseed S5 called for is **13 references**, now a known cost
+   rather than a vague caveat. (This is only measurable at all because S4 extended the gate from 8
+   screens to 14; at 8 it would have looked like 7.)
+2. **The change is small and confined** — 0.5–2.8 % of pixels, `mean|diff|` 0.44–2.65. **No screen
+   shows a large-scale change.** For scale: MiG Alley's campaign-map header defect measures 41.3.
+3. **The luminance shift is POSITIVE on every single screen** (+0.13 to +0.55). A uniformly signed,
+   uniformly tiny shift across thirteen independent screens is **the signature of more text ink** —
+   glyphs drawn at their proper size instead of shrunk. **A layout fault would not be single-signed**;
+   MA's S18 showed a misplacement produces opposite signs on the same screen.
+
+### ⚖️ The complete case, in one place
+
+| | |
+|---|---|
+| **What they fix** | the side-select caption 12 → 28 px high, 70 → 157 wide — **matching the gold's 28 and 158** (S5/S6) |
+| **How exact** | the capture is byte-reproducible across harnesses 5 h apart, so those numbers carry **no noise** (S7) |
+| **Collateral on that screen** | none measurable — whole-screen luminance moves ≤0.5 units, on a screen already at parity within 1.6 (S8) |
+| **Blast radius** | 13 of 14 screens, 0.5–2.8 % of pixels, all shifts positive and <0.6 units (**this sprint**) |
+| **Cost to ship** | reseed 13 references |
+| **⚠️ Weakness** | the gold's derivation is **unrecorded** — almost certainly a direct screenshot, never verified (GOLDPROV-BOB-1 S1/S5) |
+
+**My recommendation: ship them**, and reseed. The fix is measured against the real game and exact;
+the collateral is uniformly tiny and in the direction the fix predicts; and the one weakness is in the
+*oracle's paperwork*, not in the measurement. But the gold caveat belongs in the same sentence as the
+recommendation, every time.
+
+### ⚠️ Not claimed
+
+* That 0.5–2.8 % of pixels is invisible to a player. It is small **by measurement**; nobody has looked
+  at thirteen screens side by side, and a text-size change is exactly the sort of thing that is
+  obvious to an eye and negligible to a mean.
+* That the positive shift is *only* larger glyphs. It is consistent with that and with nothing else
+  measured — but `BOB_ETOCLIP_XY` also changes clipping, and clipping changes could contribute.
+
+**GOLDVID-BOB-3: decision packet complete. BoB rotation complete (4 sprints) → julia.**
