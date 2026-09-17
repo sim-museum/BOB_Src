@@ -9541,3 +9541,77 @@ speculatively is how a green suite becomes untrustworthy.
   done per gate when each is next touched.
 
 **GATEHYGIENE-1: 1 sprint, audit clean, one fix already landed. BoB rotation complete (4 sprints) → julia.**
+
+## GOLDPROV-BOB-1 S4 (Opus 5, 2026-09-17) — ⭐⭐⭐ **BoB's parity gate protected 8 screens while capturing 14 — six were photographed every run and thrown away, including the TWO the gold videos actually cover.** Extended to 14, seeded, all byte-identical — ✅ and BoB's 2-D capture is deterministic, like MiG Alley's
+
+**Story:** cross-port, from MiG Alley's S16. BoB rotation: sprint 1 of 4.
+
+MiG Alley's S16 found its 2-D capture byte-deterministic, which is what makes small parity work
+possible. Two questions followed for BoB: **is its capture deterministic too, and can it compare
+against the gold at all?**
+
+### ✅ Deterministic — same property, independently confirmed
+
+```
+bob_parity.sh   ->  8 screens, all "OK byte-identical"
+```
+
+**Both ports have a zero-noise 2-D oracle.** Any difference on these screens is signal, not scatter.
+
+### ⛔ But BoB could not make a gold comparison, and the reason was not technique
+
+Inventoried all **44** extracted gold frames against the reference set, keeping the best-vs-second
+margin (MiG Alley S13's method):
+
+```
+every frame: margin ~0.00  -> no winner, for all 44
+```
+
+**Nothing matches, because the two sets cover disjoint content.** The eight references are *config /
+preferences* screens; the gold videos are *campaign play*. A margin of zero is the signature of "we
+hold no reference for what this frame shows", exactly as it was in MiG Alley.
+
+### ⭐⭐⭐ And the cause was sitting in the gate
+
+```
+GATE 1 captures 14 screens:  mainmenu config-gfx config-gfx2 config-control config-sound
+                             sim-flight sim-game sim-mission sim-views quickshots
+                             sideselect phaseselect entername bobfrag
+parity references committed:  8   (the first eight only)
+captured but NOT referenced:  sim-views quickshots sideselect phaseselect entername bobfrag
+```
+
+**Six screens were captured on every gate run and discarded.** And two of them —
+**`sideselect` and `phaseselect`** — are precisely the screens the 2026-09-15 gold videos pass
+through, and `sideselect` is the screen **GOLDVID-BOB-3 has spent four sprints measuring captions
+on**. The port's most active gold work had **no deterministic baseline** while eight config screens
+had one. `bob_parity.sh`'s own header even claimed it drove *"the same recipes GATE 1 already
+drives"* — it drove eight of fourteen.
+
+### What changed
+
+`tools/bob_parity.sh` extended **8 → 14**, recipes copied verbatim from `bob_gates.sh:196–201`.
+The gate refused to auto-accept — *"6 screen(s) have no reference yet — seed them deliberately, do not
+auto-accept"* — so each candidate was **reviewed before blessing**:
+
+```
+bobfrag     63,389 distinct   0.1 % black        sideselect  183,149 distinct  top (255,186,0)
+entername  202,445 distinct  13.4 % black        phaseselect 207,977 distinct
+quickshots  27,885 distinct  top white           sim-views   279,314 distinct
+```
+
+⭐ `sideselect`'s dominant colour is **`(255,186,0)`** — the exact amber GOLDVID-BOB-3 S5/S6 measured
+its captions in. The right screen, confirmed by its own content rather than by its filename.
+
+Seeded; re-run gives **`PASS: 14 screen(s) byte-identical`**.
+
+### ⚠️ Not claimed
+
+* **That these references are correct.** A reference is *current behaviour*, not *right behaviour* —
+  this is the self-parity trap this project has written down. [[parity-oracles-are-not-gold]] What
+  they buy is that a future change to those six screens becomes **visible**, which it was not before.
+* That BoB can now compare against the gold. **It still cannot** — the golds are 1920×1080 fullscreen
+  and BoB renders 1024×768 (S2), so a gold comparison needs a downscale whose round-trip is unproven.
+  This removes the *reference* gap, not the *scale* one.
+
+**GOLDPROV-BOB-1: parity coverage 8 → 14, the two gold-relevant screens now baselined. Sprint 1 of 4.**

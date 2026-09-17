@@ -48,6 +48,12 @@ mkdir -p "$OUT" "$REF"
 [ -x "$BOB" ] || { echo "no binary at $BOB"; exit 2; }
 E="BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 SDL_VIDEODRIVER=dummy"
 
+# GOLDPROV-BOB-1 S4 (2026-09-17): EXTENDED 8 -> 14. GATE 1 captured fourteen screens and this
+# gate referenced eight, so six were photographed on every run and thrown away -- sim-views,
+# quickshots, sideselect, phaseselect, entername, bobfrag. Two of those six (sideselect,
+# phaseselect) are exactly the screens the 2026-09-15 gold videos cover and that GOLDVID-BOB-3
+# measures captions on, so the port's most active gold work had no deterministic baseline while
+# eight config screens did. The recipes are copied verbatim from bob_gates.sh:196-201.
 # name | shot idle | extra env   -- the same recipes GATE 1 already drives, so the captures are the
 # ones the suite has been taking all along; only the comparison is new.
 RECIPES="mainmenu:40:
@@ -57,7 +63,13 @@ config-control:70:BOB_CONFIGSCREEN=control
 config-sound:70:BOB_CONFIGSCREEN=sound
 sim-flight:70:BOB_CONFIGSCREEN=flight
 sim-game:70:BOB_CONFIGSCREEN=game
-sim-mission:70:BOB_CONFIGSCREEN=mission"
+sim-mission:70:BOB_CONFIGSCREEN=mission
+sim-views:70:BOB_CONFIGSCREEN=views
+quickshots:220:BOB_STARTFLYING=click BOB_AUTOCLICK=0
+sideselect:250:BOB_AUTOCLICK=1
+phaseselect:380:BOB_AUTOCLICK=1,1
+entername:520:BOB_AUTOCLICK=1,1,1
+bobfrag:120:BOB_BOBFRAG=1"
 
 fail=0; missing=0; n=0
 echo "BoB screen parity -- captures vs $REF"
