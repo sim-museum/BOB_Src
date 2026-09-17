@@ -244,12 +244,26 @@ timeout -k 5 120 env BOB_NO_RUN=1 "$BOB" >/dev/null 2>"$OUT/default.err"; checkr
 
 replay_check "GATE 2"
 echo "### GATE 3: phase select dummy vs real GL"
+# TMPFS-BOB-1 S4: clear both captures first, and refuse to compare what this run did not take.
+# GATE 4 below has always had its `rm -f`; GATE 3 never did. $OUT can be reused between runs, so a
+# run that exited 0 without capturing (a scaffold that never reaches the screen -- checkrun only
+# sees the EXIT CODE) compared the previous run's images and printed a confident verdict about
+# data it had not produced. With no stale file at all, `cmp -s` on a missing path returns non-zero
+# and prints "dummy!=GL DIFFERS" -- a false ALARM rather than a false green.
+# NB this is also a correction to S3, which cleared this file: a per-file "does it call rm -f?"
+# test scored bob_gates.sh as guarded on the strength of GATE 4's call. A file can guard one
+# artefact and not another.
+rm -f "$OUT/gl_dummy.ppm" "$OUT/gl_real.ppm"
 timeout -k 5 300 env $E BOB_AUTOCLICK=1,1,#1000:1 BOB_SHOT=520 \
   BOB_SHOT_PATH="$OUT/gl_dummy.ppm" "$BOB" >/dev/null 2>"$OUT/gl_dummy.err"; checkrun dummy $? "$OUT/gl_dummy.err"
 timeout -k 5 300 env DISPLAY=:0 BOB_RUN_INIT=1 BOB_FRONTEND=1 BOB_OLE_DRAW=1 \
   BOB_AUTOCLICK=1,1,#1000:1 BOB_SHOT=520 BOB_SHOT_PATH="$OUT/gl_real.ppm" "$BOB" >/dev/null 2>"$OUT/gl_real.err"
 checkrun realGL $? "$OUT/gl_real.err"
-cmp -s "$OUT/gl_dummy.ppm" "$OUT/gl_real.ppm" && echo "  dummy==GL BYTE-IDENTICAL" || echo "  dummy!=GL DIFFERS"
+if [ ! -s "$OUT/gl_dummy.ppm" ] || [ ! -s "$OUT/gl_real.ppm" ]; then
+  echo "  CANNOT COMPARE: dummy=$([ -s "$OUT/gl_dummy.ppm" ] && echo captured || echo MISSING)" \
+       "real=$([ -s "$OUT/gl_real.ppm" ] && echo captured || echo MISSING) -- this run took no such shot"
+elif cmp -s "$OUT/gl_dummy.ppm" "$OUT/gl_real.ppm"; then echo "  dummy==GL BYTE-IDENTICAL"
+else echo "  dummy!=GL DIFFERS"; fi
 
 replay_check "GATE 3"
 echo "### GATE 4: flight frame-150 (real GL)"

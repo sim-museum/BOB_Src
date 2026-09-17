@@ -11153,3 +11153,70 @@ that looked entirely normal.
   a failed arm.
 
 **BoB sprint 3 of 4.**
+
+## TMPFS-BOB-1 S4 / GATEHYGIENE-1 S4 (Opus 5, 2026-09-17) — ⛔⛔ **S3's audit had a FALSE NEGATIVE and it was in the suite runner: `bob_gates.sh` guards GATE 4's capture and has never guarded GATE 3's pair.** Fixed, four cases measured — and the audit redone per ARTEFACT, which closes the class
+
+**Story:** S3 audited per **file** — *"does this script call `rm -f`?"* — and cleared `bob_gates.sh`
+on the strength of GATE 4's call. Sprint 4 set out to run the suite after twenty scripts were
+edited, read the runner on the way in, and found the flaw in its own predecessor.
+
+### ⛔⛔ GATE 3 compared two images it had not necessarily taken
+
+```sh
+### GATE 3: phase select dummy vs real GL
+  … BOB_SHOT_PATH="$OUT/gl_dummy.ppm" …   checkrun dummy $?
+  … BOB_SHOT_PATH="$OUT/gl_real.ppm"  …   checkrun realGL $?
+cmp -s "$OUT/gl_dummy.ppm" "$OUT/gl_real.ppm" && echo "dummy==GL BYTE-IDENTICAL" || echo "dummy!=GL DIFFERS"
+```
+
+`checkrun` inspects the **exit code only**, so a run that exits 0 without reaching the screen passes
+it. `$OUT` is reused, GATE 4 immediately below has always had `rm -f "$OUT/flight.ppm"`, and GATE 3
+never did. ⭐ Note the failure shape is the **opposite** of S2's: with no stale file at all, `cmp -s`
+on a missing path returns non-zero and prints **`dummy!=GL DIFFERS`** — **a false ALARM**, sending
+someone after a rendering divergence that was really a missing screenshot.
+
+### ✅ Fixed, and all four cases measured
+
+`rm -f` both, then refuse to compare what this run did not take:
+
+| case | output |
+|---|---|
+| neither captured *(was: `dummy!=GL DIFFERS`)* | `CANNOT COMPARE: dummy=MISSING real=MISSING — this run took no such shot` |
+| only dummy captured | `CANNOT COMPARE: dummy=captured real=MISSING …` |
+| both, identical | `dummy==GL BYTE-IDENTICAL` |
+| both, different | `dummy!=GL DIFFERS` |
+
+**CANNOT COMPARE is now distinct from DIFFERS** — the same distinction FF's typing gate draws
+between *cannot measure* and *fail*.
+
+### ⭐⭐ And the audit redone properly — per artefact, not per file
+
+Every path the **game** is told to write, across all 29 tools:
+
+| artefact | use | guard |
+|---|---|---|
+| `bob_parity $OUT/$name.ppm` (×14) | read | ✅ S2 |
+| `bob_blob_bisect $OUT/$tag.ppm` | read | ✅ S3 |
+| `bob_gates gl_dummy.ppm` / `gl_real.ppm` | read | ✅ **S4** |
+| `bob_gates flight.ppm` | read | ✅ always had it |
+| `bob_validate bobframe.ppm` | read | ✅ S1 |
+| `bob_gates $OUT/$name.ppm` (GATE 1 ×14) | **write-only** | n/a — `checkrun` reads the **exit code**, never the image (verified by reading, not by the scan) |
+| `soak.ppm`, `convoy.ppm`, `detect.ppm`, `soak.ppm` | **`BOB_SHOT=99999` sentinel** | n/a — never shot |
+
+**Every artefact that is read back is now guarded.** ⭐ The per-file test produced a false negative
+(this sprint) after the crude scan produced six false positives (S3) — **the same audit, indexed
+correctly, is the one that closes the question.**
+
+### ⚠️ Not claimed
+
+* **The full suite was not run.** `bob_gates.sh` includes a ~14-minute gate plus three soaks; GATE 3's
+  fix was proven by the **four-case table above**, executed against the extracted branch, and by
+  `bash -n` — **not by a suite run**. `bob_r9_layout.sh` was launched and had **not finished** when
+  this sprint was written.
+* That GATE 3 ever mis-reported in anger. **No such run is known** — the defect is proven by
+  construction and by the missing-file case, not recovered from a log.
+* That the class is gone. This closes **stale artefacts**. GATEHYGIENE-1's other two modes — a probe
+  in an off-by-default branch, a capture taken at the wrong moment — remain untouched.
+
+**BoB rotation complete — 4 sprints (18 gates off tmpfs + a shared frame-dump path; parity's false
+green; the bisect's wrong answer; the suite runner's false alarm). ⏭ Rotating to julia.**
