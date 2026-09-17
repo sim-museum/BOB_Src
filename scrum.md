@@ -10040,3 +10040,91 @@ recommendation, every time.
   measured — but `BOB_ETOCLIP_XY` also changes clipping, and clipping changes could contribute.
 
 **GOLDVID-BOB-3: decision packet complete. BoB rotation complete (4 sprints) → julia.**
+
+## GOLDVID-BOB-3 S9 (Opus 5, 2026-09-17) — ⛔⛔ **I took the look S8's own "Not claimed" asked for, and it changes the recommendation: the flags make the config tab row ~1.6× wider and the last tab, `Continue`, is TRUNCATED TO "Con". S8 recommended shipping without anyone having seen this**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 1 of 4. S8 closed with a recommendation to ship
+`BOB_FONT_ADOPT_ALL` + `BOB_ETOCLIP_XY` and reseed 13 references, and listed under **Not claimed**:
+
+> *"nobody has looked at thirteen screens side by side, and a text-size change is exactly the sort of
+> thing that is obvious to an eye and negligible to a mean."*
+
+**That bullet was correct, and it was load-bearing.** Artefact:
+`doc/reference/260917_tabrow_off_vs_on.png`.
+
+### ⭐ Where the change actually lands — it is not spread at all
+
+Per-screen bounding box of changed pixels (13 screens, flags on):
+
+```
+   config-gfx / gfx2 / sound   x40-1016  y14- 58     <- the TAB ROW only, 44 rows
+   sim-flight/game/mission/views x40-937 y14- 65     <- the TAB ROW only, 51 rows
+   config-control              x40-1016  y14-504
+   sideselect                  x70- 679  y40-751
+   phaseselect                 x65- 873  y14-765
+   entername                   x65- 502  y509-765
+   quickshots / bobfrag        x55- 482  y714-765
+```
+
+**Eight of the thirteen change in one 44–51-row strip: the tab bar.** S8's "0.5–2.8 % of pixels,
+no screen shows a large-scale change" is arithmetically true and gives the wrong impression — the
+change is not diffuse, it is **concentrated in one control and small only because that control is
+small**.
+
+### ⛔⛔ What the tab row does
+
+```
+   screen          OFF text span    ink      ON text span     ink
+   config-gfx      x  41- 652      2275     x  42-1015      9963
+   config-control  x  41- 652      2264     x  42-1015      9891
+   sim-flight      x  42- 553      1838     x  43- 933      9158
+```
+
+**4.4× the ink and 1.6× the width.** The six-tab `sim-*` rows still fit (`x43–933` of 1024). The
+**seven-tab config rows do not**: they run to `x1015` and the last label renders as **`Con`** where
+the reference reads **`Continue`**. It is not pushed off the screen — it is **clipped by the
+control's own rect**, which is exactly what `BOB_ETOCLIP_XY` governs.
+
+**`Continue` is the control that leaves the screen.** A truncated label on the exit control is a
+usability regression, not a cosmetic one, and S8's decision packet priced the change as "reseed 13
+references".
+
+### ⛔ And the blast radius lands where there is no oracle
+
+The flags are justified by **one** screen: side-select, whose caption goes 12 → 28 px high and
+70 → 157 wide against the gold's **28 and 158** (S5/S6). That is a good, exact justification.
+But of the thirteen screens the flags change, **the config and sim tab rows have no gold at all** —
+`doc/reference/` holds golds for the title menu, side-select, briefings, directives, patrols, the
+strategic map and the scenes screens, and **no config screen tab row**
+(`260915_gold_bdg_config_dialog.png` is a BDG message box over the title, not the tab bar).
+
+**So the fix is measured on the one screen with an oracle and applied globally to eight that have
+none** — and on those eight it truncates a label. That is the shape of the change, and no number in
+S8's packet could show it.
+
+### ⚖️ Amending the recommendation
+
+**S8 recommended: ship both, reseed 13. I am withdrawing that** — not reversing it, narrowing it:
+
+* **The side-select fix is sound and should ship.** It is exact, gold-checked, and its own screen's
+  collateral is ≤0.5 luminance units (S8).
+* **`BOB_FONT_ADOPT_ALL` as a GLOBAL adoption should not ship as-is.** It truncates `Continue` on
+  four config screens, and eight of its thirteen affected screens have no gold to judge it by.
+* **The question to put to the PO is narrower and better:** adopt the font per-control (side-select
+  caption) rather than `ALL`, or fix the tab row's rect so the larger face fits.
+
+### ⚠️ Not claimed
+
+* **That the OFF arm is right.** It has no gold either. The real game may well draw big tab text and
+  size its rects to suit; **`Con` is evidence the port's rect is too small for the face, not
+  evidence the face is wrong.**
+* **That the other five screens are harmed.** `sideselect`, `phaseselect`, `entername`,
+  `quickshots`, `bobfrag` were not inspected glyph by glyph this sprint — only the tab rows were.
+* That the truncation is `BOB_ETOCLIP_XY`'s doing rather than `BOB_FONT_ADOPT_ALL`'s. The two were
+  measured **together**, as S8 measured them; separating them is one run.
+
+**S10:** run the two flags SEPARATELY on `config-gfx`. If `BOB_FONT_ADOPT_ALL` alone enlarges the
+face and `BOB_ETOCLIP_XY` alone does the truncating, the packet splits into one flag to ship and one
+to fix — which is a far better thing to hand the PO than a single yes/no.
+
+**GOLDVID-BOB-3: the recommendation withdrawn by the look its own caveat asked for. Sprint 1 of 4.**
