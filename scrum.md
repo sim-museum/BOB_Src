@@ -9852,3 +9852,69 @@ measurable collateral effect on the rest of the screen**, which is a stronger sa
   recorded as unverified.
 
 **GOLDVID-BOB-3: side-select at parity; the flags are a local fix with no collateral. Sprint 1 of 4.**
+
+## GOLDVID-BOB-3 S9 (Opus 5, 2026-09-17) — ⭐⭐ **the "uniform ~1.5 offset" is not uniform: it is a NEGLIGIBLE ~1 % global scale PLUS a real BLACK CRUSH — our darkest pixels sit at 23 where the gold has 43**
+
+**Story:** GOLDVID-BOB-3. BoB rotation: sprint 2 of 4. **No new run.**
+
+S8 found side-select at parity within ~1.6 units and recorded the residual offset as *"consistent and
+unexplained — unexplained, not dismissed."* Bucketing by brightness explains it, and splits it in two.
+
+### ⭐ Gold against ours, bucketed by OUR level
+
+```
+   our level    n px     mean ours   mean gold   gold-ours    ratio
+     0- 31      2,063         23.0        43.0      +20.04    1.873   <-- the exception
+    32- 63     74,835         55.0        54.0       -0.97    0.982
+    64- 95    296,712         79.6        78.9       -0.72    0.991
+    96-127    218,600        109.9       108.3       -1.55    0.986
+   128-159    128,773        141.9       140.2       -1.69    0.988
+   160-191     51,412        171.0       168.3       -2.69    0.984
+   192-223      8,869        205.7       204.2       -1.49    0.993
+   224-255      5,168        233.4       231.6       -1.84    0.992
+```
+
+**Two separate effects, and only one matters:**
+
+* **Levels 32–255: a multiplicative ~0.99.** The absolute gap grows with brightness (−0.97 at 55,
+  −2.69 at 171) while the *ratio* stays 0.982–0.993. **That is a ~1 % scale, not an offset** — and 1 %
+  is within any reasonable capture/encoding tolerance. **Negligible, and now characterised rather
+  than merely small.**
+* **Levels 0–31: the gold is +20 units BRIGHTER, a ratio of 1.87.** Our darkest pixels average **23**
+  where the gold's average **43**. That is not a scale error; it is a different behaviour confined to
+  the bottom of the range.
+
+### ⭐ Why the S8 average hid it
+
+The dark bucket is **2,063 px — 0.26 % of the frame.** Averaged into 786,432 pixels it contributes
+about +0.05 units, which is why S8 saw a flat −1.5 everywhere and called it uniform. **The
+whole-frame average was right and uninformative**; the distribution is where the information was.
+Same lesson as MiG Alley's S18, one level down: an aggregate hid structure, and the fix was to look
+at the breakdown rather than refine the aggregate.
+
+### ⚠️ Which way the black crush runs — two readings, not one
+
+* **We crush blacks** — our shadow rendering sits ~20 units below the real game's. A port-side
+  difference, and the actionable reading.
+* **The gold's capture lifted them** — lifted blacks are characteristic of lossy encoding. But
+  GOLDPROV-BOB-1 S1/S5 concluded this gold is almost certainly a **direct screenshot**, and a
+  screenshot of a game should carry exact blacks.
+
+**The screenshot inference makes "we crush blacks" the more likely reading — but that inference is
+itself unverified** (S1 recorded the derivation as unknown). I am not going to call a port defect on
+one unverified artefact.
+
+### ⚖️ Grooming
+
+This is **0.26 % of one screen**, found while characterising a residual. **It is not worth a sprint
+run of its own**, and I am not opening an item for it. It is worth *recording*, because a systematic
+black-level difference would bias every future BoB gold comparison — and because it is testable for
+free the next time any BoB screen is compared: **if the same 0–31 bucket shows +20 on a different
+screen, it is the port; if it does not, it was that gold.**
+
+### ⚠️ Not claimed
+
+That either reading is correct, or that 2,063 px matter visually. Nothing here changes S8's verdict:
+side-select remains at parity.
+
+**GOLDVID-BOB-3: the residual characterised, with a testable prediction attached. Sprint 2 of 4.**
