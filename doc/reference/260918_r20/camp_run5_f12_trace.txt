@@ -1,0 +1,12 @@
+[frontend] (bridge) StartFlying -> Launch3d(wasrunning=0)
+[seenac] formpos=0 expandedsag=175764832 ac=0xa91b550 ghost=0xa8ca3d0
+[frontend] (bridge) Launch3d done; tmpinst=0x952b780 tmpview=0xaa20b60 InThe3D=1
+[sdlkeyms] pushed SDL_KEYDOWN sym=1073741893 at 60000ms (due 60000ms) hold=200ms rc=1
+[startfly] flight close (id=2) -> OnCancel + OnFlyingClosed
+[sdlkeyms] pushed SDL_KEYUP sym=1073741893 at 63321ms
+EXIT=124
+grey=2
+      1 [grey] draw_fvf NO texture (texturing disabled)  surf=(nil) prim=6 count=4 fvf=3c4 is2D=1  flat colour 0xffff0000 = R255 G0 B0
+FileNotFoundError: [Errno 2] No such file or directory: '/home/admin/bob-gates/r20/camp4_f4500.ppm'
+
+[exited with code 0]

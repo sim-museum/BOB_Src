@@ -11804,3 +11804,29 @@ board as `SEENAC-1`; not R20.
   reading as misplaced world geometry. **Sprint 2: F12 in flight (`BOB_SDL_KEY_MS`), dump after.**
 
 **R20: the instrument has now counted a real campaign flight; the black-texture class is explained; the square is still unreproduced. BoB sprint 1 of 4.**
+
+## R20 S4 (Fable 5.1, 2026-09-18) — ⛔ **F12 in a campaign flight CLOSES the flight in this build (`flight close (id=2) -> OnCancel`) — the state in the PO's frame, the GFX dialog raised OVER the live 3-D, is not reachable by the key that should raise it.** Grooming: the square stays unreproduced; BoB rotates after two sprints
+
+**Story:** BoB rotation, cycle 4, sprint 2. S3 read the PO's frame as "a front-end element over
+the 3-D": the square is one flat colour and sits directly above the in-flight GFX dialog's title
+bar. The reproduction needs that dialog over a live flight.
+
+### ⛔ The run (`FLY=90`, launch clean; `BOB_SDL_KEY_MS="60000,<F12>,200"`)
+`Launch3d done … InThe3D=1` → `[sdlkeyms] pushed SDL_KEYDOWN sym=1073741893 at 60000ms` →
+**`[startfly] flight close (id=2) -> OnCancel + OnFlyingClosed`** → front-end. No dump (the
+front-end never reached present 4500 in the budget). `[grey]`: the same red 2-D marker quad, once.
+R4.3's close bridge does exactly what its comment says: F12 in flight posts `IDCANCEL` and the
+flight is torn down. **The original pauses and raises the preferences dialog over the frozen 3-D —
+which is what the PO's 2026-08-31 frame shows this port doing.** So either the PO reached that
+state by another key ("may have hit a nearby button first"), or the port's F12 path changed after
+the report. Both are checkable; neither fits this sprint.
+
+### ⚠️ Handed forward (R20 stays 🔴)
+1. Which key/path raised the in-flight GFX dialog over the live 3-D on 2026-08-31, and whether it
+   still does — `git log -S bob_process_flight_close` dates the close bridge against the report.
+2. The 3 unnamed in-flight untextured draws (`[notex]` +4 at ~9.1 M draws; `BOB_TRACE_GREY` named
+   one). Align the two filters, or print the grey table at the census's increment.
+3. `SEENAC-1` (S3) is the more reproducible defect found on the way: launch-time dependent, twice
+   each way.
+
+**R20: two sprints, the instrument now covers a real campaign flight, one class explained, one new fatal filed, the square unreproduced and its state named. BoB cycle 4: 2 sprints — rotating to julia.**
