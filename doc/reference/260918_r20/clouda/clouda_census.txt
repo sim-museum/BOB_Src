@@ -1,0 +1,115 @@
+[gltex] #0 glTex=2 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_0.ppm (+/home/admin/bob-gates/gltex/bobgl_0_alpha.ppm)
+[clouda] 4444 tex glTex=2 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #1 glTex=14 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_1.ppm (+/home/admin/bob-gates/gltex/bobgl_1_alpha.ppm)
+[clouda] 4444 tex glTex=14 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #2 glTex=15 512x512 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_2.ppm (+/home/admin/bob-gates/gltex/bobgl_2_alpha.ppm)
+[clouda] 4444 tex glTex=15 512x512 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #3 glTex=16 512x512 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_3.ppm (+/home/admin/bob-gates/gltex/bobgl_3_alpha.ppm)
+[clouda] 4444 tex glTex=16 512x512 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #4 glTex=17 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_4.ppm (+/home/admin/bob-gates/gltex/bobgl_4_alpha.ppm)
+[clouda] 4444 tex glTex=17 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #5 glTex=18 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_5.ppm (+/home/admin/bob-gates/gltex/bobgl_5_alpha.ppm)
+[clouda] 4444 tex glTex=18 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=3
+[gltex] #6 glTex=19 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_6.ppm (+/home/admin/bob-gates/gltex/bobgl_6_alpha.ppm)
+[clouda] 4444 tex glTex=19 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #7 glTex=20 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_7.ppm (+/home/admin/bob-gates/gltex/bobgl_7_alpha.ppm)
+[clouda] 4444 tex glTex=20 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #8 glTex=21 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_8.ppm (+/home/admin/bob-gates/gltex/bobgl_8_alpha.ppm)
+[clouda] 4444 tex glTex=21 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #9 glTex=22 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_9.ppm (+/home/admin/bob-gates/gltex/bobgl_9_alpha.ppm)
+[clouda] 4444 tex glTex=22 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #10 glTex=23 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_10.ppm (+/home/admin/bob-gates/gltex/bobgl_10_alpha.ppm)
+[clouda] 4444 tex glTex=23 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #11 glTex=30 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_11.ppm (+/home/admin/bob-gates/gltex/bobgl_11_alpha.ppm)
+[clouda] 4444 tex glTex=30 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #12 glTex=31 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_12.ppm (+/home/admin/bob-gates/gltex/bobgl_12_alpha.ppm)
+[clouda] 4444 tex glTex=31 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #13 glTex=32 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_13.ppm (+/home/admin/bob-gates/gltex/bobgl_13_alpha.ppm)
+[clouda] 4444 tex glTex=32 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #14 glTex=33 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_14.ppm (+/home/admin/bob-gates/gltex/bobgl_14_alpha.ppm)
+[clouda] 4444 tex glTex=33 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #15 glTex=34 64x64 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_15.ppm (+/home/admin/bob-gates/gltex/bobgl_15_alpha.ppm)
+[clouda] 4444 tex glTex=34 64x64 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #16 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_16.ppm (+/home/admin/bob-gates/gltex/bobgl_16_alpha.ppm)
+[clouda] 4444 tex glTex=35 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=5
+[gltex] #17 glTex=36 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_17.ppm (+/home/admin/bob-gates/gltex/bobgl_17_alpha.ppm)
+[clouda] 4444 tex glTex=36 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #18 glTex=37 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_18.ppm (+/home/admin/bob-gates/gltex/bobgl_18_alpha.ppm)
+[clouda] 4444 tex glTex=37 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #19 glTex=61 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_19.ppm (+/home/admin/bob-gates/gltex/bobgl_19_alpha.ppm)
+[clouda] 4444 tex glTex=61 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #20 glTex=62 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_20.ppm (+/home/admin/bob-gates/gltex/bobgl_20_alpha.ppm)
+[clouda] 4444 tex glTex=62 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #21 glTex=63 512x512 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_21.ppm (+/home/admin/bob-gates/gltex/bobgl_21_alpha.ppm)
+[clouda] 4444 tex glTex=63 512x512 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #22 glTex=66 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_22.ppm (+/home/admin/bob-gates/gltex/bobgl_22_alpha.ppm)
+[clouda] 4444 tex glTex=66 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #23 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_23.ppm (+/home/admin/bob-gates/gltex/bobgl_23_alpha.ppm)
+[gltex] #24 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_24.ppm (+/home/admin/bob-gates/gltex/bobgl_24_alpha.ppm)
+[gltex] #25 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_25.ppm (+/home/admin/bob-gates/gltex/bobgl_25_alpha.ppm)
+[gltex] #26 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_26.ppm (+/home/admin/bob-gates/gltex/bobgl_26_alpha.ppm)
+[gltex] #27 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_27.ppm (+/home/admin/bob-gates/gltex/bobgl_27_alpha.ppm)
+[gltex] #28 glTex=86 32x32 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_28.ppm (+/home/admin/bob-gates/gltex/bobgl_28_alpha.ppm)
+[clouda] 4444 tex glTex=86 32x32 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #29 glTex=87 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_29.ppm (+/home/admin/bob-gates/gltex/bobgl_29_alpha.ppm)
+[clouda] 4444 tex glTex=87 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #30 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_30.ppm (+/home/admin/bob-gates/gltex/bobgl_30_alpha.ppm)
+[gltex] #31 glTex=88 64x64 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_31.ppm (+/home/admin/bob-gates/gltex/bobgl_31_alpha.ppm)
+[clouda] 4444 tex glTex=88 64x64 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #32 glTex=89 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_32.ppm (+/home/admin/bob-gates/gltex/bobgl_32_alpha.ppm)
+[clouda] 4444 tex glTex=89 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #33 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_33.ppm (+/home/admin/bob-gates/gltex/bobgl_33_alpha.ppm)
+[gltex] #34 glTex=92 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_34.ppm (+/home/admin/bob-gates/gltex/bobgl_34_alpha.ppm)
+[clouda] 4444 tex glTex=92 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #35 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_35.ppm (+/home/admin/bob-gates/gltex/bobgl_35_alpha.ppm)
+[gltex] #36 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_36.ppm (+/home/admin/bob-gates/gltex/bobgl_36_alpha.ppm)
+[gltex] #37 glTex=93 256x256 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_37.ppm (+/home/admin/bob-gates/gltex/bobgl_37_alpha.ppm)
+[clouda] 4444 tex glTex=93 256x256 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #38 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_38.ppm (+/home/admin/bob-gates/gltex/bobgl_38_alpha.ppm)
+[gltex] #39 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_39.ppm (+/home/admin/bob-gates/gltex/bobgl_39_alpha.ppm)
+[gltex] #40 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_40.ppm (+/home/admin/bob-gates/gltex/bobgl_40_alpha.ppm)
+[gltex] #41 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_41.ppm (+/home/admin/bob-gates/gltex/bobgl_41_alpha.ppm)
+[gltex] #42 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_42.ppm (+/home/admin/bob-gates/gltex/bobgl_42_alpha.ppm)
+[gltex] #43 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_43.ppm (+/home/admin/bob-gates/gltex/bobgl_43_alpha.ppm)
+[gltex] #44 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_44.ppm (+/home/admin/bob-gates/gltex/bobgl_44_alpha.ppm)
+[gltex] #45 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_45.ppm (+/home/admin/bob-gates/gltex/bobgl_45_alpha.ppm)
+[gltex] #46 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_46.ppm (+/home/admin/bob-gates/gltex/bobgl_46_alpha.ppm)
+[gltex] #47 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_47.ppm (+/home/admin/bob-gates/gltex/bobgl_47_alpha.ppm)
+[gltex] #48 glTex=103 512x512 alpha=1 Amask=0x8000 -> /home/admin/bob-gates/gltex/bobgl_48.ppm (+/home/admin/bob-gates/gltex/bobgl_48_alpha.ppm)
+[gltex] #49 glTex=104 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_49.ppm (+/home/admin/bob-gates/gltex/bobgl_49_alpha.ppm)
+[clouda] 4444 tex glTex=104 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #50 glTex=105 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_50.ppm (+/home/admin/bob-gates/gltex/bobgl_50_alpha.ppm)
+[clouda] 4444 tex glTex=105 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #51 glTex=106 512x512 alpha=1 Amask=0x8000 -> /home/admin/bob-gates/gltex/bobgl_51.ppm (+/home/admin/bob-gates/gltex/bobgl_51_alpha.ppm)
+[gltex] #52 glTex=107 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_52.ppm (+/home/admin/bob-gates/gltex/bobgl_52_alpha.ppm)
+[clouda] 4444 tex glTex=107 128x128 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=4
+[gltex] #53 glTex=108 1024x1024 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_53.ppm (+/home/admin/bob-gates/gltex/bobgl_53_alpha.ppm)
+[clouda] 4444 tex glTex=108 1024x1024 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=3
+[gltex] #54 glTex=109 1024x1024 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_54.ppm (+/home/admin/bob-gates/gltex/bobgl_54_alpha.ppm)
+[clouda] 4444 tex glTex=109 1024x1024 blend=1 atest=0 srcB=0x302 dstB=0x303 is2D=1 ckey=0 count=3
+[gltex] #55 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_55.ppm (+/home/admin/bob-gates/gltex/bobgl_55_alpha.ppm)
+[gltex] #56 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_56.ppm (+/home/admin/bob-gates/gltex/bobgl_56_alpha.ppm)
+[gltex] #57 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_57.ppm (+/home/admin/bob-gates/gltex/bobgl_57_alpha.ppm)
+[gltex] #58 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_58.ppm (+/home/admin/bob-gates/gltex/bobgl_58_alpha.ppm)
+[gltex] #59 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_59.ppm (+/home/admin/bob-gates/gltex/bobgl_59_alpha.ppm)
+[gltex] #60 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_60.ppm (+/home/admin/bob-gates/gltex/bobgl_60_alpha.ppm)
+[gltex] #61 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_61.ppm (+/home/admin/bob-gates/gltex/bobgl_61_alpha.ppm)
+[gltex] #62 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_62.ppm (+/home/admin/bob-gates/gltex/bobgl_62_alpha.ppm)
+[gltex] #63 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_63.ppm (+/home/admin/bob-gates/gltex/bobgl_63_alpha.ppm)
+[gltex] #64 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_64.ppm (+/home/admin/bob-gates/gltex/bobgl_64_alpha.ppm)
+[gltex] #65 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_65.ppm (+/home/admin/bob-gates/gltex/bobgl_65_alpha.ppm)
+[gltex] #66 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_66.ppm (+/home/admin/bob-gates/gltex/bobgl_66_alpha.ppm)
+[gltex] #67 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_67.ppm (+/home/admin/bob-gates/gltex/bobgl_67_alpha.ppm)
+[gltex] #68 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_68.ppm (+/home/admin/bob-gates/gltex/bobgl_68_alpha.ppm)
+[gltex] #69 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_69.ppm (+/home/admin/bob-gates/gltex/bobgl_69_alpha.ppm)
+[gltex] #70 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_70.ppm (+/home/admin/bob-gates/gltex/bobgl_70_alpha.ppm)
+[gltex] #71 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_71.ppm (+/home/admin/bob-gates/gltex/bobgl_71_alpha.ppm)
+[gltex] #72 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_72.ppm (+/home/admin/bob-gates/gltex/bobgl_72_alpha.ppm)
+[gltex] #73 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_73.ppm (+/home/admin/bob-gates/gltex/bobgl_73_alpha.ppm)
+[gltex] #74 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_74.ppm (+/home/admin/bob-gates/gltex/bobgl_74_alpha.ppm)
+[gltex] #75 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_75.ppm (+/home/admin/bob-gates/gltex/bobgl_75_alpha.ppm)
+[gltex] #76 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_76.ppm (+/home/admin/bob-gates/gltex/bobgl_76_alpha.ppm)
+[gltex] #77 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_77.ppm (+/home/admin/bob-gates/gltex/bobgl_77_alpha.ppm)
+[gltex] #78 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_78.ppm (+/home/admin/bob-gates/gltex/bobgl_78_alpha.ppm)
+[gltex] #79 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_79.ppm (+/home/admin/bob-gates/gltex/bobgl_79_alpha.ppm)
+[gltex] #80 glTex=35 128x128 alpha=1 Amask=0xf000 -> /home/admin/bob-gates/gltex/bobgl_80.ppm (+/home/admin/bob-gates/gltex/bobgl_80_alpha.ppm)

@@ -2718,7 +2718,7 @@ static void upload_texture(GLSurface7* s) {
 		if (wanted && g<cap && s->w>=8 && s->h>=8 && s->w<2048 && s->h<2048 && (!onlyAlpha || hasAlpha)) {
 			int w=s->w,h=s->h; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*4);
 			glGetTexImage(GL_TEXTURE_2D,0,GL_RGBA,GL_UNSIGNED_BYTE,buf);
-			char path[64]; snprintf(path,sizeof(path),"/tmp/bobgl_%d.ppm",g);
+			char path[512]; { const char* hm=getenv("HOME"); snprintf(path,sizeof(path),"%s/bob-gates/gltex/bobgl_%d.ppm",(hm&&*hm)?hm:".",g); }   /* R20 S8: never /tmp */
 			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
 			if(fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h); if(write(fd,hdr,n)<0){}
 				for(int i=0;i<w*h;i++){ unsigned char rgb[3]={buf[i*4],buf[i*4+1],buf[i*4+2]}; if(write(fd,rgb,3)<0){} }
@@ -2726,7 +2726,7 @@ static void upload_texture(GLSurface7* s) {
 				/* S307: the alpha channel decides what the sprite's SHAPE is, so dump it as a
 				   greyscale image next to the colour -- an opaque ellipse in a 128x128 sprite is
 				   invisible in the RGB dump but obvious here. */
-				char apath[64]; snprintf(apath,sizeof(apath),"/tmp/bobgl_%d_alpha.ppm",g);
+				char apath[512]; { const char* hm=getenv("HOME"); snprintf(apath,sizeof(apath),"%s/bob-gates/gltex/bobgl_%d_alpha.ppm",(hm&&*hm)?hm:".",g); }
 				int af=::open(apath,O_WRONLY|O_CREAT|O_TRUNC,0644);
 				if(af>=0){ char ah[64]; int an=snprintf(ah,sizeof(ah),"P6\n%d %d\n255\n",w,h); if(write(af,ah,an)<0){}
 					for(int i=0;i<w*h;i++){ unsigned char a=buf[i*4+3]; unsigned char g3[3]={a,a,a}; if(write(af,g3,3)<0){} }
@@ -3797,8 +3797,15 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	   they hit the opaque alpha-test path (blend off), the soft 4-bit alpha gets thresholded to
 	   1-bit -> hard checkerboard edges instead of soft blending. */
 	if (getenv("BOB_TRACE_CLOUDA") && t && t->desc.ddpfPixelFormat.dwRGBAlphaBitMask==0xf000) {
-		static int n=0; if(n++<8) fprintf(stderr,"[clouda] 4444 tex %dx%d blend=%d atest=%d srcB=0x%x dstB=0x%x\n",
-			t->w,t->h,g_devAlphaBlend,g_alphaTest,(unsigned)g_srcBlend,(unsigned)g_dstBlend); }
+		/* R20 S8: once per (texture, blend-state) pair rather than the first 8 draws -- the boxed
+		   cloud is ONE sprite among many good ones, so what matters is whether some 4444 texture
+		   is ever drawn with blend OFF (or with factors that ignore alpha), not what the first
+		   eight draws did. */
+		static unsigned keys[64]; static int nk=0; unsigned key=(unsigned)t->glTex*16u+(unsigned)(g_devAlphaBlend?8:0)+(unsigned)(is2D?4:0)+(unsigned)(g_srcBlend==GL_SRC_ALPHA?0:1)+(unsigned)(g_dstBlend==GL_ONE_MINUS_SRC_ALPHA?0:2);
+		int seen=0; for(int k=0;k<nk;k++) if(keys[k]==key){seen=1;break;}
+		if(!seen && nk<64){ keys[nk++]=key;
+			fprintf(stderr,"[clouda] 4444 tex glTex=%u %dx%d blend=%d atest=%d srcB=0x%x dstB=0x%x is2D=%d ckey=%d count=%lu\n",
+			(unsigned)t->glTex,t->w,t->h,g_devAlphaBlend,g_alphaTest,(unsigned)g_srcBlend,(unsigned)g_dstBlend,is2D,t->ckeyOn,(unsigned long)count); fflush(stderr); } }
 	if (t && !g_devAlphaBlend && !getenv("BOB_NOATEST")) {
 		glEnable(GL_ALPHA_TEST);
 		glAlphaFunc(g_alphaTest?g_alphaFunc:GL_GREATER, g_alphaTest?g_alphaRef:0.5f);

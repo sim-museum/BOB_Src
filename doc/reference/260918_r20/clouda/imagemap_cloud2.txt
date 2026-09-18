@@ -1,0 +1,3 @@
+[imagemap]   128x128 isMasked=0 alpha=yes  index0=16384 of 16384 (100.0%)  distinct=1
+[imagemap] ptr=0xd4dbd020 dir=2 file=35 ImageMapNumber=0x0223 FileNum=39715 (16bit, off8=38912 off16=39680) path=\Program Files\Rowan Software\Battle Of Britain\mskmap16\CLOUD2.x8
+[imagemap]   256x256 isMasked=0 alpha=yes  index0=0 of 65536 (0.0%)  distinct=3

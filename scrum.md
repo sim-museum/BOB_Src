@@ -12001,3 +12001,44 @@ NOT black: (62,72,76) vs (41,53,57) — it is lit/fogged like a world quad, so t
 RGB under alpha=0, exactly what an alpha-less draw would show.
 
 **R20: the square is reproduced and identified as the fluffy-cloud sprite drawn opaque. BoB sprint 3 of 4 (cycle 6).**
+
+## R20 S8 (Fable 5.1, 2026-09-18) — ⭐⭐ **the blend state is NOT the fault: every 4444 sprite draw in a flight (34 textures) went out with blend ON, SRCALPHA/INVSRCALPHA. The box is in the TEXTURE: the sheet behind the boxed sprite is `MskMap16\CLOUD2.x8` — a 3-value dark stencil (RGB 0/17/34) whose alpha is one solid hard-edged blob in its top-left cell** — ⚠️ mechanism (why a UV sub-rect of it lands as a lit square) handed forward
+
+**Story:** BoB rotation, cycle 6, sprint 4 (last before rotation). S7 reproduced the square; this
+sprint asked the two questions that decide the fix: is it the render state, or the texture?
+
+### ⭐⭐ Render state: clean (`doc/reference/260918_r20/clouda/clouda_census.txt`, recipe `tools/bob_r20_clouda_census.sh`)
+`BOB_TRACE_CLOUDA` now reports once per (texture, blend-state) pair instead of the first eight draws.
+**34 distinct 4444 textures drawn in the flight, every one `blend=1 srcB=0x302 dstB=0x303 is2D=1
+ckey=0`** — SRCALPHA/INVSRCALPHA, never blend-off, never odd factors. The game never sets alpha
+test (`[atest]` empty). So no sprite is drawn opaque by STATE; a box therefore needs source alpha ≈ 1.
+
+### ⭐ The sheet (`sheets_glTex30_vs_cloud_sheets.png`, `glTex30_{rgb,alpha}.ppm`)
+* `BOB_TRACE_IMAGEMAP`: `mskmap16\CLOUD2.x8  256x256 isMasked=0 alpha=yes  distinct=3` — three
+  body values in 65,536 texels. The same signature (R3.9 S8's THREAT01: "a stencil with an
+  alpha plane") and the same directory.
+* `BOB_DUMP_GLTEX` (now under `$HOME/bob-gates/gltex/`, alpha plane dumped beside the RGB): the
+  only 256×256 4444 upload with 3 RGB values is **glTex=30**: RGB {(0,0,0) 50 %, (17,17,17) 50 %,
+  (34,34,34) 3 px}; alpha = **one solid opaque blob, (16,2)–(110,125), 8,771 px at ≥240**, the rest
+  ≤18 with faint noise. Per-64px-cell mean alpha: top-left four cells 129–144, everything else 0–18.
+* The fluffy field is `{CLOUD1,CLOUD2,CLOUD3,CLOUD1,CLOUD1,CLOUD4,CLOUD2,CLOUD2}` (`LANDSCAP.CPP`
+  9219): CLOUD2 is 3 of 8 sprites, and it is the one on `MskMap16`; CLOUD1/3/4 draw from the real
+  cloud sheets (glTex 17/61/62: soft puffs in alpha). **A quad whose UV rect lies inside that blob
+  samples alpha 1 and RGB (17,17,17) everywhere — a hard, one-colour square; lit and fogged it
+  is (41,53,57).** That is S7's square, and the PO's.
+
+### ⚠️ What is not settled (hand-forward, R20 S9)
+Why the shipped game does not show it. Two candidates, one instrument each:
+1. **The sprite's UVs / cell**: the boxed quad's UV rect — add `u,v` min/max to `[clouda]` for
+   glTex=30. If the rect is the blob's interior, the art is a hard stencil by design and the game
+   must draw it through a path that does not use its alpha as coverage.
+2. **The material path**: `LIB3D.CPP:9337` sends `material.isMasked!=0 && material.f!=0` polys to
+   `RenderPlainPolyList` (PROJECT_2D), and `:10155` keeps `isMasked==0 && globAlpha==0xFF` opaque —
+   the port's `SetTextureStageState` is a no-op and `TEXTUREFACTOR` (rs 60) is unhandled, so a
+   fade/dither material (`MskMap16\DITHER1..8.X8` live in the same directory) would come out at
+   full alpha. `BOB_TRACE_TSS` + a `[grey]`-style one-shot backtrace at the glTex=30 draw names
+   the path.
+Not claimed: that glTex=30 IS CLOUD2 (matched by the 3-value signature and size; the upload
+trace does not carry the file name — S9 should print `ImageMapNumber` at upload).
+
+**R20: state exonerated, the sheet named, the mechanism narrowed to UV/material. BoB sprint 4 of 4 (cycle 6) — rotating to julia.**
