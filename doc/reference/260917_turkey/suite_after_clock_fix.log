@@ -1,0 +1,257 @@
+### binary /home/admin/bob/build/bob md5=f713ba8e25927500ac1a503bfc6f682b
+scratch game dir: /home/admin/bob-gates/suite_260917_clock/drive_c/Program Files/Rowan Software/Battle Of Britain  (117 linked, SAVEGAME copied, VIDEOS real)
+### GATE 1: 14-recipe headless sweep
+  mainmenu exit=0
+  config-gfx exit=0
+  config-gfx2 exit=0
+  config-control exit=0
+  config-sound exit=0
+  sim-flight exit=0
+  sim-game exit=0
+  sim-mission exit=0
+  sim-views exit=0
+  quickshots exit=0
+  sideselect exit=0
+  phaseselect exit=0
+  entername exit=0
+  bobfrag exit=0
+  GATE 1: PASS (14/14 clean exits, no crash banners)
+### GATE 1c: modal message box (Save=0 Yes=1 Cancel=2)
+  geometry: [modal] template 272x104 DLU -> 408x169 px at (308,299)
+  Save -> 0
+  Yes -> 1
+  Cancel -> 2
+  modal: PASS
+### GATE 2: safe default (BOB_NO_RUN)
+  default exit=0
+### GATE 3: phase select dummy vs real GL
+  dummy exit=0
+  realGL exit=0
+  dummy==GL BYTE-IDENTICAL
+### GATE 4: flight frame-150 (real GL)
+  flight exit=0
+<stdin>:5: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  flight frame-150: 98.3% non-black
+### GATE 4b: terrain tiles textured (blackTex must be 0)
+  blackTex=0 Ã¢ÂÂ PASS
+### GATE 5: German (Luftwaffe) Convoys campaign end to end
+  German (Luftwaffe) Convoys campaign — end to end
+    Luftwaffe side selected                    yes
+    Convoys phase (index 0)                    yes
+    Directives opened for the LW               yes
+    directives accepted                        yes
+    a raid package was selected                yes
+    a LIVE squadron was chosen                 yes
+    briefing raised                            yes
+    briefing (IDD_BOBFRAG) draw profile:
+      not-visible=6 dead-sweep-row=0 not-in-template=4 no-DLU-rect=0
+      [skipid] dlgId=1164 ctrl=1479 not-in-template
+      [skipid] dlgId=1164 ctrl=1923 not-in-template
+      [skipid] dlgId=1164 ctrl=2061 not-in-template
+      [skipid] dlgId=1164 ctrl=2123 not-in-template
+      [skipid] dlgId=1164 ctrl=2145 not-visible
+      [skipid] dlgId=1164 ctrl=2210 not-visible
+      [skipid] dlgId=1164 ctrl=2211 not-visible
+      [skipid] dlgId=1164 ctrl=2212 not-visible
+      [skipid] dlgId=1164 ctrl=2213 not-visible
+      [skipid] dlgId=1164 ctrl=2214 not-visible
+    Fly reached 3D                             yes
+    no fatal error                             yes
+  ----------------------------------------
+  PASS: the German Convoys campaign reaches 3D (log /home/admin/bob-gates/bob_convoy_gate/convoy.log)
+  campaign: PASS
+### GATE 6: combat soak (S201)
+  combat soak — German Convoys campaign, 600s
+    movecode dispatches: 1468001
+    the sim soaked (>= 200000 dispatches): yes
+    no crash over the soak: yes
+    movecodes seen: 0=286704 1=99398 5=244641 39=837258  
+    AirCombat ticks: 0   DefenceManoeuvre samples: 0
+    ⚠ COMBAT NOT REACHED: no aircraft entered AUTO_COMBAT (63) in this run.
+      The ACM decision tree is still untested code. This is a known gap (S201), not a
+      gate failure — see the header. Do not delete this line to make the output tidy.
+      S206: this recipe cannot produce combat — the flight consumes the wall clock the
+      raid needs. GATE 7 shows the raid flying and the RAF tasked on the same binary.
+  ----------------------------------------
+  PASS: the sim soaked 1468001 dispatches with no crash (combat: 0 ticks)
+  soak: PASS
+### GATE 7: strategic soak -- the raid flies and the RAF is tasked (S206)
+  strategic soak -- German Convoys campaign, 300s at BOB_MAP_TIMER=8
+    1. MoveAllSAGs dispatches: 9500 (need >= 3000)
+    2. LW-raid waypoint executions: 37 (need >= 5; S204 measured 0)
+    3. highest LW squadron status: 19 (need >= 15 = PS_INCOMING; PS_FORMING is 14)
+    4. SetRAFIntercept reached: yes -- pack=6 raid=0 afteregress=0
+    5. AM_INTERCEPT package sightings in the census: 52 (need >= 1)
+    6. no crash over the soak: yes
+  ----------------------------------------
+  PASS: the raid flew its route (37 waypoint executions, status 19), the RAF was tasked, 52 interceptor sighting(s)
+  strategic: PASS
+### GATE 8: R1 continuous -- Sim Config -> Gun Camera -> Fly -> recording (S313-S317)
+  bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=atstart]
+    UI wrote the combo                             start=2 +3 -> val=2
+    UI wrote the atstart preference                val=2
+    flight launched in the same process            yes
+    recorder armed by the preference               yes
+  ----------------------------------------
+    recording written                              34261 bytes
+  PASS: UI -> preference -> flight -> recording, in one process
+  r1: PASS
+### GATE R9: 1920x1080 canvas placement (default / centre / scale)
+bob R9 -- 1920x1080 canvas placement, both options
+  default: lit region                (448,156)-(1472,924) as expected
+  topleft: lit region                (0,0)-(1024,768) as expected
+  centre: lit region                 (448,156)-(1472,924) as expected
+  scale: lit region                  (240,0)-(1680,1080) as expected
+----------------------------------------
+PASS: all three placements are pixel-correct
+###   R9 PASS
+### GATE R11: ACMI export orientation
+acmi_current.txt                   INCONCLUSIVE: only 0 east-west segments (need >=50) -- this sortie cannot discriminate; fly an east-west leg
+###   R11 INCONCLUSIVE (no east-west leg in these sorties)
+### binary unchanged (md5=f713ba8e25927500ac1a503bfc6f682b) Ã¢ÂÂ gate valid
+### GATE MP1: multiplayer front door (DirectPlay object + lobby)
+  bob R7.1 -- multiplayer connectivity: Multi-Player -> DirectPlay -> lobby
+    DirectPlay object created                      yes
+    service provider enumerated                    yes
+    reached the lobby screen (27920)               yes
+    --- negative control: BOB_NO_DPLAY=1 ---
+    control stays on the main menu                 yes (no lobby, as before)
+  ----------------------------------------
+  PASS: Multi-Player -> DirectPlay -> lobby, and the control cannot reach it
+  mp_connect: PASS
+### GATE MP2: discovery, join and a packet across two processes
+    building probe...
+  bob R7.1 -- two processes exchange a DirectPlay packet (port 47624)
+    control: no host -> 0 sessions               yes
+    host RECEIVED the client's packet            yes
+    client found the session and sent            yes
+  ----------------------------------------
+  PASS: discovery, join and a packet across two processes
+      [probe] RECEIVED 22 bytes from pid 2: "hello from the client"
+  mp_packet: PASS
+### GATE MP3: the Join list is populated from a real host (with a no-host control)
+  bob R7.1 -- the JOIN screen lists a hosted session  (CONTROL=0)
+    host is up
+    the game enumerated sessions at all            yes
+    sessions the JOIN list would show              1
+  ----------------------------------------
+  PASS: the game's Join list is populated from a real host
+  mp_uijoin: PASS
+### GATE R3.7: the logged-child close path does not fault (two runs, ~14 min)
+  R3.7 — the logged-child close path  (CONTROL=0)
+    no crash banner                              yes
+    no fault in CloseLoggedChild                 yes
+    the close path was REACHED                   yes
+    campaign intact with hook off (run B)        yes
+    process exited without a signal              yes
+  ----------------------------------------
+  PASS: the logged-child close path does not fault, and the campaign is intact
+  dialslots: PASS
+### GATE SET: the settings UI writes its preference (combo dispatch, S289 hazard)
+    settings write-backs seen: 20
+    gun-camera combo (id=1075): start=2 + 2 clicks mod 3 -> expect 1, stored 1
+    the UI writes the preference: yes
+    combo dispatches returning stack garbage: 0  (S289 hazard; must stay 0)
+  ----------------------------------------
+  PASS
+  settings_nav: PASS
+### GATE R16: padlock extrapolation must not drift (view_dt clock stamp, two arms)
+  R16-S5 -- view_dt sawtooth, 150s per arm
+    off: padlock tapped=1
+    off: [viewdt] n=1800 <50=121 50-100=185 100-200=361 200-300=363 300+=770  max=556 mean=268.9 resets=1
+    on: padlock tapped=1
+    on: [viewdt] n=1800 <50=1800 50-100=0 100-200=0 200-300=0 300+=0  max=39 mean=19.8 resets=0
+  ----------------------------------------
+  PASS: control drifts to 556 ms (1 snaps); with the clock stamp view_dt peaks at 39 ms, resets 0/1800
+  r16_viewdt: PASS
+### GATE VSYNC: no true vsync must not present faster than the display (three arms)
+  vsync / frame-pacing gate (PO: dogfight flicker), 42s per arm
+    control: fps=226.6 paced=0
+        [vid] swap interval -> 0 (NO SYNC -- tearing likely)   [forced by BOB_VSYNC]
+    paced: fps=60.7 paced=1
+        [vid] swap interval -> 0 (NO SYNC -- tearing likely)   [forced by BOB_VSYNC]
+    default: fps=59.1 paced=0
+        [vid] swap interval -> 1 (vsync)
+  ----------------------------------------
+  PASS  control reproduces it: 226.6 fps with no vsync and pacing off
+  PASS  pacing holds it to 60.7 fps (control 226.6)
+  PASS  inert under real vsync: interval 1, no pacing, 59.1 fps
+  VSYNC/PACING GATE: PASS
+  vsync_pace: PASS
+### GATE R1: UI -> preference -> flight -> recording, in one process (BOTH arms)
+  bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=atstart]
+    UI wrote the combo                             start=2 +3 -> val=2
+    UI wrote the atstart preference                val=2
+    flight launched in the same process            yes
+    recorder armed by the preference               yes
+  ----------------------------------------
+    recording written                              34418 bytes
+  PASS: UI -> preference -> flight -> recording, in one process
+  r1_continuous(positive): PASS
+  bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=atstart]
+     [NEGATIVE CONTROL: gun camera never switched on; the flight must still fly and record NOTHING]
+    flight launched in the same process            yes
+    recorder armed by the preference               no trace
+  ----------------------------------------
+    control premise: gun-camera combo ended at val=0 (not the arming value 2)
+  CONTROL OK: flew with the gun camera off and recorded nothing (0 bytes)
+  r1_continuous(control): PASS
+  bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=ontrigger]
+     [trigger will be pulled: BOB_SDL_KEY_MS=150000,32,400;156000,32,400;162000,32,400]
+    UI wrote the combo                             start=2 +2 -> val=1
+    UI wrote the ontrigger preference              val=1
+    flight launched in the same process            yes
+    recorder armed by the preference               no trace
+  ----------------------------------------
+    recording written                              only 0 bytes (need >= 2000)
+  FAIL — log in /home/admin/bob-gates/bob_r1/run.log
+  r1_continuous(ontrigger): FAIL (exit=1)
+  bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=ontrigger]
+     [NEGATIVE CONTROL: camera ON (ON-TRIGGER) but the TRIGGER IS NEVER PULLED; must record NOTHING]
+    flight launched in the same process            yes
+    recorder armed by the preference               no trace
+  ----------------------------------------
+    control premise: ON-TRIGGER held (val=1) and trigger never pulled (0 key pushes)
+  CONTROL OK: flew with the gun camera off and recorded nothing (0 bytes)
+  r1_continuous(ontrigger control): PASS
+### GATE PARITY: screens vs committed references (headless, no display)
+  BoB screen parity -- captures vs /home/admin/bob/doc/ref/native
+    mainmenu         OK byte-identical
+    config-gfx       OK byte-identical
+    config-gfx2      OK byte-identical
+    config-control   OK byte-identical
+    config-sound     OK byte-identical
+    sim-flight       OK byte-identical
+    sim-game         OK byte-identical
+    sim-mission      OK byte-identical
+    sim-views        OK byte-identical
+    quickshots       OK byte-identical
+    sideselect       OK byte-identical
+    phaseselect      OK byte-identical
+    entername        OK byte-identical
+    bobfrag          OK byte-identical
+  ----------------------------------------
+  PASS: 14 screen(s) byte-identical (14 captured this run)
+  parity: PASS
+### GATE CLIP: R21 -- the text clip actually clips (headless, no display)
+  R21 clip gate -- text clip clips; empty rect is a no-op
+    unclipped:            left=1217 right=2038
+    clipped to x<150:      left=1217 right=0
+    empty rect (0,0,0,0): left=1217 right=2038
+  
+  PASS: the text clip clips, an empty rect does not
+  clip: PASS
+### GATE R18: the move timer keeps an absolute schedule (two arms)
+  R18 -- move-timer schedule, 90s per arm
+    legacy: 750 periods, 40.708 ms/period (nominal 40)
+    fixed: 750 periods, 40.000 ms/period (nominal 40)
+  ----------------------------------------
+  PASS: control drifts to 40.708 ms/period (1.77% slow); the absolute deadline holds 40.000
+  r18_timer: PASS
+### GATE NOTES: cross-port lessons doc in sync with MiG Alley
+  notes-sync: shared lessons doc in sync with MiG Alley ✓
+  notes_sync: PASS
+### PLAYER DATA: untouched by this run
+### RUNS: 1 run(s) CRASHED or exited non-zero Ã¢ÂÂ see the notes above
+### DONE
+SUITE EXIT=1

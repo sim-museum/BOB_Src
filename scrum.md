@@ -11723,3 +11723,40 @@ is this fix, not a regression. Eight tool scripts use the scaffold (`bob_gates.s
 
 **GOLDMATCH-BOB-3: the biggest single gap on the external scene was the harness's clock, fixed at
 its cause with a control. BoB sprint 3 of 4.**
+
+## GOLDMATCH-BOB-3 S4 (Fable 5.1, 2026-09-18) — ✅ **the full suite after the clock fix: every gate PASS but one — and that one, `r1_continuous(ontrigger)`, is RED on the PRE-CYCLE BINARY TOO.** The flight closes before the trigger is ever pulled; the player's SAVEGAME changed after the arm's last green
+
+**Story:** BoB rotation, cycle 3, sprint 4 of 4. SCAFFOLD-TIME-1 flipped what every scaffold flight
+sees (the clock and the sky), so the suite had to run — the flag-flip rule.
+
+### ✅ `bob_gates.sh` → `doc/reference/260917_turkey/suite_after_clock_fix.log`
+GATE 1 14/14 · 1c · 2 · 3 · 4 · 4b · 5 · 6 · 7 · 8 · R9 · R11 · MP1–MP3 · R3.7 · SET · **R16 PASS** ·
+**VSYNC PASS** · R1 atstart + control PASS · **PARITY PASS** · CLIP · **R18 PASS** · NOTES. The timing
+gates did not move under the new clock; the 2-D parity references are untouched (they are front-end
+screens). **One FAIL: `r1_continuous(ontrigger)` — `recording written: only 0 bytes`.**
+
+### ⭐⭐ Not mine, proven rather than argued
+* Re-run standalone: same failure, three SPACE pushes on time (`[sdlkeyms] … 150003ms / 156001ms /
+  162002ms`), and **`[startfly] flight close (id=1) -> OnOK + OnFlyingClosed` … `back in front-end`
+  BEFORE the first push.** The arm fires into a menu.
+* **Control binary**: `git worktree add /home/admin/bob-ctl 323bca2` (the commit before today's BoB
+  work), full build, same arm: **identical failure, identical order of log lines.** Today's commits —
+  `BOB_QM_SIDE`, the one-site view tap, the clock apply — are cleared. (`[boot] QM:` never prints on
+  this arm: the UI "Fly" path does not pass the scaffold's seeding site at all.)
+* The script is byte-identical to its S444 green (2026-09-13) except `OUT=` moving off the tmpfs.
+
+### ⛔ The lead (STATUS row `R1-ONTRIGGER-RED`)
+The scratch tree symlinks the install and **copies the player's `SAVEGAME`**; that directory changed
+on 2026-09-15/16 (`Auto Save.BSL/.BSR` from the PO's gold-video sessions; `dreplay.dat`,
+`Package.dat` on the 16th). It is the one input that decides what "Fly" launches, and the launched
+flight now ends before 150 s. **A lead, not a proof** — the log has no process-clock stamps on the
+flight-up and flight-close lines, so "how long did the flight last" is unmeasured. Next sprint on
+this: stamp those two lines, and pin the arm to a committed SAVEGAME copy so the gate stops reading
+the player's tree ([[gates-must-not-read-the-player-tree]], again).
+
+### ⚠️ Housekeeping found on the way
+* `bob_use_scratch.sh` still builds its scratch tree under `/tmp/bob_scratch_$$` — 1.1 MB of symlinks
+  plus the SAVEGAME copy, so not a tmpfs hazard in practice; noted, not moved.
+* The `bob-ctl` worktree is removed after this entry; the control build's log stays with it.
+
+**GOLDMATCH-BOB-3 / SCAFFOLD-TIME-1: suite green under the mission clock except one pre-existing red, bounded to "the flight ends early" with the player-tree lead. BoB cycle 3 complete (4/4) — rotating.**
