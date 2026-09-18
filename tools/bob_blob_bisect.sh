@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
-# tools/bob_blob_bisect.sh -- PO-73: name the draw that renders the grey ellipse.
+# tools/bob_blob_bisect.sh -- BISECT MACHINERY. Its original question is CLOSED; see below.
+#
+# ⚠️ RETIRED AS A PO-73 INVESTIGATION (R20 S3, 2026-09-17). This tool was written to answer
+# "PO-73: name the draw that renders the grey ellipse". **PO-73 was CLOSED at S309 (2026-08-27) and
+# is NOT A DEFECT**: the grey ellipse is the game's own THREAT INDICATOR -- COverlay::DoThreat(),
+# texture MskMap16/THREAT01.X8, gated on Save_Data.gamedifficulty[GD_HUDINSTACTIVE] -- and it reads
+# blank because the player has no contacts to plot. Position and size match the source constants to
+# within a pixel. For the PO it is switched off with the HUD-instruments difficulty setting.
+# Running this to "find the blob" therefore chases a closed non-defect. The header is corrected
+# rather than the file deleted because the MACHINERY is sound and reusable: it halves a candidate
+# glTex set per real-GL flight (~log2(30) = 5 runs instead of ~20 linear ones) and its stale-frame
+# guard was verified with a control arm in TMPFS-BOB-1 S3.
+#
+# TO REUSE IT for a different draw-attribution question, change BOX/DARK/FRAME below to describe
+# the region and shade you are hunting, and say in a comment WHICH item you are hunting -- the
+# mistake this header exists to prevent is inheriting an old question with the machinery.
+#
+# --- original header, retained for history -------------------------------------------------
+# PO-73: name the draw that renders the grey ellipse.
 #
 # S306 eliminated the "texture never uploaded" hypothesis: the blob's centre is covered only by
 # draws that ARE textured with successfully uploaded textures. So the culprit is one of them, and

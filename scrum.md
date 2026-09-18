@@ -11456,3 +11456,70 @@ ellipse "but NOT claimed as related" — is vindicated: it is unrelated AND not 
   sound** and was verified with a control arm last rotation.
 
 **BoB sprint 3 of 4 — no progress on R20 itself, and the reason is worth more than the sprint.**
+
+## R20 S4 / GROOMING (Opus 5, 2026-09-17) — ⭐ **the board audit I wrote for MiG Alley produces a FALSE POSITIVE on multi-part rows, found by running it on BoB** — and two headers retired or corrected so they stop misdirecting
+
+**Story:** BoB rotation: sprint 4 of 4. The display is **still** held by MiG Alley's suite (it has
+been running 1h20m; see S3 for why I believed otherwise), so `[notex]` still cannot fly. This sprint
+spent itself on the two grooming findings S3 turned up, and on testing MA's new audit against a
+second board.
+
+### ⭐ 1. `bob_blob_bisect.sh` retired as a PO-73 investigation
+
+Its header opened *"PO-73: name the draw that renders the grey ellipse"* — a question **closed at
+S309 on 2026-08-27 as NOT A DEFECT** (the game's own threat indicator, `COverlay::DoThreat()`,
+`MskMap16/THREAT01.X8`, blank because the player has no contacts; switched off with the
+HUD-instruments difficulty setting).
+
+⚠️ **I repaired that tool's stale-frame bug last rotation without noticing.** The repair was right —
+the machinery halves a candidate set per flight and its guard was proven with a control arm — but
+**the header would have sent the next reader after a closed non-defect.** It now says so, keeps the
+original text under *"retained for history"*, and tells a re-user to **state which item they are
+hunting**, because *"the mistake this header exists to prevent is inheriting an old question with the
+machinery."*
+
+### ⭐⭐ 2. MA's stale-headline audit has a false positive, and BoB found it
+
+MA sprint 4 built a check for *"headline says open, body contains a closure marker"* and repaired two
+rows with it. Run against BoB's board it flagged **R21** — and **flipping it would have been wrong.**
+
+R21 is **two defects in one row**: *"the Messages list overflows its dialog, **and** the map leaves a
+third of the screen BLACK."* The clip half **is** closed (S402 measured it, S413 shipped it default-ON
+Y-only with a live negative control). ⛔ **The black-map half is not** — it is zoom/extent dependent,
+and the squadron overlay is drawn over ground the terrain layer never fills.
+
+⚠️ **So the audit's rule is wrong for multi-part rows: a ✅ *anywhere* in the body is not a closure of
+the row.** ⭐ **And that applies retrospectively to MA** — its two flips (PO-89, PO-90) were
+single-defect rows and are safe, **but the check should not be re-run on either board without this
+caveat.**
+
+**R21's headline now names both halves** — 🟠 PARTIALLY CLOSED, with the ✅ and 🔴 stated separately —
+which is more useful than either flag alone.
+
+### ⛔ 3. Recorded for MiG Alley's next rotation, NOT opened here
+
+The suite's second non-PASS is **genuine** (the first was my own kill, S3):
+
+```
+### real_mouse
+    real click received AND mapped to row 1        yes -- click=(582,251) -> local=(52,41) inside
+    screen advanced (Single Player submenu)        NO -- the first click mapped but changed nothing
+  -> FAIL rc=1 (36s)
+```
+
+⭐ **This is the only MA gate that drives a REAL pointer** — every other one injects below
+`win_to_canvas`, which is why its own note records it going *"red for five sprints after S325 without
+anyone seeing it."* It **exits 2 when the pointer is busy or there is no display**, so `rc=1` means it
+truly ran and truly failed. ⚖️ **MA's rotation is complete, so this is handed on with its evidence
+rather than opened now.**
+
+### ⚠️ Not claimed
+
+* **That `real_mouse`'s failure is new, or caused by this cycle's changes.** **Not investigated.**
+  Nothing this cycle touched click routing, but *"I see no mechanism"* is not a measurement.
+* **That `[notex]` works.** ⛔ **Four sprints in this rotation and it has still never printed a
+  line.** The instrument is built and unexercised, exactly as sprint 2 left it.
+* That R21's remaining half is understood. **Only its status is corrected; nothing was measured.**
+
+**BoB rotation complete — 4 sprints (GATE 4b disqualified for R20, the `[notex]` census built, a
+false-DONE that cost a gate, and board grooming). ⏭ Rotating to julia.**
