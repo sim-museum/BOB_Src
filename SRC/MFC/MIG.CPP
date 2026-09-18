@@ -690,6 +690,11 @@ BOOL CMIGApp::InitInstance()
 			CSQuick1::currquickmiss=qi;
 			CSQuick1::quickdef=CSQuick1::quickmissions[qi];
 			QuickDef& q = CSQuick1::quickdef;
+			/* GOLDMATCH-BOB S1 (2026-09-17): the gold turkey-shoot video was flown from the
+			   LUFTWAFFE side of a mission whose table default is plside=0 -- the setup screen lets
+			   the player choose. BOB_QM_SIDE=0|1 overrides the table's side so the scaffold can
+			   fly what the PO flew. */
+			if (getenv("BOB_QM_SIDE")) q.plside = atoi(getenv("BOB_QM_SIDE")) ? 1 : 0;
 			MMC.playersquadron=q.line[q.plside][q.plwave][q.plgrp].actype;
 			MMC.playeracnum=q.plac;
 			fprintf(stderr,"[boot] QM: idx=%d title=%d plside=%d plwave=%d plgrp=%d plac=%d playersquadron=%d\n",

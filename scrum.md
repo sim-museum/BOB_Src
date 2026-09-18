@@ -11568,3 +11568,64 @@ re-open the packets with the PO.**
 **Priority across the three:** the two external-view classes (German banking views; turkey-shoot
 coastline) — they are where R20 and the flicker report live and neither has a whole-frame oracle →
 Bf 109 cockpit → Quick Mission setup and Mission Report screens → dialog placement.
+
+## GOLDMATCH-BOB-3 S1 (Fable 5.1, 2026-09-17) — ⭐⭐ **the gold's external Bf 109 scene reached in one run: German-side Turkey Shoot, F6, own 109 from behind at 10,000 ft over the Channel.** ⭐ `[notex]` speaks at last on a scene that HAS untextured quads: 6, all at boot, 0 in flight. ⛔ And the "black sea" is the ORIGINAL's sea — measured (41,49,53) in the gold, ours (20,26,27)
+
+**Story:** BoB rotation, cycle 3, sprint 1 of 4. GOLDMATCH-BOB-3's priority row is the external
+Bf 109 over the coastline (`260915_bob_turkey_shoot_german.mp4`, ~60–84 s) — the regime R20 and the
+flicker report live in, with no whole-frame oracle. Same method as MA this cycle: build the recipe
+by measurement, capture, compare attitude-independent metrics, pin differences to sites.
+
+### ⭐ Recipe
+* `BOB_QM_LIST=1` (GOLDVID-BOB-2 S2's lister) → **`Turkey Shoot` is quick mission 11 with table
+  side `plside=0` (RAF)**; the gold was flown from the Luftwaffe side, which the setup screen lets
+  the player choose. **New knob `BOB_QM_SIDE=0|1`** (`SRC/MFC/MIG.CPP`, after the `quickdef` copy)
+  overrides the table's side: `[boot] QM: idx=11 … plside=1 … playersquadron=6`, and the flight is
+  a Bf 109 with Balkenkreuz. `doc/reference/260917_turkey/qmlist.txt` holds the full table.
+* `BOB_AUTOFLY=view40` taps F6 once at pump 150 (`[view] tap DIK 0x40 (cnt=150 kbAcq=1)`) —
+  **OUTSIDETOG = F6 = `0x40`** from the install's `KEYBOARD/keys.xml`, same key as MA.
+* The gold's game window: **687×458 at (20,32)** of the 1920×1080 desktop recording (found by
+  column/row density on the sky region — the left 30 px of that rect is the dock; crop tighter
+  for numbers). Seven external frames cropped: `gold_ts_ext_t{060..084}s_game.png`, montage in
+  `doc/reference/260917_turkey/`.
+
+### ⛔ A retraction that never reached a commit
+My first grep for the view tap (`strstr(mode, ?"view")`) found only the copy inside the `shoot`
+branch, so I "fixed" GATE 4b's `BOB_AUTOFLY=view40` as a tap that never fired and hoisted it — and
+the run then tapped F6 **twice** (pump 100 and 150; `strncmp(mode,"view",4)` at
+`bob_video.cpp:848` is the real standalone branch) and photographed the cockpit. Reverted before
+commit. **The standalone view mode works; the double-tap frame is kept as a Bf 109 cockpit
+reference** (`ours_ts_cockpit_doubletap_f600.png`). ⚠️ What IS true: `view` and `bank` are
+exclusive `else if` branches, so **a banked external view — every gold external frame — is not
+reachable with today's autofly.** That is sprint 2's harness item, done properly (one site).
+
+### ⭐⭐ Findings, attitude-independent
+| | gold t=68 s | ours f1500 (9,970 ft, straight) | |
+|---|---|---|---|
+| sea | **(41,49,53)** std 5.6 | (20,26,27) std 3.5 | **ours ~2× darker; the gold's sea is dark too** |
+| sky | (183,200,231) | (144,184,232) | ours bluer/darker — different sky state, not a claim |
+| horizon | one-row drop 204→55 | one-row drop 186→25 | **hard horizon in BOTH — no haze defect** |
+| textures | — | `[texblack] blackTex=0 darkTex=92 normalTex=1.8M noTex=6` | bound |
+
+**The "black sea" that looked like a missing texture is the original's dark Channel**; what is
+left is a ~2× luminance gap on the sea alone (sky is a different day). Not the R20 class.
+
+### ⭐ `[notex]` has finally spoken
+`BOB_TRACE_NOTEX=1` on this scene: **`DRAWS textured=712773 untextured=6`** — the six untextured
+draws are the first six draws of the process (boot quads), and **not one untextured draw occurs in
+75 s of flight.** So on *this* scene the census is proven able to count, and R20's floating square —
+if it is an untextured draw — is not in a quick mission. That is the first positive control the
+instrument has had; it does not close R20, which is a campaign flight (S4xx's own caveat).
+
+### ⚠️ Not claimed
+* The yellow cowl: the gold's 109 has a glossy yellow spinner/cowl; ours is seen from dead astern
+  where the cowl is hidden — a hint of yellow at the cowl sides is visible. **Not a difference
+  until a banked frame shows the nose.**
+* The sea gap as a defect: needs a same-altitude, same-time-of-day pair; the mission clock and
+  weather are not matched.
+* Anything about the gold's crash: the recording ends on Wine's *"bob.exe has encountered a
+  serious problem"* at mission end — **the original crashes on this mission's exit** under Wine.
+  Noted for GOLDVID context; not ours to fix.
+
+**GOLDMATCH-BOB-3: scene reached, one knob added, sea/horizon measured, `[notex]` proven able to
+count. BoB sprint 1 of 4.**
