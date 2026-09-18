@@ -11926,3 +11926,44 @@ read the window back inside `bob_gdi_present` on the first present after `flight
 (`BOB_DUMP_COMPOSITE=1`), and look at (650,35)–(830,140).
 
 **R20: the state is reproducible by the PO's own key; the square's home is narrowed to the composite's 3-D layer. BoB sprint 1 of 4 (cycle 6).**
+
+## R20 S6 (Fable 5.1, 2026-09-18) — ⭐⭐ **the PO's composite REPRODUCED: config dialog over the retained flight frame, captured in-process (`BOB_SHOT2D_AFTER3D=1`).** ⭐ The retained frame is where the square lives, and the PO's retained frame is a **padlock/external view with a target diamond beside the square** — ours was the cockpit with no target, and has no square. ⚠️ Two runs were lost to a recipe typo the instrument now reports
+
+**Story:** BoB rotation, cycle 6, sprint 2. S5 narrowed the square to the composite; this sprint
+captured the composite.
+
+### ⭐⭐ The capture (`doc/reference/260918_r20/`, recipe `tools/bob_r20_f12_composite.sh`)
+* `f12_composite_half.png`: **F12 at 60 s of a campaign flight → the GFX page over the retained
+  cockpit frame** — canopy struts, the compass repeater, overcast sky, the HUD text line at the
+  bottom: the PO's frame, structurally. Read back from the GL back buffer before the swap
+  (`bob_shot2d_maybe`, which reads the whole window, not the GDI layer) — `nonblack 2,053,980 /
+  2,073,600`, i.e. the window outside the dialog is FULL, which is the retained 3-D. S5's claim
+  ("the dialog is composited over the retained 3-D") is now a picture, not an inference.
+* `bob_gdi_present` never clears: the centred UI quad is drawn over whatever the back buffer
+  holds, so after the close the flight's last frame stays around the dialog. That is the
+  mechanism, and it matches the PO's frame exactly.
+
+### ⭐ What the two retained frames say about the square
+* `po_frame_topband.png` (the PO's frame, y 0–200): **a uniform sky (179,198,205) with NO canopy
+  frame**, the dark rectangle at (650,32)–(835,150+) running under the dialog's top edge, and a
+  **small padlock/target diamond at ≈(890,130) right beside it.** The PO's retained frame is an
+  external/padlock view on a target.
+* `f12_composite_topband.png` (ours): cockpit view, canopy struts, cloud blobs, **no target, no
+  square** (the same box measures mean (212,212,213), 36 colours = sky + cloud).
+* So the square is not a UI artefact and not a composite artefact: it is an object in the flight
+  frame, drawn next to the padlocked target, in one flat colour (40,52,52). "Floats around in the
+  air" = it moves with the target. S3's census counted 4 untextured in-flight draws; the PO's
+  reading of the square as "the ground colour" also fits an aircraft/shadow/label quad drawn
+  without its texture. **S7: fly the same recipe with the padlock view engaged on a target (the
+  `view40` tap) and correlate `[notex]` draws with a frame dump.**
+
+### ⚠️ Instrument lessons booked this sprint (2 runs, ~20 min)
+* `BOB_SDL_KEY_MS="60000,<F12>,200"` — the scrum shorthand — parses as ONE field and pushes
+  nothing; the flight looked "hung after launch" for two runs (main thread 45 % in nanosleep, draw
+  thread in the DRM sync wait: a live flight, not a hang). The keysym must be numeric
+  (F12 = 1073741893). `[sdlkeyms] UNPARSED entry …` now prints once per bad entry.
+* `BOB_SHOT2D_EVERY=1` alone dumps ~96 pre-flight presents (each a readback + 6 MB) and outran the
+  budget; `BOB_SHOT2D_AFTER3D=1` gates it on `g_bob_flight_active` (sticky) — the first cut used
+  `bob_in_the_3d()`, which already answers 0 at the first post-close present, so it never opened.
+
+**R20: the PO's composite is reproduced and the square is placed in the flight frame beside a padlocked target. BoB sprint 2 of 4 (cycle 6).**

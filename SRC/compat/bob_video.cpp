@@ -163,11 +163,19 @@ static void bob_shot3d_maybe(void)
    while the front-end presents about twice a MINUTE and never reaches a large interval at all.
    Count front-end presents separately: BOB_SHOT2D_EVERY=1 costs ~2 dumps/min in the front-end and
    nothing during a flight, which is exactly where the symptom lives. */
+extern "C" int bob_in_the_3d(void);   /* R20 S6: declared early for the AFTER3D gate */
 static void bob_shot2d_maybe(void)
 {
     static long every = -2, n = 0;
     if (every == -2) { const char* v = getenv("BOB_SHOT2D_EVERY"); every = v ? atol(v) : 0; }
     if (every <= 0 || !g_win) return;
+    /* R20 S6: BOB_SHOT2D_AFTER3D=1 starts counting only once a flight has been up, so the
+       post-flight front-end presents (the composite the PO photographed) are the only dumps. Without
+       it the ~96 pre-flight presents each cost a readback and a 6 MB write, which outran the budget. */
+    /* The first cut asked bob_in_the_3d() here; the front-end presents only AFTER the close, when
+       that already answers 0, so the gate never opened. g_bob_flight_active is sticky (set by the
+       pump during the flight, R3.7 S4), which is what "a flight has been up" means. */
+    if (getenv("BOB_SHOT2D_AFTER3D")) { extern int g_bob_flight_active; if (!g_bob_flight_active) return; }
     long f = ++n;
     if ((f % every) != 0) return;
     int w = 0, h = 0;
@@ -999,6 +1007,11 @@ static void pump_events(void)
 			for (const char* p = ks; p && *p && idx < 32; idx++) {
 				long T; int code; long hold = 300;
 				int n = sscanf(p, "%ld,%d,%ld", &T, &code, &hold);
+				/* R20 S6: an entry that does not parse must SAY so, once. A recipe written as
+				   "60000,<F12>,200" (the scrum shorthand for the numeric keysym 1073741893) parsed as
+				   n=1, pushed nothing, and read for two runs as "the flight hangs after launch". */
+				if (n < 2 && !kfired[idx]) { kfired[idx] = 3;
+					fprintf(stderr, "[sdlkeyms] UNPARSED entry %d '%.24s' -- want ms,SDLK[,hold] with SDLK NUMERIC (F12 = 1073741893)\n", idx, p); fflush(stderr); }
 				if (n >= 2 && !kfired[idx] && el >= (Uint32)T) {
 					kfired[idx] = 1; kcode[idx] = code;
 					krelease[idx] = el + (Uint32)(n >= 3 ? hold : 300);
