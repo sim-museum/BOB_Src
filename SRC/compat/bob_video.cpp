@@ -984,8 +984,15 @@ static void pump_events(void)
 		static char kfired[32];
 		static Uint32 krelease[32];
 		static int   kcode[32];
+		/* R1-ONTRIGGER-RED S2 (2026-09-18): BOB_SDL_KEY_MS_LAUNCHREL=1 keys the schedule off the moment
+		   the FLIGHT is up (bob_in_the_3d()), not process start. Measured: the R1 flight lives 32.9 s
+		   and the arm pushed its trigger at 150 s of process time -- into a menu. Same class, same
+		   fix as FreeFalcon's FF_SIM_SCREENSHOT_SIMREL: two schedules, one origin. */
+		static int klaunchrel = -1; if (klaunchrel < 0) klaunchrel = getenv("BOB_SDL_KEY_MS_LAUNCHREL") ? 1 : 0;
+		if (ks && !kt0 && klaunchrel && !bob_in_the_3d()) ks = NULL;   /* not launched yet: no clock, no pushes */
 		if (ks) {
-			if (!kt0) { kt0 = SDL_GetTicks(); memset(kfired, 0, sizeof(kfired)); memset(krelease, 0, sizeof(krelease)); }
+			if (!kt0) { kt0 = SDL_GetTicks(); memset(kfired, 0, sizeof(kfired)); memset(krelease, 0, sizeof(krelease));
+				if (klaunchrel) { fprintf(stderr, "[sdlkeyms] clock starts at LAUNCH (BOB_SDL_KEY_MS_LAUNCHREL)\n"); fflush(stderr); } }
 			Uint32 el = SDL_GetTicks() - kt0;
 			int idx = 0;
 			for (const char* p = ks; p && *p && idx < 32; idx++) {

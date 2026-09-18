@@ -107,7 +107,9 @@ case "$MODE" in
   atstart)   WANTVAL=2; MODECLICKS='#1075,#1075,#1075'; FIREKEYS="" ;;
   ontrigger) WANTVAL=1; MODECLICKS='#1075,#1075'
              # space, three bursts once the flight is up; hold 400 ms so the round actually leaves
-             FIREKEYS="${FIREKEYS:-150000,32,400;156000,32,400;162000,32,400}" ;;
+             # R1-ONTRIGGER-RED S2 (2026-09-18): LAUNCH-RELATIVE. The flight lives ~33 s (measured with the
+             # [startfly] stamps) and the old 150 s process-time pushes landed in a menu. 8/14/20 s after launch.
+             FIREKEYS="${FIREKEYS:-8000,32,400;14000,32,400;20000,32,400}" ;;
   *) echo "MODE must be atstart or ontrigger (got '$MODE')" >&2; exit 2 ;;
 esac
 CLICKS="${CLICKS:-0,1,1,3,$MODECLICKS,6,2}"
@@ -142,7 +144,7 @@ log="$OUT/run.log"
     BOB_RUN_INIT=1 BOB_DRIVE_C="${BOB_DRIVE_C:-/home/admin/sgl/TUE/BattleOfBritain/WP/drive_c}" \
     BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_STARTFLYING=click BOB_AUTOCLICK="$CLICKS" \
     BOB_TRACE_SETFIELD=1 BOB_TRACE_RECLOG=1 BOB_TRACE_COMBO=1 \
-    ${FIREKEYS:+BOB_SDL_KEY_MS="$FIREKEYS"} \
+    ${FIREKEYS:+BOB_SDL_KEY_MS="$FIREKEYS"} ${FIREKEYS:+BOB_SDL_KEY_MS_LAUNCHREL=1} \
     "$BOB" ) >"$log" 2>&1
 bob_kill_new
 

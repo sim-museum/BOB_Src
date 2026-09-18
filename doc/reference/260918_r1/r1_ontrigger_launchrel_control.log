@@ -1,0 +1,9 @@
+  [scratch] writing gate -> /tmp/bob_scratch_271767 (player's tree untouched; set BOB_DRIVE_C to override)
+bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=ontrigger]
+   [NEGATIVE CONTROL: camera ON (ON-TRIGGER) but the TRIGGER IS NEVER PULLED; must record NOTHING]
+  flight launched in the same process            yes
+  recorder armed by the preference               no trace
+----------------------------------------
+  control premise: ON-TRIGGER held (val=1) and trigger never pulled (0 key pushes)
+CONTROL OK: flew with the gun camera off and recorded nothing (0 bytes)
+R1 CONTROL=1 EXIT=0

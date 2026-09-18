@@ -11865,3 +11865,30 @@ received a `long` — and every flight close since segfaulted inside `__fprintf_
 above. Recorded because the symptom looked exactly like a new product defect for one run.
 
 **BoB sprint 1 of 4 (cycle 5): one red closed at its cause, the other measured to the second.**
+
+## R1-ONTRIGGER-RED S2 (Fable 5.1, 2026-09-18) — ✅ **GREEN, both arms, at the cause: the trigger is now pushed on the FLIGHT's clock (`BOB_SDL_KEY_MS_LAUNCHREL=1`, 8/14/20 s after launch) — the recorder arms on the first pull and writes 31,336 bytes; the no-fire control still writes 0.** The two-clock class, closed the way FF closed it
+
+**Story:** BoB rotation, cycle 5, sprint 2. S1 measured the flight at 32.9 s and the trigger at 150 s of
+process time. The fix is not "push earlier" — a process-time number is a guess about when the flight
+comes up — it is a second origin.
+
+### ⭐ `bob_video.cpp`: `BOB_SDL_KEY_MS_LAUNCHREL=1`
+The `BOB_SDL_KEY_MS` schedule's clock starts when `bob_in_the_3d()` first reports the flight up;
+until then no clock, no pushes. `[sdlkeyms] clock starts at LAUNCH (BOB_SDL_KEY_MS_LAUNCHREL)`. FF's
+`FF_SIM_SCREENSHOT_SIMREL` twin.
+
+### ✅ `tools/bob_r1_continuous.sh`, ontrigger: `FIREKEYS=8000,32,400;14000,32,400;20000,32,400` under the flag
+* **positive**: `pushed SDL_KEYDOWN sym=32 at 8000ms (due 8000ms)` → **`[guncam] StartRecordFlag
+  branch TAKEN -> calling OpenRecordLog`** → `[reclog] OpenRecordLog: file='…\videos\replay.dat'
+  handle=ok` → pushes at 14 s and 20 s → **`recording written 31336 bytes` → PASS.**
+* **control** (ON-TRIGGER held, trigger never pulled): `flight close (id=1) OnOK [t=33009ms]` — the
+  same 33 s flight — `CONTROL OK: … recorded nothing (0 bytes)`.
+The arm now proves what it claims: ON-TRIGGER records because the trigger was pulled, in a flight
+that was up when it was pulled. `R1-ONTRIGGER-RED` → ✅.
+
+### ⚠️ Left open on purpose
+The arm still flies whatever mission the profile remembers (the scratch copies the player's
+SAVEGAME; 33 s this week). With the launch-relative clock that no longer decides the verdict, so
+pinning the mission is hygiene, not a fix — noted on the row, not done.
+
+**BoB cycle 5: 2 sprints, two reds closed at their causes — rotating to julia.**

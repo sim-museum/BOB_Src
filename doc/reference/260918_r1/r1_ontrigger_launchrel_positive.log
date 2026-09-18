@@ -1,0 +1,11 @@
+  [scratch] writing gate -> /tmp/bob_scratch_271363 (player's tree untouched; set BOB_DRIVE_C to override)
+bob R1 continuous — one process: Sim Config -> Gun Camera -> Fly -> recording  [MODE=ontrigger]
+   [trigger will be pulled: BOB_SDL_KEY_MS=8000,32,400;14000,32,400;20000,32,400]
+  UI wrote the combo                             start=2 +2 -> val=1
+  UI wrote the ontrigger preference              val=1
+  flight launched in the same process            yes
+  recorder armed by the preference               yes
+----------------------------------------
+  recording written                              31336 bytes
+PASS: UI -> preference -> flight -> recording, in one process
+R1 positive EXIT=0
