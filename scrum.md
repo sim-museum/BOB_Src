@@ -11629,3 +11629,44 @@ instrument has had; it does not close R20, which is a campaign flight (S4xx's ow
 
 **GOLDMATCH-BOB-3: scene reached, one knob added, sea/horizon measured, `[notex]` proven able to
 count. BoB sprint 1 of 4.**
+
+## GOLDMATCH-BOB-3 S2 (Fable 5.1, 2026-09-17) — ⭐⭐ **ONE view-tap site, so `bank:60view40` exists: first BANKED external Bf 109 over the fields, the gold's class.** ⛔ Ours is ~2× DARKER everywhere the scene is lit — fields lum 31 vs 69, sea 24 vs 48, sky 187 vs 205 — while the white HUD text matches: lighting/time-of-day, not gamma
+
+**Story:** BoB rotation, cycle 3, sprint 2 of 4. S1 showed `view` and `bank` were exclusive
+`else if` branches, so every banked external gold frame was unreachable. Fixed at one site, then
+captured.
+
+### ⭐ Harness (`SRC/compat/bob_video.cpp`)
+The `view<hex>` tap had two homes — inside the `shoot` branch (pump 100) and a standalone
+`strncmp` branch (pump 150). Now **one site above the branch chain**: any mode string containing
+`view<hex>` taps once at pump 150; the standalone branch is kept as a no-op so `view40` alone does
+not fall through to the throttle default. `shootview40`'s tap moves 100 → 150 (still before the
+first burst at `cnt%60==0` after flight-active). Run: `[view] tap DIK 0x40 (cnt=150)` after
+`bank: holding ELEVATOR_BACK … from tick 30` and `AILERON_LEFT from tick 60`.
+
+### ⭐⭐ Capture — `BOB_QM_INDEX=11 BOB_QM_SIDE=1 BOB_AUTOFLY=bank:60view40 BOB_AUTOFLY_ELEV=1`, dump 900
+`doc/reference/260917_turkey/ours_ts_bank_f900.png`: the 109 banked ~80°, 8,637 ft, over hedged
+fields with lanes — the gold's t=72–76 s class. The yellow cowl IS there (visible from this angle;
+S1 was right not to claim it), and the flap stencils (`ours_bank_wingroot_3x.png`) are a real
+texture, not a glyph leak — the gold's 109 is too small in frame to check either.
+
+### ⛔ The number that matters
+| region | gold | ours | ratio |
+|---|---|---|---|
+| fields (t=72 s vs f900) | (74,74,59) lum 69, sat 29 % | (39,46,9) lum 31, **sat 82 %** | 0.45 |
+| sea (S1) | (41,49,53) lum 48 | (20,26,27) lum 24 | 0.5 |
+| sky (S1) | (183,200,231) | (144,184,232) | 0.9 (blue equal) |
+| HUD text | white | white | 1.0 |
+
+**Everything the sun lights is darker by about half, and more saturated; unlit UI is identical.**
+That rules out recording gamma and points at scene lighting — the sun's elevation (mission `time`)
+or the sky/ambient term. `QuickDef` carries `weather` and `time` (`SRC/H/SQUICK1.H:84`) and the
+setup screen lets the player set both; our scaffold flies the table defaults and **never prints
+them**. Sprint 3: print them, add `BOB_QM_TIME`/`BOB_QM_WEATHER`, and sweep time — if the ground
+luminance tracks time, the gap is a settings mismatch, not a renderer defect.
+
+### ⚠️ Not claimed
+* That the darkness is a defect — a settings mismatch is the leading explanation and untested.
+* Anything about the skin — the gold's aircraft is ~60 px long in its frames.
+
+**GOLDMATCH-BOB-3: banked class reached; one 2× lighting gap, with a test designed. BoB sprint 2 of 4.**

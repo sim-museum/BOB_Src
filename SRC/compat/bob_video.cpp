@@ -682,6 +682,20 @@ static void pump_events(void)
 		if (!getenv("BOB_NO_INTHE3D") && bob_in_the_3d()) g_bob_flight_active = 1;
 		const char* mode=getenv("BOB_AUTOFLY");
 		static int cnt=0; cnt++;
+		/* GOLDMATCH-BOB-3 S2 (2026-09-17): ONE view-tap site. Until now "view<hex>" lived in two
+		   places -- inside the shoot branch (pump 100) and as a standalone strncmp branch (pump 150)
+		   -- and "bank" was a third, exclusive, else-if. So a BANKED external view, which is every
+		   external frame in the turkey-shoot gold, could not be captured at all. Any mode string
+		   containing view<hex> (view40, bank:60view40, shootview40) now taps DIK <hex> ONCE at pump
+		   150 (F6 toggles, so once), before the shoot burst and after bank's tick-30 elevator. */
+		{
+			const char* vs = mode ? strstr(mode, "view") : 0;
+			if (vs && cnt == 150) {
+				int dik = (int)strtol(vs + 4, 0, 16); if (dik <= 0) dik = 0x40;
+				fprintf(stderr, "[view] tap DIK 0x%02x (cnt=%d kbAcq=%d)\n", dik, cnt, g_diKbAcquired);
+				fflush(stderr); kb_push(dik,1); kb_push(dik,0);
+			}
+		}
 		if (mode && strstr(mode,"shoot")) {   /* SPACE = SHOOT (KEYMAPS.H: KeyAll(SHOOT, space)) */
 			/* R3.7 S3 (2026-09-14): the whole shoot branch is gated on g_bob_flight_active, and the
 			   [fire] trace shows TRANSITE's firing code running while KeyPeek3d(SHOOT) never reads
@@ -702,22 +716,7 @@ static void pump_events(void)
 			   never did: gun ammo read 2800 at frame 900 AND at frame 2500, i.e. not one round was
 			   fired, while the other autofly modes (throttle, trim) work. HOLD the key instead:
 			   down for a burst, then up. A one-tick tap is not an input, it is a race. */
-			/* R3.7 S6 (2026-09-14): "shoot" and "view<hex>" were mutually exclusive -- the shoot
-			   test is checked first with strstr, so BOB_AUTOFLY=view40shoot fired without ever
-			   switching view. S5's tracer capture was therefore stuck in the cockpit, where the
-			   Spitfire's WING guns are out of frame and muzzle flash cannot appear at all. Accept
-			   a "view<hex>" anywhere in the mode string here too and tap it once, before the
-			   burst, so the same run can shoot AND watch from outside.
-			   e.g. BOB_AUTOFLY=shootview40  (F6 = external). */
-			{
-				const char* vs = strstr(mode, "view");
-				if (vs && cnt == 100) {
-					int dik = (int)strtol(vs + 4, 0, 16); if (dik <= 0) dik = 0x40;
-					fprintf(stderr, "[view] tap DIK 0x%02x (cnt=%d kbAcq=%d) for the firing capture\n",
-					        dik, cnt, g_diKbAcquired); fflush(stderr);
-					kb_push(dik,1); kb_push(dik,0);
-				}
-			}
+			/* the "view<hex>" tap is one site above the branch chain -- GOLDMATCH-BOB-3 S2 */
 			if (g_bob_flight_active) {
 				int ph = cnt % 60;
 				if (ph == 0)       { kb_push(0x39,1); bob_fake_shoot(1); g_bob_shoot_held = 1; }
@@ -840,14 +839,7 @@ static void pump_events(void)
 			else if (tc>40 && tc<400 && (tc%3)==0) { kb_push(0xC7,1); kb_push(0xC7,0); } /* Home: nose-UP trim -> climb */
 			else if (tc==430) { kb_push(0x40,1); kb_push(0x40,0); fprintf(stderr,"[view] F6 (external) at tc=%d\n",tc); }
 			else if (tc==470) { kb_push(0x40,1); kb_push(0x40,0); } }
-		else if (mode && strncmp(mode,"view",4)==0) {  /* BOB_AUTOFLY=view<hex> : once flight is active,
-			   tap DIK <hex> (default F6=0x40) a few times to switch to the external view -- for repro'ing
-			   the F6 external-view scene z-fighting (backlog #1). e.g. BOB_AUTOFLY=view40. */
-			int dik = (int)strtol(mode+4, 0, 16); if (dik<=0) dik=0x40;
-			/* boot-frontend path doesn't set g_bob_flight_active; gate on pump count. Single tap
-			   (F6 toggles cockpit<->external, so tap ONCE) at cnt=150. */
-			if (cnt==150) { fprintf(stderr,"[view] tap DIK 0x%02x (cnt=%d kbAcq=%d)\n",
-				dik, cnt, g_diKbAcquired); fflush(stderr); kb_push(dik,1); kb_push(dik,0); } }
+		else if (mode && strncmp(mode,"view",4)==0) { /* view-only: the tap is above; nothing else to hold */ }
 		else if (mode && mode[0]=='s') { static int sweep=1;
 			if ((cnt%4)==0) { kb_push(sweep,1); kb_push(sweep,0); if(++sweep>0xD8) sweep=1; } }
 		else {
