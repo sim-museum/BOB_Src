@@ -257,6 +257,7 @@ static struct	FontInitList
 } Font_Init_List[]=
 {
 #include "FontList.h"
+#include "QuickPar.h"
 	{0}
 };
 int __stdcall EnumFontFamExProc(
@@ -695,6 +696,26 @@ BOOL CMIGApp::InitInstance()
 			   the player choose. BOB_QM_SIDE=0|1 overrides the table's side so the scaffold can
 			   fly what the PO flew. */
 			if (getenv("BOB_QM_SIDE")) q.plside = atoi(getenv("BOB_QM_SIDE")) ? 1 : 0;
+			/* GOLDMATCH-BOB-3 S3: the setup screen also sets TIME and WEATHER, and S2 measured our
+			   lit scene at ~half the gold's luminance with unlit UI identical. Print what the scaffold
+			   flies, and let a run override it so time can be swept against the gold. */
+			if (getenv("BOB_QM_TIME"))    q.time    = (char)atoi(getenv("BOB_QM_TIME"));
+			if (getenv("BOB_QM_WEATHER")) q.weather = (char)atoi(getenv("BOB_QM_WEATHER"));
+			fprintf(stderr,"[boot] QM: time=%d weather=%d (BOB_QM_TIME / BOB_QM_WEATHER override)\n",(int)q.time,(int)q.weather);
+			/* GOLDMATCH-BOB-3 S3 (2026-09-17): the table's time/weather were NEVER APPLIED on this
+			   path. QuickParameters::SetTime/SetWeather run only from CSQuick1::OnInitDialog -- the
+			   setup screen the scaffold bypasses -- so every boot-to-flight capture flew the engine's
+			   default clock and sky (measured: BOB_QM_TIME=1 vs 2 gave byte-identical field
+			   luminance). Do what the dialog does, in its order: dawn/dusk for this date, then the
+			   weather and time indices. BOB_QM_NOAPPLY=1 reverts to the old (unset) behaviour. */
+			if (!getenv("BOB_QM_NOAPPLY")) {
+				SLong before = MMC.currtime;
+				MMC.Sky.SetMissionDawnDusk(51, MMC.currdate, MMC.dawntime, MMC.dusktime);
+				QuickParameters::SetWeather(q.weather);
+				QuickParameters::SetTime(q.time);
+				fprintf(stderr,"[boot] QM: applied time index %d -> MMC.currtime %ld (was %ld), weather index %d\n",
+				        (int)q.time,(long)MMC.currtime,(long)before,(int)q.weather);
+			}
 			MMC.playersquadron=q.line[q.plside][q.plwave][q.plgrp].actype;
 			MMC.playeracnum=q.plac;
 			fprintf(stderr,"[boot] QM: idx=%d title=%d plside=%d plwave=%d plgrp=%d plac=%d playersquadron=%d\n",

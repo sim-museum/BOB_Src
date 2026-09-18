@@ -11670,3 +11670,56 @@ luminance tracks time, the gap is a settings mismatch, not a renderer defect.
 * Anything about the skin — the gold's aircraft is ~60 px long in its frames.
 
 **GOLDMATCH-BOB-3: banked class reached; one 2× lighting gap, with a test designed. BoB sprint 2 of 4.**
+
+## GOLDMATCH-BOB-3 S3 (Fable 5.1, 2026-09-17) — ⭐⭐⭐ **THE SCAFFOLD FLEW EVERY 3-D CAPTURE AT 06:30.** `SetTime`/`SetWeather` run only from the setup dialog the boot-to-flight path bypasses; applied, the banked 109's fields go lum 31 → 55 against the gold's 69. S2's "2× darker" was dawn light
+
+**Story:** BoB rotation, cycle 3, sprint 3 of 4. S2 designed the test: print the mission's
+time/weather, add overrides, sweep. The sweep failed in the most informative way.
+
+### ⛔⛔ The knob that did nothing, and why
+`BOB_QM_TIME=1` and `=2` produced **byte-identical field luminance (32.8 / 32.8)**. `QuickDef::time`
+is consumed at exactly one site — `CSQuick1::OnInitDialog` → `QuickParameters::SetTime` — the quick-
+mission setup screen, which `BOB_BOOT_FRONTEND=1` skips. The scaffold seeds `quickdef` (MIG.CPP
+`[boot] QM:`) and never applies it. **`MMC.currtime` was 23400 = 06:30 on every scaffold flight
+this port has ever photographed.** Turkey Shoot's table time is index 2 = `HR14`; weather 3 = high
+cloud.
+
+### ⭐ Fix (`SRC/MFC/MIG.CPP`, the `[boot] QM:` site)
+Do what the dialog does, in its order: `Sky.SetMissionDawnDusk(51, currdate, …)` (indices 0/3 need
+it), then `SetWeather(q.weather)`, `SetTime(q.time)`; print the result:
+`[boot] QM: applied time index 2 -> MMC.currtime 50400 (was 23400), weather index 3`.
+`BOB_QM_TIME`/`BOB_QM_WEATHER` override the table; **`BOB_QM_NOAPPLY=1` restores the 06:30 clock as
+a control.** The include the site needed (`QuickPar.h`) is already pulled in by `AFXAUTO.H`; my
+explicit one is redundant and harmless.
+
+### ⭐⭐ Measured on the same recipe, same frame (900), same state (8,621 ft, Hdg 319)
+| arm | `MMC.currtime` | fields (right of aircraft) | lum | gold t=72 |
+|---|---|---|---|---|
+| 06:30 (old default, S2) | 23400 | (39,46,9) | 31.0 | |
+| 10:00 (`BOB_QM_TIME=1`) | 36000 | (68,79,16) | 54.6 | |
+| **14:00 (table, now default)** | 50400 | **(70,81,16)** | **55.4** | (74,74,59) **69.3** |
+
+Three-quarters of the gap was the clock. What remains: **ours is still ~20 % darker and far more
+saturated** (blue 16 vs 59 — the gold's fields are grey-green, ours pure green). Candidates, in
+order: the recording's own colour handling (the desktop capture of a windowed game — GOLDVID-BOB's
+standing caveat), haze/ambient, weather index (the gold's setup choice is unknown; ours is now the
+table's "high cloud"). `[texblack]` at 14:00: `darkTex=16970` against 92 at 06:30 — the dark-quad
+counter tracks the lighting, which is the instrument's *definition* moving, not the scene.
+
+### ⚠️ Retracted before it was written down
+The 14:00 frame looked as if the 109 had lost its skin — crosses and cowl gone. A same-scale
+triptych (`doc/reference/260917_turkey/skin_0630_vs_1400_vs_gold.png`) shows **the skin identical at
+06:30 and 14:00** and in the gold's family (grey, dark streaks, yellow cowl, flap stencils). The
+"loss" was brightness and scale. **Not claimed.** `[notex]` at 14:00: still 6 untextured draws, all
+at boot.
+
+### ⛔ Consequence for the board (STATUS row `SCAFFOLD-TIME-1`)
+Every `BOB_BOOT_FRONTEND=1` capture before this commit was a dawn capture: `parity/r32_*`, `r37_*`,
+GOLDVID-BOB-1 S3's mirror roll, ASPECT-1's cockpit shots. **Timing gates (R16/R18) are unaffected;
+any pixel reference from the scaffold is a dawn reference** and will DIFF on re-capture — that DIFF
+is this fix, not a regression. Eight tool scripts use the scaffold (`bob_gates.sh`,
+`bob_blob_bisect.sh`, `bob_r16_viewdt.sh`, `bob_r18_timer.sh`, `bob_replay_record.sh`,
+`bob_r1_continuous.sh`, `bob_vsync_pace.sh`, `bob_validate.sh`).
+
+**GOLDMATCH-BOB-3: the biggest single gap on the external scene was the harness's clock, fixed at
+its cause with a control. BoB sprint 3 of 4.**
