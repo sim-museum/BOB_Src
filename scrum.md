@@ -11892,3 +11892,37 @@ SAVEGAME; 33 s this week). With the launch-relative clock that no longer decides
 pinning the mission is hygiene, not a fix — noted on the row, not done.
 
 **BoB cycle 5: 2 sprints, two reds closed at their causes — rotating to julia.**
+
+## R20 S5 (Fable 5.1, 2026-09-18) — ⭐⭐ **the PO's state IS reachable by F12: the flight closes and the front-end raises screen 27906 — the Sim Config GFX page, tab for tab and row for row the dialog in the PO's frame — composited over the RETAINED 3-D at present.** ⭐ The PO's square lies OUTSIDE the UI content rect, in the composite's 3-D region. Two knobs added; the composite capture is next
+
+**Story:** BoB rotation, cycle 6, sprint 1. S4 concluded the dialog-over-3D state was "not reachable
+by F12" because F12 closed the flight. It does — and then the config screen comes up on top of what
+the GL window still holds. The PO's frame is that composite.
+
+### ⭐⭐ Evidence (`doc/reference/260918_r20/`)
+* `f12_gdi_run.log`: `pushed SDL_KEYDOWN sym=<F12> at 60000ms` (launch-relative) → `flight close (id=2)
+  -> OnCancel` → `dial[0] painted at X=300 Y=110` → `painted screen artnum=27906 + dials + menu +
+  presented`.
+* `f12_config_screen_gdi_27906.png` (`BOB_DUMP_GDI`, now written under `$HOME`): **the GFX page** —
+  `GFX · More GFX · Controls · Sound · 2D · Sim · Continue`, `Display Driver: BoB Linux OpenGL backend`,
+  `3D Resolution 1920x1080x16`, `Campaign Resolution 1920x1080x32`, `Lowest Frame Rate 8`, `Item Shading
+  Reflections / Reflections Off` — the PO's frame, row for row (their settings noted in the row).
+* The GDI framebuffer holds the UI at (0,0)–(1024,768); present centres it at **(448,156)** in the
+  1920×1080 window (`[centre] UI content 1024x768 in window 1920x1080 -> offset (448,156)`). In the
+  PO's frame the dialog spans x 380–1404, y 155–922 — the same placement at their window size.
+* **The square at (650,35)–(830,140) is above y=155: outside the UI content.** It is not a front-end
+  control. It lives in what the window holds under the overlay — the retained last 3-D frame, or
+  whatever the present path leaves there.
+
+### ⭐ Harness
+* `BOB_DUMP_AFTER_KEY=<presents>` — a GL-present dump armed by the first `BOB_SDL_KEY_MS` push (it did
+  not fire here because the front-end presents through the GDI path, which is the point below).
+* `BOB_DUMP_GDI` writes `$HOME/bob-gates/gdi/bobgdi.ppm`, not `/tmp`.
+
+### ⚠️ Not claimed, and the next capture
+The square is not reproduced yet: the GDI dump is the overlay alone. **The composite — the GL window
+after the front-end's first present following the close — is what the PO photographed.** Sprint 2:
+read the window back inside `bob_gdi_present` on the first present after `flight close`
+(`BOB_DUMP_COMPOSITE=1`), and look at (650,35)–(830,140).
+
+**R20: the state is reproducible by the PO's own key; the square's home is narrowed to the composite's 3-D layer. BoB sprint 1 of 4 (cycle 6).**

@@ -1,0 +1,192 @@
+Rowan's Battle of Britain - Linux native port
+  All 16 source modules link.
+  Driving CMIGApp::InitInstance()...
+[ALSOFT] (EE) Failed to create PipeWire event context (errno: 2)
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf
+[gdifont] face loaded /tmp/bob_scratch_275788/windows/Fonts/g101016_.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf
+[vid] swap interval -> 1 (vsync)
+[vid] SDL2 window 1024x768 + GL context: NVIDIA GeForce GTX 1660 SUPER/PCIe/SSE2 | 4.6.0 NVIDIA 595.84
+[fullpane] ENTER page=1 startscreen=0x84730a0 reqres=4 caller=0x82533f4
+[gdi] framebuffer 1024x768 nonblack=786427/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=28937 + dials + menu + presented
+[frontend] LaunchMain: UpdateSize left artnum=28937 res=1024 unchanged -- keeping LaunchScreen's full frame
+[frontend] device init (IntroSmackInit-equivalent): texQ=3 filtering=2 vol.sfx=125
+  InitInstance() returned 1
+  Entering CMIGApp::Run()...
+[frontend] click (210,272) -> menu item 1
+[frontend]   dial[0] painted at X=0 Y=0 rect=(0,0)-(0,0)
+[gdi] framebuffer 1024x768 nonblack=786310/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=27929 + dials + menu + presented
+[frontend] click (669,437) -> side-select item 1 (Luftwaffe)
+[campphase] whichcamp=0 (0=Convoys)
+[frontend]   dial[0] painted at X=150 Y=10 rect=(0,0)-(0,0)
+[frontend]   dial[1] painted at X=250 Y=500 rect=(0,0)-(0,0)
+[gdi] framebuffer 1024x768 nonblack=679879/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=27922 + dials + menu + presented
+[frontend] autoclick step #1000:0.-1 -> (239,36)
+[campphase] whichcamp=0 (0=Convoys)
+[frontend] click (239,36) -> combo cycled (panel 0)
+[gdi] framebuffer 1024x768 nonblack=679879/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] click (152,737) -> menu item 1
+[frontend]   dial[1] painted at X=250 Y=500 rect=(0,0)-(0,0)
+[gdi] framebuffer 1024x768 nonblack=681128/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=27922 + dials + menu + presented
+[frontend] click (152,737) -> menu item 1
+[fullpane] LEAVE page=0 (LaunchMap firsttime=1)
+[map] LaunchMap done -> strategic map active (firsttime=1, paused)
+[sysbox] paint walk entered: mf=0xa302a10 sysbox=0xaa2bec0
+[fileman] missing file 6a99=\Program Files\Rowan Software\Battle Of Britain\artwork\axart\i_basexs.bmp -- returning NULL
+[fileman] missing file 6a9c=\Program Files\Rowan Software\Battle Of Britain\artwork\axart\xi_bases.bmp -- returning NULL
+[sysbox] panel 34x50 DLU -> 51x81 px at (965,8): 3 controls drawn
+[origin-dialog] class=8RDEmptyD dlgId=-1 dialog=0xaffde60 dial-slot=1 screen-art=27922 drawn at (44,20) with ZERO controls drawn -- this is R21(3)'s stray title bar; name it here rather than from a screenshot
+[oobclip] dialog iid=1032 (12LWDirectives) -> 486x311 DLU = 729x505 px at (44,20)
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=778319/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[directives]   child 0xaffd110 rtti=12LWDirectives -- firing OK
+[directives] accept pass 0: child-fire=1
+[directives] accept pass 0: firing title-bar OK on child 6
+[directives]   child 0xb020500 rtti=16DirectiveResults -- firing OK
+[directives] accept pass 1: child-fire=1
+[directives] accept pass 1: firing title-bar OK on child 5
+[directives] accept: nothing logged after 2 pass(es)
+[directives] accept done: open-index=-1
+[shot] ARMED by accept-directives (BOB_SHOT_AFTER=(unset))
+[gdi] framebuffer 1024x768 nonblack=785619/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=785619/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=785619/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=785619/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=785619/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[oobclip] dialog iid=1105 (15TakeOverOffered) -> 284x106 DLU = 426x172 px at (299,40)
+[fileman] marker-x: 'buxtton1.bmp' -> 'button1.bmp' (FIL_x placeholder substituted)
+[gdi] framebuffer 1024x768 nonblack=784661/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784661/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784659/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784659/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784658/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784658/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784658/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784658/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784647/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784647/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784650/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784650/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784654/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784654/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784658/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784658/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784655/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784655/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784656/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784646/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784646/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784649/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784649/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784653/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784653/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[gdi] framebuffer 1024x768 nonblack=784657/786432 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[campfly] pack 0: method=0 status=16 squads=1
+[campfly] pack 1: method=0 status=22 squads=1
+[campfly] pack 2: method=0 status=8 squads=1
+[campfly] pack 3: method=0 status=8 squads=1
+[campfly] pack 4: method=0 status=8 squads=1
+[campfly] pack 5: method=0 status=8 squads=1
+[campfly] pack 6: method=11 status=16 squads=7 MINE
+[campfly] pack 7: method=1 status=18 squads=1
+[campfly] pack 8: method=1 status=18 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=6 enemyraid=-1 sq=-1 (currtime=28540)
+[campfly] LAUNCH pack=6 status=16 method=11 squads=7 currtime=28540
+[campfly]   LAUNCH sq 0: instance=4614 takeofftime=26340 (past)
+[campfly]   LAUNCH sq 1: instance=4615 takeofftime=26345 (past)
+[campfly]   LAUNCH sq 2: instance=4616 takeofftime=26350 (past)
+[campfly]   LAUNCH sq 3: instance=4617 takeofftime=26355 (past)
+[campfly]   LAUNCH sq 4: instance=4618 takeofftime=26473 (past)
+[campfly]   LAUNCH sq 5: instance=4619 takeofftime=26478 (past)
+[campfly]   LAUNCH sq 6: instance=4620 takeofftime=26483 (past)
+[campfly] wrote live Package.dat (pre-fly, mirrors OnClickedFrag2)
+[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=6 hisquad=0
+[fullpane] ENTER page=1 startscreen=0x846dd60 reqres=3 caller=0x82585a2
+[vid] ChangeDisplaySettings 1024x768 -> 1920x1080
+[extent] OVERFLOW dlg=1164 ctrl=1481 rect=(27,88 673x139) contentH=178 (+39px) -- rows 0..6 fit the rect, content has 0..7, so row(s) 7..7 were UNCLICKABLE; hit-tested to 178
+[frontend]   dial[0] painted at X=20 Y=20 rect=(0,0)-(0,0)
+[gdi] framebuffer 1920x1080 nonblack=783643/2073600 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[centre] UI content 1024x768 in window 1920x1080 -> offset (448,156)
+[frontend] painted screen artnum=27917 + dials + menu + presented
+[frontend] LaunchMain: UpdateSize left artnum=27917 res=1024 unchanged -- keeping LaunchScreen's full frame
+[campfly] Fly: playersquadron=126 gamestate=5 menuN=3 -> OnSelectRlistbox(2)
+[gdi] framebuffer 1920x1080 nonblack=783606/2073600 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=0 + dials + menu + presented
+[frontend] (bridge) StartFlying -> Launch3d(wasrunning=0)
+[mp] SendInitPacket: Implemented=0 Joining=0 Host=0
+[joy] opened 'Logitech Extreme 3D': axes=4 buttons=12 hats=1
+[rtestsh1] View3d interactive (MakeInteractive) inst=0xaffe550 view=0xbb02cc0 trg_uid=0
+[frontend] (bridge) Launch3d done; tmpinst=0xaffe550 tmpview=0xbb02cc0 InThe3D=1
+[sdlkeyms] clock starts at LAUNCH (BOB_SDL_KEY_MS_LAUNCHREL)
+[sdlkeyms] pushed SDL_KEYDOWN sym=1073741893 at 60000ms (due 60000ms) hold=2000ms rc=1
+[startfly] flight close (id=2) -> OnCancel + OnFlyingClosed  [t=0ms]
+[frontend]   dial[0] painted at X=300 Y=110 rect=(0,0)-(0,0)
+[gdi] framebuffer 1920x1080 nonblack=784820/2073600 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=27906 + dials + menu + presented
+[frontend]   dial[0] painted at X=300 Y=110 rect=(0,0)-(0,0)
+[gdi] framebuffer 1920x1080 nonblack=784820/2073600 -> /home/admin/bob-gates/gdi/bobgdi.ppm
+[frontend] painted screen artnum=27906 + dials + menu + presented
+[startfly] back in front-end (InThe3D=0)  [t=6999ms]
+[sdlkeyms] pushed SDL_KEYUP sym=1073741893 at 67013ms
+EXIT=124

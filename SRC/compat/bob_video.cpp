@@ -20,6 +20,7 @@
 #include <GL/glext.h>
 #include <fcntl.h>
 #include <unistd.h>
+int g_bob_dump_after_key = 0;   /* R20 S5: presents-after-key dump countdown (armed at the BOB_SDL_KEY_MS push, counted in present_dbg) */
 #pragma pack(pop)
 
 /* FBO render-to-texture entry points (GL 3.0 / ARB_framebuffer_object) loaded via
@@ -1006,6 +1007,9 @@ static void pump_events(void)
 					ev.key.keysym.sym = (SDL_Keycode)code;
 					ev.key.keysym.scancode = SDL_GetScancodeFromKey((SDL_Keycode)code);
 					int pushed = SDL_PushEvent(&ev);
+					{ static int armed = 0; const char* dk = getenv("BOB_DUMP_AFTER_KEY");
+					  if (dk && !armed) { armed = 1; g_bob_dump_after_key = atoi(dk); if (g_bob_dump_after_key < 1) g_bob_dump_after_key = 1;
+						fprintf(stderr, "[sdlkeyms] dump armed %d presents after this push\n", g_bob_dump_after_key); } }
 					fprintf(stderr, "[sdlkeyms] pushed SDL_KEYDOWN sym=%d at %ums (due %ldms) hold=%ldms rc=%d\n",
 					        code, (unsigned)el, T, (n >= 3 ? hold : 300), pushed);
 					fflush(stderr);
@@ -1347,7 +1351,7 @@ static HRESULT SURF_GetPixelFormat(IDirectDrawSurface7* This, LPDDPIXELFORMAT pf
 static GLuint g_presentTex = 0;
 static void present_dbg(const char* path)
 {
-	if (!getenv("BOB_TRACE_PRESENT") && !getenv("BOB_DUMP_FRAME") && !getenv("BOB_DUMP_ON_FIRE")) return;
+	if (!getenv("BOB_TRACE_PRESENT") && !getenv("BOB_DUMP_FRAME") && !getenv("BOB_DUMP_ON_FIRE") && !getenv("BOB_DUMP_AFTER_KEY")) return;
 	static int frames=0; frames++;
 	if (getenv("BOB_TRACE_PRESENT") && (frames<=3 || (frames%60)==0)) {
 		unsigned char px[3]={0,0,0};
@@ -1362,6 +1366,12 @@ static void present_dbg(const char* path)
 	   BOB_DUMP_FRAME when unset. */
 	const char* df = getenv("BOB_DUMP_FRAME");
 	bool wantDump = (df && frames == atoi(df));
+	/* R20 S5 (2026-09-18): BOB_DUMP_AFTER_KEY=<presents> -- dump that many presents after the first
+	   BOB_SDL_KEY_MS push. The PO's frame shows the GFX dialog raised OVER the live 3-D; a frame-numbered
+	   dump cannot be placed relative to a key on the launch clock, and a dump after the dialog closes
+	   photographs the front-end. Armed at the push site below. */
+	extern int g_bob_dump_after_key;
+	if (g_bob_dump_after_key > 0 && --g_bob_dump_after_key == 0) wantDump = true;
 	if (getenv("BOB_DUMP_ON_FIRE")) {
 		extern int g_bob_shoot_held;                 /* set by the autofly shoot branch */
 		static int firedump = 0;
@@ -1781,10 +1791,11 @@ extern "C" void bob_gdi_present(void) {
 	if (g_gdiFB && getenv("BOB_DUMP_GDI")) {   /* dump the GDI framebuffer to /tmp for inspection
 	                                              (before the window check, so it works headless) */
 		int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;
-		int fd=::open("/tmp/bobgdi.ppm",O_WRONLY|O_CREAT|O_TRUNC,0644);
+		char gpath[512]; { const char* home=getenv("HOME"); snprintf(gpath,sizeof gpath,"%s/bob-gates/gdi/bobgdi.ppm", (home&&*home)?home:"."); }   /* R20 S5: never /tmp */
+		int fd=::open(gpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
 		if(fd>=0){ char h[64]; int n=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",g_gdiW,g_gdiH); if(write(fd,h,n)<0){}
 			for(size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++){ unsigned p=g_gdiFB[i]; unsigned char rgb[3]={(unsigned char)(p>>16),(unsigned char)(p>>8),(unsigned char)p}; if(write(fd,rgb,3)<0){} }
-			close(fd); fprintf(stderr,"[gdi] framebuffer %dx%d nonblack=%d/%lu -> /tmp/bobgdi.ppm\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH)); }
+			close(fd); fprintf(stderr,"[gdi] framebuffer %dx%d nonblack=%d/%lu -> %s\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH),gpath); }
 	}
 	if (!g_win || !g_gdiFB) return;
 	gl_bind_thread();

@@ -2202,7 +2202,10 @@ void RFullPanelDial::LaunchScreen(FullScreen * pfullscreen)
 				bob_ole_draw_panel((CWnd*)pdial[d], ox, oy);
 				bob_fp_draw_nested(pdial[d], ox, oy);   /* S133: nested DialList rows (QS OOB) */
 			}
-			fprintf(stderr, "[frontend]   dial[%d] painted\n", d);
+			{ RECT dr = {0,0,0,0}; if (pdial[d]->m_hWnd) pdial[d]->GetWindowRect(&dr);   /* R20 S5: where the panel lands */
+			  fprintf(stderr, "[frontend]   dial[%d] painted at X=%d Y=%d rect=(%ld,%ld)-(%ld,%ld)\n", d,
+				(int)m_currentscreen->resolutions[m_currentres].dials[d].X, (int)m_currentscreen->resolutions[m_currentres].dials[d].Y,
+				(long)dr.left, (long)dr.top, (long)dr.right, (long)dr.bottom); }
 		}
 		bob_draw_menu(this, m_currentscreen, resolutions[m_currentres]);  /* tabs / menu items */
 		/* R3.8 (2026-09-03): this repaint draws art + the three DIALS' hosted controls + the menu,
