@@ -11523,3 +11523,48 @@ rather than opened now.**
 
 **BoB rotation complete — 4 sprints (GATE 4b disqualified for R20, the `[notex]` census built, a
 false-DONE that cost a gate, and board grooming). ⏭ Rotating to julia.**
+
+## GOLDMATCH-BOB-1/2/3 — match the three 2026-09-15 gold videos as closely as possible (PO ask, 2026-09-17)
+
+**Ask:** the PO asked (2026-09-17) for backlog items matching every gold video from the last week as
+closely as possible. BoB has three, all 1920×1080 @ 60 desktop recordings with the game windowed
+(the caveat GOLDVID-BOB-* already carries). Censused at 48 frames each in `/home/admin/gold-census/`.
+⚠️ **All three already have `GOLDVID-BOB-1/2/3` items grading specific questions against them. These
+three hold each whole video as one acceptance test and name what no item covers — they do not
+re-open the packets with the PO.**
+
+### GOLDMATCH-BOB-1 — `260915_bob_raf_campaign.mp4` (168 s)
+
+| scene | what is on screen | existing item | status | gap |
+|---|---|---|---|---|
+| title menu, pilot/config screen | main menu; name/rank screen | parity_2d refs (14 screens) | ✅ byte-identical to *our* refs — **regression oracle, not gold** | ⛔ **no gold comparison of these two screens** |
+| **RAF campaign map + dialogs, ~17 frames** | England/Channel map, squadron info, aircraft profile, event dialogs | OOB dialogs (S113–S117), GOLDVID-BOB-2 S8 (**RAF-map SEGV fixed**) | open | ⛔ dialog **placement/content vs gold** not itemised |
+| briefing (`Back · Sim Config · Fly`) | painted scene + roster | GOLDVID-BOB-2 S6/S7 | ✅ 7 of 8 fields match | the 8th field |
+| **Spitfire cockpit, ~20 frames** | gunsight, panel, canopy frame | ASPECT-1 (**parked at 17**), MIRROR-1, GOLDVID-BOB-1 (mirror premise) | parked | ⛔ **no whole-frame cockpit parity vs gold** — only the mirror was ever asked about |
+| exit modals | save/quit dialogs | GATE 1c (modal answers) | ✅ mechanism | appearance vs gold not itemised |
+
+### GOLDMATCH-BOB-2 — `260915_bob_german_campaign.mp4` (224 s)
+
+| scene | what is on screen | existing item | status | gap |
+|---|---|---|---|---|
+| title, **Luftwaffe side-select** | side-select captions | GOLDVID-BOB-3 S6–S13 (captions within 3 px, colour explained) | **decision packet with the PO** | PO decision |
+| campaign map + dialogs | roster, aircraft profile, briefing dialogs | GOLDVID-BOB-2 S5–S7 | ✅ roster/briefing fixed | see BOB-1 |
+| Bf 109 cockpit, ~12 frames | | — | — | ⛔ **no Bf 109 cockpit parity item at all** (every cockpit item is Spitfire) |
+| **external Bf 109 views, ~12 frames** | banking, from below, multiple angles | S118–S119 (z-fighting, ✅), **R20** (floating dark square, **open**, `[notex]` built & unexercised) | R20 open | ⛔ **no whole-frame external parity item** — this is the regime R20 lives in |
+| debrief dialog on the map | | — | — | ⛔ **no item** |
+
+### GOLDMATCH-BOB-3 — `260915_bob_turkey_shoot_german.mp4` (94 s)
+
+| scene | what is on screen | existing item | status | gap |
+|---|---|---|---|---|
+| **Quick Mission setup** | sepia photo background, `Basic Training / Dogfighting` text, **a black preview box**, `Back · Fly` | — | — | ⛔ **no item** — note the gold's preview box is *also* black; do not file it as a defect |
+| briefing | `Back · Sim Config · Fly` | GOLDVID-BOB-2 | ✅ | — |
+| **Bf 109 cockpit vs bright sky/cloud, ~14 frames** | canopy, clouds through the glass | GOLDVID-BOB-3 (flicker candidate) | open | ⛔ cloud/sky rendering vs gold not itemised |
+| **external Bf 109 over the coastline, ~12 frames** | aircraft over sea/land boundary | — | — | ⛔ **no item** — coastline terrain + water is a scene class no gold covered before |
+| Mission Report debrief screen | sepia background, report text | — | — | ⛔ **no item** |
+| exit modal | | GATE 1c | ✅ mechanism | appearance |
+
+**Acceptance (each):** every scene row has a passing gold comparison or an explicit PO decision.
+**Priority across the three:** the two external-view classes (German banking views; turkey-shoot
+coastline) — they are where R20 and the flicker report live and neither has a whole-frame oracle →
+Bf 109 cockpit → Quick Mission setup and Mission Report screens → dialog placement.
