@@ -2616,14 +2616,24 @@ static void upload_texture(GLSurface7* s) {
 		unsigned px0=0,pxc=0; if(s->bpp==16){ unsigned short* p=(unsigned short*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
 		else { unsigned* p=(unsigned*)s->bits; px0=p[0]; pxc=p[(s->h/2)*s->w + s->w/2]; }
 		fprintf(stderr,"[texpix] %dx%d bpp%d px[0]=0x%x centre=0x%x\n",s->w,s->h,s->bpp,px0,pxc); } }
+	/* R20 S3 (2026-09-18): BOB_DUMP_TEX_DIMS="WxH" restricts the dump to one size (the campaign
+	   census found 95,094 quads on an all-black 512x512 ARGB4444 surface); a 4444 surface is written
+	   as its ALPHA nibble in grey (suffix _a4444) because black RGB with per-texel alpha is what a
+	   shadow/smoke sprite looks like and what a flat one-colour square would NOT look like -- the
+	   alpha channel is the question. Dumps land under $HOME/bob-gates/tex/, never /tmp. */
 	if (getenv("BOB_DUMP_TEX") && s->w>=8 && s->h>=8) {
 		static int td=0; int cap=atoi(getenv("BOB_DUMP_TEX")); if(cap<=0)cap=6;
-		if (td<cap) {
-			char path[64]; snprintf(path,sizeof(path),"/tmp/bobtex_%d.ppm",td);
+		int wantW=0, wantH=0; if (getenv("BOB_DUMP_TEX_DIMS")) sscanf(getenv("BOB_DUMP_TEX_DIMS"),"%dx%d",&wantW,&wantH);
+		const bool is4444 = (s->bpp==16 && s->desc.ddpfPixelFormat.dwRGBAlphaBitMask==0xf000);
+		if (td<cap && (!wantW || (s->w==wantW && s->h==wantH))) {
+			char path[256]; const char* home=getenv("HOME"); if(!home||!*home) home=".";
+			snprintf(path,sizeof(path),"%s/bob-gates/tex/bobtex_%d%s.ppm",home,td,is4444?"_a4444":"");
 			int fd=::open(path,O_WRONLY|O_CREAT|O_TRUNC,0644);
 			if(fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",s->w,s->h); if(write(fd,hdr,n)<0){}
 				for(int i=0;i<s->w*s->h;i++){ unsigned char rgb[3];
-					if(s->bpp==16){ unsigned short p=((unsigned short*)s->bits)[i];
+					if(is4444){ unsigned short p=((unsigned short*)s->bits)[i]; unsigned char a=(unsigned char)(((p>>12)&0xf)*17);
+						rgb[0]=rgb[1]=rgb[2]=a; }
+					else if(s->bpp==16){ unsigned short p=((unsigned short*)s->bits)[i];
 						rgb[0]=((p>>11)&0x1f)<<3; rgb[1]=((p>>5)&0x3f)<<2; rgb[2]=(p&0x1f)<<3; }
 					else { unsigned p=((unsigned*)s->bits)[i]; rgb[0]=(p>>16)&0xff; rgb[1]=(p>>8)&0xff; rgb[2]=p&0xff; }
 					if(write(fd,rgb,3)<0){} }

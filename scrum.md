@@ -11760,3 +11760,47 @@ the player's tree ([[gates-must-not-read-the-player-tree]], again).
 * The `bob-ctl` worktree is removed after this entry; the control build's log stays with it.
 
 **GOLDMATCH-BOB-3 / SCAFFOLD-TIME-1: suite green under the mission clock except one pre-existing red, bounded to "the flight ends early" with the player-tree lead. BoB cycle 3 complete (4/4) — rotating.**
+
+## R20 S3 (Fable 5.1, 2026-09-18) — ⭐⭐ **the first REAL-GL campaign flight with the census on: 15.9 M draws, 10 untextured (6 at boot, 4 in flight), and the "black texture" class the quick-mission gate never sees — 95,094 quads on an all-black 512×512 ARGB4444 surface — is the aircraft-SHADOW atlas, decoding correctly.** ⛔ No square in two in-flight frames. ⛔ The Luftwaffe launch fatal `Cant remove seenac` recurs, and it tracks the launch timing
+
+**Story:** BoB rotation, cycle 4, sprint 1. R20 (PO 2026-08-31: a flat dark square floating in the
+sky, campaign flight) had an instrument (`[notex]`, S2) that first spoke on a quick mission this
+cycle (GOLDMATCH-BOB-3 S1). The PO's report is a campaign flight, and the campaign gate
+(`bob_convoy_campaign.sh`, GATE 5) runs under `SDL_VIDEODRIVER=dummy` — it has never rendered a
+frame the square could be in. This sprint flew it on the real display.
+
+### ⭐ Recipe (GATE 5's env, real display)
+`DISPLAY=:0 BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_AUTOCLICK="1,1,#1000:0,1,1" BOB_MAP_ACCEPTDIR=40
+BOB_CAMPAIGN_FLY=90 BOB_CAMPFLY_GO=1 BOB_MAP_TIMER=8` + `BOB_TRACE_NOTEX=100000
+BOB_TRACE_TEXBLACK=50000 BOB_DUMP_FRAME=<n>`, from the scratch tree, under a 6 GB scope. The flight
+launches (`StartFlying -> Launch3d … InThe3D=1`), a Bf 109 over the Channel with cloud
+(`doc/reference/260918_r20/camp_f1500.png`, `camp2_f2500.png`).
+
+### ⭐⭐ What the census said, and what each class turned out to be
+* `[notex] DRAWS textured=15,899,990 untextured=10` — 6 in the first 100 k draws (boot), **4 more at
+  ~9.1 M draws, in flight.** `BOB_TRACE_GREY=1` on the second run caught one: a flat **red** 2-D
+  quad (`0xffff0000`, `is2D=1`, 4 verts) — a marker, not the dark square. Its filter and the
+  census's differ; the other three are unnamed.
+* `[texblack] blackTex=95,094 … 512x512 bpp=16 alphaMask=0xf000 blended meanVertexAlpha=252` — the
+  R20 row's own worry ("GATE 4b's blackTex=0 cannot speak to this") answered: the campaign has a
+  black 4444 surface drawn ~95 k times. **`BOB_DUMP_TEX` extended** (`BOB_DUMP_TEX_DIMS=WxH`, a
+  4444 surface written as its ALPHA nibble, output under `$HOME/bob-gates/tex/` — never `/tmp`):
+  `tex_sheet.png` — **the aircraft shadow-silhouette atlas** (binary alpha, 2 levels) and the
+  **propeller-disc sprites** (16 levels). Both decode with real shapes. A one-colour square is what
+  a shadow quad would become only if its alpha were constant; it is not.
+
+### ⛔ The launch fatal, twice, with a correlation
+Runs 3 and 4 (`BOB_CAMPAIGN_FLY=150`) died at `Launch3d`:
+`[seenac] Art_Int.Remove FAILED -- the seen aircraft is not in the AI list` → `*** FATAL: Cant
+remove seenac`. Runs 1 and 2 (`FLY=90`) launched cleanly, same tree, same binary. The guard in
+`FULLPSYS.CPP:1086` (prefer a squadron whose package is live) has a hole that the launch time
+opens — the Luftwaffe packages sit on the ground until their scheduled take-off. Filed on the
+board as `SEENAC-1`; not R20.
+
+### ⚠️ Not claimed
+* That the square does not exist: two frames, both clean, is not a census of a flight.
+* The PO's frame has the in-flight GFX dialog raised; **the square sits directly above that
+  dialog's title bar and is one flat colour** — a front-end element over the 3-D is as good a
+  reading as misplaced world geometry. **Sprint 2: F12 in flight (`BOB_SDL_KEY_MS`), dump after.**
+
+**R20: the instrument has now counted a real campaign flight; the black-texture class is explained; the square is still unreproduced. BoB sprint 1 of 4.**

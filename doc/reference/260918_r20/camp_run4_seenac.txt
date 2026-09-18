@@ -1,0 +1,6 @@
+[frontend] (bridge) StartFlying -> Launch3d(wasrunning=0)
+[seenac] formpos=0 expandedsag=0 ac=0xb93f6e0 ghost=0xb93d550
+[seenac] Art_Int.Remove FAILED -- the seen aircraft is not in the AI list
+[] Cant remove seenac
+*** FATAL: Cant remove seenac
+EXIT=1

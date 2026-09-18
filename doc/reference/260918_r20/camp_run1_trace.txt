@@ -1,0 +1,60 @@
+[campfly] pack 0: method=0 status=16 squads=1
+[campfly] pack 1: method=0 status=22 squads=1
+[campfly] pack 2: method=0 status=8 squads=1
+[campfly] pack 3: method=0 status=8 squads=1
+[campfly] pack 4: method=0 status=8 squads=1
+[campfly] pack 5: method=0 status=8 squads=1
+[campfly] pack 6: method=11 status=16 squads=7 MINE
+[campfly] pack 7: method=1 status=18 squads=1
+[campfly] pack 8: method=1 status=18 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=6 enemyraid=-1 sq=-1 (currtime=28540)
+[campfly] wrote live Package.dat (pre-fly, mirrors OnClickedFrag2)
+[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=6 hisquad=0
+[campfly] Fly: playersquadron=126 gamestate=5 menuN=3 -> OnSelectRlistbox(2)
+[frontend] (bridge) StartFlying -> Launch3d(wasrunning=0)
+[frontend] (bridge) Launch3d done; tmpinst=0x91ae0e0 tmpview=0xa6a3680 InThe3D=1
+[texblack] quads: blackTex=9300 darkTex=231 normalTex=40463 noTex=6 (surfaces seen=41)
+[notex] DRAWS textured=99994 untextured=6   | this interval: +99994 textured +6 untextured (0.0% untextured)
+[texblack] quads: blackTex=18600 darkTex=472 normalTex=80922 noTex=6 (surfaces seen=46)
+[texblack] quads: blackTex=28500 darkTex=743 normalTex=120751 noTex=6 (surfaces seen=50)
+[notex] DRAWS textured=199994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=41937 darkTex=1095 normalTex=156962 noTex=6 (surfaces seen=64)
+[texblack] quads: blackTex=52396 darkTex=1375 normalTex=196223 noTex=6 (surfaces seen=67)
+[notex] DRAWS textured=299994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=68100 darkTex=1799 normalTex=230095 noTex=6 (surfaces seen=79)
+[texblack] quads: blackTex=83991 darkTex=2247 normalTex=263756 noTex=6 (surfaces seen=84)
+[notex] DRAWS textured=399994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=86223 darkTex=2983 normalTex=310788 noTex=6 (surfaces seen=92)
+[texblack] quads: blackTex=86223 darkTex=3879 normalTex=359892 noTex=6 (surfaces seen=93)
+[notex] DRAWS textured=499994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=86223 darkTex=4789 normalTex=408982 noTex=6 (surfaces seen=94)
+[texblack] quads: blackTex=88104 darkTex=5629 normalTex=456261 noTex=6 (surfaces seen=95)
+[notex] DRAWS textured=599994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=5821 normalTex=503504 noTex=6 (surfaces seen=110)
+[texblack] quads: blackTex=90669 darkTex=5923 normalTex=553402 noTex=6 (surfaces seen=110)
+[notex] DRAWS textured=699994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=6019 normalTex=603306 noTex=6 (surfaces seen=120)
+[texblack] quads: blackTex=90669 darkTex=6115 normalTex=653210 noTex=6 (surfaces seen=120)
+[notex] DRAWS textured=799994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=6199 normalTex=703126 noTex=6 (surfaces seen=120)
+[texblack] quads: blackTex=90669 darkTex=6283 normalTex=753042 noTex=6 (surfaces seen=120)
+[notex] DRAWS textured=899994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=6367 normalTex=802958 noTex=6 (surfaces seen=120)
+[texblack] quads: blackTex=90669 darkTex=6451 normalTex=852874 noTex=6 (surfaces seen=120)
+[notex] DRAWS textured=999994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=6547 normalTex=902778 noTex=6 (surfaces seen=120)
+[texblack] quads: blackTex=90669 darkTex=6661 normalTex=952664 noTex=6 (surfaces seen=120)
+[notex] DRAWS textured=1099994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=7339 normalTex=1001986 noTex=6 (surfaces seen=120)
+[texblack] quads: blackTex=90669 darkTex=8095 normalTex=1051230 noTex=6 (surfaces seen=121)
+[notex] DRAWS textured=1199994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=8713 normalTex=1100612 noTex=6 (surfaces seen=121)
+[texblack] quads: blackTex=90669 darkTex=9271 normalTex=1150054 noTex=6 (surfaces seen=121)
+[notex] DRAWS textured=1299994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=9769 normalTex=1199556 noTex=6 (surfaces seen=127)
+[present] dumped frame 1500 to /home/admin/bob-gates/r20/camp_f1500.ppm (1920x1080) glErr=0
+[texblack] quads: blackTex=90669 darkTex=10291 normalTex=1249034 noTex=6 (surfaces seen=127)
+[notex] DRAWS textured=1399994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
+[texblack] quads: blackTex=90669 darkTex=10849 normalTex=1298476 noTex=6 (surfaces seen=129)
+[texblack] quads: blackTex=90669 darkTex=11449 normalTex=1347876 noTex=6 (surfaces seen=129)
+[notex] DRAWS textured=1499994 untextured=6   | this interval: +100000 textured +0 untextured (0.0% untextured)
