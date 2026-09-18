@@ -11967,3 +11967,37 @@ captured the composite.
   `bob_in_the_3d()`, which already answers 0 at the first post-close present, so it never opened.
 
 **R20: the PO's composite is reproduced and the square is placed in the flight frame beside a padlocked target. BoB sprint 2 of 4 (cycle 6).**
+
+## R20 S7 (Fable 5.1, 2026-09-18) — ⭐⭐⭐ **THE SQUARE IS REPRODUCED, in our own flight frames: a 189×189 px quad of exactly ONE colour, (41,53,57), against the sky — the PO measured (40,52,52). It is a CLOUD SPRITE drawn opaque: three frames later the same quad shows a cloud puff INSIDE a dark rectangle, i.e. the sprite's transparent surround paints as its stored RGB**
+
+**Story:** BoB rotation, cycle 6, sprint 3. S6 placed the square in the flight frame beside a
+padlocked target. This sprint flew the same campaign recipe with the padlock view tapped, a frame
+every 300 swaps and the untextured/colour census on (`tools/bob_r20_padlock_census.sh`).
+
+### ⭐⭐⭐ Evidence (`doc/reference/260918_r20/padlock/`)
+* `f.3900_s.png` / `square_3900_crop.png`: cockpit view, canopy struts, cloud bank — and a **flat
+  dark square in the sky**. Flood-filled at full resolution: bbox (536,284)–(724,472), **189×189
+  px, 35,721 px, ONE unique colour (41,53,57)**. The PO's frame: ~185 px wide, one colour
+  (40,52,52). Same object.
+* `f.4200_s.png` / `square_4200_crop.png` (300 swaps later): the same quad, now **a cloud puff
+  inside a dark rectangle** (surround (62,72,76), 129×171 visible) — the sprite HAS its texture;
+  what is missing is the transparency of the texels around the puff. `montage.png` frame 2400
+  shows the same: puff in a box.
+* So the square is the **fluffy-cloud sprite** (`LANDSCAP.CPP` `DistDrawClouds` /
+  `SKY.H` `Cloud FluffyCloud`) drawn without its alpha/colour key: fully "transparent" texels
+  paint in their stored RGB — one flat colour — and a puff paints in a box. "Floats around in the
+  air" is a cloud sprite drifting past. Not the mirror (S2 was right to drop it), not the shadow
+  atlas or prop discs (S3's black 4444 sheet decodes with real shapes), not the UI (S5/S6).
+* The `[grey]` census listed only three flat 2-D draws in flight ((60,59,30), `fvf=3c4 is2D=1`,
+  between frames 3900 and 4200) — the square itself is a TEXTURED draw, so `[notex]`/`[grey]` were
+  the wrong instruments for it, which is why S1–S3's zero untextured draws never contradicted the
+  PO. The frame sequence found it; the counters could not.
+
+### ⚠️ Not yet known — S8
+Which texture format the cloud sheet arrives in, and which render state the draw is missing:
+colour-key (DDCKEY → alpha test) vs 4444 alpha (blend). `BOB_TRACE_CKEY`, `BOB_TRACE_TEXBLACK`
+and `BOB_DUMP_TEX` at the cloud sheet's dimensions will say. Note the puff frame's surround is
+NOT black: (62,72,76) vs (41,53,57) — it is lit/fogged like a world quad, so this is the sprite's
+RGB under alpha=0, exactly what an alpha-less draw would show.
+
+**R20: the square is reproduced and identified as the fluffy-cloud sprite drawn opaque. BoB sprint 3 of 4 (cycle 6).**
