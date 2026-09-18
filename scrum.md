@@ -11830,3 +11830,38 @@ the report. Both are checkable; neither fits this sprint.
    each way.
 
 **R20: two sprints, the instrument now covers a real campaign flight, one class explained, one new fatal filed, the square unreproduced and its state named. BoB cycle 4: 2 sprints — rotating to julia.**
+
+## SEENAC-1 S1 / R1-ONTRIGGER-RED S1 (Fable 5.1, 2026-09-18) — ⭐⭐⭐ **SEENAC-1 FOUND AND FIXED: the launch trace shows the same package 6, same seven instances, at status 16 (`PS_TARGETAREA`, launches) vs 22 (`PS_REFUELLING`, dies) — the raid had LANDED and the instance-only guard admitted it.** ⭐⭐ **R1's flight lives 32.9 s; the trigger is pushed at 150 s.** Measured, both of them
+
+**Story:** BoB rotation, cycle 5, sprint 1. Two board reds from cycle 4, each with a named next step:
+print the chosen package at launch, and stamp the flight's lifetime on the process clock.
+
+### ⭐⭐⭐ SEENAC-1 (`doc/reference/260918_r1/seenac_launch_trace_fly90_vs_150.txt`)
+`[campfly] LAUNCH pack=6 status=16 method=11 squads=7 currtime=28540` (FLY=90) → `InThe3D=1`.
+`[campfly] LAUNCH pack=6 status=22 method=11 squads=7 currtime=30160` (FLY=150) → `[seenac] formpos=0
+expandedsag=0 … Art_Int.Remove FAILED` → FATAL. **Identical squadrons (4614–4620), identical
+take-off times, all "past". Only the status differs**: 16 is airborne over the target, 22 is back on
+the ground refuelling — and a landed squadron's aircraft are not expanded in the world
+(`expandedsag=0`), so the player's seen aircraft is in no AI list. The S192 guard checked
+`instance != 0`, which a landed raid still satisfies.
+**Fix** (`FULLPSYS.CPP`, the scan): a package of the player's own is flyable only while
+`PS_ACTIVE_MIN < status < PS_ACTIVE_MAX`; `BOB_SEENAC_NOGUARD=1` reverts. **Verified**: FLY=150 now
+prints `pack 6 is MINE but not airborne (status=22) -- skipped` (then 23, `PS_COMPLETE`), no fatal, and
+waits for a flyable package instead of dying. `SEENAC-1` → ✅.
+
+### ⭐⭐ R1-ONTRIGGER-RED (`r1_ontrigger_stamped_run.log`)
+`[startfly] Rtestsh1 up -> Launch3d [t=0ms]` → **`flight close (id=1) -> OnOK [t=32919ms]`** →
+`back in front-end [t=36228ms]` → `[sdlkeyms] pushed SDL_KEYDOWN sym=32 at 150001ms`. **The
+flight ends by itself after 33 s (`OnOK`, the mission's own end), and the arm pulls the trigger two
+minutes later into a menu.** The mission it launches is the one the profile remembers (quickmiss=-1) — the
+scratch copies the player's SAVEGAME, which changed on 2026-09-15/16 after S444's green. Two fixes
+are possible and the right one is the two-clock lesson: **push the trigger relative to the launch**
+(sprint 2: `BOB_SDL_KEY_MS_LAUNCHREL=1`, FF's SIMREL twin), and separately pin the arm's mission.
+
+### ⛔ A crash of my own, found by its own stamp
+The first stamped build passed the clock as the SECOND argument of the `flight close` print — `%s`
+received a `long` — and every flight close since segfaulted inside `__fprintf_chk`; one R1 run showed
+"no close, no key pushes" and a backtrace. Argument order fixed; the second build's log is the one
+above. Recorded because the symptom looked exactly like a new product defect for one run.
+
+**BoB sprint 1 of 4 (cycle 5): one red closed at its cause, the other measured to the second.**

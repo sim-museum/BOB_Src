@@ -1,0 +1,124 @@
+Rowan's Battle of Britain - Linux native port
+  All 16 source modules link.
+  Driving CMIGApp::InitInstance()...
+[ALSOFT] (EE) Failed to create PipeWire event context (errno: 2)
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf
+[gdifont] face loaded /tmp/bob_scratch_270677/windows/Fonts/g101016_.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf
+[vid] swap interval -> 1 (vsync)
+[vid] SDL2 window 1024x768 + GL context: NVIDIA GeForce GTX 1660 SUPER/PCIe/SSE2 | 4.6.0 NVIDIA 595.84
+[fullpane] ENTER page=1 startscreen=0x84730a0 reqres=4 caller=0x8253154
+[frontend] painted screen artnum=28937 + dials + menu + presented
+[frontend] LaunchMain: UpdateSize left artnum=28937 res=1024 unchanged -- keeping LaunchScreen's full frame
+[frontend] device init (IntroSmackInit-equivalent): texQ=3 filtering=2 vol.sfx=125
+  InitInstance() returned 1
+  Entering CMIGApp::Run()...
+[startfly] BOB_STARTFLYING=click: pre-flight (mission 1/1)
+[startfly] pre-flight(click): world init done; QM left to CSQuick1 (currquickmiss=-1)
+[startfly] navigate to Fly by clicks (Fly is index 2 on this screen; BOB_DUMP_MENU=1 lists them)
+[frontend] click (210,237) -> menu item 0
+[combo] SetIndex id=2056 <- 0   (the START state)
+[combo] SetIndex id=2049 <- 0   (the START state)
+[frontend]   dial[0] painted
+[frontend]   dial[1] painted
+[frontend] painted screen artnum=27923 + dials + menu + presented
+[frontend] click (129,737) -> menu item 1
+[frontend]   dial[0] painted
+[frontend] painted screen artnum=27917 + dials + menu + presented
+[frontend] click (165,737) -> menu item 1
+[combo] SetIndex id=1919 <- 5   (the START state)
+[combo] SetIndex id=1928 <- 1   (the START state)
+[combo] SetIndex id=1921 <- 0   (the START state)
+[combo] SetIndex id=1938 <- 1   (the START state)
+[combo] SetIndex id=1927 <- 0   (the START state)
+[combo] SetIndex id=1934 <- 0   (the START state)
+[combo] SetIndex id=1080 <- 0   (the START state)
+[combo] SetIndex id=1931 <- 0   (the START state)
+[combo] SetIndex id=1078 <- 0   (the START state)
+[combo] SetIndex id=1936 <- 0   (the START state)
+[combo] GetIndex id=1919 -> 5
+[combo] SetIndex id=1919 <- 2   (the START state)
+[frontend]   dial[0] painted
+[frontend] painted screen artnum=27911 + dials + menu + presented
+[frontend] click (318,37) -> menu item 3
+[combo] GetIndex id=1919 -> 2
+[setfield] combo id=1919 -> val=2
+[combo] GetIndex id=1928 -> 1
+[setfield] combo id=1928 -> val=1
+[combo] GetIndex id=1921 -> 0
+[setfield] combo id=1921 -> val=0
+[combo] GetIndex id=1938 -> 1
+[setfield] combo id=1938 -> val=1
+[combo] GetIndex id=1927 -> 0
+[setfield] combo id=1927 -> val=0
+[combo] GetIndex id=1934 -> 0
+[setfield] combo id=1934 -> val=0
+[combo] GetIndex id=1080 -> 0
+[setfield] combo id=1080 -> val=0
+[combo] GetIndex id=1931 -> 0
+[setfield] combo id=1931 -> val=0
+[combo] GetIndex id=1078 -> 0
+[setfield] combo id=1078 -> val=0
+[combo] GetIndex id=1936 -> 0
+[setfield] combo id=1936 -> val=0
+[combo] GetIndex id=1919 -> 2
+[setfield] combo id=1919 -> val=2
+[combo] SetIndex id=2102 <- 0   (the START state)
+[combo] SetIndex id=2105 <- 1   (the START state)
+[combo] SetIndex id=2109 <- 1   (the START state)
+[combo] SetIndex id=2112 <- 0   (the START state)
+[combo] SetIndex id=2115 <- 0   (the START state)
+[combo] SetIndex id=2119 <- 1   (the START state)
+[combo] SetIndex id=2120 <- 0   (the START state)
+[combo] SetIndex id=1075 <- 2   (the START state)
+[combo] SetIndex id=1074 <- 1   (the START state)
+[frontend]   dial[0] painted
+[frontend] painted screen artnum=27914 + dials + menu + presented
+[frontend] autoclick step #1075:0.-1 -> (600,474)
+[frontend] click (600,474) -> combo cycled (panel 0)
+[frontend] autoclick step #1075:0.-1 -> (600,474)
+[frontend] click (600,474) -> combo cycled (panel 0)
+[frontend] click (502,37) -> menu item 6
+[combo] GetIndex id=2102 -> 0
+[setfield] combo id=2102 -> val=0
+[combo] GetIndex id=2105 -> 1
+[setfield] combo id=2105 -> val=1
+[combo] GetIndex id=2109 -> 1
+[setfield] combo id=2109 -> val=1
+[combo] GetIndex id=2112 -> 0
+[setfield] combo id=2112 -> val=0
+[combo] GetIndex id=2115 -> 0
+[setfield] combo id=2115 -> val=0
+[combo] GetIndex id=2119 -> 1
+[setfield] combo id=2119 -> val=1
+[combo] GetIndex id=2120 -> 0
+[setfield] combo id=2120 -> val=0
+[combo] GetIndex id=1075 -> 1
+[setfield] combo id=1075 -> val=1
+[combo] GetIndex id=1074 -> 1
+[setfield] combo id=1074 -> val=1
+[frontend]   dial[0] painted
+[frontend] painted screen artnum=27917 + dials + menu + presented
+[frontend] click (258,737) -> menu item 2
+[frontend] painted screen artnum=0 + dials + menu + presented
+[startfly] Rtestsh1 up -> Launch3d(wasrunning=0)  [t=0ms]
+[mp] SendInitPacket: Implemented=0 Joining=0 Host=0
+[joy] opened 'Logitech Extreme 3D': axes=4 buttons=12 hats=1
+[rtestsh1] View3d interactive (MakeInteractive) inst=0x9568750 view=0x9d31140 trg_uid=0
+[startfly] Launch3d returned; tmpinst=0x9568750 tmpview=0x9d31140
+[startfly] flight close (id=1) -> OnOK + OnFlyingClosed  [t=32919ms]
+[frontend]   dial[0] painted
+[centre] UI content 1024x768 in window 1920x1080 -> offset (448,156)
+[frontend] painted screen artnum=27924 + dials + menu + presented
+[vid] ChangeDisplaySettings 1920x1080 -> 1024x768
+[shot] ARMED by flight-close (BOB_SHOT_AFTER=(unset))
+[frontend]   dial[0] painted
+[frontend] painted screen artnum=27924 + dials + menu + presented
+[startfly] back in front-end (InThe3D=0)  [t=36228ms]
+[sdlkeyms] pushed SDL_KEYDOWN sym=32 at 150001ms (due 150000ms) hold=400ms rc=1
+[sdlkeyms] pushed SDL_KEYUP sym=32 at 150403ms
+[sdlkeyms] pushed SDL_KEYDOWN sym=32 at 156001ms (due 156000ms) hold=400ms rc=1
+[sdlkeyms] pushed SDL_KEYUP sym=32 at 156402ms
+[sdlkeyms] pushed SDL_KEYDOWN sym=32 at 162001ms (due 162000ms) hold=400ms rc=1
+[sdlkeyms] pushed SDL_KEYUP sym=32 at 162403ms

@@ -1,0 +1,21 @@
+[campfly] LAUNCH pack=6 status=16 method=11 squads=7 currtime=28540
+[campfly]   LAUNCH sq 0: instance=4614 takeofftime=26340 (past)
+[campfly]   LAUNCH sq 1: instance=4615 takeofftime=26345 (past)
+[campfly]   LAUNCH sq 2: instance=4616 takeofftime=26350 (past)
+[campfly]   LAUNCH sq 3: instance=4617 takeofftime=26355 (past)
+[campfly]   LAUNCH sq 4: instance=4618 takeofftime=26473 (past)
+[campfly]   LAUNCH sq 5: instance=4619 takeofftime=26478 (past)
+[campfly]   LAUNCH sq 6: instance=4620 takeofftime=26483 (past)
+[seenac] formpos=0 expandedsag=192952256 ac=0xb97f7b0 ghost=0xb92e630
+---
+[campfly] LAUNCH pack=6 status=22 method=11 squads=7 currtime=30160
+[campfly]   LAUNCH sq 0: instance=4614 takeofftime=26340 (past)
+[campfly]   LAUNCH sq 1: instance=4615 takeofftime=26345 (past)
+[campfly]   LAUNCH sq 2: instance=4616 takeofftime=26350 (past)
+[campfly]   LAUNCH sq 3: instance=4617 takeofftime=26355 (past)
+[campfly]   LAUNCH sq 4: instance=4618 takeofftime=26473 (past)
+[campfly]   LAUNCH sq 5: instance=4619 takeofftime=26478 (past)
+[campfly]   LAUNCH sq 6: instance=4620 takeofftime=26483 (past)
+[seenac] formpos=0 expandedsag=0 ac=0xc0f05c0 ghost=0xc0ee430
+[seenac] Art_Int.Remove FAILED -- the seen aircraft is not in the AI list
+*** FATAL: Cant remove seenac

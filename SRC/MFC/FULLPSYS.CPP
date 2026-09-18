@@ -74,6 +74,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #define F_SOUNDS
 #define F_BATTLE
 #define F_COMMON
+#include <time.h>
 #include "stdafx.h"
 #include "mig.h"
 #include "stdlib.h"
@@ -667,12 +668,23 @@ void bob_capture_wm_command(unsigned int /*msg*/, unsigned int id)
 	if (Rtestsh1::THISTHIS && Inst3d::InThe3D())
 		g_bobFlightCloseId = (int)id;
 }
+/* R1-ONTRIGGER-RED (2026-09-18): stamp the flight's lifetime on the PROCESS clock. The R1 ontrigger
+   arm pushes SPACE at 150/156/162 s of process time and its flight had already closed -- but the
+   log carried no time on the launch or close lines, so "how long did the flight last" was
+   unmeasured. Milliseconds since the first call. */
+static long bob_ms_since_start(void)
+{
+	static struct timespec t0; static int have0 = 0; struct timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	if (!have0) { t0 = t; have0 = 1; }
+	return (long)((t.tv_sec - t0.tv_sec) * 1000 + (t.tv_nsec - t0.tv_nsec) / 1000000);
+}
 int bob_process_flight_close(void)
 {
 	if (g_bobFlightCloseId < 0) return 0;
 	int id = g_bobFlightCloseId; g_bobFlightCloseId = -1;
-	fprintf(stderr,"[startfly] flight close (id=%d) -> %s + OnFlyingClosed\n",
-		id, id==IDOK ? "OnOK" : "OnCancel");
+	fprintf(stderr,"[startfly] flight close (id=%d) -> %s + OnFlyingClosed  [t=%ldms]\n",
+		id, id==IDOK ? "OnOK" : "OnCancel", bob_ms_since_start());
 	if (Rtestsh1::THISTHIS) {                 /* game's own teardown: Paused, delete view/inst */
 		if (id==IDOK) Rtestsh1::THISTHIS->OnOK();
 		else          Rtestsh1::THISTHIS->OnCancel();
@@ -686,7 +698,7 @@ int bob_process_flight_close(void)
 	bob_gdi_restore_mode();   /* S162: 3D ran 800x600; the front end lays out at 1024x768 */
 	if (g_bobActiveFP) {                       /* navigate back to a front-end screen */
 		g_bobActiveFP->OnFlyingClosed(NULL, id);
-		fprintf(stderr,"[startfly] back in front-end (InThe3D=%d)\n",(int)Inst3d::InThe3D());
+		fprintf(stderr,"[startfly] back in front-end (InThe3D=%d)  [t=%ldms]\n",(int)Inst3d::InThe3D(), bob_ms_since_start());
 	}
 	{ extern int g_bob_flight_active; g_bob_flight_active = 0; }   /* R2.4: flight ended -> re-arm auto-quit */
 	return 1;
@@ -1095,7 +1107,16 @@ extern "C" void bob_frontend_tick(void)
 						   hit the fatal, same campaign, same binary.
 						   Prefer a squadron that is live, and remember WHICH -- hisquad was
 						   hardcoded to 0 below, which is only right when squadron 0 is the live one. */
-						if (found < 0 && mine && (int)(ULong)pk.squadlist >= 1) {
+						/* SEENAC-1 (2026-09-18): instance != 0 is not enough. Measured with the LAUNCH trace:
+						   the same package 6 with the same seven instances launched clean at status 16
+						   (PS_TARGETAREA) and died "Cant remove seenac" at status 22 (PS_REFUELLING) -- the
+						   raid had LANDED and its aircraft were no longer expanded in the world
+						   (expandedsag=0). A package of the player's own is flyable only while airborne:
+						   PS_ACTIVE_MIN < status < PS_ACTIVE_MAX. BOB_SEENAC_NOGUARD=1 reverts. */
+						bool airborne = ((int)pk.packagestatus > (int)Profile::PS_ACTIVE_MIN && (int)pk.packagestatus < (int)Profile::PS_ACTIVE_MAX);
+						if (found < 0 && mine && !airborne && !getenv("BOB_SEENAC_NOGUARD") && getenv("BOB_TRACE_CAMPFLY") && logScan)
+							fprintf(stderr,"[campfly] pack %d is MINE but not airborne (status=%d) -- skipped\n", p, (int)pk.packagestatus);
+						if (found < 0 && mine && (airborne || getenv("BOB_SEENAC_NOGUARD")) && (int)(ULong)pk.squadlist >= 1) {
 							int ns = (int)(ULong)pk.squadlist;
 							for (int sq = 0; sq < ns; sq++)
 								if ((unsigned)pk[sq].instance != 0) { found = p; foundSq = sq; break; }
@@ -1142,6 +1163,19 @@ extern "C" void bob_frontend_tick(void)
 							(int)Todays_Packages.localplayer, lwPlayer?"LW":"RAF", nNonSpare, nMine, found, enemy, enemySq, (int)MMC.currtime);
 
 					int hipack = found;
+					/* SEENAC-1 (2026-09-18): the chosen package's squadrons at the moment of launch. With
+					   BOB_CAMPAIGN_FLY=150 the flight died "Cant remove seenac" where FLY=90 launched clean,
+					   same tree and binary -- so the S192 guard (instance != 0) admits a state the world
+					   has not finished creating. Print what it admitted, per squadron, with the clock. */
+					if (found >= 0 && getenv("BOB_TRACE_CAMPFLY")) {
+						Profile& fp = Todays_Packages.pack[found]; int fns = (int)(ULong)fp.squadlist;
+						fprintf(stderr,"[campfly] LAUNCH pack=%d status=%d method=%d squads=%d currtime=%d\n",
+							found,(int)fp.packagestatus,(int)fp.attackmethod,fns,(int)MMC.currtime);
+						for (int sq = 0; sq < fns && sq < 8; sq++)
+							fprintf(stderr,"[campfly]   LAUNCH sq %d: instance=%u takeofftime=%d (%s)\n",
+								sq,(unsigned)fp[sq].instance,(int)fp[sq].takeofftime,
+								(int)fp[sq].takeofftime > (int)MMC.currtime ? "future" : ((int)fp[sq].takeofftime ? "past" : "unset"));
+					}
 					if (cf_pack >= 0) hipack = cf_pack;   /* S6: authorised on an earlier paint */
 					if (hipack < 0 && enemy >= 0) {
 						Profile& pk = Todays_Packages.pack[enemy];
@@ -1649,7 +1683,7 @@ extern "C" void bob_frontend_tick(void)
 		if (!sf_bridged && Rtestsh1::THISTHIS && !Rtestsh1::tmpinst) {
 			Rtestsh1::Start3d(Rtestsh1::S3D_DONEBACK);
 			Rtestsh1::Start3d(Rtestsh1::S3D_DONESHEET);
-			fprintf(stderr,"[startfly] Rtestsh1 up -> Launch3d(wasrunning=%d)\n",(int)Rtestsh1::THISTHIS->wasrunning);
+			fprintf(stderr,"[startfly] Rtestsh1 up -> Launch3d(wasrunning=%d)  [t=%ldms]\n",(int)Rtestsh1::THISTHIS->wasrunning, bob_ms_since_start());
 			Rtestsh1::THISTHIS->Launch3d(Rtestsh1::THISTHIS->wasrunning);
 			fprintf(stderr,"[startfly] Launch3d returned; tmpinst=%p tmpview=%p\n",
 				(void*)Rtestsh1::tmpinst,(void*)Rtestsh1::tmpview);

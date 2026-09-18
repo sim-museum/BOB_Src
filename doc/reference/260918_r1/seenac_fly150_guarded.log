@@ -1,0 +1,674 @@
+Rowan's Battle of Britain - Linux native port
+  All 16 source modules link.
+  Driving CMIGApp::InitInstance()...
+[ALSOFT] (EE) Failed to create PipeWire event context (errno: 2)
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf
+[gdifont] face loaded /tmp/bob_scratch_270677/windows/Fonts/g101016_.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf
+[vid] swap interval -> 1 (vsync)
+[vid] SDL2 window 1024x768 + GL context: NVIDIA GeForce GTX 1660 SUPER/PCIe/SSE2 | 4.6.0 NVIDIA 595.84
+[fullpane] ENTER page=1 startscreen=0x84730a0 reqres=4 caller=0x8253154
+[frontend] painted screen artnum=28937 + dials + menu + presented
+[frontend] LaunchMain: UpdateSize left artnum=28937 res=1024 unchanged -- keeping LaunchScreen's full frame
+[frontend] device init (IntroSmackInit-equivalent): texQ=3 filtering=2 vol.sfx=125
+  InitInstance() returned 1
+  Entering CMIGApp::Run()...
+[frontend] click (210,272) -> menu item 1
+[frontend]   dial[0] painted
+[frontend] painted screen artnum=27929 + dials + menu + presented
+[frontend] click (669,437) -> side-select item 1 (Luftwaffe)
+[campphase] whichcamp=0 (0=Convoys)
+[frontend]   dial[0] painted
+[frontend]   dial[1] painted
+[frontend] painted screen artnum=27922 + dials + menu + presented
+[frontend] autoclick step #1000:0.-1 -> (239,36)
+[campphase] whichcamp=0 (0=Convoys)
+[frontend] click (239,36) -> combo cycled (panel 0)
+[frontend] click (152,737) -> menu item 1
+[frontend]   dial[1] painted
+[frontend] painted screen artnum=27922 + dials + menu + presented
+[frontend] click (152,737) -> menu item 1
+[fullpane] LEAVE page=0 (LaunchMap firsttime=1)
+[map] LaunchMap done -> strategic map active (firsttime=1, paused)
+[sysbox] paint walk entered: mf=0xa9bfa10 sysbox=0xb0e8ec0
+[fileman] missing file 6a99=\Program Files\Rowan Software\Battle Of Britain\artwork\axart\i_basexs.bmp -- returning NULL
+[fileman] missing file 6a9c=\Program Files\Rowan Software\Battle Of Britain\artwork\axart\xi_bases.bmp -- returning NULL
+[sysbox] panel 34x50 DLU -> 51x81 px at (965,8): 3 controls drawn
+[origin-dialog] class=8RDEmptyD dlgId=-1 dialog=0xb6bae70 dial-slot=1 screen-art=27922 drawn at (44,20) with ZERO controls drawn -- this is R21(3)'s stray title bar; name it here rather than from a screenshot
+[oobclip] dialog iid=1032 (12LWDirectives) -> 486x311 DLU = 729x505 px at (44,20)
+[directives]   child 0xb6ba120 rtti=12LWDirectives -- firing OK
+[directives] accept pass 0: child-fire=1
+[directives] accept pass 0: firing title-bar OK on child 6
+[directives]   child 0xb6dd500 rtti=16DirectiveResults -- firing OK
+[directives] accept pass 1: child-fire=1
+[directives] accept pass 1: firing title-bar OK on child 5
+[directives] accept: nothing logged after 2 pass(es)
+[directives] accept done: open-index=-1
+[shot] ARMED by accept-directives (BOB_SHOT_AFTER=(unset))
+[oobclip] dialog iid=1105 (15TakeOverOffered) -> 284x106 DLU = 426x172 px at (299,40)
+[fileman] marker-x: 'buxtton1.bmp' -> 'button1.bmp' (FIL_x placeholder substituted)
+[campfly] pack 0: method=0 status=22 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=16 squads=1
+[campfly] pack 3: method=0 status=16 squads=1
+[campfly] pack 4: method=0 status=8 squads=1
+[campfly] pack 5: method=0 status=8 squads=1
+[campfly] pack 6: method=11 status=22 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=22) -- skipped
+[campfly] pack 7: method=1 status=22 squads=1
+[campfly] pack 8: method=1 status=22 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=30160)
+[campfly] no live mission yet (currtime=30160) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=16 squads=1
+[campfly] pack 3: method=0 status=16 squads=1
+[campfly] pack 4: method=0 status=8 squads=1
+[campfly] pack 5: method=0 status=8 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=22 squads=1
+[campfly] pack 8: method=1 status=22 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=31780)
+[campfly] no live mission yet (currtime=31780) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=16 squads=1
+[campfly] pack 3: method=0 status=16 squads=1
+[campfly] pack 4: method=0 status=14 squads=1
+[campfly] pack 5: method=0 status=13 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=22 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=33400)
+[campfly] no live mission yet (currtime=33400) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=22 squads=1
+[campfly] pack 4: method=0 status=16 squads=1
+[campfly] pack 5: method=0 status=16 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=35020)
+[campfly] no live mission yet (currtime=35020) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=16 squads=1
+[campfly] pack 5: method=0 status=16 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=36640)
+[campfly] no live mission yet (currtime=36640) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=19 squads=1
+[campfly] pack 5: method=0 status=19 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=9 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=38260)
+[campfly] no live mission yet (currtime=38260) -- waiting for a raid to launch
+[origin-dialog] class=8RDEmptyD dlgId=-1 dialog=0xb6bb950 dial-slot=1 screen-art=27922 drawn at (44,20) with ZERO controls drawn -- this is R21(3)'s stray title bar; name it here rather than from a screenshot
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=22 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=8 squads=1
+[campfly] pack 10: method=0 status=8 squads=1
+[campfly] pack 11: method=0 status=8 squads=1
+[campfly] pack 12: method=0 status=8 squads=1
+[campfly] pack 13: method=0 status=8 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=39880)
+[campfly] no live mission yet (currtime=39880) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=22 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=16 squads=1
+[campfly] pack 10: method=0 status=16 squads=1
+[campfly] pack 11: method=0 status=8 squads=1
+[campfly] pack 12: method=0 status=8 squads=1
+[campfly] pack 13: method=0 status=8 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=41500)
+[campfly] no live mission yet (currtime=41500) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=16 squads=1
+[campfly] pack 10: method=0 status=16 squads=1
+[campfly] pack 11: method=0 status=8 squads=1
+[campfly] pack 12: method=0 status=8 squads=1
+[campfly] pack 13: method=0 status=8 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=43120)
+[campfly] no live mission yet (currtime=43120) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=16 squads=1
+[campfly] pack 10: method=0 status=16 squads=1
+[campfly] pack 11: method=0 status=8 squads=1
+[campfly] pack 12: method=0 status=8 squads=1
+[campfly] pack 13: method=0 status=8 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=44740)
+[campfly] no live mission yet (currtime=44740) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=22 squads=1
+[campfly] pack 10: method=0 status=22 squads=1
+[campfly] pack 11: method=0 status=16 squads=1
+[campfly] pack 12: method=0 status=16 squads=1
+[campfly] pack 13: method=0 status=8 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=46360)
+[campfly] no live mission yet (currtime=46360) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=22 squads=1
+[campfly] pack 11: method=0 status=16 squads=1
+[campfly] pack 12: method=0 status=16 squads=1
+[campfly] pack 13: method=0 status=8 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=47980)
+[campfly] no live mission yet (currtime=47980) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=16 squads=1
+[campfly] pack 12: method=0 status=16 squads=1
+[campfly] pack 13: method=0 status=14 squads=1
+[campfly] pack 14: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=49600)
+[campfly] no live mission yet (currtime=49600) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=22 squads=1
+[campfly] pack 13: method=0 status=16 squads=1
+[campfly] pack 14: method=0 status=16 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=51220)
+[campfly] no live mission yet (currtime=51220) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=22 squads=1
+[campfly] pack 13: method=0 status=16 squads=1
+[campfly] pack 14: method=0 status=16 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=52840)
+[campfly] no live mission yet (currtime=52840) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=19 squads=1
+[campfly] pack 14: method=0 status=19 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=15 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=54460)
+[campfly] no live mission yet (currtime=54460) -- waiting for a raid to launch
+[origin-dialog] class=8RDEmptyD dlgId=-1 dialog=0xb6cd9c0 dial-slot=1 screen-art=27922 drawn at (44,20) with ZERO controls drawn -- this is R21(3)'s stray title bar; name it here rather than from a screenshot
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=22 squads=1
+[campfly] pack 15: method=0 status=8 squads=1
+[campfly] pack 16: method=0 status=8 squads=1
+[campfly] pack 17: method=0 status=8 squads=1
+[campfly] pack 18: method=0 status=8 squads=1
+[campfly] pack 19: method=0 status=8 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=56080)
+[campfly] no live mission yet (currtime=56080) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=22 squads=1
+[campfly] pack 15: method=0 status=16 squads=1
+[campfly] pack 16: method=0 status=16 squads=1
+[campfly] pack 17: method=0 status=8 squads=1
+[campfly] pack 18: method=0 status=8 squads=1
+[campfly] pack 19: method=0 status=8 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=57700)
+[campfly] no live mission yet (currtime=57700) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=16 squads=1
+[campfly] pack 16: method=0 status=16 squads=1
+[campfly] pack 17: method=0 status=8 squads=1
+[campfly] pack 18: method=0 status=8 squads=1
+[campfly] pack 19: method=0 status=8 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=59320)
+[campfly] no live mission yet (currtime=59320) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=16 squads=1
+[campfly] pack 16: method=0 status=16 squads=1
+[campfly] pack 17: method=0 status=13 squads=1
+[campfly] pack 18: method=0 status=8 squads=1
+[campfly] pack 19: method=0 status=8 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=60940)
+[campfly] no live mission yet (currtime=60940) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=22 squads=1
+[campfly] pack 16: method=0 status=22 squads=1
+[campfly] pack 17: method=0 status=16 squads=1
+[campfly] pack 18: method=0 status=16 squads=1
+[campfly] pack 19: method=0 status=8 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=62560)
+[campfly] no live mission yet (currtime=62560) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=22 squads=1
+[campfly] pack 16: method=0 status=22 squads=1
+[campfly] pack 17: method=0 status=16 squads=1
+[campfly] pack 18: method=0 status=16 squads=1
+[campfly] pack 19: method=0 status=8 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=64180)
+[campfly] no live mission yet (currtime=64180) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=16 squads=1
+[campfly] pack 18: method=0 status=16 squads=1
+[campfly] pack 19: method=0 status=14 squads=1
+[campfly] pack 20: method=0 status=8 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=65800)
+[campfly] no live mission yet (currtime=65800) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=22 squads=1
+[campfly] pack 18: method=0 status=22 squads=1
+[campfly] pack 19: method=0 status=16 squads=1
+[campfly] pack 20: method=0 status=16 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=67420)
+[campfly] no live mission yet (currtime=67420) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=22 squads=1
+[campfly] pack 19: method=0 status=16 squads=1
+[campfly] pack 20: method=0 status=16 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=69040)
+[campfly] no live mission yet (currtime=69040) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=23 squads=1
+[campfly] pack 19: method=0 status=19 squads=1
+[campfly] pack 20: method=0 status=19 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=70660)
+[campfly] no live mission yet (currtime=70660) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=23 squads=1
+[campfly] pack 19: method=0 status=22 squads=1
+[campfly] pack 20: method=0 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=72280)
+[campfly] no live mission yet (currtime=72280) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=23 squads=1
+[campfly] pack 19: method=0 status=23 squads=1
+[campfly] pack 20: method=0 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=73900)
+[campfly] no live mission yet (currtime=73900) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=23 squads=1
+[campfly] pack 19: method=0 status=23 squads=1
+[campfly] pack 20: method=0 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=75520)
+[campfly] no live mission yet (currtime=75520) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=23 squads=1
+[campfly] pack 19: method=0 status=23 squads=1
+[campfly] pack 20: method=0 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=77140)
+[campfly] no live mission yet (currtime=77140) -- waiting for a raid to launch
+[campfly] pack 0: method=0 status=23 squads=1
+[campfly] pack 1: method=0 status=23 squads=1
+[campfly] pack 2: method=0 status=23 squads=1
+[campfly] pack 3: method=0 status=23 squads=1
+[campfly] pack 4: method=0 status=23 squads=1
+[campfly] pack 5: method=0 status=23 squads=1
+[campfly] pack 6: method=11 status=23 squads=7 MINE
+[campfly] pack 6 is MINE but not airborne (status=23) -- skipped
+[campfly] pack 7: method=1 status=23 squads=1
+[campfly] pack 8: method=1 status=23 squads=1
+[campfly] pack 9: method=0 status=23 squads=1
+[campfly] pack 10: method=0 status=23 squads=1
+[campfly] pack 11: method=0 status=23 squads=1
+[campfly] pack 12: method=0 status=23 squads=1
+[campfly] pack 13: method=0 status=23 squads=1
+[campfly] pack 14: method=0 status=23 squads=1
+[campfly] pack 15: method=0 status=23 squads=1
+[campfly] pack 16: method=0 status=23 squads=1
+[campfly] pack 17: method=0 status=23 squads=1
+[campfly] pack 18: method=0 status=23 squads=1
+[campfly] pack 19: method=0 status=23 squads=1
+[campfly] pack 20: method=0 status=23 squads=1
+[campfly] scan: localplayer=2(LW) nonspare=21 mine=1 own=-1 enemyraid=-1 sq=-1 (currtime=78760)
+[campfly] no live mission yet (currtime=78760) -- waiting for a raid to launch
+[fullpane] ENTER page=1 startscreen=0x846f1a0 reqres=3 caller=0x82c3796
+[vid] ChangeDisplaySettings 1024x768 -> 1920x1080
+[frontend]   dial[0] painted
+[frontend]   dial[1] painted
+[frontend]   dial[2] painted
+[centre] UI content 1024x768 in window 1920x1080 -> offset (448,156)
+[frontend] painted screen artnum=27934 + dials + menu + presented
+[frontend] LaunchMain: UpdateSize left artnum=27934 res=1024 unchanged -- keeping LaunchScreen's full frame
+[centre] UI content 1036x1220 in window 1920x1080 -> offset (442,0)
+EXIT=124
