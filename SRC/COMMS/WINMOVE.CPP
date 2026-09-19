@@ -272,6 +272,7 @@ bool	DPlay::CommsGameSync()
 					}
 				}
 
+				if (getenv("BOB_TRACE_AGG")) { fprintf(stderr, "[resync] BeginSyncPhase requested at WINMOVE.CPP:275 Host=%d synched=%d csync=%d\n", (int)_DPlay.Host, (int)_DPlay.synched, (int)_DPlay.csync); fflush(stderr); }   /* resync-site */
 				BeginSyncPhase();
 				JustJoined=TRUE;
 				return false;
@@ -3001,6 +3002,7 @@ Bool	DPlay::ReceiveSyncPackets()
 #endif
 			resyncsgot=0;
 			Initiator=TRUE;
+			if (getenv("BOB_TRACE_AGG")) { fprintf(stderr, "[resync] BeginSyncPhase requested at WINMOVE.CPP:3004 Host=%d synched=%d csync=%d\n", (int)_DPlay.Host, (int)_DPlay.synched, (int)_DPlay.csync); fflush(stderr); }   /* resync-site */
 			BeginSyncPhase();
 		}
 	}
@@ -3566,6 +3568,7 @@ void	DPlay::MakeAndSendPacket()
 	if (SendPackBuffer.NumEntries()>BufferSize && !WorldSyncPhase)
 	{
 		Initiator=TRUE;
+		if (getenv("BOB_TRACE_AGG")) { fprintf(stderr, "[resync] BeginSyncPhase requested at WINMOVE.CPP:3569 Host=%d synched=%d csync=%d\n", (int)_DPlay.Host, (int)_DPlay.synched, (int)_DPlay.csync); fflush(stderr); }   /* resync-site */
 		BeginSyncPhase();
 	}
 
@@ -8154,6 +8157,7 @@ void	DPlay::ProcessGuestLeavingMessage(ULong id)
 		if (GameType>TEAMPLAY)
 		{
 			Initiator=TRUE;
+			if (getenv("BOB_TRACE_AGG")) { fprintf(stderr, "[resync] BeginSyncPhase requested at WINMOVE.CPP:8157 Host=%d synched=%d csync=%d\n", (int)_DPlay.Host, (int)_DPlay.synched, (int)_DPlay.csync); fflush(stderr); }   /* resync-site */
 			BeginSyncPhase();
 		}
 	}
