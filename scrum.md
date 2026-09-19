@@ -12042,3 +12042,18 @@ Not claimed: that glTex=30 IS CLOUD2 (matched by the 3-value signature and size;
 trace does not carry the file name — S9 should print `ImageMapNumber` at upload).
 
 **R20: state exonerated, the sheet named, the mechanism narrowed to UV/material. BoB sprint 4 of 4 (cycle 6) — rotating to julia.**
+
+## DELIVERY 260919 (Fable 5.1, 2026-09-19) — a new Battle of Britain AppImage, verified by launching it
+
+PO: *"create appImages for the other three projects too."* `~/Documents/260919/BattleOfBritain-x86_64-260919.AppImage`
+(519 MB, packed 11:11, sha256 `5a3e4319e9f45553…`) — `appimage-build/build_bob.sh` from `build/bob` (built 09-18
+06:56; `ninja -n` reports no work, so it is HEAD `1f19f9c`, R20 S8) plus the drive_c tree.
+
+**Verified by running it** (60 s, `BOB_SHOT2D_EVERY=1`): the AppRun found the existing install under
+`~/.local/share/battle-of-britain`, the front-end painted its first present at `nonblack=786427/786432`
+(`artnum=28937`, the title page: Quick Shots … Website), `doc/reference/260919_delivery/appimage_title_half.png`.
+Since the PO's previous image (260913): SEENAC-1, R1-ONTRIGGER-RED, SCAFFOLD-TIME-1 fixed; R25's headline
+corrected; R20's square reproduced and placed in the cloud sprite sheet (not yet fixed — the PO will still
+see it in a campaign flight).
+
+**DELIVERY 260919: 1 sprint.**
