@@ -12057,3 +12057,43 @@ corrected; R20's square reproduced and placed in the cloud sprite sheet (not yet
 see it in a campaign flight).
 
 **DELIVERY 260919: 1 sprint.**
+
+## QMSIDE-1 (Fable 5.1, 2026-09-19) — ✅ **PO: "Turkey Shoot doesn't let me click on the icon to left of ME 109 to fly a german aircraft" — fixed. The icon is `IDC_PILOTEDFLAG` on a NESTED per-flight pane, and the front end only ever offered clicks to the three top-level panels**
+
+**Mechanism.** Each Quick Mission flight line is a `CSQuickLine` dialog nested inside the QS panel
+(`AddChildren`: `parent`/`fchild`/`sibling` links). `bob_ole_click` matches hosted controls by their
+OWN parent dialog, and `bob_frontend_tick` called it for `pdial[0..2]` only — so a click on any
+control of a nested pane matched nothing and left no trace (the S156 "never arrives" class). The
+genuine handler `CSQuickLine::OnClickedPilotedflag` (switches `quickdef.plside/plwave/plgrp` and
+rebuilds the flight combo) was never reached.
+
+**Fix.** `RDialog::bob_click_tree` / `bob_ctrl_point_tree` (RDIALOG.CPP) walk the pane tree; the
+front end's click dispatch and the `#ID` recipe resolver use them. `#ID:COL` on a tab row (RRadio)
+now addresses button COL (`buttonCount()`), which is what made the recipe drivable. One trace line
+in the handler.
+
+**Verified** (`tools/bob_qmside_gate.sh`, `doc/reference/260919_po/qmside_trace.txt`, headless):
+`BOB_AUTOCLICK="0,#2056,#2056,#1057:2,#2144"` = Quick Shots → Dogfighting → Luftwaffe tab → icon:
+`[ole] click (336,191) -> radio id=1057 button=2 (Selected fired)` then
+`[qs] piloted flag clicked: line side=1 wave=0 grp=0 (player was side=0 wave=0 grp=0, flights=1)`
+`[ole] click (51,295) -> ctrl id=2144 cycled (evt fired)` — the player is now the Bf 109 line.
+`qmside_turkey_luftwaffe_after_click.png` is the screen after the click.
+
+## MAPCLIP-1 (Fable 5.1, 2026-09-19) — ✅ **PO: "campaign RAF game speed set to 0, but can't change because icons cut off by bottom of screen" (and the same in the Luftwaffe campaign) — fixed two ways**
+
+The map runs at the 1920x1080 2-D resolution on a 1920x1080 desktop. S172 asked for a borderless
+window at (0,0); the window manager keeps a normal window inside the work area, so the PO got
+1843x1028 while the game laid out 1920x1080 — the bottom 52 px (the speed buttons) and the right
+77 px were off the window.
+1. **A mode that fills the desktop is now desktop-FULLSCREEN** (`SDL_WINDOW_FULLSCREEN_DESKTOP`),
+   which the WM lets cover the dock and top bar. `BOB_NO_FULLSCREEN=1` restores S172.
+2. **The canvas is fitted to whatever window we get** (`bob_fit_rect`: uniform scale, centred,
+   black bars) and clicks map through the same rectangle (`bob_window_to_canvas` and its inverse
+   for the click injectors). So even if a WM refuses fullscreen, nothing is clipped. `BOB_NO_FIT=1`
+   restores the old present.
+`[vid] mode WxH (desktop WxH) -> window WxH at (x,y) fullscreen=N` now says what the window became.
+**Verified** on the display: `[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (0,0)
+fullscreen=1`, no PRESENT/CLICK RECT MISMATCH, and the back-buffer readback
+(`mapclip_map_1920x1080_fullscreen_half.png`) shows the map with the message box, the date/speed
+box and the full toolbar row at the bottom. (One earlier run measured 1920x1043 straight after the
+request — a transient; the fit path covers that case anyway.)

@@ -580,6 +580,10 @@ void CSQuickLine::RecalcFlightsCombo(int spares)
 void CSQuickLine::OnClickedPilotedflag() 
 {
 	// TODO: Add your control notification handler code here
+	/* QMSIDE-1 (PO 2026-09-19): the handler that was never reached -- say so when it is. */
+	fprintf(stderr, "[qs] piloted flag clicked: line side=%d wave=%d grp=%d (player was side=%d wave=%d grp=%d, flights=%d)\n",
+		packnum, wavenum, groupnum, CSQuick1::quickdef.plside, CSQuick1::quickdef.plwave, CSQuick1::quickdef.plgrp,
+		CSQuick1::quickdef.line[packnum][wavenum][groupnum].flights);
 	if	(!(CSQuick1::quickdef.plside==packnum && CSQuick1::quickdef.plwave==wavenum && CSQuick1::quickdef.plgrp==groupnum))
 	{
 		if (CSQuick1::quickdef.line[packnum][wavenum][groupnum].flights!=0)

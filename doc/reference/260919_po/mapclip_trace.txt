@@ -1,0 +1,2 @@
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (448,156) fullscreen=0
+[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (0,0) fullscreen=1

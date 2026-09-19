@@ -53,6 +53,7 @@ struct OleHost {
        NOT the same as 0 and must not be compared against a rect. */
     virtual int  contentH() { return -1; }
     virtual int  colAtX(int /*localX*/) { return 0; }  /* S141: list controls: the COLUMN under a click (local X) */
+    virtual int  buttonCount() { return 0; }      /* QMSIDE-1: multi-button controls: how many equal-width buttons (recipe `#ID:COL` on a tab row) */
     virtual int  onButtonClick(int /*localX*/) { return -1; } /* multi-button controls (RRadio tabs): select the button at local X + return its index, or -1 */
 };
 

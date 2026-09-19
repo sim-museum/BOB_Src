@@ -3008,3 +3008,26 @@ void RDialog::OnRButtonDown(UINT nFlags, CPoint point)
 	
 //TempCode JIM 19Oct00 	CDialog::OnRButtonDown(nFlags, point);
 }
+
+/* QMSIDE-1 (PO 2026-09-19: "Turkey Shoot doesn't let me click on the icon to left of ME 109 to fly a
+   german aircraft"). The icon is IDC_PILOTEDFLAG on a CSQuickLine pane; each line is a NESTED child
+   of the Quick Mission panel (AddChildren: dial->parent=this, fchild/sibling links). The front end's
+   click dispatch (FULLPSYS.CPP) tested only the three top-level panels, and bob_ole_click matches
+   hosts by their own parent dialog -- so a click on any nested pane's control matched nothing and
+   produced no trace at all (the S156 "never arrives" class). Walk the tree. */
+extern "C" int bob_ole_click(CWnd* dialog, int x, int y);
+extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int* px, int* py);
+int RDialog::bob_click_tree(int x,int y)
+{
+	if (bob_ole_click((CWnd*)this, x, y)) return 1;
+	for (RDialog* c = fchild; c; c = c->sibling)
+		if (c->bob_click_tree(x, y)) return 1;
+	return 0;
+}
+int RDialog::bob_ctrl_point_tree(int id,int col,int row,int* px,int* py)
+{
+	if (bob_ole_ctrl_point_rc((CWnd*)this, id, col, row, px, py)) return 1;
+	for (RDialog* c = fchild; c; c = c->sibling)
+		if (c->bob_ctrl_point_tree(id, col, row, px, py)) return 1;
+	return 0;
+}

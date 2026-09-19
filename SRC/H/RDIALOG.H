@@ -461,6 +461,14 @@ private:
 	
 	int		ModScroll(UINT id,UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	static RDialog*	MakeParentDialog(CRect& e,RDialog* parent,DialBox* tree);
+	/* QMSIDE-1 (2026-09-19): hit-test / locate hosted controls on THIS dialog and every nested
+	   child pane (fchild/sibling), not only on the top-level panel. The Quick Mission per-flight
+	   lines (CSQuickLine, with the IDC_PILOTEDFLAG "fly this one" button) are nested panes, and
+	   the front end only ever offered clicks to pdial[0..2] themselves. */
+public:
+	int		bob_click_tree(int x,int y);
+	int		bob_ctrl_point_tree(int id,int col,int row,int* px,int* py);
+private:
 	RDialog*	AddChildren(const DialBox*const* diallist,int X2flag=0,CRect& rect=*(CRect*)NULL);
 	void	AddChildren(const DialBox*const* diallist,DialMake::ChildType childtype,const IdList* titles);
 public:

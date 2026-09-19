@@ -51,6 +51,7 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
        m_Cols columns), so map local X across the drawn width to the button index; set the
        selection (updates m_CurSel + the tick) and return the index so bob_ole_click can
        fire the genuine Selected(index) event -> CSQuick1::OnSelectedRradio -> page switch. */
+    int buttonCount() override { return (int)m_list.GetCount(); }
     int onButtonClick(int localX) override {
         int n = (int)m_list.GetCount();
         if (n <= 0 || sw <= 0) return -1;

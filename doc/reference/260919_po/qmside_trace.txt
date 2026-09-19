@@ -1,0 +1,7 @@
+[frontend] autoclick step #2056:0.-1 -> (277,43)
+[frontend] autoclick step #2056:0.-1 -> (277,43)
+[frontend] autoclick step #1057:2.-1 -> (336,191)
+[ole] click (336,191) -> radio id=1057 button=2 (Selected fired)
+[frontend] autoclick step #2144:0.-1 -> (51,295)
+[qs] piloted flag clicked: line side=1 wave=0 grp=0 (player was side=0 wave=0 grp=0, flights=1)
+[ole] click (51,295) -> ctrl id=2144 cycled (evt fired)

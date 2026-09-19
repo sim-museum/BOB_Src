@@ -1048,6 +1048,15 @@ extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int
         if (!multi)
             for (int t = 0; t < h->sw && !multi; t++)
                 if (h->colAtX(t) > 0) multi = 1;
+        /* QMSIDE-1: a multi-BUTTON control (RRadio tab row) has no listbox columns, so `#ID:COL`
+           on it always failed as "no such column" and read as "control not drawn yet". Its buttons
+           are equal-width across the drawn rect (onButtonClick), so column COL is button COL. */
+        int nb = h->buttonCount();
+        if (nb > 0) {
+            if (col >= nb) return 0;
+            lx = (int)(((double)col + 0.5) * h->sw / nb);
+            multi = 0;
+        }
         if (multi) {                                     /* multi-column: find the column's span */
             int start = -1, end = -1;
             for (int t = 0; t < h->sw; t++) {

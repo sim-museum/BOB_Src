@@ -222,6 +222,44 @@ static void ensure_window(int w, int h);
    the flat block the PO photographed. Defined after the extent variables; declared here so
    ensure_window can call it. */
 static void bob_ui_extent_invalidate(void);
+/* MAPCLIP-1 (PO 2026-09-19): FIT THE CANVAS TO THE WINDOW WE ACTUALLY GOT. The game lays out at the
+   MODE size (g_scrW x g_scrH); the window manager decides the window size, and on this desktop it
+   does not give a 1920x1080 window even when asked (work-area clamping: 1843x1028 borderless,
+   1920x1043 desktop-fullscreen). Presenting the mode canvas into a smaller drawable cut the bottom
+   rows off -- the campaign map's speed buttons -- and the click mapping disagreed with the picture.
+   So: scale the canvas uniformly into the drawable (letterboxed, centred) and map clicks through the
+   same rectangle. Identity when the sizes agree. BOB_NO_FIT=1 restores the old behaviour. */
+static int bob_fit_rect(int* ox, int* oy, int* fw, int* fh, int* dw, int* dh)
+{
+	*dw = g_scrW; *dh = g_scrH;
+	if (g_win) SDL_GL_GetDrawableSize(g_win, dw, dh);
+	*ox = 0; *oy = 0; *fw = g_scrW; *fh = g_scrH;
+	if (*dw <= 0 || *dh <= 0 || g_scrW <= 0 || g_scrH <= 0) return 0;
+	if ((*dw == g_scrW && *dh == g_scrH) || getenv("BOB_NO_FIT")) return 0;
+	double sx = (double)*dw / g_scrW, sy = (double)*dh / g_scrH, sc = sx < sy ? sx : sy;
+	*fw = (int)(g_scrW * sc + 0.5); *fh = (int)(g_scrH * sc + 0.5);
+	*ox = (*dw - *fw) / 2; *oy = (*dh - *fh) / 2;
+	static int said = 0;
+	if (!said) { said = 1;
+		fprintf(stderr, "[vid] MAPCLIP-1: mode %dx%d presented fitted into drawable %dx%d as %dx%d at (%d,%d)\n",
+		        g_scrW, g_scrH, *dw, *dh, *fw, *fh, *ox, *oy); fflush(stderr); }
+	return 1;
+}
+/* window-logical (SDL event coords, lw x lh) -> canvas (mode) coords */
+static void bob_window_to_canvas(int wx, int wy, int lw, int lh, int* cx, int* cy)
+{
+	int ox, oy, fw, fh, dw, dh; bob_fit_rect(&ox, &oy, &fw, &fh, &dw, &dh);
+	double dx = lw ? (double)wx * dw / lw : wx, dy = lh ? (double)wy * dh / lh : wy;
+	*cx = (int)((dx - ox) * g_scrW / (fw ? fw : 1));
+	*cy = (int)((dy - oy) * g_scrH / (fh ? fh : 1));
+}
+/* canvas (mode) coords -> window-logical, the inverse (used by the click injectors) */
+static void bob_canvas_to_window(int cx, int cy, int lw, int lh, int* wx, int* wy)
+{
+	int ox, oy, fw, fh, dw, dh; bob_fit_rect(&ox, &oy, &fw, &fh, &dw, &dh);
+	double dx = ox + (double)cx * fw / (g_scrW ? g_scrW : 1), dy = oy + (double)cy * fh / (g_scrH ? g_scrH : 1);
+	*wx = (int)(dw ? dx * lw / dw : dx); *wy = (int)(dh ? dy * lh / dh : dy);
+}
 extern "C" void bob_apply_pending_resize(void)
 {
 	int pw = g_pendingW, ph = g_pendingH;
@@ -279,12 +317,33 @@ static void ensure_window(int w, int h)
 		bob_ui_extent_invalidate();   /* the old extent describes the old mode -- do not reuse it */
 		SDL_SetWindowSize(g_win, g_scrW, g_scrH);
 		SDL_DisplayMode dm;
-		if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && g_scrW >= dm.w && g_scrH >= dm.h) {
+		/* MAPCLIP-1 (PO 2026-09-19, two screenshots, RAF and Luftwaffe Channel campaigns): "game
+		   speed set to 0, but can't change because icons cut off by bottom of screen". The
+		   campaign map runs at the 1920x1080 2-D resolution on a 1920x1080 desktop; S172's
+		   borderless-at-(0,0) window is still a NORMAL window, and GNOME's window manager keeps
+		   normal windows inside the work area (dock + top bar) -- the PO's window measured
+		   1843x1028 while the game kept laying out 1920x1080, so the bottom 52 px (the speed
+		   buttons) and right 77 px were simply off the window. A mode that fills the desktop is
+		   what fullscreen IS: ask SDL for desktop-fullscreen, which the WM lets cover the panels.
+		   BOB_NO_FULLSCREEN=1 restores the S172 borderless window (the A/B, and an escape hatch). */
+		int fillsDesktop = (SDL_GetDesktopDisplayMode(0, &dm) == 0 && g_scrW >= dm.w && g_scrH >= dm.h);
+		if (fillsDesktop && !getenv("BOB_NO_FULLSCREEN")) {
+			SDL_SetWindowFullscreen(g_win, SDL_WINDOW_FULLSCREEN_DESKTOP);
+		} else if (fillsDesktop) {
+			SDL_SetWindowFullscreen(g_win, 0);
 			SDL_SetWindowBordered(g_win, SDL_FALSE);
 			SDL_SetWindowPosition(g_win, 0, 0);
 		} else {
+			SDL_SetWindowFullscreen(g_win, 0);
 			SDL_SetWindowBordered(g_win, SDL_TRUE);
 			SDL_SetWindowPosition(g_win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+		}
+		{	/* say what the window actually became -- the PO's report is about the window, not the mode */
+			int ww = 0, wh = 0, wx = 0, wy = 0; SDL_GetWindowSize(g_win, &ww, &wh); SDL_GetWindowPosition(g_win, &wx, &wy);
+			fprintf(stderr, "[vid] mode %dx%d (desktop %dx%d) -> window %dx%d at (%d,%d) fullscreen=%d\n",
+			        g_scrW, g_scrH, dm.w, dm.h, ww, wh, wx, wy,
+			        (SDL_GetWindowFlags(g_win) & SDL_WINDOW_FULLSCREEN_DESKTOP) == SDL_WINDOW_FULLSCREEN_DESKTOP ? 1 : 0);
+			fflush(stderr);
 		}
 		return;
 	}
@@ -599,8 +658,7 @@ extern "C" int bob_sdl_push_click(int fbx, int fby) {
 	ev.button.button = SDL_BUTTON_LEFT;
 	ev.button.state  = SDL_PRESSED;
 	ev.button.clicks = 1;
-	ev.button.x = g_scrW ? fbx * lw / g_scrW : fbx;
-	ev.button.y = g_scrH ? fby * lh / g_scrH : fby;
+	{ int wx_, wy_; bob_canvas_to_window(fbx, fby, lw, lh, &wx_, &wy_); ev.button.x = wx_; ev.button.y = wy_; }   /* MAPCLIP-1 */
 	int rc = SDL_PushEvent(&ev);
 	fprintf(stderr, "[sdlclick] queued real SDL_MOUSEBUTTONDOWN fb=(%d,%d) logical=(%d,%d) rc=%d\n",
 		fbx, fby, ev.button.x, ev.button.y, rc);
@@ -966,8 +1024,7 @@ static void pump_events(void)
 					SDL_Event ev; memset(&ev, 0, sizeof(ev));
 					ev.type = SDL_MOUSEBUTTONDOWN; ev.button.button = SDL_BUTTON_LEFT;
 					ev.button.state = SDL_PRESSED; ev.button.clicks = 1;
-					ev.button.x = g_scrW ? px * lw / g_scrW : px;
-					ev.button.y = g_scrH ? py * lh / g_scrH : py;
+					{ int wx_, wy_; bob_canvas_to_window(px, py, lw, lh, &wx_, &wy_); ev.button.x = wx_; ev.button.y = wy_; }   /* MAPCLIP-1 */
 					int pushed = SDL_PushEvent(&ev);
 					fprintf(stderr, "[sdlclickms] pushed SDL_MOUSEBUTTONDOWN (%d,%d) at %ums (due %ldms) rc=%d\n",
 					        px, py, (unsigned)el, T, pushed);
@@ -1058,8 +1115,7 @@ static void pump_events(void)
 					ev.button.state  = SDL_PRESSED;
 					ev.button.clicks = 1;
 					/* framebuffer -> window-logical (handler scales back the other way) */
-					ev.button.x = g_scrW ? px * lw / g_scrW : px;
-					ev.button.y = g_scrH ? py * lh / g_scrH : py;
+					{ int wx_, wy_; bob_canvas_to_window(px, py, lw, lh, &wx_, &wy_); ev.button.x = wx_; ev.button.y = wy_; }   /* MAPCLIP-1 */
 					int pushed = SDL_PushEvent(&ev);
 					fprintf(stderr, "[sdlclick] pushed real SDL_MOUSEBUTTONDOWN fb=(%d,%d) "
 						"logical=(%d,%d) tick=%ld rc=%d\n", px, py, ev.button.x, ev.button.y, T, pushed);
@@ -1084,8 +1140,8 @@ static void pump_events(void)
 		}
 		else if (e.type==SDL_MOUSEBUTTONDOWN && e.button.button==SDL_BUTTON_LEFT) {
 				int lw=g_scrW, lh=g_scrH; if (g_win) SDL_GetWindowSize(g_win,&lw,&lh);  /* logical->drawable */
-				g_clickX = lw ? e.button.x * g_scrW / lw : e.button.x;
-				g_clickY = lh ? e.button.y * g_scrH / lh : e.button.y;
+				{ int cx_, cy_; bob_window_to_canvas(e.button.x, e.button.y, lw, lh, &cx_, &cy_);   /* MAPCLIP-1: through the fit rect */
+				  g_clickX = cx_; g_clickY = cy_; }
 				/* R9: the canvas was drawn at +g_uiOff, so a click must come back by the same
 				   amount or every hit-test is offset by exactly the centring margin. */
 				if (bob_centre_ui()) { g_clickX -= g_uiOffX; g_clickY -= g_uiOffY; }
@@ -1618,6 +1674,7 @@ static void bob_check_present_rect(const char* where)
 	SDL_GetWindowSize(g_win, &_ww, &_wh);
 	SDL_GL_GetDrawableSize(g_win, &_dw, &_dh);
 	if (_ww != g_scrW || _wh != g_scrH || _dw != g_scrW || _dh != g_scrH) {
+		if (!getenv("BOB_NO_FIT")) return;   /* MAPCLIP-1: the fit rect reconciles present and clicks */
 		static int _warned = 0;
 		if (_warned < 8) { _warned++;
 			fprintf(stderr,"[vid] PRESENT/CLICK RECT MISMATCH in %s: mode=%dx%d window=%dx%d drawable=%dx%d"
@@ -1818,7 +1875,14 @@ extern "C" void bob_gdi_present(void) {
 	glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,g_gdiW,g_gdiH,0,GL_BGRA,GL_UNSIGNED_BYTE,g_gdiFB);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-	glViewport(0,0,g_scrW,g_scrH);
+	{	/* MAPCLIP-1: present into the fitted rect of the REAL drawable, black bars around it */
+		int fox, foy, ffw, ffh, fdw, fdh;
+		if (bob_fit_rect(&fox, &foy, &ffw, &ffh, &fdw, &fdh)) {
+			glViewport(0, 0, fdw, fdh); glDisable(GL_SCISSOR_TEST);
+			glClearColor(0, 0, 0, 1); glClear(GL_COLOR_BUFFER_BIT);
+			glViewport(fox, foy, ffw, ffh);
+		} else glViewport(0,0,g_scrW,g_scrH);
+	}
 	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(0,1,0,1,-1,1);
 	glMatrixMode(GL_MODELVIEW);  glPushMatrix(); glLoadIdentity();
 	glDisable(GL_DEPTH_TEST); glDisable(GL_BLEND); glEnable(GL_TEXTURE_2D); glColor3f(1,1,1);
