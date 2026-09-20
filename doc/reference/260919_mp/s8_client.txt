@@ -1,0 +1,80 @@
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (448,156) fullscreen=0
+[agg] drawloop/s: 1 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 0 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (0,0) fullscreen=1
+[agg] drawloop presync branch 1/s
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 1/s
+[agg] drawloop/s: 2061561 iters  pre-tick 747 ms  BlockTick(TRUE) 0 ms  tick->done 71 ms  DoneFrame 60 ms  total 877 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 747  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 46/s
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 46/s
+[agg] drawloop/s: 46 iters  pre-tick 703 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 703 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 703  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 59/s
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 59/s
+[agg] drawloop/s: 59 iters  pre-tick 988 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 988 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 988  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 60/s
+[agg] drawloop/s: 60 iters  pre-tick 1004 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1005 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 1004  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 60/s
+[agg] drawloop/s: 60 iters  pre-tick 1006 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1007 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 1006  videoshot 0  keycheck 0 ms
+[addplayer] slot=0 actype=0 id=4864 -> ConvertPtrUID FOUND (peer will be made visible)
+[agg] GATE num=0 CurrPlayers=2  aggCount=0 myFrame=0  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 57/s
+[agg] InitSyncPhase got-agg-packet 1/s  no-packet 56/s
+[agg] drawloop/s: 57 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=0 CurrPlayers=2  aggCount=1 myFrame=1  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 9/s  no-packet 51/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=10 myFrame=11  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 8/s  no-packet 52/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=18 myFrame=19  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 8/s  no-packet 52/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=26 myFrame=27  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 9/s  no-packet 51/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=35 myFrame=36  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 8/s  no-packet 52/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=43 myFrame=44  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 8/s  no-packet 52/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=51 myFrame=52  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 9/s  no-packet 51/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=60 myFrame=61  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 58/s
+[agg] InitSyncPhase got-agg-packet 8/s  no-packet 50/s
+[agg] drawloop/s: 58 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=68 myFrame=69  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 8/s  no-packet 52/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms
+[agg] GATE num=0 CurrPlayers=2  aggCount=76 myFrame=77  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 60/s
+[agg] InitSyncPhase got-agg-packet 9/s  no-packet 51/s
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 1000 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 999  videoshot 0  keycheck 0 ms

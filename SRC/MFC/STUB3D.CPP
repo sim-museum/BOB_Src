@@ -1434,6 +1434,12 @@ View3d* Inst3d::Interactive(View3d* newwin)
 bool Inst3d::Paused(bool newmode)
 {
 	bool rv=paused;
+#if defined(__linux__)
+	/* EPIC M / MP S9: WinMove (and so MakeAndSendPacket) runs only while !Paused(); a multiplayer
+	   flight must stay paused until CommsGameSync succeeds. Print every transition with its caller. */
+	if (getenv("BOB_TRACE_AGG") && newmode != rv)
+		fprintf(stderr,"[paused] %d -> %d  caller=%p\n", (int)rv, (int)newmode, __builtin_return_address(0));
+#endif
 	paused=newmode;
 	if (newmode!=rv)
 	{
@@ -1657,6 +1663,12 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 	View3d* This=(View3d*) THISTHIS;
 	forever
 	{
+#ifdef __linux__
+		/* EPIC M / MP S9: where does a pre-csync iteration spend its second? Checkpoints, printed once a second. */
+		struct timespec _c0, _c1, _c2, _c3, _c4, _k1, _k2, _k3, _k4; static double _acc[5] = {0,0,0,0,0}, _kacc[4] = {0,0,0,0}; static long _it = 0; static time_t _last = 0;
+		clock_gettime(CLOCK_MONOTONIC, &_c0); _c1 = _c2 = _c3 = _k1 = _k2 = _k3 = _k4 = _c0;
+#define BOB_CK_MS(a,b) (((b).tv_sec-(a).tv_sec)*1e3 + ((b).tv_nsec-(a).tv_nsec)/1e6)
+#endif
 		if (This->drawing==D_YES)
 		{
 			//actual draw code here!
@@ -1704,6 +1716,9 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 					}
 				}
 #endif
+#ifdef __linux__
+				clock_gettime(CLOCK_MONOTONIC, &_k1);
+#endif
 				if (!_DPlay.Implemented || _DPlay.csync)		//DAW 22Jun99
 					Three_Dee.render(Master_3d.g_lpLib3d,This->View_Point,This->inst->world);
 //DeadCode AMM 8Sep00 				else if (doit&0x1000)							//AMM 08Jul99
@@ -1743,7 +1758,13 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 //DeadCode RJS 2Nov00 
 //DeadCode RJS 2Nov00 				This->BlockTick(FALSE);
 
+#ifdef __linux__
+				clock_gettime(CLOCK_MONOTONIC, &_k2);
+#endif
 				OverLay.screenshot.VideoShot(Master_3d.g_lpLib3d);
+#ifdef __linux__
+				clock_gettime(CLOCK_MONOTONIC, &_k3);
+#endif
 				if (Key_Tests.KeyPress3d(SCREENSHOT))
 				{
 					if (!OverLay.screenshot.framebuffer)
@@ -1752,6 +1773,9 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 						OverLay.screenshot.SaveVideoStream(Master_3d.g_lpLib3d);
 				}
 // to stop screen strobe in comms sync phase!
+#ifdef __linux__
+				clock_gettime(CLOCK_MONOTONIC, &_k4);
+#endif
 				if (!_DPlay.Implemented || _DPlay.csync)		//AMM 09Jun99
 				{
 					Master_3d.g_lpLib3d->ScreenSwap();
@@ -1759,7 +1783,13 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 				}
 
 // Killing objects, or transients MUST come after the mirror render...
+#ifdef __linux__
+				clock_gettime(CLOCK_MONOTONIC, &_c1);
+#endif
 				This->BlockTick(TRUE);
+#ifdef __linux__
+				clock_gettime(CLOCK_MONOTONIC, &_c2);
+#endif
 				//Transients must always go last...
 				if (!_DPlay.Implemented || _DPlay.csync)		//DAW 22Jun99
 				{												//DAW 22Jun99
@@ -1774,6 +1804,13 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 				{
 					if (_DPlay.Implemented && !_DPlay.csync)
 					{
+#ifdef __linux__
+						/* EPIC M / MP S9: the S9 census shows the host's InitSyncPhase running ONCE A SECOND
+						   before csync (got-agg-packet 1/s, no-packet 0/s) while the aggregator queues nine.
+						   Count this branch's rate and where the frame's time goes. BOB_TRACE_AGG=1. */
+						{ static long n = 0; static time_t last = 0; time_t now = time(0); n++;
+						  if (getenv("BOB_TRACE_AGG") && now != last) { last = now; fprintf(stderr, "[agg] drawloop presync branch %ld/s\n", n); fflush(stderr); n = 0; } }
+#endif
 						if (_DPlay.CommsGameSync())
 							This->Paused(FALSE);
 					}
@@ -1782,11 +1819,23 @@ UINT AFX_CDECL View3d::drawloop(LPVOID THISTHIS)
 				This->BlockTick(FALSE);
 			}
 		}
+#ifdef __linux__
+		clock_gettime(CLOCK_MONOTONIC, &_c3);
+#endif
 		if (This->E)
 			This->E->SetEvent();
 		if (This->drawing==D_CLOSE)
 			return 0;
 		This->DoneFrame();
+#ifdef __linux__
+		clock_gettime(CLOCK_MONOTONIC, &_c4); _it++;
+		_kacc[0] += BOB_CK_MS(_c0,_k1); _kacc[1] += BOB_CK_MS(_k1,_k2); _kacc[2] += BOB_CK_MS(_k2,_k3); _kacc[3] += BOB_CK_MS(_k3,_k4); _acc[0] += BOB_CK_MS(_c0,_c1); _acc[1] += BOB_CK_MS(_c1,_c2); _acc[2] += BOB_CK_MS(_c2,_c3); _acc[3] += BOB_CK_MS(_c3,_c4); _acc[4] += BOB_CK_MS(_c0,_c4);
+		{ time_t now = time(0); if (getenv("BOB_TRACE_AGG") && now != _last) { _last = now;
+			fprintf(stderr, "[agg] drawloop/s: %ld iters  pre-tick %.0f ms  BlockTick(TRUE) %.0f ms  tick->done %.0f ms  DoneFrame %.0f ms  total %.0f ms  (csync=%d)\n",
+				_it, _acc[0], _acc[1], _acc[2], _acc[3], _acc[4], _DPlay.csync ? 1 : 0);
+			fprintf(stderr, "[agg] drawloop pre-tick split/s: gate-trace %.0f  render/wait %.0f  videoshot %.0f  keycheck %.0f ms\n", _kacc[0], _kacc[1], _kacc[2], _kacc[3]);
+			fflush(stderr); _it = 0; for (int k = 0; k < 5; k++) _acc[k] = 0; for (int k = 0; k < 4; k++) _kacc[k] = 0; } }
+#endif
 
 		if (Manual_Pilot.ControlledAC2!=NULL && !_Replay.Playback && Key_Tests.KeyPress3d(EXITKEY))
 			_DPlay.SimulateExitKey=TRUE;
@@ -1888,8 +1937,26 @@ int	View3d::WaitEndDraw(DrawState d,int timeoutmilisec)
 //DeadCode AMM 24Aug00 }
 
 static int	howcamehere;
+#ifdef __linux__
+static long bob_agg_reached = 0;   /* MP S9: aggregator calls per second, reported by StaticTimeProc */
+#endif
 void CALLBACK Mast3d::StaticTimeProc(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw1, DWORD dw2 )
 {
+#ifdef __linux__
+	/* EPIC M / MP S9 (2026-09-19, ported from MiG Alley S5): the HOST's aggregator is driven only from
+	   this multimedia-timer callback, behind three gates. BoB's S9 session showed the players getting
+	   ONE aggregate packet a second; report whether the callback fires at all and how often it reaches
+	   the aggregator, once a second. BOB_TRACE_AGG=1. */
+	{
+		static int a_on = -1;
+		if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+		if (a_on) { static long fired = 0; static time_t last = 0; time_t now = time(0); fired++;
+			if (now != last) { last = now;
+				fprintf(stderr, "[agg] StaticTimeProc %ld/s  impl=%d host=%d running=%d resync=%d  -> AggregatorGetPackets %ld/s\n",
+						fired, _DPlay.Implemented ? 1 : 0, _DPlay.Host ? 1 : 0, _DPlay.GameRunning ? 1 : 0,
+						_DPlay.ResyncPhase ? 1 : 0, bob_agg_reached); fflush(stderr); fired = 0; bob_agg_reached = 0; } }
+	}
+#endif
 
 #ifdef DO_TIMER_DIAGS
 	QueryPerformanceCounter(&timerBufferIn[timerBufferI]);
@@ -1903,6 +1970,9 @@ void CALLBACK Mast3d::StaticTimeProc(UINT uID, UINT uMsg, DWORD dwUser, DWORD dw
 		{
 			if (!_DPlay.ResyncPhase)
 			{
+#ifdef __linux__
+				bob_agg_reached++;   /* MP S9 */
+#endif
 				_Agg.AggregatorGetPackets();
 			}
 		}
@@ -2517,7 +2587,18 @@ void	Inst3d::MoveCycle(WorldStuff* worldref)					//AMM 11May99
 
 void	View3d::BlockTick(Bool setit)
 {
+#ifdef __linux__
+	struct timespec _t0, _t1; clock_gettime(CLOCK_MONOTONIC, &_t0);
 	inst->BlockTick(setit);
+	clock_gettime(CLOCK_MONOTONIC, &_t1);
+	{ static double acc[2] = {0, 0}; static long cnt[2] = {0, 0}; static time_t last = 0; time_t now = time(0);
+	  double ms = (_t1.tv_sec - _t0.tv_sec) * 1e3 + (_t1.tv_nsec - _t0.tv_nsec) / 1e6; acc[setit ? 1 : 0] += ms; cnt[setit ? 1 : 0]++;
+	  if (getenv("BOB_TRACE_AGG") && now != last) { last = now;
+		fprintf(stderr, "[agg] BlockTick/s: set %ld calls %.0f ms, clear %ld calls %.0f ms  (csync=%d)\n", cnt[1], acc[1], cnt[0], acc[0], _DPlay.csync ? 1 : 0);
+		fflush(stderr); acc[0] = acc[1] = 0; cnt[0] = cnt[1] = 0; } }
+#else
+	inst->BlockTick(setit);
+#endif
 }
 
 void	ViewPoint::BlockTick(Bool q)

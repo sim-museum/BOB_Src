@@ -1434,6 +1434,24 @@ Bool DPlay::SendPacketToAggregator(LPACPACKET lpAcPacket)
 	HRESULT res; 
 
 	res=lpDP4->SendEx(From,To,DPSEND_ASYNC|DPSEND_NOSENDCOMPLETEMSG,lpAcPacket,sizeof(ACPACKET),0,0,NULL,NULL);
+#ifdef __linux__
+	/* EPIC M / MP S9 (2026-09-19, mirrored from MiG Alley): the aggregator's pre-sync slot fill takes
+	   WHATEVER packet carries Count==AggFrameCount, and a non-dummy packet at the head of a player's
+	   reserve stops the search for good -- so a DELTA packet sent before csync poisons the sync.
+	   Report, per second, what this player hands the aggregator by IDCode class. BOB_TRACE_AGG=1. */
+	{
+		static int a_on = -1;
+		if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+		if (a_on) { static long nd = 0, ni = 0, no = 0; static int lastother = -1; static time_t last = 0;
+			time_t now = time(0);
+			if (lpAcPacket->IDCode==PIDC_DUMMYPACKET) nd++; else if (lpAcPacket->IDCode==PIDC_INITPACK) ni++;
+			else { no++; lastother = (int)lpAcPacket->IDCode; }
+			if (now != last) { last = now;
+				fprintf(stderr, "[agg] sent-to-agg/s dummy=%ld init=%ld other=%ld (last other IDCode=%d)  Count=%d FrameCount=%lu synched=%d csync=%d res=%ld\n",
+						nd, ni, no, lastother, (int)lpAcPacket->Count, (unsigned long)FrameCount, synched ? 1 : 0, csync ? 1 : 0, (long)res);
+				fflush(stderr); nd = ni = no = 0; } }
+	}
+#endif
 
 #ifdef FILELOGS
 	if (res!=DP_OK && res!=DPERR_PENDING)
@@ -1490,6 +1508,7 @@ void SendInitPacket ()
 				
 // get initial random numbers
 
+			{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:1511"; }   /* MP S9 census tag */
 			while (_DPlay.ReceiveNextMessageToMe(Buffer,BufLen,From,DPRECEIVE_TOPLAYER))
 			{
 				if (From==DPID_SYSMSG)
@@ -1593,6 +1612,7 @@ void SendInitPacket ()
 					_Error.SayAndQuit("Timed out (SIP)");
 
 
+				{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:1614"; }   /* MP S9 census tag */
 				while (_DPlay.ReceiveNextMessageToMe(Buffer,BufLen,From,DPRECEIVE_TOPLAYER))
 				{
 					if (From==DPID_SYSMSG)
@@ -1777,6 +1797,7 @@ FileNum Persons3::FindCommsNextBf (BattlefieldType& bfctrl)
 					if (time.TimedOut(now))
 						_Error.SayAndQuit("Timed out (FCNB)");
 
+					{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:1798"; }   /* MP S9 census tag */
 					if (_DPlay.ReceiveNextMessageToMe (RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 					{
 						if (from==DPID_SYSMSG)
@@ -1848,6 +1869,7 @@ void SendInit2Packet ()
 
 		if(_DPlay.Host)
 		{
+			{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:1869"; }   /* MP S9 census tag */
 			while (_DPlay.ReceiveNextMessageToMe(Buffer,BufferLen,from,DPRECEIVE_TOPLAYER))
 			{
 			}
@@ -2924,6 +2946,7 @@ Bool	DPlay::ReceiveSyncPackets()
 		now=timeGetTime();
 	}
 	
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:2945"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(Buffer,BufLen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -3068,6 +3091,7 @@ Bool	DPlay::InitSyncPhase()
 
 		From=aggID;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:InitSync-from"; }   /* MP S9 census tag */
 		while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_FROMPLAYER))
 		{
 		}
@@ -3076,6 +3100,7 @@ Bool	DPlay::InitSyncPhase()
 	bool got=false;
 
 	From=aggID;
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:InitSync"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_TOPLAYER))
 	{
 #ifdef __linux__
@@ -3313,6 +3338,7 @@ Bool	DPlay::SecondSyncPhase()
 	bool got=false;
 
 	From=aggID;
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:SecondSync"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_TOPLAYER))
 	{
 		if (From==DPID_SYSMSG)
@@ -3591,6 +3617,7 @@ void	DPlay::ProcessInfoPackets()
 	char* Buffer;
 	DPID	From=0;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:3615"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_TOPLAYER))
 	{
 		if (From==DPID_SYSMSG)
@@ -3702,6 +3729,7 @@ Bool	DPlay::JoinGame()
 		if (time.TimedOut(now))
 			return FALSE;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:3726"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==DPID_SYSMSG)
@@ -3744,6 +3772,7 @@ Bool	DPlay::JoinGame()
 		if (time.TimedOut(now))
 			return FALSE;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:3768"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==DPID_SYSMSG)
@@ -3787,6 +3816,7 @@ Bool	DPlay::JoinGame()
 		if (time.TimedOut(now))
 			return FALSE;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:3811"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==DPID_SYSMSG)
@@ -5002,6 +5032,7 @@ Bool	DPlay::ReceiveSlotRequestOK()
 		if (time.TimedOut(now))
 			return FALSE;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:5026"; }   /* MP S9 census tag */
 		while (ReceiveNextMessageToMe(Buffer,BufLen,From,DPRECEIVE_TOPLAYER))
 		{
 			if (From==DPID_SYSMSG)
@@ -6369,6 +6400,7 @@ Bool	DPlay::GetSyncData(ULong type,ULong need,ULong& got)
 	char* buffer;
 	ULong	buflen,from;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:6393"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -6608,6 +6640,7 @@ Bool	DPlay::GetAllAnims(ULong type, ULong need, ULong& got)
 	UByteP pack;
 	UniqueID id;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:6632"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -6656,6 +6689,7 @@ Bool	DPlay::GetNumAnims(ULong type,ULong& num)
 	ULong buflen,from;
 	LPGENERIC c;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:6680"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -6913,6 +6947,7 @@ Need: AC positions/data/flight models and anims
 #endif
 				}
 
+				{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:6937"; }   /* MP S9 census tag */
 				while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 				{
 					if (from==DPID_SYSMSG)
@@ -6982,6 +7017,7 @@ Need: AC positions/data/flight models and anims
 		{
 // need all gotworldmessages
 
+			{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:7006"; }   /* MP S9 census tag */
 			while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 			{
 				if (from==DPID_SYSMSG)
@@ -8040,6 +8076,18 @@ void	DPlay::UpdateHistBuffer(LPACPACKET p,ULong slot)
 	if (FrameCount&(25/RateDivider))
 	{
 		AirStrucPtr AC=*Persons2::ConvertPtrUID((UniqueID)AllocPacket[slot]);
+#ifdef __linux__
+		/* EPIC M / MP S9 (2026-09-19): session 10 -- the first BoB session whose CLIENT reached the real-packet
+		   phase -- died here: AllocPacket[slot] resolved to NO aircraft and GetSector(NULL) faulted at +0xc
+		   (WorldStuff::getsectornos). Say which slot and uid, and skip the slot instead of dying; the
+		   trace names the table so the missing allocation can be chased. BOB_TRACE_AGG=1. */
+		if (!AC)
+		{
+			if (getenv("BOB_TRACE_AGG")) { static long n = 0; if (n++ < 20) { fprintf(stderr, "[hist] slot %lu AllocPacket=%lu -> no aircraft in this world (mySlot=%lu Alloc:", (unsigned long)slot, (unsigned long)AllocPacket[slot], (unsigned long)mySlot);
+				for (int q = 0; q < MAXPLAYERS; q++) fprintf(stderr, " %lu", (unsigned long)AllocPacket[q]); fprintf(stderr, ") -- skipped\n"); fflush(stderr); } }
+			return;
+		}
+#endif
 
  		if (AC==Persons2::PlayerSeenAC)
 			AC=Persons2::PlayerGhostAC;
@@ -8447,6 +8495,7 @@ bool	DPlay::GetNumDeadBlocks(ULong& num,int& dtime)
 	ULong	buflen,from;
 	LPGENERIC c;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:8471"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -8483,6 +8532,7 @@ bool	DPlay::GetAllDeadBlocks(ULong need,ULong& got)
 	ULong buflen,from;
 	UByteP pack;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:8507"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -8626,6 +8676,7 @@ bool	DPlay::GetPilotsStatus()
 		if (time.TimedOut(now))
 			return false;
 		
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:8650"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(Buffer,BufferLen,From,0))
 		{
 			if (From==DPID_SYSMSG)
@@ -8823,6 +8874,7 @@ bool	DPlay::GetAAAList()
 	char* buffer;
 	ULong	buflen,from;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:8847"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -8881,6 +8933,7 @@ bool	DPlay::GetRandomList()
 	char* buffer;
 	ULong	buflen,from;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:8905"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -10447,6 +10500,7 @@ void	DPlay::WaitForPlayersUniqueIDs()
 		if (time.TimedOut(now))
 			_Error.EmitSysErr("Timed out waiting for player UIDs");
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:10471"; }   /* MP S9 census tag */
 		while (ReceiveNextMessageToMe(Buffer,BufLen,From,DPRECEIVE_TOPLAYER))
 		{
 			if (From==DPID_SYSMSG)
@@ -10908,6 +10962,7 @@ bool	DPlay::GetACArray()
 	char* buffer;
 	ULong	buflen,from;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "WINMOVE.CPP:10932"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)

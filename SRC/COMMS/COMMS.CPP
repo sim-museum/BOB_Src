@@ -561,6 +561,25 @@ void DPlay::UIUpdateMainSheet ()
 		GameRunning=FALSE;
 	}
 
+#if defined(BOB_LINUX)
+	/* EPIC M / MP S9 (2026-09-19): THE HOST'S FRONT-END PUMP EATS THE 3-D SYNC TRAFFIC. The S9 queue
+	   census (bob-gates/mp_resync3, host) named the consumer of the aggregate packets the host's own
+	   player was waiting for: `COMMS.CPP:564 from=1 to=2 x147` against `WINMOVE.CPP:InitSync x98` --
+	   this loop, called from every front-end dialog's OnTimer, received the aggregator's group
+	   broadcast (to=myDPlayID matches a group we belong to) and DROPPED it below as "aggregator
+	   traffic". The host's InitSyncPhase then saw one aggregate a second, sent one dummy a second
+	   with a stale Count, and the aggregator's slot 0 never filled (`GATE num=1`). In the original
+	   the ready-room timer stops when the 3-D takes the screen; the port's dialog timers keep
+	   firing. Once this player is in the 3-D, the 3-D message pump owns the queue -- do nothing here.
+	   BOB_MP_UIPUMP_IN3D=1 reverts. */
+	if (Implemented && mySlot >= 0 && mySlot < MAXPLAYERS && H2H_Player[mySlot].status == CPS_3D && !getenv("BOB_MP_UIPUMP_IN3D"))
+	{
+		if (getenv("BOB_TRACE_AGG")) { static long n = 0; static time_t last = 0; time_t now = time(0); n++;
+			if (now != last) { last = now; fprintf(stderr, "[agg] UIUpdateMainSheet: in 3-D, pump left to the 3-D dispatcher (%ld ticks/s)\n", n); fflush(stderr); n = 0; } }
+		return;
+	}
+#endif
+	{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:564"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(RecPacket,RecPacketLen,from,DPRECEIVE_TOPLAYER))
 	{
 		if (from==DPID_SYSMSG)
@@ -2205,6 +2224,7 @@ ULong DPlay::AttemptToJoin()
 		if (time.TimedOut(now))
 			return FALSE;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:2208"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(Buffer,Buflen,from,0))
 		{
 			if (from==0)
@@ -2540,6 +2560,7 @@ Bool	DPlay::GetCS()
 		if (time.TimedOut(now))
 			return FALSE;
 		
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:2543"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(Buffer,BufferLen,From,0))
 		{
 			if (From==DPID_SYSMSG)
@@ -2575,6 +2596,7 @@ Bool	DPlay::GetCS()
 			return FALSE;
 		}
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:2578"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (Buffer, BufferLen,From,DPRECEIVE_TOPLAYER))
 		{
 // if we are getting info about game initally dont bother with any other messages
@@ -2808,6 +2830,7 @@ Bool	DPlay::UpdateMissionConditions()
 			if (time.TimedOut(now))
 				_Error.SayAndQuit("Timed out (UMC)");
 
+			{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:2811"; }   /* MP S9 census tag */
 			if (ReceiveNextMessageToMe(RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 			{
 				if (from==DPID_SYSMSG)
@@ -3082,6 +3105,7 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 			return false;
 		}
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:3085"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (startup)
@@ -3356,6 +3380,7 @@ bool	 DPlay::ReceiveCampaignStruc()
 		if (time.TimedOut(now))
 			return false;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:3359"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(buffer,buflen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==DPID_SYSMSG)
@@ -3387,6 +3412,7 @@ bool	 DPlay::ReceiveCampaignStruc()
 		if (time.TimedOut(now))
 			return false;
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:3390"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (buffer, buflen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==DPID_SYSMSG)
@@ -3963,6 +3989,7 @@ bool	DPlay::TimeoutReceive(ULong WantPID, char*& packet, ULong& len)
 
 	while (!time.TimedOut(now))
 	{
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:3966"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (RecPacket, RecPacketLen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==DPID_SYSMSG)
@@ -4047,6 +4074,7 @@ void	DPlay::ProcessPlayerMessages()
 	char* Buffer;
 	DPID	From=0;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:4050"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_TOPLAYER))
 	{
 		if (From==DPID_SYSMSG)
@@ -4115,6 +4143,7 @@ void	DPlay::Process_PM_CSStruc(char* pack, bool init)
 			return;
 		}
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:4118"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe (Buffer, BufferLen,From,DPRECEIVE_TOPLAYER))
 		{
 // if we are getting info about game initally dont bother with any other messages
@@ -4170,6 +4199,7 @@ bool	DPlay::GetAllGoResponses()
 			return FALSE;
 		}
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:4173"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(Buffer,Buflen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==0)
@@ -4236,6 +4266,7 @@ bool	DPlay::GetHostGo()
 			return FALSE;
 		}
 
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:4239"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(Buffer,Buflen,from,DPRECEIVE_TOPLAYER))
 		{
 			if (from==0)
@@ -4284,6 +4315,7 @@ void	DPlay::EmptyAggregatorQueue()
 	char* Buffer;
 	ULong From=aggID,BufferLen;
 
+	{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:4287"; }   /* MP S9 census tag */
 	while (ReceiveNextMessageToMe(Buffer,BufferLen,From,DPRECEIVE_FROMPLAYER))
 	{
 	}

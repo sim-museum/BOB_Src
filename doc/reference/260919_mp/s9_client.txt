@@ -1,0 +1,30 @@
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (1920,37) fullscreen=0
+[agg] drawloop/s: 1 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 0 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (1920,0) fullscreen=1
+[agg] drawloop/s: 2291887 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 86 ms  DoneFrame 68 ms  total 153 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 1/s
+[addplayer] slot=0 actype=0 id=4864 -> ConvertPtrUID FOUND (peer will be made visible)
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 1/s
+[agg] GATE num=0 CurrPlayers=2  aggCount=3 myFrame=0  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 20/s
+[agg] InitSyncPhase got-agg-packet 2/s  no-packet 18/s
+[agg] drawloop/s: 564564 iters  pre-tick 915 ms  BlockTick(TRUE) 0 ms  tick->done 20 ms  DoneFrame 16 ms  total 951 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 915  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=5 myFrame=6  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+*** buffer overflow detected ***: terminated
+=== CRASH: signal 6 (tid 362222) fault_addr=0x585d8 ===
+=== CRASH: signal 6 (tid 362222) fault_addr=0x585d8 ===
+  eip=ec6af31c eax=00000000 ebx=000585d8 ecx=000586ee edx=00000006 esi=000586ee edi=ebbfde34 ebp=00000000 esp=d2810d30
+/home/admin/bob/build/bob() [0x8073202]
+linux-gate.so.1(__kernel_rt_sigreturn+0x0) [0xec6af350]
+linux-gate.so.1(__kernel_vsyscall+0xc) [0xec6af31c]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x97a5f) [0xeba58a5f]
+/usr/lib/i386-linux-gnu/libc.so.6(gsignal+0x25) [0xeb9feb45]
+/usr/lib/i386-linux-gnu/libc.so.6(abort+0x35) [0xeb9e530e]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x254f2) [0xeb9e64f2]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x13d5ba) [0xebafe5ba]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x13cf7f) [0xebafdf7f]
+/home/admin/bob/build/bob() [0x82267d0]
+/home/admin/bob/build/bob() [0x822ceb4]

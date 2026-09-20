@@ -1,0 +1,80 @@
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (67,69) fullscreen=0
+[psq] player aircraft uid=4864 GameType=0 (COMMSQUICKMISSION=2) Implemented=1 mySlot=0 PackPlayerSquad=0
+[agg] drawloop/s: 1 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 0 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop/s: 1400328 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 94 ms  DoneFrame 50 ms  total 144 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop/s: 3364510 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 197 ms  DoneFrame 177 ms  total 374 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (0,0) fullscreen=1
+[agg] drawloop/s: 4440206 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 194 ms  DoneFrame 171 ms  total 365 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop/s: 2678629 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 194 ms  DoneFrame 170 ms  total 364 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 1/s
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 1/s
+[agg] drawloop/s: 2445979 iters  pre-tick 533 ms  BlockTick(TRUE) 0 ms  tick->done 145 ms  DoneFrame 134 ms  total 812 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 533  videoshot 0  keycheck 0 ms
+[agg] local-only send 1/s  from=3 to=1 len=17 (not transmitted)
+[agg] GATE num=0 CurrPlayers=2  aggCount=0 myFrame=0  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[addplayer] slot=1 actype=0 id=4864 -> ConvertPtrUID FOUND (peer will be made visible)
+[agg] drawloop presync branch 49/s
+[agg] InitSyncPhase got-agg-packet 5/s  no-packet 44/s
+[agg] drawloop/s: 49 iters  pre-tick 742 ms  BlockTick(TRUE) 0 ms  tick->done 7 ms  DoneFrame 0 ms  total 749 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 742  videoshot 0  keycheck 0 ms
+[agg] local-only send 5/s  from=3 to=1 len=17 (not transmitted)
+[agg] GATE num=1 CurrPlayers=2  aggCount=5 myFrame=5  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[agg] local-only send 10/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=3 init=2 other=5 (last other IDCode=190)  Count=16 FrameCount=17 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 27 calls 0 ms, clear 28 calls 1 ms  (csync=1)
+[agg] drawloop/s: 25 iters  pre-tick 1133 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1133 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 1128  videoshot 0  keycheck 0 ms
+[agg] BlockTick/s: set 55 calls 0 ms, clear 54 calls 0 ms  (csync=1)
+[agg] drawloop/s: 18 iters  pre-tick 860 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 860 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 781  videoshot 0  keycheck 0 ms
+[agg] local-only send 9/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=190)  Count=25 FrameCount=26 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 148 calls 0 ms, clear 148 calls 0 ms  (csync=1)
+[agg] drawloop/s: 49 iters  pre-tick 1003 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1003 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 766  videoshot 0  keycheck 0 ms
+[agg] local-only send 8/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=190)  Count=33 FrameCount=34 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 180 calls 0 ms, clear 180 calls 0 ms  (csync=1)
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1000 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 282  videoshot 0  keycheck 0 ms
+[agg] local-only send 9/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=190)  Count=42 FrameCount=43 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 180 calls 0 ms, clear 180 calls 0 ms  (csync=1)
+[agg] drawloop/s: 60 iters  pre-tick 1001 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1001 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 136  videoshot 0  keycheck 0 ms
+[agg] local-only send 8/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=190)  Count=50 FrameCount=51 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 180 calls 0 ms, clear 180 calls 0 ms  (csync=1)
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 999 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 104  videoshot 0  keycheck 0 ms
+[agg] local-only send 8/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=190)  Count=58 FrameCount=59 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 180 calls 0 ms, clear 180 calls 0 ms  (csync=1)
+[agg] drawloop/s: 60 iters  pre-tick 999 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1000 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 127  videoshot 0  keycheck 0 ms
+[agg] local-only send 9/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=191)  Count=67 FrameCount=68 synched=1 csync=1 res=0
+[agg] local-only send 8/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=198)  Count=75 FrameCount=76 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 152 calls 0 ms, clear 152 calls 0 ms  (csync=1)
+[agg] drawloop/s: 51 iters  pre-tick 1073 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1073 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 386  videoshot 0  keycheck 0 ms
+[agg] BlockTick/s: set 60 calls 0 ms, clear 60 calls 0 ms  (csync=1)
+[agg] drawloop/s: 20 iters  pre-tick 923 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 923 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 911  videoshot 0  keycheck 0 ms
+[agg] local-only send 8/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=198)  Count=83 FrameCount=84 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 120 calls 0 ms, clear 120 calls 0 ms  (csync=1)
+[agg] drawloop/s: 40 iters  pre-tick 997 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 997 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 948  videoshot 0  keycheck 0 ms
+[agg] local-only send 9/s  from=3 to=1 len=17 (not transmitted)
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=198)  Count=92 FrameCount=93 synched=1 csync=1 res=0
+[agg] BlockTick/s: set 147 calls 0 ms, clear 147 calls 1 ms  (csync=1)
+[agg] drawloop/s: 49 iters  pre-tick 1003 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 1003 ms  (csync=1)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 934  videoshot 0  keycheck 0 ms
+[agg] local-only send 8/s  from=3 to=1 len=17 (not transmitted)

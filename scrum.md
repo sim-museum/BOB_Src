@@ -12098,6 +12098,42 @@ fullscreen=1`, no PRESENT/CLICK RECT MISMATCH, and the back-buffer readback
 box and the full toolbar row at the bottom. (One earlier run measured 1920x1043 straight after the
 request — a transient; the fit path covers that case anyway.)
 
+## EPIC M / MP S9 (Fable 5.1, 2026-09-19) -- ⭐ **BoB synced for the first time: two harness/shim defects and one game-state gap, sessions 8-12**
+
+**S8-S9: the host ticked ONCE A SECOND because the harness had covered its window.** The pre-csync draw loop
+(the only place `InitSyncPhase`/`CommsGameSync` run) measured `1 iters, pre-tick 1001 ms` on the host while the
+client ran 60/s; the split checkpoints put the whole second inside `CommsWaitingScreen`'s swap. Both windows
+were `SDL_WINDOWPOS_CENTERED` on the same monitor, so the client (started later) fully covered the host, and an
+occluded XWayland window is throttled to one frame a second. `BOB_WINPOS=x,y` (bob_video.cpp) places the window
+and chooses the monitor a desktop-fullscreen mode fills; the harness now puts the host at 0,0 and the client at
+1920,0 (`HOST_WINPOS`/`CLIENT_WINPOS`). Session 9: host `csync=1` for 15 s, real packets flowing
+(`sent-to-agg other=9/s`), `drawloop 60 iters/s`. Not a port defect -- a harness state the PO's two PCs never
+have -- but it hid everything below for eight sessions. [[occluded-window-runs-at-1fps]]
+
+**S9: the client died 20 s into that first sync -- `*** buffer overflow detected ***` in
+`Process_PM_PlayerUpdate`.** The shim put every send on the wire, so the host player's (pid 3) 17-byte
+aggregate packets to the host's OWN aggregator (pid 1) also reached the client -- 287 of them -- and the
+client's receive filter, which cannot know pid 1 is a player (the host never announces its aggregator's id),
+delivered them under its "unknown id must be a group" rule. InitSync/SecondSync then fed them to
+`ProcessPlayerMessage` (PacketID 1778601270/1, then 0 -> PlayerUpdate with a garbage Slot). Fix
+(`bob_dplay.cpp` Send): a send to a LOCAL player stays local, as real DirectPlay delivers it; group sends still
+cross the wire. `BOB_MP_WIRE_LOCAL=1` reverts. Session 10: no stray packet reached the client.
+
+**S10-S12: the client now reaches the real-packet phase and dies in `UpdateHistBuffer`/`CalcVels` because its
+OWN slot has no aircraft: `[hist] slot 1 AllocPacket=0 (mySlot=1 Alloc: 4864 0 ...)`.** Guarded (the slot is
+skipped with a trace) but the next call site faults the same way, so the guard is diagnostic, not a fix. The
+`[psq]` trace names the state: the game is `GameType=0` (not COMMSQUICKMISSION=2), the host's player aircraft
+is uid 4864, the client NEVER associates a player aircraft of its own, and both peers announce uid 4864 -- the
+client is "flying" the host's aeroplane. In this game type `AllocPacket` is filled in aircraft-creation order
+(PERSONS3.CPP:825), one commsmove aircraft per slot; the harness's click path gives the client no seat of its
+own. That is the next item: how a second player is seated in a GameType-0 comms game (ProcessPlayerSlotRequest /
+the Ready Room line choice), and a client recipe that takes it -- until then the "sync" measured here is a
+harness-reachable state. [[harness-reachable-state]]
+
+Evidence: `doc/reference/260919_mp/s{8..12}_{host,client}.txt`. Harness: `tools/bob_mp_two_instance.sh`
+(window positions), `SECS=400` (the client enters 3-D at ~230 s; 240 s cut session 9 short).
+**MP S9: 5 sessions this sprint; the epic stays open on the seat allocation.**
+
 ## QMSIDE-2 (Fable 5.1, 2026-09-19) -- ✅ **PO: "permit choosing german aircraft in quick mission (e.g. dogfight)" -- already fixed by QMSIDE-1, which the PO's AppImage predates; verified across every quick-mission family**
 
 **Fixed in dev is not shipped.** `BattleOfBritain-x86_64-260919.AppImage` was packed at 11:11; QMSIDE-1 (nested

@@ -1,0 +1,25 @@
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (1920,37) fullscreen=0
+[agg] drawloop/s: 1 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 0 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop/s: 1105332 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 76 ms  DoneFrame 66 ms  total 142 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop/s: 4488304 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 185 ms  DoneFrame 176 ms  total 361 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop/s: 3795079 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 202 ms  DoneFrame 208 ms  total 411 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (1920,0) fullscreen=1
+[agg] drawloop/s: 3125239 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 228 ms  DoneFrame 167 ms  total 395 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[agg] drawloop presync branch 1/s
+[addplayer] slot=0 actype=0 id=4864 -> ConvertPtrUID FOUND (peer will be made visible)
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 1/s
+[agg] drawloop/s: 1756277 iters  pre-tick 888 ms  BlockTick(TRUE) 0 ms  tick->done 180 ms  DoneFrame 124 ms  total 1191 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 888  videoshot 0  keycheck 0 ms
+[agg] GATE num=0 CurrPlayers=2  aggCount=2 myFrame=0  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 25/s
+[agg] InitSyncPhase got-agg-packet 3/s  no-packet 22/s
+[agg] drawloop/s: 25 iters  pre-tick 362 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 362 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 361  videoshot 0  keycheck 0 ms
+[agg] GATE num=1 CurrPlayers=2  aggCount=5 myFrame=6  IDCodes: 194 196 194 194 194 194 194 194  (DUMMY=196)
+[hist] slot 1 AllocPacket=0 -> no aircraft in this world (mySlot=1 Alloc: 4864 0 0 0 0 0 0 0) -- skipped
+=== CRASH: signal 11 (tid 367923) fault_addr=0x22 ===

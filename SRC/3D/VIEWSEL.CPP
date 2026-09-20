@@ -101,6 +101,12 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 	#include "transite.h"
 	#include "model.h"
 	#include "fastmath.h"
+#if defined(BOB_LINUX)
+#include <math.h>
+#include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 #ifndef	NDEBUG
 //#define __TINYROTATE__
 //#define __NODEATHVIEW__
@@ -1170,6 +1176,30 @@ void ViewPoint::SelectView()
 void ViewPoint::ViewFudge()
 {
 	SLong dt = Three_Dee.View_Dt();
+#if defined(BOB_LINUX)
+	/* DFFPS-1 (PO 2026-09-19): "padlocked bogie across the turn circle flickers in a double-exposure,
+	   frame rate for the bogie under 10 fps". MEASURE the two rates the eye conflates: how often the
+	   bogie's WORLD position changes (the sim's move rate for that item) and how often its DRAWN
+	   position changes (world + vel*view_dt). One line per render frame while padlocked, plus a
+	   once-a-second census: frames, world-moves, drawn-moves, and the largest drawn-position step.
+	   BOB_TRACE_PADLOCK=1 (census only), =2 (every frame). */
+	{
+		static int on = -1; if (on < 0) { const char* e = getenv("BOB_TRACE_PADLOCK"); on = e ? atoi(e) : 0; }
+		if (on && trackeditem != NULL && trackeditem->Status.size >= MOBILESIZE)
+		{
+			MovingItem* mp = (MovingItem*)trackeditem;
+			static SLong lwx = 0, lwy = 0, lwz = 0, ldx = 0, ldy = 0, ldz = 0; static long frames = 0, wmoves = 0, dmoves = 0; static double maxstep = 0; static time_t last = 0;
+			const SLong wx = trackeditem->World.X, wy = trackeditem->World.Y, wz = trackeditem->World.Z;
+			const SLong dx = wx + SLong((mp->vel_x + Three_Dee.wind_x) * dt) / 100000, dy = wy + SLong((mp->vel_y + Three_Dee.wind_y) * dt) / 100000, dz = wz + SLong((mp->vel_z + Three_Dee.wind_z) * dt) / 100000;
+			frames++; if (wx != lwx || wy != lwy || wz != lwz) wmoves++;
+			if (dx != ldx || dy != ldy || dz != ldz) { dmoves++; double sx = (double)(dx - ldx), sy = (double)(dy - ldy), sz = (double)(dz - ldz); double st = sqrt(sx*sx + sy*sy + sz*sz) / 100.0; if (frames > 1 && st > maxstep) maxstep = st; }
+			if (on >= 2) fprintf(stderr, "[padlock] f=%ld dt=%ld world=(%ld,%ld,%ld) drawn=(%ld,%ld,%ld) vel=(%ld,%ld,%ld) mode=%d\n", frames, (long)dt, (long)wx, (long)wy, (long)wz, (long)dx, (long)dy, (long)dz, (long)mp->vel_x, (long)mp->vel_y, (long)mp->vel_z, (int)viewnum.viewmode);
+			lwx = wx; lwy = wy; lwz = wz; ldx = dx; ldy = dy; ldz = dz;
+			time_t now = time(0);
+			if (now != last) { last = now; fprintf(stderr, "[padlock] census/s: frames=%ld world-moves=%ld drawn-moves=%ld max-drawn-step=%.1fm mode=%d dt=%ld\n", frames, wmoves, dmoves, maxstep, (int)viewnum.viewmode, (long)dt); fflush(stderr); frames = wmoves = dmoves = 0; maxstep = 0; }
+		}
+	}
+#endif
 	if(trackeditem != NULL)
 	{
 		trackedItemWorld = trackeditem->World;

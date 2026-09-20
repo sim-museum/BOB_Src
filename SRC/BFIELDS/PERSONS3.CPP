@@ -3659,6 +3659,14 @@ void	Persons3::ColourRulePlayerSquadron(AirStrucPtr	newac,FormationIndex formpos
 	if ((int)Pack_PlayerPos==-1)			//RDH 27Aug96
 	{															//PD 26Jun96
 		Manual_Pilot.Associate(newac,ManualPilot::MANUAL);						//RDH 17Jun96
+#if defined(BOB_LINUX)
+		/* EPIC M / MP S9 (2026-09-19): session 11 -- the client's own slot never gets an AllocPacket entry
+		   (mySlot=1, Alloc: 4864 0 ...) and both peers announce the SAME aircraft uid 4864. Say what this
+		   site sees: the game type (the registration below is comms-quick-mission only), the slot and the uid. */
+		if (getenv("BOB_TRACE_AGG"))
+			fprintf(stderr, "[psq] player aircraft uid=%u GameType=%d (COMMSQUICKMISSION=%d) Implemented=%d mySlot=%d PackPlayerSquad=%d\n",
+				(unsigned)newac->uniqueID.count, (int)_DPlay.GameType, (int)DPlay::COMMSQUICKMISSION, (int)_DPlay.Implemented, (int)_DPlay.mySlot, (int)Pack_PlayerSquad), fflush(stderr);
+#endif
 
 		if (_DPlay.Implemented && _DPlay.GameType==DPlay::COMMSQUICKMISSION)
 		{

@@ -295,6 +295,19 @@ static void parse_force_res(void)
 	fprintf(stderr, "[vid] BOB_FORCE_RES: front-end layout pinned to %dx%d\n", w, h);
 	fflush(stderr);
 }
+/* EPIC M / MP S9 (2026-09-19): BOB_WINPOS=x,y places the window (and, for a desktop-fullscreen
+   mode, chooses the monitor it fills). Harness-only. The two-instance harness centred both
+   windows on the same monitor, so the client fully covered the host; under XWayland an occluded
+   window's swap is throttled to ONE frame a second, and the host's pre-sync draw loop -- the
+   only place InitSyncPhase/CommsGameSync run -- measured exactly that: 1 iteration/s, 1000 ms
+   inside CommsWaitingScreen, while the visible client ran 60/s. Two windows on two monitors are
+   what the PO's two PCs are; the overlap was the harness lying about the port. */
+static int bob_winpos(int* x, int* y)
+{
+	const char* p = getenv("BOB_WINPOS");
+	return (p && sscanf(p, "%d,%d", x, y) == 2) ? 1 : 0;
+}
+
 static void ensure_window(int w, int h)
 {
 	parse_force_res();
@@ -327,6 +340,7 @@ static void ensure_window(int w, int h)
 		   what fullscreen IS: ask SDL for desktop-fullscreen, which the WM lets cover the panels.
 		   BOB_NO_FULLSCREEN=1 restores the S172 borderless window (the A/B, and an escape hatch). */
 		int fillsDesktop = (SDL_GetDesktopDisplayMode(0, &dm) == 0 && g_scrW >= dm.w && g_scrH >= dm.h);
+		{ int px, py; if (bob_winpos(&px, &py)) { SDL_SetWindowFullscreen(g_win, 0); SDL_SetWindowPosition(g_win, px, py); } }
 		if (fillsDesktop && !getenv("BOB_NO_FULLSCREEN")) {
 			SDL_SetWindowFullscreen(g_win, SDL_WINDOW_FULLSCREEN_DESKTOP);
 		} else if (fillsDesktop) {
@@ -336,7 +350,7 @@ static void ensure_window(int w, int h)
 		} else {
 			SDL_SetWindowFullscreen(g_win, 0);
 			SDL_SetWindowBordered(g_win, SDL_TRUE);
-			SDL_SetWindowPosition(g_win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+			{ int px, py; if (!bob_winpos(&px, &py)) SDL_SetWindowPosition(g_win, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED); }
 		}
 		{	/* say what the window actually became -- the PO's report is about the window, not the mode */
 			int ww = 0, wh = 0, wx = 0, wy = 0; SDL_GetWindowSize(g_win, &ww, &wh); SDL_GetWindowPosition(g_win, &wx, &wy);
@@ -357,8 +371,9 @@ static void ensure_window(int w, int h)
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	int cx = SDL_WINDOWPOS_CENTERED, cy = SDL_WINDOWPOS_CENTERED; bob_winpos(&cx, &cy);
 	g_win = SDL_CreateWindow("Rowan's Battle of Britain (Linux native port)",
-		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+		cx, cy,
 		g_scrW, g_scrH, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	if (!g_win) {
 		/* S187b: say it ONCE. bob_gdi_dc_bits calls ensure_window on every framebuffer access, so

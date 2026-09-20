@@ -1,0 +1,29 @@
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (1920,37) fullscreen=0
+[agg] drawloop/s: 1 iters  pre-tick 0 ms  BlockTick(TRUE) 0 ms  tick->done 0 ms  DoneFrame 0 ms  total 0 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 0  videoshot 0  keycheck 0 ms
+[vid] mode 1920x1080 (desktop 1920x1080) -> window 1920x1080 at (1920,0) fullscreen=1
+[agg] drawloop presync branch 1/s
+[addplayer] slot=0 actype=0 id=4864 -> ConvertPtrUID FOUND (peer will be made visible)
+[agg] InitSyncPhase got-agg-packet 0/s  no-packet 1/s
+[agg] drawloop/s: 2910241 iters  pre-tick 677 ms  BlockTick(TRUE) 0 ms  tick->done 100 ms  DoneFrame 84 ms  total 861 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 677  videoshot 0  keycheck 0 ms
+[agg] GATE num=0 CurrPlayers=2  aggCount=3 myFrame=0  IDCodes: 194 194 194 194 194 194 194 194  (DUMMY=196)
+[agg] drawloop presync branch 35/s
+[agg] InitSyncPhase got-agg-packet 5/s  no-packet 30/s
+[agg] drawloop/s: 35 iters  pre-tick 526 ms  BlockTick(TRUE) 0 ms  tick->done 1 ms  DoneFrame 0 ms  total 527 ms  (csync=0)
+[agg] drawloop pre-tick split/s: gate-trace 0  render/wait 526  videoshot 0  keycheck 0 ms
+[agg] GATE num=2 CurrPlayers=2  aggCount=8 myFrame=9  IDCodes: 196 196 194 194 194 194 194 194  (DUMMY=196)
+=== CRASH: signal 11 (tid 363096) fault_addr=0xc ===
+=== CRASH: signal 11 (tid 363096) fault_addr=0xc ===
+  eip=0815abc4 eax=090d3117 ebx=00000000 ecx=000004fb edx=00000000 esi=08a6c0b4 edi=08a6bfe0 ebp=08a6c004 esp=d9cb1dac
+/home/admin/bob/build/bob() [0x8073202]
+linux-gate.so.1(__kernel_rt_sigreturn+0x0) [0xf3b47350]
+/home/admin/bob/build/bob() [0x815abc4]
+/home/admin/bob/build/bob() [0x822588a]
+/home/admin/bob/build/bob() [0x822e830]
+/home/admin/bob/build/bob() [0x822eb42]
+/home/admin/bob/build/bob() [0x8231bfb]
+/home/admin/bob/build/bob() [0x82f5a6c]
+/home/admin/bob/build/bob() [0x82f617c]
+/home/admin/bob/build/bob() [0x82f6bb5]
+/home/admin/bob/build/bob() [0x82f6c8d]

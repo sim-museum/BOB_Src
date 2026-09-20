@@ -47,6 +47,7 @@
 #include <arpa/inet.h>
 #include "DPLAY.H"
 
+const char* bob_recv_caller = 0;   /* EPIC M / MP S9: set by the receive call sites that matter (sync phases, aggregator) */
 static int dp_trace(void) { static int t = -1; if (t < 0) t = getenv("BOB_TRACE_DPLAY") ? 1 : 0; return t; }
 #define DPT(...) do { if (dp_trace()) { fprintf(stderr, "[dplay] " __VA_ARGS__); } } while (0)
 /* R6.4: log each unimplemented method ONCE. The first host run produced a 24.7-MILLION-line log
@@ -407,6 +408,27 @@ public:
                     fflush(stderr); n = 0; }
             }
         }
+        /* EPIC M / MP S9 (2026-09-19): A SEND TO A LOCAL PLAYER STAYS LOCAL. Real DirectPlay delivers a
+           player-to-player message to that player's machine only; this shim put every send on the wire.
+           So the host's game player (pid 3) sending its 17-byte aggregate packets to the host's own
+           aggregator (pid 1) also transmitted them to the client -- 287 of them in session 9 -- and the
+           client's receive filter, which cannot know pid 1 is a player (the host never announces its
+           aggregator's id), delivered them under the 'unknown id must be a group' rule. The client's
+           InitSync/SecondSync drains then fed them to ProcessPlayerMessage as if they were player
+           messages: PacketID 1778601270/1778601271 (the packet's first bytes), then PacketID=0 ->
+           Process_PM_PlayerUpdate with a garbage Slot -> `*** buffer overflow detected ***` (fortify),
+           the client dead 20 s into the first BoB session that ever reached csync=1 on the host.
+           A group send still crosses the wire. BOB_MP_WIRE_LOCAL=1 restores the old behaviour. */
+        if ((unsigned)to != (unsigned)from && isLocalPlayer((unsigned)to) && !getenv("BOB_MP_WIRE_LOCAL")) {
+            if (getenv("BOB_TRACE_AGG")) {
+                static long n = 0; static time_t last = 0; time_t now = time(0); n++;
+                if (now != last) { last = now;
+                    fprintf(stderr, "[agg] local-only send %ld/s  from=%u to=%u len=%u (not transmitted)\n",
+                            n, (unsigned)from, (unsigned)to, (unsigned)len);
+                    fflush(stderr); n = 0; }
+            }
+            return DP_OK;
+        }
         if (fd < 0) return DPERR_NOCONNECTION;
         if (!havePeer) {
             if (getenv("BOB_STRICT_SEND")) return DPERR_NOCONNECTION;
@@ -529,6 +551,29 @@ public:
             idx = found;
         }
         QMsg& m = q[idx];
+        /* EPIC M / MP S9 (2026-09-19, mirrored from MiG Alley): WHO drains the queue, per second, by
+           caller tag and by (from,to,len). MA's S9 traces showed the client's InitSyncPhase "got" only 6
+           aggregate packets a second while the wire carried 46, so some OTHER caller's filter takes and
+           discards them. Print the census under BOB_TRACE_AGG so the thief is named, not guessed. */
+        {
+            static int a_on = -1;
+            if (a_on < 0) a_on = getenv("BOB_TRACE_AGG") ? 1 : 0;
+            if (a_on) {
+                struct Row { const char* tag; unsigned from, to, len; long n; };
+                static Row rows[32]; static int nrows = 0; static time_t last = 0;
+                const char* tag = bob_recv_caller ? bob_recv_caller : "(untagged)";
+                int r = -1;
+                for (int i = 0; i < nrows; i++)
+                    if (rows[i].from == m.from && rows[i].to == m.to && rows[i].len == m.len && rows[i].tag == tag) { r = i; break; }
+                if (r < 0 && nrows < 32) { r = nrows++; rows[r].tag = tag; rows[r].from = m.from; rows[r].to = m.to; rows[r].len = m.len; rows[r].n = 0; }
+                if (r >= 0) rows[r].n++;
+                time_t now = 0; ::time(&now);
+                if (now != last) { last = now;
+                    fprintf(stderr, "[agg] drained/s:");
+                    for (int i = 0; i < nrows; i++) if (rows[i].n) { fprintf(stderr, "  %s from=%u to=%u len=%u x%ld", rows[i].tag, rows[i].from, rows[i].to, rows[i].len, rows[i].n); rows[i].n = 0; }
+                    fprintf(stderr, "\n"); fflush(stderr); }
+            }
+        }
         if (size && *size < m.len) { *size = m.len; return DPERR_BUFFERTOOSMALL; }
         if (from) *from = (DPID)m.from;
         if (to)   *to   = (DPID)m.to;

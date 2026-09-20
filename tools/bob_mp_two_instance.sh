@@ -63,17 +63,21 @@ if [ "$SECS" -le "$fly_s" ]; then
     SECS=$((fly_s + 120))
 fi
 export BOB_DPLAY_PORT="${BOB_DPLAY_PORT:-47624}"
+# MP S9: two windows on two monitors. Centred on the same monitor the client covered the host and
+# XWayland throttled the occluded host to 1 frame/s -- InitSyncPhase ran once a second and never synced.
+HOST_WINPOS="${HOST_WINPOS:-0,0}"
+CLIENT_WINPOS="${CLIENT_WINPOS:-1920,0}"
 mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 echo "bob MP-5 two-instance  (host $HOST_CLICKS + fly@$HOST_FLY_MS, client $CLIENT_CLICKS, ${SECS}s)"
 ( cd "$GD" && timeout -k 5 -s KILL "$SECS" env BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" \
-    BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$HOST_CLICKS" \
+    BOB_WINPOS="$HOST_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$HOST_CLICKS" \
     BOB_SDL_CLICK_MS="$HOST_FLY_MS" \
     "$BOB" ) >"$OUT/host.log" 2>&1 &
 hpid=$!
 sleep "$CLIENT_DELAY"
 ( cd "$GD" && timeout -k 5 -s KILL "$((SECS - CLIENT_DELAY))" env BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" \
-    BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$CLIENT_CLICKS" \
+    BOB_WINPOS="$CLIENT_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$CLIENT_CLICKS" \
     BOB_SDL_CLICK_MS="$CLIENT_ROW_MS" \
     "$BOB" ) >"$OUT/client.log" 2>&1 &
 cpid=$!
