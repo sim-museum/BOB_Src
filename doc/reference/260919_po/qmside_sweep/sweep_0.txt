@@ -1,0 +1,21 @@
+[qs] family[0] = quickmissions[0] "Basic Training"
+[qs] family[1] = quickmissions[5] "Advanced Training"
+[qs] family[2] = quickmissions[11] "Dogfighting"
+[qs] family[3] = quickmissions[16] "Ground Attack"
+[qs] family[4] = quickmissions[19] "Interceptions"
+[qs] family[5] = quickmissions[23] "Historic"
+[qs] 6 families total
+[ole] click test dialog=0x9c48c50 (336,191) hostsForDialog=14
+[ole] click (336,191) -> radio id=1057 button=2 (Selected fired)
+[ole] click test dialog=0x9c48c50 (51,295) hostsForDialog=14
+[ole] click test dialog=0x9c5e560 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c60b40 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c44020 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c60a20 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c5a090 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c59460 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c4a220 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c72970 (51,295) hostsForDialog=0
+[ole] click test dialog=0x9c4df20 (51,295) hostsForDialog=8
+[qs] piloted flag clicked: line side=1 wave=0 grp=0 (player was side=0 wave=0 grp=0, flights=1)
+[ole] click (51,295) -> ctrl id=2144 cycled (evt fired)

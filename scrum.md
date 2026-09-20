@@ -12098,6 +12098,17 @@ fullscreen=1`, no PRESENT/CLICK RECT MISMATCH, and the back-buffer readback
 box and the full toolbar row at the bottom. (One earlier run measured 1920x1043 straight after the
 request — a transient; the fit path covers that case anyway.)
 
+## QMSIDE-2 (Fable 5.1, 2026-09-19) -- ✅ **PO: "permit choosing german aircraft in quick mission (e.g. dogfight)" -- already fixed by QMSIDE-1, which the PO's AppImage predates; verified across every quick-mission family**
+
+**Fixed in dev is not shipped.** `BattleOfBritain-x86_64-260919.AppImage` was packed at 11:11; QMSIDE-1 (nested
+quick-mission panes receive clicks, the Luftwaffe side icon works) was committed at 12:12 (`ccdaca1`). The PO's
+dogfight report is the same defect on the earlier build. To be sure the fix is not Turkey-Shoot-specific, a
+headless sweep (`tools/bob_qmside_sweep.sh`, `doc/reference/260919_po/qmside_sweep/`) cycles the family
+combo k times and clicks the Luftwaffe line's piloted flag in each of the six families the front end lists
+(`Basic Training`, `Advanced Training`, `Dogfighting`, `Ground Attack`, `Interceptions`, `Historic`): all six
+print `[qs] piloted flag clicked: line side=1` -- the player is on the German line in every family, Dogfighting
+included (k=2: `family index=2 -> currquickfamily=2 currquickmiss=5`). Ships with the next BoB AppImage.
+
 ## PO priorities (2026-09-19 evening) -- two BoB items ahead of the gold rows
 
 * **QMSIDE-2 (red):** *"permit choosing german aircraft in quick mission (e.g. dogfight)"* -- QMSIDE-1 fixed the
