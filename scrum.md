@@ -12097,3 +12097,16 @@ fullscreen=1`, no PRESENT/CLICK RECT MISMATCH, and the back-buffer readback
 (`mapclip_map_1920x1080_fullscreen_half.png`) shows the map with the message box, the date/speed
 box and the full toolbar row at the bottom. (One earlier run measured 1920x1043 straight after the
 request — a transient; the fit path covers that case anyway.)
+
+## PO priorities (2026-09-19 evening) -- two BoB items ahead of the gold rows
+
+* **QMSIDE-2 (red):** *"permit choosing german aircraft in quick mission (e.g. dogfight)"* -- QMSIDE-1 fixed the
+  Turkey Shoot side flag today; the dogfight quick mission (and any other quick-mission screen with a side
+  icon) still does not let the player take the German side. Same class: the radio/side control's click
+  routing per quick-mission dialog.
+* **DFFPS-1 (red):** *"fix low framerate in tight dogfight, where padlocked bogie across the turn circle
+  flickers in a double-exposure with frame rate for the bogie under 10 fps, judging by eye"* -- the padlocked
+  bogie is drawn at a lower rate than the frame (a double image = two consecutive positions on screen), i.e.
+  the bogie's draw/position update runs at a divided rate or across a torn present. Measure: per-frame
+  timestamps of the padlocked item's drawn position vs the frame clock in a two-ship dogfight, and the
+  frame time itself.
