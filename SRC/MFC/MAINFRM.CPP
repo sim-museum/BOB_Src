@@ -1684,7 +1684,88 @@ static int bob_oob_clip_begin(RDialog* n, int ox, int oy)
 	return 1;
 }
 static void bob_oob_clip_end(int on) { if (on) bob_gdi_setdibits_clip(0, 0, 0, 0); }
+/* TABHEAD-1 (2026-09-25): TABBED dialogs -- RAF Resources, Review, Asset List, the task/route
+   sheets: every dialog built from DialList(DialBox(title panel), HTabBox(pages...)).
+   The walk below descends `fchild` and draws only nodes with art, which for these trees means:
+     * the title panel (BasesLuftflotte, RAFReviewTop: FIL_NULL art) is skipped, and its IDJ_TITLE
+       ("RAF Resources", "Review") with it;
+     * the tab container (RDEmptyP, FIL_NULL) is skipped, and its IDJ_TABCTRL strip with it;
+     * the page drawn is the container's `fchild`, i.e. the page added LAST (AddChildren prepends),
+       and every page is drawn at the dialog origin, over where the title and strip belong.
+   So for a tree that carries a tab strip, walk it the way the layout engine built it: each node's
+   hosted controls whether or not it has art; a child at its parent's IDJ_PANEL0 rect; the strip
+   laid out to the panel width (CRTabsCtrl::CalculateHeight) at the top of its container; and the
+   ONE page the strip has not hidden, below the strip. Hidden pages' hit rects are zeroed so the
+   click walk (which recurses every sibling) cannot reach them. Trees with no strip keep the
+   original walk unchanged. BOB_NO_TABHEAD=1 reverts. */
+static int bob_oob_widest(RDialog* n, int depth);
+extern "C" int  bob_wnd_hidden(void*);
+extern "C" int  bob_ole_tabstrip_layout(CWnd*, int);
+extern "C" int  bob_ole_has_tabstrip(CWnd*);
+extern "C" void bob_ole_zero_panel(CWnd*);
+extern "C" int  bob_dlg_lookup_in(int, int, int*, int*, int*, int*);
+extern "C" int  bob_dlg_in_template(int, int);
+static void bob_oob_zero_subtree(RDialog* d, int depth)
+{
+	for (; d && depth < 8; d = d->sibling) {
+		bob_ole_zero_panel((CWnd*)d);
+		bob_oob_zero_subtree(d->fchild, depth + 1);
+	}
+}
+static int bob_oob_tree_tabbed(RDialog* n)
+{
+	if (getenv("BOB_NO_TABHEAD")) return 0;
+	for (int k = 0; n && k < 8; n = n->fchild, k++)
+		if (bob_ole_has_tabstrip((CWnd*)n)) return 1;
+	return 0;
+}
+static void bob_oob_paint_node_art(RDialog* n, int ox, int oy)
+{
+	if (!n->artnum) return;
+	CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
+	int clipped = bob_oob_clip_begin(n, ox, oy);
+	bob_gdi_setdibits_origin(ox, oy);
+	n->DoPaint(&dc);
+	bob_gdi_setdibits_origin(0, 0);
+	bob_oob_clip_end(clipped);
+}
+static void bob_oob_paint_tabbed(RDialog* n, int ox, int oy, int panelW)
+{
+	for (int depth = 0; n && depth < 8; depth++) {
+		bob_oob_paint_node_art(n, ox, oy);
+		if (bob_ole_has_tabstrip((CWnd*)n)) {
+			int th = bob_ole_tabstrip_layout((CWnd*)n, panelW);
+			bob_ole_draw_panel((CWnd*)n, ox, oy);      /* the strip, at the top of its container */
+			RDialog* vis = NULL;
+			for (RDialog* c = n->fchild; c; c = c->sibling)
+				if (!vis && !bob_wnd_hidden(c)) vis = c;
+			for (RDialog* c = n->fchild; c; c = c->sibling)
+				if (c != vis) { bob_ole_zero_panel((CWnd*)c); bob_oob_zero_subtree(c->fchild, 1); }
+			if (getenv("BOB_TRACE_TABS")) {
+				static RDialog* lastVis = NULL;
+				if (vis != lastVis) { lastVis = vis;
+					fprintf(stderr, "[tabs] container %p (w=%d strip h=%d) shows page %p %s\n",
+						(void*)n, panelW, th, (void*)vis, vis ? typeid(*vis).name() : "-"); }
+			}
+			n = vis; oy += th;
+			continue;
+		}
+		bob_ole_draw_panel((CWnd*)n, ox, oy);
+		bob_oob_paint_title_glyphs(n, ox, oy);
+		int px, py, pw, ph;
+		if (n->fchild && bob_dlg_in_template(n->MY_IID, IDJ_PANEL0) == 1
+		    && bob_dlg_lookup_in(n->MY_IID, IDJ_PANEL0, &px, &py, &pw, &ph)) {
+			ox += px * 6 / 4; oy += py * 13 / 8; panelW = pw * 6 / 4;
+		}
+		n = n->fchild;
+	}
+}
 static void bob_oob_paint_tree(RDialog* n, int ox, int oy) {
+	if (bob_oob_tree_tabbed(n)) {
+		int dw = bob_oob_widest(n, 0);
+		bob_oob_paint_tabbed(n, ox, oy, dw > 0 ? dw * 6 / 4 : 340);
+		return;
+	}
 	for (; n; n = n->fchild) {   /* descend containers to the art leaf (the selected tab page) */
 		if (n->artnum) {
 			CDC dc; dc.m_bobScreen = true; dc.m_hDC = (HDC)1;
@@ -1980,6 +2061,9 @@ extern "C" void bob_oob_open_bases(void) {
 	/* BOB_MAP_OOB=2 opens Squadrons (id 1829) instead of Bases (1827), to test the render across
 	   dialog structures deterministically (headless clicks are nondeterministic). */
 	int id = (getenv("BOB_MAP_OOB") && atoi(getenv("BOB_MAP_OOB")) == 2) ? 1829 : 1827;
+	/* TABHEAD-1: BOB_MAP_OOB=<control id> (>=1000) opens any main-toolbar dialog the same way --
+	   e.g. IDC_REVIEW or IDC_ASSETLIST, the other tabbed report pages. */
+	if (getenv("BOB_MAP_OOB") && atoi(getenv("BOB_MAP_OOB")) >= 1000) id = atoi(getenv("BOB_MAP_OOB"));
 	fprintf(stderr,"[oob] firing OnClicked id=%d\n", id);
 	bob_evt_fire((void*)tb, &typeid(*tb), id, 1);
 }

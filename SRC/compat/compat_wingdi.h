@@ -378,6 +378,12 @@ static inline HDC GetDC(HWND hWnd) { (void)hWnd; return NULL; }
 static inline int ReleaseDC(HWND hWnd, HDC hDC) { (void)hWnd; (void)hDC; return 1; }
 static inline HDC CreateCompatibleDC(HDC hdc) { (void)hdc; return NULL; }
 static inline BOOL DeleteDC(HDC hdc) { (void)hdc; return TRUE; }
+/* TABHEAD-1: CRTabsCtrl's VERTICAL tab strip draws its tab shapes as icons. No-op, like
+   CDC::DrawIcon; the horizontal strip (every RAF report page) does not use it. */
+#ifndef DI_NORMAL
+#define DI_NORMAL 0x0003
+#endif
+static inline BOOL DrawIconEx(HDC, int, int, HICON, int, int, UINT, HBRUSH, UINT) { return TRUE; }
 static inline HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h) { (void)hdc; (void)h; return NULL; }
 static inline BOOL DeleteObject(HGDIOBJ h) { (void)h; return TRUE; }
 static inline HGDIOBJ GetStockObject(int i) { (void)i; return NULL; }

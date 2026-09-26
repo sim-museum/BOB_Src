@@ -782,6 +782,20 @@ extern "C" void bob_frontend_tick(void)
 			int nf = sscanf(mcxy, "%d,%d,%d", &mx, &my, &after);
 			if (nf >= 2 && ++mc_paints > after) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d) after %d paints\n", cx, cy, after); } }
+		  /* TABHEAD-1/TOTE-1: BOB_MAP_CLICKS="x,y,paint;x,y,paint;..." -- a SEQUENCE of map clicks,
+		     each on the given map paint (counted from the first map paint). BOB_MAP_CLICK drives
+		     one click; opening RAF Resources, choosing a Group tab and then a sector to open the
+		     Tote Board is three, each depending on what the previous one opened. */
+		  { static int ms_paints = 0; const char* mseq = getenv("BOB_MAP_CLICKS");
+			if (mseq) { ms_paints++;
+			  for (const char* q = mseq; q && *q; ) {
+				int mx, my, at;
+				if (sscanf(q, "%d,%d,%d", &mx, &my, &at) == 3 && at == ms_paints && !haveClick) {
+					cx = mx; cy = my; haveClick = 1;
+					fprintf(stderr, "[mapclick] sequence: injecting (%d,%d) at map paint %d\n", cx, cy, at);
+				}
+				q = strchr(q, ';'); if (q) q++;
+			  } } }
 		  /* INTOK-1: BOB_MAP_CLICK_INTERCEPT="x,y[,paintsOpen]" -- click (x,y) once the
 		     Intercept-offered dialog has been open for paintsOpen map paints (default 2). The
 		     offer appears several hundred paints into an RAF day at a time no fixed count can

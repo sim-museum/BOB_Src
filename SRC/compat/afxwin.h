@@ -594,6 +594,10 @@ public:
     BOOL CreateBitmap(int w, int h, UINT, UINT, const void*) { m_hObject = (HGDIOBJ)bob_bmp_create(w, h); return m_hObject != NULL; }
     BOOL LoadBitmapA(LPCSTR) { return FALSE; }
     BOOL LoadBitmapA(UINT) { return FALSE; }
+    /* TABHEAD-1: CRTabsCtrl names the unsuffixed form. Still a stub -- the RTabs host supplies the
+       tab art from RTabs.ocx itself (bob_ole_rtabs.cpp). */
+    BOOL LoadBitmap(LPCSTR s) { return LoadBitmapA(s); }
+    BOOL LoadBitmap(UINT id) { return LoadBitmapA(id); }
     BOOL DeleteObject() { if (m_hObject) bob_bmp_free((void*)m_hObject); m_hObject = NULL; return TRUE; }
     /* FromHandle wraps an HBITMAP in a CBitmap (MFC returns a temporary). LoadInstances does
        imagemapinstances[0].SelectObject(CBitmap::FromHandle(map)) -- the wrapper is read
@@ -857,6 +861,10 @@ public:
         return TRUE;
     }
     BOOL CreateCompatibleDC(CDC*) { m_bobMemDC = true; return TRUE; }
+    BOOL DeleteDC() { m_bobBmp = NULL; return TRUE; }                 /* TABHEAD-1 (CRTabsCtrl) */
+    /* TABHEAD-1: MFC's SelectObject(HGDIOBJ) -- CRTabsCtrl selects a CBitmap by value (its
+       operator HBITMAP). Only bitmaps reach it in this tree. */
+    HGDIOBJ SelectObject(HBITMAP h) { void* o = m_bobBmp; m_bobBmp = (void*)h; return (HGDIOBJ)o; }
     int FillRect(LPCRECT, CBrush*) { return 0; }
     /* R4.2: solid-fill on a screen DC -> framebuffer (the strategic-map backdrop). */
     void FillSolidRect(LPCRECT r, COLORREF c) { if (m_bobScreen && r) bob_gdi_fillrect(
@@ -1122,8 +1130,16 @@ public:
         if (!getenv("BOB_NO_QUIT") && (CWnd*)this == AfxGetMainWnd()) bob_request_quit(0);
         return TRUE;
     }
-    BOOL MoveWindow(int, int, int, int, BOOL = TRUE) { return TRUE; }
-    BOOL MoveWindow(LPCRECT, BOOL = TRUE) { return TRUE; }
+    /* TABHEAD-1 / TOTE-1: forwarded to the OLE host table, which records it only for the hosts
+       whose geometry is live (tab strips, the Tote Board's lights); everything else keeps the
+       old no-op, i.e. its template layout. */
+    BOOL MoveWindow(int x, int y, int w, int h, BOOL = TRUE) {
+        extern void bob_ole_move_window(CWnd*, int, int, int, int);
+        bob_ole_move_window(this, x, y, w, h); return TRUE; }
+    BOOL MoveWindow(LPCRECT r, BOOL = TRUE) {
+        extern void bob_ole_move_window(CWnd*, int, int, int, int);
+        if (r) bob_ole_move_window(this, r->left, r->top, r->right - r->left, r->bottom - r->top);
+        return TRUE; }
     CWnd* GetTopWindow() const { return NULL; }
     static CWnd* GetDesktopWindow() { return NULL; }
     static CWnd* FromHandle(HWND) { return NULL; }
@@ -1144,6 +1160,8 @@ public:
     virtual void GetClientRect(LPRECT r) const { if (r) {
         int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
     void GetWindowRect(LPRECT r) const { if (r) {
+        extern int bob_ole_window_rect(CWnd*, LPRECT);   /* TOTE-1: live-geometry hosts only */
+        if (bob_ole_window_rect((CWnd*)this, r)) return;
         int w=0,h=0; bob_gdi_screen_size(&w,&h); r->left=r->top=0; r->right=w; r->bottom=h; } }
     void ClientToScreen(LPPOINT) const {}
     void ClientToScreen(LPRECT) const {}

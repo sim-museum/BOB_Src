@@ -20,6 +20,15 @@ struct OleHost {
     int         visible = 1;     /* SP.2 (S123): runtime ShowWindow state -- the game hides
                                     off-page/disabled controls (e.g. CSQuick1's IDC_DISABLEDEMO)
                                     via CWnd::ShowWindow(SW_HIDE); hidden hosts aren't drawn. */
+    /* TABHEAD-1 / TOTE-1: a rect set by the game's own MoveWindow, in pixels relative to the
+       dialog origin. Only honoured for hosts whose geometry is "live" (see liveGeometry): the
+       rest of the port lays controls out from their templates and its GetWindowRect answers the
+       whole screen, so honouring every MoveWindow the game issues would move controls with
+       coordinates computed from that degenerate answer. */
+    int         mvSet = 0, mvX = 0, mvY = 0, mvW = 0, mvH = 0;
+    virtual int liveGeometry() { return 0; }
+    virtual int isTabStrip() { return 0; }
+    virtual int tabStripHeight(int /*w*/) { return 0; }
     virtual ~OleHost() {}
     virtual void dispatch(DISPID id, VARTYPE vtRet, void* pvRet, va_list ap) = 0;
     virtual void setprop(DISPID id, va_list ap) = 0;
@@ -73,6 +82,7 @@ OleHost* bob_make_redit(class CWnd* parent);
 OleHost* bob_make_rradio(class CWnd* parent);
 OleHost* bob_make_redtbt(class CWnd* parent);
 OleHost* bob_make_rspinbut(class CWnd* parent);   /* S142: 8th (last) R* type */
+OleHost* bob_make_rtabs(class CWnd* parent);      /* TABHEAD-1: the HTabBox tab strip */
 
 bool bob_ole_trace();   /* BOB_TRACE_OLE gate, shared */
 

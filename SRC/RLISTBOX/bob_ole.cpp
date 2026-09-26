@@ -40,6 +40,8 @@ static const CLSID CLSID_RRadio   = { 0x5363ba22, 0xd90a, 0x11d6, { 0xa1,0xf0,0x
 static const CLSID CLSID_REdtBt   = { 0x461a1fe3, 0xb81b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S140: CREdtBt pilot slots (BoBFrag) */
 static const CLSID CLSID_RSpinBut = { 0xc3270e66, 0x6d6b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S142: CRSpinBut ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the LW Directives allocation grid (gold #18); 8th and LAST R* type */
 
+static const CLSID CLSID_RTabs    = { 0x4a1e1986, 0x8b31, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* TABHEAD-1: the HTabBox tab strip (IDJ_TABCTRL) */
+
 /* wrapper CWnd*  ->  hosted control (type-agnostic via OleHost). */
 static std::unordered_map<CWnd*, OleHost*>& hosts() {
     static std::unordered_map<CWnd*, OleHost*> m; return m;
@@ -99,6 +101,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
     else if (memcmp(clsid, &CLSID_RRadio,   sizeof(CLSID)) == 0) { h = bob_make_rradio(parent);   what = "CRRadioCtrl"; }
     else if (memcmp(clsid, &CLSID_REdtBt,   sizeof(CLSID)) == 0) { h = bob_make_redtbt(parent);   what = "CREdtBtCtrl"; }
     else if (memcmp(clsid, &CLSID_RSpinBut, sizeof(CLSID)) == 0) { h = bob_make_rspinbut(parent); what = "CRSpinButCtrl"; }
+    else if (memcmp(clsid, &CLSID_RTabs,    sizeof(CLSID)) == 0 && !getenv("BOB_NO_RTABS")) { h = bob_make_rtabs(parent); what = "CRTabsCtrl"; }
     if (!h) {
         /* S170 (MA's census method, S136/S140): an UNHOSTED control type is silent -- the wrapper
            becomes a no-op and the dialog simply lacks that widget, which reads as "the game does
@@ -133,6 +136,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
 extern "C" int bob_dlg_enum_statics(int dlgId, int* ids, int maxn);
 extern "C" int bob_dlg_enum_buttons(int dlgId, int* ids, int maxn);
 extern "C" int bob_dlg_enum_combos(int dlgId, int* ids, int maxn);   /* S176 */
+extern "C" int bob_dlg_enum_tabs(int dlgId, int* ids, int maxn);     /* TABHEAD-1 */
 void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
     if (!dlg || dlgId <= 0) return;
     int ids[96];
@@ -169,6 +173,15 @@ void bob_ole_host_template_statics(CWnd* dlg, int dlgId) {
             if (!bob_ole_create_control(w, (const GUID*)&CLSID_RCombo, dlg, (UINT)ids[i])) { delete w; continue; }
             if (bob_ole_trace()) fprintf(stderr, "[ole] template combo id=%d hosted for dlg IDD=%d\n", ids[i], dlgId);
         }
+    }
+    /* TABHEAD-1: and the template's tab strip, which GetDlgItem(IDJ_TABCTRL) must find before
+       RDialog::AddChildren attaches the pages. BOB_NO_RTABS reverts (no host is created). */
+    n = bob_dlg_enum_tabs(dlgId, ids, 96);
+    for (int i = 0; i < n; i++) {
+        if (bob_ole_find_wrapper(dlg, ids[i])) continue;
+        CWnd* w = new CWnd;
+        if (!bob_ole_create_control(w, (const GUID*)&CLSID_RTabs, dlg, (UINT)ids[i])) { delete w; continue; }
+        if (getenv("BOB_TRACE_TABS")) fprintf(stderr, "[rtabs] template tab strip id=%d hosted for dlg IDD=%d (%p)\n", ids[i], dlgId, (void*)dlg);
     }
 
 }
@@ -435,6 +448,12 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            labels took rects from other screens' templates -- scrambled/overlapping label
            layout on the GFX/Sound/Controls/Views forms (vs the Wine gold shots). lookupDluIn
            falls back to the unscoped search when the (dlg,id) pair isn't found. */
+        if (host->mvSet) {
+            /* TABHEAD-1/TOTE-1: a live-geometry host drawn where the game MOVED it. Expressed in
+               DLU so the rest of this loop is unchanged (dluX/dluY are x*6/4, y*13/8). */
+            r.id = host->ctrlId; r.x = host->mvX * 4 / 6; r.y = host->mvY * 8 / 13;
+            r.w = host->mvW * 4 / 6; r.h = host->mvH * 8 / 13;
+        } else
         if (!lookupDluIn(host->dlgId, host->ctrlId, r)) { skipDlu++; bob_skip_name(host->dlgId, host->ctrlId, "no-DLU-rect"); continue; }
         /* S126 (#16): settled-state emulation of the Windows dirty-region repaint.
            On Windows a WS_VISIBLE static under an interactive listbox paints once;
@@ -1300,9 +1319,18 @@ extern "C" int bob_ole_draw_listbox(CWnd* wrapper, int x, int y, int w, int h, i
 
 /* SP.2 (S123): runtime visibility from CWnd::ShowWindow (afxwin.h forwards here).
    Only hosted OLE controls track state; other CWnds no-op as before. SW_HIDE==0. */
+/* TABHEAD-1: ShowWindow on a NON-hosted window (a dialog) used to be dropped. The tab strip
+   hides every page but the selected one this way (RTabs SelectTabBody, RDialog::
+   AttachTabToTabControl), so record it; the OOB paint walk asks bob_wnd_hidden for tab pages. */
+static std::unordered_map<CWnd*, int>& wndShown() { static std::unordered_map<CWnd*, int> m; return m; }
+extern "C" int bob_wnd_hidden(void* w) {
+    auto& m = wndShown(); auto it = m.find((CWnd*)w);
+    return (it != m.end() && it->second == 0) ? 1 : 0;
+}
+extern "C" void bob_wnd_forget(void* w) { wndShown().erase((CWnd*)w); }
 extern "C++" void bob_ole_show_window(CWnd* w, int nCmdShow) {
     OleHost* h = findHost(w);
-    if (!h) return;
+    if (!h) { if (w) wndShown()[w] = (nCmdShow != 0); return; }
     int vis = (nCmdShow != 0);
     if (h->visible != vis && bob_ole_trace())
         fprintf(stderr, "[ole] ShowWindow id=%d -> %s\n", h->ctrlId, vis ? "SHOW" : "HIDE");
@@ -1428,4 +1456,53 @@ extern "C" void bob_timers_tick(void) {
         fired++;
         due[i].w->OnTimer(due[i].id);
     }
+}
+
+
+/* TABHEAD-1: live geometry for the hosts that need it.
+   The compat CWnd::MoveWindow was a no-op and GetWindowRect answered the whole screen; the port lays
+   controls out from their templates instead. Two things cannot be laid out that way: the tab strip,
+   which RDialog::OnSize sizes to the dialog (its template rect is a 51x23 placeholder), and the Tote
+   Board, whose ToteSector::RefreshLights positions every light by MoveWindow from GetWindowRect
+   arithmetic. Honour both for those hosts only (tab strips + IDD_TOTSECTOR's controls): with the
+   owning dialog at "screen" (0,0) -- which is what the compat GetWindowRect already reports for a
+   dialog -- a control's window rect and client rect coincide, so the game's own arithmetic holds. */
+static bool bob_ole_live(OleHost* h) {
+    if (!h) return false;
+    return h->liveGeometry() != 0;
+}
+extern "C++" void bob_ole_move_window(CWnd* w, int x, int y, int cw, int ch) {
+    OleHost* h = findHost(w);
+    if (!bob_ole_live(h)) return;
+    h->mvSet = 1; h->mvX = x; h->mvY = y; h->mvW = cw; h->mvH = ch;
+    if (getenv("BOB_TRACE_TOTE"))
+        fprintf(stderr, "[geom] dlg=%d ctrl=%d MoveWindow(%d,%d %dx%d)\n", h->dlgId, h->ctrlId, x, y, cw, ch);
+}
+extern "C++" int bob_ole_window_rect(CWnd* w, LPRECT r) {
+    OleHost* h = findHost(w);
+    if (!r || !bob_ole_live(h)) return 0;
+    if (h->mvSet) { r->left = h->mvX; r->top = h->mvY; r->right = h->mvX + h->mvW; r->bottom = h->mvY + h->mvH; return 1; }
+    DluRect d;
+    if (!lookupDluIn(h->dlgId, h->ctrlId, d)) return 0;
+    r->left = dluX(d.x); r->top = dluY(d.y); r->right = dluX(d.x + d.w); r->bottom = dluY(d.y + d.h);
+    return 1;
+}
+/* the tab strip hosted on `dialog`, laid out to width w: returns its height (0 = none) */
+extern "C" int bob_ole_tabstrip_layout(CWnd* dialog, int w) {
+    for (auto& kv : hosts()) {
+        OleHost* h = kv.second;
+        if (h->parentDlg != dialog || !h->isTabStrip()) continue;
+        int th = h->tabStripHeight(w);
+        h->mvSet = 1; h->mvX = 0; h->mvY = 0; h->mvW = w; h->mvH = th;
+        return th > 0 ? th : 1;
+    }
+    return 0;
+}
+/* a dialog that is not painted this frame must not keep its old hit rects */
+extern "C" void bob_ole_zero_panel(CWnd* dialog) {
+    for (auto& kv : hosts()) if (kv.second->parentDlg == dialog) { kv.second->sw = kv.second->sh = 0; }
+}
+extern "C" int bob_ole_has_tabstrip(CWnd* dialog) {
+    for (auto& kv : hosts()) if (kv.second->parentDlg == dialog && kv.second->isTabStrip()) return 1;
+    return 0;
 }

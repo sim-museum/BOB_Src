@@ -13,6 +13,7 @@ add_library(bob_rlistbox STATIC
     ${BOB_SRC}/RRADIO/RRADIOC.CPP # CRRadioCtrl (S128: Quick-Shots page tabs)
     ${BOB_SRC}/REDTBT/REDTBTC.CPP # CREdtBtCtrl (S140: BoBFrag pilot-name slots)
     ${BOB_SRC}/RSPINBUT/RSPINBTC.CPP # CRSpinButCtrl (S142: LW Directives allocation grid, gold #18)
+    ${BOB_SRC}/RTABS/RTABSCTL.CPP # CRTabsCtrl (TABHEAD-1: the HTabBox tab strip)
     bob_ole.cpp                   # control-agnostic side-table + entry points
     bob_ole_rlistbox.cpp          # RListBox host (its RLISTBOX/resource.h context)
     ${BOB_SRC}/RCOMBO/bob_ole_rcombo.cpp   # RCombo host
@@ -22,6 +23,7 @@ add_library(bob_rlistbox STATIC
     ${BOB_SRC}/RRADIO/bob_ole_rradio.cpp # RRadio host (S128)
     ${BOB_SRC}/REDTBT/bob_ole_redtbt.cpp # REdtBt host (S140)
     ${BOB_SRC}/RSPINBUT/bob_ole_rspinbut.cpp # RSpinBut host (S142 — 8th and last R* type)
+    ${BOB_SRC}/RTABS/bob_ole_rtabs.cpp # RTabs host (TABHEAD-1 -- the 9th type; 8 was not the last)
     ${BOB_SRC}/RBUTTON/GETFILE.CPP  # GetFileNum (FileNumString -> FileNum, CRButtonCtrl)
     ${BOB_SRC}/MFC/GETSHADW.CPP   # shadow-text offset helpers the controls draw with
     ${BOB_SRC}/MFC/GETRESRC.CPP   # GetResourceNumberFromID / ConvertResourceID (RStatic)

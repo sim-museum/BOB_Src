@@ -12184,3 +12184,35 @@ morning's front end (`date=1247270400`, exit 0). Evidence `doc/reference/260925_
 **Open:** the offer queue re-sanctions the same raid dozens of times (`InterceptSanctioned(pack=0) -> -1` x18
 after the first) -- a separate question about how `ReOffers` fills; and the port lets the offer dialog survive
 a flight, which is how the PO's went stale (unverified whether the original closes it at Fly).
+
+## TABHEAD-1 (Opus 5.5, 2026-09-25) -- ✅ **PO: "several report pages are missing headings" (gold `260925_b0b_gold.mp4` vs port `260925_b0b.mp4`) -- every TABBED dialog lost its title and its tab row, and showed its LAST page: RTabs was the one R* control type never hosted**
+
+**Census from the two videos** (frames at 1 s gold / 2 s port): the pages that lose headings are exactly the
+ones built as `DialList(DialBox(title panel), HTabBox(pages...))` -- **RAF Resources** (gold: title +
+`10 Group (SW) | 11 Group (SE) | 12 Group (Mid) | 13 Group (N)` + `Sectors / Airfields`; port: no title, no
+tabs, and the 13 Group page's `Hurricanes / Spitfires` instead), **Review** (gold: title + `Strength | Aircraft |
+Assets | Claims | Enemy`; port: no title, no tabs, the Enemy page) and, by construction, **Asset List**. Every
+untabbed page in the port video (Directives, Aircraft Allocation, Squadron List, Mission Folder, Hostiles,
+Weather, Log Book) has its title and headers.
+**Cause, two layers.** (1) The tab strip `IDJ_TABCTRL` (RTabs, CLSID 4a1e1986, on IDDS_EMPTYPAGE) was never
+created -- no dialog DDX-binds it and the template passes hosted statics/buttons/combos only -- so
+`GetDlgItem(IDJ_TABCTRL)` was NULL: no tabs added, no page ever hidden. (2) The OOB paint walk descends `fchild`
+and draws only nodes with art: the title panel and the tab container are `FIL_NULL`, so the title and strip
+were skipped, and the page drawn was the container's `fchild` -- the page added LAST (`AddChildren` prepends).
+**Fix.** `SRC/RTABS/bob_ole_rtabs.cpp` hosts the genuine `CRTabsCtrl` (dispids 1-9, genuine `DrawRow` +
+`OnLButtonDown`/`SelectTab`; the tab art is read from the installed `RTabs.ocx` PE resources IDB_TABUP/
+IDB_TABDOWN; the SelectTab event is fired to `RDEmptyP::OnSelectTabTabctrl`); the template pass hosts it;
+`ShowWindow` on a dialog is now recorded; and for a tree that carries a strip the paint walk lays it out the way
+the layout engine built it: title panel, strip at its IDJ_PANEL0, the page the strip has not hidden below the
+strip; hidden pages' hit rects are zeroed. `CWnd::MoveWindow/GetWindowRect` forward to the host table and are
+honoured only for live-geometry hosts (the strip). Harness: `BOB_MAP_CLICKS="x,y,paint;..."` (click sequence),
+`BOB_MAP_OOB=<ctrl id>` (open any main-toolbar dialog). Reverts: `BOB_NO_RTABS`, `BOB_NO_TABHEAD`.
+**Verified** (RAF side, headless): RAF Resources shows `RAF Resources`, the four Group tabs, `Sectors / Airfields`
+and 10 Group first; a click on `11 Group (SE)` goes through the genuine handler (`[rtabs] click ... tab 0 -> 1`)
+and shows 11 Group's sectors A C E B D F Z; Review shows its five tabs and Strength first; Asset List its six tabs
+and `Assets / Type / Status`. Side by side with gold: `doc/reference/260925_tabhead/`.
+**Gates:** the full suite ran green on INTOK-1 except PARITY (config-gfx/gfx2/control/sound DIFF) -- the SHIPPED
+260919b binary gives the identical four DIFFs (12848/9566/6146/12367 bytes), so it predates today.
+**Open:** the title band behind the text is transparent on these artless title panels (gold draws a dark band);
+Review's Strength page says `Defiant` where gold (24 Aug) says `Hurricane` -- a data question, not a heading;
+Mission Folder / Hostiles / Log Book headers are present but their columns run together (width, not heading).
