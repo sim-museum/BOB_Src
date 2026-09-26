@@ -12255,3 +12255,12 @@ currtime=32120` (08:55 -- the PO's fatal was at 08:51); guard off -> `[wpfix] ro
 exit 1; guard on -> `REFUSED: the offer is stale`, the day runs to the next morning, exit 0.
 `doc/reference/260925_intok/landed_{fix,ctl}.txt`. The full gate suite on TOTE-1's binary: all green except
 PARITY's four pre-existing config-screen DIFFs (identical byte counts on the shipped 260919b binary).
+
+### TEXT-1 cross-port check (2026-09-26) -- MA's "1024-entry maps table" text corruption: present in BoB's code, NOT the cause of the missing headings
+MA ce7bcfc: the `%s` CString walker in `cstring_impl.cpp` validates args against a `/proc/self/maps` table capped at
+1024 entries; `[stack]` is listed last, so a process with >1024 readable mappings rejects every CString-by-reference
+argument and prints pointer bytes (MA: 1055 on the PO's display). BoB has the same `g_maps[1024]`. Measured on a
+real-GL BoB run of the RAF campaign map (NVIDIA): **492 readable mappings of 497, `[stack]` at 492**, and with the
+cap forced (`BOB_CSFMT_CAP=1024`) `BOB_TRACE_CSFMT=1` records **0 rejects**. So it is not what hid the headings
+(TABHEAD-1's cause is structural and reproduces headlessly). Uncapped anyway (std::vector), with the trace and the
+cap switch kept as the control.

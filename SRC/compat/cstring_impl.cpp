@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <string>
+#include <vector>       /* TEXT-1: the uncapped /proc/self/maps table */
 #include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -434,24 +435,36 @@ void CString::ReleaseBuffer(int nNewLength)
  * with /proc/self/maps-guarded reads so a stray char* can never fault. This only alters %s-bearing
  * formats, which are ALL currently broken, so it cannot regress a working (numeric) format. */
 namespace {
+	/* TEXT-1 (cross-port from MA ce7bcfc, 2026-09-25): the table has NO fixed cap. It was
+	   `g_maps[1024]` and the parse stopped at 1024 entries; /proc/self/maps lists the main-thread
+	   [stack] LAST, and the CString a %s receives is a stack copy (invisible reference). Headless
+	   runs have a few hundred mappings, so every gate saw correct text; a real-GL process with the
+	   NVIDIA driver loaded has more than 1024 readable mappings, the stack falls off the end, every
+	   %s CString reads as "unreadable" and the walker prints the object's pointer bytes. MA
+	   measured 1055 on the PO's display. BoB, measured 2026-09-26 on a real-GL RAF campaign map
+	   (NVIDIA): 492 readable of 497, [stack] last -- under the cap today, so not the cause of TABHEAD-1's
+	   missing headings; uncapped anyway so a longer session or more libraries cannot cross it. */
 	struct MapRange { uintptr_t lo, hi; };
-	static MapRange      g_maps[1024];
+	static std::vector<MapRange> g_maps;
 	static int           g_nmaps = 0;
 	static pthread_mutex_t g_mapsLock = PTHREAD_MUTEX_INITIALIZER;
 
 	static void reload_maps_locked() {
-		g_nmaps = 0;
+		g_nmaps = 0; g_maps.clear();
 		int fd = open("/proc/self/maps", O_RDONLY);
 		if (fd < 0) return;
 		std::string acc; char buf[8192]; ssize_t n;
 		while ((n = read(fd, buf, sizeof buf)) > 0) acc.append(buf, (size_t)n);
 		close(fd);
 		size_t pos = 0;
-		while (pos < acc.size() && g_nmaps < 1024) {
+		/* BOB_CSFMT_CAP=<n> restores a fixed cap (1024 = the old table) -- the control arm */
+		static int cap = -1;
+		if (cap < 0) cap = getenv("BOB_CSFMT_CAP") ? atoi(getenv("BOB_CSFMT_CAP")) : 0;
+		while (pos < acc.size() && (cap <= 0 || g_nmaps < cap)) {
 			size_t eol = acc.find('\n', pos); if (eol == std::string::npos) eol = acc.size();
 			unsigned long lo = 0, hi = 0; char perms[8] = {0};
 			if (sscanf(acc.c_str() + pos, "%lx-%lx %4s", &lo, &hi, perms) == 3 && perms[0] == 'r')
-				{ g_maps[g_nmaps].lo = lo; g_maps[g_nmaps].hi = hi; g_nmaps++; }
+				{ MapRange r; r.lo = lo; r.hi = hi; g_maps.push_back(r); g_nmaps++; }
 			pos = eol + 1;
 		}
 	}
@@ -473,7 +486,13 @@ namespace {
 	/* Decide a %s argument: CString-by-reference -> its data pointer; else a genuine char*. */
 	static const char* resolve_str_arg(void* a) {
 		if (!a) return (const char*)a;
-		if (!addr_readable(a, sizeof(void*))) return (const char*)a;
+		if (!addr_readable(a, sizeof(void*))) {
+			/* TEXT-1: BOB_TRACE_CSFMT=1 names the rejection MA saw on the PO's display */
+			static int told = 0;
+			if (told < 20 && getenv("BOB_TRACE_CSFMT")) { told++;
+				fprintf(stderr, "[csfmt] reject(arg unreadable) a=%p maps=%d\n", a, g_nmaps); }
+			return (const char*)a;
+		}
 		char* m = *(char**)a;                       /* would-be CString::m_pchData */
 		if (m && addr_readable((const char*)m - sizeof(CStringData), sizeof(CStringData) + 1)) {
 			CStringData* d = ((CStringData*)m) - 1;
