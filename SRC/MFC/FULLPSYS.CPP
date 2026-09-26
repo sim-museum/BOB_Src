@@ -782,6 +782,19 @@ extern "C" void bob_frontend_tick(void)
 			int nf = sscanf(mcxy, "%d,%d,%d", &mx, &my, &after);
 			if (nf >= 2 && ++mc_paints > after) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d) after %d paints\n", cx, cy, after); } }
+		  /* INTOK-1: BOB_MAP_CLICK_INTERCEPT="x,y[,paintsOpen]" -- click (x,y) once the
+		     Intercept-offered dialog has been open for paintsOpen map paints (default 2). The
+		     offer appears several hundred paints into an RAF day at a time no fixed count can
+		     name, and under BOB_MAP_TIMER the raid it offers lands within a few dozen paints,
+		     so "click OK while the offer is fresh" needs a trigger keyed on the dialog itself.
+		     The click then takes the same route a mouse click does (bob_map_click_oob). */
+		  { static int ci_open = 0, ci_done = 0; const char* cixy = getenv("BOB_MAP_CLICK_INTERCEPT");
+			extern int bob_intercept_offer_open();
+			if (cixy && !ci_done && bob_intercept_offer_open()) { int mx, my, after = 2;
+			  int nf = sscanf(cixy, "%d,%d,%d", &mx, &my, &after);
+			  if (nf >= 2 && ++ci_open > after) { cx=mx; cy=my; haveClick=1; ci_done=1;
+				fprintf(stderr,"[mapclick] intercept offer open %d paints: injecting (%d,%d) (currtime=%d)\n",
+				        ci_open, cx, cy, (int)MMC.currtime); } } }
 		  /* S157 (SP.24): BOB_MAP_SDLCLICK="x,y" -- same settling rule, but pushes a REAL
 		     SDL_MOUSEBUTTONDOWN instead of assigning cx/cy here. That makes the SDL event handler,
 		     its logical->drawable scaling and bob_gdi_get_click part of what the test proves,

@@ -12157,3 +12157,30 @@ included (k=2: `family index=2 -> currquickfamily=2 currquickmiss=5`). Ships wit
   the bogie's draw/position update runs at a divided rate or across a torn present. Measure: per-frame
   timestamps of the padlocked item's drawn position vs the frame clock in a two-ship dogfight, and the
   frame time itself.
+
+## INTOK-1 (Opus 5.5, 2026-09-25) -- ✅ **PO (twice today): accepting an "Intercept Offered" quits with `*** FATAL: PACKAGES.CPP 2884` ("Couldn't fix up recursive waypoints") -- the offer had gone stale: the raid had already LANDED, and the intercept geometry divided by a zero-length leg**
+
+**Reproduced headlessly** (RAF campaign, scratch drive_c built from the PO's install): `BOB_SIDE=raf BOB_MAP_TIMER=8
+BOB_MAP_ACCEPTDIR=40` plus the new `BOB_MAP_CLICK_INTERCEPT=463,184,2` (clicks the dialog's OK button through
+`bob_map_click_oob` once the offer has been up 2 paints -- the PO's exact stack, `OnClickedOk -> OnOK ->
+InterceptSanctioned -> CalcRoutePositionsAndTime(0,SGR_WPP_DogLeg) -> SetGlobRefsForRoute`). The dialog's own
+countdown `OnOK` reaches the same fatal without the click.
+**Named, not inferred.** `SetGlobRefsForRoute` now dumps the route on its failure path (`[wpfix]`, every
+waypoint's expression tree with each GlobRef resolved): the failing waypoints were exactly the PERCENT-range
+ones (DogLeg 10 %, EscRendezvous 60 %, EscDisperse 70 %), because the EstPoint they hang off sat at
+`(0x80000000, 0, 0x80000000)`. `BOB_TRACE_PREDPT=1` then showed who wrote it: `SetPredictedPointFromETA`
+triangulating along the target's leg to its next waypoint with `d=0 ... ratio=inf` -- the target
+(`[sanction] pack=9 ... status=22`) is a raid in **PS_REFUELLING**, parked on its landing waypoint in France.
+0*inf = NaN -> int = 0x80000000. The offer (stored `(pack,raid)` + the `ReOffers` queue) is sanctioned long
+after it was made; in the PO's log it stayed up across two flown missions.
+**Fix** (game-logic exception, `#if BOB_LINUX`, `BOB_NO_STALEINTERCEPT_GUARD=1` reverts both):
+`InterceptSanctioned` refuses a raid squadron whose status is `>= PS_ACTIVE_MAX` (landing/refuelling) -- the
+same case the game already refuses when `PackageComplete` has zeroed the instance, one step earlier; and the
+triangulation uses ratio 0 when `d==0` (UB guard: the intercept point of a zero-length leg is the target).
+**Verified, same recipe, both arms:** guard off -> `InterceptSanctioned(pack=0) -> first package 9`, then
+`[wpfix] route 432: UNRESOLVED` / `*** FATAL` exit 1; guard on -> the fresh click creates **package 9** (a valid
+intercept), stale re-offers print `REFUSED: the offer is stale ... status=22`, and the day runs to the next
+morning's front end (`date=1247270400`, exit 0). Evidence `doc/reference/260925_intok/`.
+**Open:** the offer queue re-sanctions the same raid dozens of times (`InterceptSanctioned(pack=0) -> -1` x18
+after the first) -- a separate question about how `ReOffers` fills; and the port lets the offer dialog survive
+a flight, which is how the PO's went stale (unverified whether the original closes it at Fly).

@@ -1,0 +1,58 @@
+r7.log:[intercept]   sanctioned: ANTISWEEP=0 ANTISINGLE=1 ANTIUNESC=1 ANTIESC=1 ANTIBIG=1
+r7.log:[sanction] pack=0 raid=0 attackmethod=10 packstatus=23 squads=1 now=39180
+r7.log:[sanction]   sq0 squadnum=112 instance=0 status=23 method=10 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction] pack=1 raid=0 attackmethod=10 packstatus=23 squads=1 now=40680
+r7.log:[sanction]   sq0 squadnum=113 instance=0 status=23 method=10 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction] pack=2 raid=0 attackmethod=11 packstatus=23 squads=7 now=42100
+r7.log:[sanction]   sq0 squadnum=126 instance=0 status=23 method=11 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction]   sq1 squadnum=126 instance=0 status=23 method=11 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction]   sq2 squadnum=126 instance=0 status=23 method=11 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction]   sq3 squadnum=126 instance=0 status=23 method=11 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction]   sq4 squadnum=76 instance=0 status=23 method=18 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction]   sq5 squadnum=76 instance=0 status=23 method=18 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction]   sq6 squadnum=76 instance=0 status=23 method=18 -> owner pack=-1 sq=-1 (got=0)
+r7.log:[sanction] pack=9 raid=0 attackmethod=11 packstatus=22 squads=9 now=43460
+r7.log:[sanction]   sq0 squadnum=125 instance=4623 status=22 method=11 -> owner pack=9 sq=0 (got=1)
+r7.log:[sanction]   sq1 squadnum=125 instance=4624 status=22 method=11 -> owner pack=9 sq=1 (got=1)
+r7.log:[sanction]   sq2 squadnum=125 instance=4625 status=22 method=11 -> owner pack=9 sq=2 (got=1)
+r7.log:[sanction]   sq3 squadnum=77 instance=4626 status=22 method=18 -> owner pack=9 sq=3 (got=1)
+r7.log:[sanction]   sq4 squadnum=77 instance=4627 status=22 method=18 -> owner pack=9 sq=4 (got=1)
+r7.log:[sanction]   sq5 squadnum=77 instance=4628 status=22 method=18 -> owner pack=9 sq=5 (got=1)
+r7.log:[sanction]   sq6 squadnum=78 instance=4629 status=22 method=18 -> owner pack=9 sq=6 (got=1)
+r7.log:[sanction]   sq7 squadnum=78 instance=4630 status=22 method=18 -> owner pack=9 sq=7 (got=1)
+r7.log:[sanction]   sq8 squadnum=78 instance=4631 status=22 method=18 -> owner pack=9 sq=8 (got=1)
+r7.log:[predpt] faketo=16 walk ran out: startpos=(40731136,0,29960192) tgtWorld=(40731136,0,29960192) firstwp=395
+r7.log:[predpt]   raid entry got=1 pack=9 sq=0 packstatus=22 sqstatus=22 takeofftime=41649 now=43460 movecode=48 wpref=395 firstwp uid=-28 act=3
+r7.log:[predpt]     raidwp 395 uid=-28 act=3 World=(40731136,91440,29960192)
+r7.log:[predpt] triangulate: tgt=4623 World=(40731136,0,29960192) wu=395 w->World=(40731136,91440,29960192) d=0 tvel=7500 ivel=13000 irange=547119 ratio=inf istart=(36633440,0,31455952) status=8
+r7.log:[wpfix] route 422: UNRESOLVED waypoint(s) after 3 pass(es)
+r7.log:[wpfix]   Pack[1]=13163 Pack[2]=4623 Pack[3]=4623 Pack[4]=0 Pack[5]=0 Pack[6]=0 Pack[7]=0 Pack[8]=0 Pack[9]=0 Pack[10]=0 Pack[11]=0 Pack[12]=0
+r7.log:[wpfix]   wp 422 uid=-24 act=1 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 0, 0}} evalw=0 world=(36633440,0,31455952) target=13163
+r7.log:[wpfix]   wp 421 uid=-15 act=-2147483648 FAILED pos=COORDS{UID{GR[16]=-2147483648}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=-2147483632 d=(0,0,0) len=-2147483648>INTERCEPT {A - B}{UID{GR[16]=-2147483648}, UID{GR[1]=13163}}, 60, 0, -2147483648}} evalw=-2147483632 world=(0,0,0) target=-2147483648
+r7.log:[wpfix]   wp 420 uid=-16 act=-2147483648 FAILED pos=COORDS{UID{GR[17]=419}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110144053,-457200,-2115319710) len=-2147483648>INTERCEPT {A - B}{UID{GR[17]=419}, UID{GR[1]=13163}}, 10, 0, -2147483648}} evalw=16383 world=(0,0,0) target=-2147483648
+r7.log:[wpfix]   wp 419 uid=-17 act=-2147483648 ok pos=COORDS{UID{GR[18]=418}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110850208,0,-2116027696) len=-2147483648>INTERCEPT {A - B}{UID{GR[18]=418}, UID{GR[1]=13163}}, 1000000, 0, -2147483648}} evalw=0 world=(2146777493,457200,2146775662) target=-2147483648
+r7.log:[wpfix]   wp 424 uid=-25 act=9 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 50000, 0}} evalw=0 world=(40731136,50000,29960192) target=GR[3]=4623
+r7.log:[wpfix]   wp 418 uid=-18 act=-2147483648 ok pos=COORDS{POSITION {X,Y,Z}{-2147483648, 0, -2147483648}} evalw=0 world=(-2147483648,0,-2147483648) target=-2147483648
+r7.log:[wpfix]   wp 417 uid=-19 act=-2147483648 ok pos=COORDS{UID{GR[3]=4623}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{10000, 0, 0}} evalw=0 world=(40731136,457200,29970190) target=-2147483648
+r7.log:[wpfix]   wp 416 uid=-20 act=-2147483648 ok pos=COORDS{UID{GR[18]=418}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110850208,0,-2116027696) len=-2147483648>INTERCEPT {A - B}{UID{GR[18]=418}, UID{GR[1]=13163}}, 1500000, 10923, -2147483648}} evalw=0 world=(2146034366,457200,-2147097262) target=-2147483648
+r7.log:[wpfix]   wp 415 uid=-21 act=4 FAILED pos=COORDS{UID{GR[20]=416}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2109400926,-457200,-2116414082) len=-2147483648>INTERCEPT {A - B}{UID{GR[20]=416}, UID{GR[1]=13163}}, 70, 0, -2147483648}} evalw=16383 world=(0,0,0) target=-2147483648
+r7.log:[wpfix]   wp 423 uid=-28 act=3 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 91440, 0}} evalw=0 world=(36633440,91440,31455952) target=13163
+r7.log:*** FATAL: /home/admin/bob/SRC/MISSMAN/PACKAGES.CPP2943 
+r6.log:[intercept]   sanctioned: ANTISWEEP=0 ANTISINGLE=1 ANTIUNESC=1 ANTIESC=1 ANTIBIG=1
+r6.log:[predpt] faketo=16 walk ran out: startpos=(40731136,0,29960192) tgtWorld=(40731136,0,29960192) firstwp=395
+r6.log:[predpt]   raid entry got=1 pack=9 sq=0 packstatus=22 sqstatus=22 takeofftime=41649 now=43720 movecode=48 wpref=395 firstwp uid=-28 act=3
+r6.log:[predpt]     raidwp 395 uid=-28 act=3 World=(40731136,91440,29960192)
+r6.log:[predpt] triangulate: tgt=4623 World=(40731136,0,29960192) wu=395 w->World=(40731136,91440,29960192) d=0 tvel=7500 ivel=13000 irange=547119 ratio=inf istart=(36633440,0,31455952) status=8
+r6.log:[wpfix] route 422: UNRESOLVED waypoint(s) after 3 pass(es)
+r6.log:[wpfix]   Pack[1]=13163 Pack[2]=4623 Pack[3]=4623 Pack[4]=0 Pack[5]=0 Pack[6]=0 Pack[7]=0 Pack[8]=0 Pack[9]=0 Pack[10]=0 Pack[11]=0 Pack[12]=0
+r6.log:[wpfix]   wp 422 uid=-24 act=1 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 0, 0}} evalw=0 world=(36633440,0,31455952) target=13163
+r6.log:[wpfix]   wp 421 uid=-15 act=-2147483648 FAILED pos=COORDS{UID{GR[16]=-2147483648}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=-2147483632 d=(0,0,0) len=-2147483648>INTERCEPT {A - B}{UID{GR[16]=-2147483648}, UID{GR[1]=13163}}, 60, 0, -2147483648}} evalw=-2147483632 world=(0,0,0) target=-2147483648
+r6.log:[wpfix]   wp 420 uid=-16 act=-2147483648 FAILED pos=COORDS{UID{GR[17]=419}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110144053,-457200,-2115319710) len=-2147483648>INTERCEPT {A - B}{UID{GR[17]=419}, UID{GR[1]=13163}}, 10, 0, -2147483648}} evalw=16383 world=(0,0,0) target=-2147483648
+r6.log:[wpfix]   wp 419 uid=-17 act=-2147483648 ok pos=COORDS{UID{GR[18]=418}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110850208,0,-2116027696) len=-2147483648>INTERCEPT {A - B}{UID{GR[18]=418}, UID{GR[1]=13163}}, 1000000, 0, -2147483648}} evalw=0 world=(2146777493,457200,2146775662) target=-2147483648
+r6.log:[wpfix]   wp 424 uid=-25 act=9 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 50000, 0}} evalw=0 world=(40731136,50000,29960192) target=GR[3]=4623
+r6.log:[wpfix]   wp 418 uid=-18 act=-2147483648 ok pos=COORDS{POSITION {X,Y,Z}{-2147483648, 0, -2147483648}} evalw=0 world=(-2147483648,0,-2147483648) target=-2147483648
+r6.log:[wpfix]   wp 417 uid=-19 act=-2147483648 ok pos=COORDS{UID{GR[3]=4623}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{10000, 0, 0}} evalw=0 world=(40731136,457200,29970190) target=-2147483648
+r6.log:[wpfix]   wp 416 uid=-20 act=-2147483648 ok pos=COORDS{UID{GR[18]=418}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110850208,0,-2116027696) len=-2147483648>INTERCEPT {A - B}{UID{GR[18]=418}, UID{GR[1]=13163}}, 1500000, 10923, -2147483648}} evalw=0 world=(2146034366,457200,-2147097262) target=-2147483648
+r6.log:[wpfix]   wp 415 uid=-21 act=4 FAILED pos=COORDS{UID{GR[20]=416}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2109400926,-457200,-2116414082) len=-2147483648>INTERCEPT {A - B}{UID{GR[20]=416}, UID{GR[1]=13163}}, 70, 0, -2147483648}} evalw=16383 world=(0,0,0) target=-2147483648
+r6.log:[wpfix]   wp 423 uid=-28 act=3 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 91440, 0}} evalw=0 world=(36633440,91440,31455952) target=13163
+r6.log:*** FATAL: /home/admin/bob/SRC/MISSMAN/PACKAGES.CPP2943 

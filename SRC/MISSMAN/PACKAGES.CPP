@@ -2832,6 +2832,59 @@ void	Profile::RecalcPrimaryPositions()
 //DEADCODE DAW 25/11/99 	RepositionSubWaypoints(wave[w].firstwp);
 //DEADCODE DAW 25/11/99 }
 
+#if BOB_LINUX
+/* INTOK-1 diagnostic: print an EventVal expression tree, resolving every GlobRef to its current
+   Persons2::GetLoc value, so the unresolved term is named rather than inferred. */
+static void bob_dump_expr(EventVal& e, int depth)
+{
+	if (depth > 8) { fprintf(stderr, "..."); return; }
+	if (!e.complex) { fprintf(stderr, "%d", e.value); return; }
+	Expr* x = e.complex;
+	if (x->type == Expr::EXPR_GLOB) {
+		int g = ((GlobRefExpr*)x)->globrefind;
+		fprintf(stderr, "GR[%d]=%d", g, Persons2::GetLoc(g));
+		return;
+	}
+	if (x->type == Expr::EXPR_ICPT) {
+		Coords3D d = {0, 0, 0};
+		UniqueID rv = x->EvalW(d);
+		fprintf(stderr, "<icpt rv=%d d=(%d,%d,%d) len=%d>", (int)rv, d.X, d.Y, d.Z, x->Evaluate(0));
+	}
+	fprintf(stderr, "%s{", x->FnName());
+	for (int i = 0; i < x->Arguments() && i < 12; i++) {
+		EventVal* a = x->ArgLine(i);
+		if (i) fprintf(stderr, ", ");
+		if (a) bob_dump_expr(*a, depth + 1); else fprintf(stderr, "null");
+	}
+	fprintf(stderr, "}");
+}
+static void bob_dump_route_globrefs(UniqueID wpuidstart, int passes, bool failed)
+{
+	fprintf(stderr, "[wpfix] route %d: %s after %d pass(es)\n", (int)wpuidstart,
+	        failed ? "UNRESOLVED waypoint(s)" : "resolved", passes);
+	for (int gr = SGR_Pack_Takeoff; gr <= SGR_Pack_Target9; gr++)
+		fprintf(stderr, "%sPack[%d]=%d", gr == SGR_Pack_Takeoff ? "[wpfix]   " : " ", gr, Persons2::GetLoc(gr));
+	fprintf(stderr, "\n");
+	int n = 0;
+	for (UniqueID wpuid = wpuidstart; wpuid && n < 64; n++) {
+		info_waypoint* w = *Persons2::ConvertPtrUID(wpuid);
+		if (!w) { fprintf(stderr, "[wpfix]   wp %d: NULL\n", (int)wpuid); break; }
+		int code = w->uid.Evaluate();
+		bool keyed = (w->uid != GOT_UNDEFINED_VAL && w->uid > -SGR_WPP_Landing);
+		bool done = keyed && Persons2::GetLoc(-w->uid) != GOT_UNDEFINED_VAL;
+		fprintf(stderr, "[wpfix]   wp %d uid=%d act=%d %s pos=", (int)wpuid, code, w->wpact.Evaluate(),
+		        !keyed ? "(not keyed)" : done ? "ok" : "FAILED");
+		bob_dump_expr(w->position, 0);
+		{ Coords3D c = {0, 0, 0}; UniqueID rv = w->position.EvalW(c);
+		  fprintf(stderr, " evalw=%d world=(%d,%d,%d)", (int)rv, w->World.X, w->World.Y, w->World.Z); }
+		fprintf(stderr, " target=");
+		bob_dump_expr(w->target, 0);
+		fprintf(stderr, "\n");
+		wpuid = w->nextwp;
+	}
+	fflush(stderr);
+}
+#endif
 void	Profile::SetGlobRefsForRoute(UniqueID wpuidstart)
 {
 	//first clear all Waypoint globrefs:
@@ -2880,6 +2933,12 @@ void	Profile::SetGlobRefsForRoute(UniqueID wpuidstart)
 			wpuid=w->nextwp;
 		}
 	}while (donesome);
+#if BOB_LINUX
+	/* INTOK-1: name the waypoint(s) that never resolved before the fatal fires. Printed only on
+	   the failure path (or every call with BOB_TRACE_WPFIX=1). */
+	if (failedsome || getenv("BOB_TRACE_WPFIX"))
+		bob_dump_route_globrefs(wpuidstart, passes, failedsome);
+#endif
 	if (failedsome)	
 		_Error.EmitSysErr("Couldn't fix up recursive waypoints after %i passes",passes); 
 }
@@ -3074,6 +3133,27 @@ bool	Profile::SetPredictedPointFromETA(SavedGlobrefs faketo,bool recalcfromETA)
 						}
 						Math_Lib.InterceptHdg(startpos.X,startpos.Z,w2->World.X,w2->World.Z,d,hw);
 					}
+#if BOB_LINUX
+					if (getenv("BOB_TRACE_PREDPT"))
+						fprintf(stderr,"[predpt] faketo=%d walk %s: startpos=(%d,%d,%d) tgtWorld=(%d,%d,%d) firstwp=%d\n",
+						        (int)faketo, wu ? "found" : "ran out", startpos.X,startpos.Y,startpos.Z,
+						        p->World.X,p->World.Y,p->World.Z,(int)buwu);
+					if (getenv("BOB_TRACE_PREDPT")) {
+						int tp=-1,ts=-1;
+						bool got=Todays_Packages.GetACSquadEntry(packagetarget[0],tp,ts);
+						info_waypointPtr fw=Persons2::ConvertPtrUID(buwu);
+						fprintf(stderr,"[predpt]   raid entry got=%d pack=%d sq=%d packstatus=%d sqstatus=%d"
+						        " takeofftime=%d now=%d movecode=%d wpref=%d firstwp uid=%d act=%d\n",
+						        (int)got,tp,ts,got?(int)Todays_Packages[tp].packagestatus:-1,
+						        got?(int)Todays_Packages[tp][ts].status:-1,got?(int)Todays_Packages[tp][ts].takeofftime:-1,
+						        (int)MMC.currtime,(int)((info_airgrpPtr)g)->movecode,(int)g->wpref,
+						        fw?fw->uid.Evaluate():0,fw?fw->wpact.Evaluate():0);
+						for (UniqueID u=buwu; u; ) { info_waypointPtr x=Persons2::ConvertPtrUID(u); if(!x)break;
+							fprintf(stderr,"[predpt]     raidwp %d uid=%d act=%d World=(%d,%d,%d)\n",(int)u,
+							        x->uid.Evaluate(),x->wpact.Evaluate(),x->World.X,x->World.Y,x->World.Z);
+							u=x->nextwp; }
+					}
+#endif
 					if (!wu)	//Cludge number 38: If already past the faketo then need to triangulate!
 						faketo=SGR_Pack_BlankZero;
 				//Cludge number 37 (but who is counting?):
@@ -3124,6 +3204,22 @@ bool	Profile::SetPredictedPointFromETA(SavedGlobrefs faketo,bool recalcfromETA)
 						interceptorrange=-interceptorrange;
 					//Apply that up route selected 
 					Float ratio=Float(interceptorrange)/d;
+#if BOB_LINUX
+					/* INTOK-1: a target sitting ON its next waypoint (d==0) made ratio inf and the
+					   position below 0*inf = NaN, which converts to 0x80000000 (UB). The intercept
+					   point of a zero-length leg is the target itself. */
+					if (d==0 && !getenv("BOB_NO_STALEINTERCEPT_GUARD"))
+						ratio=0;
+#endif
+#if BOB_LINUX
+					if (getenv("BOB_TRACE_PREDPT"))
+						fprintf(stderr,"[predpt] triangulate: tgt=%d World=(%d,%d,%d) wu=%d w->World=(%d,%d,%d) d=%u"
+						        " tvel=%d ivel=%d irange=%d ratio=%g istart=(%d,%d,%d) status=%d\n",
+						        (int)UniqueID(packagetarget[0]),p->World.X,p->World.Y,p->World.Z,(int)wu,
+						        w->World.X,w->World.Y,w->World.Z,(unsigned)d,targetvel,interceptorvel,
+						        (int)interceptorrange,(double)ratio,interceptorstartpos.X,interceptorstartpos.Y,
+						        interceptorstartpos.Z,(int)packagestatus);
+#endif
 					startpos.X+=(w->World.X-startpos.X)*ratio;
 					startpos.Z+=(w->World.Z-startpos.Z)*ratio;
 					intercepttime=starttime+interceptorrange/targetvel;

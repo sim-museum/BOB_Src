@@ -687,6 +687,31 @@ int	RAFDirectivesResults::InterceptSanctioned(int pack, int raid)
 	Directives::RAF::MissTypes 	misstype = RAFInterceptType(pack, squadnum);
 
 
+#if BOB_LINUX
+	/* INTOK-1 (2026-09-25): refuse an offer that has gone STALE -- the raid has landed.
+	   The Intercept-offered dialog stores (pack, raid) when it opens and sanctions them whenever
+	   OK is pressed (or its countdown runs out), and offers queue behind it (ReOffers). In the
+	   PO's log the offer stayed up across two flown missions before OK was pressed at 08:51;
+	   headlessly the queue reaches a raid long after it went home. Measured (BOB_TRACE_PREDPT=1):
+	     [sanction] pack=9 raid=0 attackmethod=11 packstatus=22 ... sq0 instance=4623 status=22
+	   22 is PS_REFUELLING: the raid is parked at its French base, sitting ON its landing
+	   waypoint. SetPredictedPointFromETA then triangulates the intercept along the raid's leg to
+	   that waypoint -- a leg of length ZERO -- ratio = range/0 = inf, the EstPoint becomes
+	   (0x80000000, 0, 0x80000000), every percentage-range waypoint hung off it overflows, and
+	   SetGlobRefsForRoute FATALs at PACKAGES.CPP:2884 ("Couldn't fix up recursive waypoints").
+	   The game already refuses a raid whose air group is gone (`if (pk[squadnum].instance)`,
+	   zeroed by PackageComplete); a raid that is landing or refuelling is the same case one step
+	   earlier -- there is nothing left in the air to intercept. BOB_NO_STALEINTERCEPT_GUARD=1
+	   restores the fatal for a bisect. */
+	if (pk[squadnum].instance && pk[squadnum].status >= Profile::PS_ACTIVE_MAX
+	    && !getenv("BOB_NO_STALEINTERCEPT_GUARD")) {
+		fprintf(stderr, "[intercept] InterceptSanctioned(pack=%d, raid=%d) REFUSED: the offer is stale --"
+		        " raid squadron %d status=%d (>= PS_ACTIVE_MAX: landing/refuelling), nothing to intercept\n",
+		        pack, raid, squadnum, (int)pk[squadnum].status);
+		fflush(stderr);
+		return -1;
+	}
+#endif
 	if (pk[squadnum].instance)
 	{
 		int strike=0,detachedescort =0, attachedescort =0, returnescort = 0;
@@ -752,6 +777,11 @@ int	RAFDirectivesResults::InterceptSanctioned(int pack, int raid)
 
 		}
 	}
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_INTERCEPT"))
+		fprintf(stderr, "[intercept] InterceptSanctioned(pack=%d, raid=%d) -> first package %d\n",
+		        pack, raid, firstpacknum), fflush(stderr);
+#endif
 	return(firstpacknum);
 }
 

@@ -893,6 +893,13 @@ void	Campaign::GlobalRefreshData()
 #endif
 }
 
+#if BOB_LINUX
+/* INTOK-1: is the Intercept-offered dialog up? (for the BOB_MAP_CLICK_INTERCEPT harness hook) */
+int	bob_intercept_offer_open()
+{
+	return MainToolBar().LoggedChild(CMainToolbar::INTERCEPTOFFERED) != NULL;
+}
+#endif
 bool	Campaign::AnyDialogsOpen()
 {
 #ifndef	BOB_DEMO_VER

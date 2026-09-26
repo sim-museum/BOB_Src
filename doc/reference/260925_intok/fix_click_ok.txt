@@ -1,0 +1,9 @@
+[mapclick] intercept offer open 3 paints: injecting (463,184) (currtime=28460)
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package 9
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=1, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=2, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=10, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=11, raid=0) -> first package -1
+[shot-state] where=frontend tick=4000 fe_art=27934 resw=1024 phase=0 date=1247270400 time=23400 autoclick=5/5 dialogs=8 dlg=1185:2/2 dlg=254:1/1 dlg=942:8/8 dlg=960:8/8 dlg=1065:8/8 dlg=826:9/9 dlg=1187:1/1 dlg=823:3/3
+exit=0

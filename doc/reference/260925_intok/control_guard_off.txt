@@ -1,0 +1,57 @@
+[mapclick] intercept offer open 3 paints: injecting (463,184) (currtime=28460)
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package 9
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=1, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=2, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[intercept] InterceptSanctioned(pack=0, raid=0) -> first package -1
+[wpfix] route 432: UNRESOLVED waypoint(s) after 3 pass(es)
+[wpfix]   Pack[1]=13163 Pack[2]=4624 Pack[3]=4624 Pack[4]=0 Pack[5]=0 Pack[6]=0 Pack[7]=0 Pack[8]=0 Pack[9]=0 Pack[10]=0 Pack[11]=0 Pack[12]=0
+[wpfix]   wp 432 uid=-24 act=1 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 0, 0}} evalw=0 world=(36633440,0,31455952) target=13163
+[wpfix]   wp 431 uid=-15 act=-2147483648 FAILED pos=COORDS{UID{GR[16]=-2147483648}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=-2147483632 d=(0,0,0) len=-2147483648>INTERCEPT {A - B}{UID{GR[16]=-2147483648}, UID{GR[1]=13163}}, 60, 0, -2147483648}} evalw=-2147483632 world=(0,0,0) target=-2147483648
+[wpfix]   wp 430 uid=-16 act=-2147483648 FAILED pos=COORDS{UID{GR[17]=429}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110144053,-457200,-2115319710) len=-2147483648>INTERCEPT {A - B}{UID{GR[17]=429}, UID{GR[1]=13163}}, 10, 0, -2147483648}} evalw=16383 world=(0,0,0) target=-2147483648
+[wpfix]   wp 429 uid=-17 act=-2147483648 ok pos=COORDS{UID{GR[18]=428}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110850208,0,-2116027696) len=-2147483648>INTERCEPT {A - B}{UID{GR[18]=428}, UID{GR[1]=13163}}, 1000000, 0, -2147483648}} evalw=0 world=(2146777493,457200,2146775662) target=-2147483648
+[wpfix]   wp 434 uid=-25 act=9 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 50000, 0}} evalw=0 world=(40731136,50000,29960192) target=GR[3]=4624
+[wpfix]   wp 428 uid=-18 act=-2147483648 ok pos=COORDS{POSITION {X,Y,Z}{-2147483648, 0, -2147483648}} evalw=0 world=(-2147483648,0,-2147483648) target=-2147483648
+[wpfix]   wp 427 uid=-19 act=-2147483648 ok pos=COORDS{UID{GR[3]=4624}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{10000, 0, 0}} evalw=0 world=(40731136,457200,29970190) target=-2147483648
+[wpfix]   wp 426 uid=-20 act=-2147483648 ok pos=COORDS{UID{GR[18]=428}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2110850208,0,-2116027696) len=-2147483648>INTERCEPT {A - B}{UID{GR[18]=428}, UID{GR[1]=13163}}, 1500000, 10923, -2147483648}} evalw=0 world=(2146034366,457200,-2147097262) target=-2147483648
+[wpfix]   wp 425 uid=-21 act=4 FAILED pos=COORDS{UID{GR[20]=426}, POSITION {X,Y,Z}{0, 457200, 0}, ROTATION {Hdg,Pitch,Range}{<icpt rv=0 d=(-2109400926,-457200,-2116414082) len=-2147483648>INTERCEPT {A - B}{UID{GR[20]=426}, UID{GR[1]=13163}}, 70, 0, -2147483648}} evalw=16383 world=(0,0,0) target=-2147483648
+[wpfix]   wp 433 uid=-28 act=3 (not keyed) pos=COORDS{POSITION {X,Y,Z}{0, 91440, 0}} evalw=0 world=(36633440,91440,31455952) target=13163
+*** FATAL: /home/admin/bob/SRC/MISSMAN/PACKAGES.CPP2943 
+exit=1
