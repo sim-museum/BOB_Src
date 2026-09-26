@@ -12244,3 +12244,14 @@ child 2 closed`), sector Y then opens **Middle Wallop AF** (238 / 609 / 152). Si
 **Open -- a question for the PO:** in the gold video (24 Aug, Filton and Biggin Hill) only the band set is lit;
 the status set is not visible at all, although the manual says two sets are lit. The port follows the manual
 (and the game's own data); `BOB_NO_TOTE_ICON=1` reproduces the gold look exactly.
+
+### INTOK-1 follow-up (2026-09-26) -- the control arm made deterministic
+Re-running INTOK-1's click-path control on the final binary did NOT fatal: whether the offer queue still holds a
+landed raid when the countdown fires depends on real-time timers against a paint-driven sim. So
+`BOB_SANCTION_LANDED=1` makes the PO's call directly -- on the first map paint where an LW raid's lead squadron has
+landed (status >= PS_ACTIVE_MAX, instance live) it calls `RAFDirectivesResults::InterceptSanctioned(pack,0)`,
+exactly what `InterceptOffered::OnOK` does for a stale offer. Twice each, identical: `pack=0 squad=0 status=22
+currtime=32120` (08:55 -- the PO's fatal was at 08:51); guard off -> `[wpfix] route 392: UNRESOLVED` / `*** FATAL`
+exit 1; guard on -> `REFUSED: the offer is stale`, the day runs to the next morning, exit 0.
+`doc/reference/260925_intok/landed_{fix,ctl}.txt`. The full gate suite on TOTE-1's binary: all green except
+PARITY's four pre-existing config-screen DIFFs (identical byte counts on the shipped 260919b binary).

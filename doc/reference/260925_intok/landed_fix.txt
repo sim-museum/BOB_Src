@@ -1,0 +1,7 @@
+[sanction-landed] pack=0 squad=0 status=22 instance=4608 currtime=32120 -> InterceptSanctioned(0,0)
+[intercept] InterceptSanctioned(pack=0, raid=0) REFUSED: the offer is stale -- raid squadron 0 status=22 (>= PS_ACTIVE_MAX: landing/refuelling), nothing to intercept
+[sanction-landed] returned -1 (campaign continues)
+[intercept] InterceptSanctioned(pack=9, raid=0) REFUSED: the offer is stale -- raid squadron 0 status=22 (>= PS_ACTIVE_MAX: landing/refuelling), nothing to intercept
+[intercept] InterceptSanctioned(pack=9, raid=0) REFUSED: the offer is stale -- raid squadron 0 status=23 (>= PS_ACTIVE_MAX: landing/refuelling), nothing to intercept
+[shot-state] where=frontend tick=4000 fe_art=27934 resw=1024 phase=0 date=1247270400 time=23400 autoclick=5/5 dialogs=8 dlg=1187:1/1 dlg=254:1/1 dlg=1065:8/8 dlg=960:8/8 dlg=826:9/9 dlg=1185:2/2 dlg=942:8/8 dlg=823:3/3
+exit=0

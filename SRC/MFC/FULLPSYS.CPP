@@ -796,6 +796,30 @@ extern "C" void bob_frontend_tick(void)
 				}
 				q = strchr(q, ';'); if (q) q++;
 			  } } }
+		  /* INTOK-1: BOB_SANCTION_LANDED=1 -- the PO's fatal, deterministically. Once, on the first
+		     map paint where some Luftwaffe raid's lead squadron has LANDED (status >= PS_ACTIVE_MAX,
+		     instance still live), make the call InterceptOffered::OnOK makes for a stale offer:
+		     RAFDirectivesResults::InterceptSanctioned(pack, 0). The click-path recipe
+		     (BOB_MAP_CLICK_INTERCEPT) reaches the same call, but whether its offer queue is still
+		     holding a landed raid when the countdown fires depends on real-time timers against a
+		     paint-driven sim, so its guard-off arm reproduced the fatal on some runs and not others.
+		     Landings are paint-deterministic under BOB_MAP_TIMER; this is the control that always
+		     discriminates. */
+		  if (getenv("BOB_SANCTION_LANDED")) { static int done = 0;
+			for (int p = 0; !done && p < Profile::MAX_PACKS; p++) {
+				Profile& pk = Todays_Packages.pack[p];
+				if (pk.attackmethod < Profile::AM_LWPACKS || !pk.raidnumentries || !(int)pk.squadlist) continue;
+				int sq = pk.RaidNumEntriesMinSq(0);
+				if (sq < 0 || sq >= (int)pk.squadlist || !pk[sq].instance) continue;
+				if (pk[sq].status < Profile::PS_ACTIVE_MAX) continue;
+				done = 1;
+				fprintf(stderr, "[sanction-landed] pack=%d squad=%d status=%d instance=%d currtime=%d -> InterceptSanctioned(%d,0)\n",
+				        p, sq, (int)pk[sq].status, (int)pk[sq].instance, (int)MMC.currtime, p);
+				fflush(stderr);
+				int r = RAFDirectivesResults::InterceptSanctioned(p, 0);
+				fprintf(stderr, "[sanction-landed] returned %d (campaign continues)\n", r);
+				fflush(stderr);
+			} }
 		  /* INTOK-1: BOB_MAP_CLICK_INTERCEPT="x,y[,paintsOpen]" -- click (x,y) once the
 		     Intercept-offered dialog has been open for paintsOpen map paints (default 2). The
 		     offer appears several hundred paints into an RAF day at a time no fixed count can
