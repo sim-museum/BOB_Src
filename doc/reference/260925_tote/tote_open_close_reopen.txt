@@ -1,0 +1,7 @@
+[mapclick] sequence: injecting (205,145) at map paint 20
+[oobclick] (205,145) consumed by toolbar 1 child 1 ctrl id=1684
+[mapclick] sequence: injecting (968,17) at map paint 30
+[titleglyph] (968,17) -> IDCANCEL (close) on dialog 0x9bcf3b0 (10ToteSector)
+[dlgclose] toolbar 0 child 2 closed (root=0xa027370, asked=0x9bcf3b0)
+[mapclick] sequence: injecting (205,167) at map paint 40
+[oobclick] (205,167) consumed by toolbar 1 child 1 ctrl id=1684

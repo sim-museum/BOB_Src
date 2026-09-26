@@ -1,0 +1,21 @@
+[rtabs] RTabs.ocx resources loaded
+[rtabs] template tab strip id=22 hosted for dlg IDD=130 (0x9fe1250)
+[rtabs] dlg=130 AddTab '10 Group (SW)' page=0x9f43270 (1 tabs)
+[rtabs] dlg=130 AddTab '11 Group (SE)' page=0x9f452d0 (2 tabs)
+[rtabs] dlg=130 AddTab '12 Group (Mid)' page=0x9f8d8d0 (3 tabs)
+[rtabs] dlg=130 AddTab '13 Group (N)' page=0x9f8d480 (4 tabs)
+[geom] dlg=130 ctrl=22 MoveWindow(0,0 1537x30)
+[tabs] container 0x9fe1250 (w=643 strip h=30) shows page 0x9f43270 15GroupGeschwader
+[mapclick] sequence: injecting (205,145) at map paint 20
+[geom] dlg=1084 ctrl=1592 MoveWindow(19,245 40x13)
+[geom] dlg=1084 ctrl=1618 MoveWindow(19,359 60x13)
+[geom] dlg=1084 ctrl=1595 MoveWindow(79,245 40x13)
+[geom] dlg=1084 ctrl=1621 MoveWindow(79,359 60x13)
+[geom] dlg=1084 ctrl=1599 MoveWindow(139,133 50x13)
+[geom] dlg=1084 ctrl=1625 MoveWindow(139,317 60x13)
+[geom] dlg=1084 ctrl=21 MoveWindow(0,0 1024x768)
+[oobclick] (205,145) consumed by toolbar 1 child 1 ctrl id=1684
+[mapclick] sequence: injecting (420,80) at map paint 30
+[rtabs] click dlg=130 local=(230,13) tab 0 -> 1 of 4
+[oobclick] (420,80) consumed by toolbar 1 child 1 ctrl id=22
+[tabs] container 0x9fe1250 (w=643 strip h=30) shows page 0x9f452d0 15GroupGeschwader

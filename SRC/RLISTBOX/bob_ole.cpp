@@ -1459,7 +1459,7 @@ extern "C" void bob_timers_tick(void) {
 }
 
 
-/* TABHEAD-1: live geometry for the hosts that need it.
+/* TABHEAD-1 / TOTE-1: live geometry for the hosts that need it.
    The compat CWnd::MoveWindow was a no-op and GetWindowRect answered the whole screen; the port lays
    controls out from their templates instead. Two things cannot be laid out that way: the tab strip,
    which RDialog::OnSize sizes to the dialog (its template rect is a 51x23 placeholder), and the Tote
@@ -1469,7 +1469,10 @@ extern "C" void bob_timers_tick(void) {
    dialog -- a control's window rect and client rect coincide, so the game's own arithmetic holds. */
 static bool bob_ole_live(OleHost* h) {
     if (!h) return false;
-    return h->liveGeometry() != 0;
+    if (h->liveGeometry()) return true;
+    /* not its IDJ_TITLE (21): RDialog::UpdateTitle sizes the title from the dialog's viewsize,
+       which headlessly is the whole screen, and ToteSector itself never moves it */
+    return h->dlgId == 1084 /*IDD_TOTSECTOR*/ && h->ctrlId != 21 && !getenv("BOB_NO_TOTE_GEOMETRY");
 }
 extern "C++" void bob_ole_move_window(CWnd* w, int x, int y, int cw, int ch) {
     OleHost* h = findHost(w);

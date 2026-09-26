@@ -2049,6 +2049,25 @@ extern "C" int bob_map_paint_oob(int sw, int sh) {
 			RDialog* child = tbr->LoggedChild(slot);
 			if (child) { bob_oob_paint_tree(child, bob_oob_centre_x(child, sw), 40); n++; }
 		}
+	/* TOTE-1 (2026-09-25): the Tote Board is a logged child of the TITLE bar (TitleBar::OpenTote ->
+	   LogChild(TOTE, ToteSector::Make(uid)), reached by clicking a sector on RAF Resources), and this
+	   walk painted three toolbars' children, never TB_TITLE's. So clicking a sector opened a dialog
+	   that was created, refreshed every tick, and never drawn -- which is the PO's "linux bob cannot
+	   show the tote board". The click walk already visits TB_TITLE; paint the TOTE slot, where
+	   ToteSector::Make asks for it (Place(POSN_MAX, POSN_MIN): top-right of the map view, 4 px in).
+	   Only that slot: the title bar logs other dialogs (TASK, ACUNIT, the clock) whose placement has
+	   not been checked against gold. BOB_NO_TOTE_PAINT=1 reverts. */
+	CRToolBar* tbt = CMainFrame::toolbars[TB_TITLE];
+	if (tbt && !getenv("BOB_NO_TOTE_PAINT")) {
+		RDialog* child = tbt->LoggedChild(TitleBar::TOTE);
+		if (child) {
+			int dw = bob_oob_widest(child, 0);
+			int px = dw > 0 ? dw * 6 / 4 : 330;
+			int x = sw - px - 40;           /* the map view ends at the Nm ruler */
+			bob_oob_paint_tree(child, x < 0 ? 0 : x, 4);
+			n++;
+		}
+	}
 	return n;
 }
 /* deterministically open Bases (fire OnClickedBases) once the map has settled -- removes the

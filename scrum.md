@@ -12216,3 +12216,31 @@ and `Assets / Type / Status`. Side by side with gold: `doc/reference/260925_tabh
 **Open:** the title band behind the text is transparent on these artless title panels (gold draws a dark band);
 Review's Strength page says `Defiant` where gold (24 Aug) says `Hurricane` -- a data question, not a heading;
 Mission Folder / Hostiles / Log Book headers are present but their columns run together (width, not heading).
+
+## TOTE-1 (Opus 5.5, 2026-09-25) -- ✅ **PO: "make it so linux bob can show RAF resources/tote board as gold standard does" -- the Tote Board opened, refreshed every tick, and was never drawn; once drawn, its lights needed the game's own MoveWindow and their faces**
+
+With TABHEAD-1 the RAF Resources box is usable (title, Group tabs, Sectors/Airfields). A click on a sector
+letter already reached the genuine `GroupGeschwader::OnSelectRlistboxctrl1(row, 0)` -> `TitleBar::OpenTote` ->
+`LogChild(TOTE, ToteSector::Make(uid))` -- and nothing appeared. Three causes, each measured:
+1. **Never painted.** The Tote Board is a logged child of the TITLE bar; `bob_map_paint_oob` painted TB_MAIN,
+   TB_MISC and TB_REPORT children only (the click walk already visited all toolbars). The TOTE slot is now
+   painted where `ToteSector::Make` places it (`Place(POSN_MAX,POSN_MIN)`, top right of the map view).
+   `BOB_NO_TOTE_PAINT=1` reverts. Other TB_TITLE children (TASK, ACUNIT, clock) are left unpainted -- unchecked.
+2. **Every light at its template spot.** `ToteSector::RefreshLights` positions each squadron's status light
+   (W) at `76+index*28` and its information-age light (B) at `316+ind*14` by `GetWindowRect` arithmetic and
+   `MoveWindow`, both stubs (whole screen / no-op). They are now honoured for IDD_TOTSECTOR's hosts (not its
+   title, which `UpdateTitle` sizes from a degenerate viewsize) -- with the dialog at "screen" (0,0), exactly the
+   game's arithmetic: `[geom] dlg=1084 ctrl=1592 MoveWindow(19,245 40x13)`. `BOB_NO_TOTE_GEOMETRY=1` reverts.
+3. **The status lights had no face.** `IDC_RBUTTON_W0..4` carry their art only in the property stream
+   (NormalFileNum 0x1004c = ICON_GTOTE, an icon enum) and the RButton host discards persisted NormalFileNum
+   (right for FIL_ file-table indices, wrong for ICON_ enums): `[tote] draw ctrl=1592 file=0x0`. Kept for
+   IDD_TOTSECTOR; `BOB_NO_TOTE_ICON=1` reverts.
+**Verified** (RAF side, 10 July 06:30, headless, real click path via `BOB_MAP_CLICKS`): sector W -> **Filton AF**
+tote: squadrons 213 / 234 / 92 at the top, P/A 19 16 at the bottom, a status set lit per squadron (213 and 234
+`Ordered on Patrol` -- they are planned for patrols; 92 `Ordered to Readiness`) and an age set lit in the
+coloured band (red for the two planned squadrons, white for 92). The title X closes it (`[dlgclose] toolbar 0
+child 2 closed`), sector Y then opens **Middle Wallop AF** (238 / 609 / 152). Side by side with gold:
+`doc/reference/260925_tote/`.
+**Open -- a question for the PO:** in the gold video (24 Aug, Filton and Biggin Hill) only the band set is lit;
+the status set is not visible at all, although the manual says two sets are lit. The port follows the manual
+(and the game's own data); `BOB_NO_TOTE_ICON=1` reproduces the gold look exactly.

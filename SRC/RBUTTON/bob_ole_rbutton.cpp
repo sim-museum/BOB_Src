@@ -42,7 +42,17 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
                 HWND save = m_hWnd; m_hWnd = 0;
                 DoPropExchange(&px);
                 m_hWnd = save;
+                long persistedN = m_NormalFileNum;
                 m_NormalFileNum = saveN; m_PressedFileNum = saveP;
+                /* TOTE-1: the Tote Board's status lights (IDC_RBUTTON_W0..W4) carry their face ONLY
+                   in the property stream -- NormalFileNum 0x1004c, an ICON_* enum value (iconnum.g:
+                   ICON_WTOTE..ICON_GTOTE), not a file-table index -- and ToteSector never sets it at
+                   runtime (it only moves and sizes them, and re-faces the B lights). Discarding it
+                   left them faceless: the status column of every squadron drew nothing. Icon
+                   numbers are compiled enums, so keep it -- scoped to IDD_TOTSECTOR, the dialog it
+                   was measured on. BOB_NO_TOTE_ICON=1 reverts. */
+                if (dlgId == 1084 && persistedN >= 0x10000 && !getenv("BOB_NO_TOTE_ICON"))
+                    m_NormalFileNum = persistedN;
                 streamed = 1;
                 if (bob_ole_trace()) fprintf(stderr,
                     "[ole] RButton dlg=%d id=%d stream: align=%d ResNum=%ld FontNum=%ld\n",
@@ -148,6 +158,11 @@ struct HostRButton : public CRButtonCtrl, public OleHost {
            RCombo host does. */
         m_FirstSweep = TRUE;
         m_bDrawing = FALSE;
+        if (dlgId == 1084 && getenv("BOB_TRACE_TOTE")) {   /* TOTE-1: which light draws what, where */
+            static int n = 0;
+            if (n++ < 40) fprintf(stderr, "[tote] draw ctrl=%d file=0x%lx at (%d,%d) %dx%d\n",
+                ctrlId, (long)m_NormalFileNum, pdc->m_bobVpX, pdc->m_bobVpY, w, h);
+        }
         OnDraw(pdc, rc, rc);
     }
     /* S92: a click on this button signals bob_ole_click to fire its Clicked event (dispid 1) on the
