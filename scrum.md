@@ -12264,3 +12264,51 @@ real-GL BoB run of the RAF campaign map (NVIDIA): **492 readable mappings of 497
 cap forced (`BOB_CSFMT_CAP=1024`) `BOB_TRACE_CSFMT=1` records **0 rejects**. So it is not what hid the headings
 (TABHEAD-1's cause is structural and reproduces headlessly). Uncapped anyway (std::vector), with the trace and the
 cap switch kept as the control.
+
+## TERRAIN-1-BOB / TERRAIN-2-BOB (Opus 5.5, 2026-09-26) -- ✅ **PO: "cross-port the MA terrain fix to bob". BoB dropped rhw exactly as MA did (both XYZRHW draw sites), so its textures were interpolated affinely; fixed the same way. BoB's ground shows the defect ~10-50x more weakly than MA's -- its terrain is tessellated far finer -- so this is correctness, not a visible "roiling mud" rescue.**
+
+**Cause (same as MA TERRAIN-1, e2905a0).** `draw_fvf` passed `glVertexPointer(2|3, ...)` and
+`DEV_DrawIndexedPrimitiveVB` `glVertexPointer(is2D?2:3, ...)` through an ortho projection: rhw dropped, so
+GL interpolated u,v and Gouraud colour in screen space. Lib3D writes a true `rhw = 1/w` (LIB3D.CPP
+`PROJECT_LINE/POINT`: `sz = 1.f/pp->hw; pp->rhw = sz`), and D3D7 is perspective-correct from it.
+**Fix:** both sites submit the homogeneous `(x*w, y*w, z*w, w)`, w = 1/rhw (z=0 on the old 2-component path);
+positions and depth are unchanged to the bit. Kept on the old path: `BOB_FOG` (experimental GL fog reads
+eye-z). Env names are BoB's own namespace (this file reads no `MA_*`): `BOB_NO_PERSP` (revert),
+`BOB_PERSP_FLIP_EVERY=N` (swap arms every N presents), `BOB_TRACE_PERSP=N` (instrument).
+
+**TERRAIN-2 analogue.** MA's cause (a port rule leaving 8-bit land unmipped) does not exist here -- BoB's land
+textures are RGB565 and the upload follows the game's chain. But the game builds no chain for them in the QM
+boot: `BOB_TRACE_PERSP` lists **64 land textures, 8x8..128x128, `gameMipChain=0 glMips=0`**. Land (tagged at its
+Lib3D IS_LAND bind, the `ADDRESS=CLAMP` that follows `SetTexture(0, landTextures[i])`) now gets a GL chain;
+`BOB_NO_LANDMIP=1` reverts, `BOB_LANDMIP_FLIP_EVERY=N` A/Bs it in one run. MA's CLAMP half was already here
+(R3.6 honours `D3DTSS_ADDRESS`).
+
+**Numbers** (real GL, scratch drive_c, `tools/bob_terrain_capture.sh`: QM "Landing" at 4,032 ft with an
+airfield in view, QM "Low level attack" at ~600 ft, F6 external, P pause, one numpad-4 view step):
+| measure | MA (for scale) | BoB | noise floor |
+|---|---|---|---|
+| affine texel error at land-triangle centroids (engine vertices) | 4-49 px mean, max 129-229 below 5,000 ft | **0.5-2.4 px mean, max 6-89** (600-5,400 ft, in flight) | 0 (fix) |
+| SWIM: world-fixed texel points sliding per frame (engine vertices) | mean 0.01-0.29, max 10-14 px/frame, 5-7 % >= 1 px | **mean 0.00-0.03, max 1-6 px/frame, 0 % >= 1 px** | 0 by construction (fix) |
+| same paused state, shipped vs fix (pixel block shifts, `BOB_PERSP_FLIP_EVERY=40`) | up to 15-19 px | **near band mean 0.4-1.7 px, max 4-10 px**; far/sky 0 | fix vs fix identical frames: 0.0 px |
+| far-band shimmer during the view move (homography-warp residual) | 2.38 -> 1.40 | **0.78 -> 0.71** (TERRAIN-2) | identical frames 0.21 |
+Evidence: `doc/reference/260926_terrain/` (`bob_terrain1_airfield_ab_4032ft.png`: runway edges and the
+field boundary move 1-2 px between arms; `inflight_qm{1,18}_persp_swim.log`; `landmip_shimmer_qm1_4032ft.txt`;
+`land_textures_no_mips_before.log` / `_with_landmip.log`).
+
+**Gates** (`tools/bob_gates.sh`, one gl-lock run): everything PASS except **PARITY: config-gfx / gfx2 /
+control / sound DIFF (12848 / 9566 / 6146 / 12367 bytes)** -- the same four screens with the SAME byte counts
+recorded at TABHEAD-1/TOTE-1 on the shipped 260919b binary, i.e. present before this change; these are GDI
+front-end screens that never reach the XYZRHW path. A question for the parity owner, not a verdict.
+Log: `~/jr-parity/bob_work/gates_terrain1.log`.
+
+**Found on the way (open):**
+* **`ApplyStateBlock` is a no-op** (`DEV_ApplyStateBlock` returns OK). Lib3D binds most materials by applying a
+  state block, so per-material stage state -- including `D3DTSS_ADDRESS` -- never changes except where the game
+  sets it directly. The land bind sets CLAMP directly, so after the first land draw EVERY later draw that relies
+  on a state block samples CLAMP. That made "CLAMP at draw time" useless as a land classifier (why land is
+  tagged on the texture instead) and may matter for tiled object textures. Measure before changing: R3.6's
+  address honouring was tuned against today's behaviour.
+* The instrument's "other" class shows max affine errors in the thousands of px on a few sliver triangles
+  (near-plane clipped, extreme rhw ratios); means stay 0.2-5 px. Not investigated.
+* Quick Mission 0 (Take-off, the `BOB_BOOT_FRONTEND` default) sits on the runway at 0 kts; the ground is
+  barely in view from the cockpit, which is why the recipe uses QM 1 / 18 in external view.

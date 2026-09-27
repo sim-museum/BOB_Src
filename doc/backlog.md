@@ -1691,3 +1691,10 @@ CLAIMS a pre-allocated aircraft (`ConvertPtrUID` then clear invisible/dead) rath
 so `ACList` length is identical whether the peer is claimed or not. MA's S18 concluded "the peer is
 not built" from `8 == 8` and had to withdraw it; the note is now in both ports' sources so the next
 reader does not repeat it.
+
+## TERRAIN (2026-09-26, cross-port of MA TERRAIN-1/2)
+| # | Story | Pts | Status |
+|---|-------|-----|--------|
+| T1 | XYZRHW geometry drawn perspective-correct (rhw was dropped) | 3 | ✅ DONE (TERRAIN-1-BOB) |
+| T2 | Landscape textures mip-mapped when the game builds no chain | 2 | ✅ DONE (TERRAIN-2-BOB; small measured effect) |
+| T3 | `ApplyStateBlock` is a no-op: per-material stage state (ADDRESS, filters) stays at whatever was last set directly -- measure which materials sample with the wrong addressing, then implement state blocks | 5 | ⬜ open (found in TERRAIN-1-BOB) |

@@ -1276,6 +1276,8 @@ struct GLSurface7 {
 	GLuint glTex;                   /* GL texture (lazily created for texture surfaces) */
 	GLuint fbo;                     /* FBO for render-to-texture (RTT surfaces; lazy) */
 	int    isRTT;                   /* render-target texture (BOB_FBO_RTT landscape/mirror) */
+	int    glMips;                  /* TERRAIN-1: the GL texture carries a mip chain and a mip min-filter */
+	int    isLandTex;               /* TERRAIN-1: bound as a Lib3D IS_LAND texture (see SetTextureStageState) */
 	int    texDirty;                /* bits changed since last upload (set on Unlock) */
 	int    ckeyOn;                  /* source colour-key set (transparent colour) */
 	DWORD  ckeyLow, ckeyHigh;       /* keyed colour range in the surface's pixel format */
@@ -1437,6 +1439,25 @@ static void present_dbg(const char* path)
 {
 	if (!getenv("BOB_TRACE_PRESENT") && !getenv("BOB_DUMP_FRAME") && !getenv("BOB_DUMP_ON_FIRE") && !getenv("BOB_DUMP_AFTER_KEY")) return;
 	static int frames=0; frames++;
+	/* TERRAIN-1 (cross-port of MA's hook): BOB_DUMP_FRAME_COUNT=K turns the single dump (whatever
+	   triggers it: BOB_DUMP_FRAME / _AFTER_KEY / _ON_FIRE) into K CONSECUTIVE presents written as
+	   <BOB_DUMP_PATH>.NNN.ppm -- motion defects (texture swimming) need a sequence, not a still. */
+	static int seqLeft = 0, seqIdx = 0, seqK = -1;
+	if (seqK < 0) { const char* e = getenv("BOB_DUMP_FRAME_COUNT"); seqK = e ? atoi(e) : 0; }
+	if (seqLeft > 0) {
+		int w=g_scrW,h=g_scrH; unsigned char* buf=(unsigned char*)malloc((size_t)w*h*3);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glReadPixels(0,0,w,h,GL_RGB,GL_UNSIGNED_BYTE,buf);
+		const char* dpath = getenv("BOB_DUMP_PATH"); if (!dpath||!*dpath) dpath="/tmp/bobframe.ppm";
+		char np[1024]; snprintf(np, sizeof(np), "%s.%03d.ppm", dpath, seqIdx);
+		int fd=::open(np,O_WRONLY|O_CREAT|O_TRUNC,0644);
+		if (fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h);
+			if (write(fd,hdr,n)<0){} for (int y=h-1;y>=0;y--) if(write(fd,buf+(size_t)y*w*3,(size_t)w*3)<0){}
+			close(fd); fprintf(stderr,"[present] dumped frame %d (3-D present %ld) to %s\n",frames,g_frameNo,np); }
+		free(buf); seqIdx++;
+		if (--seqLeft == 0 && getenv("BOB_EXIT_AFTER_DUMP")) { fflush(stderr); _exit(0); }
+		return;
+	}
 	if (getenv("BOB_TRACE_PRESENT") && (frames<=3 || (frames%60)==0)) {
 		unsigned char px[3]={0,0,0};
 		glReadPixels(g_scrW/2,g_scrH/2,1,1,GL_RGB,GL_UNSIGNED_BYTE,px);
@@ -1462,6 +1483,7 @@ static void present_dbg(const char* path)
 		if (g_bob_shoot_held && !firedump && frames > 200) { firedump = 1; wantDump = true;
 			fprintf(stderr, "[present] BOB_DUMP_ON_FIRE: trigger held at frame %d\n", frames); }
 	}
+	if (wantDump && seqK > 0) { seqLeft = seqK; seqIdx = 0; present_dbg(path); return; }   /* TERRAIN-1: sequence */
 	if (wantDump) {
 		int w=g_scrW,h=g_scrH; unsigned char* buf=(unsigned char*)malloc(w*h*3);
 		/* Cross-port (adopted from MiG Alley S45): the PPM writer emits w*3 bytes/row, but the default
@@ -1700,9 +1722,11 @@ static void bob_check_present_rect(const char* where)
 	}
 }
 
+static void bob_persp_frame_end(void);   /* TERRAIN-1 */
 static void present_surface(GLSurface7* s)
 {
 	g_frameNo++;
+	bob_persp_frame_end();
 	check_surfaces("present");
 	if (getenv("BOB_TRACE_LIFETIME") && (g_frameNo % 200)==0)
 		fprintf(stderr,"[lifetime] frame=%ld surf made=%ld freed=%ld live=%ld | glTex made=%ld del=%ld leaked-on-free=%ld\n",
@@ -2763,6 +2787,15 @@ static void upload_texture(GLSurface7* s) {
 	   bilinear texture gets dwMipMapCount=1 -> no chain -> no GL mips (unchanged). BOB_NOMIP
 	   forces the old no-mip behaviour for A/B. (R3.5) */
 	int wantMip = getenv("BOB_NOMIP") ? 0 : (getenv("BOB_MIP")!=0 || s->mip!=NULL);
+	/* TERRAIN-2 (cross-port of MA 1faeee4): MIP-MAP THE LANDSCAPE. The game builds a mip chain only
+	   for HINT_TRILINEAR textures, and the land textures Lib3D binds for IS_LAND materials arrive
+	   without one (BOB_TRACE_PERSP lists them: 8x8..128x128 RGB565, gameMipChain=0 glMips=0 in the
+	   Quick Mission boot). Distant ground then samples four texels of a full-size tile per screen
+	   pixel -- minification aliasing that crawls as the view moves (MA's "roiling mud", distance
+	   half). Land is opaque, so a chain is safe. The texture is tagged as land at its first CLAMP
+	   bind, which precedes its first upload (the upload happens at draw time). BOB_NO_LANDMIP=1
+	   reverts. */
+	if (!wantMip && s->isLandTex && !getenv("BOB_NOMIP") && !getenv("BOB_NO_LANDMIP")) wantMip = 1;
 	if (wantMip) glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
 	const DDPIXELFORMAT& pf = s->desc.ddpfPixelFormat;
 	/* R3.9 S3: the cap is a SETTING, not 24. This trace went quiet before THREAT01's upload and
@@ -2829,6 +2862,7 @@ static void upload_texture(GLSurface7* s) {
 	bool hardA   = hasAlpha && !smoothA && !getenv("BOB_ALPHA_LINEAR");
 	GLenum minF = hardA ? GL_NEAREST : ((wantMip && !hasAlpha)?GL_LINEAR_MIPMAP_LINEAR:GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, minF);
+	s->glMips = (minF == GL_LINEAR_MIPMAP_LINEAR);
 	if (hardA) { glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT); glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT); s->texDirty=0; return; }
 	if (wantMip) { /* anisotropic filtering: terrain is viewed at a grazing angle, where u
@@ -3069,7 +3103,12 @@ static HRESULT DEV_SetTextureStageState(IDirect3DDevice7*, DWORD stage, D3DTEXTU
 	   mode (the game sets MIRROR/CLAMP for land, WRAP for cockpit -- without this, everything
 	   gets GL_REPEAT and the terrain over-tiles). D3DTSS_ADDRESS sets both axes. */
 	if (stage < 8) {
-		if (type == D3DTSS_ADDRESS)  { g_tssAddrU[stage] = g_tssAddrV[stage] = val; }
+		if (type == D3DTSS_ADDRESS)  { g_tssAddrU[stage] = g_tssAddrV[stage] = val;
+			/* TERRAIN-1: Lib3D's IS_LAND bind is SetTexture(0, landTextures[i]) followed immediately
+			   by ADDRESS=CLAMP (LIB3D.CPP ~14697) -- tag that surface as landscape for the traces.
+			   (The address itself stays sticky afterwards because ApplyStateBlock is a no-op here,
+			   so "CLAMP at draw time" cannot identify land; the tag on the texture can.) */
+			if (stage == 0 && val == 3 && g_devTex[0]) g_devTex[0]->isLandTex = 1; }
 		else if (type == D3DTSS_ADDRESSU) g_tssAddrU[stage] = val;
 		else if (type == D3DTSS_ADDRESSV) g_tssAddrV[stage] = val;
 	}
@@ -3124,6 +3163,170 @@ static void bob_texblack_note_blend(unsigned sf, unsigned df) {
 static void bob_texblack_dump_blend(void) {
 	for (int i = 0; i < g_tbNum; i++)
 		fprintf(stderr, "[texblack]   blendFunc src=0x%x dst=0x%x quads=%ld\n", g_tbSrc[i], g_tbDst[i], g_tbN[i]);
+}
+
+/* TERRAIN-1 (cross-port from MiG Alley e2905a0, PO 2026-09-26 "cross-port the MA terrain fix to bob").
+   PERSPECTIVE-CORRECT interpolation of pre-transformed (XYZRHW) geometry. Both draw sites handed GL
+   x,y (or x,y,z) with rhw DROPPED through an ortho projection, so every texture and Gouraud colour
+   was interpolated AFFINELY in screen space. Lib3D writes a true rhw = 1/w (LIB3D.CPP PROJECT_*:
+   sz = 1.f/pp->hw; pp->rhw = sz) and D3D7 interpolates perspective-correctly from it. Affine mapping
+   is exact only for a screen-parallel triangle; ground seen at a grazing angle is the worst case, and
+   the error changes as the view moves: texture sliding over a fixed mesh. MA's PO saw it as "terrain
+   like roiling mud ... the airfield sliding around".
+   Fix: give GL the homogeneous vertex (x*w, y*w, z*w, w), w = 1/rhw. The projection is an ortho
+   (affine) and the modelview identity, so the post-divide position is the old x,y,z exactly -- no
+   pixel and no depth value moves -- and the rasteriser interpolates u,v and colour from w.
+   Overlays / RTT composites use a constant rhw (1.0) and are unchanged. rhw <= 0 / non-finite falls
+   back to w = 1 for that vertex (the old behaviour). BOB_FOG (the experimental GL fog, off by
+   default) keeps the old affine path, because GL fog reads eye-space z, which w would scale.
+     BOB_NO_PERSP=1           revert (the control arm)
+     BOB_PERSP_FLIP_EVERY=N   swap arms every N 3-D presents -- with the sim PAUSED this renders the
+                              SAME state both ways in one run (two runs never reach the same state)
+     BOB_TRACE_PERSP=N        every N presents: affine texel displacement at triangle centroids
+                              (screen px) for RTT-textured (landscape composite) vs other batches,
+                              and SWIM = frame-to-frame slide of world-fixed texel lattice points
+   Names: BoB's own BOB_ namespace (this file reads no MA_ variables); MA uses MA_NO_PERSP etc. */
+#include <cmath>
+#include <vector>
+#include <unordered_map>
+static int bob_persp_off(void)
+{
+	static int base = -1, every = 0;
+	if (base < 0) { base = getenv("BOB_NO_PERSP") ? 1 : 0;
+		const char* e = getenv("BOB_PERSP_FLIP_EVERY"); every = e ? atoi(e) : 0; }
+	if (every > 0 && ((g_frameNo / every) & 1)) return !base;
+	return base;
+}
+/* TERRAIN-2 evidence hook: BOB_LANDMIP_FLIP_EVERY=N alternates the land textures' min filter between
+   their mip chain and plain GL_LINEAR every N presents (same paused state, both arms, one run). */
+static void bob_landmip_apply(GLSurface7* t)
+{
+	static int every = -1; if (every < 0) { const char* e = getenv("BOB_LANDMIP_FLIP_EVERY"); every = e ? atoi(e) : 0; }
+	if (!every || !t || !t->isLandTex || !t->glMips) return;
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, ((g_frameNo / every) & 1) ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
+}
+/* the homogeneous copy of `n` XYZRHW positions; keepZ=0 writes z=0 (the old 2-component path) */
+static const float* bob_persp_positions(const unsigned char* base, DWORD n, int stride, int posOff, int keepZ)
+{
+	static float* h = 0; static DWORD cap = 0;
+	if (n > cap) { cap = n + 256; h = (float*)realloc(h, (size_t)cap * 4 * sizeof(float)); }
+	for (DWORD i = 0; i < n; ++i) {
+		const float* s = (const float*)(base + (size_t)i * stride + posOff);
+		const float rhw = s[3];
+		const float w = (rhw > 1e-30f && rhw < 1e30f) ? 1.0f / rhw : 1.0f;
+		h[i*4+0] = s[0] * w; h[i*4+1] = s[1] * w; h[i*4+2] = keepZ ? s[2] * w : 0.0f; h[i*4+3] = w;
+	}
+	return h;
+}
+/* ---- the measurement (BOB_TRACE_PERSP) ---- */
+struct BobSwimPt { unsigned long long key; double tx, ty, ex, ey; };
+static std::vector<BobSwimPt> g_bswimCur;
+static std::unordered_multimap<unsigned long long, BobSwimPt> g_bswimPrev;
+static long g_bswimN = 0, g_bswimGE1 = 0; static double g_bswimSum = 0, g_bswimMax = 0;
+static long g_bpT[2], g_bpBad; static double g_bpSum[2], g_bpMax[2];
+static int bob_persp_trace(void)
+{ static int t = -1; if (t < 0) { const char* e = getenv("BOB_TRACE_PERSP"); t = e ? (atoi(e) > 0 ? atoi(e) : 60) : 0; } return t; }
+static void bob_persp_frame_end(void)      /* called once per 3-D present */
+{
+	const int every = bob_persp_trace(); if (!every) return;
+	for (size_t i = 0; i < g_bswimCur.size(); ++i) {
+		const BobSwimPt& c = g_bswimCur[i];
+		auto rg = g_bswimPrev.equal_range(c.key);
+		double best = 40.0 * 40.0; const BobSwimPt* bp = 0;
+		for (auto it = rg.first; it != rg.second; ++it) {
+			const double dd = (it->second.tx - c.tx)*(it->second.tx - c.tx) + (it->second.ty - c.ty)*(it->second.ty - c.ty);
+			if (dd < best) { best = dd; bp = &it->second; } }
+		if (bp) { const double sd = hypot(c.ex - bp->ex, c.ey - bp->ey);
+			g_bswimN++; g_bswimSum += sd; if (sd > g_bswimMax) g_bswimMax = sd; if (sd >= 1.0) g_bswimGE1++; }
+	}
+	g_bswimPrev.clear();
+	for (size_t i = 0; i < g_bswimCur.size(); ++i) g_bswimPrev.insert(std::make_pair(g_bswimCur[i].key, g_bswimCur[i]));
+	g_bswimCur.clear();
+	if ((g_frameNo % every) == 0 && (g_bpT[0] || g_bpT[1])) {
+		fprintf(stderr, "[persp] frame %ld (%s): texel-at-centroid displacement under AFFINE mapping, screen px -- "
+			"landscape (IS_LAND textures): %ld tris mean %.2f max %.1f | other: %ld tris mean %.2f max %.1f | bad rhw %ld\n",
+			g_frameNo, bob_persp_off() ? "BOB_NO_PERSP: drawn affine" : "drawn perspective-correct",
+			g_bpT[1], g_bpT[1] ? g_bpSum[1]/g_bpT[1] : 0.0, g_bpMax[1], g_bpT[0], g_bpT[0] ? g_bpSum[0]/g_bpT[0] : 0.0, g_bpMax[0], g_bpBad);
+		fprintf(stderr, "[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice "
+			"points of every textured triangle): %ld matches, mean %.2f px/frame, max %.1f, %.0f%% >= 1 px/frame (%s)\n",
+			g_bswimN, g_bswimN ? g_bswimSum / g_bswimN : 0.0, g_bswimMax, g_bswimN ? 100.0 * g_bswimGE1 / g_bswimN : 0.0,
+			bob_persp_off() ? "this IS what is drawn" : "what affine WOULD draw; the fix draws 0");
+		fflush(stderr);
+		g_bpT[0] = g_bpT[1] = g_bpBad = 0; g_bpSum[0] = g_bpSum[1] = g_bpMax[0] = g_bpMax[1] = 0;
+		g_bswimN = g_bswimGE1 = 0; g_bswimSum = g_bswimMax = 0;
+	}
+}
+static void bob_persp_tri(const float* p0, const float* p1, const float* p2, const float* t0, const float* t1, const float* t2,
+                          int tw, int th, int land, unsigned long long texKey)
+{
+	const float* p[3] = { p0, p1, p2 }; const float* q[3] = { t0, t1, t2 };
+	double r[3], u[3], v[3], sx[3], sy[3], rs = 0;
+	for (int k = 0; k < 3; ++k) { sx[k] = p[k][0]; sy[k] = p[k][1]; r[k] = p[k][3]; u[k] = q[k][0] * tw; v[k] = q[k][1] * th;
+		if (!(r[k] > 0) || r[k] != r[k] || r[k] > 1e30) { g_bpBad++; return; } rs += r[k]; }
+	const double ua = (u[0]+u[1]+u[2])/3, va = (v[0]+v[1]+v[2])/3;
+	const double up = (u[0]*r[0]+u[1]*r[1]+u[2]*r[2])/rs, vp = (v[0]*r[0]+v[1]*r[1]+v[2]*r[2])/rs;
+	const double ex1 = sx[1]-sx[0], ey1 = sy[1]-sy[0], ex2 = sx[2]-sx[0], ey2 = sy[2]-sy[0];
+	const double det = ex1*ey2 - ex2*ey1; if (det > -4.0 && det < 4.0) return;   /* < 2 px^2 on screen: skip */
+	const double du1 = u[1]-u[0], du2 = u[2]-u[0], dv1 = v[1]-v[0], dv2 = v[2]-v[0];
+	const double Jux = (du1*ey2 - du2*ey1)/det, Juy = (du2*ex1 - du1*ex2)/det;
+	const double Jvx = (dv1*ey2 - dv2*ey1)/det, Jvy = (dv2*ex1 - dv1*ex2)/det;
+	const double jd = Jux*Jvy - Juy*Jvx; if (jd > -1e-9 && jd < 1e-9) return;
+	const double du = up - ua, dv = vp - va;
+	const double dx = ( Jvy*du - Juy*dv)/jd, dy = (-Jvx*du + Jux*dv)/jd;
+	const double d = sqrt(dx*dx + dy*dy);
+	if (!(d < 1e4)) return;                                   /* non-finite / degenerate mapping */
+	g_bpT[land]++; g_bpSum[land] += d; if (d > g_bpMax[land]) g_bpMax[land] = d;
+	/* SWIM lattice: texel points u,v = k*(size/8) inside the triangle, keyed by (texture, lattice u,v) */
+	const double uden = (u[1]-u[0])*(v[2]-v[0]) - (u[2]-u[0])*(v[1]-v[0]);
+	if (uden > -1e-9 && uden < 1e-9) return;
+	double umin = u[0], umax = u[0], vmin = v[0], vmax = v[0];
+	for (int k = 1; k < 3; ++k) { if (u[k] < umin) umin = u[k]; if (u[k] > umax) umax = u[k]; if (v[k] < vmin) vmin = v[k]; if (v[k] > vmax) vmax = v[k]; }
+	const double step = tw / 8.0; if (step <= 0) return;
+	/* bounded: a tiled texture (u,v spanning thousands of texels) on a sliver triangle would
+	   otherwise walk a lattice of millions of empty cells -- the first cut hung the draw thread. */
+	if (!((umax - umin) / step < 32) || !((vmax - vmin) / step < 32)) return;
+	int budget = 64;
+	for (double qu = ceil(umin/step)*step; qu <= umax && budget > 0; qu += step)
+	for (double qv = ceil(vmin/step)*step; qv <= vmax && budget > 0; qv += step) {
+		const double l1 = ((qu-u[0])*(v[2]-v[0]) - (u[2]-u[0])*(qv-v[0]))/uden;
+		const double l2 = ((u[1]-u[0])*(qv-v[0]) - (qu-u[0])*(v[1]-v[0]))/uden;
+		const double l0 = 1 - l1 - l2; if (l0 < 0 || l1 < 0 || l2 < 0) continue;
+		budget--;
+		const double w0 = l0*r[0], w1 = l1*r[1], w2 = l2*r[2], ws = w0+w1+w2;
+		BobSwimPt sp; sp.key = (texKey * 1000003ull) ^ ((unsigned long long)(long long)llround(qu) << 20) ^ (unsigned long long)(long long)llround(qv);
+		sp.tx = (w0*sx[0]+w1*sx[1]+w2*sx[2])/ws; sp.ty = (w0*sy[0]+w1*sy[1]+w2*sy[2])/ws;
+		sp.ex = l0*sx[0]+l1*sx[1]+l2*sx[2] - sp.tx; sp.ey = l0*sy[0]+l1*sy[1]+l2*sy[2] - sp.ty;
+		g_bswimCur.push_back(sp);
+	}
+}
+/* Landscape = a texture Lib3D::InlineSetCurrentMaterial bound for an IS_LAND material (tagged in
+   DEV_SetTextureStageState). Traced once per land texture: size, format and whether GL has a mip chain for it. */
+static int bob_persp_is_land(GLSurface7* t)
+{
+	const int land = (t && t->isLandTex) ? 1 : 0;
+	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_PERSP") ? 1 : 0;
+	if (land && tr && t) { static const void* seen[64]; static int ns = 0; int k = 0;
+		for (; k < ns; ++k) if (seen[k] == (const void*)t) break;
+		if (k == ns && ns < 64) { seen[ns++] = (const void*)t;
+			fprintf(stderr, "[persp] land texture %p %dx%d bpp=%d Amask=0x%04x ckey=%d isRTT=%d glMips=%d gameMipChain=%d\n",
+				(void*)t, t->w, t->h, t->bpp, (unsigned)t->desc.ddpfPixelFormat.dwRGBAlphaBitMask, t->ckeyOn, t->isRTT,
+				t->glMips, t->mip ? 1 : 0); } }
+	return land;
+}
+/* assemble the draw's triangles (list / strip / fan, optionally indexed) and measure each */
+static void bob_persp_measure(int prim, const unsigned char* base, DWORD nverts, const FvfLayout& L,
+                              const unsigned short* idx, DWORD nidx, int tw, int th, int land, unsigned long long texKey)
+{
+	if (!bob_persp_trace() || !L.hasTex || tw <= 0 || th <= 0) return;
+	if (prim != 4 && prim != 5 && prim != 6) return;              /* TRIANGLELIST / STRIP / FAN */
+	const DWORD n = idx ? nidx : nverts; if (n < 3) return;
+	#define BPV(i) ((const float*)(base + (size_t)(idx ? idx[i] : (i)) * L.stride + L.posOff))
+	#define BPT(i) ((const float*)(base + (size_t)(idx ? idx[i] : (i)) * L.stride + L.texOff))
+	if (prim == 4) { for (DWORD i = 0; i + 2 < n; i += 3) bob_persp_tri(BPV(i),BPV(i+1),BPV(i+2),BPT(i),BPT(i+1),BPT(i+2),tw,th,land,texKey); }
+	else if (prim == 5) { for (DWORD i = 0; i + 2 < n; ++i) bob_persp_tri(BPV(i),BPV(i+1),BPV(i+2),BPT(i),BPT(i+1),BPT(i+2),tw,th,land,texKey); }
+	else { for (DWORD i = 1; i + 1 < n; ++i) bob_persp_tri(BPV(0),BPV(i),BPV(i+1),BPT(0),BPT(i),BPT(i+1),tw,th,land,texKey); }
+	#undef BPV
+	#undef BPT
 }
 
 static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
@@ -3855,7 +4058,7 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		}
 	}
 	if (t) { if (t->texDirty || !t->glTex) upload_texture(t);
-		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex);
+		glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex); bob_landmip_apply(t);
 		glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,texMode);
 		/* R3.6: apply the game's per-stage addressing (D3DTSS_ADDRESS) as the GL wrap mode at
 		   draw time -- it's sampler state in D3D (independent of the bound texture), so set it
@@ -3893,7 +4096,10 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 	glEnableClientState(GL_VERTEX_ARRAY);
 	/* XYZRHW stored as 4 floats; pass x,y for 2D screen pos. With BOB_FOG/BOB_ZDEPTH we also pass
 	   z (3 comps) so the screen-space RHW z feeds GL fog / the depth test. */
-	glVertexPointer((is2D&&!fogExp&&!zdepth)?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	if (is2D && !fogExp && !bob_persp_off())   /* TERRAIN-1: homogeneous (x*w,y*w,z*w,w) -- see bob_persp_positions */
+		glVertexPointer(4, GL_FLOAT, 0, bob_persp_positions(base, count, L.stride, L.posOff, zdepth));
+	else glVertexPointer((is2D&&!fogExp&&!zdepth)?2:3, GL_FLOAT, L.stride, base + L.posOff);
+	if (is2D && t) bob_persp_measure((int)prim, base, count, L, 0, 0, t->w, t->h, bob_persp_is_land(t), (unsigned long long)(size_t)t);
 	if (garbageHi) { glDisable(GL_TEXTURE_2D); glColor3f(1.f,0.f,1.f); }       /* debug: locate garbage-textured geom */
 	else if (L.hasCol) { glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, L.stride, base + L.colOff); }  /* D3DCOLOR=ARGB */
@@ -3939,7 +4145,7 @@ static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE pr
 	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity(); glDisable(GL_DEPTH_TEST);
 	if(g_devAlphaBlend){glEnable(GL_BLEND);glBlendFunc(g_srcBlend,g_dstBlend);}
 	GLSurface7* t=g_devTex[0];
-	if(t){ if(t->texDirty||!t->glTex) upload_texture(t); glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex); glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);} else glDisable(GL_TEXTURE_2D);
+	if(t){ if(t->texDirty||!t->glTex) upload_texture(t); glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D,t->glTex); bob_landmip_apply(t); glTexEnvi(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);} else glDisable(GL_TEXTURE_2D);
 	/* R3.9 (PO 2026-08-28: "during campaign dogfight a floating light/dark grey square can
 	   sometimes be seen"). An untextured quad is exactly what a flat grey square IS, and there are
 	   two ways to get one here, which need different fixes:
@@ -3963,7 +4169,12 @@ static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE pr
 			}
 		}
 	}
-	glEnableClientState(GL_VERTEX_ARRAY); glVertexPointer(is2D?2:3,GL_FLOAT,L.stride,base+L.posOff);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	if (is2D && !bob_persp_off()) {   /* TERRAIN-1: homogeneous positions; size the copy by the highest index */
+		DWORD nv = numv; for (DWORD i = 0; i < idxcount; ++i) if ((DWORD)idx[i] + 1 > nv) nv = (DWORD)idx[i] + 1;
+		glVertexPointer(4, GL_FLOAT, 0, bob_persp_positions(base, nv, L.stride, L.posOff, 0));
+	} else glVertexPointer(is2D?2:3,GL_FLOAT,L.stride,base+L.posOff);
+	if (is2D && t) bob_persp_measure((int)prim, base, numv, L, idx, idxcount, t->w, t->h, bob_persp_is_land(t), (unsigned long long)(size_t)t);
 	if(L.hasCol){glEnableClientState(GL_COLOR_ARRAY); glColorPointer(GL_BGRA,GL_UNSIGNED_BYTE,L.stride,base+L.colOff);}
 	if(L.hasTex&&t){glEnableClientState(GL_TEXTURE_COORD_ARRAY); glTexCoordPointer(2,GL_FLOAT,L.stride,base+L.texOff);}
 	GLenum mode=(prim==1)?GL_POINTS:(prim==2)?GL_LINES:(prim==6)?GL_TRIANGLE_FAN:(prim==5)?GL_TRIANGLE_STRIP:GL_TRIANGLES;

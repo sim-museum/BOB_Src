@@ -1,0 +1,250 @@
+[hud] alt=3656ft hdg=239 speed=280Kts thrust=90
+[persp] land texture 0xba80820 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80900 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba809e0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80ac0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80ba0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c000 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c0e0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c460 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd7df0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd7ed0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd7fb0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd8090 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd8330 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd8410 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd84f0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd85d0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba803c0 128x128 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80c80 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c1c0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c540 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c620 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c700 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd8170 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd86b0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba804a0 128x128 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80580 128x128 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80660 128x128 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80740 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xba80d60 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64bf20 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c2a0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c380 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c7e0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb64c8c0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd8250 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbcd8790 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 60 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 32906 tris mean 0.81 max 10.5 | other: 38820 tris mean 3.40 max 98.6 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 224081 matches, mean 0.01 px/frame, max 10.7, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xb9df5c0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 120 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 39436 tris mean 0.74 max 10.0 | other: 46147 tris mean 3.43 max 551.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 285020 matches, mean 0.00 px/frame, max 0.5, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=3683ft hdg=239 speed=277Kts thrust=90
+[persp] frame 180 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 40737 tris mean 0.61 max 9.9 | other: 43102 tris mean 3.58 max 1609.4 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 284423 matches, mean 0.00 px/frame, max 3.2, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 240 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 40441 tris mean 0.58 max 9.6 | other: 42595 tris mean 3.56 max 198.6 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 287016 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=3747ft hdg=239 speed=272Kts thrust=90
+[persp] land texture 0xb9df6a0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 300 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 39953 tris mean 0.54 max 7.6 | other: 42390 tris mean 3.73 max 5345.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 284295 matches, mean 0.00 px/frame, max 0.5, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xb9df4e0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 360 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 39887 tris mean 0.46 max 7.3 | other: 43016 tris mean 4.26 max 9912.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 278937 matches, mean 0.00 px/frame, max 0.6, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xb9df400 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb9df320 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[hud] alt=3843ft hdg=239 speed=267Kts thrust=90
+[persp] frame 420 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42533 tris mean 0.72 max 14.3 | other: 61401 tris mean 0.61 max 2148.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 231682 matches, mean 0.01 px/frame, max 5.6, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 480 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 43804 tris mean 0.79 max 14.4 | other: 64288 tris mean 0.17 max 1025.6 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 224161 matches, mean 0.00 px/frame, max 0.6, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=3965ft hdg=239 speed=261Kts thrust=90
+[persp] frame 540 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 43443 tris mean 0.73 max 13.8 | other: 64073 tris mean 0.21 max 3980.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 223232 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 600 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42992 tris mean 0.74 max 14.1 | other: 62909 tris mean 0.15 max 267.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 222997 matches, mean 0.00 px/frame, max 1.9, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4107ft hdg=239 speed=255Kts thrust=90
+[persp] frame 660 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42170 tris mean 0.68 max 8.8 | other: 59885 tris mean 0.19 max 890.7 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 222841 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xb9df240 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 720 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 41973 tris mean 0.63 max 6.7 | other: 60377 tris mean 0.19 max 516.7 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 223108 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4263ft hdg=239 speed=248Kts thrust=90
+[persp] land texture 0xbd973d0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xb9df160 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbd96bf0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 780 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42280 tris mean 0.62 max 7.1 | other: 60553 tris mean 0.26 max 55.2 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 221435 matches, mean 0.00 px/frame, max 0.9, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 840 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42287 tris mean 0.61 max 7.5 | other: 59835 tris mean 0.26 max 55.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 219336 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4424ft hdg=238 speed=241Kts thrust=90
+[persp] frame 900 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42450 tris mean 0.60 max 7.5 | other: 59809 tris mean 0.25 max 55.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 218783 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 960 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42186 tris mean 0.56 max 5.2 | other: 59980 tris mean 0.25 max 55.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 219866 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4585ft hdg=238 speed=235Kts thrust=90
+[persp] frame 1020 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 41597 tris mean 0.55 max 5.4 | other: 59647 tris mean 0.28 max 55.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 218491 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 1080 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 40945 tris mean 0.57 max 5.6 | other: 60065 tris mean 0.23 max 55.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 219881 matches, mean 0.00 px/frame, max 0.5, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4741ft hdg=238 speed=229Kts thrust=90
+[persp] frame 1140 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 39864 tris mean 0.60 max 5.8 | other: 59824 tris mean 0.22 max 55.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 220077 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbd96cd0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbd96250 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 1200 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 38768 tris mean 0.64 max 15.7 | other: 60307 tris mean 0.21 max 55.2 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 213444 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4886ft hdg=238 speed=224Kts thrust=90
+[persp] land texture 0xbd96170 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 1260 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 38080 tris mean 0.68 max 33.3 | other: 59216 tris mean 0.22 max 55.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 205891 matches, mean 0.00 px/frame, max 2.9, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 1320 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 38138 tris mean 0.69 max 65.1 | other: 58827 tris mean 0.22 max 55.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 202662 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5016ft hdg=238 speed=219Kts thrust=90
+[persp] frame 1380 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 38153 tris mean 0.73 max 10.5 | other: 58939 tris mean 0.22 max 54.9 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 203276 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 1440 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 38720 tris mean 0.75 max 30.4 | other: 58902 tris mean 0.22 max 54.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 205259 matches, mean 0.00 px/frame, max 0.3, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5129ft hdg=238 speed=216Kts thrust=90
+[persp] frame 1500 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 39149 tris mean 0.77 max 7.0 | other: 59548 tris mean 0.22 max 54.7 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 211010 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbd95fb0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbd96090 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 1560 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 39929 tris mean 0.78 max 60.9 | other: 61188 tris mean 0.21 max 54.6 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 217458 matches, mean 0.00 px/frame, max 3.1, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5220ft hdg=238 speed=214Kts thrust=90
+[persp] frame 1620 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 40703 tris mean 0.76 max 7.5 | other: 61921 tris mean 0.21 max 54.5 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 222597 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 1680 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 41557 tris mean 0.79 max 7.7 | other: 61961 tris mean 0.21 max 54.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 226985 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5290ft hdg=238 speed=213Kts thrust=90
+[persp] frame 1740 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42152 tris mean 0.82 max 7.9 | other: 61465 tris mean 0.26 max 2256.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 224986 matches, mean 0.00 px/frame, max 0.3, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbd95ed0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 1800 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42460 tris mean 0.84 max 7.9 | other: 61079 tris mean 0.24 max 2864.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 225777 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5337ft hdg=238 speed=214Kts thrust=90
+[persp] frame 1860 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 42907 tris mean 0.85 max 8.3 | other: 60371 tris mean 0.21 max 868.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 226808 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbcd7610 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 1920 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 43629 tris mean 0.86 max 8.7 | other: 60010 tris mean 0.35 max 3481.6 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 225375 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbd95df0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[hud] alt=5360ft hdg=238 speed=215Kts thrust=90
+[persp] frame 1980 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 44779 tris mean 0.87 max 9.1 | other: 59972 tris mean 0.22 max 878.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 227832 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbcd7530 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2040 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 45311 tris mean 0.89 max 9.6 | other: 59905 tris mean 0.19 max 395.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 227807 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5360ft hdg=238 speed=218Kts thrust=90
+[persp] land texture 0xbd95d10 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2100 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 45510 tris mean 0.92 max 10.2 | other: 59533 tris mean 0.21 max 1233.2 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 227137 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbd96b10 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2160 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 45679 tris mean 0.96 max 10.8 | other: 59171 tris mean 0.20 max 640.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 227785 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5340ft hdg=237 speed=221Kts thrust=90
+[persp] frame 2220 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 46074 tris mean 0.97 max 12.3 | other: 58684 tris mean 0.25 max 2300.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 228607 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 2280 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 46291 tris mean 0.99 max 12.3 | other: 59030 tris mean 0.19 max 1015.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 228641 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5302ft hdg=237 speed=225Kts thrust=90
+[persp] land texture 0xbd94e30 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbd94f10 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] land texture 0xbd94ff0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2340 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 46481 tris mean 1.01 max 13.1 | other: 59716 tris mean 0.69 max 7808.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 226809 matches, mean 0.00 px/frame, max 0.7, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbcd7450 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2400 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 46841 tris mean 1.06 max 13.1 | other: 59015 tris mean 0.14 max 414.5 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 227941 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5248ft hdg=237 speed=230Kts thrust=90
+[persp] frame 2460 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 45868 tris mean 1.10 max 12.2 | other: 58436 tris mean 0.12 max 74.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 225050 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbd94d50 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2520 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 44937 tris mean 1.12 max 12.1 | other: 58073 tris mean 1.25 max 7147.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 219610 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5183ft hdg=237 speed=235Kts thrust=90
+[persp] frame 2580 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 43115 tris mean 1.20 max 15.5 | other: 56770 tris mean 1.40 max 9575.9 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 206228 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 2640 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 41336 tris mean 1.25 max 10.6 | other: 55046 tris mean 1.14 max 9665.5 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 187239 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5110ft hdg=237 speed=240Kts thrust=90
+[persp] land texture 0xbd96330 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2700 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 37701 tris mean 1.33 max 11.2 | other: 52808 tris mean 0.82 max 9776.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 167229 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] land texture 0xbcd76f0 64x64 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2760 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 35067 tris mean 1.38 max 12.3 | other: 48268 tris mean 0.32 max 54.4 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 146326 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5034ft hdg=237 speed=244Kts thrust=90
+[persp] frame 2820 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 33676 tris mean 1.45 max 13.6 | other: 47312 tris mean 0.33 max 54.4 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 142449 matches, mean 0.00 px/frame, max 1.0, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 2880 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 33338 tris mean 1.51 max 16.4 | other: 47194 tris mean 0.33 max 54.4 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 139488 matches, mean 0.00 px/frame, max 0.3, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4959ft hdg=237 speed=248Kts thrust=90
+[persp] land texture 0xbd951b0 32x32 bpp=16 Amask=0x0000 ckey=0 isRTT=0 glMips=1 gameMipChain=0
+[persp] frame 2940 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 32503 tris mean 1.57 max 17.7 | other: 47472 tris mean 0.33 max 54.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 138663 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3000 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 32150 tris mean 1.52 max 19.0 | other: 47144 tris mean 0.33 max 54.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 131967 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4888ft hdg=237 speed=252Kts thrust=90
+[persp] frame 3060 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 30757 tris mean 1.54 max 16.5 | other: 47969 tris mean 0.23 max 98.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 131415 matches, mean 0.00 px/frame, max 0.3, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3120 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 28114 tris mean 1.63 max 14.8 | other: 47418 tris mean 0.39 max 98.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 132047 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4825ft hdg=237 speed=255Kts thrust=90
+[persp] frame 3180 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27612 tris mean 1.62 max 16.1 | other: 47698 tris mean 0.38 max 97.9 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 131322 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3240 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27678 tris mean 1.66 max 17.1 | other: 48056 tris mean 0.38 max 97.7 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 131658 matches, mean 0.00 px/frame, max 1.6, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4775ft hdg=237 speed=257Kts thrust=90
+[persp] frame 3300 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27522 tris mean 1.72 max 16.8 | other: 48140 tris mean 0.37 max 97.6 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 132281 matches, mean 0.00 px/frame, max 7.0, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3360 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27178 tris mean 1.79 max 15.5 | other: 48205 tris mean 0.35 max 97.5 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 132809 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4738ft hdg=237 speed=259Kts thrust=90
+[persp] frame 3420 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 26728 tris mean 1.75 max 14.3 | other: 48845 tris mean 0.33 max 97.3 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 133987 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3480 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27017 tris mean 1.69 max 14.7 | other: 48993 tris mean 0.30 max 97.2 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 135673 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4718ft hdg=237 speed=259Kts thrust=90
+[persp] frame 3540 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 26759 tris mean 1.69 max 16.7 | other: 49543 tris mean 0.33 max 2464.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 137555 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3600 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 26342 tris mean 1.65 max 14.0 | other: 50442 tris mean 0.17 max 54.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 142681 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4714ft hdg=237 speed=259Kts thrust=90
+[persp] frame 3660 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27289 tris mean 1.56 max 14.4 | other: 52007 tris mean 0.14 max 8.8 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148951 matches, mean 0.00 px/frame, max 1.7, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3720 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27638 tris mean 1.50 max 15.4 | other: 51839 tris mean 0.14 max 6.5 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 151032 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4727ft hdg=237 speed=258Kts thrust=90
+[persp] frame 3780 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27211 tris mean 1.50 max 14.5 | other: 52583 tris mean 0.61 max 8928.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 149769 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3840 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 27141 tris mean 1.44 max 15.6 | other: 51752 tris mean 0.33 max 9248.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 150449 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4757ft hdg=237 speed=257Kts thrust=90
+[persp] frame 3900 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 26924 tris mean 1.36 max 14.0 | other: 51722 tris mean 0.37 max 4032.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 150199 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 3960 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 26448 tris mean 1.34 max 15.0 | other: 52750 tris mean 0.52 max 9568.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 149516 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4801ft hdg=237 speed=255Kts thrust=90
+[persp] frame 4020 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 25087 tris mean 1.47 max 16.2 | other: 52307 tris mean 0.64 max 9728.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 150915 matches, mean 0.00 px/frame, max 0.3, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 4080 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 24311 tris mean 1.39 max 20.2 | other: 52740 tris mean 0.22 max 83.5 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148939 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4858ft hdg=237 speed=253Kts thrust=90
+[persp] frame 4140 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 24297 tris mean 1.38 max 20.1 | other: 52783 tris mean 0.21 max 79.9 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148652 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 4200 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 24033 tris mean 1.35 max 17.5 | other: 52813 tris mean 0.21 max 76.4 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148854 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=4926ft hdg=237 speed=250Kts thrust=90
+[persp] frame 4260 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 23993 tris mean 1.36 max 17.4 | other: 53156 tris mean 0.20 max 73.0 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148892 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 4320 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 23562 tris mean 1.25 max 13.5 | other: 53240 tris mean 0.20 max 69.9 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 147319 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5001ft hdg=237 speed=247Kts thrust=90
+[persp] frame 4380 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 22679 tris mean 1.22 max 16.3 | other: 53671 tris mean 0.24 max 67.1 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148106 matches, mean 0.00 px/frame, max 0.4, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[persp] frame 4440 (drawn perspective-correct): texel-at-centroid displacement under AFFINE mapping, screen px -- landscape (IS_LAND textures): 22370 tris mean 1.20 max 15.7 | other: 53967 tris mean 0.25 max 64.7 | bad rhw 0
+[persp]   SWIM (texture sliding over its geometry, frame to frame, world-fixed texel lattice points of every textured triangle): 148273 matches, mean 0.00 px/frame, max 0.5, 0% >= 1 px/frame (what affine WOULD draw; the fix draws 0)
+[hud] alt=5082ft hdg=237 speed=244Kts thrust=90
