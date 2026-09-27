@@ -1,0 +1,120 @@
+[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)
+[mp] UpDateDPlay: player="Bob" session="BoB" GameType=0 GameIndex=0 Side=1 currmissnum=0x8a3a RateDivider=3
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[evt_fire] id=1923 dispid=1 type=9CommsChat -> HANDLER CALLED
+[chat] tx "hello_from_host" (to=0)
+[chat] rx from "Bob": "hi_from_client" (to=0)
+[bfield] LOADSCRAMBF: plside=0 currmissnum=35386 altmissnum=0 target=0 -> rv=35386
+[psq] player aircraft uid=4864 GameType=0 (COMMSQUICKMISSION=2) Implemented=1 mySlot=0 PackPlayerSquad=0
+[frontend] (bridge) Launch3d done; tmpinst=0xa40e850 tmpview=0xabd1a50 InThe3D=1
+[agg] sent-to-agg/s dummy=1 init=2 other=8 (last other IDCode=213)  Count=19 FrameCount=20 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=27 FrameCount=28 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=35 FrameCount=36 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=44 FrameCount=45 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=52 FrameCount=53 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=60 FrameCount=61 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=69 FrameCount=70 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=77 FrameCount=78 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=85 FrameCount=86 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=94 FrameCount=95 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=102 FrameCount=103 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=110 FrameCount=111 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=119 FrameCount=120 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=127 FrameCount=128 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=135 FrameCount=136 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=144 FrameCount=145 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=152 FrameCount=153 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=160 FrameCount=161 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=169 FrameCount=170 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=177 FrameCount=178 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=185 FrameCount=186 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=194 FrameCount=195 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=202 FrameCount=203 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=210 FrameCount=211 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=219 FrameCount=220 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=227 FrameCount=228 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=235 FrameCount=236 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=244 FrameCount=245 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=252 FrameCount=253 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=4 FrameCount=5 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=13 FrameCount=14 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=21 FrameCount=22 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=29 FrameCount=30 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=38 FrameCount=39 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=46 FrameCount=47 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=54 FrameCount=55 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=63 FrameCount=64 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=71 FrameCount=72 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=79 FrameCount=80 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=88 FrameCount=89 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=96 FrameCount=97 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=104 FrameCount=105 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=113 FrameCount=114 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=121 FrameCount=122 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=129 FrameCount=130 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=138 FrameCount=139 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=146 FrameCount=147 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=154 FrameCount=155 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=163 FrameCount=164 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=171 FrameCount=172 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=179 FrameCount=180 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=188 FrameCount=189 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=196 FrameCount=197 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=204 FrameCount=205 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=213 FrameCount=214 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=221 FrameCount=222 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=229 FrameCount=230 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=238 FrameCount=239 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=246 FrameCount=247 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=254 FrameCount=255 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=7 FrameCount=8 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=15 FrameCount=16 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=23 FrameCount=24 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=32 FrameCount=33 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=40 FrameCount=41 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=48 FrameCount=49 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=57 FrameCount=58 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=65 FrameCount=66 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=73 FrameCount=74 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=82 FrameCount=83 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=90 FrameCount=91 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=98 FrameCount=99 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=107 FrameCount=108 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=115 FrameCount=116 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=123 FrameCount=124 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=132 FrameCount=133 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=140 FrameCount=141 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=148 FrameCount=149 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=157 FrameCount=158 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=165 FrameCount=166 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=173 FrameCount=174 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=182 FrameCount=183 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=190 FrameCount=191 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=198 FrameCount=199 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=207 FrameCount=208 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=215 FrameCount=216 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=223 FrameCount=224 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=232 FrameCount=233 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=240 FrameCount=241 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=248 FrameCount=249 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=1 FrameCount=2 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=9 FrameCount=10 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=17 FrameCount=18 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=26 FrameCount=27 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=34 FrameCount=35 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=42 FrameCount=43 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=51 FrameCount=52 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=59 FrameCount=60 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=67 FrameCount=68 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=76 FrameCount=77 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=84 FrameCount=85 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=92 FrameCount=93 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=101 FrameCount=102 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=109 FrameCount=110 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=117 FrameCount=118 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=126 FrameCount=127 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=134 FrameCount=135 synched=1 csync=1 res=0
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=142 FrameCount=143 synched=1 csync=1 res=0

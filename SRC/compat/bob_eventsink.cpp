@@ -22,7 +22,7 @@
    afxwin.h for non-VTS_NONE handlers, e.g. OnSelectRlistboxfile(long,long) via A0/A1). */
 extern "C" { long bob_evtA0 = 0, bob_evtA1 = 0; void* bob_evtP = 0; }
 
-struct EvtEntry { const std::type_info* ti; int id; int dispid; void (*thunk)(void*); };
+struct EvtEntry { const std::type_info* ti; int id; int dispid; void (*thunk)(void*); int idLast = 0; int passId = 0; };
 static std::vector<EvtEntry>& evtmap() { static std::vector<EvtEntry> v; return v; }
 
 extern "C" void bob_evt_register(const void* tinfo, int id, int dispid, void (*thunk)(void*)) {
@@ -35,6 +35,21 @@ extern "C" void bob_evt_register(const void* tinfo, int id, int dispid, void (*t
        at zero in every TU -- measured: BobEvtAuto_0C1Ev is defined in NINE objects. The count is
        how we prove what the fix bought. */
     if (getenv("BOB_TRACE_OLE")) { static int n=0; if(++n<=3||(n%100)==0) fprintf(stderr,"[evt_register] #%d id=%d dispid=%d type=%s\n", n, id, dispid, e.ti?e.ti->name():"?"); }
+}
+
+/* EPIC M / MP S10 (2026-09-26), cross-ported from MA S87/S137: ON_EVENT_RANGE was an EMPTY macro
+   here, so every range-registered handler in BoB was dead -- 12 sink maps, among them BoBFrag's
+   ON_EVENT_RANGE(IDC_PILOT_0..IDC_PILOT_14, Clicked, OnClickedPilot0): the quick-mission/frag seat
+   buttons. In a comms Quick Mission no player could take a seat ("NOTSLOTS"), so that game type
+   could never fly. One entry per RANGE (MA S137: expanding it dropped a 9998-wide span); MFC passes
+   the firing id as a range handler's first argument, so the fire path supplies it. */
+extern "C" void bob_evt_register_range(const void* tinfo, int idFirst, int idLast, int dispid, void (*thunk)(void*)) {
+    if (idLast < idFirst || getenv("BOB_NO_EVT_RANGE")) return;
+    EvtEntry e; e.ti = (const std::type_info*)tinfo; e.id = idFirst; e.idLast = idLast; e.dispid = dispid;
+    e.thunk = thunk; e.passId = 1;
+    evtmap().push_back(e);
+    if (getenv("BOB_TRACE_OLE"))
+        fprintf(stderr, "[evt_register_range] ids %d..%d dispid=%d type=%s\n", idFirst, idLast, dispid, e.ti ? e.ti->name() : "?");
 }
 
 /* dlg = the dialog instance; tinfo = &typeid(*dlg) (passed by the caller, which has the concrete
@@ -53,9 +68,14 @@ extern "C" int bob_evt_fire(void* dlg, const void* tinfo, int id, int dispid) {
     }
     int fired = 0;
     for (size_t i = 0; i < v.size(); i++) {
-        if (v[i].id == id && v[i].dispid == dispid && v[i].ti && dt && *v[i].ti == *dt) {
-            if (getenv("BOB_TRACE_OLE")) fprintf(stderr,"[evt_fire] id=%d dispid=%d type=%s -> HANDLER CALLED\n", id, dispid, dt->name());
+        bool idMatch = v[i].passId ? (id >= v[i].id && id <= v[i].idLast) : (v[i].id == id);
+        if (idMatch && v[i].dispid == dispid && v[i].ti && dt && *v[i].ti == *dt) {
+            if (getenv("BOB_TRACE_OLE") || (v[i].passId && getenv("BOB_TRACE_EVT")))
+                fprintf(stderr,"[evt_fire] id=%d dispid=%d type=%s -> HANDLER CALLED%s\n", id, dispid, dt->name(), v[i].passId ? " (range)" : "");
+            long savedA0 = bob_evtA0;
+            if (v[i].passId) bob_evtA0 = id;   /* a range handler's first arg is the id that fired */
             v[i].thunk(dlg); fired = 1;
+            bob_evtA0 = savedA0;
         }
     }
     /* S160: report a fire that found NO handler, and say what IS registered for that id. A miss is

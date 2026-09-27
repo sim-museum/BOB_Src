@@ -195,7 +195,11 @@ template<class C, class M> inline void bob_evt_call(C*, M) {}   /* fallback: unc
 #define ON_EVENT(theClass, id, dispid, fn, vts) \
     { struct BOB_EVT_CAT(BobT_,__LINE__) { static void thunk(void* d){ bob_evt_call((theClass*)d, &theClass::fn); } }; \
       bob_evt_register(&typeid(theClass), (int)(id), (int)(dispid), &BOB_EVT_CAT(BobT_,__LINE__)::thunk); }
-#define ON_EVENT_RANGE(theClass, idFirst, idLast, dispid, fn, vts)
+extern "C" void bob_evt_register_range(const void* tinfo, int idFirst, int idLast, int dispid, void (*thunk)(void*));
+/* EPIC M / MP S10: was empty (every range handler dead) -- see bob_eventsink.cpp. */
+#define ON_EVENT_RANGE(theClass, idFirst, idLast, dispid, fn, vts) \
+    { struct BOB_EVT_CAT(BobTR_,__LINE__) { static void thunk(void* d){ bob_evt_call((theClass*)d, &theClass::fn); } }; \
+      bob_evt_register_range(&typeid(theClass), (int)(idFirst), (int)(idLast), (int)(dispid), &BOB_EVT_CAT(BobTR_,__LINE__)::thunk); }
 #ifndef CN_EVENT
 #define CN_EVENT  0x0800   /* control-notification: OLE control event */
 #endif

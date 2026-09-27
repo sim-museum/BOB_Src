@@ -61,6 +61,10 @@ struct HostREdtBt : public CREdtBtCtrl, public OleHost {
         }
         OnDraw(pdc, rc, rc);
     }
+    /* EPIC M / MP S10: a click (no drag) is CREdtBtCtrl::OnLButtonUp -> FireClicked (dispid 1). This
+       host had no onClick, so bob_ole_click passed every REdtBt by -- the frag screen's pilot/seat
+       buttons (IDC_PILOT_0..14) drew and did nothing. BOB_NO_EDTBT_CLICK=1 reverts. */
+    int onClick() override { return getenv("BOB_NO_EDTBT_CLICK") ? 0 : 1; }
     void dispatch(DISPID id, VARTYPE, void*, va_list) override {
         if (bob_ole_trace()) fprintf(stderr, "[ole] REdtBt: unhandled method dispid %ld\n", (long)id);
     }

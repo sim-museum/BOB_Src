@@ -12312,3 +12312,62 @@ Log: `~/jr-parity/bob_work/gates_terrain1.log`.
   (near-plane clipped, extreme rhw ratios); means stay 0.2-5 px. Not investigated.
 * Quick Mission 0 (Take-off, the `BOB_BOOT_FRONTEND` default) sits on the runway at 0 kts; the ground is
   barely in view from the cockpit, which is why the recipe uses QM 1 / 18 in external view.
+
+## EPIC M / MP S10 (Opus 5.5, 2026-09-26/27) -- ✅ **BoB multiplayer flies: the joiner has its own aircraft, both Ready Rooms list both players, chat crosses both ways, a host's guns kill the joiner's Spitfire across the wire, and Deathmatch, Team Play AND Quick Missions all reach a synced two-player flight**
+
+**Story:** PO priority (multiplayer, every game). Open since S9: the joiner had no aircraft of its own
+(`[hist] slot 1 AllocPacket=0`, both peers announcing uid 4864, SIGSEGV in `UpdateHistBuffer`); PO two-PC
+09-19: "neither Ready Room listed the other player"; chat typing off (`BOB_CHAT_KEYS`) since it "froze".
+
+### ⭐⭐⭐ The seat: WM_DESTROY never reached the Locker Room, so the comms mission was never chosen
+`CLockerRoom::OnDestroy -> UpDateDPlay` is the Locker Room's ONLY commit point: player/session name,
+password, `GameIndex`, `Side`, and `quickdef.MakeDeathMatchMission / MakeTeamPlayMission` (-> `death<N>.BF` /
+`teamply<N>.BF`, one flight per player slot). Compat dispatches no WM_DESTROY (`BOB_WM_DESTROY` is opt-in,
+25 handlers unread), so every comms game fell through S5's `bob_mp_seed_quickdef` fallback = single-player
+quick mission 0 = **ONE aircraft**. The host got it (uid 4864) and the joiner, finding nothing at its
+position, fell back to "any AC" = the host's. S9's "the harness gives the client no seat" was the wrong
+layer. Fix: `CWnd::BobEarlyDestroy` (afxwin.h), CLockerRoom only, called from `RDialog::DestroyPanel`
+BEFORE the hosted controls are released (dispatched after, `UpDateDPlay` read "" from every edit box).
+`BOB_NO_LOCKER_DESTROY=1` reverts. Measured: `LOADSCRAMBF ... rv=35386` (death0.BF), 8 comms seats, host
+`[psq] player aircraft uid=4864`, joiner **uid=4865**, both `synched=1 csync=1`, no crash for the whole run.
+Second defect under it: `REdit`'s Caption getprop (dispid 3) was unrouted, so every `CREdit::GetCaption()`
+returned "" (and `keyText` cast a WIDE BSTR to `char*`, so chat got one letter). `BOB_NO_EDIT_GETCAPTION=1`.
+
+### ⭐⭐ The Ready Room list: filled every tick, painted never
+`CReadyRoom::OnTimer -> DisplayPlayerInfo` fills the list from a TIMER, and the front end repaints only on a
+click -- rows in memory, blank on screen (the PO's "neither Ready Room listed the other player"). And
+`bob_fp_repaint` painted panel 0's background, panel 0's controls, THEN panel 1's background (the chat
+panel repaints the screen art) -- burying panel 0. That second half is also the PO's 09-05 chat symptom
+("after typing the top text lines vanish": every consumed key repaints). Fixes: controls touched inside a
+timer handler request one throttled repaint (`BOB_NO_TIMER_REPAINT=1`); all backgrounds first, then all
+controls (`BOB_REPAINT_INTERLEAVED=1`). `readyroom_player_list_before_interleaved.png` vs `_after.png`.
+
+### ⭐⭐ Team Play / Quick Missions could not be chosen; QM seats were dead
+* A ONE-column `RRadio` (Locker Game Type, Select Side) mapped the click by X -> button 0 always. Now by Y
+  with the control's own row pitch (`tmHeight*ColW/10+2`, as `CRRadioCtrl::OnLButtonDown`). `BOB_NO_RADIO_VERTICAL=1`.
+* **`ON_EVENT_RANGE` was an EMPTY macro in BoB** -- MA fixed its copy at S87 and the cross-port said so.
+  Every range-registered handler in 6 files was dead, among them `BoBFrag`'s `IDC_PILOT_0..14 Clicked`: the
+  frag seat buttons, so a comms Quick Mission could only ever answer "not all players have slots". Ported
+  MA's range entries (`bob_eventsink.cpp`, `BOB_NO_EVT_RANGE=1`), and the `REdtBt` host (the seat buttons'
+  type) gained the click the control itself fires (`BOB_NO_EDTBT_CLICK=1`).
+
+### Verified -- `tools/bob_mp_two_instance.sh` (two real-GL peers, monitors 0,0 / 1920,0), 6 new assertions
+| run | game type | result |
+|---|---|---|
+| f | Deathmatch | 9/9 PASS; `[mppos]`: the same slot printed by both peers agrees to <1 m each second |
+| g | Deathmatch + combat hooks | 9/9; joiner formed up 150 m ahead, host fired: 20 `[mpcoll] ... (MY aircraft)` on the joiner, host `[mpscore] victim 0x1301 shooter 0x1300`, joiner registers its own death |
+| h | Deathmatch + chat | 9/9; host `[chat] tx "hello_from_host"` -> joiner `rx`, joiner `tx "hi_from_client"` -> host `rx`; the host's Fly still works after typing |
+| i | Team Play | 9/9; `teamply0.BF` (35394), own seats, csync |
+| l | Quick Missions | 9/9; both take a frag seat (`[evt_fire] id=2200/2201 BoBFrag (range)`), host Fly from the frag, `QUICKM` 35359, host 4864 / joiner 4865 |
+Both Ready Rooms list BOTH players in every run (`[readyroom] list row` slot 0 and 1 on each side).
+Chat typing is **default ON** again (`BOB_NO_CHAT_KEYS=1` turns it off). Evidence `doc/reference/260926_mp/`.
+New instruments: `BOB_TRACE_MPPOS` (`[mppos]/[mpcoll]/[mpscore]`), `BOB_MP_FORMUP` / `BOB_MP_FIRE_AT`
+(cross-port of MA MPFLY-2; the FM's heading is the NEGATIVE of the AirStruc's), `BOB_SDL_TEXT_MS`,
+`[readyroom]` / `[chat]` / `[mp] UpDateDPlay` traces; harness `HOST_ENV` / `CLIENT_ENV`.
+MA's TEXT-1 maps cap: already cross-ported (1d2444f, `std::vector` at cstring_impl.cpp:448) -- verified.
+
+**Still open:** (1) no two-PC retest -- the only thing a single box cannot give; (2) the joiner's own
+`SetScore` for its death names no shooter (`shooter uid=0x0`), while the host credits the kill -- the
+scoreboards may disagree; (3) the QM frag's Yellow/Blue/Green seat buttons draw in a diagonal staircase
+(`BoBFrag` positions them with MoveWindow, which REdtBt hosts ignore) -- clickable, ugly; (4) join-in-
+progress (`LATEJOIN=1`) not re-run; (5) both default player names are "Bob" (Save_Data).

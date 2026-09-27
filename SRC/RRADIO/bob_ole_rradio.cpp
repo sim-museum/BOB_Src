@@ -12,6 +12,7 @@
 #include "../RLISTBOX/bob_ole_host.h"
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 
 extern int g_bobListFontH;
 
@@ -45,7 +46,13 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
            drawn; the same direct-to-pdc convention the RButton/REdit hosts use. */
         m_FirstSweep = TRUE;
         OnDraw(pdc, rc, rc);
+        /* MP S10: remember the row pitch OnDraw used (its own y step, RRADIOC.CPP:389) so a click
+           maps to the row DRAWN there -- the same formula as CRRadioCtrl::OnLButtonDown. */
+        TEXTMETRIC tm; memset(&tm, 0, sizeof(tm)); pdc->GetTextMetrics(&tm);
+        if (tm.tmHeight > 0 && m_ColumnWidth > 0) m_bobRowPitch = tm.tmHeight * m_ColumnWidth / 10 + 2;
+        if (bob_ole_trace()) fprintf(stderr, "[ole] RRadio id=%d rowpitch=%d (tmHeight=%ld ColW=%ld)\n", ctrlId, m_bobRowPitch, (long)tm.tmHeight, (long)m_ColumnWidth);
     }
+    int m_bobRowPitch = 0;
     /* S129: a click on the tab row selects the button under the cursor. The buttons are
        laid out left-to-right in equal columns (OnDraw: x += m_ColumnWidth*avgCharWidth,
        m_Cols columns), so map local X across the drawn width to the button index; set the
@@ -65,7 +72,7 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
         int idx = localX * n / sw;
         static int novert = -1; if (novert < 0) novert = getenv("BOB_NO_RADIO_VERTICAL") ? 1 : 0;
         if (!novert && m_Cols <= 1 && n > 1 && sh > 0 && m_bobLastY >= 0)
-            idx = m_bobLastY * n / sh;
+            idx = (m_bobRowPitch > 0) ? m_bobLastY / m_bobRowPitch : m_bobLastY * n / sh;
         if (idx < 0) idx = 0; if (idx >= n) idx = n - 1;
         SetCurrentSelection(idx);
         if (bob_ole_trace()) fprintf(stderr, "[ole]   RRadio button click localX=%d/%d -> idx=%d\n", localX, sw, idx);

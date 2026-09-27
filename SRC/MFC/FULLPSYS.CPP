@@ -1866,8 +1866,13 @@ extern "C" int bob_fp_key(int ch, int isText)
 	   while the regression is observed. BOB_CHAT_KEYS=1 re-enables it for debugging.
 	   This port's own convention, stated in ai/RACE_AI_NOTES terms elsewhere: ship opt-in first,
 	   default only after a test-drive confirms the feel. I skipped that step and this is the cost. */
+	/* EPIC M / MP S10 (2026-09-26): DEFAULT ON again. The vanishing top lines were bob_fp_repaint
+	   painting panel 1's background (the chat panel) OVER panel 0's controls -- fixed there (all
+	   backgrounds first). Measured two-instance (bob-gates/mp10/h): both players typed, pressed Enter,
+	   each received the other's line ([chat] tx/rx), and the host's Fly still worked afterwards.
+	   BOB_NO_CHAT_KEYS=1 turns typing off again. */
 	static int s_on = -1;
-	if (s_on < 0) s_on = getenv("BOB_CHAT_KEYS") ? 1 : 0;
+	if (s_on < 0) s_on = getenv("BOB_NO_CHAT_KEYS") ? 0 : 1;
 	if (!s_on) return 0;
 	if (!bobOleDraw() || !g_bobActiveFP) return 0;
 	if (!bob_ole_key(ch, isText)) return 0;

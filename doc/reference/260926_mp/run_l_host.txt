@@ -1,0 +1,114 @@
+[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)
+[mp] UpDateDPlay: player="Bob" session="BoB" GameType=2 GameIndex=0 Side=1 currmissnum=0x0 RateDivider=3
+[readyroom] list row: slot=0 name="Bob" status=3 team=1 squadron=-1 (mySlot=0)
+[readyroom] list row: slot=0 name="Bob" status=3 team=1 squadron=-1 (mySlot=0)
+[readyroom] list row: slot=1 name="Bob" status=3 team=1 squadron=-1 (mySlot=0)
+[readyroom] list row: slot=0 name="Bob" status=3 team=1 squadron=-1 (mySlot=0)
+[readyroom] list row: slot=1 name="Bob" status=9 team=1 squadron=-1 (mySlot=0)
+[readyroom] list row: slot=0 name="Bob" status=3 team=1 squadron=-1 (mySlot=0)
+[readyroom] list row: slot=1 name="Bob" status=9 team=1 squadron=0 (mySlot=0)
+[evt_fire] id=2200 dispid=1 type=7BoBFrag -> HANDLER CALLED (range)
+[evt_fire] id=2200 dispid=1 type=7BoBFrag -> HANDLER CALLED (range)
+[bfield] LOADSCRAMBF: plside=0 currmissnum=35359 altmissnum=35359 target=12030 -> rv=35359
+[psq] player aircraft uid=4864 GameType=2 (COMMSQUICKMISSION=2) Implemented=1 mySlot=0 PackPlayerSquad=0
+[frontend] (bridge) Launch3d done; tmpinst=0xa790980 tmpview=0xb38c900 InThe3D=1
+[readyroom] list row: slot=0 name="Bob" status=4 team=1 squadron=0 (mySlot=0)
+[readyroom] list row: slot=1 name="Bob" status=9 team=1 squadron=0 (mySlot=0)
+[mppos] t=1790493698 frame=12 slot=0(me) uid=0x1300 pos=(13825927,365760,25651975) hdg=58376 vel=1449999 movecode=63 dead=0
+[mppos] t=1790493698 frame=12 slot=1 uid=0x1301 pos=(13827821,365760,25652286) hdg=58375 vel=1449999 movecode=63 dead=1
+[mppos] t=1790493699 frame=14 slot=0(me) uid=0x1300 pos=(13822992,365770,25655558) hdg=58376 vel=1445756 movecode=63 dead=0
+[mppos] t=1790493699 frame=14 slot=1 uid=0x1301 pos=(13823790,365772,25657202) hdg=58375 vel=1444559 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=5 init=2 other=3 (last other IDCode=213)  Count=14 FrameCount=15 synched=1 csync=1 res=0
+[mppos] t=1790493700 frame=23 slot=0(me) uid=0x1300 pos=(13813846,365845,25666722) hdg=58376 vel=1442174 movecode=63 dead=0
+[mppos] t=1790493700 frame=23 slot=1 uid=0x1301 pos=(13814692,365926,25668298) hdg=58375 vel=1440611 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=23 FrameCount=24 synched=1 csync=1 res=0
+[mppos] t=1790493701 frame=31 slot=0(me) uid=0x1300 pos=(13804709,365997,25677875) hdg=58376 vel=1441594 movecode=63 dead=0
+[mppos] t=1790493701 frame=31 slot=1 uid=0x1301 pos=(13805611,366225,25679372) hdg=58375 vel=1440868 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=31 FrameCount=32 synched=1 csync=1 res=0
+[mppos] t=1790493702 frame=39 slot=0(me) uid=0x1300 pos=(13795576,366219,25689022) hdg=58376 vel=1440873 movecode=63 dead=0
+[mppos] t=1790493702 frame=39 slot=1 uid=0x1301 pos=(13796530,366660,25690438) hdg=58375 vel=1440207 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=39 FrameCount=40 synched=1 csync=1 res=0
+[mppos] t=1790493703 frame=48 slot=0(me) uid=0x1300 pos=(13786449,366513,25700161) hdg=58376 vel=1439736 movecode=63 dead=0
+[mppos] t=1790493703 frame=48 slot=1 uid=0x1301 pos=(13787480,367246,25701494) hdg=58375 vel=1438991 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=48 FrameCount=49 synched=1 csync=1 res=0
+[mppos] t=1790493704 frame=56 slot=0(me) uid=0x1300 pos=(13777332,366875,25711288) hdg=58375 vel=1438174 movecode=63 dead=0
+[mppos] t=1790493704 frame=56 slot=1 uid=0x1301 pos=(13778439,367952,25712517) hdg=58374 vel=1437519 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=56 FrameCount=57 synched=1 csync=1 res=0
+[mppos] t=1790493705 frame=64 slot=0(me) uid=0x1300 pos=(13768227,367304,25722399) hdg=58375 vel=1436219 movecode=63 dead=0
+[mppos] t=1790493705 frame=64 slot=1 uid=0x1301 pos=(13769423,368809,25723513) hdg=58374 vel=1435535 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=64 FrameCount=65 synched=1 csync=1 res=0
+[mppos] t=1790493706 frame=73 slot=0(me) uid=0x1300 pos=(13759136,367797,25733491) hdg=58374 vel=1433896 movecode=63 dead=0
+[mppos] t=1790493706 frame=73 slot=1 uid=0x1301 pos=(13760436,369787,25734473) hdg=58373 vel=1433251 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=73 FrameCount=74 synched=1 csync=1 res=0
+[mppos] t=1790493707 frame=81 slot=0(me) uid=0x1300 pos=(13750061,368351,25744562) hdg=58373 vel=1431233 movecode=63 dead=0
+[mppos] t=1790493707 frame=81 slot=1 uid=0x1301 pos=(13751482,370881,25745390) hdg=58372 vel=1430649 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=81 FrameCount=82 synched=1 csync=1 res=0
+[mppos] t=1790493708 frame=89 slot=0(me) uid=0x1300 pos=(13741005,368962,25755609) hdg=58373 vel=1428272 movecode=63 dead=0
+[mppos] t=1790493708 frame=89 slot=1 uid=0x1301 pos=(13742560,372090,25756261) hdg=58372 vel=1427791 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=89 FrameCount=90 synched=1 csync=1 res=0
+[mppos] t=1790493709 frame=98 slot=0(me) uid=0x1300 pos=(13731969,369626,25766629) hdg=58372 vel=1425037 movecode=63 dead=0
+[mppos] t=1790493709 frame=98 slot=1 uid=0x1301 pos=(13733680,373404,25767075) hdg=58371 vel=1424463 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=98 FrameCount=99 synched=1 csync=1 res=0
+[mppos] t=1790493710 frame=106 slot=0(me) uid=0x1300 pos=(13722956,370339,25777620) hdg=58371 vel=1421577 movecode=63 dead=0
+[mppos] t=1790493710 frame=106 slot=1 uid=0x1301 pos=(13724843,374817,25777834) hdg=58370 vel=1421092 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=106 FrameCount=107 synched=1 csync=1 res=0
+[mppos] t=1790493711 frame=114 slot=0(me) uid=0x1300 pos=(13713965,371095,25788581) hdg=58370 vel=1417922 movecode=63 dead=0
+[mppos] t=1790493711 frame=114 slot=1 uid=0x1301 pos=(13716054,376311,25788535) hdg=58369 vel=1417487 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=114 FrameCount=115 synched=1 csync=1 res=0
+[mppos] t=1790493712 frame=123 slot=0(me) uid=0x1300 pos=(13704998,371890,25799510) hdg=58368 vel=1414106 movecode=63 dead=0
+[mppos] t=1790493712 frame=123 slot=1 uid=0x1301 pos=(13707313,377890,25799167) hdg=58366 vel=1413753 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=123 FrameCount=124 synched=1 csync=1 res=0
+[mppos] t=1790493713 frame=131 slot=0(me) uid=0x1300 pos=(13696055,372719,25810407) hdg=58367 vel=1410184 movecode=63 dead=0
+[mppos] t=1790493713 frame=131 slot=1 uid=0x1301 pos=(13698617,379529,25809745) hdg=58366 vel=1409892 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=131 FrameCount=132 synched=1 csync=1 res=0
+[mppos] t=1790493714 frame=139 slot=0(me) uid=0x1300 pos=(13687138,373576,25821271) hdg=58366 vel=1406176 movecode=63 dead=0
+[mppos] t=1790493714 frame=139 slot=1 uid=0x1301 pos=(13689970,381225,25820252) hdg=58365 vel=1405967 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=139 FrameCount=140 synched=1 csync=1 res=0
+[mppos] t=1790493715 frame=148 slot=0(me) uid=0x1300 pos=(13678245,374455,25832101) hdg=58364 vel=1402132 movecode=63 dead=0
+[mppos] t=1790493715 frame=148 slot=1 uid=0x1301 pos=(13681372,382969,25830694) hdg=58363 vel=1401891 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=148 FrameCount=149 synched=1 csync=1 res=0
+[mppos] t=1790493716 frame=156 slot=0(me) uid=0x1300 pos=(13669378,375351,25842898) hdg=58363 vel=1398090 movecode=63 dead=0
+[mppos] t=1790493716 frame=156 slot=1 uid=0x1301 pos=(13672828,384744,25841069) hdg=58362 vel=1397881 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=156 FrameCount=157 synched=1 csync=1 res=0
+[mppos] t=1790493717 frame=164 slot=0(me) uid=0x1300 pos=(13660534,376260,25853661) hdg=58361 vel=1394075 movecode=63 dead=0
+[mppos] t=1790493717 frame=164 slot=1 uid=0x1301 pos=(13664326,386544,25851382) hdg=58360 vel=1393999 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=164 FrameCount=165 synched=1 csync=1 res=0
+[mppos] t=1790493718 frame=173 slot=0(me) uid=0x1300 pos=(13651715,377174,25864392) hdg=58359 vel=1390144 movecode=63 dead=0
+[mppos] t=1790493718 frame=173 slot=1 uid=0x1301 pos=(13655876,388353,25861624) hdg=58357 vel=1390073 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=173 FrameCount=174 synched=1 csync=1 res=0
+[mppos] t=1790493719 frame=181 slot=0(me) uid=0x1300 pos=(13642919,378089,25875092) hdg=58358 vel=1386312 movecode=63 dead=0
+[mppos] t=1790493719 frame=181 slot=1 uid=0x1301 pos=(13647467,390161,25871811) hdg=58357 vel=1386276 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=181 FrameCount=182 synched=1 csync=1 res=0
+[mppos] t=1790493720 frame=189 slot=0(me) uid=0x1300 pos=(13634144,379000,25885761) hdg=58356 vel=1382621 movecode=63 dead=0
+[mppos] t=1790493720 frame=189 slot=1 uid=0x1301 pos=(13639106,391966,25881932) hdg=58355 vel=1382607 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=189 FrameCount=190 synched=1 csync=1 res=0
+[mpscore] victim uid=0x130f shooter uid=0x1303 (me=0x1300) gametype=2
+[mppos] t=1790493721 frame=198 slot=0(me) uid=0x1300 pos=(13625391,379902,25896401) hdg=58354 vel=1379107 movecode=63 dead=0
+[mppos] t=1790493721 frame=198 slot=1 uid=0x1301 pos=(13630780,393761,25891998) hdg=58352 vel=1379215 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=198 FrameCount=199 synched=1 csync=1 res=0
+[mppos] t=1790493722 frame=206 slot=0(me) uid=0x1300 pos=(13616656,380790,25907014) hdg=58352 vel=1375782 movecode=63 dead=0
+[mppos] t=1790493722 frame=206 slot=1 uid=0x1301 pos=(13622496,395516,25902009) hdg=58351 vel=1375887 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=206 FrameCount=207 synched=1 csync=1 res=0
+[mppos] t=1790493723 frame=214 slot=0(me) uid=0x1300 pos=(13607939,381659,25917601) hdg=58350 vel=1372695 movecode=63 dead=0
+[mppos] t=1790493723 frame=214 slot=1 uid=0x1301 pos=(13614248,397245,25911974) hdg=58348 vel=1372815 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=214 FrameCount=215 synched=1 csync=1 res=0
+[mppos] t=1790493724 frame=223 slot=0(me) uid=0x1300 pos=(13599237,382505,25928165) hdg=58348 vel=1369854 movecode=63 dead=0
+[mppos] t=1790493724 frame=223 slot=1 uid=0x1301 pos=(13606026,398926,25921885) hdg=58347 vel=1369999 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=223 FrameCount=224 synched=1 csync=1 res=0
+[mppos] t=1790493725 frame=231 slot=0(me) uid=0x1300 pos=(13590550,383326,25938707) hdg=58345 vel=1367281 movecode=63 dead=0
+[mppos] t=1790493725 frame=231 slot=1 uid=0x1301 pos=(13597835,400556,25931756) hdg=58343 vel=1367481 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=231 FrameCount=232 synched=1 csync=1 res=0
+[mppos] t=1790493726 frame=239 slot=0(me) uid=0x1300 pos=(13581875,384116,25949230) hdg=58343 vel=1365008 movecode=63 dead=0
+[mppos] t=1790493726 frame=239 slot=1 uid=0x1301 pos=(13589665,402126,25941586) hdg=58341 vel=1365263 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=239 FrameCount=240 synched=1 csync=1 res=0
+[mppos] t=1790493727 frame=248 slot=0(me) uid=0x1300 pos=(13573209,384872,25959735) hdg=58341 vel=1363031 movecode=63 dead=0
+[mppos] t=1790493727 frame=248 slot=1 uid=0x1301 pos=(13581521,403636,25951390) hdg=58340 vel=1363279 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=9 (last other IDCode=213)  Count=248 FrameCount=249 synched=1 csync=1 res=0
+[mppos] t=1790493728 frame=0 slot=0(me) uid=0x1300 pos=(13564552,385593,25970227) hdg=58338 vel=1361379 movecode=63 dead=0
+[mppos] t=1790493728 frame=0 slot=1 uid=0x1301 pos=(13573387,405065,25961159) hdg=58336 vel=1361679 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=0 FrameCount=1 synched=1 csync=1 res=0
+[mppos] t=1790493729 frame=8 slot=0(me) uid=0x1300 pos=(13555900,386275,25980706) hdg=58336 vel=1360054 movecode=63 dead=0
+[mppos] t=1790493729 frame=8 slot=1 uid=0x1301 pos=(13565255,406429,25970910) hdg=58334 vel=1360335 movecode=63 dead=1
+[agg] sent-to-agg/s dummy=0 init=0 other=8 (last other IDCode=213)  Count=8 FrameCount=9 synched=1 csync=1 res=0
+[mppos] t=1790493730 frame=17 slot=0(me) uid=0x1300 pos=(13547251,386916,25991176) hdg=58333 vel=1359058 movecode=63 dead=0
+[mppos] t=1790493730 frame=17 slot=1 uid=0x1301 pos=(13557132,407701,25980634) hdg=58331 vel=1359353 movecode=63 dead=1
