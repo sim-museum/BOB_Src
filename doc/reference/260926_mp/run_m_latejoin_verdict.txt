@@ -1,0 +1,15 @@
+gl-lock: display acquired by 'bob' — tools/bob_mp_two_instance.sh
+  [latejoin] host flies at 70000ms; client starts at +140s; 420s total
+bob MP-5 two-instance  (host 2,1,1 + fly@70000,121,747, client 2,2,1,1, 420s)
+  host enters 3D                                 PASS
+  client enters 3D                               FAIL
+  client clears the random-list wait             PASS
+  host survives the flight                       PASS
+  client survives the flight                     FAIL (=== CRASH: signal 6 (tid 49558) fault_addr=0xc196 ===)
+  each player seated in own aircraft             FAIL (host=4864 client=none; BOB_TRACE_AGG=1?)
+  every slot has an aircraft                     PASS
+  host comms-synced (csync=1)                    PASS
+  client comms-synced (csync=1)                  FAIL
+  logs: /home/admin/bob-gates/mp10/m/{host,client}.log
+  MP-5 TWO-INSTANCE: FAIL
+gl-lock: display released by 'bob' (exit 1)

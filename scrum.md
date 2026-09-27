@@ -12371,3 +12371,14 @@ MA's TEXT-1 maps cap: already cross-ported (1d2444f, `std::vector` at cstring_im
 scoreboards may disagree; (3) the QM frag's Yellow/Blue/Green seat buttons draw in a diagonal staircase
 (`BoBFrag` positions them with MoveWindow, which REdtBt hosts ignore) -- clickable, ugly; (4) join-in-
 progress (`LATEJOIN=1`) not re-run; (5) both default player names are "Bob" (Save_Data).
+
+**Late join, measured after the entry above (run m, `LATEJOIN=1`): ⛔ still broken, and now named.** The host is
+in 3-D and its UI pump is switched off there on purpose (`UIUpdateMainSheet` returns early at CPS_3D unless
+`BOB_MP_UIPUMP_IN3D`), so the joiner's PID_PASSWORD is never answered (no `CheckPassword` in the host log).
+`AttemptToJoin` then times out and returns `FALSE` -- which the caller compares against `DP_OK`, **also 0** -- so
+the joiner proceeds with `aggID=0`/no slot, `TimeoutReceive`'s `from!=aggID` filter passes the host
+aggregator's 22-byte packets to `ProcessPlayerMessage`, one reads as PID_IMHERE with a garbage `Slot`, and
+`Process_PM_ImHere`'s `CopyMemory(&H2H_Player[p->Slot]...)` dies (`*** buffer overflow detected ***`,
+`run_m_latejoin_client_crash.txt`). Fix direction: answer PID_PASSWORD from the 3-D dispatcher (or let the UI
+pump run for it), and treat an `AttemptToJoin` timeout as a failure. Not attempted in this sprint; the PO's
+recipe (host presses Fly last) does not take this path.

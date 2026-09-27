@@ -1,0 +1,45 @@
+[dplay] EnumConnections -> 1 provider
+[frontend]   dial[0] painted at X=25 Y=50 rect=(0,0)-(0,0)
+[frontend] painted screen artnum=27920 + dials + menu + presented
+[frontend] click (311,747) -> menu item 2
+[dplay] InitializeConnection (TCP/IP provider selected)
+[frontend]   dial[0] painted at X=25 Y=50 rect=(0,0)-(0,0)
+[frontend] painted screen artnum=27920 + dials + menu + presented
+[sdlclickms] pushed SDL_MOUSEBUTTONDOWN (156,747) at 20216ms (due 20000ms) rc=1
+[frontend] click (156,747) -> menu item 1
+[dplay] DestroyPlayer 0
+[dplay] Close
+[frontend] click (144,747) -> menu item 1
+[dplay] Open(JOIN) -> host 127.0.0.1:47624
+[dplay] host assigned us pid 4
+[dplay] received 22 data bytes from pid 1
+[dplay] CreatePlayer "(unnamed)" -> pid 4
+[dplay] Send 47 bytes pid 4 -> 0 (ok)
+[mp] ProcessPlayerMessage: PacketID=1 size=22 from=1 (PID_PASSWORD=9)
+*** buffer overflow detected ***: terminated
+
+=== CRASH: signal 6 (tid 49558) fault_addr=0xc196 ===
+  eip=efa8d31c eax=00000000 ebx=0000c196 ecx=0000c196 edx=00000006 esi=0000c196 edi=eefdbe34 ebp=00000000 esp=ff83e0f0
+/home/admin/bob/build/bob() [0x80736e2]
+linux-gate.so.1(__kernel_rt_sigreturn+0x0) [0xefa8d350]
+linux-gate.so.1(__kernel_vsyscall+0xc) [0xefa8d31c]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x97a5f) [0xeee36a5f]
+/usr/lib/i386-linux-gnu/libc.so.6(gsignal+0x25) [0xeeddcb45]
+/usr/lib/i386-linux-gnu/libc.so.6(abort+0x35) [0xeedc330e]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x254f2) [0xeedc44f2]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x13d5ba) [0xeeedc5ba]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x13cf7f) [0xeeedbf7f]
+/home/admin/bob/build/bob() [0x8214c60]
+/home/admin/bob/build/bob() [0x822a4f9]
+/home/admin/bob/build/bob() [0x822b2bf]
+/home/admin/bob/build/bob() [0x822b3e7]
+/home/admin/bob/build/bob() [0x822b486]
+/home/admin/bob/build/bob() [0x822b70c]
+/home/admin/bob/build/bob() [0x825a93e]
+/home/admin/bob/build/bob() [0x825d500]
+/home/admin/bob/build/bob() [0x8260225]
+/home/admin/bob/build/bob() [0x826034d]
+/home/admin/bob/build/bob(main+0x2ac) [0x806e0fc]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x25fb0) [0xeedc4fb0]
+/usr/lib/i386-linux-gnu/libc.so.6(__libc_start_main+0x8c) [0xeedc50ec]
+/home/admin/bob/build/bob() [0x80735b8]
