@@ -1103,6 +1103,23 @@ public:
        -- the PO's "black screen, does not exit". Traced to here only after the OnClose theory was
        DISPROVED by an [onclose] probe that never fired.
        Scoped to the main window: dialogs call DestroyWindow constantly and must not quit. */
+    /* EPIC M / MP S10 (2026-09-26): WM_DESTROY for ONE dialog by default -- CLockerRoom, whose
+       OnDestroy -> UpDateDPlay is the Locker Room's only commit point: player name, session name,
+       password, the game type's battlefield (MakeDeathMatchMission / MakeTeamPlayMission ->
+       death<N>.BF / teamply<N>.BF), GameIndex, Side and data rate. With it dead every comms game
+       flew the single-player quick mission 0 -- ONE aircraft -- so the joiner had no aircraft of
+       its own and crashed in UpdateHistBuffer. Called by RDialog::DestroyPanel BEFORE the hosted
+       controls are released, because Windows delivers WM_DESTROY to the parent while its child
+       edit boxes still hold their text (dispatched after the release, UpDateDPlay read "" for
+       every name). BOB_NO_LOCKER_DESTROY=1 reverts; BOB_WM_DESTROY=1 still dispatches them all. */
+    void BobEarlyDestroy() {
+        static int s_locker = -1;
+        if (s_locker < 0) s_locker = (getenv("BOB_NO_LOCKER_DESTROY") || getenv("BOB_WM_DESTROY")) ? 0 : 1;
+        if (!s_locker || strcmp(typeid(*this).name(), "11CLockerRoom")) return;
+        if (getenv("BOB_TRACE_DPLAY"))
+            { fprintf(stderr, "[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)\n"); fflush(stderr); }
+        OnDestroy();
+    }
     BOOL DestroyWindow() {
         bob_dialog_destroy_trace(this); bob_dialog_teardown(this);
         /* MP-5: dispatch WM_DESTROY. Windows delivers it while the window still exists, so this

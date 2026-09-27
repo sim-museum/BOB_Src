@@ -451,6 +451,12 @@ void CLockerRoom::UpDateDPlay()
 		_DPlay.RateDivider=1;
 	else if (_DPlay.RateDivider>3)
 		_DPlay.RateDivider=3;
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY"))
+		fprintf(stderr,"[mp] UpDateDPlay: player=\"%s\" session=\"%s\" GameType=%d GameIndex=%d Side=%d currmissnum=0x%x RateDivider=%d\n",
+			_DPlay.PlayerName,_DPlay.SessionName,(int)_DPlay.GameType,(int)_DPlay.GameIndex,(int)_DPlay.Side,
+			(unsigned)CSQuick1::quickdef.currmissnum,(int)_DPlay.RateDivider), fflush(stderr);
+#endif
 }
 
 void CLockerRoom::OnDestroy() 

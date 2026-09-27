@@ -1228,6 +1228,15 @@ extern "C" int bob_ole_state_summary(char* out, int outsz) {
 int g_bob_ole_unanswered = 0;          /* set by the LAST invoke; read immediately by the caller */
 unsigned long g_bob_ole_unanswered_n = 0;   /* cumulative, for gates */
 
+/* EPIC M / MP S10 (2026-09-26): a control changed by an OnTimer handler was never PAINTED. On Windows
+   AddString/SetCaption invalidate the control and WM_PAINT follows; here the front end repaints only
+   on a click, so the Ready Room's player list (CReadyRoom::OnTimer -> DPlay::DisplayPlayerInfo),
+   filled by a timer, stayed blank on screen with its rows in memory -- the PO's "neither Ready Room
+   listed the other player". Controls touched while a timer handler runs mark the screen dirty, and
+   bob_timers_tick asks the front end for one repaint (bob_fp_timer_repaint, throttled).
+   BOB_NO_TIMER_REPAINT=1 reverts. */
+int g_bob_in_timer = 0, g_bob_timer_dirty = 0;
+extern "C" void bob_fp_timer_repaint(void);
 extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vtRet, void* pvRet, const BYTE* /*pInfo*/, va_list ap) {
     /* S311 POSITIVE CONTROL. A front-end boot produces ZERO unanswered dispatches, so the branch
        below never runs and its trace never prints -- which is indistinguishable from a trace that
@@ -1237,6 +1246,7 @@ extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vt
        claims -- worth keeping straight, because using the first to "prove" the second is exactly
        how a control stops controlling anything.) */
     OleHost* h = getenv("BOB_OLE_FORCE_NOHOST") ? (OleHost*)0 : findHost(self);
+    if (h && g_bob_in_timer) g_bob_timer_dirty = 1;   /* MP S10: a timer changed a control */
     if (h) { g_bob_ole_unanswered = 0; h->dispatch(id, vtRet, pvRet, ap); return; }
     g_bob_ole_unanswered = 1; g_bob_ole_unanswered_n++;
     if (pvRet) {
@@ -1255,7 +1265,7 @@ extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vt
                 (unsigned)id, (int)vtRet);
 }
 extern "C" void bob_ole_setprop(CWnd* self, DISPID id, VARTYPE /*vt*/, va_list ap) {
-    OleHost* h = findHost(self); if (h) h->setprop(id, ap);
+    OleHost* h = findHost(self); if (h && g_bob_in_timer) g_bob_timer_dirty = 1; if (h) h->setprop(id, ap);
 }
 /* S312 (bob): the SAME hazard as bob_ole_invoke, at 206 more call sites. Every `Get*` property
    wrapper in the R* controls declares a local `result` and hands whatever GetProperty left there
@@ -1454,7 +1464,14 @@ extern "C" void bob_timers_tick(void) {
         if (getenv("BOB_TRACE_TIMER") && (fired == 0 || (fired % 500) == 0))
             fprintf(stderr, "[mfctimer] fire #%ld wnd=%p id=%u\n", fired, (void*)due[i].w, due[i].id), fflush(stderr);
         fired++;
+        g_bob_in_timer = 1;
         due[i].w->OnTimer(due[i].id);
+        g_bob_in_timer = 0;
+    }
+    if (g_bob_timer_dirty) {
+        g_bob_timer_dirty = 0;
+        static int norep = -1; if (norep < 0) norep = getenv("BOB_NO_TIMER_REPAINT") ? 1 : 0;
+        if (!norep) bob_fp_timer_repaint();
     }
 }
 

@@ -416,6 +416,92 @@ bool	DPlay::CommsGameSync()
 //Date			Thu 5 Sep 1996
 //Description	Comms talking stuff
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+/* EPIC M / MP S10 (2026-09-26), cross-ported from MA MPFLY-2: "the two players SEE each other" had
+   never been measured -- only that both reached 3-D. Once a second after csync, print every active
+   slot's aircraft as THIS peer holds it. The same slot printed by both peers at the same wall second
+   must agree to within a frame or two of flight; a remote slot that never moves means its packets
+   are not applied. BOB_TRACE_MPPOS=1. */
+static void bob_trace_mppos()
+{
+	static int s_on = -1;
+	if (s_on < 0) s_on = getenv("BOB_TRACE_MPPOS") ? 1 : 0;
+	static time_t last = 0; time_t now = time(0);
+	if (!s_on || !_DPlay.csync || now == last) return;
+	last = now;
+	for (int n = 0; n < MAXPLAYERS; n++)
+	{
+		if (!(_DPlay.ActivePlayers & (1 << n)) || !_DPlay.AllocPacket[n]) continue;
+		AirStrucPtr ac = (AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)_DPlay.AllocPacket[n]);
+		if (!ac) { fprintf(stderr, "[mppos] t=%ld slot=%d uid=0x%x NO ITEM\n", (long)now, n, (unsigned)_DPlay.AllocPacket[n]); continue; }
+		fprintf(stderr, "[mppos] t=%ld frame=%u slot=%d%s uid=0x%x pos=(%d,%d,%d) hdg=%d vel=%d movecode=%d dead=%d\n",
+		        (long)now, (unsigned)_DPlay.FrameCount, n, n == (int)_DPlay.mySlot ? "(me)" : "", (unsigned)_DPlay.AllocPacket[n],
+		        (int)ac->World.X, (int)ac->World.Y, (int)ac->World.Z, (int)(UWord)ac->hdg.a, (int)ac->vel_, (int)ac->movecode,
+		        (int)ac->Status.deadtime);
+	}
+	fflush(stderr);
+}
+
+/* EPIC M / MP S10, cross-ported from MA MPFLY-2: drive a two-player ENGAGEMENT without a pilot, to
+   prove damage and kills cross the wire. Both count wall seconds from this peer's first csync frame.
+     BOB_MP_FORMUP=<s>[:<metres>]  once, at s: put MY aircraft <metres> (default 250) ahead of the
+                                   first other player's aircraft, on its heading -- into its gunsight.
+     BOB_MP_FIRE_AT=<s>[:<secs>]   hold SHOOT from s for secs (default 6).
+   Test scaffolding only; the move goes through the FM's own Reset* calls, so it reaches the peer as
+   ordinary deltas. Every step prints [mpcombat]. */
+extern "C" void bob_fake_shoot(int);
+static void bob_mp_combat_hooks()
+{
+	static int init = 0; static time_t t0 = 0;
+	static int formAt = -1, formM = 250, formDone = 0, fireAt = -1, fireFor = 6, fireState = 0;
+	if (!init)
+	{
+		init = 1;
+		if (const char* f = getenv("BOB_MP_FORMUP")) { formAt = atoi(f); const char* c = strchr(f, ':'); if (c) formM = atoi(c + 1); }
+		if (const char* f = getenv("BOB_MP_FIRE_AT")) { fireAt = atoi(f); const char* c = strchr(f, ':'); if (c) fireFor = atoi(c + 1); }
+	}
+	if ((formAt < 0 && fireAt < 0) || !_DPlay.csync) return;
+	time_t now = time(0);
+	if (!t0) t0 = now;
+	int el = (int)(now - t0);
+	if (formAt >= 0 && !formDone && el >= formAt)
+	{
+		formDone = 1;
+		AirStrucPtr me = Manual_Pilot.ControlledAC2, other = NULL;
+		for (int n = 0; n < MAXPLAYERS && !other; n++)
+			if (n != (int)_DPlay.mySlot && (_DPlay.ActivePlayers & (1 << n)) && _DPlay.AllocPacket[n])
+				other = (AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)_DPlay.AllocPacket[n]);
+		if (!me || !other || !me->fly.pModel) { fprintf(stderr, "[mpcombat] formup: no aircraft (me=%p other=%p)\n", (void*)me, (void*)other); fflush(stderr); return; }
+		Model* m = me->fly.pModel;
+		double sp = sqrt((double)m->Vel.x * m->Vel.x + (double)m->Vel.y * m->Vel.y + (double)m->Vel.z * m->Vel.z);
+		/* The FM's heading convention is the NEGATIVE of the AirStruc's (measured: ResetAngles(19290)
+		   left hdg=46245 = -19291), so set it negated and verify; retry un-negated if that is wrong. */
+		m->ResetAngles(me, (UWord)(-(SWord)other->hdg.a), (UWord)other->pitch.a, (UWord)other->roll.a);
+		if ((UWord)(me->hdg.a - other->hdg.a) > 200 && (UWord)(other->hdg.a - me->hdg.a) > 200)
+			m->ResetAngles(me, (UWord)other->hdg.a, (UWord)other->pitch.a, (UWord)other->roll.a);
+		double nx = m->Ori.z.x, ny = m->Ori.z.y, nz = m->Ori.z.z;
+		double d = formM * 100.0;
+		m->ResetPosition(me, (SLong)(other->World.X + nx * d), (SLong)(other->World.Y + ny * d), (SLong)(other->World.Z + nz * d));
+		m->ResetVelocity(me, (SLong)(nx * sp), (SLong)(ny * sp), (SLong)(nz * sp), FALSE);
+		if (Persons2::PlayerGhostAC && Persons2::PlayerGhostAC != me)
+		{
+			Persons2::PlayerGhostAC->World = me->World;
+			Persons2::PlayerGhostAC->hdg = me->hdg; Persons2::PlayerGhostAC->pitch = me->pitch; Persons2::PlayerGhostAC->roll = me->roll;
+		}
+		fprintf(stderr, "[mpcombat] formup at +%ds: me uid=0x%x now (%d,%d,%d) hdg=%d, %dm ahead of uid=0x%x at (%d,%d,%d) hdg=%d speed=%.1f\n",
+		        el, (unsigned)me->uniqueID.count, (int)me->World.X, (int)me->World.Y, (int)me->World.Z, (int)(UWord)me->hdg.a, formM,
+		        (unsigned)other->uniqueID.count, (int)other->World.X, (int)other->World.Y, (int)other->World.Z, (int)(UWord)other->hdg.a, sp);
+		fflush(stderr);
+	}
+	if (fireAt >= 0)
+	{
+		if (fireState == 0 && el >= fireAt) { fireState = 1; fprintf(stderr, "[mpcombat] SHOOT held at +%ds\n", el), fflush(stderr); }
+		if (fireState == 1) bob_fake_shoot(1);
+		if (fireState == 1 && el >= fireAt + fireFor) { bob_fake_shoot(0); fireState = 2; fprintf(stderr, "[mpcombat] SHOOT released at +%ds\n", el), fflush(stderr); }
+	}
+}
+#endif
+
 void mobileitem::WinMove (int timeofday,WorldStuff* worldref)
 {
 #ifdef WINTIME	
@@ -433,6 +519,10 @@ void mobileitem::WinMove (int timeofday,WorldStuff* worldref)
 #endif
 	if (_DPlay.Implemented)
 	{
+#if defined(BOB_LINUX)
+		bob_trace_mppos();
+		bob_mp_combat_hooks();
+#endif
 #ifdef TIMERTIME
 		LARGE_INTEGER count;
 		QueryPerformanceCounter(&count);
@@ -4154,6 +4244,16 @@ UByte	DPlay::ProcessCollisionPacket(UByteP ptr, AirStrucPtr sender, ULong slot)
 	ItemPtr shooter;
 
 	shooter=*Persons2::ConvertPtrUID((UniqueID)shooteruid);
+#if defined(BOB_LINUX)
+	/* MP S10: a hit reported by another player (cross-port of MA MPFLY-2's [mpcoll]). BOB_TRACE_MPPOS=1. */
+	if (getenv("BOB_TRACE_MPPOS"))
+	{
+		ItemPtr _t = uid ? (ItemPtr)Persons2::ConvertPtrUID((UniqueID)uid) : NULL;
+		fprintf(stderr, "[mpcoll] from slot %lu uid=0x%x shooter=0x%x type=%d str=%d offset=%d target=%s%s\n", (unsigned long)slot,
+		        (unsigned)uid, (unsigned)shooteruid, (int)type, (int)str, (int)offset, _t ? "item" : "NULL",
+		        (_t && (AirStrucPtr)_t == Persons2::PlayerSeenAC) ? " (MY aircraft)" : ""), fflush(stderr);
+	}
+#endif
 
 #ifdef COLLPACKINFO
 	FILE* fp=fopen("collrcv.txt","at");
@@ -4829,6 +4929,12 @@ void	DPlay::SetScore(AirStrucPtr victim, ItemPtr hitter)
 
 	if (victim==shooter)
 		shooter=NULL;
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_MPPOS"))
+		fprintf(stderr, "[mpscore] victim uid=0x%x shooter uid=0x%x (me=0x%x) gametype=%d\n",
+		        victim ? (unsigned)victim->uniqueID.count : 0u, shooter ? (unsigned)shooter->uniqueID.count : 0u,
+		        (unsigned)Persons2::PlayerSeenAC->uniqueID.count, (int)GameType), fflush(stderr);
+#endif
 
 	if (victim)
 	{

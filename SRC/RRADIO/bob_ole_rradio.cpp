@@ -52,10 +52,20 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
        selection (updates m_CurSel + the tick) and return the index so bob_ole_click can
        fire the genuine Selected(index) event -> CSQuick1::OnSelectedRradio -> page switch. */
     int buttonCount() override { return (int)m_list.GetCount(); }
+    /* EPIC M / MP S10 (2026-09-26): a ONE-column radio stacks its buttons VERTICALLY (the Locker Room's
+       Game Type: Death Match / Team Play / Quick Missions), and mapping X across the width picked
+       button 0 for every click -- Team Play and Quick Missions could not be chosen. bob_ole_click
+       offers the point to onClickXY first; record Y there (declining the click) and use it below.
+       BOB_NO_RADIO_VERTICAL=1 reverts. */
+    int m_bobLastY = -1;
+    int onClickXY(int /*localX*/, int localY) override { m_bobLastY = localY; return 0; }
     int onButtonClick(int localX) override {
         int n = (int)m_list.GetCount();
         if (n <= 0 || sw <= 0) return -1;
         int idx = localX * n / sw;
+        static int novert = -1; if (novert < 0) novert = getenv("BOB_NO_RADIO_VERTICAL") ? 1 : 0;
+        if (!novert && m_Cols <= 1 && n > 1 && sh > 0 && m_bobLastY >= 0)
+            idx = m_bobLastY * n / sh;
         if (idx < 0) idx = 0; if (idx >= n) idx = n - 1;
         SetCurrentSelection(idx);
         if (bob_ole_trace()) fprintf(stderr, "[ole]   RRadio button click localX=%d/%d -> idx=%d\n", localX, sw, idx);

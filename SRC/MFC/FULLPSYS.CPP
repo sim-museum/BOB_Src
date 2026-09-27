@@ -567,8 +567,16 @@ static void bob_fp_repaint(RFullPanelDial* fp)
 			bob_oobtree_probe(fp->pdial[d], 0);
 		}
 	fp->DoPaint(fp->GetDC());
+	/* EPIC M / MP S10: ALL panel backgrounds first, THEN every panel's controls. Interleaved, a later
+	   panel's background (the Ready Room's chat panel repaints the screen art) buried the earlier
+	   panel's controls -- the PO's "after typing in the Ready Room the top text lines vanish" (every
+	   consumed key repaints), and the reason the Ready Room player list could never be shown.
+	   BOB_REPAINT_INTERLEAVED=1 restores the old order. */
+	static int interleaved = -1; if (interleaved < 0) interleaved = getenv("BOB_REPAINT_INTERLEAVED") ? 1 : 0;
+	if (!interleaved)
+		for (int d=0; d<3; d++) if (fp->pdial[d]) fp->pdial[d]->DoPaint(fp->GetDC());
 	for (int d=0; d<3; d++) if (fp->pdial[d]) {
-		fp->pdial[d]->DoPaint(fp->GetDC());
+		if (interleaved) fp->pdial[d]->DoPaint(fp->GetDC());
 		if (bobOleDraw()) {
 			int ox = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].X;
 			int oy = fp->m_currentscreen->resolutions[fp->m_currentres].dials[d].Y;
@@ -581,6 +589,20 @@ static void bob_fp_repaint(RFullPanelDial* fp)
 	}
 	bob_draw_menu(fp, fp->m_currentscreen, RFullPanelDial::resolutions[fp->m_currentres]);
 	bob_gdi_present();
+}
+/* EPIC M / MP S10: an OnTimer handler changed a hosted control (bob_ole.cpp, bob_timers_tick) --
+   repaint the front-end screen, as WM_PAINT would have. Front end only (not the map, not 3-D), and at
+   most 4 times a second so a timer that refills a list every pass cannot turn into a paint loop. */
+extern "C" int g_bob_map_active;
+extern "C" void bob_fp_timer_repaint(void)
+{
+	if (!g_bobActiveFP || !g_bobActiveFP->m_currentscreen || g_bob_map_active || Inst3d::InThe3D()) return;
+	static unsigned long last = 0;
+	unsigned long now = timeGetTime();
+	if (last && now - last < 250) return;
+	last = now;
+	if (getenv("BOB_TRACE_DPLAY")) { static int n = 0; if (n++ < 20) fprintf(stderr, "[frontend] timer changed a control -> repaint\n"); }
+	bob_fp_repaint(g_bobActiveFP);
 }
 /* R1.1b (Scrum Sprint 4): the QM pre-flight world setup that the game normally runs before
    StartFlying (factory init + node/squad tables + scramble campaign + the player's quick-

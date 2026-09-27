@@ -13,6 +13,8 @@
 #include "../RLISTBOX/bob_ole_host.h"
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
+#include <string>
 
 extern int g_bobListFontH;
 
@@ -99,8 +101,19 @@ struct HostREdit : public CREditCtrl, public OleHost {
         return (ch == 13) ? 2 : 1;
     }
     /* the current text, for the ReturnPressed argument (VTS_BSTR). */
-    const char* keyText() override { return m_bobKeyText = (const char*)GetCaption(); }
-    const char* m_bobKeyText = 0;
+    /* EPIC M / MP S10 (2026-09-26): GetCaption() returns a BSTR, which compat's AllocSysString
+       builds as a WIDE (wchar_t) string -- so the old `(const char*)GetCaption()` handed the
+       ReturnPressed handler the first letter only, and the Caption getprop (dispid 3) was not
+       routed at all: every CREdit::GetCaption() in the game returned "". The Locker Room reads
+       its player name, session name and password that way, so the typed name never reached the
+       session. Narrow the BSTR here; both readers use it. */
+    std::string captionText() {
+        std::string t; BSTR b = GetCaption();
+        if (b) { for (const wchar_t* p = (const wchar_t*)b; *p; p++) t += (char)*p; free(b); }
+        return t;
+    }
+    const char* keyText() override { m_bobKeyText = captionText(); return m_bobKeyText.c_str(); }
+    std::string m_bobKeyText;
     void dispatch(DISPID id, VARTYPE, void*, va_list) override {
         if (bob_ole_trace()) fprintf(stderr, "[ole] REdit: unhandled method dispid %ld\n", (long)id);
     }
@@ -125,6 +138,9 @@ struct HostREdit : public CREditCtrl, public OleHost {
         switch (id) {
         case 1: *(long*)pvRet = GetFontNum(); break;
         case 2: *(long*)pvRet = GetShadow(); break;
+        case 3: case DISPID_CAPTION_: case DISPID_TEXT_:
+            if (!getenv("BOB_NO_EDIT_GETCAPTION")) *(CString*)pvRet = captionText().c_str();   /* VT_BSTR = a CString here (bob_ole_getprop) */
+            break;
         default: if (bob_ole_trace()) fprintf(stderr, "[ole] REdit: unhandled getprop dispid %ld\n", (long)id); break;
         }
     }

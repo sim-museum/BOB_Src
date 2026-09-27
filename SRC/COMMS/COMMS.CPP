@@ -725,6 +725,10 @@ void DPlay::UISendDialogue (char* Text)
 	UIPlayerData.PacketID = PID_MESSAGE;
 
 	UIPlayerSize = sizeof (UIPLAYERDATA);
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY"))	/* MP S10: chat sent */
+		fprintf(stderr,"[chat] tx \"%s\" (to=%lu)\n",H2H_Player[mySlot].dialogue,(unsigned long)sendtowho), fflush(stderr);
+#endif
 
 	SendMessageToGroup((char*)&UIPlayerData,UIPlayerSize);
 }
@@ -3622,6 +3626,11 @@ bool DPlay::Process_PM_PlayerQuit(ULong from)
 void DPlay::Process_PM_Message(char* m)
 {
 	PUIPLAYERDATA pUIPlayerData=(PUIPLAYERDATA)m;
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY"))	/* MP S10: chat received */
+		fprintf(stderr,"[chat] rx from \"%s\": \"%s\" (to=%lu)\n",pUIPlayerData->playerinfo.name,
+			pUIPlayerData->playerinfo.dialogue,(unsigned long)pUIPlayerData->PlayerID), fflush(stderr);
+#endif
 
 	if (pUIPlayerData->PlayerID==0
 	|| (pUIPlayerData->PlayerID==1 && pUIPlayerData->playerinfo.MyTeam==H2H_Player[mySlot].MyTeam)

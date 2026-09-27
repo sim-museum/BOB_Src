@@ -525,6 +525,7 @@ void RDialog::DestroyPanel()
 	   defect is that this port has no dialog teardown at all -- every re-open allocates a fresh
 	   dialog plus its ~184 hosts and retains both. Kept here so the release lands automatically
 	   once teardown exists (SP.23); it costs nothing meanwhile. */
+	BobEarlyDestroy();	/* MP S10: the Locker Room commits while its edit boxes still hold text */
 	bob_ole_release_dialog(this);
 #endif
 	RDialog** pptr=&parent->fchild;

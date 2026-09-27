@@ -71,13 +71,13 @@ mkdir -p "$OUT"
 [ -x "$BOB" ] || { echo "no binary at $BOB" >&2; exit 2; }
 echo "bob MP-5 two-instance  (host $HOST_CLICKS + fly@$HOST_FLY_MS, client $CLIENT_CLICKS, ${SECS}s)"
 ( cd "$GD" && timeout -k 5 -s KILL "$SECS" env BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" \
-    BOB_WINPOS="$HOST_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$HOST_CLICKS" \
+    ${HOST_ENV:-} BOB_WINPOS="$HOST_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$HOST_CLICKS" \
     BOB_SDL_CLICK_MS="$HOST_FLY_MS" \
     "$BOB" ) >"$OUT/host.log" 2>&1 &
 hpid=$!
 sleep "$CLIENT_DELAY"
 ( cd "$GD" && timeout -k 5 -s KILL "$((SECS - CLIENT_DELAY))" env BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" \
-    BOB_WINPOS="$CLIENT_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$CLIENT_CLICKS" \
+    ${CLIENT_ENV:-} BOB_WINPOS="$CLIENT_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$CLIENT_CLICKS" \
     BOB_SDL_CLICK_MS="$CLIENT_ROW_MS" \
     "$BOB" ) >"$OUT/client.log" 2>&1 &
 cpid=$!
@@ -91,6 +91,26 @@ for who in host client; do
 done
 if grep -aq 'Timed out (SIP)' "$OUT/client.log"; then say "client clears the random-list wait" "FAIL (SIP timeout)"; fail=1
 else say "client clears the random-list wait" "PASS"; fi
+# EPIC M / MP S10 (2026-09-26): "both in 3-D" was the whole assertion, and it passed while the client
+# flew the HOST's aeroplane and died 20 s later. Assert the things a player means by "it works".
+for who in host client; do
+  l="$OUT/$who.log"
+  if grep -aq '=== CRASH' "$l"; then say "$who survives the flight" "FAIL ($(grep -a -m1 '=== CRASH' "$l"))"; fail=1
+  else say "$who survives the flight" "PASS"; fi
+  # the seat: the player's own aircraft uid (needs BOB_TRACE_AGG=1 for the [psq] line)
+  u=$(grep -a -m1 -o '\[psq\] player aircraft uid=[0-9]*' "$l" | grep -o '[0-9]*$')
+  eval "uid_$who=\${u:-none}"
+done
+if [ "$uid_host" = none ] || [ "$uid_client" = none ]; then say "each player seated in own aircraft" "FAIL (host=$uid_host client=$uid_client; BOB_TRACE_AGG=1?)"; fail=1
+elif [ "$uid_host" = "$uid_client" ]; then say "each player seated in own aircraft" "FAIL (both uid $uid_host)"; fail=1
+else say "each player seated in own aircraft" "PASS (host uid $uid_host, client uid $uid_client)"; fi
+if grep -aq '\[hist\] slot .* no aircraft' "$OUT/client.log" "$OUT/host.log"; then say "every slot has an aircraft" "FAIL"; fail=1
+else say "every slot has an aircraft" "PASS"; fi
+if [ -n "${BOB_TRACE_AGG:-}" ]; then
+  for who in host client; do
+    grep -aq 'synched=1 csync=1' "$OUT/$who.log" && say "$who comms-synced (csync=1)" "PASS" || { say "$who comms-synced (csync=1)" "FAIL"; fail=1; }
+  done
+fi
 printf '  logs: %s/{host,client}.log\n' "$OUT"
 [ "$fail" = 0 ] && echo "  MP-5 TWO-INSTANCE: PASS" || echo "  MP-5 TWO-INSTANCE: FAIL"
 exit $fail

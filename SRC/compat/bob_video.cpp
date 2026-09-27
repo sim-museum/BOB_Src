@@ -1014,6 +1014,34 @@ static void pump_events(void)
 			}
 		}
 	}
+	/* EPIC M / MP S10 (2026-09-26): BOB_SDL_TEXT_MS="ms,text[;ms,text...]" -- the wall-clock twin of
+	   BOB_SDL_TEXT, a whole word per entry (one SDL_TEXTINPUT per character, pushed on one pump). The
+	   tick-counted BOB_SDL_TEXT cannot aim at the Ready Room: the pump counter races with a peer. */
+	{
+		const char* st = getenv("BOB_SDL_TEXT_MS");
+		static Uint32 tt0 = 0; static char tfired[16];
+		if (st) {
+			if (!tt0) { tt0 = SDL_GetTicks(); memset(tfired, 0, sizeof(tfired)); }
+			Uint32 el = SDL_GetTicks() - tt0;
+			int idx = 0;
+			for (const char* p = st; p && *p && idx < 16; idx++) {
+				long T = atol(p); const char* c = strchr(p, ',');
+				const char* e = strchr(p, ';');
+				if (c && (!e || c < e) && !tfired[idx] && el >= (Uint32)T) {
+					tfired[idx] = 1;
+					int n = 0;
+					for (const char* q = c + 1; *q && q != e; q++, n++) {
+						SDL_Event ev; memset(&ev, 0, sizeof(ev));
+						ev.type = SDL_TEXTINPUT; ev.text.text[0] = *q; ev.text.text[1] = 0;
+						SDL_PushEvent(&ev);
+					}
+					fprintf(stderr, "[sdltextms] pushed %d SDL_TEXTINPUT chars at %ums (due %ldms)\n", n, (unsigned)el, T);
+					fflush(stderr);
+				}
+				p = e; if (p) p++;
+			}
+		}
+	}
 	/* MP-5: BOB_SDL_CLICK_MS="ms,x,y[;ms,x,y...]" -- the WALL-CLOCK twin of BOB_SDL_CLICK.
 	   BOB_SDL_CLICK fires on a PUMP-CALL counter, and that counter stops advancing when the game
 	   blocks inside its own comms timeouts: after the client clicks Select, JoinComms() blocks and

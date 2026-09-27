@@ -468,6 +468,16 @@ void	DPlay::DisplayPlayerInfo()
 	t=1;
 	char num[8],num2[8];
 	char score[128];
+#if defined(BOB_LINUX)
+	/* EPIC M / MP S10: what the Ready Room's player list is filled FROM (PO 09-19: "neither Ready Room
+	   listed the other player"). One line per non-empty slot, each time the list is rebuilt. */
+	if (getenv("BOB_TRACE_DPLAY"))
+		for (n=0;n<MAXPLAYERS;n++)
+			if (H2H_Player[n].status!=CPS_NONE)
+				fprintf(stderr,"[readyroom] list row: slot=%lu name=\"%s\" status=%d team=%d squadron=%d (mySlot=%lu)\n",
+					(unsigned long)n,H2H_Player[n].name,(int)H2H_Player[n].status,(int)H2H_Player[n].MyTeam,
+					(int)H2H_Player[n].squadron,(unsigned long)_DPlay.mySlot), fflush(stderr);
+#endif
 
 	for (n=0;n<MAXPLAYERS;n++)
 	{
