@@ -4952,9 +4952,43 @@ void	DPlay::SetScore(AirStrucPtr victim, ItemPtr hitter)
 		}
 
 		if (commsplayerdead && deadplayers&1<<n)
+		{
+#if defined(BOB_LINUX)
+			/* MP S11: this death is already scored (with its killer, see below) -- the hit record must not
+			   ALSO become an assist in ProcessLandedEffectPacket, or the shooter's own scoreboard reads
+			   kill+assist while the victim's reads kill. */
+			if (!getenv("BOB_MP_NO_LASTHITTER_KILL")) CommsKiller[n]=255;
+#endif
 			return;
+		}
 
 		deadplayers|=1<<n;
+#if defined(BOB_LINUX)
+		/* EPIC M / MP S11 (2026-09-27): BOTH SCOREBOARDS MUST AGREE. The SHOOTER's machine scores its own
+		   fatal hit (3DCOM, Col_Shooter set) as a kill; the VICTIM's machine usually scores the death
+		   through its crash / dead packet (SetScore(ac,NULL)) and only gives the hitter an ASSIST
+		   (ProcessLandedEffectPacket). Measured (run g): host "victim 0x1301 shooter 0x1300", joiner
+		   "victim 0x1301 shooter 0x0" -- a kill on one scoreboard, an assist on the other. The victim's
+		   machine already knows who hit it last (CommsKiller[], set in ProcessCollisionPacket): a comms
+		   player's death with no shooter credits that player with the kill, as the shooter's own
+		   machine does. BOB_MP_NO_LASTHITTER_KILL=1 reverts. */
+		if (!shooter && commsplayerdead && CommsKiller[n]<MAXPLAYERS && AllocPacket[CommsKiller[n]]
+			&& !getenv("BOB_MP_NO_LASTHITTER_KILL"))
+		{
+			shooter=(AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)AllocPacket[CommsKiller[n]]);
+			hitter=(ItemPtr)shooter;
+			CommsKiller[n]=255;	/* consumed: not ALSO an assist */
+			if (getenv("BOB_TRACE_MPPOS"))
+				fprintf(stderr,"[mpscore] no shooter given -> last comms hitter uid=0x%x credited\n",
+					shooter ? (unsigned)shooter->uniqueID.count : 0u), fflush(stderr);
+		}
+		struct BobScoreDump { ~BobScoreDump() {
+			if (getenv("BOB_TRACE_MPPOS")) {
+				fprintf(stderr,"[mpscore] table:");
+				for (int s=0;s<MAXPLAYERS;s++) if (DPlay::H2H_Player[s].status!=DPlay::CPS_NONE)
+					fprintf(stderr," slot%d k=%d d=%d a=%d",s,(int)DPlay::H2H_Player[s].kills,(int)DPlay::H2H_Player[s].deaths,(int)DPlay::H2H_Player[s].assists);
+				fprintf(stderr,"\n"); fflush(stderr); } } } bobScoreDump;
+#endif
 
 		if (commsplayerdead)
 			(H2H_Player+n)->deaths++;
@@ -7566,6 +7600,12 @@ void	DPlay::SendBFieldsToPlayers(bool request)
 				sentok=SendMessageToGroup(pack,PackSize);
 			}
 		}
+#if defined(BOB_LINUX)
+		/* MP S11 test knob (MA's MA_MP_BFSEND_DELAY_MS): a slow link / slow host, so the joiner asks for
+		   battlefield #k before packet #k has arrived -- the window in which it took a stale local entry. */
+		{ static int d = -1; if (d < 0) { const char* e = getenv("BOB_MP_BFSEND_DELAY_MS"); d = e ? atoi(e) : 0; }
+		  if (d > 0) Sleep(d); }
+#endif
 
 		delete [] pack;
 		pack=NULL;
@@ -8385,7 +8425,24 @@ void	DPlay::ProcessResyncPacket(LPACSTATEPACKET packet, ULong n)
 
 	if (AC)
 	{
+#if defined(BOB_LINUX)
+		/* EPIC M / MP S11 (2026-09-27): LATE JOIN, deathmatch/team play. The joiner (re)spawns its own
+		   aircraft and announces its absolute state in this packet with joining=true. The host skipped
+		   it because PlayerSync is set on the host (the port's own entry announcement sets it and no
+		   host-side world sync ever clears it), so the host kept the slot's STALE copy and applied
+		   the joiner's deltas to it: measured (run q3) the joiner's aircraft sat a constant 8.2 km E /
+		   1.4 km up / 16.4 km N from where the joiner actually flew, for the whole session. In a
+		   deathmatch/team game the joining player owns its position (it does not take over an AI
+		   aircraft as in a quick mission), so a joining packet is applied. BOB_MP_JOIN_NOPOS=1 reverts. */
+		bool bobJoinPos = packet->joining && GameType<COMMSQUICKMISSION && !getenv("BOB_MP_JOIN_NOPOS");
+		if (getenv("BOB_TRACE_MPPOS"))
+			fprintf(stderr,"[resyncpkt] slot=%lu joining=%d Host=%d PlayerSync=%d -> %s pos=(%ld,%ld,%ld)\n",(unsigned long)n,
+				(int)packet->joining,(int)Host,(int)PlayerSync,(!PlayerSync || !Host || bobJoinPos)?"APPLIED":"skipped",
+				(long)packet->Pos.X,(long)packet->Pos.Y,(long)packet->Pos.Z), fflush(stderr);
+		if (!PlayerSync || !Host || bobJoinPos)
+#else
 		if (!PlayerSync || !Host)
+#endif
 		{
 // get state data
 
@@ -10814,6 +10871,11 @@ bool	DPlay::ProcessRequiredBFieldPacket(ULong& bfctrl, FileNum& filelist)
 	{
 		if (temp->ordernum==BFieldToProcess)
 		{
+#if defined(BOB_LINUX)
+			if (getenv("BOB_TRACE_BFIELD"))	/* MP S11: which list entry satisfied the request */
+				fprintf(stderr,"[bfpick] want #%u -> file=%d bfctrl=%lu%s\n",(unsigned)BFieldToProcess,(int)temp->file,
+					(unsigned long)temp->bfctrl,(temp->ordernum==0xFFFF)?" (LOCAL entry?!)":""), fflush(stderr);
+#endif
 			if (bfctrl==Persons3::LOADSCRAMBF)
 			{
 				Persons2::SetUpDiary();

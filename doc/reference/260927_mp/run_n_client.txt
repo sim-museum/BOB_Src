@@ -1,0 +1,25 @@
+[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)
+[mp] UpDateDPlay: player="Bob" session="0" GameType=0 GameIndex=0 Side=1 currmissnum=0x8a3a RateDivider=3
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[bfpick] want #0 -> file=35333 bfctrl=5120
+[bfpick] want #1 -> file=30748 bfctrl=7684
+[bfpick] want #2 -> file=30749 bfctrl=7685
+[bfpick] want #3 -> file=30750 bfctrl=7686
+[bfpick] want #4 -> file=30789 bfctrl=10243
+[bfpick] want #5 -> file=30724 bfctrl=10244
+[bfpick] want #6 -> file=30733 bfctrl=10245
+[bfpick] want #7 -> file=30814 bfctrl=10246
+[bfpick] want #8 -> file=30983 bfctrl=10248
+[bfpick] want #9 -> file=31022 bfctrl=10249
+[bfpick] want #10 -> file=30989 bfctrl=10250
+[bfpick] want #11 -> file=31019 bfctrl=10251
+[bfpick] want #12 -> file=30993 bfctrl=10252
+[bfpick] want #13 -> file=31012 bfctrl=10253
+[bfpick] want #14 -> file=31029 bfctrl=10254
+[bfpick] want #15 -> file=35386 bfctrl=10255
+[psq] player aircraft uid=4865 GameType=0 (COMMSQUICKMISSION=2) Implemented=1 mySlot=1 PackPlayerSquad=0
+[bfpick] want #16 -> file=0 bfctrl=65280
+[frontend] (bridge) Launch3d done; tmpinst=0xae53780 tmpview=0xb737e00 InThe3D=1

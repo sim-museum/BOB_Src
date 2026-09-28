@@ -1,0 +1,14 @@
+gl-lock: display acquired by 'bob' — tools/bob_mp_two_instance.sh
+bob MP-5 two-instance  (host 2,1,1 + fly@130000,100,538;160000,121,747, client 2,2,1,1, 560s)
+  host enters 3D                                 PASS
+  client enters 3D                               PASS
+  client clears the random-list wait             PASS
+  host survives the flight                       PASS
+  client survives the flight                     PASS
+  each player seated in own aircraft             PASS (host uid 4864, client uid 4865)
+  every slot has an aircraft                     PASS
+  host comms-synced (csync=1)                    PASS
+  client comms-synced (csync=1)                  PASS
+  logs: /home/admin/bob-gates/mp10/p2/{host,client}.log
+  MP-5 TWO-INSTANCE: PASS
+gl-lock: display released by 'bob' (exit 0)

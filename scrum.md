@@ -12382,3 +12382,67 @@ aggregator's 22-byte packets to `ProcessPlayerMessage`, one reads as PID_IMHERE 
 `run_m_latejoin_client_crash.txt`). Fix direction: answer PID_PASSWORD from the 3-D dispatcher (or let the UI
 pump run for it), and treat an `AttemptToJoin` timeout as a failure. Not attempted in this sprint; the PO's
 recipe (host presses Fly last) does not take this path.
+
+## EPIC M / MP S11 (Opus 5.5, 2026-09-27) -- ✅ **Late join works (it is the original's design: the joiner presses Fly in its Ready Room while the host flies), both scoreboards agree on who shot whom, the Quick Mission frag seats draw as the formation diagram, and MA's MPFLY-1 GRLIST fix is cross-ported**
+
+**1. MPFLY-1 cross-port (`REPLAY.CPP`).** Both `new GRLIST` sites now set `ordernum=0xFFFF` (a local entry is never a
+received battlefield packet); `BOB_MP_GRLIST_UNINIT=1` reverts, `+BOB_MP_GRLIST_POISON=1` forces the worst-case
+garbage. New `BOB_MP_BFSEND_DELAY_MS` (host sleeps after each battlefield packet) and a `[bfpick]` trace
+(`BOB_TRACE_BFIELD`). Delayed arm (400 ms, run n): 9/9, 17 picks all received packets. ⚠ The poisoned control
+(run o) ALSO passes with 0 local picks -- measured, not assumed: in BoB the joiner never adds local entries in a comms
+game (`FindCommsNextBf` adds them only on the host or when not in comms) and `STUB3D.CPP:528` empties the list per
+mission. So MA's failure is not reachable in BoB's current flow; the fix is defensive and costs nothing.
+
+**2. Late join -- three defects in a row, each measured.** (runs m, q, q2, q3, q4)
+* The host's AGGREGATOR ate the joiner's `PID_PASSWORD`: it is sent to `DPID_ALLPLAYERS` (0), the shim has one
+  queue and `to==0` matched any caller -- during a flight the aggregator thread drains constantly
+  (`drained/s: AGGRGTOR.CPP:349 from=4 to=0 len=47`). Real DirectPlay gives each local player its own copy; the
+  aggregator wants only its own traffic. Shim: the player created with an event handle is the aggregator, and a
+  `to==0` message is not offered to it. `BOB_MP_AGG_TAKES_ALL=1` reverts.
+* `AttemptToJoin` returned `FALSE` on timeout -- and `FALSE == 0 == DP_OK`, the value the caller tests for SUCCESS.
+  A join nobody answered was treated as accepted (slot 0, aggID 0). Now a refusal with "could not contact host"
+  (`[mp] AttemptToJoin: the host did not answer`). `BOB_MP_JOINTIMEOUT_OK=1` reverts.
+* The joiner received the flight's aggregate traffic BEFORE logging in (the host shim adds a joiner to its groups on
+  connect) and its login loop fed it to `ProcessPlayerMessage`: `PID_IMHERE` with a garbage Slot ->
+  `*** buffer overflow detected ***` (`Process_PM_ImHere`, symbolized). The joiner's shim now drops group-addressed
+  packets until its game has joined a group (`BOB_MP_PREJOIN_GROUP=1` reverts), and `Process_PM_ImHere` /
+  `Process_PM_PlayerUpdate` refuse a Slot >= MAXPLAYERS.
+* Then it flew -- with the joiner's aircraft, as the host saw it, a CONSTANT 8.2 km E / 1.4 km up / 16.4 km N of where
+  the joiner flew it (run q3: identical motion, fixed offset). The joiner announces its absolute state in a
+  `PID_RESYNC` with `joining=1`; the host skipped it because `PlayerSync` is set on the host. In deathmatch / team
+  play the joiner owns its (re)spawn position, so a joining packet is applied (`[resyncpkt] ... APPLIED`,
+  `BOB_MP_JOIN_NOPOS=1` reverts). Run q4: host and joiner agree on the joiner's position to ~5 m.
+Late join is the ORIGINAL's design (`FULLPANE.CPP` "if game in progress then join" -> `JoinGame`), so it was made to
+work rather than refused.
+
+**3. Kill credit.** The shooter's machine scores its own fatal hit as a kill; the victim's machine scores the death
+from its crash/dead packet with no shooter and gives the hitter only an ASSIST (`ProcessLandedEffectPacket`) -- a kill
+on one scoreboard, an assist on the other. `SetScore` now credits the last comms hitter (`CommsKiller[]`, already kept
+by `ProcessCollisionPacket`) when a comms player's death names no shooter, and a duplicate death report consumes the
+hit record so it cannot ALSO become an assist. Run p: both tables `slot0 k=1 d=1 a=0 slot1 k=0 d=2 a=0`
+(`[mpscore] table`, `BOB_TRACE_MPPOS`). The d=1 each at t+6 s is a real mid-air collision of the two unpiloted
+harness aircraft 27 m apart, scored identically on both sides. `BOB_MP_NO_LASTHITTER_KILL=1` reverts. Cost: a player
+damaged by A and finished by B no longer gives A an assist.
+
+**4. Frag seat layout.** `BoBFrag::RefreshPilots` places IDC_PILOT_0..14 with `GetWindowRect`+`MoveWindow` from the
+formation diagram; the REdtBt hosts ignored MoveWindow and drew their template rects (the staircase). Those 15 hosts
+now take live geometry like the Tote Board (`BOB_NO_FRAG_GEOMETRY=1` reverts): four vics of three
+(`doc/reference/260927_mp/qm_frag_vics_after.png`). Run r (Quick Missions, seats clicked at the new positions): 9/9.
+
+**5. MA's shim findings, checked in BoB -- both present, both fixed (`bob_dplay.cpp`).** (a) A queue slot held **1024**
+bytes and the socket/send buffers 2048: a larger message was truncated in SILENCE. Now `BOB_DP_MAXMSG=16384` everywhere,
+and any truncation prints `[dplay] ... TRUNCATED`. (b) The shim object is driven by TWO threads (the game's UI/3-D
+dispatch and the aggregator thread) and its queue, socket and group tables had no lock. A recursive mutex now guards
+every entry point that touches them (qpush, pump, Open, Close, CreatePlayer, CreateGroup, AddPlayerToGroup, Send,
+Receive, GetMessageCount); `BOB_MP_NO_SHIM_LOCK=1` reverts.
+
+**Parity reference reseeded (one screen, on evidence).** The gate suite's only new DIFF was `bobfrag` (3998 bytes,
+bbox = the pilot box): item 4 moved it from the template's (93,237) to (119,249). The gold (`260915_gold_raf_mission_
+briefing.png`, 1024-space) has Bob at (120,250), Red 2 at (46,280), Red 3 at (194,280) -- ours now (119,249) / (45,280)
+/ (194,280). The OLD reference recorded the staircase bug, so `doc/ref/native/bobfrag.ppm` is reseeded
+(`doc/reference/260927_mp/parity_bobfrag_old_ref_vs_new.png`). The four config-screen DIFFs are the pre-existing ones.
+
+**Verification** (`doc/reference/260927_mp/`): n (bfield delay) / o (delay + poison control) / p, p2 (Deathmatch +
+combat + chat: tables agree) / q3, q4 (late join) / r (Quick Missions) / i2 (Team Play): every run 9/9 on the
+two-instance harness. Late join: `LATEJOIN=1` with the joiner pressing Fly in its Ready Room.
+**Still open:** no two-PC run.

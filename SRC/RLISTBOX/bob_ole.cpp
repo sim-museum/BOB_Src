@@ -1489,6 +1489,12 @@ static bool bob_ole_live(OleHost* h) {
     if (h->liveGeometry()) return true;
     /* not its IDJ_TITLE (21): RDialog::UpdateTitle sizes the title from the dialog's viewsize,
        which headlessly is the whole screen, and ToteSector itself never moves it */
+    /* EPIC M / MP S11: the frag screen's pilot/seat buttons (IDD_BOBFRAG, IDC_PILOT_0..14) are laid out
+       by BoBFrag::RefreshPilots with GetWindowRect + MoveWindow from FragScreenBody::buttonpos (the
+       formation diagram). Ignored, they drew at their TEMPLATE rects: a diagonal staircase for flights
+       2-4 in every quick mission. BOB_NO_FRAG_GEOMETRY=1 reverts. */
+    if (h->dlgId == 1164 /*IDD_BOBFRAG*/ && h->ctrlId >= 2200 && h->ctrlId <= 2214 && !getenv("BOB_NO_FRAG_GEOMETRY"))
+        return true;
     return h->dlgId == 1084 /*IDD_TOTSECTOR*/ && h->ctrlId != 21 && !getenv("BOB_NO_TOTE_GEOMETRY");
 }
 extern "C++" void bob_ole_move_window(CWnd* w, int x, int y, int cw, int ch) {

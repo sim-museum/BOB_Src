@@ -1,0 +1,150 @@
+[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)
+[mp] UpDateDPlay: player="Bob" session="0" GameType=0 GameIndex=0 Side=1 currmissnum=0x8a3a RateDivider=3
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=1)
+[bfpick] want #0 -> file=35333 bfctrl=5120
+[bfpick] want #1 -> file=30748 bfctrl=7684
+[bfpick] want #2 -> file=30749 bfctrl=7685
+[bfpick] want #3 -> file=30750 bfctrl=7686
+[bfpick] want #4 -> file=30789 bfctrl=10243
+[bfpick] want #5 -> file=30724 bfctrl=10244
+[bfpick] want #6 -> file=30733 bfctrl=10245
+[bfpick] want #7 -> file=30814 bfctrl=10246
+[bfpick] want #8 -> file=30983 bfctrl=10248
+[bfpick] want #9 -> file=31022 bfctrl=10249
+[bfpick] want #10 -> file=30989 bfctrl=10250
+[bfpick] want #11 -> file=31019 bfctrl=10251
+[bfpick] want #12 -> file=30993 bfctrl=10252
+[bfpick] want #13 -> file=31012 bfctrl=10253
+[bfpick] want #14 -> file=31029 bfctrl=10254
+[bfpick] want #15 -> file=35386 bfctrl=10255
+[psq] player aircraft uid=4865 GameType=0 (COMMSQUICKMISSION=2) Implemented=1 mySlot=1 PackPlayerSquad=0
+[bfpick] want #16 -> file=0 bfctrl=65280
+[frontend] (bridge) Launch3d done; tmpinst=0xa4cf4b0 tmpview=0xac8ec10 InThe3D=1
+[mppos] t=1790501585 frame=12 slot=0 uid=0x1300 pos=(36559692,353568,31469567) hdg=18286 vel=1449998 movecode=63 dead=0
+[mppos] t=1790501585 frame=12 slot=1(me) uid=0x1301 pos=(36590922,353568,31517729) hdg=26481 vel=1449999 movecode=63 dead=0
+[mppos] t=1790501586 frame=20 slot=0 uid=0x1300 pos=(36574438,353709,31466846) hdg=18287 vel=1440911 movecode=63 dead=0
+[mppos] t=1790501586 frame=20 slot=1(me) uid=0x1301 pos=(36599105,353709,31505839) hdg=26480 vel=1440292 movecode=63 dead=0
+[mppos] t=1790501587 frame=28 slot=0 uid=0x1300 pos=(36587478,354034,31464437) hdg=18287 vel=1438884 movecode=63 dead=0
+[mppos] t=1790501587 frame=28 slot=1(me) uid=0x1301 pos=(36607260,354052,31493989) hdg=26480 vel=1437831 movecode=63 dead=0
+[mppos] t=1790501588 frame=37 slot=0 uid=0x1300 pos=(36601602,354566,31461830) hdg=18287 vel=1436175 movecode=63 dead=0
+[mppos] t=1790501588 frame=37 slot=1(me) uid=0x1301 pos=(36615398,354585,31482164) hdg=26480 vel=1435013 movecode=63 dead=0
+[mppos] t=1790501589 frame=45 slot=0 uid=0x1300 pos=(36615688,355277,31459232) hdg=18287 vel=1432355 movecode=63 dead=0
+[mppos] t=1790501589 frame=45 slot=1(me) uid=0x1301 pos=(36623513,355304,31470374) hdg=26480 vel=1431120 movecode=63 dead=0
+[mppos] t=1790501590 frame=53 slot=0 uid=0x1300 pos=(36629715,356187,31456641) hdg=18286 vel=1427556 movecode=63 dead=0
+[mppos] t=1790501590 frame=53 slot=1(me) uid=0x1301 pos=(36631597,356204,31458630) hdg=26479 vel=1426144 movecode=63 dead=0
+[mpscore] victim uid=0x1300 shooter uid=0x0 (me=0x1301) gametype=0
+[mpscore] table: slot0 k=0 d=1 a=0 slot1 k=0 d=0 a=0
+[mpscore] victim uid=0x1300 shooter uid=0x0 (me=0x1301) gametype=0
+[mpscore] victim uid=0x1301 shooter uid=0x0 (me=0x1301) gametype=0
+[mpscore] table: slot0 k=0 d=1 a=0 slot1 k=0 d=1 a=0
+[mpscore] victim uid=0x1300 shooter uid=0x0 (me=0x1301) gametype=0
+[mppos] t=1790501591 frame=62 slot=0 uid=0x1300 pos=(36632136,356334,31456205) hdg=18354 vel=46479 movecode=0 dead=1
+[mppos] t=1790501591 frame=62 slot=1(me) uid=0x1301 pos=(36632668,356324,31457071) hdg=26468 vel=52988 movecode=0 dead=1
+[mppos] t=1790501592 frame=70 slot=0 uid=0x1300 pos=(36633089,356218,31456024) hdg=18464 vel=129723 movecode=0 dead=1
+[mppos] t=1790501592 frame=70 slot=1(me) uid=0x1301 pos=(36633199,356213,31456299) hdg=26429 vel=138839 movecode=0 dead=1
+[mppos] t=1790501593 frame=78 slot=0 uid=0x1300 pos=(36634859,355894,31455657) hdg=18570 vel=224997 movecode=0 dead=1
+[mppos] t=1790501593 frame=78 slot=1(me) uid=0x1301 pos=(36634248,355870,31454798) hdg=26383 vel=232784 movecode=0 dead=1
+[mppos] t=1790501594 frame=87 slot=0 uid=0x1300 pos=(36637576,355808,31455089) hdg=18570 vel=307215 movecode=0 dead=1
+[mppos] t=1790501594 frame=87 slot=1(me) uid=0x1301 pos=(36635815,355732,31452559) hdg=26383 vel=313283 movecode=0 dead=1
+[mppos] t=1790501595 frame=95 slot=0 uid=0x1300 pos=(36640900,355786,31454394) hdg=18571 vel=371599 movecode=0 dead=1
+[mppos] t=1790501595 frame=95 slot=1(me) uid=0x1301 pos=(36637801,355732,31449724) hdg=26383 vel=377886 movecode=0 dead=1
+[mppos] t=1790501596 frame=103 slot=0 uid=0x1300 pos=(36644892,355786,31453555) hdg=18571 vel=428111 movecode=0 dead=1
+[mppos] t=1790501596 frame=103 slot=1(me) uid=0x1301 pos=(36640128,355732,31446407) hdg=26383 vel=432506 movecode=0 dead=1
+[mppos] t=1790501597 frame=112 slot=0 uid=0x1300 pos=(36649307,355786,31452622) hdg=18571 vel=475791 movecode=0 dead=1
+[mppos] t=1790501597 frame=112 slot=1(me) uid=0x1301 pos=(36642747,355732,31442672) hdg=26383 vel=480531 movecode=0 dead=1
+[mppos] t=1790501598 frame=120 slot=0 uid=0x1300 pos=(36654237,355786,31451583) hdg=18571 vel=519311 movecode=0 dead=1
+[mppos] t=1790501598 frame=120 slot=1(me) uid=0x1301 pos=(36645626,355732,31438566) hdg=26383 vel=523751 movecode=0 dead=1
+[mppos] t=1790501599 frame=128 slot=0 uid=0x1300 pos=(36659511,355786,31450472) hdg=18571 vel=559247 movecode=0 dead=1
+[mppos] t=1790501599 frame=128 slot=1(me) uid=0x1301 pos=(36648742,355732,31434123) hdg=26383 vel=563250 movecode=0 dead=1
+[mppos] t=1790501600 frame=137 slot=0 uid=0x1300 pos=(36665211,355786,31449267) hdg=18571 vel=595983 movecode=0 dead=1
+[mppos] t=1790501600 frame=137 slot=1(me) uid=0x1301 pos=(36652075,355732,31429370) hdg=26383 vel=599741 movecode=0 dead=1
+[mppos] t=1790501601 frame=145 slot=0 uid=0x1300 pos=(36675935,356101,31446260) hdg=19299 vel=1344399 movecode=0 dead=0
+[mppos] t=1790501601 frame=145 slot=1(me) uid=0x1301 pos=(36658035,356051,31419577) hdg=27110 vel=1344860 movecode=0 dead=0
+[mppos] t=1790501602 frame=153 slot=0 uid=0x1300 pos=(36688883,356181,31442546) hdg=19298 vel=1348047 movecode=0 dead=0
+[mppos] t=1790501602 frame=153 slot=1(me) uid=0x1301 pos=(36664987,356125,31408042) hdg=27110 vel=1348455 movecode=0 dead=0
+[mppos] t=1790501603 frame=162 slot=0 uid=0x1300 pos=(36701856,356315,31438824) hdg=19298 vel=1350927 movecode=0 dead=0
+[mppos] t=1790501603 frame=162 slot=1(me) uid=0x1301 pos=(36671954,356269,31396480) hdg=27110 vel=1351279 movecode=0 dead=0
+[mppos] t=1790501604 frame=170 slot=0 uid=0x1300 pos=(36714852,356527,31435094) hdg=19298 vel=1353253 movecode=0 dead=0
+[mppos] t=1790501604 frame=170 slot=1(me) uid=0x1301 pos=(36678935,356487,31384898) hdg=27110 vel=1353476 movecode=0 dead=0
+[mppos] t=1790501605 frame=178 slot=0 uid=0x1300 pos=(36727865,356820,31431359) hdg=19298 vel=1354959 movecode=0 dead=0
+[mppos] t=1790501605 frame=178 slot=1(me) uid=0x1301 pos=(36685925,356782,31373302) hdg=27110 vel=1355063 movecode=0 dead=0
+[mppos] t=1790501606 frame=187 slot=0 uid=0x1300 pos=(36740892,357184,31427622) hdg=19297 vel=1355983 movecode=0 dead=0
+[mppos] t=1790501606 frame=187 slot=1(me) uid=0x1301 pos=(36692920,357155,31361696) hdg=27109 vel=1356044 movecode=0 dead=0
+[mppos] t=1790501607 frame=195 slot=0 uid=0x1300 pos=(36753924,357640,31423885) hdg=19297 vel=1356453 movecode=0 dead=0
+[mppos] t=1790501607 frame=195 slot=1(me) uid=0x1301 pos=(36699919,357608,31350087) hdg=27108 vel=1356441 movecode=0 dead=0
+[mppos] t=1790501608 frame=203 slot=0 uid=0x1300 pos=(36766950,358171,31420148) hdg=19296 vel=1356260 movecode=0 dead=0
+[mppos] t=1790501608 frame=203 slot=1(me) uid=0x1301 pos=(36706918,358141,31338480) hdg=27108 vel=1356265 movecode=0 dead=0
+[mppos] t=1790501609 frame=212 slot=0 uid=0x1300 pos=(36779973,358782,31416416) hdg=19295 vel=1355663 movecode=0 dead=0
+[mppos] t=1790501609 frame=212 slot=1(me) uid=0x1301 pos=(36713913,358754,31326881) hdg=27107 vel=1355539 movecode=0 dead=0
+[mppos] t=1790501610 frame=220 slot=0 uid=0x1300 pos=(36792984,359468,31412690) hdg=19294 vel=1354447 movecode=0 dead=0
+[mppos] t=1790501610 frame=220 slot=1(me) uid=0x1301 pos=(36720901,359445,31315294) hdg=27106 vel=1354296 movecode=0 dead=0
+[mppos] t=1790501611 frame=228 slot=0 uid=0x1300 pos=(36805975,360234,31408967) hdg=19293 vel=1352804 movecode=0 dead=0
+[mppos] t=1790501611 frame=228 slot=1(me) uid=0x1301 pos=(36727881,360213,31303724) hdg=27105 vel=1352555 movecode=0 dead=0
+[mppos] t=1790501612 frame=237 slot=0 uid=0x1300 pos=(36818943,361066,31405252) hdg=19291 vel=1350671 movecode=0 dead=0
+[mppos] t=1790501612 frame=237 slot=1(me) uid=0x1301 pos=(36734850,361053,31292175) hdg=27104 vel=1350368 movecode=0 dead=0
+[mppos] t=1790501613 frame=245 slot=0 uid=0x1300 pos=(36831884,361978,31401550) hdg=19291 vel=1348175 movecode=0 dead=0
+[mppos] t=1790501613 frame=245 slot=1(me) uid=0x1301 pos=(36741805,361963,31280651) hdg=27103 vel=1347759 movecode=0 dead=0
+[mppos] t=1790501614 frame=253 slot=0 uid=0x1300 pos=(36844791,362949,31397854) hdg=19290 vel=1345209 movecode=0 dead=0
+[mppos] t=1790501614 frame=253 slot=1(me) uid=0x1301 pos=(36748745,362938,31269157) hdg=27102 vel=1344766 movecode=0 dead=0
+[mppos] t=1790501615 frame=6 slot=0 uid=0x1300 pos=(36857669,363984,31394169) hdg=19289 vel=1341903 movecode=0 dead=0
+[mppos] t=1790501615 frame=6 slot=1(me) uid=0x1301 pos=(36755667,363974,31257694) hdg=27100 vel=1341452 movecode=0 dead=0
+[mppos] t=1790501616 frame=14 slot=0 uid=0x1300 pos=(36870507,365070,31390500) hdg=19287 vel=1338297 movecode=0 dead=0
+[mppos] t=1790501616 frame=14 slot=1(me) uid=0x1301 pos=(36762570,365067,31246266) hdg=27099 vel=1337836 movecode=0 dead=0
+[mppos] t=1790501617 frame=22 slot=0 uid=0x1300 pos=(36883310,366214,31386843) hdg=19286 vel=1334500 movecode=0 dead=0
+[mppos] t=1790501617 frame=22 slot=1(me) uid=0x1301 pos=(36769453,366209,31234874) hdg=27097 vel=1333982 movecode=0 dead=0
+[mppos] t=1790501618 frame=31 slot=0 uid=0x1300 pos=(36896067,367398,31383201) hdg=19284 vel=1330511 movecode=0 dead=0
+[mppos] t=1790501618 frame=31 slot=1(me) uid=0x1301 pos=(36776316,367395,31223521) hdg=27096 vel=1329932 movecode=0 dead=0
+[mppos] t=1790501619 frame=39 slot=0 uid=0x1300 pos=(36908780,368620,31379574) hdg=19282 vel=1326243 movecode=0 dead=0
+[mppos] t=1790501619 frame=39 slot=1(me) uid=0x1301 pos=(36783157,368621,31212208) hdg=27094 vel=1325721 movecode=0 dead=0
+[mppos] t=1790501620 frame=47 slot=0 uid=0x1300 pos=(36921457,369875,31375958) hdg=19281 vel=1321977 movecode=0 dead=0
+[mppos] t=1790501620 frame=47 slot=1(me) uid=0x1301 pos=(36789976,369878,31200935) hdg=27092 vel=1321425 movecode=0 dead=0
+[mppos] t=1790501621 frame=56 slot=0 uid=0x1300 pos=(36934079,371155,31372363) hdg=19279 vel=1317647 movecode=0 dead=0
+[mppos] t=1790501621 frame=56 slot=1(me) uid=0x1301 pos=(36796773,371161,31189702) hdg=27090 vel=1317064 movecode=0 dead=0
+[mppos] t=1790501622 frame=64 slot=0 uid=0x1300 pos=(36946665,372458,31368774) hdg=19277 vel=1313251 movecode=0 dead=0
+[mppos] t=1790501622 frame=64 slot=1(me) uid=0x1301 pos=(36803549,372463,31178510) hdg=27089 vel=1312696 movecode=0 dead=0
+[mppos] t=1790501623 frame=72 slot=0 uid=0x1300 pos=(36959207,373777,31365207) hdg=19275 vel=1308921 movecode=0 dead=0
+[mppos] t=1790501623 frame=72 slot=1(me) uid=0x1301 pos=(36810303,373778,31167358) hdg=27086 vel=1308376 movecode=0 dead=0
+[mpcombat] formup at +38s: me uid=0x1301 now (36973352,375276,31361182) hdg=19274, 150m ahead of uid=0x1300 at (36959207,373777,31365207) hdg=19275 speed=130.8
+[mppos] t=1790501624 frame=81 slot=0 uid=0x1300 pos=(36971714,375095,31361653) hdg=19273 vel=1304655 movecode=0 dead=0
+[mppos] t=1790501624 frame=81 slot=1(me) uid=0x1301 pos=(36985831,376581,31357685) hdg=19201 vel=1300547 movecode=0 dead=0
+[mppos] t=1790501625 frame=89 slot=0 uid=0x1300 pos=(36984167,376418,31358109) hdg=19271 vel=1300515 movecode=0 dead=0
+[mppos] t=1790501625 frame=89 slot=1(me) uid=0x1301 pos=(36998274,377880,31354205) hdg=19248 vel=1296724 movecode=0 dead=0
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=8 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=8 target=item (MY aircraft)
+[mppos] t=1790501626 frame=97 slot=0 uid=0x1300 pos=(36996571,377729,31354587) hdg=19268 vel=1292153 movecode=0 dead=0
+[mppos] t=1790501626 frame=97 slot=1(me) uid=0x1301 pos=(37010681,379168,31350735) hdg=19212 vel=1293087 movecode=0 dead=0
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=8 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=8 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=8 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=9 target=item (MY aircraft)
+[mppos] t=1790501627 frame=106 slot=0 uid=0x1300 pos=(37008885,379023,31351096) hdg=19266 vel=1283599 movecode=0 dead=0
+[mppos] t=1790501627 frame=106 slot=1(me) uid=0x1301 pos=(37023058,380441,31347279) hdg=19242 vel=1289681 movecode=0 dead=0
+[mppos] t=1790501628 frame=114 slot=0 uid=0x1300 pos=(37021136,380287,31347621) hdg=19262 vel=1275535 movecode=0 dead=0
+[mppos] t=1790501628 frame=114 slot=1(me) uid=0x1301 pos=(37035405,381693,31343830) hdg=19220 vel=1286551 movecode=0 dead=0
+[mppos] t=1790501629 frame=122 slot=0 uid=0x1300 pos=(37033310,381507,31344175) hdg=19261 vel=1268068 movecode=0 dead=0
+[mppos] t=1790501629 frame=122 slot=1(me) uid=0x1301 pos=(37047725,382920,31340389) hdg=19211 vel=1283695 movecode=0 dead=0
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=4 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=4 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=4 target=item (MY aircraft)
+[mppos] t=1790501630 frame=131 slot=0 uid=0x1300 pos=(37045416,382676,31340752) hdg=19259 vel=1261007 movecode=0 dead=0
+[mppos] t=1790501630 frame=131 slot=1(me) uid=0x1301 pos=(37060021,384105,31336955) hdg=19297 vel=1280688 movecode=0 dead=0
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=4 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=4 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=4 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mppos] t=1790501631 frame=139 slot=0 uid=0x1300 pos=(37057470,383785,31337346) hdg=19256 vel=1254755 movecode=0 dead=0
+[mppos] t=1790501631 frame=139 slot=1(me) uid=0x1301 pos=(37072275,385169,31333446) hdg=19515 vel=1277595 movecode=0 dead=0
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mpcoll] from slot 0 uid=0x1301 shooter=0x1300 type=0 str=1 offset=2 target=item (MY aircraft)
+[mppos] t=1790501632 frame=147 slot=0 uid=0x1300 pos=(37069471,384827,31333954) hdg=19252 vel=1249060 movecode=0 dead=0
+[mppos] t=1790501632 frame=147 slot=1(me) uid=0x1301 pos=(37084436,385936,31329643) hdg=19797 vel=1276297 movecode=0 dead=0

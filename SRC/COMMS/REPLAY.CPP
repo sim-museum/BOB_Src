@@ -2767,6 +2767,20 @@ void	Replay::AddFileAndGlobRefsToList(FileNum file,ULong bfctrl)
 
 	temp2->file=file;
 	temp2->bfctrl=bfctrl;
+#if defined(BOB_LINUX)
+	/* EPIC M / MP S11 (2026-09-27), cross-port of MA MPFLY-1 (the joiner's "UIDband table overlap!" at
+	   3-D entry). `ordernum` was never set -- `new GRLIST` leaves heap garbage. A JOINER keeps this
+	   locally-added copy of every battlefield it loads in the SAME list DPlay::StoreReceivedBField fills
+	   with the host's numbered packets, and ProcessRequiredBFieldPacket takes "the entry whose ordernum
+	   == the next one I need". If the host's next packet has not arrived (a LAN, a slow host), a local
+	   copy whose garbage happens to match is taken: the battlefield loads twice and a UID band overflows.
+	   A local entry is never a received packet. BOB_MP_GRLIST_UNINIT=1 reverts;
+	   BOB_MP_GRLIST_POISON=1 (with it) forces the worst-case garbage, the negative control. */
+	if (!getenv("BOB_MP_GRLIST_UNINIT"))
+		temp2->ordernum=0xFFFF;
+	else if (getenv("BOB_MP_GRLIST_POISON"))
+		temp2->ordernum=(UWord)(_DPlay.BFieldToProcess);
+#endif
 	
 	temp2->list=NULL;
 	GetGlobRefs(temp2->list);
@@ -2897,6 +2911,9 @@ Bool	Replay::LoadFileAndGlobRefList()
 		LPGRLIST temp=new GRLIST;
 
 		temp->next=NULL;
+#if defined(BOB_LINUX)
+		temp->ordernum=0xFFFF;	/* MP S11 / MA MPFLY-1: never a received bfield packet */
+#endif
 		temp->file=LoadBFieldNum();
 		temp->bfctrl=LoadBFCtrl();
 		temp->list=NULL;

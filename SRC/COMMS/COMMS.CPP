@@ -2226,7 +2226,18 @@ ULong DPlay::AttemptToJoin()
 		now=timeGetTime();
 
 		if (time.TimedOut(now))
+#if defined(BOB_LINUX)
+		{
+			/* EPIC M / MP S11: FALSE is 0 is DP_OK, and the caller tests `res==DP_OK` -- so a join the
+			   host never answered was taken as ACCEPTED: the joiner went on with no slot and aggID 0,
+			   fed the host aggregator's packets to ProcessPlayerMessage and died in Process_PM_ImHere
+			   (`*** buffer overflow detected ***`). A timeout is a refusal. BOB_MP_JOINTIMEOUT_OK=1 reverts. */
+			fprintf(stderr,"[mp] AttemptToJoin: the host did not answer (timeout) -- join refused\n"); fflush(stderr);
+			return getenv("BOB_MP_JOINTIMEOUT_OK") ? FALSE : (ULong)0x88770118;	/* != DP_OK */
+		}
+#else
 			return FALSE;
+#endif
 
 		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:2208"; }   /* MP S9 census tag */
 		if (ReceiveNextMessageToMe(Buffer,Buflen,from,0))
@@ -3565,6 +3576,12 @@ void DPlay::Process_PM_RandRequest()
 
 void DPlay::Process_PM_PlayerUpdate(char* message)
 {
+#if defined(BOB_LINUX)
+	/* MP S11: a stray/foreign packet read as a player update carries a garbage Slot; writing
+	   H2H_Player[garbage] was the joiner's `*** buffer overflow detected ***`. Refuse it. */
+	if ((ULong)((PUIPLAYERDATA)message)->Slot>=MAXPLAYERS)
+	{ fprintf(stderr,"[mp] PlayerUpdate with slot %lu ignored (not a player packet)\n",(unsigned long)((PUIPLAYERDATA)message)->Slot); return; }
+#endif
 	CopyMemory(&H2H_Player[((PUIPLAYERDATA)message)->Slot],&((PUIPLAYERDATA)message)->playerinfo,sizeof(H2HPlayerInfo));
 
 // display data
@@ -3577,6 +3594,10 @@ void DPlay::Process_PM_ImHere(char* message,ULong from)
 {
 	ULong n;
 	PUIPLAYERDATA p=(PUIPLAYERDATA)message;
+#if defined(BOB_LINUX)
+	if ((ULong)p->Slot>=MAXPLAYERS)	/* MP S11: see Process_PM_PlayerUpdate */
+	{ fprintf(stderr,"[mp] ImHere with slot %lu ignored (not a player packet)\n",(unsigned long)p->Slot); return; }
+#endif
 
 	CopyMemory(&H2H_Player[p->Slot],&(p->playerinfo),sizeof(H2HPlayerInfo));
 

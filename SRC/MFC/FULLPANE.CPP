@@ -1526,6 +1526,11 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 			else
 			{
 //DeadCode AMM 14Dec98				MessageBox("Incorrect password","Warning",MB_OK);
+#if defined(BOB_LINUX)
+				if (res==(ULong)0x88770118)	/* MP S11: timeout, not a wrong password */
+					RMessageBox(IDS_BOB,IDS_NOTCONTACTHOST,NULL,IDS_OK);
+				else
+#endif
 				RMessageBox(IDS_BOB,IDS_INCORRECTPASSWORD,NULL,IDS_OK);
 			}
 		}

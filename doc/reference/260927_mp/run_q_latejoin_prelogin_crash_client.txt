@@ -1,0 +1,60 @@
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf
+[gdifont] face loaded /home/admin/sgl/TUE/BattleOfBritain/WP/drive_c/windows/Fonts/g101016_.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf
+[gdifont] face loaded /usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf
+[vid] swap interval -> 1 (vsync)
+[vid] SDL2 window 1024x768 + GL context: NVIDIA GeForce GTX 1660 SUPER/PCIe/SSE2 | 4.6.0 NVIDIA 595.91.07
+[fullpane] ENTER page=1 startscreen=0x848a120 reqres=4 caller=0x825aba8
+[vid] mode 1024x768 (desktop 1920x1080) -> window 1024x768 at (1920,37) fullscreen=0
+[frontend] painted screen artnum=28937 + dials + menu + presented
+[frontend] LaunchMain: UpdateSize left artnum=28937 res=1024 unchanged -- keeping LaunchScreen's full frame
+[frontend] device init (IntroSmackInit-equivalent): texQ=0 filtering=0 vol.sfx=0
+  InitInstance() returned 1
+  Entering CMIGApp::Run()...
+[frontend] click (210,307) -> menu item 2
+[dplay] CoCreateInstance(CLSID_DirectPlay) -> 0xaab2b80
+[dplay] EnumConnections -> 1 provider
+[frontend]   dial[0] painted at X=25 Y=50 rect=(0,0)-(0,0)
+[frontend] painted screen artnum=27920 + dials + menu + presented
+[frontend] click (311,747) -> menu item 2
+[dplay] InitializeConnection (TCP/IP provider selected)
+[frontend]   dial[0] painted at X=25 Y=50 rect=(0,0)-(0,0)
+[frontend] painted screen artnum=27920 + dials + menu + presented
+[sdlclickms] pushed SDL_MOUSEBUTTONDOWN (156,747) at 20216ms (due 20000ms) rc=1
+[frontend] click (156,747) -> menu item 1
+[dplay] DestroyPlayer 0
+[dplay] Close
+[frontend] click (144,747) -> menu item 1
+[dplay] Open(JOIN) -> host 127.0.0.1:47624
+[dplay] host assigned us pid 4
+[dplay] received 22 data bytes from pid 1
+[dplay] CreatePlayer "(unnamed)" -> pid 4
+[dplay] Send 47 bytes pid 4 -> 0 (ok)
+[mp] ProcessPlayerMessage: PacketID=1 size=22 from=1 (PID_PASSWORD=9)
+*** buffer overflow detected ***: terminated
+
+=== CRASH: signal 6 (tid 56125) fault_addr=0xdb3d ===
+  eip=e815331c eax=00000000 ebx=0000db3d ecx=0000db3d edx=00000006 esi=0000db3d edi=e76a1e34 ebp=00000000 esp=ff861930
+/home/admin/bob/build/bob() [0x8073782]
+linux-gate.so.1(__kernel_rt_sigreturn+0x0) [0xe8153350]
+linux-gate.so.1(__kernel_vsyscall+0xc) [0xe815331c]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x97a5f) [0xe74fca5f]
+/usr/lib/i386-linux-gnu/libc.so.6(gsignal+0x25) [0xe74a2b45]
+/usr/lib/i386-linux-gnu/libc.so.6(abort+0x35) [0xe748930e]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x254f2) [0xe748a4f2]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x13d5ba) [0xe75a25ba]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x13cf7f) [0xe75a1f7f]
+/home/admin/bob/build/bob() [0x8214de0]
+/home/admin/bob/build/bob() [0x822a739]
+/home/admin/bob/build/bob() [0x822b4ff]
+/home/admin/bob/build/bob() [0x822b627]
+/home/admin/bob/build/bob() [0x822b6c6]
+/home/admin/bob/build/bob() [0x822b94c]
+/home/admin/bob/build/bob() [0x825adfe]
+/home/admin/bob/build/bob() [0x825d9c0]
+/home/admin/bob/build/bob() [0x82606e5]
+/home/admin/bob/build/bob() [0x826080d]
+/home/admin/bob/build/bob(main+0x2ac) [0x806e19c]
+/usr/lib/i386-linux-gnu/libc.so.6(+0x25fb0) [0xe748afb0]
+/usr/lib/i386-linux-gnu/libc.so.6(__libc_start_main+0x8c) [0xe748b0ec]
+/home/admin/bob/build/bob() [0x8073658]

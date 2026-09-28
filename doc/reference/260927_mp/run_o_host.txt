@@ -1,0 +1,11 @@
+[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)
+[mp] UpDateDPlay: player="Bob" session="BoB" GameType=0 GameIndex=0 Side=1 currmissnum=0x8a3a RateDivider=3
+[mp] CreatePlayer: UIPlayerType=1 (HOST=1 GUEST=2) -> HOST path (no AttemptToJoin)
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[mp] CheckPassword name="Bob" player=4 -> slot=1 pwordOK=1
+[readyroom] list row: slot=0 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[readyroom] list row: slot=1 name="Bob" status=3 team=0 squadron=0 (mySlot=0)
+[bfield] LOADSCRAMBF: plside=0 currmissnum=35386 altmissnum=0 target=0 -> rv=35386
+[psq] player aircraft uid=4864 GameType=0 (COMMSQUICKMISSION=2) Implemented=1 mySlot=0 PackPlayerSquad=0
+[frontend] (bridge) Launch3d done; tmpinst=0xa3bbe50 tmpview=0xab7e970 InThe3D=1

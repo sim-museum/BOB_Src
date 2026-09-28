@@ -46,6 +46,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "DPLAY.H"
+#include <mutex>
 
 const char* bob_recv_caller = 0;   /* EPIC M / MP S9: set by the receive call sites that matter (sync phases, aggregator) */
 static int dp_trace(void) { static int t = -1; if (t < 0) t = getenv("BOB_TRACE_DPLAY") ? 1 : 0; return t; }
@@ -66,7 +67,12 @@ enum { MSG_PROBE = 1, MSG_OFFER = 2, MSG_JOIN = 3, MSG_DATA = 4, MSG_ASSIGN = 5 
 struct WireHdr { unsigned int magic, kind, from, to; };
 
 static const int MAXQ = 64;
-struct QMsg { unsigned int from, to, len; char data[1024]; };
+/* EPIC M / MP S11 (2026-09-27), from MA's finding the same day: a queue slot held 1024 bytes and a
+   larger message was TRUNCATED IN SILENCE (MA measured a 1292-byte struct cut short), and the
+   socket/send buffers were 2048. DirectPlay messages carry whole game structures; size everything
+   for a full UDP datagram's worth of game data and SAY if anything is ever cut. */
+static const int BOB_DP_MAXMSG = 16384;
+struct QMsg { unsigned int from, to, len; char data[BOB_DP_MAXMSG]; };
 
 static GUID  g_tcpGuid = { 0x36E95EE0, 0x8577, 0x11cf, { 0x96,0x0c,0x00,0x80,0xc7,0x53,0x4e,0x82 } };
 static char  g_tcpName[] = "Internet TCP/IP Connection For DirectPlay";
@@ -74,6 +80,12 @@ static DWORD g_tcpBlob[16];
 
 class BobDPlay4 : public IDirectPlay4
 {
+    /* EPIC M / MP S11 (2026-09-27), from MA's finding: this object is used by TWO threads -- the game
+       (UI pump, 3-D dispatch) and the aggregator thread (AGGRGTOR.CPP Receive/Send) -- and its queue,
+       socket and group tables had no lock. Every entry point that touches them takes this recursive
+       mutex (never held across a sleep). BOB_MP_NO_SHIM_LOCK=1 reverts. */
+    std::recursive_mutex mtx;
+    struct Lk { std::recursive_mutex* m; Lk(std::recursive_mutex& x) : m(getenv("BOB_MP_NO_SHIM_LOCK") ? 0 : &x) { if (m) m->lock(); } ~Lk() { if (m) m->unlock(); } };
     int  ref;
     int  fd;                 /* the one UDP socket */
     int  isHost;
@@ -120,7 +132,7 @@ class BobDPlay4 : public IDirectPlay4
         fflush(stderr);
     }
 
-    void qpush(unsigned f, unsigned t, const char* d, unsigned n) {
+    void qpush(unsigned f, unsigned t, const char* d, unsigned n) { Lk _lk(mtx);
         int nx = (qt + 1) % MAXQ;
         if (nx == qh) {
             DPT("queue full, dropping a packet\n");
@@ -135,6 +147,7 @@ class BobDPlay4 : public IDirectPlay4
             }
             return;
         }
+        if (n > sizeof(q[qt].data)) fprintf(stderr, "[dplay] queue: %u-byte message TRUNCATED to %u\n", n, (unsigned)sizeof(q[qt].data));
         q[qt].from = f; q[qt].to = t; q[qt].len = n > sizeof(q[qt].data) ? sizeof(q[qt].data) : n;
         memcpy(q[qt].data, d, q[qt].len); qt = nx;
         noteAnnounce("QUEUED", f, t, d, n);
@@ -144,9 +157,9 @@ class BobDPlay4 : public IDirectPlay4
     /* Drain the socket: answer discovery probes, absorb joins, queue data. Called from every path
      * the game pumps (Receive / GetMessageCount / EnumSessions) so a host answers probes while it
      * is simply sitting in its own message loop. */
-    void pump() {
+    void pump() { Lk _lk(mtx);
         if (fd < 0) return;
-        char buf[2048];
+        char buf[sizeof(WireHdr) + BOB_DP_MAXMSG];
         for (;;) {
             struct sockaddr_in from; socklen_t fl = sizeof(from);
             ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);
@@ -207,6 +220,21 @@ class BobDPlay4 : public IDirectPlay4
                 assignedPid = (DPID)h->to;
                 DPT("host assigned us pid %u\n", (unsigned)assignedPid);
             } else if (h->kind == MSG_DATA) {
+                /* EPIC M / MP S11 (2026-09-27): LATE JOIN. The host's shim puts a joiner into its groups
+                   the moment it connects (MP-5's stand-in for DPSYS_CREATEPLAYERORGROUP), so a joiner
+                   arriving while the host FLIES receives the flight's aggregate traffic (22-byte packets
+                   from the aggregator to the player group) before its game has logged in -- and its
+                   login loops (GetGameDetails -> TimeoutReceive) fed them to ProcessPlayerMessage:
+                   PacketID 1 = PID_IMHERE with a garbage Slot -> `*** buffer overflow detected ***`.
+                   Real DirectPlay only delivers group traffic to members, and this side becomes a member
+                   when its game calls AddPlayerToGroup (after the password is accepted). Until then a
+                   GROUP-addressed packet is not ours. BOB_MP_PREJOIN_GROUP=1 reverts. */
+                if (!isHost && ngroups == 0 && h->to != 0 && !isLocalPlayer((unsigned)h->to)
+                    && !getenv("BOB_MP_PREJOIN_GROUP")) {
+                    static long nd = 0; static time_t last = 0; time_t now = 0; ::time(&now); nd++;
+                    if (now != last) { last = now; DPT("pre-login: dropped %ld group packet(s)/s (to=%u) -- not a member yet\n", nd, (unsigned)h->to); nd = 0; }
+                    continue;
+                }
                 qpush(h->from, h->to, buf + sizeof(WireHdr), (unsigned)(n - sizeof(WireHdr)));
                 DPT("received %d data bytes from pid %u\n", (int)(n - sizeof(WireHdr)), h->from);
             }
@@ -265,7 +293,7 @@ public:
         return DP_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE Open(LPDPSESSIONDESC2 d, DWORD flags) override {
+    HRESULT STDMETHODCALLTYPE Open(LPDPSESSIONDESC2 d, DWORD flags) override { Lk _lk(mtx);
         if (flags & DPOPEN_CREATE) {
             isHost = 1;
             if (d && d->lpszSessionNameA) { strncpy(sessName, d->lpszSessionNameA, sizeof(sessName)-1); }
@@ -292,7 +320,7 @@ public:
         UNIMPL("Open(other flags)");
         return DPERR_UNSUPPORTED;
     }
-    HRESULT STDMETHODCALLTYPE Close() override {
+    HRESULT STDMETHODCALLTYPE Close() override { Lk _lk(mtx);
         DPT("Close\n");
         if (fd >= 0) { close(fd); fd = -1; }
         isHost = 0; havePeer = 0; qh = qt = 0;
@@ -323,7 +351,7 @@ public:
         }
         offerCount = 0;
         for (unsigned t = 0; t < waitms; t += 20) {
-            char buf[2048]; struct sockaddr_in from; socklen_t fl = sizeof(from);
+            char buf[sizeof(WireHdr) + BOB_DP_MAXMSG]; struct sockaddr_in from; socklen_t fl = sizeof(from);
             ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);
             if (n >= (ssize_t)sizeof(WireHdr)) {
                 WireHdr* rh = (WireHdr*)buf;
@@ -337,7 +365,9 @@ public:
                    FlyNowFlag, so it never followed the host into 3D.
                    Hand anything that is not an OFFER to the SAME queue pump() fills, so a packet
                    that arrives during an enumeration is delivered instead of destroyed. */
-                if (rh->magic == DPMAGIC && rh->kind == MSG_DATA) {
+                if (rh->magic == DPMAGIC && rh->kind == MSG_DATA
+                    && !(!isHost && ngroups == 0 && rh->to != 0 && !isLocalPlayer((unsigned)rh->to)
+                         && !getenv("BOB_MP_PREJOIN_GROUP"))) {   /* MP S11: see pump() */
                     qpush(rh->from, rh->to, buf + sizeof(WireHdr), (unsigned)(n - sizeof(WireHdr)));
                     DPT("EnumSessions: rescued %d data bytes from pid %u (would have been dropped)\n",
                         (int)(n - sizeof(WireHdr)), rh->from);
@@ -364,9 +394,13 @@ public:
         return DP_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE CreatePlayer(LPDPID pid, LPDPNAME nm, HANDLE, LPVOID, DWORD, DWORD) override {
+    /* EPIC M / MP S11 (2026-09-27): the player created WITH an event handle is the aggregator
+       (DPlay::SetUpPlayer: CreatePlayer(&aggID, NULL, htable[EVENT_AGGREGATOR], ...)). */
+    unsigned aggPid = 0;
+    HRESULT STDMETHODCALLTYPE CreatePlayer(LPDPID pid, LPDPNAME nm, HANDLE ev, LPVOID, DWORD, DWORD) override { Lk _lk(mtx);
         /* R6.3: a client uses the id the HOST gave it; only the host mints ids. */
         myPid = (!isHost && assignedPid != 0) ? assignedPid : nextPid++;
+        if (ev && isHost && !aggPid) aggPid = (unsigned)myPid;
         if (nlocal < 8) localPids[nlocal++] = myPid;   /* MP S5: every local player, not just the last */
         if (pid) *pid = myPid;
         DPT("CreatePlayer \"%s\" -> pid %u\n",
@@ -375,7 +409,7 @@ public:
     }
     HRESULT STDMETHODCALLTYPE DestroyPlayer(DPID id) override { DPT("DestroyPlayer %u\n", (unsigned)id); return DP_OK; }
 
-    HRESULT STDMETHODCALLTYPE Send(DPID from, DPID to, DWORD, LPVOID data, DWORD len) override {
+    HRESULT STDMETHODCALLTYPE Send(DPID from, DPID to, DWORD, LPVOID data, DWORD len) override { Lk _lk(mtx);
         /* R26 (S431): NO PEER IS NOT AN ERROR.
          * This used to return DPERR_NOCONNECTION whenever nobody had connected yet, and the game
          * reads that as "comms are broken". Real DirectPlay does not: a Send to a GROUP with no
@@ -436,8 +470,10 @@ public:
                 (unsigned)len, (unsigned)from, (unsigned)to);
             return DP_OK;
         }
-        char out[2048];
-        if (len > sizeof(out) - sizeof(WireHdr)) len = sizeof(out) - sizeof(WireHdr);
+        static char out[sizeof(WireHdr) + BOB_DP_MAXMSG];   /* under the shim lock */
+        if (len > sizeof(out) - sizeof(WireHdr)) {
+            fprintf(stderr, "[dplay] Send: %u-byte message TRUNCATED to %u (BOB_DP_MAXMSG)\n", (unsigned)len, (unsigned)(sizeof(out) - sizeof(WireHdr)));
+            len = sizeof(out) - sizeof(WireHdr); }
         WireHdr* h = (WireHdr*)out;
         h->magic = DPMAGIC; h->kind = MSG_DATA; h->from = (unsigned)from; h->to = (unsigned)to;
         memcpy(out + sizeof(WireHdr), data, len);
@@ -500,7 +536,7 @@ public:
         }
         return false;
     }
-    HRESULT STDMETHODCALLTYPE Receive(LPDPID from, LPDPID to, DWORD flags, LPVOID data, LPDWORD size) override {
+    HRESULT STDMETHODCALLTYPE Receive(LPDPID from, LPDPID to, DWORD flags, LPVOID data, LPDWORD size) override { Lk _lk(mtx);
         const unsigned toIn   = to   ? (unsigned)*to   : 0u;   /* BEFORE *to is overwritten below */
         const unsigned fromIn = from ? (unsigned)*from : 0u;
         pump();
@@ -542,6 +578,13 @@ public:
                    back 9/s, while the client (which has no local aggregator competing for the
                    queue) saw 9-10/s and synced its half fine. BOB_MP_LOOSEGROUP=1 reverts. */
                 const bool strict = !getenv("BOB_MP_LOOSEGROUP");
+                /* EPIC M / MP S11: a message to DPID_ALLPLAYERS (0) is for the GAME players. Real
+                   DirectPlay gives every local player its own copy; this shim has one queue, so the
+                   host's aggregator thread -- which drains all through a flight -- took the late
+                   joiner's PID_PASSWORD and discarded it: a game already flying could never be joined.
+                   The aggregator only wants what is addressed to it or its groups.
+                   BOB_MP_AGG_TAKES_ALL=1 reverts. */
+                if (dst == 0 && aggPid && want == aggPid && !getenv("BOB_MP_AGG_TAKES_ALL")) continue;
                 const bool ok = (dst == want) || (dst == 0) ||
                                 ((strict && isKnownGroup(dst)) ? inGroup(dst, want)
                                                                : (inGroup(dst, want) || !isKnownPlayer(dst)));
@@ -594,7 +637,7 @@ public:
         qh = (qh + 1) % MAXQ;
         return DP_OK;
     }
-    HRESULT STDMETHODCALLTYPE GetMessageCount(DPID, LPDWORD n) override {
+    HRESULT STDMETHODCALLTYPE GetMessageCount(DPID, LPDWORD n) override { Lk _lk(mtx);
         pump(); if (n) *n = (DWORD)qcount(); return DP_OK;
     }
     /* R6.4: GROUPS. The game creates a group immediately after Open(CREATE) -- the trace named
@@ -602,7 +645,7 @@ public:
        this size a group is just an id plus a membership list; the Aggrgtor addresses traffic by
        PLAYER id, so group routing is not on the packet path yet. Implemented as real bookkeeping
        rather than DP_OK-and-forget, so EnumGroups/EnumGroupPlayers can answer truthfully. */
-    HRESULT STDMETHODCALLTYPE CreateGroup(LPDPID pid, LPDPNAME nm, LPVOID, DWORD, DWORD) override {
+    HRESULT STDMETHODCALLTYPE CreateGroup(LPDPID pid, LPDPNAME nm, LPVOID, DWORD, DWORD) override { Lk _lk(mtx);
         DPID g = nextPid++;
         if (pid) *pid = g;
         if (ngroups < 8) {
@@ -621,7 +664,7 @@ public:
         return DP_OK;
     }
     HRESULT STDMETHODCALLTYPE DestroyGroup(DPID g) override { DPT("DestroyGroup %u\n", (unsigned)g); return DP_OK; }
-    HRESULT STDMETHODCALLTYPE AddPlayerToGroup(DPID g, DPID p) override {
+    HRESULT STDMETHODCALLTYPE AddPlayerToGroup(DPID g, DPID p) override { Lk _lk(mtx);
         bool matched = false;
         for (int i = 0; i < ngroups; i++)
             if (groups[i] == g && gmembers[i] < 8) { gplayers[i][gmembers[i]++] = p; matched = true; break; }

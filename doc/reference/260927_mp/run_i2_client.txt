@@ -1,0 +1,150 @@
+[mp] Locker Room destroyed -> OnDestroy (UpDateDPlay commits the locker)
+[mp] UpDateDPlay: player="Bob" session="0" GameType=1 GameIndex=0 Side=1 currmissnum=0x8a42 RateDivider=3
+[readyroom] list row: slot=1 name="Bob" status=3 team=1 squadron=0 (mySlot=1)
+[readyroom] list row: slot=1 name="Bob" status=3 team=1 squadron=0 (mySlot=1)
+[readyroom] list row: slot=0 name="Bob" status=3 team=1 squadron=0 (mySlot=1)
+[readyroom] list row: slot=1 name="Bob" status=3 team=1 squadron=0 (mySlot=1)
+[bfpick] want #0 -> file=35333 bfctrl=5120
+[bfpick] want #1 -> file=30748 bfctrl=7684
+[bfpick] want #2 -> file=30749 bfctrl=7685
+[bfpick] want #3 -> file=30750 bfctrl=7686
+[bfpick] want #4 -> file=30789 bfctrl=10243
+[bfpick] want #5 -> file=30724 bfctrl=10244
+[bfpick] want #6 -> file=30733 bfctrl=10245
+[bfpick] want #7 -> file=30814 bfctrl=10246
+[bfpick] want #8 -> file=30983 bfctrl=10248
+[bfpick] want #9 -> file=31022 bfctrl=10249
+[bfpick] want #10 -> file=30989 bfctrl=10250
+[bfpick] want #11 -> file=31019 bfctrl=10251
+[bfpick] want #12 -> file=30993 bfctrl=10252
+[bfpick] want #13 -> file=31012 bfctrl=10253
+[bfpick] want #14 -> file=31029 bfctrl=10254
+[bfpick] want #15 -> file=35394 bfctrl=10255
+[psq] player aircraft uid=4865 GameType=1 (COMMSQUICKMISSION=2) Implemented=1 mySlot=1 PackPlayerSquad=0
+[bfpick] want #16 -> file=0 bfctrl=65280
+[frontend] (bridge) Launch3d done; tmpinst=0x926c260 tmpview=0x9a17120 InThe3D=1
+[mppos] t=1790510841 frame=12 slot=0 uid=0x1300 pos=(36683800,609600,31356142) hdg=55824 vel=1449998 movecode=0 dead=0
+[mppos] t=1790510841 frame=12 slot=1(me) uid=0x1301 pos=(36689830,609600,31357025) hdg=55395 vel=1449999 movecode=0 dead=0
+[mppos] t=1790510842 frame=20 slot=0 uid=0x1300 pos=(36672667,609558,31364423) hdg=55825 vel=1443727 movecode=0 dead=0
+[mppos] t=1790510842 frame=20 slot=1(me) uid=0x1301 pos=(36678365,609560,31364844) hdg=55395 vel=1444178 movecode=0 dead=0
+[mppos] t=1790510843 frame=28 slot=0 uid=0x1300 pos=(36661061,609480,31373067) hdg=55825 vel=1448187 movecode=0 dead=0
+[mppos] t=1790510843 frame=28 slot=1(me) uid=0x1301 pos=(36666422,609478,31372989) hdg=55394 vel=1447494 movecode=0 dead=0
+[mppos] t=1790510844 frame=36 slot=0 uid=0x1300 pos=(36649422,609358,31381723) hdg=55825 vel=1453178 movecode=0 dead=0
+[mppos] t=1790510844 frame=36 slot=1(me) uid=0x1301 pos=(36654443,609358,31381159) hdg=55394 vel=1452501 movecode=0 dead=0
+[mppos] t=1790510845 frame=45 slot=0 uid=0x1300 pos=(36637747,609207,31390424) hdg=55825 vel=1458447 movecode=0 dead=0
+[mppos] t=1790510845 frame=45 slot=1(me) uid=0x1301 pos=(36642420,609204,31389357) hdg=55394 vel=1457783 movecode=0 dead=0
+[mppos] t=1790510846 frame=53 slot=0 uid=0x1300 pos=(36626023,609028,31399148) hdg=55825 vel=1463759 movecode=0 dead=0
+[mppos] t=1790510846 frame=53 slot=1(me) uid=0x1301 pos=(36630354,609024,31397585) hdg=55394 vel=1463118 movecode=0 dead=0
+[mppos] t=1790510847 frame=61 slot=0 uid=0x1300 pos=(36614262,608832,31407897) hdg=55824 vel=1469050 movecode=0 dead=0
+[mppos] t=1790510847 frame=61 slot=1(me) uid=0x1301 pos=(36618244,608821,31405842) hdg=55393 vel=1468440 movecode=0 dead=0
+[mppos] t=1790510848 frame=70 slot=0 uid=0x1300 pos=(36602455,608612,31416683) hdg=55824 vel=1474191 movecode=0 dead=0
+[mppos] t=1790510848 frame=70 slot=1(me) uid=0x1301 pos=(36606090,608604,31414128) hdg=55393 vel=1473706 movecode=0 dead=0
+[mppos] t=1790510849 frame=78 slot=0 uid=0x1300 pos=(36590604,608398,31425501) hdg=55823 vel=1479397 movecode=0 dead=0
+[mppos] t=1790510849 frame=78 slot=1(me) uid=0x1301 pos=(36593892,608377,31422444) hdg=55392 vel=1478880 movecode=33 dead=0
+[mppos] t=1790510850 frame=86 slot=0 uid=0x1300 pos=(36578713,608173,31434342) hdg=55822 vel=1484346 movecode=0 dead=0
+[mppos] t=1790510850 frame=86 slot=1(me) uid=0x1301 pos=(36581651,608147,31430787) hdg=55391 vel=1483921 movecode=33 dead=0
+[mppos] t=1790510851 frame=95 slot=0 uid=0x1300 pos=(36566787,607951,31443213) hdg=55822 vel=1489167 movecode=0 dead=0
+[mppos] t=1790510851 frame=95 slot=1(me) uid=0x1301 pos=(36569369,607919,31439157) hdg=55391 vel=1488797 movecode=33 dead=0
+[mppos] t=1790510852 frame=103 slot=0 uid=0x1300 pos=(36554811,607744,31452116) hdg=55820 vel=1493839 movecode=0 dead=0
+[mppos] t=1790510852 frame=103 slot=1(me) uid=0x1301 pos=(36557047,607700,31447553) hdg=55390 vel=1493475 movecode=33 dead=0
+[mppos] t=1790510853 frame=111 slot=0 uid=0x1300 pos=(36542813,607541,31461042) hdg=55820 vel=1498213 movecode=0 dead=0
+[mppos] t=1790510853 frame=111 slot=1(me) uid=0x1301 pos=(36544686,607494,31455973) hdg=55389 vel=1497923 movecode=33 dead=0
+[mppos] t=1790510854 frame=120 slot=0 uid=0x1300 pos=(36530769,607367,31469994) hdg=55819 vel=1502351 movecode=0 dead=0
+[mppos] t=1790510854 frame=120 slot=1(me) uid=0x1301 pos=(36532288,607308,31464417) hdg=55388 vel=1502117 movecode=33 dead=0
+[mppos] t=1790510855 frame=128 slot=0 uid=0x1300 pos=(36518701,607207,31478963) hdg=55817 vel=1506149 movecode=0 dead=0
+[mppos] t=1790510855 frame=128 slot=1(me) uid=0x1301 pos=(36519856,607147,31472883) hdg=55386 vel=1506030 movecode=33 dead=0
+[mppos] t=1790510856 frame=136 slot=0 uid=0x1300 pos=(36506592,607088,31487961) hdg=55816 vel=1509711 movecode=0 dead=0
+[mppos] t=1790510856 frame=136 slot=1(me) uid=0x1301 pos=(36507391,607015,31481369) hdg=55385 vel=1509640 movecode=33 dead=0
+[mppos] t=1790510857 frame=145 slot=0 uid=0x1300 pos=(36494463,606997,31496972) hdg=55815 vel=1512975 movecode=0 dead=0
+[mppos] t=1790510857 frame=145 slot=1(me) uid=0x1301 pos=(36494897,606917,31489872) hdg=55384 vel=1512931 movecode=33 dead=0
+[mppos] t=1790510858 frame=153 slot=0 uid=0x1300 pos=(36482303,606942,31506001) hdg=55814 vel=1515835 movecode=0 dead=0
+[mppos] t=1790510858 frame=153 slot=1(me) uid=0x1301 pos=(36482376,606856,31498392) hdg=55382 vel=1515883 movecode=33 dead=0
+[mppos] t=1790510859 frame=161 slot=0 uid=0x1300 pos=(36470120,606931,31515046) hdg=55811 vel=1518437 movecode=0 dead=0
+[mppos] t=1790510859 frame=161 slot=1(me) uid=0x1301 pos=(36469830,606837,31506925) hdg=55381 vel=1518486 movecode=33 dead=0
+[mppos] t=1790510860 frame=170 slot=0 uid=0x1300 pos=(36457920,606961,31524101) hdg=55811 vel=1520527 movecode=0 dead=0
+[mppos] t=1790510860 frame=170 slot=1(me) uid=0x1301 pos=(36457263,606862,31515470) hdg=55379 vel=1520731 movecode=33 dead=0
+[mppos] t=1790510861 frame=178 slot=0 uid=0x1300 pos=(36445696,607050,31533171) hdg=55808 vel=1522447 movecode=0 dead=0
+[mppos] t=1790510861 frame=178 slot=1(me) uid=0x1301 pos=(36444678,606935,31524025) hdg=55378 vel=1522610 movecode=33 dead=0
+[mppos] t=1790510862 frame=186 slot=0 uid=0x1300 pos=(36433464,607174,31542245) hdg=55807 vel=1523877 movecode=0 dead=0
+[mppos] t=1790510862 frame=186 slot=1(me) uid=0x1301 pos=(36432078,607058,31532587) hdg=55376 vel=1524121 movecode=33 dead=0
+[mppos] t=1790510863 frame=195 slot=0 uid=0x1300 pos=(36421219,607360,31551324) hdg=55805 vel=1525007 movecode=0 dead=0
+[mppos] t=1790510863 frame=195 slot=1(me) uid=0x1301 pos=(36419466,607232,31541154) hdg=55374 vel=1525263 movecode=33 dead=0
+[mppos] t=1790510864 frame=203 slot=0 uid=0x1300 pos=(36408963,607592,31560406) hdg=55802 vel=1525733 movecode=0 dead=0
+[mppos] t=1790510864 frame=203 slot=1(me) uid=0x1301 pos=(36406846,607459,31549723) hdg=55372 vel=1526036 movecode=33 dead=0
+[mppos] t=1790510865 frame=211 slot=0 uid=0x1300 pos=(36396704,607881,31569489) hdg=55801 vel=1526159 movecode=0 dead=0
+[mppos] t=1790510865 frame=211 slot=1(me) uid=0x1301 pos=(36394219,607739,31558294) hdg=55370 vel=1526450 movecode=33 dead=0
+[mppos] t=1790510866 frame=220 slot=0 uid=0x1300 pos=(36384442,608218,31578568) hdg=55800 vel=1526159 movecode=0 dead=0
+[mppos] t=1790510866 frame=220 slot=1(me) uid=0x1301 pos=(36381590,608074,31566862) hdg=55368 vel=1526510 movecode=33 dead=0
+[mppos] t=1790510867 frame=228 slot=0 uid=0x1300 pos=(36372180,608619,31587643) hdg=55797 vel=1525881 movecode=0 dead=0
+[mppos] t=1790510867 frame=228 slot=1(me) uid=0x1301 pos=(36368961,608462,31575426) hdg=55366 vel=1526224 movecode=33 dead=0
+[mppos] t=1790510868 frame=236 slot=0 uid=0x1300 pos=(36359924,609062,31596717) hdg=55795 vel=1525220 movecode=0 dead=0
+[mppos] t=1790510868 frame=236 slot=1(me) uid=0x1301 pos=(36356336,608903,31583985) hdg=55364 vel=1525613 movecode=33 dead=0
+[mppos] t=1790510869 frame=245 slot=0 uid=0x1300 pos=(36347673,609562,31605779) hdg=55792 vel=1524239 movecode=0 dead=0
+[mppos] t=1790510869 frame=245 slot=1(me) uid=0x1301 pos=(36343716,609397,31592535) hdg=55362 vel=1524683 movecode=33 dead=0
+[mppos] t=1790510870 frame=253 slot=0 uid=0x1300 pos=(36335425,610109,31614830) hdg=55789 vel=1523043 movecode=0 dead=0
+[mppos] t=1790510870 frame=253 slot=1(me) uid=0x1301 pos=(36331105,609941,31601076) hdg=55359 vel=1523454 movecode=33 dead=0
+[mppos] t=1790510871 frame=5 slot=0 uid=0x1300 pos=(36323192,610704,31623872) hdg=55788 vel=1521487 movecode=0 dead=0
+[mppos] t=1790510871 frame=5 slot=1(me) uid=0x1301 pos=(36318504,610534,31609605) hdg=55357 vel=1521952 movecode=33 dead=0
+[mppos] t=1790510872 frame=14 slot=0 uid=0x1300 pos=(36310971,611343,31632896) hdg=55786 vel=1519759 movecode=0 dead=0
+[mppos] t=1790510872 frame=14 slot=1(me) uid=0x1301 pos=(36305917,611174,31618120) hdg=55354 vel=1520183 movecode=33 dead=0
+[mppos] t=1790510873 frame=22 slot=0 uid=0x1300 pos=(36298769,612031,31641907) hdg=55783 vel=1517775 movecode=0 dead=0
+[mppos] t=1790510873 frame=22 slot=1(me) uid=0x1301 pos=(36293345,611857,31626621) hdg=55352 vel=1518186 movecode=33 dead=0
+[mppos] t=1790510874 frame=30 slot=0 uid=0x1300 pos=(36286574,612757,31650899) hdg=55779 vel=1515556 movecode=0 dead=0
+[mppos] t=1790510874 frame=30 slot=1(me) uid=0x1301 pos=(36280790,612581,31635106) hdg=55349 vel=1515974 movecode=33 dead=0
+[mppos] t=1790510875 frame=39 slot=0 uid=0x1300 pos=(36274408,613520,31659873) hdg=55778 vel=1513103 movecode=0 dead=0
+[mppos] t=1790510875 frame=39 slot=1(me) uid=0x1301 pos=(36268254,613343,31643574) hdg=55346 vel=1513572 movecode=33 dead=0
+[mppos] t=1790510876 frame=47 slot=0 uid=0x1300 pos=(36262248,614314,31668834) hdg=55775 vel=1510563 movecode=0 dead=0
+[mppos] t=1790510876 frame=47 slot=1(me) uid=0x1301 pos=(36255737,614140,31652023) hdg=55344 vel=1511016 movecode=33 dead=0
+[mppos] t=1790510877 frame=55 slot=0 uid=0x1300 pos=(36250116,615142,31677773) hdg=55772 vel=1507897 movecode=0 dead=0
+[mppos] t=1790510877 frame=55 slot=1(me) uid=0x1301 pos=(36243242,614967,31660453) hdg=55341 vel=1508315 movecode=33 dead=0
+[mppos] t=1790510878 frame=64 slot=0 uid=0x1300 pos=(36238002,615993,31686685) hdg=55769 vel=1505039 movecode=0 dead=0
+[mppos] t=1790510878 frame=64 slot=1(me) uid=0x1301 pos=(36230768,615821,31668864) hdg=55338 vel=1505512 movecode=33 dead=0
+[mppos] t=1790510879 frame=72 slot=0 uid=0x1300 pos=(36225912,616868,31695580) hdg=55766 vel=1502243 movecode=0 dead=0
+[mppos] t=1790510879 frame=72 slot=1(me) uid=0x1301 pos=(36218316,616697,31677254) hdg=55335 vel=1502628 movecode=33 dead=0
+[mppos] t=1790510880 frame=80 slot=0 uid=0x1300 pos=(36213839,617760,31704455) hdg=55762 vel=1499343 movecode=0 dead=0
+[mppos] t=1790510880 frame=80 slot=1(me) uid=0x1301 pos=(36205887,617593,31685624) hdg=55332 vel=1499683 movecode=33 dead=0
+[mppos] t=1790510881 frame=89 slot=0 uid=0x1300 pos=(36201794,618668,31713304) hdg=55760 vel=1496335 movecode=0 dead=0
+[mppos] t=1790510881 frame=89 slot=1(me) uid=0x1301 pos=(36193481,618503,31693972) hdg=55328 vel=1496722 movecode=33 dead=0
+[mppos] t=1790510882 frame=97 slot=0 uid=0x1300 pos=(36189761,619585,31722137) hdg=55756 vel=1493475 movecode=0 dead=0
+[mppos] t=1790510882 frame=97 slot=1(me) uid=0x1301 pos=(36181097,619424,31702300) hdg=55325 vel=1493753 movecode=33 dead=0
+[mppos] t=1790510883 frame=105 slot=0 uid=0x1300 pos=(36177759,620508,31730944) hdg=55753 vel=1490553 movecode=0 dead=0
+[mppos] t=1790510883 frame=105 slot=1(me) uid=0x1301 pos=(36168736,620351,31710608) hdg=55322 vel=1490811 movecode=33 dead=0
+[mppos] t=1790510884 frame=114 slot=0 uid=0x1300 pos=(36165777,621432,31739737) hdg=55750 vel=1487695 movecode=0 dead=0
+[mppos] t=1790510884 frame=114 slot=1(me) uid=0x1301 pos=(36156397,621280,31718895) hdg=55318 vel=1487925 movecode=33 dead=0
+[mppos] t=1790510885 frame=122 slot=0 uid=0x1300 pos=(36153809,622354,31748505) hdg=55746 vel=1484899 movecode=0 dead=0
+[mppos] t=1790510885 frame=122 slot=1(me) uid=0x1301 pos=(36144078,622207,31727162) hdg=55315 vel=1485105 movecode=33 dead=0
+[mppos] t=1790510886 frame=130 slot=0 uid=0x1300 pos=(36141861,623266,31757253) hdg=55743 vel=1482233 movecode=0 dead=0
+[mppos] t=1790510886 frame=130 slot=1(me) uid=0x1301 pos=(36131779,623129,31735409) hdg=55311 vel=1482398 movecode=33 dead=0
+[mppos] t=1790510887 frame=139 slot=0 uid=0x1300 pos=(36129933,624178,31765980) hdg=55738 vel=1479631 movecode=0 dead=0
+[mppos] t=1790510887 frame=139 slot=1(me) uid=0x1301 pos=(36119499,624041,31743638) hdg=55308 vel=1479805 movecode=33 dead=0
+[mppos] t=1790510888 frame=147 slot=0 uid=0x1300 pos=(36118020,625070,31774689) hdg=55735 vel=1477219 movecode=0 dead=0
+[mppos] t=1790510888 frame=147 slot=1(me) uid=0x1301 pos=(36107236,624939,31751849) hdg=55304 vel=1477356 movecode=33 dead=0
+[mppos] t=1790510889 frame=155 slot=0 uid=0x1300 pos=(36106123,625947,31783384) hdg=55730 vel=1475044 movecode=0 dead=0
+[mppos] t=1790510889 frame=155 slot=1(me) uid=0x1301 pos=(36094989,625821,31760043) hdg=55300 vel=1475078 movecode=33 dead=0
+[mppos] t=1790510890 frame=164 slot=0 uid=0x1300 pos=(36094238,626807,31792058) hdg=55728 vel=1472911 movecode=0 dead=0
+[mppos] t=1790510890 frame=164 slot=1(me) uid=0x1301 pos=(36082757,626683,31768221) hdg=55296 vel=1472968 movecode=33 dead=0
+[mppos] t=1790510891 frame=172 slot=0 uid=0x1300 pos=(36082365,627636,31800721) hdg=55724 vel=1471033 movecode=0 dead=0
+[mppos] t=1790510891 frame=172 slot=1(me) uid=0x1301 pos=(36070537,627522,31776384) hdg=55292 vel=1471065 movecode=33 dead=0
+[mppos] t=1790510892 frame=180 slot=0 uid=0x1300 pos=(36070502,628439,31809371) hdg=55719 vel=1469391 movecode=0 dead=0
+[mppos] t=1790510892 frame=180 slot=1(me) uid=0x1301 pos=(36058328,628334,31784534) hdg=55288 vel=1469371 movecode=33 dead=0
+[mppos] t=1790510893 frame=189 slot=0 uid=0x1300 pos=(36058647,629221,31818001) hdg=55716 vel=1468047 movecode=0 dead=0
+[mppos] t=1790510893 frame=189 slot=1(me) uid=0x1301 pos=(36046127,629119,31792670) hdg=55284 vel=1467896 movecode=33 dead=0
+[mppos] t=1790510894 frame=197 slot=0 uid=0x1300 pos=(36046795,629968,31826625) hdg=55710 vel=1466723 movecode=0 dead=0
+[mppos] t=1790510894 frame=197 slot=1(me) uid=0x1301 pos=(36033933,629872,31800796) hdg=55280 vel=1466663 movecode=33 dead=0
+[mppos] t=1790510895 frame=205 slot=0 uid=0x1300 pos=(36034953,630682,31835238) hdg=55706 vel=1465785 movecode=0 dead=0
+[mppos] t=1790510895 frame=205 slot=1(me) uid=0x1301 pos=(36021744,630592,31808911) hdg=55276 vel=1465662 movecode=33 dead=0
+[mppos] t=1790510896 frame=214 slot=0 uid=0x1300 pos=(36023111,631360,31843837) hdg=55702 vel=1465039 movecode=0 dead=0
+[mppos] t=1790510896 frame=214 slot=1(me) uid=0x1301 pos=(36009558,631278,31817018) hdg=55272 vel=1464917 movecode=33 dead=0
+[mppos] t=1790510897 frame=222 slot=0 uid=0x1300 pos=(36011266,632005,31852440) hdg=55699 vel=1464633 movecode=0 dead=0
+[mppos] t=1790510897 frame=222 slot=1(me) uid=0x1301 pos=(35997371,631927,31825117) hdg=55268 vel=1464424 movecode=33 dead=0
+[mppos] t=1790510898 frame=230 slot=0 uid=0x1300 pos=(35999422,632612,31861031) hdg=55694 vel=1464399 movecode=0 dead=0
+[mppos] t=1790510898 frame=230 slot=1(me) uid=0x1301 pos=(35985184,632539,31833209) hdg=55263 vel=1464178 movecode=33 dead=0
+[mppos] t=1790510899 frame=239 slot=0 uid=0x1300 pos=(35987567,633183,31869617) hdg=55689 vel=1464463 movecode=0 dead=0
+[mppos] t=1790510899 frame=239 slot=1(me) uid=0x1301 pos=(35972992,633112,31841297) hdg=55259 vel=1464195 movecode=33 dead=0
+[mppos] t=1790510900 frame=247 slot=0 uid=0x1300 pos=(35975718,633708,31878201) hdg=55686 vel=1464719 movecode=0 dead=0
+[mppos] t=1790510900 frame=247 slot=1(me) uid=0x1301 pos=(35960795,633647,31849382) hdg=55254 vel=1464456 movecode=33 dead=0
+[mppos] t=1790510901 frame=255 slot=0 uid=0x1300 pos=(35963851,634201,31886782) hdg=55680 vel=1465274 movecode=0 dead=0
+[mppos] t=1790510901 frame=255 slot=1(me) uid=0x1301 pos=(35948589,634143,31857464) hdg=55250 vel=1464967 movecode=33 dead=0
+[mppos] t=1790510902 frame=8 slot=0 uid=0x1300 pos=(35951976,634650,31895363) hdg=55676 vel=1465999 movecode=0 dead=0
+[mppos] t=1790510902 frame=8 slot=1(me) uid=0x1301 pos=(35936374,634599,31865544) hdg=55245 vel=1465721 movecode=33 dead=0
+[mppos] t=1790510903 frame=16 slot=0 uid=0x1300 pos=(35940090,635067,31903944) hdg=55671 vel=1467067 movecode=0 dead=0
