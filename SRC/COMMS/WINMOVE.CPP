@@ -454,13 +454,15 @@ static void bob_mp_combat_hooks()
 {
 	static int init = 0; static time_t t0 = 0;
 	static int formAt = -1, formM = 250, formDone = 0, fireAt = -1, fireFor = 6, fireState = 0;
+	static int crashAt = -1, crashDone = 0;	/* MP S11b: BOB_MP_CRASH_AT=<s> dive MY aircraft into the ground */
 	if (!init)
 	{
 		init = 1;
+		if (const char* f = getenv("BOB_MP_CRASH_AT")) crashAt = atoi(f);
 		if (const char* f = getenv("BOB_MP_FORMUP")) { formAt = atoi(f); const char* c = strchr(f, ':'); if (c) formM = atoi(c + 1); }
 		if (const char* f = getenv("BOB_MP_FIRE_AT")) { fireAt = atoi(f); const char* c = strchr(f, ':'); if (c) fireFor = atoi(c + 1); }
 	}
-	if ((formAt < 0 && fireAt < 0) || !_DPlay.csync) return;
+	if ((formAt < 0 && fireAt < 0 && crashAt < 0) || !_DPlay.csync) return;
 	time_t now = time(0);
 	if (!t0) t0 = now;
 	int el = (int)(now - t0);
@@ -492,6 +494,19 @@ static void bob_mp_combat_hooks()
 		        el, (unsigned)me->uniqueID.count, (int)me->World.X, (int)me->World.Y, (int)me->World.Z, (int)(UWord)me->hdg.a, formM,
 		        (unsigned)other->uniqueID.count, (int)other->World.X, (int)other->World.Y, (int)other->World.Z, (int)(UWord)other->hdg.a, sp);
 		fflush(stderr);
+	}
+	if (crashAt >= 0 && !crashDone && el >= crashAt)
+	{	/* a crash with NO shooter, long after any hit: the original's "damaged, then crashed" case */
+		crashDone = 1;
+		AirStrucPtr me = Manual_Pilot.ControlledAC2;
+		if (me && me->fly.pModel)
+		{
+			Model* m = me->fly.pModel;
+			m->ResetAngles(me, (UWord)me->hdg.a, (UWord)ANGLES_270Deg, 0);
+			m->ResetPosition(me, me->World.X, 3000, me->World.Z);
+			m->ResetVelocity(me, 0, -15000, 0, FALSE);
+			fprintf(stderr, "[mpcombat] CRASH forced at +%ds: uid=0x%x now at y=3000 diving\n", el, (unsigned)me->uniqueID.count), fflush(stderr);
+		}
 	}
 	if (fireAt >= 0)
 	{
@@ -1221,6 +1236,9 @@ void DPlay::ResurrectAircraft (AirStrucPtr ControlledAC, Bool Forced)
 //Date			Sat 7 Dec 1996
 //Description	Repair an Aircraft ready for flight etc,
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+void bob_hit_clear(unsigned slot);
+#endif
 void DPlay::RepairAircraft (AirStrucPtr ac)
 {
 	_Miles.StopItemSamples(ac);											
@@ -1272,6 +1290,9 @@ void DPlay::RepairAircraft (AirStrucPtr ac)
 	if (slot<MAXPLAYERS)
 	{
 		CommsKiller[slot]=255;
+#if defined(BOB_LINUX)
+		bob_hit_clear(slot);	/* MP S11b: a new life */
+#endif
 	}
 }
 
@@ -4204,6 +4225,9 @@ void	DPlay::ResetDeltas()
 //Procedure		ProcessCollisionPacket
 //Date			Tue 5 May 1998
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+void bob_hit_record(unsigned trg, unsigned hit);
+#endif
 UByte	DPlay::ProcessCollisionPacket(UByteP ptr, AirStrucPtr sender, ULong slot)
 {
 	UWord uid,shooteruid;
@@ -4286,7 +4310,12 @@ UByte	DPlay::ProcessCollisionPacket(UByteP ptr, AirStrucPtr sender, ULong slot)
 // dont want to have possible assists on yourself!
 
 	if (trg<MAXPLAYERS && hit<MAXPLAYERS && (trg!=hit))
+	{
 		CommsKiller[trg]=hit;
+#if defined(BOB_LINUX)
+		bob_hit_record(trg,hit);	/* MP S11b: every comms hitter of this life, and when */
+#endif
+	}
 
 // in comms game an ac may be killed on one machine and be hit but not killed on
 // another. This may result in ac being killed then having damage applied,
@@ -4913,6 +4942,24 @@ COORDS3D* DPlay::GetGoodACPosition(ItemBasePtr ac)
 //Procedure		SetScore
 //Date			Tue 1 Sep 1998
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+/* EPIC M / MP S11b (2026-09-28): who has hit each comms player during its current life, and when the
+   last hit landed. Filled from ProcessCollisionPacket, which runs on EVERY machine for every hit (the
+   collision packets are group-broadcast), so the record is the same on both scoreboards. */
+static unsigned bob_hitmask[MAXPLAYERS];
+static unsigned long bob_lasthit_ms[MAXPLAYERS];
+void bob_hit_record(unsigned trg, unsigned hit)
+{
+	if (trg>=MAXPLAYERS || hit>=MAXPLAYERS) return;
+	bob_hitmask[trg]|=1u<<hit;
+	bob_lasthit_ms[trg]=timeGetTime();
+}
+void bob_hit_clear(unsigned slot)
+{
+	if (slot<MAXPLAYERS) { bob_hitmask[slot]=0; bob_lasthit_ms[slot]=0; }
+}
+#endif
+
 void	DPlay::SetScore(AirStrucPtr victim, ItemPtr hitter)
 {
 	ULong n,m;
@@ -4964,23 +5011,46 @@ void	DPlay::SetScore(AirStrucPtr victim, ItemPtr hitter)
 
 		deadplayers|=1<<n;
 #if defined(BOB_LINUX)
-		/* EPIC M / MP S11 (2026-09-27): BOTH SCOREBOARDS MUST AGREE. The SHOOTER's machine scores its own
-		   fatal hit (3DCOM, Col_Shooter set) as a kill; the VICTIM's machine usually scores the death
-		   through its crash / dead packet (SetScore(ac,NULL)) and only gives the hitter an ASSIST
-		   (ProcessLandedEffectPacket). Measured (run g): host "victim 0x1301 shooter 0x1300", joiner
-		   "victim 0x1301 shooter 0x0" -- a kill on one scoreboard, an assist on the other. The victim's
-		   machine already knows who hit it last (CommsKiller[], set in ProcessCollisionPacket): a comms
-		   player's death with no shooter credits that player with the kill, as the shooter's own
-		   machine does. BOB_MP_NO_LASTHITTER_KILL=1 reverts. */
-		if (!shooter && commsplayerdead && CommsKiller[n]<MAXPLAYERS && AllocPacket[CommsKiller[n]]
-			&& !getenv("BOB_MP_NO_LASTHITTER_KILL"))
+		/* EPIC M / MP S11 (2026-09-27), revised S11b (2026-09-28): BOTH SCOREBOARDS MUST AGREE, and the
+		   original's assists stay. The SHOOTER's machine scores its own fatal hit (3DCOM, Col_Shooter) as a
+		   kill; the VICTIM's machine usually scores the same death from its crash/dead report with no
+		   shooter (run g: host "shooter 0x1300", joiner "shooter 0x0"). Rule, applied identically on every
+		   machine from the shared hit record:
+		     * killer = the given shooter; or, when none is given, the LAST comms hitter if that hit landed
+		       within BOB_MP_KILL_WINDOW_S (default 10 s) of the death -- the case where the shooter's
+		       machine has already called it a kill;
+		     * every OTHER comms player who hit this life gets an assist (the original gave the last hitter
+		       an assist when a damaged player crashed; with no killer, that is still what happens);
+		     * the killer never also gets an assist; the record is consumed so a later duplicate death
+		       report (ProcessLandedEffectPacket) cannot add one.
+		   BOB_MP_NO_LASTHITTER_KILL=1 reverts to the original rule. */
+		static int s_orig = -1; if (s_orig < 0) s_orig = getenv("BOB_MP_NO_LASTHITTER_KILL") ? 1 : 0;
+		if (commsplayerdead && !s_orig)
 		{
-			shooter=(AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)AllocPacket[CommsKiller[n]]);
-			hitter=(ItemPtr)shooter;
-			CommsKiller[n]=255;	/* consumed: not ALSO an assist */
-			if (getenv("BOB_TRACE_MPPOS"))
-				fprintf(stderr,"[mpscore] no shooter given -> last comms hitter uid=0x%x credited\n",
-					shooter ? (unsigned)shooter->uniqueID.count : 0u), fflush(stderr);
+			static long win_ms = -1;
+			if (win_ms < 0) { const char* w = getenv("BOB_MP_KILL_WINDOW_S"); win_ms = (w ? atol(w) : 10) * 1000L; }
+			if (!shooter && CommsKiller[n]<MAXPLAYERS && AllocPacket[CommsKiller[n]]
+				&& bob_lasthit_ms[n] && (long)(timeGetTime()-bob_lasthit_ms[n]) <= win_ms)
+			{
+				shooter=(AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)AllocPacket[CommsKiller[n]]);
+				hitter=(ItemPtr)shooter;
+				if (getenv("BOB_TRACE_MPPOS"))
+					fprintf(stderr,"[mpscore] no shooter given -> last comms hitter uid=0x%x (hit %ld ms ago) is the killer\n",
+						shooter ? (unsigned)shooter->uniqueID.count : 0u, (long)(timeGetTime()-bob_lasthit_ms[n])), fflush(stderr);
+			}
+			ULong killerslot=MAXPLAYERS;
+			if (shooter)
+				for (ULong k=0;k<MAXPLAYERS;k++)
+					if (AllocPacket[k]==shooter->uniqueID.count) { killerslot=k; break; }
+			for (ULong k=0;k<MAXPLAYERS;k++)
+				if ((bob_hitmask[n]&(1u<<k)) && k!=killerslot && k!=n)
+				{
+					(H2H_Player+k)->assists++;
+					if (getenv("BOB_TRACE_MPPOS"))
+						fprintf(stderr,"[mpscore] assist -> slot %lu (hit victim slot %lu this life)\n",(unsigned long)k,(unsigned long)n), fflush(stderr);
+				}
+			bob_hit_clear(n);
+			CommsKiller[n]=255;	/* consumed: ProcessLandedEffectPacket must not add another assist */
 		}
 		struct BobScoreDump { ~BobScoreDump() {
 			if (getenv("BOB_TRACE_MPPOS")) {
