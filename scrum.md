@@ -12453,3 +12453,8 @@ two-instance harness. Late join: `LATEJOIN=1` with the joiner pressing Fly in it
 * **BOB-KEYMAP-1 — BoB keyboard map (PO, 2026-10-01).** Generated from the actual key tables the game uses:
   key → command → effect, grouped. Acceptance: every binding in the program's table appears; none taken only
   from a document.
+
+* **BOB-PADBOX-1 (PO, 2026-10-01, this session) — red box round the padlocked bogey: campaign yes, Quick Mission no.**
+  PO: "bob campaign draws a red square around a padlocked bogie, correctly, but bob quick mission does not. fix
+  this". Acceptance: in a Quick Shot (e.g. Dogfighting / Turkey Shoot), padlocking an enemy (F1) shows the same red
+  box the campaign shows; the campaign keeps it.
