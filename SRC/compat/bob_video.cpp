@@ -757,6 +757,38 @@ static void pump_events(void)
 	   BOB_AUTOFLY=sweep : press every DIK in turn (verify key->command dispatch).
 	   BOB_AUTOFLY=throttle (or 1): tap '0' (DIK 0x0B = RPM_00 = 100% throttle) a few
 	   times so the parked aircraft should spool up and accelerate down the runway. */
+	/* FUNC-SWEEP-BOB: BOB_DIK_MS="ms,dik[,moddik][;...]" (or "@file", one entry per line) taps DIK codes into
+	   the DI keyboard queue at <ms> after the flight keyboard is first acquired -- the game's own key path
+	   (OnKeyDown -> commonkeymaps), with an optional modifier DIK (0x2A shift, 0x1D ctrl, 0x38 alt) held around
+	   the tap, as MA's BOB_KEYSEQ does. Used to press every live binding once in one flight. */
+	{
+		static int init = 0, n = 0, next = 0; static Uint32 t0 = 0;
+		static struct { Uint32 ms; unsigned dik, mod; } ev[1024];
+		if (!init) { init = 1;
+			const char* e = getenv("BOB_DIK_MS");
+			static char fb[65536];
+			if (e && e[0] == '@') { FILE* f = fopen(e + 1, "r"); size_t r = f ? fread(fb, 1, sizeof(fb) - 1, f) : 0; if (f) fclose(f); fb[r] = 0;
+				for (size_t q = 0; q < r; q++) if (fb[q] == '\n' || fb[q] == '\r') fb[q] = ';'; e = fb; }
+			for (const char* p = e; p && *p && n < 1024; ) {
+				unsigned long ms = 0; unsigned dik = 0, mod = 0;
+				int k = sscanf(p, "%lu,%i,%i", &ms, &dik, &mod);
+				if (k >= 2) { ev[n].ms = (Uint32)ms; ev[n].dik = dik; ev[n].mod = (k >= 3) ? mod : 0; n++; }
+				p = strchr(p, ';'); if (p) p++;
+			}
+			if (n) { fprintf(stderr, "[dikms] parsed %d taps\n", n); fflush(stderr); }
+		}
+		if (n && g_diKbAcquired) {
+			if (!t0) t0 = SDL_GetTicks();
+			Uint32 el = SDL_GetTicks() - t0;
+			while (next < n && el >= ev[next].ms) {
+				if (ev[next].mod) kb_push(ev[next].mod, 1);
+				kb_push(ev[next].dik, 1); kb_push(ev[next].dik, 0);
+				if (ev[next].mod) kb_push(ev[next].mod, 0);
+				fprintf(stderr, "[dikms] tap %d dik=0x%02x mod=0x%02x at %ums\n", next, ev[next].dik, ev[next].mod, el); fflush(stderr);
+				next++;
+			}
+		}
+	}
 	if (getenv("BOB_AUTOFLY") && g_diKbAcquired) {
 		/* R3.7 S4: keep g_bob_flight_active honest. It is set only by the two synthetic 3-D
 		   bridges, so a naturally-entered flight left it 0 and every autofly branch below became a
