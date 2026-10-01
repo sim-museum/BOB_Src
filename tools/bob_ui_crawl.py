@@ -40,17 +40,27 @@ def parse_last(txt):
 def run(steps, tag):
     global nruns
     nruns += 1
-    secs = 14 + 3 * len(steps) + 6
+    secs = 30 + 6 * len(steps)
     log = '%s/runs/%s.log' % (A.out, tag)
+    # The hit-target dump lives in the BOB_SHOT banner: BOB_SHOT_AFTER=N shoots N paints after the LAST
+    # autoclick step fired, dumps the screen's targets, writes the frame and exits 0. A step that can
+    # never fire leaves the shot unarmed -> timeout -> 'stalled'.
     env = dict(os.environ, BOB_RUN_INIT='1', BOB_FRONTEND='1', BOB_OLE_DRAW='1',
-               BOB_DRIVE_C=A.dc, BOB_DUMP_HITTARGETS='1')
+               BOB_DRIVE_C=A.dc, BOB_DUMP_HITTARGETS='1', BOB_NO_EXIT_PREFSAVE='1',
+               BOB_SHOT_PATH='%s/runs/%s.ppm' % (A.out, tag))
+    # autoclick fires step k at tick 120*(k+1); shoot 120 ticks after the last one
+    env['BOB_SHOT'] = str(120 * (len(steps) + 1) + 120)
     if steps: env['BOB_AUTOCLICK'] = ','.join(steps)
     with open(log, 'wb') as f:
         p = subprocess.run(['timeout', '-k', '5', '-s', 'INT', str(secs), A.bin], cwd=GD, env=env, stdout=f, stderr=subprocess.STDOUT)
     txt = open(log, 'rb').read().decode('latin-1')
     crash = txt.count('=== CRASH') + txt.count('Segmentation fault') + txt.count('Aborted')
     fired = txt.count('autoclick step') + txt.count('-> menu item')
-    state = 'CRASH' if crash else ('alive' if p.returncode in (124, 130, -2, 137) else 'exited(%d)' % p.returncode)
+    shot = '[hittargets] menu rects:' in txt
+    if crash: state = 'CRASH'
+    elif p.returncode == 0 and shot: state = 'ok'
+    elif p.returncode in (124, 130, -2, 137): state = 'stalled' if fired < len(steps) else 'hang'
+    else: state = 'exited(%d)' % p.returncode
     return state, parse_last(txt), fired, log
 
 tsv = open(A.out + '/crawl.tsv', 'a')
@@ -70,7 +80,7 @@ for depth in range(A.depth):
             new = bool(after) and key not in seen
             tsv.write('\t'.join(['%s > %s' % (pdesc, name), st, 'newscreen' if new else 'same', 'fired=%d/%d' % (fired, len(path)), os.path.basename(lg)]) + '\n'); tsv.flush()
             print('%-60s %-10s %-9s fired=%d/%d' % (('%s > %s' % (pdesc, name))[:60], st, 'newscreen' if new else 'same', fired, len(path)), flush=True)
-            if st == 'alive' and new:
+            if st == 'ok' and new:
                 seen.add(key); nxt.append((path, after, '%s > %s' % (pdesc, name)))
     frontier = nxt
 print('=== CRAWL COMPLETE runs=%d screens=%d ===' % (nruns, len(seen)), flush=True)
