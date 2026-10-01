@@ -127,6 +127,22 @@ RFullPanelDial::GameSide		RFullPanelDial::gameside;
 //************************************** YOUR PROCEDURES HERE
 
 
+#if BOB_LINUX
+/* BOB-PADBOX-1 (cross-port of MA A2, FULLPANE.CPP ma_save_preferences): the in-game Quit routes through
+   ConfirmExit() below, which saves preferences -- but closing the SDL window or Ctrl+Esc goes straight to
+   _exit() in bob_video.cpp, so every preference changed since the last menu Quit was lost. The visible
+   symptom: the padlock box (Shift+T, DETAIL3D_PADLOCKCHEAT) toggled on in a campaign survived in the
+   campaign savegame but never reached settings.cfg, so Quick Shots kept starting with it off.
+   BOB_NO_EXIT_PREFSAVE=1 restores the old no-save exit. */
+extern "C" void bob_save_preferences(void)
+{
+	if (getenv("BOB_NO_EXIT_PREFSAVE")) return;
+	if (getenv("BOB_TRACE_PREFS")) { fprintf(stderr, "[prefs] saving settings.cfg on exit (padlock box=%d)\n",
+	                                         Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] ? 1 : 0); fflush(stderr); }
+	Save_Data.SavePreferences();
+}
+#endif
+
 Bool RFullPanelDial::ConfirmExit(FullScreen*&fs)
 {	
 	CMainFrame* mainframe = ((CMainFrame*)AfxGetMainWnd());

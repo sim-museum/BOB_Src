@@ -121,6 +121,7 @@ static int bob_write_ppm(const char* path, const unsigned char* px, int w, int h
 }
 long g_bobZeroSceneFrames = 0;   /* presents with no scene drawn since the last one */
 long g_bobSceneHist[10] = {0,0,0,0,0,0,0,0,0,0};
+extern "C" void bob_save_preferences(void);   /* BOB-PADBOX-1: fullpane.cpp, saves settings.cfg on exit */
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
 extern void* g_bobGdiPresentCaller;     /* GOLDVID-BOB-3 S4: caller of the 2D presenter */
@@ -1116,9 +1117,13 @@ static void pump_events(void)
 					kfired[idx] = 1; kcode[idx] = code;
 					krelease[idx] = el + (Uint32)(n >= 3 ? hold : 300);
 					SDL_Event ev; memset(&ev, 0, sizeof(ev));
+					/* BOB-PADBOX-1: keysym -1 pushes SDL_QUIT (a window close) instead of a key -- to test the exit path. */
+					if (code == -1) { ev.type = SDL_QUIT; krelease[idx] = 0xFFFFFFFFu; }
+					else {
 					ev.type = SDL_KEYDOWN; ev.key.state = SDL_PRESSED;
 					ev.key.keysym.sym = (SDL_Keycode)code;
 					ev.key.keysym.scancode = SDL_GetScancodeFromKey((SDL_Keycode)code);
+					}
 					int pushed = SDL_PushEvent(&ev);
 					{ static int armed = 0; const char* dk = getenv("BOB_DUMP_AFTER_KEY");
 					  if (dk && !armed) { armed = 1; g_bob_dump_after_key = atoi(dk); if (g_bob_dump_after_key < 1) g_bob_dump_after_key = 1;
@@ -1179,6 +1184,7 @@ static void pump_events(void)
 			/* PO 2026-09-05: leave the multiplayer session before dying, or this client stays
 			   registered on the host forever and the host's next Fly blocks 20 s per ghost. */
 			bob_comms_shutdown();
+			bob_save_preferences();
 			fprintf(stderr,"[vid] window closed -> exit\n"); SDL_Quit(); _exit(0);
 		}
 		else if (e.type==SDL_MOUSEBUTTONDOWN && e.button.button==SDL_BUTTON_LEFT) {
@@ -1251,6 +1257,7 @@ static void pump_events(void)
 			}
 			/* a hard exit hatch while the UI loop isn't wired: Ctrl+ESC quits */
 			if (e.type==SDL_KEYDOWN && e.key.keysym.sym==SDLK_ESCAPE && (e.key.keysym.mod & KMOD_CTRL)) {
+				bob_save_preferences();
 				SDL_Quit(); _exit(0);
 			}
 		}

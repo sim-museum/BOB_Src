@@ -8009,6 +8009,24 @@ void COverlay::DoThreat()
 void COverlay::SetupCheatBox()
 {
 	cheatBoxX = -1.f;													//RJS 28Jul00
+#if BOB_LINUX
+	/* BOB-PADBOX-1: BOB_TRACE_CHEATBOX=1 -- why the red padlock box is or is not drawn (flag, view mode,
+	   padlock target), one line per change. */
+	{
+		static int on = -1; if (on < 0) on = getenv("BOB_TRACE_CHEATBOX") ? 1 : 0;
+		if (on)
+		{
+			static int last = -12345;
+			int flag = Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] ? 1 : 0;
+			int vm = pvp ? (int)pvp->viewnum.viewmode : -1;
+			int tr = (pvp && pvp->trackeditem2) ? 1 : 0;
+			int key = flag * 10000 + (vm + 1) * 10 + tr;
+			if (key != last) { last = key;
+				fprintf(stderr, "[cheatbox] flag=%d viewmode=%d (OutPadlock=%d InPadlock=%d InsideCheat=%d) trackeditem2=%d\n",
+				        flag, vm, (int)VM_OutPadlock, (int)VM_InPadlock, (int)VM_InsideCheat, tr); fflush(stderr); }
+		}
+	}
+#endif
 	if (Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT]	&& pvp)					//JIM 15Sep00
 	{
 		if(	((pvp->viewnum.viewmode == VM_OutPadlock) || (pvp->viewnum.viewmode == VM_InPadlock) || (pvp->viewnum.viewmode == VM_InsideCheat))
@@ -8134,6 +8152,13 @@ void COverlay::DoCheatBox()
 	const float CHEATBOXSIZEMINSIZE = 10.f;
 // hmmmm, see if cheat box works properly in comms yet, probably not...
 
+#if BOB_LINUX
+	{ static int on = -1; if (on < 0) on = getenv("BOB_TRACE_CHEATBOX") ? 1 : 0;
+	  static int n = 0;
+	  if (on && Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] && n++ % 60 == 0 && n < 1200)
+	  { fprintf(stderr, "[cheatbox] DoCheatBox x=%.1f y=%.1f z=%.2f scale=%.4f -> %s\n", cheatBoxX, cheatBoxY, cheatBoxZ, cheatBoxScale,
+	            (cheatBoxX > -0.5f && cheatBoxZ > 1.f) ? "DRAW" : "skip"); fflush(stderr); } }
+#endif
 //DeadCode AMM 12Oct00 	if (!_DPlay.Implemented)
 	{
 		if (	( cheatBoxX > -0.5f )

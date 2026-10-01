@@ -2655,6 +2655,9 @@ void SaveData::InitPreferences(int wh)
 		if (getenv("BOB_TRACE_PREFS"))
 			fprintf(stderr, "[prefs] parsed successfulLoad=%d  (0 => factory defaults are what the config screens show)\n",
 				(int)successfulLoad);
+		if (getenv("BOB_TRACE_PREFS"))
+			fprintf(stderr, "[prefs] after load: padlock box / Aircraft names (DETAIL3D_PADLOCKCHEAT) = %d\n",
+				Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] ? 1 : 0);
 #endif
 		if (!successfulLoad)
 		{

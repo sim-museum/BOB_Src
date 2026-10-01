@@ -12458,3 +12458,19 @@ two-instance harness. Late join: `LATEJOIN=1` with the joiner pressing Fly in it
   PO: "bob campaign draws a red square around a padlocked bogie, correctly, but bob quick mission does not. fix
   this". Acceptance: in a Quick Shot (e.g. Dogfighting / Turkey Shoot), padlocking an enemy (F1) shows the same red
   box the campaign shows; the campaign keeps it.
+  **BOB-PADBOX-1 ✅ (2026-10-01).** Not a drawing bug: the box is `Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT]`,
+  toggled in flight by **Shift+T** (BOXTARGET; also T when text info is off) and stored with the preferences. A
+  campaign restores its own copy from its savegame (on in the PO's), a Quick Shot uses `settings.cfg` — and the
+  PO's `settings.cfg` has it **off** (`BOB_TRACE_PREFS=1`: "after load … = 0"). The toggle could never reach
+  `settings.cfg` because the port's **window close and Ctrl+Esc `_exit(0)` without `SavePreferences()`** (only the
+  menu Quit saved) — every in-flight or config-screen preference change was lost the same way.
+  Measured first that the Quick-Shot box works when on (Turkey Shoot `BOB_QM_INDEX=11`, F1 + Shift+T via
+  `BOB_SDL_KEY_MS`: `[cheatbox] … DRAW`, red diamond round the Bf 109 in the outside padlock view; in the inside
+  padlock view it falls off-screen below the wing because the head is at its look-down limit).
+  **Fix:** `bob_save_preferences()` (fullpane.cpp, cross-port of MA's A2 `ma_save_preferences`) called on SDL
+  window close and Ctrl+Esc; `BOB_NO_EXIT_PREFSAVE=1` reverts. Test hook: `BOB_SDL_KEY_MS` keysym `-1` = SDL_QUIT.
+  **Verified in a copy** (`~/bob-test/drive_c`, PO's settings.cfg untouched, still 2026-09-25): run 1 Quick Shot,
+  Shift+T, window close → "[prefs] saving settings.cfg on exit (padlock box=1)"; run 2 loads 1; run 3 Quick Shot
+  with no Shift+T → box drawn at the first padlock. Diagnostics: `BOB_TRACE_CHEATBOX=1`, `BOB_TRACE_PREFS=1`.
+  **For the PO:** your current settings.cfg says off — press Shift+T once in a Quick Shot (or fly the campaign) and
+  exit any way; it now sticks. Dev only until the next AppImage.
