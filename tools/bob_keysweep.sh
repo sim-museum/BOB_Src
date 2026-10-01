@@ -10,7 +10,7 @@ python3 "$ROOT/tools/bob_keysweep_gen.py" "$ROOT/doc/keymap/live_keytable_260929
         "${START_MS:-15000}" "${STEP_MS:-600}" "$OUT/dik.map" > "$OUT/dik.txt"
 LAST=$(tail -n 1 "$OUT/dik.map" | cut -f1); SECS=$(( LAST / 1000 + 60 ))
 echo "taps=$(wc -l < "$OUT/dik.map") last@${LAST}ms timeout=${SECS}s"
-( cd "$GD" && BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" BOB_BOOT_FRONTEND=1 BOB_NO_EXIT_PREFSAVE=1 BOB_DIK_MS="@$OUT/dik.txt" \
+( cd "$GD" && BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" BOB_BOOT_FRONTEND=1 BOB_NO_EXIT_PREFSAVE=1 BOB_DIK_MS="$(cat "$OUT/dik.txt")" \
       timeout -k 5 -s INT "$SECS" "$ROOT/build/bob" > "$OUT/run.log" 2>&1 ); rc=$?
 crash=$(grep -acE '=== CRASH|Segmentation fault|SIGSEGV|Aborted' "$OUT/run.log")
 taps=$(grep -ac '\[dikms\] tap' "$OUT/run.log"); last=$(grep -a '\[dikms\] tap' "$OUT/run.log" | tail -n 1)

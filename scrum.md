@@ -12474,3 +12474,18 @@ two-instance harness. Late join: `LATEJOIN=1` with the joiner pressing Fly in it
   with no Shift+T → box drawn at the first padlock. Diagnostics: `BOB_TRACE_CHEATBOX=1`, `BOB_TRACE_PREFS=1`.
   **For the PO:** your current settings.cfg says off — press Shift+T once in a Quick Shot (or fly the campaign) and
   exit any way; it now sticks. Dev only until the next AppImage.
+
+## FUNC-SWEEP-BOB (Opus 5.5, 2026-10-01) — in progress
+PO: *"I do not want the user to exercise some overlooked functionality and have it not work or lead to a crash."*
+* **In-flight all-keys sweep** (`tools/bob_keysweep.sh`, new `BOB_DIK_MS="ms,dik[,moddik];..."` tap hook in
+  `pump_events`): every reachable live binding (191 taps: states 0/Alt/Ctrl/Shift) in Quick-Mission flights —
+  **0 crashes**. An unattended sweep loses the jet ~47 s in (control run with no keys flies the full 100 s), so it
+  runs in chunks with `SKIP=<n>` (83 + 80 + 28 taps). **After EJECT** (Ctrl+E) all 191 taps again in two flights —
+  0 crashes (FF had 6 crashing handlers in this state; BoB has none). Held-back keys: Pause and Tab/Shift+Tab
+  accel on/off — fine; Alt+X exit and F12 config end the boot-to-flight scaffold cleanly; Alt+S suicide and M
+  go-to-map do nothing visible in a Quick Mission. **Not covered: F12 / M from a CAMPAIGN flight** (needs a
+  menu to return to; the boot scaffold has none).
+* **UI crawler** `tools/bob_ui_crawl.py` (BOB_AUTOCLICK menu/hosted-control steps, BOB_DUMP_HITTARGETS via a
+  BOB_SHOT 120 ticks after the last step, fresh launch per path, on ~/bob-test) — built and smoke-tested;
+  full crawl pending. Watch for MA's GHOST-SYSBOX-1 class (hidden parent-scoped controls still clickable).
+* Gotcha: `BOB_DIK_MS=@file` fails silently (the port's fopen remaps paths); the runner passes the list inline.
