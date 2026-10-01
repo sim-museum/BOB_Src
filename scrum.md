@@ -12446,3 +12446,10 @@ briefing.png`, 1024-space) has Bob at (120,250), Red 2 at (46,280), Red 3 at (19
 combat + chat: tables agree) / q3, q4 (late join) / r (Quick Missions) / i2 (Team Play): every run 9/9 on the
 two-instance harness. Late join: `LATEJOIN=1` with the joiner pressing Fly in its Ready Room.
 **Still open:** no two-PC run.
+
+* **BOB-MANUAL-1 — new Battle of Britain manual (PO, 2026-10-01; same item in ma/ff).** Draw from all docs
+  under `~/sgl/TUE/BattleOfBritain`; every keyboard command from the program's own files (key tables in
+  source / the shipped key config), not stale docs — where they disagree the program wins, difference noted.
+* **BOB-KEYMAP-1 — BoB keyboard map (PO, 2026-10-01).** Generated from the actual key tables the game uses:
+  key → command → effect, grouped. Acceptance: every binding in the program's table appears; none taken only
+  from a document.
