@@ -18,6 +18,10 @@ extern const WORD _wVerMinor          = 7;
 extern const GUID IID_DRListBox       = { 0x90b5eda6, 0x666f, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 extern const GUID IID_DRListBoxEvents = { 0x90b5eda7, 0x666f, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };
 
+extern "C" void bob_gdi_setdibits_origin(int, int);
+extern "C" void bob_gdi_get_setdibits_origin(int*, int*);
+extern "C" void bob_gdi_setdibits_clip(int, int, int, int);
+extern "C" void bob_gdi_get_setdibits_clip(int*, int*, int*, int*);
 struct HostRListBox : public CRListBoxCtrl, public OleHost {
     int bagCols = 0;                 /* S125: columns came from the DLGINIT bag */
     void boot(CWnd* parent) {
@@ -117,7 +121,16 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
             if (!sb || !bob_scrlbar_rect(sb, &x, &y, &bw, &bh)) continue;
             bob_scrlbar_set_parent(sb, this);   /* Windows: bar -> list box -> dialog (art via GetParent()->GetParent()) */
             CDC dc = *pdc; dc.m_bobVpX = pdc->m_bobVpX + x; dc.m_bobVpY = pdc->m_bobVpY + y;
+            /* the bar's button art goes through SetDIBitsToDevice, which places bitmaps at the GLOBAL DIB
+               origin/clip the panel walk set for the LIST -- point both at the bar while it draws. */
+            int ox = 0, oy = 0, cl[4];
+            bob_gdi_get_setdibits_origin(&ox, &oy);
+            bob_gdi_get_setdibits_clip(&cl[0], &cl[1], &cl[2], &cl[3]);
+            bob_gdi_setdibits_origin(dc.m_bobVpX, dc.m_bobVpY);
+            bob_gdi_setdibits_clip(dc.m_bobVpX, dc.m_bobVpY, dc.m_bobVpX + bw, dc.m_bobVpY + bh);
             sb->draw(&dc, bw, bh);
+            bob_gdi_setdibits_origin(ox, oy);
+            bob_gdi_setdibits_clip(cl[0], cl[1], cl[2], cl[3]);
         }
     }
     int onScrollbarClick(int lx, int ly) override {

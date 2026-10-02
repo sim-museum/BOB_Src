@@ -310,12 +310,23 @@ void CRScrlBarCtrl::OnDraw(
 	if (pOffScreenDC==NULL)
 		return;
 	ASSERT(pOffScreenDC); // this will fail if parent is not an RDialog
+#if BOB_LINUX
+	/* LBSCROLL-1: draw straight to the screen DC. The port's SetDIBitsToDevice paints the SCREEN, so the
+	   button art drawn into the offscreen bitmap never reached it and the final BitBlt copied back only the
+	   (black) empty bitmap. Same picture: the black body first (an empty compatible bitmap IS black), then
+	   the puck and the two buttons on top. BOB_SCRLBAR_OFFSCREEN=1 restores the offscreen path. */
+	const bool bobDirect = !getenv("BOB_SCRLBAR_OFFSCREEN");
+	if (bobDirect) { pdc->FillSolidRect(0, 0, rcBounds.right-rcBounds.left, rcBounds.bottom-rcBounds.top, RGB(0,0,0)); pOffScreenDC = pdc; }
+#endif
 //	offsets=parent->SendMessage(WM_GETXYOFFSET,NULL,NULL);
 	// this is quite a complex drawing procedure so we are going
 	// to use an offscreen DC to prevent flicker...
 	CBitmap bitmap;
 	bitmap.CreateCompatibleBitmap(pdc,rcBounds.right,rcBounds.bottom);
 	CBitmap* pOldBitmap;
+#if BOB_LINUX
+	if (!bobDirect)
+#endif
 	pOldBitmap=pOffScreenDC->SelectObject(&bitmap);
 //	ASSERT(pOffScreenDC->GetDeviceCaps(CAPS1)&C1_TRANSPARENT);
 /*
@@ -420,9 +431,15 @@ void CRScrlBarCtrl::OnDraw(
 		DrawBitmap(filenum,pOffScreenDC,rcBounds.right-SBWIDTH,0);
 	else
 		DrawBitmap(filenum,pOffScreenDC,0,rcBounds.bottom-SBWIDTH);
+#if BOB_LINUX
+	if (!bobDirect) {
+#endif
 	pdc->BitBlt(0,0,rcBounds.right-rcBounds.left,rcBounds.bottom-rcBounds.top,pOffScreenDC,
 					0,0,SRCCOPY); // flips offscreen dc to real dc
     pOffScreenDC->SelectObject(pOldBitmap);
+#if BOB_LINUX
+	}
+#endif
 	// then delete the dc
 //  offscreenDC2.SelectObject(pOldBitmap2);
 //	offscreenDC2.DeleteDC();
@@ -462,6 +479,9 @@ void CRScrlBarCtrl::DrawBitmap(FileNum filenum,CDC* pdc,int x,int y)
 			parent=GetParent()->GetParent();
 		BYTE* pData;
 		pData = (BYTE*)parent->SendMessage(WM_GETFILE,filenum,NULL);
+#if BOB_LINUX
+		if (getenv("BOB_TRACE_SCROLL")) { static int nt=0; if (nt++<12) fprintf(stderr,"[scroll] DrawBitmap file=%d at (%d,%d) parent=%p data=%s\n",(int)filenum,x,y,(void*)parent,(pData&&pData[0]=='B'&&pData[1]=='M')?"BM":"none"); }
+#endif
 		if (pData && pData[0]=='B' && pData[1]=='M') // checks if its a bitmap file
 		{
 			// now render it...
