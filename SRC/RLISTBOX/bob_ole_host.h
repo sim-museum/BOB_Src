@@ -58,6 +58,9 @@ struct OleHost {
     /* LBSCROLL-1: 1 while the control shows a vertical scrollbar -> its rows are clipped to the box
        and the hit area is the box (not contentH). */
     virtual int  clipsRows() { return 0; }
+    /* MA-MPQS-1: a VERTICAL radio answers the local Y of button ROW, so an autoclick `#ID:0.ROW` can name it
+       (the column resolver alone lands every vertical radio on its middle button). Returns 1 if handled. */
+    virtual int  rowPoint(int /*row*/, int* /*localY*/) { return 0; }
     virtual int  curIndex() { return -1; } /* S161: current selection, for the event's index argument */
     virtual int  rowAtY(int /*localY*/) { return -1; } /* list controls: the row under a click (local Y), or -1 */
     /* S207, answering MA's §8-MA137: how tall is the content this control would LAY OUT, as

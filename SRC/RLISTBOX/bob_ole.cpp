@@ -1060,6 +1060,8 @@ extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int
         if (h->ctrlId != id) continue;
         if (dialog && h->parentDlg != dialog) continue;
         if (h->sw <= 0 || h->sh <= 0) continue;          /* not drawn (hidden / off-template) */
+        { int ry; if (row >= 0 && h->rowPoint(row, &ry)) {    /* MA-MPQS-1: vertical radio button ROW */
+              *px = h->sx + (h->sw < 40 ? h->sw / 2 : 20); *py = h->sy + ry; return 1; } }
         int lx = h->sw / 2;
         /* S192: decide "is this a multi-column list" by probing the WHOLE width, not just the last
            pixel. The old test was `col > 0 || colAtX(sw-1) > 0`, so for **col 0** it depended

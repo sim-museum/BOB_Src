@@ -1058,6 +1058,14 @@ void BoBFrag::FillSquadronsFromQM()
 					||	CSQuick1::quickdef.line[side][i][j].Duty()==QuickFields::QFD_FIXED_NUM_PLAYER
 					)
 					num=1;
+#if BOB_LINUX
+				/* MA-MPQS-1: in a multiplayer session a LONE group offers a seat per player (the battlefield then
+				   builds as many aircraft as are seated -- Persons3::make_airgrp / bob_mpqs_lone_seats). */
+				if (RFullPanelDial::incomms && !getenv("BOB_NO_MPQS_LONE")
+					&& (	CSQuick1::quickdef.line[side][i][j].Duty()==QuickFields::QFD_BRIT_LONE
+						||	CSQuick1::quickdef.line[side][i][j].Duty()==QuickFields::QFD_GERM_LONE))
+					num=4;
+#endif
 				if (squadinfo.currfrag->squadoptions[numsquads].playerallowed)
 				{
 					squadinfo.currfrag->squadoptions[numsquads].acperflight = num;
@@ -1234,6 +1242,12 @@ void BoBFrag::OnClickedPilot0(int id)
 		SLong sel_squad,sel_pos;
 
 		GetSquadronAndPos(sel_squad,sel_pos,butnum);
+#if BOB_LINUX
+		if (getenv("BOB_TRACE_FRAG"))
+			fprintf(stderr, "[frag] click slot %d -> squad=%ld pos=%ld dead=%d free=%d (mySlot=%d)\n", butnum, (long)sel_squad, (long)sel_pos,
+			        (sel_squad!=-1 && sel_pos!=-1) ? (int)_DPlay.IsPilotDead(pselectedsquadron+1,sel_pos+1) : -1,
+			        (sel_squad!=-1 && sel_pos!=-1) ? (int)_DPlay.SlotFree(sel_pos,sel_squad) : -1, (int)_DPlay.mySlot);
+#endif
 
 //		sel_squad=squadinfo.currfrag->squadoptions[squadinto.currfrag->currsquadoption].squadnum;
 		if (sel_squad!=-1 && sel_pos!=-1)

@@ -12509,3 +12509,25 @@ PO: *"I do not want the user to exercise some overlooked functionality and have 
   329 paths, 25 screens (was 23), **0 crashes** (was 2: Credits, Calibrate — both fixed), the Join-no-host
   "hang" is gone (DPlay ASYNC fix). Remaining non-OK: menu8 = Quit (intended), menu4 > menu1 = a modal waiting
   for input (no front-end ticks, so no shot) — not defects.
+
+## MA-MPQS-1 (BoB) — multiplayer lone Quick Missions (Opus 5.5, 2026-10-02) ✅ dev
+PO 2026-10-02: "build multiplayer versions of all these missions, in both MA and BoB" (Take-off, Landing,
+Free Flight, Turkey Shoot, One on One — the lone missions MissionAllowed kept out of a comms session).
+* `CSQuick1::MissionAllowed` offers missions 0/1/7/11/12 in a Quick Missions session.
+* BoBFrag gives a lone group four pilot slots in comms (the original forced `num=1`).
+* At battlefield load a lone group gets one aircraft per seated player:
+  `Persons3::make_airgrp` -> `bob_mpqs_lone_seats(I.type)`. Measured: BoB's `I.type` is the PlaneTypeSelect —
+  0 for the RAF group, 6 for the Bf 109 — not MA's group index; the line is matched by actype + LONE duty.
+* `BOB_NO_MPQS_LONE=1` reverts all three.
+* Harness: `BOB_QM_INDEX=n` preselects mission n in the MP Ready Room. Autoclick `#ID:0.ROW` now addresses a
+  VERTICAL radio's row (`OleHost::rowPoint`; before, every vertical radio landed on its middle button —
+  `#2128:2` picked Team Play). `tools/bob_mpqs_all.sh` (PVP=1 for player-vs-player). Disposable ~/bob-test only.
+* Evidence (two instances, real GL, `bob_mp_two_instance.sh`: both enter 3D, each seated in own aircraft,
+  every slot has an aircraft, both survive):
+
+  | Run | Missions | Result |
+  |---|---|---|
+  | Co-op (joiner = slot 1, wingman) | Take-off, Landing, Free Flight, Turkey Shoot, One on One | all PASS, RAF lone group -> 2 aircraft, 0 crashes |
+  | Player vs player (joiner picks Luftwaffe, `#2129:0.1`) | Turkey Shoot, One on One | PASS, joiner squadron 6 team 2, 0 crashes |
+  | Single player (`BOB_BOOT_FRONTEND` QM) | — | `make_airgrp type=0 incomms=0`, no resize |
+* Not in the AppImage yet.

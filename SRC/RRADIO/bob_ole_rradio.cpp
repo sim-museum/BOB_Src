@@ -66,6 +66,11 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
        BOB_NO_RADIO_VERTICAL=1 reverts. */
     int m_bobLastY = -1;
     int onClickXY(int /*localX*/, int localY) override { m_bobLastY = localY; return 0; }
+    int rowPoint(int row, int* localY) override {          /* MA-MPQS-1 */
+        if (m_Cols > 1 || m_bobRowPitch <= 0 || row < 0) return 0;
+        *localY = row * m_bobRowPitch + m_bobRowPitch / 2;
+        return 1;
+    }
     int onButtonClick(int localX) override {
         int n = (int)m_list.GetCount();
         if (n <= 0 || sw <= 0) return -1;

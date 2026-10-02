@@ -302,6 +302,17 @@ void CSQuick1::DoDataExchange(CDataExchange* pDX)
 
 BOOL CSQuick1::OnInitDialog() 
 {
+
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_QMLIST")) { static int done = 0; if (!done) { done = 1;
+		for (int k = 0; quickmissions[k].missionname != NULL && k < 128; k++) {
+			bool lone = false;
+			for (int s = 0; s < 2; s++) for (int w = 0; w < 8; w++) for (int g = 0; g < 4; g++) {
+				int d = quickmissions[k].line[s][w][g].duty & QuickFields::QFD_MASK;
+				if (d == QuickFields::QFD_BRIT_LONE || d == QuickFields::QFD_GERM_LONE) lone = true; }
+			fprintf(stderr, "[qmtable] %d \"%s\" lone=%d\n", k, (const char*)LoadResString(quickmissions[k].missionname), (int)lone); } } }
+#endif
+
 	CDialog::OnInitDialog();
 	// TODO: Add extra initialization here
 
@@ -358,6 +369,18 @@ BOOL CSQuick1::OnInitDialog()
 		i++;
 	}
 	missionfamily[j] = 255;
+#if BOB_LINUX
+	/* MA-MPQS-1 test hook: BOB_QM_INDEX=<n> also preselects the Quick Shot (and its family) in a MULTIPLAYER
+	   session, once per run, so a two-instance gate can fly a given mission. Placed AFTER missionfamily[]
+	   is built (in comms it holds only families with an allowed mission). A player's later choice is never
+	   overridden. */
+	{ static int seeded = 0; const char* qix = getenv("BOB_QM_INDEX");
+	  if (!seeded && RFullPanelDial::incomms && qix) { seeded = 1; int q = atoi(qix), f = 0;
+		while (f + 1 < j && missionfamily[f + 1] <= q) f++;
+		currquickfamily = f; currquickmiss = q; quickdef = quickmissions[q];
+		if (!_DPlay.Side && _DPlay.GameType == DPlay::COMMSQUICKMISSION) quickdef.plside = 1;
+		if (getenv("BOB_TRACE_QMLIST")) fprintf(stderr, "[mpqs] preselect mission %d family %d of %d\n", q, f, (int)j); } }
+#endif
 #if defined(BOB_LINUX)
 	/* S163: list the mission families and their combo indices. Needed to drive a specific family
 	   (e.g. Dogfight) headlessly for TERRAIN-1 — until S161 these missions could not be selected
@@ -420,8 +443,20 @@ bool	CSQuick1::MissionsFound(int i, int	currtitle)
 bool	CSQuick1::MissionAllowed(int i)
 {
 	bool	missallowed=true;
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_QMLIST")) { static unsigned char seen[128]; if (i >= 0 && i < 128 && !seen[i]) { seen[i] = 1;
+		fprintf(stderr, "[qmlist] mission %d \"%s\" incomms=%d\n", i, (const char*)LoadResString(quickmissions[i].missionname), (int)RFullPanelDial::incomms); } }
+#endif
 	if (RFullPanelDial::incomms)
 	{
+#if BOB_LINUX
+		/* MA-MPQS-1 (PO 2026-10-02): multiplayer versions of Take-off (0), Landing (1), Free Flight (7),
+		   Turkey Shoot (11) and One on One (12). Their lone groups get a seat per player at battlefield
+		   load (bob_mpqs_lone_seats, called from Persons3::make_airgrp). Indices measured from the live
+		   table (BOB_TRACE_QMLIST). BOB_NO_MPQS_LONE=1 restores the original rule. */
+		if (!getenv("BOB_NO_MPQS_LONE") && (i == 0 || i == 1 || i == 7 || i == 11 || i == 12))
+			return true;
+#endif
 
 
 		int magic=9;
@@ -867,3 +902,39 @@ void CSQuick1::OnTextChangedFamilylists(LPCTSTR Caption, short index)
 
 #endif	
 }
+
+#if BOB_LINUX
+/* MA-MPQS-1: seats for a lone Quick Shot group in a multiplayer session. sq is the battlefield's
+   Scram_Gn_Squad, a ONE-based GROUP index into the quickdef lines in TANK.CPP's GR_Scram_* order
+   (s 0..1, w 0..7, g 0..2, lines with flights or AllowZero) -- the MA port measured this. Returns the
+   aircraft the group needs (highest seated position + 1, max 4), or 0 if it is not a lone group in MP. */
+extern "C" int bob_mpqs_lone_seats(int sq)
+{
+	/* sq is the air group's I.type -- a PlaneTypeSelect (measured: One on One passes 0 = PT_SPIT_A for the
+	   RAF group and 6 = PT_ME109 for the Luftwaffe one), i.e. the quickdef line's actype. (MA passes a
+	   group index here; BoB's battlefields name the plane type.) */
+	if (getenv("BOB_TRACE_QMLIST")) fprintf(stderr, "[mpqs] make_airgrp type=%d incomms=%d\n", sq, (int)RFullPanelDial::incomms);
+	if (!RFullPanelDial::incomms || getenv("BOB_NO_MPQS_LONE") || sq < 0) return 0;
+	QuickFields* line = NULL;
+	for (int s = 0; s < 2 && !line; s++)
+		for (int w = 0; w < 8 && !line; w++)
+			for (int g = 0; g < 4 && !line; g++) {
+				QuickFields& f = CSQuick1::quickdef.line[s][w][g];
+				int d = f.duty & QuickFields::QFD_MASK;
+				if ((f.flights || f.AllowZero()) && f.actype == sq && (d == QuickFields::QFD_BRIT_LONE || d == QuickFields::QFD_GERM_LONE))
+					line = &f;
+			}
+	if (!line) return 0;
+	int need = 1;
+	for (int i = 0; i < MAXPLAYERS; i++)
+		if (DPlay::H2H_Player[i].dpid && DPlay::H2H_Player[i].squadron == line->actype && DPlay::H2H_Player[i].position + 1 > need)
+			need = DPlay::H2H_Player[i].position + 1;
+	if (need > 4) need = 4;
+	if (getenv("BOB_TRACE_QMLIST")) {
+		for (int i = 0; i < MAXPLAYERS; i++) if (DPlay::H2H_Player[i].dpid)
+			fprintf(stderr, "[mpqs]   player %d squadron=%d position=%d team=%lu\n", i, DPlay::H2H_Player[i].squadron, DPlay::H2H_Player[i].position, (unsigned long)DPlay::H2H_Player[i].MyTeam);
+		fprintf(stderr, "[mpqs] lone group type %d -> %d aircraft (seated players)\n", sq, need);
+	}
+	return need;
+}
+#endif
