@@ -788,6 +788,16 @@ public:
                 else
                     bob_gdi_text_clip(-100000, m_bobVpY + clipr->top - slop,
                                        100000, m_bobVpY + clipr->bottom + slop);
+                /* LBSCROLL-1: a row's clip INTERSECTS an outer clip (Windows: the window's clip region),
+                   instead of replacing it -- the only outer text clip in this port is a scrolling list
+                   box's own rect (bob_ole_draw_panel), and without this its hidden rows repainted. */
+                if (txSave[2] > txSave[0] && txSave[3] > txSave[1]) {
+                    int c0, c1, c2, c3; bob_gdi_get_text_clip(&c0, &c1, &c2, &c3);
+                    if (c0 < txSave[0]) c0 = txSave[0]; if (c1 < txSave[1]) c1 = txSave[1];
+                    if (c2 > txSave[2]) c2 = txSave[2]; if (c3 > txSave[3]) c3 = txSave[3];
+                    if (c3 <= c1 || c2 <= c0) { c0 = -100002; c2 = -100001; c1 = 0; c3 = 1; }   /* row wholly outside: reject every pixel (an EMPTY rect would mean "no clip") */
+                    bob_gdi_text_clip(c0, c1, c2, c3);
+                }
                 didClip = true;
             }
             char buf[512]; UINT k = n < 511 ? n : 511; memcpy(buf, s, k); buf[k] = 0;
@@ -1658,6 +1668,10 @@ inline DWORD ExchangeVersion(CPropExchange* pPX, DWORD v, BOOL = TRUE) {
 /* COleControl — MFC ActiveX control base (bob's CR* control impls derive from it) */
 class COleControl : public CWnd {
 public:
+    /* LBSCROLL-1: CRScrlBarCtrl::Move is SetRectInContainer(rect). The port is the container; the
+       scrollbar host records the rect from Move()'s own arguments, so this only has to exist. */
+    BOOL SetRectInContainer(const CRect&) { return TRUE; }
+    BOOL GetRectInContainer(CRect* r) const { if (r) r->left = r->top = r->right = r->bottom = 0; return TRUE; }
     BOOL m_bAutoSize;
     BOOL m_bobEnabled = TRUE;     /* stock Enabled (persisted via the property stream) */
     virtual void OnDraw(CDC*, const CRect&, const CRect&) {}

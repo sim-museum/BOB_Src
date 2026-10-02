@@ -52,6 +52,12 @@ struct OleHost {
        onButtonClick() has only X, so neither could serve. Offered before onClick(); return 1 if the
        control's state changed. */
     virtual int  onClickXY(int /*localX*/, int /*localY*/) { return 0; }
+    /* LBSCROLL-1: a list box takes clicks on its own (runtime-created) scrollbars here, BEFORE the
+       row / event paths -- a bar click must not fire Select. Returns 1 if a bar took it. */
+    virtual int  onScrollbarClick(int /*localX*/, int /*localY*/) { return 0; }
+    /* LBSCROLL-1: 1 while the control shows a vertical scrollbar -> its rows are clipped to the box
+       and the hit area is the box (not contentH). */
+    virtual int  clipsRows() { return 0; }
     virtual int  curIndex() { return -1; } /* S161: current selection, for the event's index argument */
     virtual int  rowAtY(int /*localY*/) { return -1; } /* list controls: the row under a click (local Y), or -1 */
     /* S207, answering MA's §8-MA137: how tall is the content this control would LAY OUT, as
@@ -81,6 +87,11 @@ OleHost* bob_make_rbutton(class CWnd* parent);
 OleHost* bob_make_redit(class CWnd* parent);
 OleHost* bob_make_rradio(class CWnd* parent);
 OleHost* bob_make_redtbt(class CWnd* parent);
+OleHost* bob_make_rscrlbar(class CWnd* parent);   /* LBSCROLL-1: list box scrollbars */
+extern "C" OleHost* bob_ole_host_of(class CWnd* wrapper);
+extern "C" int bob_scrlbar_rect(OleHost* h, int* x, int* y, int* w, int* hh);
+extern "C" int bob_scrlbar_click(OleHost* h, int lx, int ly);
+extern "C" void bob_scrlbar_set_parent(OleHost* h, class CWnd* dlg);
 OleHost* bob_make_rspinbut(class CWnd* parent);   /* S142: 8th (last) R* type */
 OleHost* bob_make_rtabs(class CWnd* parent);      /* TABHEAD-1: the HTabBox tab strip */
 

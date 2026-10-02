@@ -96,15 +96,51 @@ struct HostRListBox : public CRListBoxCtrl, public OleHost {
             if (ns) { if (!bagCols && m_sizeList.GetCount() == 0) Shrink(); }
             else    { if (!bagCols) Shrink(); }
         }
+        /* LBSCROLL-1: lay the scrollbars out against the size this list is really drawn at (the game ran
+           UpdateScrollBar at populate time, against whatever GetClientRect said then). */
+        if (!getenv("BOB_NO_LBSCROLL") && (w != lbW || h != lbH)) { lbW = w; lbH = h; UpdateScrollBar(); }
         CRect rc(0, 0, w, h);
         OnDraw(pdc, rc, rc);
+        if (!getenv("BOB_NO_LBSCROLL")) drawBars(pdc);
     }
+    /* ---- LBSCROLL-1: this list box's own scrollbars (runtime children, see bob_ole_rscrlbar.cpp) ---- */
+    int lbW = -1, lbH = -1;
+    void GetClientRect(LPRECT r) const override {
+        if (!r) return;
+        r->left = r->top = 0;
+        r->right = lbW > 0 ? lbW : (sw > 0 ? sw : 100); r->bottom = lbH > 0 ? lbH : (sh > 0 ? sh : 100);
+    }
+    void drawBars(CDC* pdc) {
+        CRScrlBar* bars[2] = { m_pVertScrollBar, m_pHorzScrollBar };
+        for (int k = 0; k < 2; k++) {
+            OleHost* sb = bob_ole_host_of((CWnd*)bars[k]); int x, y, bw, bh;
+            if (!sb || !bob_scrlbar_rect(sb, &x, &y, &bw, &bh)) continue;
+            bob_scrlbar_set_parent(sb, this);   /* Windows: bar -> list box -> dialog (art via GetParent()->GetParent()) */
+            CDC dc = *pdc; dc.m_bobVpX = pdc->m_bobVpX + x; dc.m_bobVpY = pdc->m_bobVpY + y;
+            sb->draw(&dc, bw, bh);
+        }
+    }
+    int onScrollbarClick(int lx, int ly) override {
+        if (getenv("BOB_NO_LBSCROLL")) return 0;
+        CRScrlBar* bars[2] = { m_pVertScrollBar, m_pHorzScrollBar };
+        for (int k = 0; k < 2; k++) {
+            OleHost* sb = bob_ole_host_of((CWnd*)bars[k]); int x, y, bw, bh;
+            if (!sb || !bob_scrlbar_rect(sb, &x, &y, &bw, &bh)) continue;
+            if (lx < x || lx >= x + bw || ly < y || ly >= y + bh) continue;
+            bob_scrlbar_set_parent(sb, this);   /* Windows: bar -> list box -> dialog (art via GetParent()->GetParent()) */
+            int pos = bob_scrlbar_click(sb, lx - x, ly - y);
+            if (k == 0) OnScrollVert(pos); else OnScrollHorz(pos);   /* what the bar's Scroll event would do */
+            return 1;
+        }
+        return 0;
+    }
+    int clipsRows() override { return !getenv("BOB_NO_LBSCROLL") && m_vert > 0; }
     /* R4.4: map a click's local Y (relative to the control's drawn top) to a list row. */
     int rowAtY(int localY) override { return (int)(short)GetRowFromY(localY); }
     /* S207 (§8-MA137): the control's OWN layout metric -- GetCount()*rowH + shadow, from the same
        TEXTMETRIC OnDraw lays rows out with. Compared against the hosted rect it answers whether
        this port has MA's paint-vs-click extent disagreement. */
-    int contentH() override { return (int)GetListHeight(); }
+    int contentH() override { return clipsRows() ? 0 : (int)GetListHeight(); }   /* LBSCROLL-1: a scrolling list hit-tests its box */
     /* S141: map a click's local X to a list COLUMN via the genuine control's own
        GetColFromX (walks m_sizeList, the authored/Shrink-computed column widths) --
        the second half of the Select(row,column) event. Multi-COLUMN listboxes are how

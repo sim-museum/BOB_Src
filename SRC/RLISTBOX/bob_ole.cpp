@@ -40,6 +40,7 @@ static const CLSID CLSID_RRadio   = { 0x5363ba22, 0xd90a, 0x11d6, { 0xa1,0xf0,0x
 static const CLSID CLSID_REdtBt   = { 0x461a1fe3, 0xb81b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S140: CREdtBt pilot slots (BoBFrag) */
 static const CLSID CLSID_RSpinBut = { 0xc3270e66, 0x6d6b, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* S142: CRSpinBut ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the LW Directives allocation grid (gold #18); 8th and LAST R* type */
 
+static const CLSID CLSID_RScrlBar = { 0x505aee46, 0x6a66, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* LBSCROLL-1 */
 static const CLSID CLSID_RTabs    = { 0x4a1e1986, 0x8b31, 0x11d6, { 0xa1,0xf0,0x44,0x45,0x53,0x54,0,0 } };  /* TABHEAD-1: the HTabBox tab strip (IDJ_TABCTRL) */
 
 /* wrapper CWnd*  ->  hosted control (type-agnostic via OleHost). */
@@ -47,6 +48,7 @@ static std::unordered_map<CWnd*, OleHost*>& hosts() {
     static std::unordered_map<CWnd*, OleHost*> m; return m;
 }
 static OleHost* findHost(CWnd* w) { auto& m = hosts(); auto it = m.find(w); return it == m.end() ? NULL : it->second; }
+extern "C" OleHost* bob_ole_host_of(CWnd* wrapper) { return wrapper ? findHost(wrapper) : NULL; }   /* LBSCROLL-1 */
 /* R13 (2026-08-29): expose the control id the REGISTRY knows. RCOMBO's GetIndex trace tried
    GetDlgCtrlID() and got 0 on every line -- these are OLE-hosted controls with no dialog child id
    at that point, so the trace stayed anonymous and a red gate could not be diagnosed from its own
@@ -101,6 +103,7 @@ extern "C" BOOL bob_ole_create_control(CWnd* self, const GUID* clsid, CWnd* pare
     else if (memcmp(clsid, &CLSID_RRadio,   sizeof(CLSID)) == 0) { h = bob_make_rradio(parent);   what = "CRRadioCtrl"; }
     else if (memcmp(clsid, &CLSID_REdtBt,   sizeof(CLSID)) == 0) { h = bob_make_redtbt(parent);   what = "CREdtBtCtrl"; }
     else if (memcmp(clsid, &CLSID_RSpinBut, sizeof(CLSID)) == 0) { h = bob_make_rspinbut(parent); what = "CRSpinButCtrl"; }
+    else if (clsid->Data1 == CLSID_RScrlBar.Data1 && !getenv("BOB_NO_LBSCROLL")) { h = bob_make_rscrlbar(parent); what = "CRScrlBarCtrl"; }
     else if (memcmp(clsid, &CLSID_RTabs,    sizeof(CLSID)) == 0 && !getenv("BOB_NO_RTABS")) { h = bob_make_rtabs(parent); what = "CRTabsCtrl"; }
     if (!h) {
         /* S170 (MA's census method, S136/S140): an UNHOSTED control type is silent -- the wrapper
@@ -523,7 +526,7 @@ extern "C" int bob_ole_draw_panel(CWnd* dialog, int ox, int oy) {
            paging; a 5-row menu wants a correctly sized box. Same symptom, different fixes.
            So this switch exists to MEASURE the cosmetic half in isolation, not to ship a fix. */
         int txSave[4] = {0,0,0,0};
-        const bool clipRows = getenv("BOB_CLIP_ROWS") != NULL;
+        const bool clipRows = getenv("BOB_CLIP_ROWS") != NULL || host->clipsRows();   /* LBSCROLL-1: a scrolling list */
         if (clipRows) {
             bob_gdi_get_text_clip(&txSave[0], &txSave[1], &txSave[2], &txSave[3]);
             bob_gdi_text_clip(sx, sy, sx + dluX(r.w), sy + hpx);
@@ -946,6 +949,12 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         if (h->sw <= 0 || h->sh <= 0) continue;
         /* S207 (ÃÂÃÂÃÂÃÂ§8-MA137): bound by what paint COVERED, not by the template rect. See OleHost::hitH. */
         int hitH = (h->hitH > 0) ? h->hitH : h->sh;
+        /* LBSCROLL-1: the list box's own scrollbars sit on top of its rows; offer them the click first. */
+        if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + h->sh
+            && h->onScrollbarClick(x - h->sx, y - h->sy)) {
+            if (bob_ole_trace()) fprintf(stderr, "[ole] click (%d,%d) -> scrollbar of id=%d\n", x, y, h->ctrlId);
+            return 1;
+        }
         if (x >= h->sx && x < h->sx + h->sw && y >= h->sy && y < h->sy + hitH) {
             bob_ole_last_click_id = h->ctrlId;   /* S156: report the hit control to the caller */
             /* PO 2026-09-05: a click on an edit control gives it the keyboard. Set before the

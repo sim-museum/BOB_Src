@@ -23,13 +23,15 @@ add_library(bob_rlistbox STATIC
     ${BOB_SRC}/RRADIO/bob_ole_rradio.cpp # RRadio host (S128)
     ${BOB_SRC}/REDTBT/bob_ole_redtbt.cpp # REdtBt host (S140)
     ${BOB_SRC}/RSPINBUT/bob_ole_rspinbut.cpp # RSpinBut host (S142 — 8th and last R* type)
+    ${BOB_SRC}/RSCRLBAR/RSCRLBRC.CPP # CRScrlBarCtrl (LBSCROLL-1: list box scrollbars)
+    ${BOB_SRC}/RSCRLBAR/bob_ole_rscrlbar.cpp # RScrlBar host (LBSCROLL-1)
     ${BOB_SRC}/RTABS/bob_ole_rtabs.cpp # RTabs host (TABHEAD-1 -- the 9th type; 8 was not the last)
     ${BOB_SRC}/RBUTTON/GETFILE.CPP  # GetFileNum (FileNumString -> FileNum, CRButtonCtrl)
     ${BOB_SRC}/MFC/GETSHADW.CPP   # shadow-text offset helpers the controls draw with
     ${BOB_SRC}/MFC/GETRESRC.CPP   # GetResourceNumberFromID / ConvertResourceID (RStatic)
 )
 target_include_directories(bob_rlistbox PUBLIC
-    ${BOB_SRC}/compat ${BOB_SRC}/H ${BOB_SRC}/MFC ${BOB_SRC}/RLISTBOX ${BOB_SRC}/RCOMBO ${BOB_SRC}/RSTATIC ${BOB_SRC}/RBUTTON ${BOB_SRC}/REDIT ${BOB_SRC}/RRADIO ${BOB_SRC}/REDTBT ${BOB_SRC}/RSPINBUT)
+    ${BOB_SRC}/compat ${BOB_SRC}/H ${BOB_SRC}/MFC ${BOB_SRC}/RLISTBOX ${BOB_SRC}/RCOMBO ${BOB_SRC}/RSTATIC ${BOB_SRC}/RBUTTON ${BOB_SRC}/REDIT ${BOB_SRC}/RRADIO ${BOB_SRC}/REDTBT ${BOB_SRC}/RSPINBUT ${BOB_SRC}/RSCRLBAR)
 # GETFILE.CPP reads h/F_GRAFIX.G (button-art FileNum resolution) from the repo source tree.
 set_source_files_properties(${BOB_SRC}/RBUTTON/GETFILE.CPP PROPERTIES
     COMPILE_DEFINITIONS "BOB_SRC_DIR=\"${BOB_SRC}\"")

@@ -558,7 +558,11 @@ void CRScrlBarCtrl::DrawTransparentBitmap(int filenum,CDC * pDC, int x, int y)
 	if (filenum>=ICON_PAGE_BASE)
 	{
 			IconDescUI* icon=(IconDescUI*)pData;
+#if BOB_LINUX
+			{ CPoint pt(x,y); icon->MaskIcon(pDC,pt); }   /* MaskIcon takes CPoint& (GCC: no temporary) */
+#else
 			icon->MaskIcon(pDC,CPoint(x,y));
+#endif
 	}
 	else
 	if (pData && pData[0]=='B' && pData[1]=='M') // checks if its a bitmap file
@@ -837,7 +841,11 @@ void CRScrlBarCtrl::DoFireScroll()
 	if (m_iScrollPos>m_lMaxValue) m_iScrollPos=m_lMaxValue;
 	if (m_iScrollPos<m_lMinValue) m_iScrollPos=m_lMinValue;
 	if (m_bUseMessagesInsteadOfEvents && m_parenthWnd)
+#if BOB_LINUX
+		;	/* LBSCROLL-1: the list box host applies the new position itself (OnScrollVert/Horz) */
+#else
 		::SendMessage(m_parenthWnd,WM_ACTIVEXSCROLL,m_iScrollPos,m_bHorzAlign);
+#endif
 	else
 		FireScroll(m_iScrollPos);
 //DeadCode DAW 18Jul00 		m_parent->SendMessage(WM_ACTIVEXSCROLL,m_iScrollPos,m_bHorzAlign);

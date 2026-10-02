@@ -1297,7 +1297,13 @@ void CRListBoxCtrl::UpdateScrollBar()
 		rcBounds.right--;
 	}
 	int height=GetCount()*tm.tmHeight;
+#if BOB_LINUX
+	/* LBSCROLL-1: this port's TTF metrics differ from the original's by a few pixels, which must not
+	   invent bars on lists that fit on Windows -- a vertical bar needs more than half a row of overflow. */
+	if (height > rcBounds.bottom-rcBounds.top + (getenv("BOB_NO_LBSCROLL") ? 0 : tm.tmHeight/2))
+#else
 	if (height>rcBounds.bottom-rcBounds.top)
+#endif
 	{
 		m_vert=16;
 	}
@@ -1307,7 +1313,14 @@ void CRListBoxCtrl::UpdateScrollBar()
 	{
 		width+=m_sizeList.GetNext(position);//*tm.tmHeight/16;
 	}
+#if BOB_LINUX
+	/* LBSCROLL-1: no horizontal bars by default -- the wider TTF text makes nearly every list "overflow"
+	   sideways by a few pixels (141 crawl paths asked for one), and row text is not clipped in X, so
+	   nothing is hidden horizontally. BOB_LB_HSCROLL=1 restores the original test. */
+	if ((getenv("BOB_LB_HSCROLL") || getenv("BOB_NO_LBSCROLL")) && width>(rcBounds.right-rcBounds.left)-m_vert)
+#else
 	if (width>(rcBounds.right-rcBounds.left)-m_vert)
+#endif
 	{
 		m_horz=16;
 		if (!m_pHorzScrollBar)
