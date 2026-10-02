@@ -12497,3 +12497,11 @@ PO: *"I do not want the user to exercise some overlooked functionality and have 
      A bare 30 ms wait broke the join list (bob_mp_uijoin.sh FAIL vs control PASS); with the cache both MP gates PASS.
   Not defects: menu8 = Quit; menu4 > menu1 opens a modal (no ticks -> no shot); BoB showed no ghost-control class.
 * Gotcha: `BOB_DIK_MS=@file` fails silently (the port's fopen remaps paths); the runner passes the list inline.
+* **LBSCROLL-1 (2026-10-01) ✅ dev.** `824be37` + `6c928a2`: RScrlBar hosted (`SRC/RSCRLBAR/bob_ole_rscrlbar.cpp`) —
+  with more saves than the box holds, Load Campaign painted rows 14+ below its box over the RAF / Luftwaffe /
+  Back / Load buttons and they could never be reached (reproduced with 21 saves in ~/bob-test). Now: rows
+  clipped to the box, BoB's gold bar drawn, arrows scroll one row (163 -> 63 in 5 clicks), a row clicked after
+  scrolling selects the right save. bob_parity.sh: fix == control (10 OK; 4 config screens DIFF on setting
+  VALUES from the PO's 2026-09-25 settings.cfg — reference drift; the gate copies SAVEGAME from the player tree).
+* **Campaign-flight keys (2026-10-01):** M opens the in-flight map overlay, its menu's `0. Exit` returns to the
+  cockpit; F12 closes the flight (OnCancel + OnFlyingClosed) back to the front end. No crash (screenshots).
