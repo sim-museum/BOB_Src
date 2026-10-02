@@ -34,6 +34,7 @@
  * BOB_TRACE_DPLAY  log every call, including the unimplemented ones
  * BOB_NO_DPLAY     restore E_NOINTERFACE -- the negative control for tools/bob_mp_connect.sh
  */
+#include <time.h>
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -330,7 +331,7 @@ public:
     /* Probe for a host and report what answers. With no host running, no callback fires and this
      * returns DP_OK with an empty list -- which is the honest answer, not an error. */
     HRESULT STDMETHODCALLTYPE EnumSessions(LPDPSESSIONDESC2 d, DWORD timeout,
-                                           LPDPENUMSESSIONSCALLBACK2 cb, LPVOID ctx, DWORD) override {
+                                           LPDPENUMSESSIONSCALLBACK2 cb, LPVOID ctx, DWORD flags) override {
         (void)d;
         if (fd < 0 && !mksock(0)) return DPERR_NOCONNECTION;
         struct sockaddr_in to; memset(&to, 0, sizeof(to));
@@ -341,12 +342,35 @@ public:
 
         int found = 0;
         unsigned waitms = timeout ? (timeout > 2000 ? 2000 : timeout) : 400;
+        /* FUNC-SWEEP-BOB: the Join screen's OnTimer calls this with DPENUMSESSIONS_ASYNC every tick. Real
+           DirectPlay returns at once for ASYNC (cached list, enumeration continues in the background); the
+           fixed 400 ms wait here throttled the whole front end to ~3 Hz on that screen (measured: one SDL
+           pump per poll). Replies that land after a short wait stay queued on the UDP socket and are read by
+           the next call. BOB_DPLAY_ENUM_WAIT_MS=<ms> overrides; =400 restores the old timing. */
+        if (flags & DPENUMSESSIONS_ASYNC) {
+            static int envw = -2;
+            if (envw == -2) { const char* e = getenv("BOB_DPLAY_ENUM_WAIT_MS"); envw = e ? atoi(e) : -1; }
+            waitms = envw >= 0 ? (unsigned)envw : 30;
+        }
+        /* ...and because a short window often closes before the host answers, ASYNC calls report a
+           CACHE: every session seen in the last 2 s (DirectPlay's own async list behaves the same way --
+           a host stays listed between replies). Synchronous callers keep the old one-shot behaviour. */
+        const bool async = (flags & DPENUMSESSIONS_ASYNC) != 0;
+        struct SessSeen { char name[128]; unsigned long long ms; };
+        static SessSeen seen[8]; static int nseen = 0;
+        auto nowms = []() { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+                            return (unsigned long long)ts.tv_sec * 1000ull + ts.tv_nsec / 1000000; };
+        auto asyncRemember = [&](const char* nm) {
+            for (int k = 0; k < nseen; k++) if (!strcmp(seen[k].name, nm)) { seen[k].ms = nowms(); return; }
+            if (nseen < 8) { snprintf(seen[nseen].name, sizeof(seen[nseen].name), "%s", nm); seen[nseen].ms = nowms(); nseen++; }
+        };
         /* Report anything pump() already took off the socket for us. */
         for (int i = 0; i < offerCount; i++) {
             DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd)); sd.dwSize = sizeof(sd);
             sd.lpszSessionNameA = offers[i]; sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
             DWORD tmo = waitms; found++;
             DPT("EnumSessions: found \"%s\" (from the pump cache)\n", offers[i]);
+            if (async) { asyncRemember(offers[i]); continue; }
             if (cb && !cb(&sd, &tmo, 0, ctx)) { offerCount = 0; DPT("EnumSessions -> %d session(s)\n", found); return DP_OK; }
         }
         offerCount = 0;
@@ -385,10 +409,23 @@ public:
                     DWORD tmo = waitms;
                     found++;
                     DPT("EnumSessions: found \"%s\"\n", sd.lpszSessionNameA);
+                    if (async) { asyncRemember(sd.lpszSessionNameA); continue; }
                     if (cb && !cb(&sd, &tmo, 0, ctx)) break;
                 }
             }
             usleep(20000);
+        }
+        if (async) {
+            int listed = 0; unsigned long long t = nowms();
+            for (int k = 0; k < nseen; k++) {
+                if (t - seen[k].ms > 2000) continue;
+                DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd)); sd.dwSize = sizeof(sd);
+                sd.lpszSessionNameA = seen[k].name; sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
+                DWORD tmo = waitms; listed++;
+                if (cb && !cb(&sd, &tmo, 0, ctx)) break;
+            }
+            DPT("EnumSessions -> %d session(s) (async: %d new reply(ies), %d listed from cache)\n", listed, found, listed);
+            return DP_OK;
         }
         DPT("EnumSessions -> %d session(s)\n", found);
         return DP_OK;
