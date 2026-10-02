@@ -12505,3 +12505,7 @@ PO: *"I do not want the user to exercise some overlooked functionality and have 
   VALUES from the PO's 2026-09-25 settings.cfg — reference drift; the gate copies SAVEGAME from the player tree).
 * **Campaign-flight keys (2026-10-01):** M opens the in-flight map overlay, its menu's `0. Exit` returns to the
   cockpit; F12 closes the flight (OnCancel + OnFlyingClosed) back to the front end. No crash (screenshots).
+* **Re-crawl after LBSCROLL-1 (2026-10-02):** `tools/bob_ui_crawl.py`, depth 3, with 21 saves in ~/bob-test —
+  329 paths, 25 screens (was 23), **0 crashes** (was 2: Credits, Calibrate — both fixed), the Join-no-host
+  "hang" is gone (DPlay ASYNC fix). Remaining non-OK: menu8 = Quit (intended), menu4 > menu1 = a modal waiting
+  for input (no front-end ticks, so no shot) — not defects.
