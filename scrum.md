@@ -12486,6 +12486,14 @@ PO: *"I do not want the user to exercise some overlooked functionality and have 
   go-to-map do nothing visible in a Quick Mission. **Not covered: F12 / M from a CAMPAIGN flight** (needs a
   menu to return to; the boot scaffold has none).
 * **UI crawler** `tools/bob_ui_crawl.py` (BOB_AUTOCLICK menu/hosted-control steps, BOB_DUMP_HITTARGETS via a
-  BOB_SHOT 120 ticks after the last step, fresh launch per path, on ~/bob-test) — built and smoke-tested;
-  full crawl pending. Watch for MA's GHOST-SYSBOX-1 class (hidden parent-scoped controls still clickable).
+  BOB_SHOT 120 ticks after the last step, fresh launch per path, on ~/bob-test): **324 runs, 23 screens, depth 3.**
+  Found and fixed (all fixed in dev, NOT in the AppImage):
+  1. `f220fd5` **main menu > Credits crashed at once** — CCredits::OnInitDialog scans the RT_VERSION resource and
+     the compat FindResource/LockResource stubs returned NULL. RT_VERSION now served from the PE resources.
+  2. `6371e0e` **Preferences > Controls > Calibrate crashed** — RunControlPanel through an unfilled DirectInput
+     vtable slot (jump to 0). All 50 dinput.h wrappers NULL-safe (unimplemented -> E_NOTIMPL; RunControlPanel DI_OK).
+  3. `5ed3d06` **Multiplayer > Join with no host ran the front end at ~3 Hz** — EnumSessions ignored
+     DPENUMSESSIONS_ASYNC and blocked 400 ms per 0 ms timer tick. ASYNC: 30 ms wait + 2 s session cache.
+     A bare 30 ms wait broke the join list (bob_mp_uijoin.sh FAIL vs control PASS); with the cache both MP gates PASS.
+  Not defects: menu8 = Quit; menu4 > menu1 opens a modal (no ticks -> no shot); BoB showed no ghost-control class.
 * Gotcha: `BOB_DIK_MS=@file` fails silently (the port's fopen remaps paths); the runner passes the list inline.
