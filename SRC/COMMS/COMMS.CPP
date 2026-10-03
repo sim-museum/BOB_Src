@@ -3252,6 +3252,7 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 			Todays_Packages.hipack=(char)mpc_pack;
 			Todays_Packages.hisquad=(char)mpc_sq;
 			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] guest frags the host's flight: pack %d sq %d\n",mpc_pack,mpc_sq);
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] after load: pack0 status=%d pack%d status=%d squads=%d\n",(int)Todays_Packages[0].packagestatus,mpc_pack,(int)Todays_Packages[mpc_pack].packagestatus,(int)(ULong)Todays_Packages[mpc_pack].squadlist);
 		}
 #endif
 

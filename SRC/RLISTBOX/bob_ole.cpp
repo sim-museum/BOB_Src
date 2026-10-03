@@ -942,9 +942,15 @@ extern "C" int bob_ole_click(CWnd* dialog, int x, int y) {
         int match=0; for (auto& kv : hosts()) if (kv.second->parentDlg==dialog) match++;
         fprintf(stderr, "[ole] click test dialog=%p (%d,%d) hostsForDialog=%d\n", (void*)dialog, x, y, match);
     }
+    static int clickHidden = -1; if (clickHidden < 0) clickHidden = getenv("BOB_OLE_CLICK_HIDDEN") ? 1 : 0;
     for (auto& kv : hosts()) {
         OleHost* h = kv.second;
         if (h->parentDlg != dialog) continue;
+        /* E2-5: a control the game has hidden (ShowWindow(SW_HIDE) -> visible=0) is not drawn and must not take a
+           click. Measured on the co-op campaign frag: the unused pilot slots 3..14 are hidden but kept their
+           cascade rects, so a click on seat Red 2 (IDC_PILOT_1) went to hidden slot 14. MA's ghost-control
+           lesson (GHOST-SYSBOX-1). BOB_OLE_CLICK_HIDDEN=1 reverts. */
+        if (!h->visible && !clickHidden) continue;
         if (bob_ole_trace()) fprintf(stderr, "[ole]   hit? id=%d rect=(%d,%d,%d,%d) click=(%d,%d)\n", h->ctrlId, h->sx, h->sy, h->sw, h->sh, x, y);
         if (h->sw <= 0 || h->sh <= 0) continue;
         /* S207 (ÃÂÃÂÃÂÃÂ§8-MA137): bound by what paint COVERED, not by the template rect. See OleHost::hitH. */
@@ -1060,6 +1066,7 @@ extern "C" int bob_ole_ctrl_point_rc(CWnd* dialog, int id, int col, int row, int
         if (h->ctrlId != id) continue;
         if (dialog && h->parentDlg != dialog) continue;
         if (h->sw <= 0 || h->sh <= 0) continue;          /* not drawn (hidden / off-template) */
+        if (!h->visible && !getenv("BOB_OLE_CLICK_HIDDEN")) continue;   /* E2-5: same rule as the hit test */
         { int ry; if (row >= 0 && h->rowPoint(row, &ry)) {    /* MA-MPQS-1: vertical radio button ROW */
               *px = h->sx + (h->sw < 40 ? h->sw / 2 : 20); *py = h->sy + ry; return 1; } }
         int lx = h->sw / 2;

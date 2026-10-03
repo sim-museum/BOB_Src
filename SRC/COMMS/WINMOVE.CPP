@@ -5290,7 +5290,11 @@ Bool	DPlay::SlotFree(int pos, int squadron)
 			{
 				if  (		(H2H_Player[i].squadron == squadron)
 					&&		(H2H_Player[i].position == pos)
-					&& 		(H2H_Player[i].status!=CPS_NONE)	 
+					&& 		(H2H_Player[i].status!=CPS_NONE)
+#if defined(BOB_LINUX)
+					&&		(i != mySlot || GameType!=COMMSCAMPAIGN)	/* E2-5: the host re-taking its own seat */
+#endif
+	 
 
 				)
 				{

@@ -1598,6 +1598,14 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 	if (res==DP_OK)
 	{
 //DeadCode AMM 21Feb100		if (_DPlay.GameType!=DPlay::COMMSCAMPAIGN)
+#if defined(BOB_LINUX)
+		/* E2-5: Rowan's guard, revived. A campaign guest has ALREADY loaded the host's savegame during the join
+		   (ReceiveStartupSaveGame, WINMOVE startup), so resetting to the scramble campaign and a clean node tree
+		   here wiped the day's packages (measured: pack0 status 15 after the load, 0 at the frag -> the guest's frag
+		   took the quick-mission fill with no pilots). The HOST keeps the reset: it has loaded nothing yet and
+		   launches its campaign map just after (the measured working path). */
+		if (_DPlay.GameType!=DPlay::COMMSCAMPAIGN || _DPlay.UIPlayerType==DPlay::PLAYER_HOST)
+#endif
 		{
 //DeadCode AMM 2Oct00 			PrepareForFrag(fs);									//AMM 13Oct98
 			Miss_Man.currcampaignnum = MissMan::SCRAMBLECAMPAIGN;		//RDH 16Apr96
@@ -1609,6 +1617,10 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 			strcpy(MMC.PlayerName,DPlay::H2H_Player[_DPlay.mySlot].name); //AMM 21/01/00
 			SetTitleText();
 		}
+#if defined(BOB_LINUX)
+		else
+			strcpy(MMC.PlayerName,DPlay::H2H_Player[_DPlay.mySlot].name);	/* E2-5: the campaign guest still needs its name */
+#endif
 
 //DeadCode AMM 24Aug00 		_DPlay.ApplyBackupPilots();
 

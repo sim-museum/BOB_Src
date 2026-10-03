@@ -12582,12 +12582,37 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
   - In comms, `BOB_CAMPAIGN_FLY` ends as the take-over offer does.
   - Autoclick gained a `wN` step (wait N s), so a menu item can be pressed by index once another player is ready.
   - The campaign frag's Fly is menu item 1 at (152,747). The panel's drawn "Fly" text is not its hit rect.
-* **NEXT (the remaining work):**
-  1. **Seats.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
+* **2026-10-03, later: two players fly the co-op campaign. ✅** (`tools/bob_mp_two_instance.sh`, 8/8 PASS)
+  - **Run:** host + guest, RAF campaign 10 Jul 1940, the host's interception (43 Sqn Hurricane I).
+  - **Seats:** host in the lead aircraft (uid 4876), guest as No. 2 (uid 4877).
+  - **Result:** both in 3D, both survive, the host csync=1 with the guest's packets arriving at 10/s. 0 crashes.
+  - **What it took** (each found by measuring, two by hardware watchpoint):
+    1. **Seat mapping.** A campaign seat maps through `SetPlayersPositionCamp` (squadron + aircraft index) and is
+       recorded only on a real match. A stale squadron 112 from the savegame was being recorded.
+    2. **`FragFly` overwrote the seat** with package 0 squadron 0, the quick-mission layout (watchpoint).
+    3. **Aircraft ids.** The campaign player's aircraft exists only after `ExpandPilotedFlights`, so it registers
+       its id there and the id wait follows expansion.
+    4. **The join reset wiped the guest's packages.** The guest loads the host's savegame during the join, and
+       Rowan's `GameType!=COMMSCAMPAIGN` guard was dead code. Restored, for guests only.
+    5. **Hidden controls took clicks.** Seat Red 2 went to hidden slot 14. `bob_ole_click` and the `#ID` resolver
+       now skip hidden controls; `BOB_OLE_CLICK_HIDDEN=1` reverts.
+    6. **The `BOB_TRACE_FRAG` line called `SlotFree()`.** On a guest that sends a real seat request. The host
+       granted it to the trace and refused the real call, so the guest kept aircraft 0 and both players shared
+       uid 4876 (watchpoint). The trace no longer asks. A host may also re-take its own seat.
+    7. **Mid-flight intercept offer.** It read a NULL `raidnumentries` and crashed. Now guarded like
+       `InterceptSanctioned`.
+  - **Co-op gates widened:** AI radio, the guest's FlyNow from the frag, and the deathmatch-only model and bomb
+    checks.
+  - **Regression:** the quick-mission two-instance gate still passes 8/8.
+  - **Open, as in quick-mission co-op:** the guest's aggregator ends in resync=1 and logs no `[addplayer]` for the
+    host. That is the same as the passing quick-mission guest, so not a campaign regression, but "the guest sees the
+    host move" is unproven in both modes.
+* **NEXT (the remaining work; items 1 and 2 done):**
+  1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,
      measured). It needs a campaign branch: button → (squadron of `Todays_Packages[hipack].squadlist[option]`,
      aircraft index). MA's FRAGPILT COMMSCAMPAIGN branches are the reference.
-  2. **3D.** Persons3 must place each human in that campaign aircraft (MA: `H2H_Player.squadron`/`position` →
+  2. ~~**3D.**~~ **Done.** Persons3 must place each human in that campaign aircraft (MA: `H2H_Player.squadron`/`position` →
      `MMC.playersquadron`/`playeracnum`).
   3. Then the two-instance gate (host + guest in 3D, same battlefield), the Luftwaffe side, and three or more
      players over the star transport.

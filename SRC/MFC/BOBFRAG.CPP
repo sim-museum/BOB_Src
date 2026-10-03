@@ -214,6 +214,10 @@ BOOL BoBFrag::OnInitDialog()
 
 	GetSideAndSetFrag();
 	squadinfo.currfrag->currsquadoption = 0;
+#if BOB_LINUX
+	if (getenv("BOB_TRACE_FRAG")) fprintf(stderr,"[frag] OnInitDialog: pack0 status=%d hipack=%d -> %s\n",(int)Todays_Packages[0].packagestatus,(int)Todays_Packages.hipack,
+		Todays_Packages[0].packagestatus==Profile::PS_SPARE ? "quick-mission fill" : "campaign fill");
+#endif
 	if (Todays_Packages[0].packagestatus==Profile::PS_SPARE)
 	 	FillSquadronsFromQM();
 	else
@@ -1265,7 +1269,7 @@ void BoBFrag::OnClickedPilot0(int id)
 		if (getenv("BOB_TRACE_FRAG"))
 			fprintf(stderr, "[frag] click slot %d -> squad=%ld pos=%ld dead=%d free=%d (mySlot=%d)\n", butnum, (long)sel_squad, (long)sel_pos,
 			        (sel_squad!=-1 && sel_pos!=-1) ? (int)_DPlay.IsPilotDead(pselectedsquadron+1,sel_pos+1) : -1,
-			        (sel_squad!=-1 && sel_pos!=-1) ? (int)_DPlay.SlotFree(sel_pos,sel_squad) : -1, (int)_DPlay.mySlot);
+			        -1 /* E2-5: NOT SlotFree() -- on a guest that SENDS a seat request; the host granted it to this trace and refused the real call that followed (watchpoint-measured) */, (int)_DPlay.mySlot);
 #endif
 
 //		sel_squad=squadinfo.currfrag->squadoptions[squadinto.currfrag->currsquadoption].squadnum;

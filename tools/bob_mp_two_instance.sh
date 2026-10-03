@@ -98,7 +98,7 @@ for who in host client; do
   if grep -aq '=== CRASH' "$l"; then say "$who survives the flight" "FAIL ($(grep -a -m1 '=== CRASH' "$l"))"; fail=1
   else say "$who survives the flight" "PASS"; fi
   # the seat: the player's own aircraft uid (needs BOB_TRACE_AGG=1 for the [psq] line)
-  u=$(grep -a -m1 -o '\[psq\] player aircraft uid=[0-9]*' "$l" | grep -o '[0-9]*$')
+  u=$(grep -a -m1 -oE '\[psq\] player aircraft uid=[0-9]*|\[mpcamp\] 3D: my aircraft uid=[0-9]*' "$l" | grep -o '[0-9]*$')   # quick mission | co-op campaign (E2-5)
   eval "uid_$who=\${u:-none}"
 done
 if [ "$uid_host" = none ] || [ "$uid_client" = none ]; then say "each player seated in own aircraft" "FAIL (host=$uid_host client=$uid_client; BOB_TRACE_AGG=1?)"; fail=1
