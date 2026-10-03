@@ -511,6 +511,9 @@ public:
 		DEATHMATCH=0,
 		TEAMPLAY, 
 		COMMSQUICKMISSION
+#if defined(BOB_LINUX)
+		,COMMSCAMPAIGN		/* EPIC-MP-CAMPAIGN E2-5: Rowan's co-op campaign, cut 21/02/00 and 09/05/00, revived */
+#endif
 	};
 
 	enum	TeamSides {
@@ -943,6 +946,10 @@ public:
 
 	bool	SendSaveGame(bool score, bool startup);
 	bool	ReceiveSaveGame(bool startup,ULong num,ULong size);
+#if defined(BOB_LINUX)
+	bool	ReceiveStartupSaveGame(bool realstartup);	/* E2-5, ported from MA (COMMS.CPP) */
+	static	bool	campaignloaded;						/* E2-5: the host has launched the campaign map this session */
+#endif
 	void	UpdateSaveGame(UByte* savegamedata,char* data);
 	bool	SaveDummyCommsSaveGame(UByte* data,ULong size);
 

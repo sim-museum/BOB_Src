@@ -5365,6 +5365,9 @@ Bool	DPlay::GetGameDetails()
 // csquick struc
 
 	SendCSRequest();
+#if defined(BOB_LINUX)
+	if (GameType!=COMMSCAMPAIGN)	/* E2-5 (MA DAW 22Jun99): no quick-mission struct in a campaign */
+#endif
 
 	{										
 		if (!GetCS())
@@ -5397,6 +5400,13 @@ Bool	DPlay::GetGameDetails()
 			return FALSE;
 		}
 	}
+#if defined(BOB_LINUX)
+	if (GameType==COMMSCAMPAIGN)	/* E2-5: a campaign joiner starts from the host's savegame */
+	{
+		if (!ReceiveStartupSaveGame(true))
+			return FALSE;
+	}
+#endif
 
 	return TRUE;
 }

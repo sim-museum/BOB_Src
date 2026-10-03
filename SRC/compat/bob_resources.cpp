@@ -147,8 +147,21 @@ extern "C" HMODULE_T bob_GetResourceHandle(void){ return (HMODULE_T)g_resModule;
 /* LoadString: RT_STRING (type 6). Strings are grouped 16 per bundle; the bundle
  * resource id is (id>>4)+1, the string is at index (id&15). Each entry in a
  * bundle is a WORD char-count followed by that many UTF-16LE code units. */
+/* The port's own strings (ids 0xEF00-0xEFFF, as in MA): the installed string table has no bundle there, so new UI
+   can LoadString/RESSTRING them. EPIC-MP-CAMPAIGN E2-5: the Locker Room's revived campaign game type. */
+static const struct { unsigned id; const char* s; } bob_extra_strings[] = {
+	{ 0xEF10, "Campaign" },
+};
 extern "C" int bob_load_string(HMODULE_T h, unsigned id, char* buf, int maxlen){
 	if (buf && maxlen>0) buf[0]=0;
+	if (buf && maxlen>0 && id >= 0xEF00 && id <= 0xEFFF) {
+		for (unsigned k = 0; k < sizeof(bob_extra_strings)/sizeof(bob_extra_strings[0]); k++)
+			if (bob_extra_strings[k].id == id) {
+				int n = (int)strlen(bob_extra_strings[k].s); if (n >= maxlen) n = maxlen - 1;
+				memcpy(buf, bob_extra_strings[k].s, n); buf[n] = 0; return n;
+			}
+		return 0;
+	}
 	BobResModule* m = h ? (BobResModule*)h : g_resModule;
 	if (!m || !buf || maxlen<=0) return 0;
 	uint32_t size=0;

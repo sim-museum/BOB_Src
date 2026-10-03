@@ -1433,6 +1433,25 @@ Bool RFullPanelDial::SelectReadyRoomStatic(FullScreen*&fs)
 			}
 			break;
 		}
+#if defined(BOB_LINUX)
+		case DPlay::COMMSCAMPAIGN:			/* E2-5: Rowan's lines below, revived. Side 1 = RAF, 0 = Luftwaffe */
+		{
+			if	(_DPlay.Side)
+			{
+				if	(_DPlay.UIPlayerType==DPlay::PLAYER_HOST)
+					fs=&readyroomhostcampaign;
+				else
+					fs=&readyroomguestcampaign;
+			}else
+			{
+				if	(_DPlay.UIPlayerType==DPlay::PLAYER_HOST)
+					fs=&readyroomhostcampaignred;
+				else
+					fs=&readyroomguestcampaignred;
+			}
+			break;
+		}
+#endif
 //DeadCode AMM 21Feb100		case DPlay::COMMSCAMPAIGN:
 //DeadCode AMM 21Feb100		{
 //DeadCode AMM 21Feb100			if	(_DPlay.Side)
@@ -1475,6 +1494,14 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 			gamestate = QUICK;
 			break;
 		}
+#if defined(BOB_LINUX)
+		case DPlay::COMMSCAMPAIGN:			/* E2-5: BoB has no CAMP state; a campaign player is a commander */
+		{
+			gamestate = COMMANDER;
+			gameside = _DPlay.Side ? SIDE_RAF : SIDE_LW;
+			break;
+		}
+#endif
 //DeadCode AMM 21Feb100		case DPlay::COMMSCAMPAIGN:
 //DeadCode AMM 21Feb100		{
 //DeadCode AMM 21Feb100			gamestate = CAMP;
@@ -1598,6 +1625,24 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 			DPlay::H2H_Player[_DPlay.mySlot].position=-1;
 
 			fs=&commsquick;
+#if defined(BOB_LINUX)
+		}else if	(	(_DPlay.GameType == DPlay::COMMSCAMPAIGN)	/* E2-5: Rowan's lines below, revived */
+			&&	(_DPlay.UIPlayerType==DPlay::PLAYER_HOST)
+			&&	!DPlay::campaignloaded
+			)
+		{
+			/* the host commands its side's campaign: the phase picked in the Locker Room, as Begin does in single
+			   player (campaignselect -> LaunchMapFirstTime) */
+			whichcamp=_DPlay.GameIndex;
+			gamestate = COMMANDER;
+			gameside = _DPlay.Side ? SIDE_RAF : SIDE_LW;
+			DPlay::campaignloaded=true;
+			fprintf(stderr,"[mpcamp] host launches the %s campaign, phase %d\n", _DPlay.Side ? "RAF" : "Luftwaffe", whichcamp);
+			LaunchMapFirstTime(fs);
+			MMC.playersquadron=-1;		// launch map first time sets these up so nobble again
+			MMC.playeracnum=-1;
+			return FALSE;
+#endif
 //DeadCode AMM 21Feb100		}else if	(	(_DPlay.GameType == DPlay::COMMSCAMPAIGN)
 //DeadCode AMM 21Feb100			&&	(_DPlay.UIPlayerType==DPlay::PLAYER_HOST)
 //DeadCode AMM 21Feb100			)
@@ -1715,6 +1760,9 @@ Bool RFullPanelDial::AllowExitFromComms(FullScreen*&fs)
 
 Bool RFullPanelDial::CleanUpComms(FullScreen*&fs)
 {
+#if defined(BOB_LINUX)
+	DPlay::campaignloaded=false;	/* E2-5: a new session starts a new campaign */
+#endif
 //DeadCode AMM 18Sep00 	_DPlay.campaignloaded=false;
 	CSQuick1::currquickmiss=-1;
 

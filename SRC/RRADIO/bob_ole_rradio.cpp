@@ -53,6 +53,9 @@ struct HostRRadio : public CRRadioCtrl, public OleHost {
         if (bob_ole_trace()) fprintf(stderr, "[ole] RRadio id=%d rowpitch=%d (tmHeight=%ld ColW=%ld)\n", ctrlId, m_bobRowPitch, (long)tm.tmHeight, (long)m_ColumnWidth);
     }
     int m_bobRowPitch = 0;
+    /* E2-5: a vertical radio given more buttons than its template rect holds (the Locker Room's revived 4th game type,
+       Campaign) paints them below the rect; report the painted height so S207's hit test covers every row. */
+    int contentH() override { return (m_Cols <= 1 && m_bobRowPitch > 0) ? (int)m_list.GetCount() * m_bobRowPitch : -1; }
     /* S129: a click on the tab row selects the button under the cursor. The buttons are
        laid out left-to-right in equal columns (OnDraw: x += m_ColumnWidth*avgCharWidth,
        m_Cols columns), so map local X across the drawn width to the button index; set the

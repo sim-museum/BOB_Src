@@ -821,6 +821,9 @@ Bool DPlay::UINetworkSelectFly ()
 
 	ResetAllocPacket();
 
+		#if defined(BOB_LINUX)
+	if (GameType<COMMSCAMPAIGN)		/* E2-5: a campaign session flies the host's packages */
+#endif
 		ClearPackages();
 
 	if (Host)
@@ -913,6 +916,21 @@ Bool DPlay::UINetworkSelectFly ()
 			}
 		}
 	}
+#if defined(BOB_LINUX)
+	if (GameType==COMMSCAMPAIGN)	/* E2-5 (MA COMMS.CPP): everyone flies the host's campaign day */
+	{
+		if (Host)
+		{
+			if (!SendSaveGame(false,false))
+				return FALSE;
+		}
+		else
+		{
+			if (!ReceiveStartupSaveGame(false))
+				return FALSE;
+		}
+	}
+#endif
 
 #ifdef CTRACE
 	fclose(fp);
@@ -3100,6 +3118,47 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 //Procedure		ReceiveSavegame
 //Date			Thu 14 Jan 1999
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+bool	DPlay::campaignloaded=false;
+
+/* E2-5: wait for the host's savegame announcement (PID_SAVEGAME) and take the binary that follows. Ported from MA
+   (COMMS.CPP ReceiveStartupSaveGame), in BoB's own receive idiom (GetPilotsStatus): realstartup = a joiner logging in,
+   where nothing else may be consumed; otherwise the launch, where other player traffic is processed as usual. */
+bool	DPlay::ReceiveStartupSaveGame(bool realstartup)
+{
+	char* packet;
+	ULong packlen=0,from;
+	ULong now=timeGetTime();
+	CommsTimeout time(now,(CommsTimeoutLength*2));
+	while (true)
+	{
+		now=timeGetTime();
+		if (time.TimedOut(now))
+		{
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] ReceiveStartupSaveGame(%d): timed out\n",(int)realstartup);
+			return false;
+		}
+		{ extern const char* bob_recv_caller; bob_recv_caller = "COMMS.CPP:ReceiveStartupSaveGame"; }
+		if (!ReceiveNextMessageToMe(packet,packlen,from,realstartup?0:DPRECEIVE_TOPLAYER))
+			continue;
+		if (from==DPID_SYSMSG)
+		{
+			if (!realstartup) ProcessSystemMessage(packet);
+			continue;
+		}
+		if (packlen==sizeof(AGGSENDPACKET) || from==aggID)
+			continue;
+		if (((LPGENERIC)packet)->PacketID==PID_SAVEGAME)
+		{
+			bool ok=ReceiveSaveGame(true,((LPGENERIC)packet)->PlayerID,((LPGENERIC)packet)->Slot);
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] host savegame received (%lu packets): %s\n",(unsigned long)((LPGENERIC)packet)->PlayerID, ok?"loaded":"FAILED");
+			if (ok) return true;
+		}
+		else if (!realstartup)
+			ProcessPlayerMessage(packet,packlen,from);
+	}
+}
+#endif
 bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 {
 	char* RecPacket;
@@ -3823,13 +3882,19 @@ void DPlay::Process_PM_CSQuickRequest(ULong requestfrom)
 {
 	if (Host)
 	{
+			
+#if defined(BOB_LINUX)
+		if (GameType!=COMMSCAMPAIGN)	/* E2-5 (MA DAW 22Jun99): a campaign joiner gets the savegame instead */
+#endif
 			SendCSQuickStrucToPlayers(TRUE);
-
 		if (GameType>TEAMPLAY)
 			SendPilotsStatus(false,requestfrom);
-
 		if (GameType==COMMSQUICKMISSION)
 			SendCampaignStruc(true);
+#if defined(BOB_LINUX)
+		else if (GameType==COMMSCAMPAIGN)
+			SendSaveGame(false,true);
+#endif
 	}
 }
 

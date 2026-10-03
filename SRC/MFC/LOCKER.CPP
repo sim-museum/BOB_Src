@@ -223,6 +223,15 @@ BOOL CLockerRoom::OnInitDialog()
 		pradio->AddButton(string);
 		string.LoadString(IDS_QUICKMISSIONCOMM);
 		pradio->AddButton(string);
+#if defined(BOB_LINUX)
+		/* EPIC-MP-CAMPAIGN E2-5: the co-op campaign Rowan cut on 09/05/00, back as the 4th game type
+		   (button index == DPlay::COMMSCAMPAIGN). BOB_NO_COMMSCAMPAIGN=1 hides it. */
+		if (!getenv("BOB_NO_COMMSCAMPAIGN"))
+		{
+			string.LoadString(0xEF10);
+			pradio->AddButton(string);
+		}
+#endif
 //DEADCODE RDH 09/05/00  		string.LoadString(IDS_CAMPAIGNCOMMS);
 //DEADCODE RDH 09/05/00  		pradio->AddButton(string);
 
@@ -250,6 +259,12 @@ BOOL CLockerRoom::OnInitDialog()
 			string.LoadString(IDS_QUICKMISSIONCOMM);
 			pradio->AddButton(string);
 			break;
+#if defined(BOB_LINUX)
+		case DPlay::COMMSCAMPAIGN:			/* E2-5 */
+			string.LoadString(0xEF10);
+			pradio->AddButton(string);
+			break;
+#endif
 
 //DeadCode AMM 21Feb100  		case DPlay::COMMSCAMPAIGN:
 //DeadCode AMM 21Feb100  			string.LoadString(IDS_CAMPAIGNCOMMS);
