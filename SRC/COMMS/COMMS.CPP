@@ -3051,6 +3051,9 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 		NULL,
 		NULL);
 
+	#if defined(BOB_LINUX)
+	if (savegame==INVALID_HANDLE_VALUE && getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] SendSaveGame: cannot open \"%s\"\n",savedgamename);
+#endif
 	if (savegame!=INVALID_HANDLE_VALUE)
 	{
 		savesize=GetFileSize(savegame,NULL);
@@ -3062,6 +3065,19 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 
 		cd.PlayerID=numpackets;
 		cd.Slot=savesize;
+#if defined(BOB_LINUX)
+		/* E2-5: a co-op campaign guest must frag the flight the host took (BoBFrag reads Todays_Packages.hipack/
+		   hisquad, which the savegame does not carry). GENERIC has no spare field and both ends are this port's own
+		   transport, so the selection rides in the top bits of the packet count: bit 31 set, pack in 23..16,
+		   squad in 30..24. A count never reaches 65536 (500-byte packets). BOB_NO_MPCAMP_HILIGHT=1 reverts. */
+		if (GameType==COMMSCAMPAIGN && Todays_Packages.hipack>=0 && !getenv("BOB_NO_MPCAMP_HILIGHT"))
+			cd.PlayerID = (numpackets & 0xFFFF) | 0x80000000u | ((ULong)(UByte)Todays_Packages.hipack << 16)
+						| ((ULong)((UByte)Todays_Packages.hisquad & 0x7F) << 24);
+#endif
+#if defined(BOB_LINUX)
+		if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] SendSaveGame(score=%d,startup=%d) \"%s\" %lu bytes -> %lu packets\n",
+			(int)score,(int)startup,savedgamename,(unsigned long)savesize,(unsigned long)numpackets);
+#endif
 
 		if (startup)
 		{
@@ -3150,8 +3166,9 @@ bool	DPlay::ReceiveStartupSaveGame(bool realstartup)
 			continue;
 		if (((LPGENERIC)packet)->PacketID==PID_SAVEGAME)
 		{
-			bool ok=ReceiveSaveGame(true,((LPGENERIC)packet)->PlayerID,((LPGENERIC)packet)->Slot);
-			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] host savegame received (%lu packets): %s\n",(unsigned long)((LPGENERIC)packet)->PlayerID, ok?"loaded":"FAILED");
+			ULong npk=((LPGENERIC)packet)->PlayerID, nby=((LPGENERIC)packet)->Slot;	/* the buffer is reused by later receives */
+			bool ok=ReceiveSaveGame(true,npk,nby);
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] host savegame received (%lu packets, %lu bytes): %s\n",(unsigned long)(npk&0xFFFF),(unsigned long)nby, ok?"loaded":"FAILED");
 			if (ok) return true;
 		}
 		else if (!realstartup)
@@ -3161,6 +3178,10 @@ bool	DPlay::ReceiveStartupSaveGame(bool realstartup)
 #endif
 bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 {
+#if defined(BOB_LINUX)
+	int mpc_pack=-1, mpc_sq=-1;		/* E2-5: the host's chosen flight, if SendSaveGame carried it */
+	if (num & 0x80000000u) { mpc_pack=(int)((num>>16)&0xFF); mpc_sq=(int)((num>>24)&0x7F); num &= 0xFFFF; }
+#endif
 	char* RecPacket;
 	ULong RecPacketLen=0,from;
 	ULong now=timeGetTime();
@@ -3222,6 +3243,14 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 	if (retval)
 	{
 		retval=LoadDummySavegame("dcomms.dat");
+#if defined(BOB_LINUX)
+		if (retval && mpc_pack>=0)
+		{
+			Todays_Packages.hipack=(char)mpc_pack;
+			Todays_Packages.hisquad=(char)mpc_sq;
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] guest frags the host's flight: pack %d sq %d\n",mpc_pack,mpc_sq);
+		}
+#endif
 
 		if (H2H_Player[mySlot].status==CPS_FRAG)	
 			FragChanged=true;		

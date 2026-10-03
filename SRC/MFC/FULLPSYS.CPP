@@ -804,6 +804,13 @@ extern "C" void bob_frontend_tick(void)
 			int nf = sscanf(mcxy, "%d,%d,%d", &mx, &my, &after);
 			if (nf >= 2 && ++mc_paints > after) { cx=mx; cy=my; haveClick=1; mc_done=1;
 				fprintf(stderr,"[mapclick] injecting (%d,%d) after %d paints\n", cx, cy, after); } }
+		  /* EPIC-MP-CAMPAIGN E2-5: BOB_MPCAMP_FRAG=<paint> -- on that map paint, a co-op campaign host makes the call
+		     the RAF/LW mission folder's Frag button makes (RAFMissionFolder::OnClickedRbuttonfrag ->
+		     CMainToolbar::OnClickedFrag2): save, send the savegame to the guests, open the campaign ready room. */
+		  { static int mf_paints = 0, mf_done = 0; const char* mf = getenv("BOB_MPCAMP_FRAG");
+			if (mf && !mf_done && RFullPanelDial::incomms && ++mf_paints >= atoi(mf)) { mf_done = 1;
+				fprintf(stderr, "[mpcamp] map paint %d: Frag (as the mission folder's button)\n", mf_paints);
+				MainToolBar().OnClickedFrag2(); } }
 		  /* TABHEAD-1/TOTE-1: BOB_MAP_CLICKS="x,y,paint;x,y,paint;..." -- a SEQUENCE of map clicks,
 		     each on the given map paint (counted from the first map paint). BOB_MAP_CLICK drives
 		     one click; opening RAF Resources, choosing a Group tab and then a sector to open the
@@ -1327,6 +1334,15 @@ extern "C" void bob_frontend_tick(void)
 								File_Man.fakefile(FIL_SAVEGAMEDIR,"Package.dat"),pdbuf));
 							if (pdbos.is_open()) { Todays_Packages.SaveGame(pdbos);
 								fprintf(stderr,"[campfly] wrote live Package.dat (pre-fly, mirrors OnClickedFrag2)\n"); }
+						}
+						/* EPIC-MP-CAMPAIGN E2-5: in a co-op campaign the host takes the flight the way the game's own
+						   take-over offer does (TakeOverOffered::OnOK): highlight it and Frag, which saves, sends the
+						   savegame to the guests and opens the campaign ready room -- not the single-player briefing. */
+						if (RFullPanelDial::incomms) {
+							fprintf(stderr,"[mpcamp] host takes pack %d sq %d (as TakeOverOffered::OnOK)\n", hipack, cf_sq);
+							RDialog::m_pView->SetHiLightInfo(hipack, cf_sq, UID_Null);
+							MainToolBar().OnClickedFrag2();
+							return;
 						}
 						fprintf(stderr,"[campfly] LaunchFullPane(bobfrag, UIR_FRAG) hipack=%d hisquad=0\n", hipack);
 						/* S180: the manual `g_bob_map_active = 0` that used to sit here is GONE.
