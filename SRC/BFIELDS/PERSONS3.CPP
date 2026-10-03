@@ -3199,6 +3199,9 @@ void Persons3::InitGamePiece()
 		Pack_PlayerSquad=MMC.playersquadron;
 		Pack_PlayerPos=MMC.playeracnum;
 	}
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] 3D load: player squadron %d aircraft %d (playback=%d)\n",(int)Pack_PlayerSquad,(int)Pack_PlayerPos,(int)_Replay.Playback);
+#endif
 
 	for (i=0;i<MAXCALLNAMES;i++)
 		callsignnamecount[i]=1;
@@ -3302,7 +3305,7 @@ void Persons3::FinishSetPiece()
 			_DPlay.CommsStage[DPlay::STAGE_BFIELDS][0]=true;
 		}
 
-		if (_DPlay.GameType==DPlay::COMMSQUICKMISSION)
+		if (_DPlay.GameType==DPlay::COMMSQUICKMISSION)	/* (a co-op campaign waits after ExpandPilotedFlights -- E2-5) */
 		{
 			if (_DPlay.Joining)
 			{
@@ -3330,6 +3333,18 @@ void Persons3::FinishSetPiece()
 	SagExpansionCounter::totalexpanded=0;
 	SagExpansionCounter::highdemandrange=METRES2000;					//DAW 15/02/00
 	ExpandPilotedFlights();
+#if defined(BOB_LINUX)
+	/* E2-5: a co-op campaign player's aircraft only exists once its SAG is expanded (ExpandPilotedFlights), so the
+	   aircraft-id swap the quick mission does above (before expansion) happens here instead. */
+	if (_DPlay.Implemented && _DPlay.GameType==DPlay::COMMSCAMPAIGN)
+	{
+		if (_DPlay.Joining)
+			_DPlay.SendIDRequest();
+		if (getenv("BOB_TRACE_DPLAY"))
+			fprintf(stderr,"[mpcamp] 3D: my aircraft uid=%u, waiting for the other players' aircraft ids\n",(unsigned)_DPlay.AllocPacket[_DPlay.mySlot]);
+		_DPlay.WaitForPlayersUniqueIDs();
+	}
+#endif
 #if defined(BOB_LINUX)
 	// S72 (historic-QM epic, fix 3/N): some historic quick missions nominate a NON-FLYABLE
 	// squadron as the player's -- e.g. QM 28 -> squadron 73 (the Defiant, PT_DEFIANT), whose
@@ -3675,7 +3690,7 @@ void	Persons3::ColourRulePlayerSquadron(AirStrucPtr	newac,FormationIndex formpos
 				(unsigned)newac->uniqueID.count, (int)_DPlay.GameType, (int)DPlay::COMMSQUICKMISSION, (int)_DPlay.Implemented, (int)_DPlay.mySlot, (int)Pack_PlayerSquad), fflush(stderr);
 #endif
 
-		if (_DPlay.Implemented && _DPlay.GameType==DPlay::COMMSQUICKMISSION)
+		if (_DPlay.Implemented && _DPlay.GameType>=DPlay::COMMSQUICKMISSION)	/* E2-5: and in a co-op campaign */
 		{
 			_DPlay.SendMyUniqueID((UWord)(newac->uniqueID.count));
 			_DPlay.AllocPacket[_DPlay.mySlot]=(UWord)(newac->uniqueID.count);
@@ -4010,6 +4025,14 @@ void	Persons3::ExpandPilotedFlights()
 		//need to find n'th aircraft...	 and assign it to player:
 
 		Manual_Pilot.Associate(leader,ManualPilot::MANUAL);						//RDH 17Jun96
+#if defined(BOB_LINUX)
+		if (_DPlay.Implemented && _DPlay.GameType==DPlay::COMMSCAMPAIGN && !_DPlay.AllocPacket[_DPlay.mySlot])
+		{	/* E2-5: register the campaign player's aircraft, as the quick mission does at its piloted-aircraft site */
+			_DPlay.SendMyUniqueID((UWord)(leader->uniqueID.count));
+			_DPlay.AllocPacket[_DPlay.mySlot]=(UWord)(leader->uniqueID.count);
+			if (!getenv("BOB_MPCAMP_NOCOMMSMOVE")) leader->uniqueID.commsmove=TRUE;
+		}
+#endif
 		SHAPE.SetPilotedAcAnim(leader);							//PD 26Jun96
 		UpdateLog(leader,0,EventLog::TAKEOFF);
 //DEADCODE DAW 08/03/00 		if (leader->ai.homebase)

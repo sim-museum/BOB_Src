@@ -616,6 +616,17 @@ Bool	RFullPanelDial::FragFly(FullScreen*&fs)
 // need to save out a dummy save game here in case record is started
 // in middle of mission
 
+		#if defined(BOB_LINUX)
+		/* E2-5: in a comms QUICK mission package 0 squadron 0 is the player's flight; in a co-op CAMPAIGN package 0 is
+		   whatever the day's first package is (measured: squadron 112, a bomber), so keep the seat the player took
+		   in the frag (H2H_Player, recorded by SetPlayersPositionCamp). Found by watchpoint on playersquadron. */
+		if (_DPlay.GameType==DPlay::COMMSCAMPAIGN && DPlay::H2H_Player[_DPlay.mySlot].squadron!=-1)
+		{
+			MMC.playersquadron=DPlay::H2H_Player[_DPlay.mySlot].squadron;
+			MMC.playeracnum=DPlay::H2H_Player[_DPlay.mySlot].position;
+		}
+		else
+#endif
 		if (Todays_Packages[0].packagestatus!=Profile::PS_SPARE)
 		{
 			MMC.playersquadron=Todays_Packages[0][0].squadnum;

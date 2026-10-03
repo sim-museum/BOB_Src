@@ -956,6 +956,9 @@ Bool DPlay::UINetworkSelectFly ()
 		}
 	}
 
+	#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] launch: my seat squadron %d aircraft %d\n",(int)H2H_Player[mySlot].squadron,(int)H2H_Player[mySlot].position);
+#endif
 	MMC.playersquadron=H2H_Player[mySlot].squadron;
 	MMC.playeracnum=H2H_Player[mySlot].position;
 
@@ -3792,7 +3795,7 @@ bool DPlay::Process_PM_FlyNow()
 {
 	if (!Host
 	&& 	((GameType<COMMSQUICKMISSION && H2H_Player[mySlot].status==CPS_READYROOM)
-	|| (GameType==COMMSQUICKMISSION && H2H_Player[mySlot].status==CPS_FRAG)))
+	|| (GameType>=COMMSQUICKMISSION && H2H_Player[mySlot].status==CPS_FRAG)))	/* E2-5: a campaign guest flies from the frag too */
 	{
 		FlyNowFlag = TRUE;
 		return FALSE;

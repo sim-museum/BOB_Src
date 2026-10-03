@@ -527,6 +527,25 @@ void BoBFrag::SetPlayersPositionCamp(int plyrpos)
 					plyrnum+=Todays_Packages[index][j].numacleft;
 		}
 		MMC.playeracnum=plyrnum;
+#if BOB_LINUX
+		if (RFullPanelDial::incomms)	/* E2-5: a co-op campaign seat, as SetPlayersPositionQM records a quick-mission one */
+		{
+			/* only a seat the loop above actually matched: with no selected squadron it leaves MMC.playersquadron at
+			   whatever the savegame held (measured: 112, a bomber the player cannot fly) */
+			int flyable=0;
+			for (int k=0;k<(int)numsquads;k++)
+				if (Todays_Packages[index].squadlist[k].status>Profile::PS_ACTIVE_MIN && Todays_Packages[index].squadlist[k].status<Profile::PS_REFUELLING)
+					flyable++;
+			bool matched = pselectedsquadron>=0 && pselectedsquadron<flyable;
+			if (matched)
+			{
+				DPlay::H2H_Player[_DPlay.mySlot].squadron=MMC.playersquadron;
+				DPlay::H2H_Player[_DPlay.mySlot].position=MMC.playeracnum;
+			}
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] seat: option %d of %d flyable -> squadron %d aircraft %d (%s)\n",
+				(int)pselectedsquadron, flyable, (int)MMC.playersquadron, (int)MMC.playeracnum, matched ? "recorded" : "no match, not recorded");
+		}
+#endif
 	}
 //DEADCODE AMM 27/01/00 	else
 //DEADCODE AMM 27/01/00 	{
@@ -1348,6 +1367,28 @@ int	BoBFrag::GetSideAndSetFrag()
 
 void	BoBFrag::GetSquadronAndPos(SLong& sel_squad, SLong& sel_pos, ULong plyrpos)
 {
+#if BOB_LINUX
+	/* E2-5: on a co-op CAMPAIGN frag a seat is the squadron of the highlighted package and the aircraft index in it
+	   -- what SetPlayersPositionCamp makes MMC.playersquadron/playeracnum in single player. Compute it the same way
+	   (the button adjusted exactly as ResetPlayerEntry adjusts it) without committing anything: the seat is only
+	   taken once SlotFree says it is free. The quick-mission mapping below reads CSQuick1::quickdef, which a
+	   campaign never fills, so every campaign seat came back -1/-1 (measured) and Fly stopped at IDS_NOTSLOTS. */
+	if (_DPlay.GameType==DPlay::COMMSCAMPAIGN && Todays_Packages[0].packagestatus!=Profile::PS_SPARE)
+	{
+		int ppos2=(int)plyrpos;
+		int prev=GetPreviousSquadronNumber(squadinfo.currfrag->currsquadoption);
+		if (ppos2>prev) ppos2-=prev;
+		int keepsq=MMC.playersquadron, keepac=MMC.playeracnum;
+		int keeph2hsq=DPlay::H2H_Player[_DPlay.mySlot].squadron, keeph2hpos=DPlay::H2H_Player[_DPlay.mySlot].position;
+		MMC.playersquadron=-1;
+		SetPlayersPositionCamp(ppos2);
+		sel_squad=MMC.playersquadron;
+		sel_pos=(sel_squad==-1) ? -1 : MMC.playeracnum;
+		MMC.playersquadron=keepsq; MMC.playeracnum=keepac;
+		DPlay::H2H_Player[_DPlay.mySlot].squadron=keeph2hsq; DPlay::H2H_Player[_DPlay.mySlot].position=keeph2hpos;
+		return;
+	}
+#endif
 	int side=GetSideAndSetFrag(),i,j,curr=0;//,prev=0;
 	bool found=false;
 //DEADCODE AMM 08/03/00 	ULong prevsquad=PT_HE59;

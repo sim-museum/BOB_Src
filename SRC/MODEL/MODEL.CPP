@@ -3458,7 +3458,7 @@ void Model::UpdateMassInertias (AirStrucPtr const ControlledAC)
 	Mass	   = ControlledAC->classtype->weightempty;
 	RotInertia = InertiaEmpty;
 
-	if((_DPlay.Implemented) && (_DPlay.GameType != DPlay::COMMSQUICKMISSION))
+	if((_DPlay.Implemented) && (_DPlay.GameType < DPlay::COMMSQUICKMISSION))	/* E2-5: co-op campaign loads like co-op QM */
 		return;
 
 	for(SWord i = 0; i < 4; i++)
@@ -5810,7 +5810,7 @@ void Model::TrainingLanding(AirStrucPtr ControlledAC)
 //------------------------------------------------------------------------------
 void Model::CommsChecks(AirStrucPtr ControlledAC)
 {
-	if((!_DPlay.Implemented) || (_DPlay.GameType == DPlay::COMMSQUICKMISSION))
+	if((!_DPlay.Implemented) || (_DPlay.GameType >= DPlay::COMMSQUICKMISSION))	/* E2-5: deathmatch-only */
 		return;
 
 	if((GearTouched) && (Speed < 1.0))

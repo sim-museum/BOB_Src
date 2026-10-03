@@ -208,6 +208,19 @@ void InterceptOffered::InitDialog()
 
 
 	s=GETDLGITEM(IDC_RSTATICINTERCEPTOFFERED);
+#if BOB_LINUX
+	/* E2-5 (measured in a co-op campaign host's flight): an offer can be raised for a package whose raidnumentries is
+	   NULL -- the case RAFDirectivesResults::InterceptSanctioned already refuses (RAFDRRES.CPP [raidnum]). The text
+	   below reads pk.raidnumentries[rd].raidnum and SIGSEGVs. Say it without the raid number instead; OK then reaches
+	   the guarded InterceptSanctioned. BOB_NO_RAIDNUM_GUARD=1 restores the original. */
+	if (!pk.raidnumentries && !getenv("BOB_NO_RAIDNUM_GUARD"))
+	{
+		fprintf(stderr, "[raidnum] InterceptOffered(pack=%d): no raidnumentries -- offering without a raid number\n", (int)p);
+		s->SetString(CSprintf("%s: %s", (LPCTSTR)RESSTRING(RAID), (LPCTSTR)RESSTRING(INTERCEPTMSG)));
+		return;
+	}
+#endif
+	
 	if (maxreoffer)
 		s->SetString(
 			CSprintf("%s %03i (%i/%i): %s", 

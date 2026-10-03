@@ -11133,7 +11133,7 @@ void	DPlay::UpdateDeadPilots(AirStrucPtr ac)
 
 void DPlay::BombCheck(AirStrucPtr ac)
 {
-	if((!_DPlay.Implemented) || (_DPlay.GameType == DPlay::COMMSQUICKMISSION))
+	if((!_DPlay.Implemented) || (_DPlay.GameType >= DPlay::COMMSQUICKMISSION)	/* E2-5: deathmatch-only */)
 		return;
 
 	ac->ai.desiredturn += MODEL_DT;

@@ -806,7 +806,7 @@ void	ArtInt::VisibleCheck()
 
 	AirStrucPtr player = Persons2::PlayerGhostAC;
 	if(		(player->nationality == NAT_RAF) && (!(mobileitem::timeofday & 0x01ff))
-		&&	((!_DPlay.Implemented) || (_DPlay.Implemented && _DPlay.GameType==DPlay::COMMSQUICKMISSION))
+		&&	((!_DPlay.Implemented) || (_DPlay.Implemented && _DPlay.GameType>=DPlay::COMMSQUICKMISSION))	/* E2-5: co-op campaign too */
 		&&	((Persons2::PlayerGhostAC->movecode != AUTO_TRAININGTAKEOFF) && (Persons2::PlayerGhostAC->movecode != AUTO_TRAININGLANDING))	)
 	{
 //DeadCode CSB 19Oct00 		PrintVar(0, 24, "%.0f ", FP(player->World.X - player->World.Z));
