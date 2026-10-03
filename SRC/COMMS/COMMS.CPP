@@ -107,6 +107,10 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 //#include	"persons2.h"
 //#include	"ui.h"
+#if defined(BOB_LINUX)
+extern ULong bob_savegame_to;	/* E2-5, defined before SendSaveGame */
+extern ULong bob_earlygo_ms[];	/* E2-5, defined before GetAllGoResponses */
+#endif
 
 //#define TEMPTIMEOUT 3000
 //#define CTRACE
@@ -855,9 +859,13 @@ Bool DPlay::UINetworkSelectFly ()
 	else
 	{
 		SendGoResponse();
-
+#if defined(BOB_LINUX)
+		if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[go] guest: sent go, waiting for the host's go\n");
+		{ bool hg=GetHostGo(); if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[go] guest: host go %s\n", hg?"received":"TIMED OUT"); if (!hg) return FALSE; }
+#else
 		if (!GetHostGo())
 			return FALSE;
+#endif
 	}
 #ifdef CTRACE
 		fprintf(fp,"begin info collection\n");
@@ -1565,8 +1573,20 @@ Bool	DPlay::ProcessPlayerMessage(char* message,ULong size,ULong from)
 		break;
 
 	case PID_HOSTLETSGO:
-	case PID_PLAYERLETSGO:
 		INT3;
+		break;
+	case PID_PLAYERLETSGO:
+#if defined(BOB_LINUX)
+		/* E2-5: a guest that presses Fly BEFORE the host sends its "go" at once and then waits (GetHostGo,
+		   CommsTimeoutLength) for the host's. That go used to land here and be dropped, so when the host then
+		   flew, GetAllGoResponses waited for an answer that had already come and refused the launch (measured,
+		   three players: one guest flew early). Remember it per player; GetAllGoResponses counts it while the
+		   guest is still waiting. */
+		if (Host) { ULong sl=DPID2Slot(from); if (sl<MAXPLAYERS) bob_earlygo_ms[sl]=timeGetTime();
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[go] early go from slot %lu remembered\n",(unsigned long)sl); }
+#else
+		INT3;
+#endif
 		break;
 
 	default:
@@ -3027,6 +3047,11 @@ void	DPlay::DisplayPlayerJoiningMessage(ULong slot)
 //Procedure		SendSavegame
 //Date			Thu 14 Jan 1999
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+ULong	bob_savegame_to=0;		/* E2-5: target of a startup SendSaveGame (0 = all players, as Rowan sent it) */
+#else
+#define bob_savegame_to 0
+#endif
 bool	DPlay::SendSaveGame(bool score,bool startup)
 {
 // copy savegame file into as many packets as needed. Send a header packet saying how
@@ -3084,7 +3109,7 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 
 		if (startup)
 		{
-			if (!SendMessageToPlayer((char*)&cd, sizeof(GENERIC),0))
+			if (!SendMessageToPlayer((char*)&cd, sizeof(GENERIC),bob_savegame_to)	/* E2-5: 0 = all, else the joiner */)
 				return false;
 		}
 		else
@@ -3119,7 +3144,7 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 
 			if (startup)
 			{
-				if (!SendMessageToPlayer((char*)&sgp,sizeof(SAVEGAMEPACKET),0))
+				if (!SendMessageToPlayer((char*)&sgp,sizeof(SAVEGAMEPACKET),bob_savegame_to))
 					return false;
 			}
 			else
@@ -3690,6 +3715,19 @@ void DPlay::Process_PM_ImHere(char* message,ULong from)
 	if ((ULong)p->Slot>=MAXPLAYERS)	/* MP S11: see Process_PM_PlayerUpdate */
 	{ fprintf(stderr,"[mp] ImHere with slot %lu ignored (not a player packet)\n",(unsigned long)p->Slot); return; }
 #endif
+#if defined(BOB_LINUX)
+	/* E2-5 (measured, three players): a joining guest announces itself from SetUpPlayerInfo with its PROVISIONAL
+	   slot, before the host has assigned the real one -- the second guest said slot 1, which is the first guest's
+	   own slot, so the first guest copied the newcomer over its own record and fell from CPS_FRAG to
+	   CPS_READYROOM; it then ignored the host's FlyNow and the launch timed out. A remote announcement is never
+	   this player: keep our own record. The host's slot assignment and updates carry the newcomer's real slot.
+	   BOB_MP_IMHERE_SELF=1 reverts. */
+	if (!Host && (ULong)p->Slot==(ULong)mySlot && from!=myDPlayID && !getenv("BOB_MP_IMHERE_SELF"))
+	{
+		if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mp] ImHere from pid %lu claims MY slot %lu -- ignored (provisional slot)\n",(unsigned long)from,(unsigned long)p->Slot);
+		return;
+	}
+#endif
 
 	CopyMemory(&H2H_Player[p->Slot],&(p->playerinfo),sizeof(H2HPlayerInfo));
 
@@ -3794,6 +3832,9 @@ void DPlay::Process_PM_PrefsData(char* message)
 
 bool DPlay::Process_PM_FlyNow()
 {
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[go] FlyNow received: Host=%d my status=%d (CPS_FRAG=%d)\n",(int)Host,(int)H2H_Player[mySlot].status,(int)CPS_FRAG);
+#endif
 	if (!Host
 	&& 	((GameType<COMMSQUICKMISSION && H2H_Player[mySlot].status==CPS_READYROOM)
 	|| (GameType>=COMMSQUICKMISSION && H2H_Player[mySlot].status==CPS_FRAG)))	/* E2-5: a campaign guest flies from the frag too */
@@ -3926,7 +3967,13 @@ void DPlay::Process_PM_CSQuickRequest(ULong requestfrom)
 			SendCampaignStruc(true);
 #if defined(BOB_LINUX)
 		else if (GameType==COMMSCAMPAIGN)
+		{	/* E2-5: the catch-up savegame is for the JOINER only. Sent to 0 (DPID_ALLPLAYERS) it also reached a
+			   guest already in the frag, which reloaded it and was thrown back to the ready room (watchpoint:
+			   status CPS_FRAG -> CPS_READYROOM in CReadyRoom::OnInitDialog), so it then ignored the host's FlyNow. */
+			bob_savegame_to=requestfrom;
 			SendSaveGame(false,true);
+			bob_savegame_to=0;
+		}
 #endif
 	}
 }
@@ -4301,6 +4348,9 @@ void	DPlay::Process_PM_CSStruc(char* pack, bool init)
 	delete [] struc;
 }
 
+#if defined(BOB_LINUX)
+ULong	bob_earlygo_ms[MAXPLAYERS];		/* E2-5: when each guest's early PID_PLAYERLETSGO arrived (0 = none) */
+#endif
 bool	DPlay::GetAllGoResponses()
 {
 	char* Buffer;
@@ -4318,6 +4368,13 @@ bool	DPlay::GetAllGoResponses()
 	if (!AllPlayersStillReady())
 		return false;
 
+	#if defined(BOB_LINUX)
+	bool counted[MAXPLAYERS]; for (n=0;n<MAXPLAYERS;n++) counted[n]=false;
+	for (n=0;n<MAXPLAYERS;n++)	/* E2-5: guests that already said go and are still waiting for the host */
+		if (bob_earlygo_ms[n] && now-bob_earlygo_ms[n] < CommsTimeoutLength) { counted[n]=true; numresponses++;
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[go] slot %d already said go %lu ms ago -- counted\n",n,(unsigned long)(now-bob_earlygo_ms[n])); }
+	for (n=0;n<MAXPLAYERS;n++) bob_earlygo_ms[n]=0;
+#endif
 	while (numresponses!=(CurrPlayers-1))
 	{
 		now=timeGetTime();
@@ -4341,6 +4398,11 @@ bool	DPlay::GetAllGoResponses()
 
 				if (pack->PacketID==PID_PLAYERLETSGO)
 				{
+#if defined(BOB_LINUX)
+					ULong sl=DPID2Slot(from);
+					if (sl<MAXPLAYERS && counted[sl]) continue;	/* already counted from its early go */
+					if (sl<MAXPLAYERS) counted[sl]=true;
+#endif
 					numresponses++;
 				}
 				else

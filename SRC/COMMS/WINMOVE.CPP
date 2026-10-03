@@ -5164,6 +5164,10 @@ void	DPlay::ProcessPlayerSlotRequest(char* message,ULong from)
 		if  (		(H2H_Player[i].squadron == squadnum)
 			&&		(H2H_Player[i].position == pos )
 			&&		(H2H_Player[i].status!=CPS_NONE)
+#if defined(BOB_LINUX)
+			&&		(i != DPID2Slot(from))	/* E2-5: re-requesting the seat you already hold is not a conflict */
+#endif
+
 
 			)
 			{

@@ -81,11 +81,24 @@ sleep "$CLIENT_DELAY"
     BOB_SDL_CLICK_MS="$CLIENT_ROW_MS" \
     "$BOB" ) >"$OUT/client.log" 2>&1 &
 cpid=$!
-wait $hpid 2>/dev/null; wait $cpid 2>/dev/null
+# E2-5: an optional THIRD player (a second guest), headless (SDL dummy video: a third window would cover one of the
+# two and an occluded window ticks at 1 Hz) and, with GD2/DC2, in its own tree so the guests don't race on the
+# shared savegame/dcomms.dat. CLIENT2_CLICKS turns it on; CLIENT2_DELAY (s after the host), CLIENT2_ENV, CLIENT2_ROW_MS.
+PLAYERS="host client"; c2pid=""
+if [ -n "${CLIENT2_CLICKS:-}" ]; then
+  CLIENT2_DELAY="${CLIENT2_DELAY:-$((CLIENT_DELAY + 60))}"
+  sleep "$((CLIENT2_DELAY - CLIENT_DELAY))"
+  ( cd "${GD2:-$GD}" && timeout -k 5 -s KILL "$((SECS - CLIENT2_DELAY))" env SDL_VIDEODRIVER=dummy BOB_RUN_INIT=1 BOB_DRIVE_C="${DC2:-$DC}" \
+      ${CLIENT2_ENV:-} BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 BOB_AUTOCLICK="$CLIENT2_CLICKS" \
+      BOB_SDL_CLICK_MS="${CLIENT2_ROW_MS:-20000,156,747}" \
+      "$BOB" ) >"$OUT/client2.log" 2>&1 &
+  c2pid=$!; PLAYERS="host client client2"
+fi
+wait $hpid 2>/dev/null; wait $cpid 2>/dev/null; [ -n "$c2pid" ] && wait $c2pid 2>/dev/null
 bob_kill_new
 fail=0
 say() { printf '  %-46s %s\n' "$1" "$2"; }
-for who in host client; do
+for who in $PLAYERS; do
   l="$OUT/$who.log"
   grep -aq 'InThe3D=1\|InThe3D = 1' "$l" && say "$who enters 3D" "PASS" || { say "$who enters 3D" "FAIL"; fail=1; }
 done
@@ -93,7 +106,7 @@ if grep -aq 'Timed out (SIP)' "$OUT/client.log"; then say "client clears the ran
 else say "client clears the random-list wait" "PASS"; fi
 # EPIC M / MP S10 (2026-09-26): "both in 3-D" was the whole assertion, and it passed while the client
 # flew the HOST's aeroplane and died 20 s later. Assert the things a player means by "it works".
-for who in host client; do
+for who in $PLAYERS; do
   l="$OUT/$who.log"
   if grep -aq '=== CRASH' "$l"; then say "$who survives the flight" "FAIL ($(grep -a -m1 '=== CRASH' "$l"))"; fail=1
   else say "$who survives the flight" "PASS"; fi
@@ -104,6 +117,13 @@ done
 if [ "$uid_host" = none ] || [ "$uid_client" = none ]; then say "each player seated in own aircraft" "FAIL (host=$uid_host client=$uid_client; BOB_TRACE_AGG=1?)"; fail=1
 elif [ "$uid_host" = "$uid_client" ]; then say "each player seated in own aircraft" "FAIL (both uid $uid_host)"; fail=1
 else say "each player seated in own aircraft" "PASS (host uid $uid_host, client uid $uid_client)"; fi
+if [ -n "$c2pid" ]; then   # E2-5: three players -- the second guest in its own aircraft too, and the host sees both guests
+  if [ "$uid_client2" = none ] || [ "$uid_client2" = "$uid_host" ] || [ "$uid_client2" = "$uid_client" ]; then
+    say "second guest seated in own aircraft" "FAIL (client2=$uid_client2)"; fail=1
+  else say "second guest seated in own aircraft" "PASS (client2 uid $uid_client2)"; fi
+  seen=$(grep -aoE '\[addplayer\] slot=[0-9]+ .*FOUND' "$OUT/host.log" | grep -aoE 'slot=[0-9]+' | sort -u | wc -l)
+  [ "$seen" -ge 2 ] && say "host makes both guests visible" "PASS ($seen guest slots)" || { say "host makes both guests visible" "FAIL ($seen)"; fail=1; }
+fi
 if grep -aq '\[hist\] slot .* no aircraft' "$OUT/client.log" "$OUT/host.log"; then say "every slot has an aircraft" "FAIL"; fail=1
 else say "every slot has an aircraft" "PASS"; fi
 if [ -n "${BOB_TRACE_AGG:-}" ]; then

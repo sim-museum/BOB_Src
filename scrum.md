@@ -12607,6 +12607,37 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
   - **Open, as in quick-mission co-op:** the guest's aggregator ends in resync=1 and logs no `[addplayer]` for the
     host. That is the same as the passing quick-mission guest, so not a campaign regression, but "the guest sees the
     host move" is unproven in both modes.
+* **2026-10-03, later still: the Luftwaffe side and three players. ✅**
+  - **Luftwaffe pair** (8/8 PASS).
+    - The commander issues the day's orders through the genuine Directives OK (`MakeLWPackages`; harness
+      `BOB_MAP_ACCEPTDIR`), then takes a raid.
+    - Host in squadron 126, aircraft 0 (uid 4996); guest in aircraft 1 (uid 4997). Both in 3D.
+  - **Three players** (RAF, all checks PASS).
+    - Host lead (uid 4876), visible guest No. 2 (uid 4877), headless guest No. 3 (uid 4902). All in 3D and all
+      survive; the host makes both guests visible.
+    - Harness: `CLIENT2_*` adds a third player, headless (`SDL_VIDEODRIVER=dummy`, because a third window would cover
+      one of the two monitors' and an occluded window ticks at 1 Hz), in its own tree (`GD2`/`DC2` = `~/bob-test2`).
+  - **Found and fixed on the way:**
+    1. **The catch-up savegame for a joiner went to everyone.** `SendSaveGame(…, startup)` sent to 0, which is
+       `DPID_ALLPLAYERS`, so a guest already in the frag reloaded it and was thrown back to the ready room
+       (watchpoint: `CReadyRoom::OnInitDialog`, status 9 → 3). It then ignored the host's FlyNow and the launch
+       timed out. It now goes to the joiner only (`requestfrom`).
+    2. **A guest's go arriving outside the host's wait was dropped** (`PID_PLAYERLETSGO` → `INT3`). The host now
+       remembers it per slot and counts it while the guest still waits.
+    3. **Re-requesting the seat you already hold** was refused by the host. It is now granted.
+    4. **A remote "I'm here" claiming this player's own slot** is ignored (defensive, `BOB_MP_IMHERE_SELF=1`
+       reverts). It was not this run's cause; the watchpoint showed that.
+  - **Harness steps:**
+    - Autoclick `aN` waits until N players are in and all seated. A fixed wait let the Luftwaffe host fly before
+      its guest sat.
+    - Guests use `2,2,1,1,w10,1,w10,1,w20,#22xx`: the click after the session select is lost while the join blocks.
+    - `pump_events` returns without a window, so headless instances take no timed SDL clicks; recipes use autoclick
+      only.
+  - **Regression:** the quick-mission two-instance gate still passes 8/8.
+  - **Still open:**
+    - a guest on the opposite side to the host (the frag offers only the host's flight);
+    - more than three players;
+    - "the guest sees the host move", unproven in quick-mission co-op too.
 * **NEXT (the remaining work; items 1 and 2 done):**
   1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,
@@ -12614,5 +12645,5 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
      aircraft index). MA's FRAGPILT COMMSCAMPAIGN branches are the reference.
   2. ~~**3D.**~~ **Done.** Persons3 must place each human in that campaign aircraft (MA: `H2H_Player.squadron`/`position` →
      `MMC.playersquadron`/`playeracnum`).
-  3. Then the two-instance gate (host + guest in 3D, same battlefield), the Luftwaffe side, and three or more
-     players over the star transport.
+  3. ~~Two-instance gate, Luftwaffe side, three players.~~ **Done** (see above). Remaining: opposite-side
+     guests, and more than three players.
