@@ -433,6 +433,9 @@ void	Persons3::Reset3dAC(AirStruc*	currac,PlaneTypeSelect type)
 //
 //------------------------------------------------------------------------------
 //DEADCODE JIM 09/12/99 static	SByte	Skill_Per_Period[]=
+#if BOB_LINUX
+extern "C" int bob_mpqs_lone_seats(int);   /* MA-MPQS-1 (SQUICK1.CPP) */
+#endif
 //DEADCODE JIM 09/12/99 //		day0	day1	day2	day3	day4	day5	day6	day7	day8	
 //DEADCODE JIM 09/12/99 {22,	0,1,2,	2,3,3,	4,4,4,	5,5,5,	5,4,4,	3,3,2,	2,1,1,	0,0,0};
 
@@ -503,6 +506,10 @@ void	Persons3::make_airgrp(info_airgrp& I)
 //DEADCODE JIM 06/12/99 	else
 	{
 		formac=I.inform.Evaluate();
+#if BOB_LINUX
+		/* MA-MPQS-1: a lone Quick Shot group in a multiplayer session carries a seat per player */
+		if (formac != ENABLE_COMPLEX_VAL && formac >= 1) { int seats = bob_mpqs_lone_seats(I.type.Evaluate()); if (seats > formac) formac = seats; }
+#endif
 	}
 	if (wingac==ENABLE_COMPLEX_VAL)
 	{	//get wingac from formation
