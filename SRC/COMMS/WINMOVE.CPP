@@ -5197,6 +5197,9 @@ void	DPlay::ProcessPlayerSlotRequest(char* message,ULong from)
 
 		DisplayInfo=TRUE;
 	}
+	#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[slot] host: request from pid %lu for squadron %d pos %d -> %s\n",(unsigned long)from,squadnum,pos,slotfree?"granted":"refused");
+#endif
 	else
 		s.Slot=0;
 

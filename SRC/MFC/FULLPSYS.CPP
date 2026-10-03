@@ -1817,6 +1817,18 @@ extern "C" void bob_frontend_tick(void)
 				if (got) { seq++; fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -> (%d,%d)\n", cid, ccol, crow, cx, cy); }
 				else fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -- control not drawn yet (or no such row), retrying\n", cid, ccol, crow);
 			}
+			else if (p && *p=='a') {
+				/* E2-5: an `aN` step waits until at least N players are in the session and every one holds a seat
+				   (the condition the host's Fly checks, DPlay::AllPlayersHaveSlots) -- so a host presses Fly when
+				   its guests are seated, not after a guessed delay that a faster campaign day outruns. */
+				static unsigned long a_log = 0;
+				int need = atoi(p+1); if (need < 1) need = 1;
+				_DPlay.CountPlayers(false);
+				bool ok = (int)_DPlay.CurrPlayers >= need && _DPlay.AllPlayersHaveSlots();
+				if (ok) { seq++; fprintf(stderr,"[frontend] autoclick step a%d: %d player(s), all seated\n", need, (int)_DPlay.CurrPlayers); }
+				else if (timeGetTime() - a_log > 5000) { a_log = timeGetTime();
+					fprintf(stderr,"[frontend] autoclick step a%d: waiting (%d player(s), all seated=%d)\n", need, (int)_DPlay.CurrPlayers, (int)_DPlay.AllPlayersHaveSlots()); }
+			}
 			else if (p && *p=='w') {
 				/* E2-5: a `wN` step waits N seconds and clicks nothing -- so a recipe can press a menu item by
 				   index (its real rect, g_bobMenuRect) at a moment that depends on another player, e.g. the host's

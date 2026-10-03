@@ -1277,7 +1277,11 @@ void BoBFrag::OnClickedPilot0(int id)
 		{
 			if (!_DPlay.IsPilotDead(pselectedsquadron+1,sel_pos+1))
 			{
-				if (_DPlay.SlotFree(sel_pos,sel_squad))
+				bool bob_free=_DPlay.SlotFree(sel_pos,sel_squad);
+#if BOB_LINUX
+				if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[slot] seat %d: squadron %ld pos %ld -> %s\n",butnum,(long)sel_squad,(long)sel_pos,bob_free?"taken":"refused");
+#endif
+				if (bob_free)
 				{
 					ResetPlayerEntry(butnum);
 					SetPlayersPosition(butnum);
