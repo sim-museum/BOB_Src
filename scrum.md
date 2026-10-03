@@ -12545,3 +12545,18 @@ Queued behind FF-TEMP-1; one item at a time, each split into ~8-pt sprints with 
   anyone can run their own. The site serves a "Serious Games Week" collection (like Serious Games Lab, Linux-native
   games only). You can start a game only in the category for the current day of the week in your own time zone, so
   players rotate through all seven categories. The site does not promote a single game.
+
+## EPIC-MP-CAMPAIGN / EPIC-MATCHMAKER — BoB transport (2026-10-03, cross-port of MA 380f7e7)
+* **MAXPLAYERS 8 → 16.**
+* **Star topology:** the host is the hub and forwards between clients; `BOB_DPLAY_SINGLEPEER=1` reverts.
+* **Group members 8 → 32**, in both ports. 16 players would have overflowed `gplayers[8][8]`.
+* **`SRC/compat/sgw_link.cpp`** (shared with MA, game id "bob"): a host announces its session; the session search
+  probes the hosts the matchmaker lists; a join goes to the host that offered the session.
+  - Offers carry a GUID tag.
+  - BoB's join rebuilds its session desc (GUID 0, measured), so an untagged desc joins the last session offered.
+* **Measured:** the two-instance quick mission with both players on the test matchmaker. The joiner's own LAN port
+  was 47999, where nothing listens, so the matchmaker is its only route. All 8 checks PASS: joined
+  `127.0.0.1:47624`, both in 3D, own aircraft each, 0 crashes.
+* **Trap:** "127.0.0.9" is NOT a dead host. All of 127/8 is loopback, and the host binds every interface, so the
+  first matchmaker tests proved nothing. Isolate with a wrong PORT.
+* **Next:** E2-5, the BoB co-op campaign (COMMSCAMPAIGN is missing from BoB's GameTypes).

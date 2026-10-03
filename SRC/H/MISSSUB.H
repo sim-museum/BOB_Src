@@ -183,7 +183,11 @@ enum	{
 		PASSWORDNAMELEN			= 11,
 //DeadCode AMM 21Feb100 		SESSIONNAMELEN			= 128,
 		SESSIONNAMELEN			= 32,
+#if defined(BOB_LINUX) || defined(FF_LINUX)
+		MAXPLAYERS				=16,	/* EPIC-MP-CAMPAIGN E2-3 (MA 380f7e7): per-player masks are ULong, nothing saved is sized by it */
+#else
 		MAXPLAYERS				=8,
+#endif
 //DEADCODE JIM 07/02/00 		PLAYERNAMELEN			= 21,
 		PILOTS_PER_SQUADRON 	= 24,
 		PILOTABLE_SQUADRONS		=	5,

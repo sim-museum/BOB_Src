@@ -58,6 +58,41 @@ static int dp_trace(void) { static int t = -1; if (t < 0) t = getenv("BOB_TRACE_
 #define UNIMPL(n) do { if (dp_trace()) { static int _once = 0; \
         if (!_once) { _once = 1; fprintf(stderr, "[dplay] %s: not implemented yet\n", (n)); } } } while (0)
 
+/* EPIC-MATCHMAKER (sgw_link.cpp): the Serious Games Week matchmaker, when the player has configured one */
+extern "C" int  sgw_configured(void);
+extern "C" void sgw_announce_start(const char* game, int port, const char* title);
+extern "C" void sgw_announce_stop(void);
+extern "C" int  sgw_hosts(const char* game, struct sockaddr_in* out, int max);
+#ifndef SGW_GAME_ID
+#define SGW_GAME_ID "bob"
+#endif
+/* which address offered which session (from the LAN probe or a matchmaker-listed host), so a join reaches the
+   session the player picked */
+struct SgwOffer { char name[128]; struct sockaddr_in addr; };
+static SgwOffer g_offers[32]; static int g_noffers = 0; static int g_lastoffer = -1;
+static void sgw_remember_offer(const char* name, const struct sockaddr_in& a)
+{
+	for (int i = 0; i < g_noffers; i++) if (!strcmp(g_offers[i].name, name)) { g_offers[i].addr = a; g_lastoffer = i; return; }
+	g_lastoffer = g_noffers;
+	if (g_noffers < 32) { snprintf(g_offers[g_noffers].name, sizeof g_offers[0].name, "%s", name); g_offers[g_noffers].addr = a; g_noffers++; }
+}
+/* The game keeps a COPY of the DPSESSIONDESC2 its enum callback saw and passes it back to Open(JOIN); the name pointer
+   in that copy points into a receive buffer long gone, but the GUID travels by value. So each offer's GUID carries its
+   index ('SGW\0' + index), and Open(JOIN) finds the host by it. */
+static const unsigned long SGW_GUID_TAG = 0x53475700ul;
+static void sgw_tag_guid(DPSESSIONDESC2* sd)
+{
+	if (!sd->lpszSessionNameA) return;
+	for (int i = 0; i < g_noffers; i++)
+		if (!strcmp(g_offers[i].name, sd->lpszSessionNameA)) { sd->guidInstance.Data1 = SGW_GUID_TAG; sd->guidInstance.Data2 = (unsigned short)i; return; }
+}
+static const struct sockaddr_in* sgw_offer_for(const DPSESSIONDESC2* d)
+{
+	if (!d) return 0;
+	if (d->guidInstance.Data1 == SGW_GUID_TAG && d->guidInstance.Data2 < g_noffers) return &g_offers[d->guidInstance.Data2].addr;
+	/* an untagged desc (the game rebuilt it, or its search found nothing this time): the session last offered */
+	return g_lastoffer >= 0 ? &g_offers[g_lastoffer].addr : 0;
+}
 static int dp_port(void) { const char* e = getenv("BOB_DPLAY_PORT"); int p = e ? atoi(e) : 0; return p > 0 ? p : 47624; }
 static const char* dp_host(void) { const char* e = getenv("BOB_DPLAY_HOST"); return (e && *e) ? e : "127.0.0.1"; }
 
@@ -101,7 +136,7 @@ class BobDPlay4 : public IDirectPlay4
        delivered at home. The two shims share their ancestry, so the defect is shared too. */
     DPID localPids[8]; int nlocal;
     DPID assignedPid;      /* R6.3: what the host gave us (client side); 0 until it answers */
-    DPID groups[8]; int gmembers[8]; DPID gplayers[8][8]; int ngroups;   /* R6.4 */
+    DPID groups[8]; int gmembers[8]; DPID gplayers[8][32]; int ngroups;   /* R6.4 (E2-3: 32 members -- 16 players need more than 8) */
     /* MP-5 (PO 2026-09-05): pids this HOST has handed to joining clients. The game only ever
        calls AddPlayerToGroup for its OWN player, so a group held one member (the host) and
        SendMessageToGroup -- which is how UISendFlyNow broadcasts PID_FLYNOW -- reached nobody.
@@ -110,9 +145,44 @@ class BobDPlay4 : public IDirectPlay4
        that was never transmitted to it. Real DirectPlay tells the host about a remote player via a
        DPSYS_CREATEPLAYERORGROUP system message and the game adds it; this shim never delivered
        one. Track them here so joiners land in the groups the game broadcasts to. */
-    DPID joined[8]; int njoined;
+    DPID joined[32]; int njoined;
     struct sockaddr_in peer; /* host: last client seen. client: the host. */
     int  havePeer;
+    /* EPIC-MP-CAMPAIGN E2-3: the HOST is the hub of a star. Every client's address, by the player ids it uses, so
+       a send reaches the right client (or all of them), and a client's packet for another client or for everyone
+       is forwarded. Before this the host knew one address ("last client seen") and a third player broke it.
+       BOB_DPLAY_SINGLEPEER=1 reverts to the old single-peer behaviour. */
+    enum { MAXCLIENTPIDS = 64 };
+    struct ClientPid { DPID pid; struct sockaddr_in addr; } cpid[MAXCLIENTPIDS]; int ncpid;
+    void learnClient(DPID pid, const struct sockaddr_in& a) {
+        if (!pid || getenv("BOB_DPLAY_SINGLEPEER")) return;
+        for (int i = 0; i < ncpid; i++) if (cpid[i].pid == pid) { cpid[i].addr = a; return; }
+        if (ncpid < MAXCLIENTPIDS) { cpid[ncpid].pid = pid; cpid[ncpid].addr = a; ncpid++;
+            DPT("star: client pid %u at %s:%d (%d known)\n", (unsigned)pid, inet_ntoa(a.sin_addr), (int)ntohs(a.sin_port), ncpid); }
+    }
+    const struct sockaddr_in* clientAddr(DPID pid) const {
+        for (int i = 0; i < ncpid; i++) if (cpid[i].pid == pid) return &cpid[i].addr;
+        return 0;
+    }
+    static bool sameAddr(const struct sockaddr_in& a, const struct sockaddr_in& b) {
+        return a.sin_addr.s_addr == b.sin_addr.s_addr && a.sin_port == b.sin_port;
+    }
+    /* send one wire packet to every distinct client address except `skip` (may be null) */
+    int fanOut(const void* pkt, size_t n, const struct sockaddr_in* skip) {
+        int sent = 0;
+        for (int i = 0; i < ncpid; i++) {
+            bool dup = false;
+            for (int j = 0; j < i; j++) if (sameAddr(cpid[j].addr, cpid[i].addr)) { dup = true; break; }
+            if (dup || (skip && sameAddr(cpid[i].addr, *skip))) continue;
+            if (sendto(fd, pkt, n, 0, (const struct sockaddr*)&cpid[i].addr, sizeof(cpid[i].addr)) > 0) sent++;
+        }
+        return sent;
+    }
+    int  nclients() const {
+        int n = 0;
+        for (int i = 0; i < ncpid; i++) { bool dup = false; for (int j = 0; j < i; j++) if (sameAddr(cpid[j].addr, cpid[i].addr)) dup = true; if (!dup) n++; }
+        return n;
+    }
     char sessName[128];
     GUID sessGuid;
     char offers[8][128]; int offerCount = 0;   /* R24/S427: offers drained by pump(), not by EnumSessions */
@@ -184,9 +254,10 @@ class BobDPlay4 : public IDirectPlay4
                 DPID given = nextPid++;
                 /* MP-5: remember the joiner and put it in the groups that already exist, so a
                    group broadcast (UISendFlyNow) actually reaches it. */
-                if (njoined < 8) joined[njoined++] = given;
+                if (njoined < 32) joined[njoined++] = given;
+                learnClient(given, from);                      /* E2-3: the star's address book */
                 for (int gi = 0; gi < ngroups; gi++)
-                    if (gmembers[gi] < 8)
+                    if (gmembers[gi] < 32)
                     {
                         gplayers[gi][gmembers[gi]++] = given;
                         DPT("auto-added joining pid %u to group %u (%d members)\n",
@@ -210,6 +281,8 @@ class BobDPlay4 : public IDirectPlay4
                    Cache the offer so whichever reader gets it, EnumSessions can still report it. */
                 const char* nm = (const char*)buf + sizeof(WireHdr);
                 size_t maxn = (size_t)n - sizeof(WireHdr);
+                if (maxn > 0) { char tmpn[128]; size_t cn = strnlen(nm, maxn); if (cn > 127) cn = 127;
+                                memcpy(tmpn, nm, cn); tmpn[cn] = 0; sgw_remember_offer(tmpn, from); }	/* EPIC-MATCHMAKER */
                 if (maxn > 0 && offerCount < (int)(sizeof(offers)/sizeof(offers[0]))) {
                     size_t cn = strnlen(nm, maxn);
                     if (cn >= sizeof(offers[0])) cn = sizeof(offers[0]) - 1;
@@ -221,6 +294,19 @@ class BobDPlay4 : public IDirectPlay4
                 assignedPid = (DPID)h->to;
                 DPT("host assigned us pid %u\n", (unsigned)assignedPid);
             } else if (h->kind == MSG_DATA) {
+                if (isHost && !getenv("BOB_DPLAY_SINGLEPEER")) {
+                    /* E2-3 (cross-port of MA 380f7e7): a client's packet for another client, or for everyone /
+                       a group, crosses the hub */
+                    learnClient((DPID)h->from, from);
+                    const struct sockaddr_in* dst = clientAddr((DPID)h->to);
+                    if (dst) {
+                        if (!sameAddr(*dst, from)) sendto(fd, buf, n, 0, (const struct sockaddr*)dst, sizeof(*dst));
+                    } else if (!isLocalPlayer((unsigned)h->to)) {
+                        int f = fanOut(buf, (size_t)n, &from);
+                        if (f) DPT("star: forwarded %d bytes pid %u -> %u to %d other client(s)\n", (int)(n - sizeof(WireHdr)), h->from, h->to, f);
+                    }
+                    if (dst && !isLocalPlayer((unsigned)h->to)) continue;	/* for another client only: not ours */
+                }
                 /* EPIC M / MP S11 (2026-09-27): LATE JOIN. The host's shim puts a joiner into its groups
                    the moment it connects (MP-5's stand-in for DPSYS_CREATEPLAYERORGROUP), so a joiner
                    arriving while the host FLIES receives the flight's aggregate traffic (22-byte packets
@@ -261,7 +347,7 @@ class BobDPlay4 : public IDirectPlay4
     }
 public:
     BobDPlay4() : ref(1), fd(-1), isHost(0), nextPid(DPID_SERVERPLAYER), myPid(0), nlocal(0), assignedPid(0),
-                  havePeer(0), ngroups(0), njoined(0), qh(0), qt(0) {
+                  havePeer(0), ncpid(0), ngroups(0), njoined(0), qh(0), qt(0) {
         memset(&peer, 0, sizeof(peer)); memset(sessName, 0, sizeof(sessName));
         memset(&sessGuid, 0, sizeof(sessGuid));
     }
@@ -302,6 +388,7 @@ public:
             if (d) sessGuid = d->guidInstance;
             if (!mksock(1)) return DPERR_CANTCREATEPLAYER;
             DPT("Open(CREATE) session \"%s\"\n", sessName);
+            sgw_announce_start(SGW_GAME_ID, dp_port(), sessName);	/* EPIC-MATCHMAKER: list it while it runs */
             return DP_OK;
         }
         if (flags & DPOPEN_JOIN) {
@@ -310,10 +397,13 @@ public:
             memset(&peer, 0, sizeof(peer));
             peer.sin_family = AF_INET; peer.sin_port = htons(dp_port());
             peer.sin_addr.s_addr = inet_addr(dp_host());
+            if (const struct sockaddr_in* oa = sgw_offer_for(d)) peer = *oa;	/* EPIC-MATCHMAKER: the host that offered it */
+            DPT("Open(JOIN): session desc guid %08lx/%u, %d offer(s) known\n", d ? (unsigned long)d->guidInstance.Data1 : 0ul,
+                d ? (unsigned)d->guidInstance.Data2 : 0u, g_noffers);
             havePeer = 1;
             WireHdr h; h.magic = DPMAGIC; h.kind = MSG_JOIN; h.from = 0; h.to = 0;
             sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&peer, sizeof(peer));
-            DPT("Open(JOIN) -> host %s:%d\n", dp_host(), dp_port());
+            DPT("Open(JOIN) -> host %s:%d\n", inet_ntoa(peer.sin_addr), (int)ntohs(peer.sin_port));
             for (int i = 0; i < 40 && assignedPid == 0; i++) { pump(); usleep(25000); }  /* R6.3 */
             if (assignedPid == 0) DPT("host did not assign a pid (joining anyway)\n");
             return DP_OK;
@@ -323,8 +413,9 @@ public:
     }
     HRESULT STDMETHODCALLTYPE Close() override { Lk _lk(mtx);
         DPT("Close\n");
+        if (isHost) sgw_announce_stop();	/* EPIC-MATCHMAKER */
         if (fd >= 0) { close(fd); fd = -1; }
-        isHost = 0; havePeer = 0; qh = qt = 0;
+        isHost = 0; havePeer = 0; ncpid = 0; qh = qt = 0;
         return DP_OK;
     }
 
@@ -339,6 +430,11 @@ public:
         WireHdr h; h.magic = DPMAGIC; h.kind = MSG_PROBE; h.from = 0; h.to = 0;
         sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&to, sizeof(to));
         DPT("EnumSessions: probing %s:%d\n", dp_host(), dp_port());
+        {	/* EPIC-MATCHMAKER: also ask every host the matchmaker lists for this game */
+            struct sockaddr_in mh[16]; int nm = sgw_hosts(SGW_GAME_ID, mh, 16);
+            for (int i = 0; i < nm; i++) sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&mh[i], sizeof(mh[i]));
+            if (nm) DPT("EnumSessions: probed %d matchmaker host(s)\n", nm);
+        }
 
         int found = 0;
         unsigned waitms = timeout ? (timeout > 2000 ? 2000 : timeout) : 400;
@@ -367,7 +463,7 @@ public:
         /* Report anything pump() already took off the socket for us. */
         for (int i = 0; i < offerCount; i++) {
             DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd)); sd.dwSize = sizeof(sd);
-            sd.lpszSessionNameA = offers[i]; sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
+            sd.lpszSessionNameA = offers[i]; sgw_tag_guid(&sd); sd.dwMaxPlayers = 16; sd.dwCurrentPlayers = 1;
             DWORD tmo = waitms; found++;
             DPT("EnumSessions: found \"%s\" (from the pump cache)\n", offers[i]);
             if (async) { asyncRemember(offers[i]); continue; }
@@ -401,10 +497,11 @@ public:
                     DPT("EnumSessions: rescued host pid assignment %u\n", (unsigned)rh->to);
                 }
                 if (rh->magic == DPMAGIC && rh->kind == MSG_OFFER) {
+                    sgw_remember_offer(buf + sizeof(WireHdr), from);	/* EPIC-MATCHMAKER */
                     DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd));
                     sd.dwSize = sizeof(sd);
-                    sd.lpszSessionNameA = buf + sizeof(WireHdr);
-                    sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
+                    sd.lpszSessionNameA = buf + sizeof(WireHdr); sgw_tag_guid(&sd);
+                    sd.dwMaxPlayers = 16; sd.dwCurrentPlayers = 1;
                     sd.dwFlags = 0;
                     DWORD tmo = waitms;
                     found++;
@@ -420,7 +517,7 @@ public:
             for (int k = 0; k < nseen; k++) {
                 if (t - seen[k].ms > 2000) continue;
                 DPSESSIONDESC2 sd; memset(&sd, 0, sizeof(sd)); sd.dwSize = sizeof(sd);
-                sd.lpszSessionNameA = seen[k].name; sd.dwMaxPlayers = 8; sd.dwCurrentPlayers = 1;
+                sd.lpszSessionNameA = seen[k].name; sgw_tag_guid(&sd); sd.dwMaxPlayers = 16; sd.dwCurrentPlayers = 1;
                 DWORD tmo = waitms; listed++;
                 if (cb && !cb(&sd, &tmo, 0, ctx)) break;
             }
@@ -514,6 +611,15 @@ public:
         WireHdr* h = (WireHdr*)out;
         h->magic = DPMAGIC; h->kind = MSG_DATA; h->from = (unsigned)from; h->to = (unsigned)to;
         memcpy(out + sizeof(WireHdr), data, len);
+        if (isHost && ncpid && !getenv("BOB_DPLAY_SINGLEPEER")) {	/* E2-3: the hub sends to one client or to all */
+            const struct sockaddr_in* dst = clientAddr(to);
+            ssize_t s1 = 0; int f = 0;
+            if (dst) s1 = sendto(fd, out, sizeof(WireHdr) + len, 0, (const struct sockaddr*)dst, sizeof(*dst));
+            else f = fanOut(out, sizeof(WireHdr) + len, 0);
+            DPT("Send %u bytes pid %u -> %u (star: %s)\n", (unsigned)len, (unsigned)from, (unsigned)to,
+                dst ? (s1 > 0 ? "one client" : strerror(errno)) : (f ? "all clients" : "nobody"));
+            return (dst ? s1 > 0 : f > 0) ? DP_OK : DPERR_GENERIC;
+        }
         ssize_t s = sendto(fd, out, sizeof(WireHdr) + len, 0, (struct sockaddr*)&peer, sizeof(peer));
         DPT("Send %u bytes pid %u -> %u (%s)\n", (unsigned)len, (unsigned)from, (unsigned)to,
             s > 0 ? "ok" : strerror(errno));
@@ -689,7 +795,7 @@ public:
             groups[ngroups] = g; gmembers[ngroups] = 0;
             /* MP-5: a group created after clients joined must contain them too, or the same
                broadcast-to-nobody happens with the order reversed. */
-            for (int j = 0; j < njoined && gmembers[ngroups] < 8; j++)
+            for (int j = 0; j < njoined && gmembers[ngroups] < 32; j++)
             {
                 gplayers[ngroups][gmembers[ngroups]++] = joined[j];
                 DPT("seeded group %u with already-joined pid %u\n", (unsigned)g, (unsigned)joined[j]);
@@ -704,7 +810,7 @@ public:
     HRESULT STDMETHODCALLTYPE AddPlayerToGroup(DPID g, DPID p) override { Lk _lk(mtx);
         bool matched = false;
         for (int i = 0; i < ngroups; i++)
-            if (groups[i] == g && gmembers[i] < 8) { gplayers[i][gmembers[i]++] = p; matched = true; break; }
+            if (groups[i] == g && gmembers[i] < 32) { gplayers[i][gmembers[i]++] = p; matched = true; break; }
         /* MP-6: if this side has never heard of the group, ADOPT it. Measured on a joiner:
            "AddPlayerToGroup player 4 -> group 2 : NO SUCH GROUP on this side (ngroups=0)". The
            host creates the group and sends its id over the wire (COMMS.CPP:2095 -> :2187); the
@@ -768,7 +874,7 @@ public:
     HRESULT STDMETHODCALLTYPE CancelMessage(DWORD, DWORD) override { return DP_OK; }
     HRESULT STDMETHODCALLTYPE GetCaps(LPDPCAPS c, DWORD) override {
         if (c) { DWORD sz = c->dwSize ? c->dwSize : sizeof(DPCAPS); memset(c, 0, sz); c->dwSize = sz;
-                 c->dwMaxBufferSize = 1024; c->dwMaxPlayers = 8; }
+                 c->dwMaxBufferSize = 1024; c->dwMaxPlayers = 16; }
         return DP_OK;
     }
     HRESULT STDMETHODCALLTYPE SetSessionDesc(LPDPSESSIONDESC2 d, DWORD) override {
@@ -782,7 +888,7 @@ public:
         DPSESSIONDESC2* d = (DPSESSIONDESC2*)data;
         memset(d, 0, need); d->dwSize = need;
         d->lpszSessionNameA = sessName; d->guidInstance = sessGuid;
-        d->dwMaxPlayers = 8; d->dwCurrentPlayers = havePeer ? 2 : 1;
+        d->dwMaxPlayers = 16; d->dwCurrentPlayers = isHost ? 1 + nclients() : (havePeer ? 2 : 1);
         *size = need;
         return DP_OK;
     }
