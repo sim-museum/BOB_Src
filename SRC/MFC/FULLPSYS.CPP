@@ -1817,6 +1817,16 @@ extern "C" void bob_frontend_tick(void)
 				if (got) { seq++; fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -> (%d,%d)\n", cid, ccol, crow, cx, cy); }
 				else fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -- control not drawn yet (or no such row), retrying\n", cid, ccol, crow);
 			}
+			else if (p && *p=='w') {
+				/* E2-5: a `wN` step waits N seconds and clicks nothing -- so a recipe can press a menu item by
+				   index (its real rect, g_bobMenuRect) at a moment that depends on another player, e.g. the host's
+				   Fly once a guest has taken a seat. */
+				static unsigned long w_until = 0;
+				unsigned long now = timeGetTime();
+				if (!w_until) { w_until = now + 1000ul * (unsigned long)atoi(p+1);
+					fprintf(stderr,"[frontend] autoclick step w%d: waiting\n", atoi(p+1)); }
+				if (now >= w_until) { w_until = 0; seq++; fprintf(stderr,"[frontend] autoclick step w: done\n"); }
+			}
 			else if (p && *p) {
 				int n=atoi(p);
 				int resW = RFullPanelDial::resolutions[g_bobActiveFP->m_currentres];

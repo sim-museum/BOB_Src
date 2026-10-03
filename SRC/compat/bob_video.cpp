@@ -1102,6 +1102,7 @@ static void pump_events(void)
 					ev.button.state = SDL_PRESSED; ev.button.clicks = 1;
 					{ int wx_, wy_; bob_canvas_to_window(px, py, lw, lh, &wx_, &wy_); ev.button.x = wx_; ev.button.y = wy_; }   /* MAPCLIP-1 */
 					int pushed = SDL_PushEvent(&ev);
+					{ extern int g_bob_map_active; fprintf(stderr, "[sdlclickms] (map_active=%d) ", g_bob_map_active); }
 					fprintf(stderr, "[sdlclickms] pushed SDL_MOUSEBUTTONDOWN (%d,%d) at %ums (due %ldms) rc=%d\n",
 					        px, py, (unsigned)el, T, pushed);
 					fflush(stderr);

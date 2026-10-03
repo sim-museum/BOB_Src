@@ -12560,3 +12560,34 @@ Queued behind FF-TEMP-1; one item at a time, each split into ~8-pt sprints with 
 * **Trap:** "127.0.0.9" is NOT a dead host. All of 127/8 is loopback, and the host binds every interface, so the
   first matchmaker tests proved nothing. Isolate with a wrong PORT.
 * **Next:** E2-5, the BoB co-op campaign (COMMSCAMPAIGN is missing from BoB's GameTypes).
+
+## EPIC-MP-CAMPAIGN E2-5 — BoB co-op campaign (2026-10-03, in progress)
+Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so far, all measured headless on
+`~/bob-test`:
+* **Locker Room:** a 4th game type, **Campaign** (`COMMSCAMPAIGN`, port string 0xEF10). A vertical radio now reports
+  its painted height (`contentH`) so its 4th row can be clicked. `BOB_NO_COMMSCAMPAIGN=1` hides it.
+* **Host:** commands its side (Side 1 = RAF, 0 = Luftwaffe) from the phase picked in the Locker Room
+  (`LaunchMapFirstTime`).
+  - Measured: RAF campaign, 10 Jul 1940, on the map.
+  - It takes an interception the way the game's take-over offer does (`SetHiLightInfo` → `OnClickedFrag2`), which
+    saves, sends the savegame and opens the campaign ready room.
+  - Measured: pack 2 sq 0, 43 Sqn Hurricane I intercept.
+* **Guest:** joins, receives the host's savegame (`ReceiveStartupSaveGame`, ported from MA; 511 packets / 255,109
+  bytes), and frags the **same flight**. `SendSaveGame` carries the host's hipack/hisquad in the packet count's top
+  bits, because GENERIC has no spare field.
+* **Fixed on the way:** `bob_mp_seed_quickdef` no longer seeds a quick-mission battlefield in a campaign. A Luftwaffe
+  host now opens the host's red ready room (Rowan sent it to the guest's; not yet exercised by a run).
+* **Harness:**
+  - `BOB_MPCAMP_FRAG=<paint>` makes the mission folder's Frag call.
+  - In comms, `BOB_CAMPAIGN_FLY` ends as the take-over offer does.
+  - Autoclick gained a `wN` step (wait N s), so a menu item can be pressed by index once another player is ready.
+  - The campaign frag's Fly is menu item 1 at (152,747). The panel's drawn "Fly" text is not its hit rect.
+* **NEXT (the remaining work):**
+  1. **Seats.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
+     frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,
+     measured). It needs a campaign branch: button → (squadron of `Todays_Packages[hipack].squadlist[option]`,
+     aircraft index). MA's FRAGPILT COMMSCAMPAIGN branches are the reference.
+  2. **3D.** Persons3 must place each human in that campaign aircraft (MA: `H2H_Player.squadron`/`position` →
+     `MMC.playersquadron`/`playeracnum`).
+  3. Then the two-instance gate (host + guest in 3D, same battlefield), the Luftwaffe side, and three or more
+     players over the star transport.

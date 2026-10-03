@@ -714,6 +714,11 @@ void CMainToolbar::OnClickedFrag2()
 						RDialog::m_pView->LaunchFullPane(&RFullPanelDial::readyroomguestcampaign,SaveData::UIR_FRAG);	
 
 			else
+#if defined(BOB_LINUX)
+			if (_DPlay.UIPlayerType == DPlay::PLAYER_HOST)	/* E2-5: a Luftwaffe HOST was sent to the guest's room */
+				RDialog::m_pView->LaunchFullPane(&RFullPanelDial::readyroomhostcampaignred,SaveData::UIR_FRAG);
+			else
+#endif
 				RDialog::m_pView->LaunchFullPane(&RFullPanelDial::readyroomguestcampaignred,SaveData::UIR_FRAG);
 		}
 	}

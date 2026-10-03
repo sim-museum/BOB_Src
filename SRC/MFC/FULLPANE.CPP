@@ -1695,6 +1695,9 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
    BOB_NO_MP_QUICKDEF=1 reverts. */
 extern "C" void bob_mp_seed_quickdef(int gameIndex, int isHost)
 {
+#if defined(BOB_LINUX)
+	if (_DPlay.GameType==DPlay::COMMSCAMPAIGN) return;	/* E2-5: a campaign flies the host's campaign day, not a quick mission */
+#endif
 	if (getenv("BOB_NO_MP_QUICKDEF")) return;
 	if (CSQuick1::quickdef.currmissnum != FIL_NULL) return;
 
