@@ -5154,7 +5154,13 @@ void	DPlay::ProcessPlayerSlotRequest(char* message,ULong from)
 	LPSLOTPOSPACK p=(LPSLOTPOSPACK)message;
 
 	int pos=p->position;
+#if defined(BOB_LINUX)
+	/* E2-5: SLOTPOSPACK.squadron is a signed char and Luftwaffe squadrons run to ~145 (SQ_MAX): 130 arrived as -126.
+	   -1 still means "unassigned". Same decode at the PID_SLOTINFOUPDATE receiver below. */
+	int	squadnum=(p->squadron==-1) ? -1 : (int)(UByte)p->squadron;
+#else
 	int	squadnum=p->squadron;
+#endif
 	ULong i=0;
 	bool	slotfree=true;
 
@@ -5264,6 +5270,9 @@ Bool	DPlay::ReceiveSlotRequestOK()
 				{
 					if (pack->PlayerID==myDPlayID)
 					{
+#if defined(BOB_LINUX)
+						if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[slot] guest: reply from pid %lu: squadron %d pos %d Slot(granted)=%lu\n",(unsigned long)From,(int)pack->squadron,(int)pack->position,(unsigned long)pack->Slot);
+#endif
 						if (pack->Slot)
 							return TRUE;
 						else
@@ -5343,7 +5352,11 @@ void	DPlay::ProcessSlotInfoUpdate(char* pack)
 
 		if (n!=MAXPLAYERS)
 		{
+#if defined(BOB_LINUX)
+			H2H_Player[n].squadron=(p->squadron==-1) ? -1 : (int)(UByte)p->squadron;	/* E2-5: see ProcessPlayerSlotRequest */
+#else
 			H2H_Player[n].squadron=p->squadron;
+#endif
 			H2H_Player[n].position=p->position;
 		}
 	}

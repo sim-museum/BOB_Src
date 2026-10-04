@@ -3204,6 +3204,88 @@ bool	DPlay::ReceiveStartupSaveGame(bool realstartup)
 	}
 }
 #endif
+#if defined(BOB_LINUX)
+/* E2-5: a co-op campaign guest who chose the OTHER side from the host's flight. The campaign day is shared, so the
+   guest flies the opposing package of the same battle: for an RAF host, the raid its interception was launched at
+   (InterceptSanctioned makes the interception from the raid squadron's instance, which becomes its packagetarget);
+   for a Luftwaffe host, the RAF interception aimed at its raid. If there is no such link yet, any package of the
+   guest's side with a squadron in the frag's flyable window. The guest's local player becomes its own side, which
+   is what the frag (GetSideAndSetFrag) and the seat mapping read. BOB_NO_MPCAMP_OPPOSITE=1 reverts. */
+extern int bob_squad_actype(int squadnum);	/* FULLPANE.CPP: Node_Data lives in the MFC layer */
+static bool bob_sq_flyable(int p,int s)
+{
+	int st=(int)Todays_Packages[p][s].status;
+	if (!(Todays_Packages[p][s].instance && st>(int)Profile::PS_ACTIVE_MIN && st<(int)Profile::PS_REFUELLING)) return false;
+	/* and a type a human may fly in multiplayer -- the fighters and the Ju 87, as Rowan's own seat code allows
+	   (BoBFrag::GetSquadronAndPos: bombers only when !PlayerCreated). Measured: a lone Do 17 (type 9, squadron 112)
+	   was offered to a Luftwaffe guest; Persons3 reassigns a non-flyable player type and the guest died with
+	   "Cant remove seenac". */
+	int pt=bob_squad_actype((int)Todays_Packages[p][s].squadnum);
+	return pt<(int)PT_BRIT_NONFLY || (pt>=(int)PT_GER_FLYABLE && pt<(int)PT_GER_NONFLY);
+}
+static bool bob_pack_is_lw(int p) { return (int)Todays_Packages[p].attackmethod>=(int)Profile::AM_LWPACKS; }
+void	bob_mpcamp_opposite_side(int hostpack)
+{
+	if (getenv("BOB_NO_MPCAMP_OPPOSITE") || hostpack<0 || hostpack>=Profile::MAX_PACKS) return;
+	bool guestLW=!_DPlay.Side, hostLW=bob_pack_is_lw(hostpack);
+	if (guestLW==hostLW) return;
+	Todays_Packages.localplayer = guestLW ? NAT_LUF : NAT_RAF;
+	int found=-1, foundsq=-1; const char* how="";
+	if (!hostLW)
+	{	/* RAF host: the raid its interception targets */
+		UniqueID tgt=(UniqueID)Todays_Packages[hostpack].packagetarget[0].currentid;
+		for (int p=0;p<Profile::MAX_PACKS && found<0;p++)
+			if (Todays_Packages[p].packagestatus!=Profile::PS_SPARE && bob_pack_is_lw(p))
+				for (int q=0;q<(int)(ULong)Todays_Packages[p].squadlist;q++)
+					if (Todays_Packages[p][q].instance==tgt)
+					{
+						for (int r=0;r<(int)(ULong)Todays_Packages[p].squadlist;r++) if (bob_sq_flyable(p,r)) { found=p; break; }
+						if (found>=0) how="the raid the host intercepts";
+						else if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] opposite side: the intercepted raid (pack %d) has no squadron a player may fly\n",p);
+						break;
+					}
+	}
+	else
+	{	/* LW host: an RAF interception aimed at one of its raid's squadrons */
+		for (int p=0;p<Profile::MAX_PACKS && found<0;p++)
+			if (Todays_Packages[p].packagestatus!=Profile::PS_SPARE && !bob_pack_is_lw(p))
+				for (int q=0;q<(int)(ULong)Todays_Packages[hostpack].squadlist;q++)
+					if (Todays_Packages[hostpack][q].instance && (UniqueID)Todays_Packages[p].packagetarget[0].currentid==Todays_Packages[hostpack][q].instance)
+					{
+						for (int r=0;r<(int)(ULong)Todays_Packages[p].squadlist;r++) if (bob_sq_flyable(p,r)) { found=p; break; }
+						if (found>=0) how="the interception of the host's raid";
+						break;
+					}
+	}
+	if (found<0)
+		for (int p=0;p<Profile::MAX_PACKS && found<0;p++)
+			if (Todays_Packages[p].packagestatus!=Profile::PS_SPARE && bob_pack_is_lw(p)==guestLW)
+				for (int q=0;q<(int)(ULong)Todays_Packages[p].squadlist;q++)
+					if (bob_sq_flyable(p,q)) { found=p; how="any flyable package of the guest's side"; break; }
+	if (found>=0)
+	{
+		for (int q=0;q<(int)(ULong)Todays_Packages[found].squadlist;q++) if (bob_sq_flyable(found,q)) { foundsq=q; break; }
+		if (foundsq<0) foundsq=0;
+		if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] opposite side: squadron %d type %d\n",(int)Todays_Packages[found][foundsq].squadnum,bob_squad_actype((int)Todays_Packages[found][foundsq].squadnum));
+		Todays_Packages.hipack=(char)found; Todays_Packages.hisquad=(char)foundsq;
+	}
+	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] opposite side: guest %s vs host pack %d (%s) -> pack %d sq %d (%s)\n",
+		guestLW?"Luftwaffe":"RAF", hostpack, hostLW?"LW":"RAF", found, foundsq, found>=0?how:"NOTHING FLYABLE");
+}
+#endif
+#if defined(BOB_LINUX)
+/* E2-5: called by RMdlDlg::DoModal while a modal dialog is up -- keep a live multiplayer session answering (joins,
+   seat requests, FlyNow) when the modal suspended the timers that normally do it. Not in flight. */
+void	bob_modal_service_comms(void)
+{
+	if (getenv("BOB_NO_MODAL_COMMS") || !_DPlay.PlayerCreated || _DPlay.Implemented) return;
+	static int depth = 0;
+	if (depth) return;	/* a modal opened by the servicing itself must not recurse into it */
+	depth++;
+	_DPlay.UIUpdateMainSheet();
+	depth--;
+}
+#endif
 bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 {
 #if defined(BOB_LINUX)
@@ -3278,6 +3360,7 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 			Todays_Packages.hisquad=(char)mpc_sq;
 			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] guest frags the host's flight: pack %d sq %d\n",mpc_pack,mpc_sq);
 			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] after load: pack0 status=%d pack%d status=%d squads=%d\n",(int)Todays_Packages[0].packagestatus,mpc_pack,(int)Todays_Packages[mpc_pack].packagestatus,(int)(ULong)Todays_Packages[mpc_pack].squadlist);
+			bob_mpcamp_opposite_side(mpc_pack);
 		}
 #endif
 

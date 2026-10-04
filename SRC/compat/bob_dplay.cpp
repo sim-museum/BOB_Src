@@ -231,6 +231,9 @@ class BobDPlay4 : public IDirectPlay4
     void pump() { Lk _lk(mtx);
         if (fd < 0) return;
         char buf[sizeof(WireHdr) + BOB_DP_MAXMSG];
+        { static unsigned long npump = 0, lastms = 0; npump++;   /* E2-5: is anyone draining the socket? */
+          struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); unsigned long ms = ts.tv_sec * 1000ul + ts.tv_nsec / 1000000;
+          if (ms - lastms > 10000) { lastms = ms; DPT("pump alive: %lu call(s), isHost=%d\n", npump, isHost); } }
         for (;;) {
             struct sockaddr_in from; socklen_t fl = sizeof(from);
             ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr*)&from, &fl);

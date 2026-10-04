@@ -1716,6 +1716,10 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
      multiplayer    currmissnum=0     altmissnum=0     target=0     -> nothing loads, no aircraft
    Only seeds when quickdef is still empty, so a path that filled it legitimately is untouched.
    BOB_NO_MP_QUICKDEF=1 reverts. */
+int	bob_squad_actype(int squadnum)	/* E2-5: a squadron's aircraft type, for COMMS.CPP (which has no Node_Data) */
+{
+	return (int)Node_Data[(SquadNum)squadnum].AcType();
+}
 extern "C" void bob_mp_seed_quickdef(int gameIndex, int isHost)
 {
 #if defined(BOB_LINUX)

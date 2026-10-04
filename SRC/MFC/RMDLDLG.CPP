@@ -421,9 +421,23 @@ int RMdlDlg::DoModal()
 	   game. Falling out returns the same safe answer. */
 	int guard = 0;
 	const int BOB_MODAL_MAX_ITERS = 200000;
+	/* E2-5: BOB_MODAL_AUTO=<ms> dismisses a modal after that long with the safe "do nothing" answer above -- for
+	   unattended multiplayer runs, where a campaign advisory (the bingo-fuel warning) would otherwise hold the host. */
+	extern void bob_modal_service_comms(void);
+	unsigned long modal_t0 = timeGetTime(), modal_svc = 0;
+	const char* modal_auto = getenv("BOB_MODAL_AUTO");
 	while (!m_bobModalDone && ++guard < BOB_MODAL_MAX_ITERS)
 	{
 		bob_modal_pump();
+		/* E2-5 (measured, co-op campaign host): this loop often runs INSIDE a timer callback (InterceptOffered::OnTimer
+		   -> InterceptSanctioned -> MessageBoxFuelWarning), where no timer fires -- including the frag timer that
+		   services the multiplayer session. Joiners got no answer and seated players froze until someone clicked OK.
+		   Keep the session serviced while a modal is up. BOB_NO_MODAL_COMMS=1 reverts. */
+		if (timeGetTime() - modal_svc > 50) { modal_svc = timeGetTime(); bob_modal_service_comms(); }
+		if (modal_auto && timeGetTime() - modal_t0 > (unsigned long)atoi(modal_auto)) {
+			fprintf(stderr, "[modal] BOB_MODAL_AUTO: dismissed after %s ms (answer %d)\n", modal_auto, m_bobModalResult);
+			break;
+		}
 		/* Stand in for the window the dialog does not have: shift its DC to the dialog origin and
 		   clip to the dialog rect, so OnPaint's full-sheet blit shows only this dialog's part of
 		   it. Restored immediately -- the origin/clip are global to the GDI layer and leaving them

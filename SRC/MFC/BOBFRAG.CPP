@@ -1472,6 +1472,10 @@ void BoBFrag::OnTimer(UINT nIDEvent)
 {
 	if (nIDEvent==bobfrag_timer)
 	{
+#if BOB_LINUX
+		if (getenv("BOB_TRACE_DPLAY")) { static unsigned long last=0; unsigned long now=timeGetTime();
+			if (now-last>10000) { last=now; fprintf(stderr,"[frag] timer alive: PlayerCreated=%d FlyNowFlag=%d\n",(int)_DPlay.PlayerCreated,(int)_DPlay.FlyNowFlag); } }
+#endif
 		if (_DPlay.PlayerCreated)
 		{
 			_DPlay.UIUpdateMainSheet();
