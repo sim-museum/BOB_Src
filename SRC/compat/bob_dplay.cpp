@@ -102,7 +102,10 @@ enum { DPMAGIC = 0x424f4250 };            /* 'BOBP' */
 enum { MSG_PROBE = 1, MSG_OFFER = 2, MSG_JOIN = 3, MSG_DATA = 4, MSG_ASSIGN = 5 };
 struct WireHdr { unsigned int magic, kind, from, to; };
 
-static const int MAXQ = 64;
+/* E2-5: 64 -> 1024. A co-op campaign's Airfields day sends far more battlefield packets at 3-D load than a quick
+   mission; a guest's queue overflowed ("queue full, dropping a packet"), lost one, and waited forever for it
+   ("Timed out (FCNB)", measured). 1024 x 16 KB = 16 MB in the heap-allocated object. */
+static const int MAXQ = 1024;
 /* EPIC M / MP S11 (2026-09-27), from MA's finding the same day: a queue slot held 1024 bytes and a
    larger message was TRUNCATED IN SILENCE (MA measured a 1292-byte struct cut short), and the
    socket/send buffers were 2048. DirectPlay messages carry whole game structures; size everything
