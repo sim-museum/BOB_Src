@@ -694,6 +694,13 @@ void CMainToolbar::OnClickedFrag2()
 //DeadCode AMM 21Aug00 	RFullPanelDial::SetDefaultPilotPositions();
 //DeadCode AMM 27Nov98 	RDialog::m_pView->LaunchFullPane(&RFullPanelDial::singlefrag);	
 
+		#if defined(BOB_LINUX)
+		/* E2-5: remember the flight the host takes HERE. Todays_Packages.hipack moves afterwards (an auto-accepted
+		   interception highlights its new package), and joiners were sent that instead -- measured with five
+		   players: RAF guests were seated in a Luftwaffe raid's Bf 109s. SendSaveGame sends this one. */
+		if (_DPlay.PlayerCreated && _DPlay.Host) { extern int bob_mpcamp_hostpack, bob_mpcamp_hostsq;
+			bob_mpcamp_hostpack=Todays_Packages.hipack; bob_mpcamp_hostsq=Todays_Packages.hisquad; }
+#endif
 		if (_DPlay.PlayerCreated && _DPlay.Host)
 		{
 //DeadCode PD 23May99 			_DPlay.SendSaveGame();

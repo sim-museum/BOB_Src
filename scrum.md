@@ -12638,6 +12638,47 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
     - a guest on the opposite side to the host (the frag offers only the host's flight);
     - more than three players;
     - "the guest sees the host move", unproven in quick-mission co-op too.
+* **2026-10-03, still later: opposite sides and five players. ✅**
+  - **RAF host + Luftwaffe guest** (Airfields phase, 8/8 PASS): host in a Hurricane (sq 33, uid 4976), guest in a
+    Bf 109 (sq 76, uid 5118). Both in 3D, and the host makes the enemy guest visible.
+  - **Five players, mixed sides** (Airfields phase, all checks PASS):
+    - three RAF pilots in sq 33 aircraft 0, 1, 2 (uids 4976, 4977, 4902);
+    - two Luftwaffe pilots in sq 76 aircraft 0, 1 (uids 5118, 5119);
+    - all five in 3D, all survive, and the host makes all four guests visible;
+    - every guest loaded the host's 516-packet savegame;
+    - the harness takes up to five players (`CLIENT2..5_*`, headless, own trees `~/bob-test2..4`).
+  - **How an opposite-side guest gets a flight:** the opposing package of the same battle (the raid the host
+    intercepts, or the interception of the host's raid). Failing that, any package of its side with a squadron a human
+    may fly in multiplayer: fighters and the Ju 87, as Rowan's seat code allows.
+    - In these runs the intercepted raid was a lone Do 17, so the fallback chose a Bf 109 squadron of another raid the
+      same day. A Do 17 has no flight model and crashed the guest ("Cant remove seenac").
+    - The guest's local player becomes its own side.
+    - The side is applied at frag init, because the join's savegame arrives before the Locker Room commits the side.
+      Applying it at load flipped every RAF guest to the Luftwaffe.
+  - **Found and fixed:**
+    1. **A modal froze the whole session.** A campaign advisory (the bingo-fuel warning, raised inside the
+       intercept-offer timer) suspended every timer, so the host answered no joiner and seated players froze. Found
+       with a gdb breakpoint. `RMdlDlg::DoModal` now services the session; `BOB_MODAL_AUTO=<ms>` is for unattended
+       runs.
+    2. **Receive queue 64 → 1024.** The Airfields day's battlefield burst overflowed a guest's queue
+       ("Timed out (FCNB)").
+    3. **UDP buffers 208 KB → 4 MB, in BoB and MA.** The host's per-guest savegame burst was dropped by a slower
+       guest's kernel, its load FAILED, and it never launched.
+    4. **Joiners were sent the wrong flight.** They received `Todays_Packages.hipack` at join time, which auto-accepted
+       interceptions move. RAF guests were sent a Luftwaffe raid. The host now sends the flight it took, recorded in
+       `OnClickedFrag2`.
+    5. **A garbage seat-reply `Slot` (4293983584) read as a grant.** A grant is now exactly 1.
+    6. **`SLOTPOSPACK.squadron` is a signed char.** Luftwaffe squadrons reach ~145, so it is now decoded unsigned.
+    7. **Launch savegame race.** A savegame loaded since the FlyNow counts as the launch savegame.
+  - **Regression:** the quick-mission two-instance gate still passes 8/8.
+  - **NEXT:**
+    - **Reliable delivery for internet play.** The UDP shim ignores `DPSEND_GUARANTEED`, so a lost packet in a
+      savegame or battlefield burst is lost for good. Loopback is fine with 4 MB buffers; the internet needs
+      ack/retransmit. This matters for the matchmaker epic.
+    - **Joining while the host is on the campaign map.** The host only services the session on the ready room and
+      frag screens, which is Rowan's flow.
+    - Sessions above five players.
+    - "The guest sees the host move", still unproven, as in quick-mission co-op.
 * **NEXT (the remaining work; items 1 and 2 done):**
   1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,

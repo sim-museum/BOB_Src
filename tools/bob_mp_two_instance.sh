@@ -81,20 +81,23 @@ sleep "$CLIENT_DELAY"
     BOB_SDL_CLICK_MS="$CLIENT_ROW_MS" \
     "$BOB" ) >"$OUT/client.log" 2>&1 &
 cpid=$!
-# E2-5: an optional THIRD player (a second guest), headless (SDL dummy video: a third window would cover one of the
-# two and an occluded window ticks at 1 Hz) and, with GD2/DC2, in its own tree so the guests don't race on the
-# shared savegame/dcomms.dat. CLIENT2_CLICKS turns it on; CLIENT2_DELAY (s after the host), CLIENT2_ENV, CLIENT2_ROW_MS.
-PLAYERS="host client"; c2pid=""
-if [ -n "${CLIENT2_CLICKS:-}" ]; then
-  CLIENT2_DELAY="${CLIENT2_DELAY:-$((CLIENT_DELAY + 60))}"
-  sleep "$((CLIENT2_DELAY - CLIENT_DELAY))"
-  ( cd "${GD2:-$GD}" && timeout -k 5 -s KILL "$((SECS - CLIENT2_DELAY))" env SDL_VIDEODRIVER=dummy BOB_RUN_INIT=1 BOB_DRIVE_C="${DC2:-$DC}" \
-      ${CLIENT2_ENV:-} BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 BOB_AUTOCLICK="$CLIENT2_CLICKS" \
-      BOB_SDL_CLICK_MS="${CLIENT2_ROW_MS:-20000,156,747}" \
-      "$BOB" ) >"$OUT/client2.log" 2>&1 &
-  c2pid=$!; PLAYERS="host client client2"
-fi
-wait $hpid 2>/dev/null; wait $cpid 2>/dev/null; [ -n "$c2pid" ] && wait $c2pid 2>/dev/null
+# E2-5: optional EXTRA players (guests 2..5), headless (SDL dummy video: more windows than the two monitors would cover
+# each other, and an occluded window ticks at 1 Hz) and, with GD<k>/DC<k>, each in its own tree so guests don't race
+# on the shared savegame/dcomms.dat. CLIENT<k>_CLICKS turns guest k on; CLIENT<k>_DELAY (s after the host, ascending),
+# CLIENT<k>_ENV, CLIENT<k>_ROW_MS. (GD2/DC2 kept from the three-player version.)
+PLAYERS="host client"; xpids=""; last_delay=$CLIENT_DELAY; nguests=1
+for k in 2 3 4 5; do
+  eval "clicks=\${CLIENT${k}_CLICKS:-}"; [ -n "$clicks" ] || continue
+  eval "dly=\${CLIENT${k}_DELAY:-$((last_delay + 60))}"; eval "xenv=\${CLIENT${k}_ENV:-}"; eval "rowms=\${CLIENT${k}_ROW_MS:-20000,156,747}"
+  eval "gdk=\${GD${k}:-$GD}"; eval "dck=\${DC${k}:-$DC}"
+  sleep "$((dly - last_delay))"; last_delay=$dly
+  ( cd "$gdk" && timeout -k 5 -s KILL "$((SECS - dly))" env SDL_VIDEODRIVER=dummy BOB_RUN_INIT=1 BOB_DRIVE_C="$dck" \
+      $xenv BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 BOB_AUTOCLICK="$clicks" \
+      BOB_SDL_CLICK_MS="$rowms" "$BOB" ) >"$OUT/client$k.log" 2>&1 &
+  xpids="$xpids $!"; PLAYERS="$PLAYERS client$k"; nguests=$((nguests + 1))
+done
+c2pid="$xpids"
+wait $hpid 2>/dev/null; wait $cpid 2>/dev/null; for x in $xpids; do wait $x 2>/dev/null; done
 bob_kill_new
 fail=0
 say() { printf '  %-46s %s\n' "$1" "$2"; }
@@ -117,12 +120,14 @@ done
 if [ "$uid_host" = none ] || [ "$uid_client" = none ]; then say "each player seated in own aircraft" "FAIL (host=$uid_host client=$uid_client; BOB_TRACE_AGG=1?)"; fail=1
 elif [ "$uid_host" = "$uid_client" ]; then say "each player seated in own aircraft" "FAIL (both uid $uid_host)"; fail=1
 else say "each player seated in own aircraft" "PASS (host uid $uid_host, client uid $uid_client)"; fi
-if [ -n "$c2pid" ]; then   # E2-5: three players -- the second guest in its own aircraft too, and the host sees both guests
-  if [ "$uid_client2" = none ] || [ "$uid_client2" = "$uid_host" ] || [ "$uid_client2" = "$uid_client" ]; then
-    say "second guest seated in own aircraft" "FAIL (client2=$uid_client2)"; fail=1
-  else say "second guest seated in own aircraft" "PASS (client2 uid $uid_client2)"; fi
+if [ -n "$c2pid" ]; then   # E2-5: more than two players -- every aircraft distinct, and the host sees every guest
+  allu="$uid_host $uid_client"; bad=""
+  for who in $PLAYERS; do case "$who" in client[2-9]) eval "u=\$uid_$who"; allu="$allu $u"; [ "$u" = none ] && bad="$bad $who";; esac; done
+  dups=$(echo $allu | tr ' ' '\n' | grep -v none | sort | uniq -d | tr '\n' ' ')
+  if [ -n "$bad$dups" ]; then say "every player in own aircraft" "FAIL (uids: $allu)"; fail=1
+  else say "every player in own aircraft" "PASS (uids: $allu)"; fi
   seen=$(grep -aoE '\[addplayer\] slot=[0-9]+ .*FOUND' "$OUT/host.log" | grep -aoE 'slot=[0-9]+' | sort -u | wc -l)
-  [ "$seen" -ge 2 ] && say "host makes both guests visible" "PASS ($seen guest slots)" || { say "host makes both guests visible" "FAIL ($seen)"; fail=1; }
+  [ "$seen" -ge "$nguests" ] && say "host makes all $nguests guests visible" "PASS ($seen guest slots)" || { say "host makes all $nguests guests visible" "FAIL ($seen)"; fail=1; }
 fi
 if grep -aq '\[hist\] slot .* no aircraft' "$OUT/client.log" "$OUT/host.log"; then say "every slot has an aircraft" "FAIL"; fail=1
 else say "every slot has an aircraft" "PASS"; fi

@@ -207,6 +207,9 @@ void	BoBFrag::RefreshData(int targetid)
 BOOL BoBFrag::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
+#if BOB_LINUX
+	if (RFullPanelDial::incomms) { extern void bob_mpcamp_guest_frag_init(void); bob_mpcamp_guest_frag_init(); }	/* E2-5: the guest's side, now committed */
+#endif
 	
 
 //DeadCode JIM 22Oct00 	Node_Data.BuildTargetTable();

@@ -5273,10 +5273,16 @@ Bool	DPlay::ReceiveSlotRequestOK()
 #if defined(BOB_LINUX)
 						if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[slot] guest: reply from pid %lu: squadron %d pos %d Slot(granted)=%lu\n",(unsigned long)From,(int)pack->squadron,(int)pack->position,(unsigned long)pack->Slot);
 #endif
+						#if defined(BOB_LINUX)
+						/* E2-5: a grant is exactly 1. Measured with five players: a refusal arrived with Slot=4293983584 and
+						   was taken as a grant, so two guests both believed they held squadron 76 pos 1. */
+						return (pack->Slot==1 || getenv("BOB_MP_SLOT_NONZERO")) ? (pack->Slot!=0) : FALSE;
+#else
 						if (pack->Slot)
 							return TRUE;
 						else
 							return FALSE;
+#endif
 					}
 				}
 				else

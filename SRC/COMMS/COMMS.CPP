@@ -108,6 +108,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //#include	"persons2.h"
 //#include	"ui.h"
 #if defined(BOB_LINUX)
+extern int bob_mpcamp_guest_hostpack, bob_mpcamp_guest_hostsq; void bob_mpcamp_opposite_side(int hostpack);
+unsigned long bob_savegame_rx_ms=0;	/* E2-5: when the last host savegame was loaded */
+int bob_mpcamp_hostpack=-1, bob_mpcamp_hostsq=-1;	/* E2-5: set by OnClickedFrag2 on the host */
 extern ULong bob_savegame_to;	/* E2-5, defined before SendSaveGame */
 extern ULong bob_earlygo_ms[];	/* E2-5, defined before GetAllGoResponses */
 #endif
@@ -934,8 +937,18 @@ Bool DPlay::UINetworkSelectFly ()
 		}
 		else
 		{
-			if (!ReceiveStartupSaveGame(false))
+			/* E2-5 (measured, five players): the host sends the launch savegame right after its go; a slower guest's
+			   UI pump can take it first (Process_PM_SaveGame loads it), and waiting here for a second copy then timed
+			   out and the guest never launched. A savegame loaded since the FlyNow is the launch savegame. */
+			if (bob_savegame_rx_ms && timeGetTime()-bob_savegame_rx_ms < CommsTimeoutLength*2)
+			{
+				if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] launch: host savegame already loaded %lu ms ago\n",(unsigned long)(timeGetTime()-bob_savegame_rx_ms));
+			}
+			else if (!ReceiveStartupSaveGame(false))
+			{
+				if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] launch: no host savegame -- not launching\n");
 				return FALSE;
+			}
 		}
 	}
 #endif
@@ -3098,9 +3111,12 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 		   hisquad, which the savegame does not carry). GENERIC has no spare field and both ends are this port's own
 		   transport, so the selection rides in the top bits of the packet count: bit 31 set, pack in 23..16,
 		   squad in 30..24. A count never reaches 65536 (500-byte packets). BOB_NO_MPCAMP_HILIGHT=1 reverts. */
-		if (GameType==COMMSCAMPAIGN && Todays_Packages.hipack>=0 && !getenv("BOB_NO_MPCAMP_HILIGHT"))
-			cd.PlayerID = (numpackets & 0xFFFF) | 0x80000000u | ((ULong)(UByte)Todays_Packages.hipack << 16)
-						| ((ULong)((UByte)Todays_Packages.hisquad & 0x7F) << 24);
+		{
+			int hp = bob_mpcamp_hostpack>=0 ? bob_mpcamp_hostpack : (int)Todays_Packages.hipack;	/* the flight the host TOOK */
+			int hs = bob_mpcamp_hostpack>=0 ? bob_mpcamp_hostsq   : (int)Todays_Packages.hisquad;
+			if (GameType==COMMSCAMPAIGN && hp>=0 && !getenv("BOB_NO_MPCAMP_HILIGHT"))
+				cd.PlayerID = (numpackets & 0xFFFF) | 0x80000000u | ((ULong)(UByte)hp << 16) | ((ULong)((UByte)hs & 0x7F) << 24);
+		}
 #endif
 #if defined(BOB_LINUX)
 		if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] SendSaveGame(score=%d,startup=%d) \"%s\" %lu bytes -> %lu packets\n",
@@ -3224,6 +3240,17 @@ static bool bob_sq_flyable(int p,int s)
 	return pt<(int)PT_BRIT_NONFLY || (pt>=(int)PT_GER_FLYABLE && pt<(int)PT_GER_NONFLY);
 }
 static bool bob_pack_is_lw(int p) { return (int)Todays_Packages[p].attackmethod>=(int)Profile::AM_LWPACKS; }
+int	bob_mpcamp_guest_hostpack=-1, bob_mpcamp_guest_hostsq=-1;	/* the host's flight, as the guest received it */
+void	bob_mpcamp_opposite_side(int hostpack);
+/* BoBFrag::OnInitDialog on a co-op campaign guest: start from the host's flight and the host's side, then apply the
+   guest's own (now committed) side. */
+void	bob_mpcamp_guest_frag_init(void)
+{
+	if (_DPlay.GameType!=DPlay::COMMSCAMPAIGN || _DPlay.Host || bob_mpcamp_guest_hostpack<0) return;
+	Todays_Packages.hipack=(char)bob_mpcamp_guest_hostpack; Todays_Packages.hisquad=(char)bob_mpcamp_guest_hostsq;
+	Todays_Packages.localplayer = bob_pack_is_lw(bob_mpcamp_guest_hostpack) ? NAT_LUF : NAT_RAF;
+	bob_mpcamp_opposite_side(bob_mpcamp_guest_hostpack);
+}
 void	bob_mpcamp_opposite_side(int hostpack)
 {
 	if (getenv("BOB_NO_MPCAMP_OPPOSITE") || hostpack<0 || hostpack>=Profile::MAX_PACKS) return;
@@ -3354,13 +3381,18 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 	{
 		retval=LoadDummySavegame("dcomms.dat");
 #if defined(BOB_LINUX)
+		if (retval) bob_savegame_rx_ms=timeGetTime();
 		if (retval && mpc_pack>=0)
 		{
 			Todays_Packages.hipack=(char)mpc_pack;
 			Todays_Packages.hisquad=(char)mpc_sq;
 			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] guest frags the host's flight: pack %d sq %d\n",mpc_pack,mpc_sq);
 			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] after load: pack0 status=%d pack%d status=%d squads=%d\n",(int)Todays_Packages[0].packagestatus,mpc_pack,(int)Todays_Packages[mpc_pack].packagestatus,(int)(ULong)Todays_Packages[mpc_pack].squadlist);
-			bob_mpcamp_opposite_side(mpc_pack);
+			bob_mpcamp_guest_hostpack=mpc_pack; bob_mpcamp_guest_hostsq=mpc_sq;
+			/* the side is committed by the Locker Room AFTER this first load (measured: the join's savegame arrives
+			   ~2000 log lines before UpDateDPlay), so only a later load -- the launch -- may apply it here; the frag
+			   applies it at OnInitDialog (bob_mpcamp_guest_frag_init) */
+			if (_DPlay.SideSelected) bob_mpcamp_opposite_side(mpc_pack);
 		}
 #endif
 
@@ -3917,6 +3949,7 @@ bool DPlay::Process_PM_FlyNow()
 {
 #if defined(BOB_LINUX)
 	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[go] FlyNow received: Host=%d my status=%d (CPS_FRAG=%d)\n",(int)Host,(int)H2H_Player[mySlot].status,(int)CPS_FRAG);
+	bob_savegame_rx_ms=0;	/* E2-5: only a savegame loaded after this counts as the launch savegame */
 #endif
 	if (!Host
 	&& 	((GameType<COMMSQUICKMISSION && H2H_Player[mySlot].status==CPS_READYROOM)

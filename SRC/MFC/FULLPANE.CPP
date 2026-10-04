@@ -1792,6 +1792,7 @@ Bool RFullPanelDial::CleanUpComms(FullScreen*&fs)
 {
 #if defined(BOB_LINUX)
 	DPlay::campaignloaded=false;	/* E2-5: a new session starts a new campaign */
+	{ extern int bob_mpcamp_hostpack, bob_mpcamp_hostsq; bob_mpcamp_hostpack=bob_mpcamp_hostsq=-1; }	/* E2-5 */
 #endif
 //DeadCode AMM 18Sep00 	_DPlay.campaignloaded=false;
 	CSQuick1::currquickmiss=-1;
