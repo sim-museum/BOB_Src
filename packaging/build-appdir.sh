@@ -32,6 +32,10 @@ DENY='^(libGL\.|libGLX|libGLdispatch|libEGL|libOpenGL|libdrm|libgbm|libc\.|libm\
 rm -rf "$APPDIR"
 mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib" "$APPDIR/usr/share/bob"
 cp "$BIN" "$APPDIR/usr/bin/bob"
+# EPIC-MATCHMAKER: the Serious Games Week matchmaker client (sgweek/sgw.py, stdlib Python 3) the game runs to announce
+# and find sessions. SGW_SRC overrides; without it the game falls back to ~/sgweek/sgw.py, then `sgw` on PATH.
+SGW_SRC="${SGW_SRC:-$HOME/sgweek/sgw.py}"
+if [ -f "$SGW_SRC" ]; then install -m 0755 "$SGW_SRC" "$APPDIR/usr/bin/sgw"; else echo "note: $SGW_SRC not found -- AppDir has no sgw"; fi
 
 echo ">> bundling i386 libraries (excluding host-provided)..."
 n=0
@@ -61,6 +65,7 @@ export BOB_RC_DIR="${BOB_RC_DIR:-$HERE/usr/share/bob/SRC}"
 if [ -n "${BOB_DRIVE_C:-}" ] && [ -z "${BOB_NO_CHDIR:-}" ]; then
   cd "$BOB_DRIVE_C/Program Files/Rowan Software/Battle Of Britain" 2>/dev/null || true
 fi
+export APPDIR="${APPDIR:-$HERE}"   # the games find the matchmaker client at $APPDIR/usr/bin/sgw
 exec "$HERE/usr/bin/bob" "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
