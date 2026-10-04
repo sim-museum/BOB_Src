@@ -652,7 +652,7 @@ void DPlay::UILeavingMainSheet ()
 
 // dont send async either so that all messages can be cancelled easily
 
-		lpDP4->SendEx (myDPlayID,playergroupID,DPSEND_NOSENDCOMPLETEMSG,&data,sizeof(GENERIC),0,0,NULL,NULL);
+		lpDP4->SendEx (myDPlayID,playergroupID,DPSEND_NOSENDCOMPLETEMSG|DPSEND_GUARANTEED,&data,sizeof(GENERIC),0,0,NULL,NULL);	/* E2-6: guaranteed (PID_PLAYERQUIT) */
 
 		MyTeamKills=0;
 		MyTeamDeaths=0;
@@ -2094,7 +2094,7 @@ void	DPlay::SendUpdateToVisitorsBook(char* name,Bool status)
 	strcpy(info.Name,name);
 	info.PacketID=PID_VISITORUPDATE;
 
-	res=lpDP4->Send(from,to,0,&info,sizeof(INITINFO));
+	res=lpDP4->Send(from,to,DPSEND_GUARANTEED,&info,sizeof(INITINFO));	/* E2-6: guaranteed (visitors book) */
 }
 
 //������������������������������������������������������������������������������
@@ -2264,7 +2264,7 @@ ULong DPlay::AttemptToJoin()
 	strcpy(&pack.name[0],&PlayerName[0]);
 
 
-	res=lpDP4->Send(from,to,0,&pack,sizeof(PASSWORDPACK));
+	res=lpDP4->Send(from,to,DPSEND_GUARANTEED,&pack,sizeof(PASSWORDPACK));	/* E2-6: guaranteed -- a lost join password failed the join under simulated loss */
 
 	if (res!=DP_OK)
 		return FALSE;
