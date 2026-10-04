@@ -12688,3 +12688,26 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
      `MMC.playersquadron`/`playeracnum`).
   3. ~~Two-instance gate, Luftwaffe side, three players.~~ **Done** (see above). Remaining: opposite-side
      guests, and more than three players.
+
+## E2-6 — reliable delivery for internet play (2026-10-04) ✅
+* **What it does** (`bob_dplay.cpp`): guaranteed sends travel as sequenced `MSG_RDATA`.
+  - The receiver acknowledges, drops duplicates and delivers in order.
+  - The sender retransmits (150→1200 ms backoff), giving up after `BOB_REL_GIVEUP_MS` (20 s).
+  - Reliability is per link, so the star hub's forwarding is reliable on each leg.
+  - The session search handles reliable packets; JOIN is resent until assigned, and a repeat JOIN gets the same pid.
+  - Unguaranteed traffic (the in-flight aggregator stream) stays plain.
+* **Lobby sends made guaranteed:** three the game sent unguaranteed (join password, visitors book, player quit).
+* **Switches:** `BOB_NET_LOSS=<percent>` simulates loss; `BOB_NO_RELIABLE=1` reverts.
+* **Measured** (two-player co-op campaign):
+
+  | Run | Result |
+  |---|---|
+  | 10% loss both ways | 8/8 PASS: 1094 reliable packets, 212 retransmissions, 0 given up |
+  | Control: 10% loss, reliability off | FAIL: the guest's savegame load FAILED |
+  | Quick-mission gate, no loss | 8/8 PASS: 97 reliable sends, 0 retransmitted |
+
+* **MA:** same transport plus MA-specific game fixes (MA 0a77c95).
+* **Still open:**
+  - NAT traversal (hosts must port-forward, as with iGOR);
+  - latency simulation;
+  - congestion control for very large sessions.
