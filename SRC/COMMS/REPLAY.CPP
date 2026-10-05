@@ -297,6 +297,7 @@ extern "C" {
 	                         double roll, double pitch, double yaw,
 	                         const char* name, const char* type, const char* color, int isPlayer,
 	                         double ias);
+	void bob_acmi_agl(double agl);   /* REPLAY-LAB-1 S6: height above ground for the next object line */
 	int  bob_acmi_active(void);
 	int  bob_acmi_save_as(const char* camname);
 	unsigned long bob_acmi_frame_monotonic(unsigned long raw);   /* S275 */
@@ -622,6 +623,11 @@ Bool	Replay::StoreDeltas()
 					if (_aiEvery > 1 && !_isPlayer && (replayframecount % _aiEvery) != 0)
 						{ _ac = *_ac->nextmobile; continue; }
 				}
+				/* REPLAY-LAB-1 S6: the player's height above the ground (Tacview AGL), from the game's own
+				   terrain, so a landing analysis knows where the runway is -- the AI's landing ends with the
+				   aircraft leaving this list at touchdown, so no rollout is ever recorded to read it from. */
+				if (_isPlayer)
+					bob_acmi_agl((double)(_ac->World.Y - Land_Scape.GetGroundLevel(_ac)) / _cm);
 				bob_acmi_object_ias(_oid,
 				                    (double)_ac->World.X / _cm,
 				                    (double)_ac->World.Z / _cm,

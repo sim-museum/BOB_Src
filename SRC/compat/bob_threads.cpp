@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <execinfo.h>
 #include <sched.h>
+extern "C" void bob_acmi_end(void);   /* bob_acmi.cpp -- REPLAY-LAB-1 S6 */
 
 /* ---- S46 diagnostic: trace what drives a view's drawing state to D_CLOSE ---
  * The per-view draw thread (View3d::drawloop) returns permanently when
@@ -105,6 +106,10 @@ static void* thread_trampoline(void* p) {
 		fprintf(stderr, "[draw] flight draw thread ended in boot-to-flight scaffold "
 		                "(no menu to return to) -> clean exit\n");
 		fflush(stderr);
+		/* REPLAY-LAB-1 S6: close the Tacview export first. _exit() skips stdio, and the writer flushes
+		   every 25 frames, so the last second was lost -- in the Landing training mission (which ends when
+		   you land) that second was the touchdown itself. */
+		bob_acmi_end();
 		_exit(0);
 	}
 	return NULL;

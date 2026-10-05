@@ -72,6 +72,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //------------------------------------------------------------------------------
 //DeadCode RJS 11Jul00 #define		DBGMEMTEST
 
+#include <time.h>
 #include	"dosdefs.h"											//JIM 17Nov96
 	#define F_COMMON
 	#define F_GRAFIX
@@ -260,6 +261,32 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 			fprintf(stderr, "[manual] movecode was %d -> AutoToggle(MANUAL)\n", (int)entry->movecode);
 			fflush(stderr);
 			Manual_Pilot.AutoToggle(ManualPilot::MANUAL);
+		}
+	}
+	/* REPLAY-LAB-1 S6: BOB_AI_PILOT=<seconds> hands the player's aircraft to the game's AI that many seconds
+	   into the flight, with the game's own AutoToggle(TOGGLE) (MANUAL -> AUTO, Associate()), so the AI flies
+	   YOUR aircraft at normal speed and the Tacview export records it at its full rate -- the gold standard for
+	   replaylab. (In the game the only hand-over is accelerated time, which records at a fraction of the rate.)
+	   Also traces the player's movecode every 10 s, which names the AI routine flying it. Default off. */
+	if (getenv("BOB_AI_PILOT") && entry == Persons2::PlayerSeenAC) {
+		static time_t t0 = 0, lastTrace = 0;
+		static int handed = 0;
+		time_t now = time(0);
+		if (!t0) t0 = now;
+		if (!handed && now - t0 >= atoi(getenv("BOB_AI_PILOT"))) {
+			handed = 1;
+			fprintf(stderr, "[aipilot] movecode %d -> AutoToggle(TOGGLE) at +%lds\n", (int)entry->movecode, (long)(now - t0));
+			fflush(stderr);
+			Manual_Pilot.AutoToggle(ManualPilot::TOGGLE);
+		}
+		static int lastMc = -1;
+		if (now - lastTrace >= 1 || (int)entry->movecode != lastMc) {
+			lastTrace = now; lastMc = (int)entry->movecode;
+			SLong gl = Land_Scape.GetGroundLevel(entry);		/* game cm, like World.Y */
+			fprintf(stderr, "[aipilot] +%lds player movecode=%d handed=%d alt=%.2f m ground=%.2f m above=%.2f m\n",
+					(long)(now - t0), (int)entry->movecode, handed, entry->World.Y / 100.0, gl / 100.0,
+					(entry->World.Y - gl) / 100.0);
+			fflush(stderr);
 		}
 	}
 	/* 2026-09-04: does the world update run at all under BOB_BOOT_FRONTEND? A first version of
