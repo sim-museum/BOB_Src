@@ -689,8 +689,38 @@ The port replaces DirectPlay with its own UDP transport on port **47624**. The f
 | **Death Match** | Implode, Pairs, Wheel, Same altitudes, Different altitudes, Explode, Implode/Explode, Flyby |
 | **Team Play** | Flights with no / Luftwaffe / RAF / random advantage, Elements scattered or close, Singles implode or explode |
 | **Quick Missions** | 15 of the Quick Shots, with AI, cooperative or adversarial |
+| **Campaign** | the co-op campaign: guests fly in the host's campaign, on either side |
 
-Any flyable aircraft can be used; gunner positions cannot. The campaign is single-player only.
+Any flyable aircraft can be used; gunner positions cannot.
+
+**Campaign (co-op)**
+1. **Host:** in the Locker Room choose **Campaign**, a side (RAF or Luftwaffe) and the phase, then **Continue**.
+   You command your side on the campaign map as in single player.
+2. **Opening the session:** take an interception (RAF) or plan raids (Luftwaffe) and frag a flight. The session
+   opens at the campaign Ready Room, and guests receive your campaign state as they join.
+3. **Guests:** join, then pick a seat in the host's flight on the Frag screen. A guest may also choose the other
+   side, for a mixed-sides campaign.
+4. **Fly:** everyone launches together. After the debrief, guests return to their Ready Room and the host to the
+   map.
+
+Tested on one PC with up to five players, RAF, Luftwaffe and mixed sides. Not yet tested: joining while the
+host is on the map between sorties.
+
+**Finding games: squeak (the Serious Games Week matchmaker)**
+- Once per PC, choose the matchmaker: `sgw url http://<matchmaker-host>:8090`. The AppImage carries its own `sgw`;
+  `pipx install git+https://github.com/sim-museum/squeak` puts one on your PATH.
+- Hosting lists your session while it is open, and withdraws it when it closes. A campaign host's session opens at
+  the campaign Ready Room.
+- Join's session list includes the sessions the matchmaker lists, so a joiner needs no host address.
+- A game is listed only on its day of the week (Tuesday for MiG Alley and Battle of Britain, in your own time
+  zone). On other days the game still hosts normally; the log says why it isn't listed.
+
+**Internet play**
+- Lobby, chat, seat and launch messages are sent reliably: retransmitted until acknowledged, and delivered in
+  order. Two players stay in step through 10% packet loss, which was measured with the loss simulator
+  (`BOB_NET_LOSS=10`, a percentage). `BOB_NO_RELIABLE=1` turns this off.
+- The host must accept UDP 47624 from outside (router port-forward). There is no NAT traversal.
+
 
 **Ready Room**
 - **Chat** to everyone, your side, or one player (click their name).
@@ -708,10 +738,10 @@ Any flyable aircraft can be used; gunner positions cannot. The campaign is singl
   cuts the death sequence short.
 - **Dead in a Quick Mission:** back to the Ready Room. Take a free AI seat from the Frag.
 
-**State of the port (2026-10-01).** Death Match, Team Play and Quick Missions all reach a shared
-flight, with join in flight, chat and matching scoreboards. In the development tree, but not yet in
-the 260926c AppImage: a kill now goes to whoever hit the victim within 10 s of its death, and other
-hitters get assists. Untested: campaign co-op, more than two players, two PCs since 19 September.
+**State of the port (2026-10-04, AppImage 261004).** Death Match, Team Play, Quick Missions and the co-op
+campaign all reach a shared flight. All four have join in flight (except the campaign), chat, kill and assist
+credit, and matching scoreboards. Reliable delivery and the squeak matchmaker are in. Untested: two PCs since
+19 September, real internet play, and whether a guest sees the host's aircraft move (unproven in every mode).
 
 **Two copies on one PC.** Use `BOB_HOME=~/bob2` for the second copy, and `BOB_WINPOS` to put the
 windows on separate monitors (host `0,0`, joiner `1920,0`). A covered window drops to 1 fps under
