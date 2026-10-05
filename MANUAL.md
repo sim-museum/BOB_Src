@@ -661,6 +661,11 @@ off, a leader is offered tactical choices when contact is made.
   **Replay** on the main menu.
 - Replay has 12 icons, chosen with the number row: 1–0, then **-** and **=** set the start and end
   markers.
+- From the main menu: **Replay**, click a recording in the list (`VIDEOS/*.cam`), then **Load**. The flight
+  opens paused on the replay icons; press **4** (play/pause) to start. Verified in this port on 2026-10-04:
+  a recorded landing plays back with its descent, circuit and final.
+- `VIDEOS/replay.dat` holds only the latest flight, and the next flight overwrites it. Use the replay icons'
+  **Save** (8) to keep a recording as a `.cam`.
 
 ---
 
