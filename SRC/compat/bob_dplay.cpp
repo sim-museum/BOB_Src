@@ -103,7 +103,14 @@ static const char* dp_host(void) { const char* e = getenv("BOB_DPLAY_HOST"); ret
  * that a peer update is a few dozen bytes. */
 enum { DPMAGIC = 0x424f4250 };            /* 'BOBP' */
 enum { MSG_PROBE = 1, MSG_OFFER = 2, MSG_JOIN = 3, MSG_DATA = 4, MSG_ASSIGN = 5,
-       MSG_RDATA = 6, MSG_ACK = 7 };   /* E2-6: reliable data ([WireHdr][u32 seq][payload]) and its acknowledgement (to = seq) */
+       MSG_RDATA = 6, MSG_ACK = 7,
+       MSG_REFUSE = 8 };   /* backlog 28: host -> joiner, payload = the host's build string; the join is refused */
+/* Backlog 28: the build this copy runs ($SGW_BUILD, stamped by the AppImage). A joiner sends it after the JOIN
+   header; a host that has one refuses a different or missing build, so a game joined by typing an address follows
+   the same rule as the Serious Games Week matchmaker. */
+static const char* bob_build(void) { const char* e = getenv("SGW_BUILD"); return e ? e : ""; }
+extern "C" void bob_string_override(unsigned id, const char* text);
+enum { BOB_IDS_NOTSESSION = 911 };   /* E2-6: reliable data ([WireHdr][u32 seq][payload]) and its acknowledgement (to = seq) */
 struct WireHdr { unsigned int magic, kind, from, to; };
 
 /* E2-5: 64 -> 1024. A co-op campaign's Airfields day sends far more battlefield packets at 3-D load than a quick
@@ -143,6 +150,7 @@ class BobDPlay4 : public IDirectPlay4
        delivered at home. The two shims share their ancestry, so the defect is shared too. */
     DPID localPids[8]; int nlocal;
     DPID assignedPid;      /* R6.3: what the host gave us (client side); 0 until it answers */
+    int  refused = 0;      /* backlog 28: the host refused our JOIN (different build) */
     DPID groups[8]; int gmembers[8]; DPID gplayers[8][32]; int ngroups;   /* R6.4 (E2-3: 32 members -- 16 players need more than 8) */
     /* MP-5 (PO 2026-09-05): pids this HOST has handed to joining clients. The game only ever
        calls AddPlayerToGroup for its OWN player, so a group held one member (the host) and
@@ -377,6 +385,18 @@ class BobDPlay4 : public IDirectPlay4
                 sendto(fd, out, sizeof(out), 0, (struct sockaddr*)&from, fl);
                 DPT("probe from a client -> offered session \"%s\"\n", sessName);
             } else if (h->kind == MSG_JOIN && isHost) {
+                { char jb[65] = ""; int bl = (int)(n - (ssize_t)sizeof(WireHdr));
+                  if (bl > 0) { if (bl > 64) bl = 64; memcpy(jb, buf + sizeof(WireHdr), bl); jb[bl] = 0; }
+                  if (*bob_build() && strcmp(jb, bob_build()) != 0) {
+                      char out[sizeof(WireHdr) + 64]; WireHdr* oh = (WireHdr*)out;
+                      oh->magic = DPMAGIC; oh->kind = MSG_REFUSE; oh->from = 0; oh->to = 0;
+                      int ml = (int)strlen(bob_build()); if (ml > 64) ml = 64;
+                      memcpy(out + sizeof(WireHdr), bob_build(), ml);
+                      sendto(fd, out, sizeof(WireHdr) + ml, 0, (struct sockaddr*)&from, fl);
+                      fprintf(stderr, "[dplay] refused a join from %s: build %s, ours %s\n", inet_ntoa(from.sin_addr),
+                              *jb ? jb : "unknown", bob_build()), fflush(stderr);
+                      continue;
+                  } }
                 peer = from; havePeer = 1;
                 /* R6.3: THE HOST OWNS THE ID SPACE. Before this, each object started nextPid at
                    DPID_SERVERPLAYER independently, so host and client both allocated pid 1 -- the
@@ -431,6 +451,15 @@ class BobDPlay4 : public IDirectPlay4
                     offerCount++;
                     DPT("cached a session offer \"%s\" seen outside EnumSessions\n", offers[offerCount-1]);
                 }
+            } else if (h->kind == MSG_REFUSE && !isHost) {
+                char hb[65] = ""; int bl = (int)(n - (ssize_t)sizeof(WireHdr));
+                if (bl > 0) { if (bl > 64) bl = 64; memcpy(hb, buf + sizeof(WireHdr), bl); hb[bl] = 0; }
+                char why[400];
+                snprintf(why, sizeof why, "Different builds: the host runs %s and you run %s. Both players need the "
+                         "same build of Battle of Britain.", *hb ? hb : "an unknown build", *bob_build() ? bob_build() : "an unknown build");
+                bob_string_override(BOB_IDS_NOTSESSION, why);
+                refused = 1;
+                fprintf(stderr, "[dplay] %s\n", why), fflush(stderr);
             } else if (h->kind == MSG_ASSIGN && !isHost) {
                 assignedPid = (DPID)h->to;
                 DPT("host assigned us pid %u\n", (unsigned)assignedPid);
@@ -522,12 +551,17 @@ public:
             DPT("Open(JOIN): session desc guid %08lx/%u, %d offer(s) known\n", d ? (unsigned long)d->guidInstance.Data1 : 0ul,
                 d ? (unsigned)d->guidInstance.Data2 : 0u, g_noffers);
             havePeer = 1;
-            WireHdr h; h.magic = DPMAGIC; h.kind = MSG_JOIN; h.from = 0; h.to = 0;
-            sendto(fd, &h, sizeof(h), 0, (struct sockaddr*)&peer, sizeof(peer));
+            bob_string_override(BOB_IDS_NOTSESSION, NULL); refused = 0;	/* backlog 28: a new attempt */
+            char jmsg[sizeof(WireHdr) + 64]; WireHdr& h = *(WireHdr*)jmsg;
+            h.magic = DPMAGIC; h.kind = MSG_JOIN; h.from = 0; h.to = 0;
+            int jl = (int)strlen(bob_build()); if (jl > 64) jl = 64;
+            memcpy(jmsg + sizeof(WireHdr), bob_build(), jl);
+            sendto(fd, jmsg, sizeof(WireHdr) + jl, 0, (struct sockaddr*)&peer, sizeof(peer));
             DPT("Open(JOIN) -> host %s:%d\n", inet_ntoa(peer.sin_addr), (int)ntohs(peer.sin_port));
-            for (int i = 0; i < 40 && assignedPid == 0; i++) { pump(); usleep(25000);  /* R6.3 */
-                if (i % 8 == 7 && assignedPid == 0) rawsend(&h, sizeof(h), peer);   /* E2-6: a lost JOIN or ASSIGN must not end the join */
+            for (int i = 0; i < 40 && assignedPid == 0 && !refused; i++) { pump(); usleep(25000);  /* R6.3 */
+                if (i % 8 == 7 && assignedPid == 0 && !refused) rawsend(jmsg, sizeof(WireHdr) + jl, peer);   /* E2-6: a lost JOIN or ASSIGN must not end the join */
             }
+            if (refused) { DPT("host refused the join: different build\n"); return DPERR_NOCONNECTION; }
             if (assignedPid == 0) DPT("host did not assign a pid (joining anyway)\n");
             return DP_OK;
         }

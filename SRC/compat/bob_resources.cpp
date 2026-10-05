@@ -152,8 +152,22 @@ extern "C" HMODULE_T bob_GetResourceHandle(void){ return (HMODULE_T)g_resModule;
 static const struct { unsigned id; const char* s; } bob_extra_strings[] = {
 	{ 0xEF10, "Campaign" },
 };
+/* Backlog 28: one message whose text is replaced for a while -- a refused join's reason in place of the generic
+   "Could not create session or player" (IDS_NOTSESSION), so the player learns WHY. Set and cleared by bob_dplay.cpp. */
+static unsigned bob_override_id = 0;
+static char bob_override_text[512];
+extern "C" void bob_string_override(unsigned id, const char* text)
+{
+	if (!text) { bob_override_id = 0; return; }
+	snprintf(bob_override_text, sizeof bob_override_text, "%s", text);
+	bob_override_id = id;
+}
 extern "C" int bob_load_string(HMODULE_T h, unsigned id, char* buf, int maxlen){
 	if (buf && maxlen>0) buf[0]=0;
+	if (bob_override_id && id == bob_override_id && buf && maxlen > 0) {
+		int n = (int)strlen(bob_override_text); if (n >= maxlen) n = maxlen - 1;
+		memcpy(buf, bob_override_text, n); buf[n] = 0; return n;
+	}
 	if (buf && maxlen>0 && id >= 0xEF00 && id <= 0xEFFF) {
 		for (unsigned k = 0; k < sizeof(bob_extra_strings)/sizeof(bob_extra_strings[0]); k++)
 			if (bob_extra_strings[k].id == id) {
