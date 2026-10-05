@@ -1146,6 +1146,11 @@ Bool RFullPanelDial::ReplayLoad(FullScreen*&fs)
 
 // load also views now....
 
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_REPLAY"))	/* BOB-R1: the menu's replay load, step by step */
+		fprintf(stderr, "[replayload] selectedfile='%s' pfilename='%s' valid=%d\n",
+		        temp, &_Replay.pfilename[0], (int)_Replay.ValidReplayFile()), fflush(stderr);
+#endif
 	if (!_Replay.ValidReplayFile())
 	{
 		RMessageBox(IDS_BOB,IDS_INVALIDREPLAYFILE,NULL,IDS_OK);
