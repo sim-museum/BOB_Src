@@ -1544,7 +1544,20 @@ static void present_dbg(const char* path)
 	   dump cannot be placed relative to a key on the launch clock, and a dump after the dialog closes
 	   photographs the front-end. Armed at the push site below. */
 	extern int g_bob_dump_after_key;
-	if (g_bob_dump_after_key > 0 && --g_bob_dump_after_key == 0) wantDump = true;
+	static int s_dumpTag = 0;   /* BOB-R1: >0 names the file <path>.<tag>.ppm (comma-list mode) */
+	if (g_bob_dump_after_key > 0 && --g_bob_dump_after_key == 0) {
+		wantDump = true;
+		/* BOB-R1 (2026-10-04): BOB_DUMP_AFTER_KEY="a,b,c" dumps at EACH listed present count after the key
+		   (one value keeps the old single dump). A replay's motion needs frames seconds apart, which a run of
+		   consecutive presents (BOB_DUMP_FRAME_COUNT) cannot give. */
+		const char* dk = getenv("BOB_DUMP_AFTER_KEY");
+		if (dk && strchr(dk, ',')) {
+			int vals[16], nv = 0; const char* q = dk;
+			while (q && *q && nv < 16) { vals[nv++] = atoi(q); q = strchr(q, ','); if (q) q++; }
+			s_dumpTag++;
+			if (s_dumpTag < nv && vals[s_dumpTag] > vals[s_dumpTag-1]) g_bob_dump_after_key = vals[s_dumpTag] - vals[s_dumpTag-1];
+		}
+	}
 	if (getenv("BOB_DUMP_ON_FIRE")) {
 		extern int g_bob_shoot_held;                 /* set by the autofly shoot branch */
 		static int firedump = 0;
@@ -1564,6 +1577,8 @@ static void present_dbg(const char* path)
 		   default target -- the sibling MiG Alley port shares /tmp and also writes
 		   /tmp/bobframe.ppm, so a private path avoids the two instances clobbering each other. */
 		const char* dpath = getenv("BOB_DUMP_PATH"); if (!dpath||!*dpath) dpath="/tmp/bobframe.ppm";
+		char tagged[1024];
+		if (s_dumpTag > 0) { snprintf(tagged, sizeof(tagged), "%s.%d.ppm", dpath, s_dumpTag); dpath = tagged; }
 		int fd=::open(dpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
 		if (fd>=0){ char hdr[64]; int n=snprintf(hdr,sizeof(hdr),"P6\n%d %d\n255\n",w,h);
 			if (write(fd,hdr,n)<0){} for (int y=h-1;y>=0;y--) if(write(fd,buf+y*w*3,w*3)<0){}
