@@ -1603,7 +1603,7 @@ Bool	Replay::BlockRewind(Bool framerewind)
 	if (!LoadBlockHeader())
 	{
 		playbackfilepos=temp;
-		currblock+=bskip;
+		currblock+=bskip; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock+=bskip at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 		SkipToBeginning();
 		return FALSE;
 	}
@@ -2753,7 +2753,7 @@ void	Replay::ResetSecondaryFMValues(AirStrucPtr ac)
 void	Replay::ResetReplayData()
 {
 	replayframecount=0;
-	currblock=0;
+	currblock=0; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock=0 at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 	numblocks=0;
 
 	ResetFlags();
@@ -2974,7 +2974,7 @@ void	Replay::SkipToBeginning()
 	ResetFlags();
 
 	playbackfilepos=(UByteP)playbackfilestart+SuperHeaderSize;
-	currblock=0;
+	currblock=0; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock=0 at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 
 	if (!LoadBlockHeader())
 	{
@@ -4939,16 +4939,16 @@ Bool	Replay::LoadBlockHeader()
 	headmems[0][currblock]=playbackfilepos;
 
 	if (!LoadHeaderID())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadACArray())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (DoSmokeTrailStuff)
 		UpdateLandscape=true;
 
 	if (!LoadTimeOfDay())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 // OK, in alot of places when skipping about the transients need to be removed from world
 // before new smoke trails etc can be launched. The only time this should not happen is
@@ -4961,37 +4961,37 @@ Bool	Replay::LoadBlockHeader()
 	}
 
 	if (!LoadRandomList())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 			   
 	if (!LoadGamePrefs())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (DoSmokeTrailStuff)		
 		ResetItemAnim();		
 
 	if (!LoadDeadItems())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadSagGlobs())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadItemData())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadItemAnims())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadAAAList())									
-		return FALSE;									
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }									
 
 	if (!LoadArmedTransients())							
-		return FALSE;									
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }									
 
 	if (!LoadDeathMoveState())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!BackupSmokeInfo())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (DoSmokeTrailStuff)
 	{
@@ -5000,33 +5000,33 @@ Bool	Replay::LoadBlockHeader()
 	else
 	{
 		if (!SHAPE.GetSmokeTrailList(TRUE))
-			return FALSE;
+			{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 	}
 
 	if (!BackupCloudInfo())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!DoSmokeTrailStuff)
 	{
 		if (!LoadSmokeClouds(true))
-			return FALSE;
+			{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 	}
 
 	if (!LoadPrevPosBuffer())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadHeaderEndID())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	if (!LoadFrameCounts())
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
 	n=LoadHeaderLength();
 
 	if (n==0)
-		return FALSE;
+		{ if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] LoadBlockHeader FALSE at Replay.cpp:%d currblock=%d numblocks=%d fileoff=%ld\n",__LINE__,(int)currblock,(int)numblocks,(long)(playbackfilepos-(UByteP)playbackfilestart)),fflush(stderr); return FALSE; }
 
-	currblock++;
+	currblock++; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock++ at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 
 	if (currblock>numblocks)
 	{
@@ -5295,7 +5295,7 @@ void	Replay::SkipToBeginningMark()
 {
 	ULong n;
 
-	currblock=0;
+	currblock=0; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock=0 at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 	playbackfilepos=(UByteP)playbackfilestart+SuperHeaderSize;
 	LoadBlockHeader();
 
@@ -5317,7 +5317,7 @@ void	Replay::SkipToEndMark()
 {
 	ULong n;
 
-	currblock=0;
+	currblock=0; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock=0 at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 	playbackfilepos=(UByteP)playbackfilestart+SuperHeaderSize;
 	LoadBlockHeader();
 
@@ -5426,7 +5426,7 @@ void	Replay::PreScanReplayFile()
 	}
 
 	playbackfilepos=here;
-	currblock=0;
+	currblock=0; { if (getenv("BOB_TRACE_REPLAY")) fprintf(stderr,"[replay] currblock=0 at Replay.cpp:%d -> currblock=%d emptyblock=%d frame=%lu\n",__LINE__,(int)currblock,(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
 
 	DoSmokeTrailStuff=TRUE;
 }
@@ -5614,6 +5614,30 @@ void	Replay::CalcCurrPos()
 {
 	ULong n,total=0;
 	SLong	temp;
+	if (currblock==0 && getenv("BOB_TRACE_REPLAY"))	/* BOB-R1: no block loaded yet -> the loop below wraps */
+	{ static int once=0; if (!once++) fprintf(stderr,"[replay] CalcCurrPos with currblock=0 (emptyblock=%d replayframecount=%lu)\n",(int)emptyblock,(unsigned long)replayframecount),fflush(stderr); }
+#if defined(BOB_LINUX)
+	/* BOB-R1: with the installed front-end boot (BOB_BOOT_FRONTEND) a 3-D instance from boot is still
+	   cycling when the menu's Replay -> Load sets Playback, so this runs before any block of the recording
+	   has been read (OpenPlaybackLog happens later, in the replay flight's LoadSetPiece -> SendInitPacket).
+	   currblock is a UByte: currblock-1 promotes to -1, the ULong loop below wraps to 0xFFFFFFFF and walks
+	   off numframes[] (SIGSEGV, measured). No block, no position -- return. BOB_R1_NOGUARD=1 reverts. */
+	if (currblock==0 && !getenv("BOB_R1_NOGUARD"))
+		return;
+#endif
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_REPLAY"))	/* BOB-R1: does playback advance, and does the player's ghost move? */
+	{
+		static unsigned long calls=0;
+		if ((calls++ % 250)==0)
+		{
+			AirStrucPtr g=Persons2::PlayerGhostAC;
+			fprintf(stderr,"[replay] play: call=%lu block=%d/%d frame=%lu total=%lu ghost=%s pos=(%ld,%ld,%ld)\n",
+			        calls-1,(int)currblock,(int)numblocks,(unsigned long)replayframecount,(unsigned long)TotalFrames,
+			        g?"yes":"NULL",g?(long)g->World.X:0L,g?(long)g->World.Y:0L,g?(long)g->World.Z:0L),fflush(stderr);
+		}
+	}
+#endif
 
 	for (n=0;n<currblock-1;n++)
 	{
