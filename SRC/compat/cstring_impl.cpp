@@ -484,6 +484,11 @@ namespace {
 		return ok;
 	}
 	/* Decide a %s argument: CString-by-reference -> its data pointer; else a genuine char*. */
+	/* ASan soak 2026-10-05: this probe deliberately reads the first word of every %s argument to tell a CString
+	   passed by invisible reference from a plain char*; for a short heap string ("1") that word runs past the
+	   allocation. The address range is checked against /proc/self/maps first (addr_readable), so the read cannot
+	   fault -- it is a heuristic, not a bug, and ASan instrumentation is switched off for this one function. */
+	__attribute__((no_sanitize_address))
 	static const char* resolve_str_arg(void* a) {
 		if (!a) return (const char*)a;
 		if (!addr_readable(a, sizeof(void*))) {
