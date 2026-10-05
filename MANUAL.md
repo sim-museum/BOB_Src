@@ -711,9 +711,9 @@ Any flyable aircraft can be used; gunner positions cannot.
 Tested on one PC with up to five players, RAF, Luftwaffe and mixed sides. Not yet tested: joining while the
 host is on the map between sorties.
 
-**Finding games: squeak (the Serious Games Week matchmaker)**
+**Finding games: the Serious Games Week matchmaker**
 - Once per PC, choose the matchmaker: `sgw url http://<matchmaker-host>:8090`. The AppImage carries its own `sgw`;
-  `pipx install git+https://github.com/sim-museum/squeak` puts one on your PATH.
+  `pipx install git+https://github.com/sim-museum/serious-games-week` puts one on your PATH.
 - Hosting lists your session while it is open, and withdraws it when it closes. A campaign host's session opens at
   the campaign Ready Room.
 - Join's session list includes the sessions the matchmaker lists, so a joiner needs no host address.
@@ -745,7 +745,7 @@ host is on the map between sorties.
 
 **State of the port (2026-10-04, AppImage 261004).** Death Match, Team Play, Quick Missions and the co-op
 campaign all reach a shared flight. All four have join in flight (except the campaign), chat, kill and assist
-credit, and matching scoreboards. Reliable delivery and the squeak matchmaker are in. Untested: two PCs since
+credit, and matching scoreboards. Reliable delivery and the Serious Games Week matchmaker are in. Untested: two PCs since
 19 September, real internet play, and whether a guest sees the host's aircraft move (unproven in every mode).
 
 **Two copies on one PC.** Use `BOB_HOME=~/bob2` for the second copy, and `BOB_WINPOS` to put the
