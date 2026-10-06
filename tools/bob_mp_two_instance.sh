@@ -136,6 +136,32 @@ if [ -n "${BOB_TRACE_AGG:-}" ]; then
     grep -aq 'synched=1 csync=1' "$OUT/$who.log" && say "$who comms-synced (csync=1)" "PASS" || { say "$who comms-synced (csync=1)" "FAIL"; fail=1; }
   done
 fi
+# E2-5 (2026-10-06): "the guest sees the host move" -- with BOB_TRACE_MPPOS=1 in HOST_ENV and CLIENT_ENV, each peer
+# must see the OTHER player's aircraft at >= 30 distinct positions, and the two peers must place every player within
+# 50 m of each other in the same wall second (measured co-op: 117 distinct, 5.3-5.8 m, about one frame of flight).
+if grep -aq '^\[mppos\]' "$OUT/host.log" && grep -aq '^\[mppos\]' "$OUT/client.log"; then
+  mv_res=$(python3 - "$OUT" <<'PYEOF'
+import re, math, sys, collections
+D = {}
+for w in ("host", "client"):
+    d = collections.defaultdict(dict)
+    for l in open(sys.argv[1] + "/" + w + ".log", errors="replace"):
+        m = re.match(r"\[mppos\] t=(\d+) frame=\d+ slot=(\d+)(\(me\))? uid=\S+ pos=\((-?\d+),(-?\d+),(-?\d+)\)", l)
+        if m: d[int(m.group(2))][int(m.group(1))] = (bool(m.group(3)), tuple(int(x) for x in m.group(4, 5, 6)))
+    D[w] = d
+remote = min([len(set(v[1] for v in ser.values())) for w in D for ser in D[w].values()
+              if not any(v[0] for v in ser.values())] or [0])
+worst = 0.0
+for s in set(D["host"]) & set(D["client"]):
+    for t in set(D["host"][s]) & set(D["client"][s]):
+        worst = max(worst, math.dist(D["host"][s][t][1], D["client"][s][t][1]) / 100)
+print(remote, "%.1f" % worst)
+PYEOF
+)
+  set -- $mv_res
+  [ "${1:-0}" -ge 30 ] && say "each side sees the other aircraft move" "PASS ($1 distinct positions)" || { say "each side sees the other aircraft move" "FAIL (${1:-0} distinct)"; fail=1; }
+  awk -v w="${2:-999}" 'BEGIN{exit !(w <= 50)}' && say "peers agree on every aircraft (<= 50 m)" "PASS (worst ${2} m)" || { say "peers agree on every aircraft (<= 50 m)" "FAIL (worst ${2:-?} m)"; fail=1; }
+fi
 printf '  logs: %s/{host,client}.log\n' "$OUT"
 [ "$fail" = 0 ] && echo "  MP-5 TWO-INSTANCE: PASS" || echo "  MP-5 TWO-INSTANCE: FAIL"
 exit $fail
