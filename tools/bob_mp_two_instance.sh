@@ -136,31 +136,44 @@ if [ -n "${BOB_TRACE_AGG:-}" ]; then
     grep -aq 'synched=1 csync=1' "$OUT/$who.log" && say "$who comms-synced (csync=1)" "PASS" || { say "$who comms-synced (csync=1)" "FAIL"; fail=1; }
   done
 fi
-# E2-5 (2026-10-06): "the guest sees the host move" -- with BOB_TRACE_MPPOS=1 in HOST_ENV and CLIENT_ENV, each peer
-# must see the OTHER player's aircraft at >= 30 distinct positions, and the two peers must place every player within
-# 50 m of each other in the same wall second (measured co-op: 117 distinct, 5.3-5.8 m, about one frame of flight).
+# E2-5 (2026-10-06): "the guest sees the host move" -- with BOB_TRACE_MPPOS=1 in HOST_ENV and CLIENT_ENV. For each
+# player, the path its OWN peer logged is compared with the path the other peer logged for it, over the same wall
+# seconds: the other side must see at least half of it. A player that moved under 100 m gives nothing to see and is
+# skipped (a campaign recipe that reaches 3-D seconds before the end). The peers must also place every player within
+# 50 m of each other in the same second. Measured, quick-mission co-op: seen = own path (14.4 km), 5.3-11.6 m apart.
 if grep -aq '^\[mppos\]' "$OUT/host.log" && grep -aq '^\[mppos\]' "$OUT/client.log"; then
-  mv_res=$(python3 - "$OUT" <<'PYEOF'
+  python3 - "$OUT" > "$OUT/mppos_check.txt" <<'PYEOF'
 import re, math, sys, collections
-D = {}
+D, own = {}, {}
 for w in ("host", "client"):
     d = collections.defaultdict(dict)
     for l in open(sys.argv[1] + "/" + w + ".log", errors="replace"):
         m = re.match(r"\[mppos\] t=(\d+) frame=\d+ slot=(\d+)(\(me\))? uid=\S+ pos=\((-?\d+),(-?\d+),(-?\d+)\)", l)
-        if m: d[int(m.group(2))][int(m.group(1))] = (bool(m.group(3)), tuple(int(x) for x in m.group(4, 5, 6)))
+        if m:
+            d[int(m.group(2))][int(m.group(1))] = tuple(int(x) for x in m.group(4, 5, 6))
+            if m.group(3): own[int(m.group(2))] = w
     D[w] = d
-remote = min([len(set(v[1] for v in ser.values())) for w in D for ser in D[w].values()
-              if not any(v[0] for v in ser.values())] or [0])
-worst = 0.0
-for s in set(D["host"]) & set(D["client"]):
-    for t in set(D["host"][s]) & set(D["client"][s]):
-        worst = max(worst, math.dist(D["host"][s][t][1], D["client"][s][t][1]) / 100)
-print(remote, "%.1f" % worst)
+def path(ser, ts): return sum(math.dist(ser[a], ser[b]) for a, b in zip(ts, ts[1:])) / 100
+res, worst = [], 0.0
+for slot, owner in own.items():
+    viewer = "client" if owner == "host" else "host"
+    ts = sorted(set(D[owner].get(slot, {})) & set(D[viewer].get(slot, {})))
+    for t in ts: worst = max(worst, math.dist(D[owner][slot][t], D[viewer][slot][t]) / 100)
+    p_own, p_seen = path(D[owner][slot], ts), path(D[viewer][slot], ts)
+    verdict = "SKIP" if p_own < 100 else ("PASS" if p_seen >= 0.5 * p_own else "FAIL")
+    res.append("%s %s's aircraft: own path %.0f m, %s saw %.0f m over %d s" % (verdict, owner, p_own, viewer, p_seen, len(ts)))
+for r in res: print(r)
+print("WORST %.1f" % worst)
 PYEOF
-)
-  set -- $mv_res
-  [ "${1:-0}" -ge 30 ] && say "each side sees the other aircraft move" "PASS ($1 distinct positions)" || { say "each side sees the other aircraft move" "FAIL (${1:-0} distinct)"; fail=1; }
-  awk -v w="${2:-999}" 'BEGIN{exit !(w <= 50)}' && say "peers agree on every aircraft (<= 50 m)" "PASS (worst ${2} m)" || { say "peers agree on every aircraft (<= 50 m)" "FAIL (worst ${2:-?} m)"; fail=1; }
+  while read -r v rest; do
+    case "$v" in
+      PASS) say "other side sees it move" "PASS ($rest)";;
+      SKIP) say "other side sees it move" "SKIP ($rest)";;
+      FAIL) say "other side sees it move" "FAIL ($rest)"; fail=1;;
+      WORST) awk -v w="$rest" 'BEGIN{exit !(w <= 50)}' && say "peers agree on every aircraft (<= 50 m)" "PASS (worst $rest m)" \
+               || { say "peers agree on every aircraft (<= 50 m)" "FAIL (worst $rest m)"; fail=1; };;
+    esac
+  done < "$OUT/mppos_check.txt"
 fi
 printf '  logs: %s/{host,client}.log\n' "$OUT"
 [ "$fail" = 0 ] && echo "  MP-5 TWO-INSTANCE: PASS" || echo "  MP-5 TWO-INSTANCE: FAIL"

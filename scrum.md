@@ -12678,7 +12678,12 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
     - **Joining while the host is on the campaign map.** The host only services the session on the ready room and
       frag screens, which is Rowan's flow.
     - Sessions above five players.
-    - "The guest sees the host move", still unproven, as in quick-mission co-op.
+    - ~~"The guest sees the host move"~~ **proven for quick-mission co-op (2026-10-06):** two two-instance runs with
+      `BOB_TRACE_MPPOS=1`, each side saw the other's whole path (14.4 km over ~118 s; seen 14,387 m of 14,393 m), and
+      the peers placed every aircraft within 5.8 / 11.6 m in the same second. The gate now checks this whenever the
+      trace is on. **Campaign co-op still unproven:** the E2-5 recipe flies only at the end of its run, giving 16 s of
+      synced 3-D in which the host crept 1 m (check: SKIP), and the guest logged no `[mppos]` line for its OWN
+      aircraft -- needs a run with a longer flight window.
 * **NEXT (the remaining work; items 1 and 2 done):**
   1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,
