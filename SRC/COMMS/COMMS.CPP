@@ -3489,6 +3489,9 @@ extern "C" void bob_comms_shutdown(void)
 }
 #endif
 
+#if defined(BOB_LINUX)
+extern "C" int bob_join_refused_build;	/* backlog 28: compat/bob_dplay.cpp sets it when the host refuses our build */
+#endif
 Bool	DPlay::JoinComms()
 {
 	_DPlay.UIPlayerType = PLAYER_GUEST;
@@ -3513,6 +3516,11 @@ Bool	DPlay::JoinComms()
 		CommsMessage(IDS_HOSTBUSY);
 	}
 
+#if defined(BOB_LINUX)
+	/* The join path from session select fell back to the list silently; when the host refused our build, say so
+	   (IDS_NOTSESSION's text was replaced with the reason). Cross-port of ma bd91c0b. */
+	if (bob_join_refused_build) { bob_join_refused_build = 0; CommsMessage(IDS_NOTSESSION); }
+#endif
 	SessionName[0]='/0';					
 	strcpy(_DPlay.PlayerName,"");
 
