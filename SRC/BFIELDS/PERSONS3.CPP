@@ -337,6 +337,14 @@ UniqueID	Persons3::Make3dAC(PlaneTypeSelect type)
 	return rv;
 }
 
+#if defined(BOB_LINUX)
+/* gdb hook for BOB_WATCH_DEADTIME (2026-10-06): does nothing; a debugger breaks here and arms a watchpoint. */
+extern "C" __attribute__((noinline,used)) void bob_watch_here(unsigned char* addr, int mask)
+{ asm volatile("" :: "r"(addr), "r"(mask) : "memory"); }
+#else
+static void bob_watch_here(unsigned char*, int) {}
+#endif
+
 void	Persons3::Reset3dAC(AirStruc*	currac,PlaneTypeSelect type)
 {
 	currac->classtype=Plane_Type_Translate[type][0];
@@ -3341,7 +3349,15 @@ void Persons3::FinishSetPiece()
 		if (_DPlay.Joining)
 			_DPlay.SendIDRequest();
 		if (getenv("BOB_TRACE_DPLAY"))
-			fprintf(stderr,"[mpcamp] 3D: my aircraft uid=%u, waiting for the other players' aircraft ids\n",(unsigned)_DPlay.AllocPacket[_DPlay.mySlot]);
+		{	/* 2026-10-06: the guest's campaign aircraft flies with Status.deadtime=1 -- print it here, right after SAG expansion */
+			ItemBasePtr _me = Persons2::ConvertPtrUID((UniqueID)_DPlay.AllocPacket[_DPlay.mySlot]);
+			fprintf(stderr,"[mpcamp] 3D: my aircraft uid=%u deadtime=%d deaded=%d ac=%p seen=%p ghost=%p, waiting for the other players' aircraft ids\n",
+			        (unsigned)_DPlay.AllocPacket[_DPlay.mySlot], _me ? (int)_me->Status.deadtime : -1, _me ? (int)_me->Status.deaded : -1,
+			        (void*)_me, (void*)Persons2::PlayerSeenAC, (void*)Persons2::PlayerGhostAC);
+			/* BOB_WATCH_DEADTIME=1: hand gdb the byte holding deadtime (bits 8-12 of Status) to arm a write watchpoint */
+			if (_me && getenv("BOB_WATCH_DEADTIME"))
+				bob_watch_here((unsigned char*)&_me->Status + 1, 0x1f);
+		}
 		_DPlay.WaitForPlayersUniqueIDs();
 	}
 #endif

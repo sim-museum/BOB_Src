@@ -442,10 +442,10 @@ static void bob_trace_mppos()
 		if (!(_DPlay.ActivePlayers & (1 << n)) || !_DPlay.AllocPacket[n]) continue;
 		AirStrucPtr ac = (AirStrucPtr)Persons2::ConvertPtrUID((UniqueID)_DPlay.AllocPacket[n]);
 		if (!ac) { fprintf(stderr, "[mppos] t=%ld slot=%d uid=0x%x NO ITEM\n", (long)now, n, (unsigned)_DPlay.AllocPacket[n]); continue; }
-		fprintf(stderr, "[mppos] t=%ld frame=%u slot=%d%s uid=0x%x pos=(%d,%d,%d) hdg=%d vel=%d movecode=%d dead=%d\n",
+		fprintf(stderr, "[mppos] t=%ld frame=%u slot=%d%s uid=0x%x pos=(%d,%d,%d) hdg=%d vel=%d movecode=%d dead=%d deaded=%d inv=%d ac=%p%s\n",
 		        (long)now, (unsigned)_DPlay.FrameCount, n, n == (int)_DPlay.mySlot ? "(me)" : "", (unsigned)_DPlay.AllocPacket[n],
 		        (int)ac->World.X, (int)ac->World.Y, (int)ac->World.Z, (int)(UWord)ac->hdg.a, (int)ac->vel_, (int)ac->movecode,
-		        (int)ac->Status.deadtime);
+		        (int)ac->Status.deadtime, (int)ac->Status.deaded, (int)((MinAnimData*)ac->Anim)->IsInvisible, (void*)ac, ac == Persons2::PlayerSeenAC ? " SEEN" : ac == Persons2::PlayerGhostAC ? " GHOST" : "");
 	}
 	fflush(stderr);
 }
@@ -3769,6 +3769,13 @@ void	DPlay::SetUpPlayersAC()
 
 	for (n=0;n<MAXPLAYERS;n++)
 	{
+#if defined(BOB_LINUX)
+		/* CAMPSYNC-3 (2026-10-06): a co-op campaign guest is still CPS_FRAG here, so its OWN aircraft was marked
+		   destroyed and invisible (deaded=1, deadtime=1, itemstate DEAD) for the whole flight -- on every machine.
+		   This machine is flying its own aircraft. BOB_SETUPAC_OLD=1 reverts both halves of this fix. */
+		if (n == mySlot && !getenv("BOB_SETUPAC_OLD"))
+			continue;
+#endif
 		if (H2H_Player[n].status!=CPS_3D)
 		{
 			thisid = (UniqueID)AllocPacket [n];
@@ -4075,6 +4082,20 @@ void	DPlay::AddPlayerToGame(ULong slot,ULong actype,ULong id)
 	else
 	{
 // campaign/quickmission
+#if defined(BOB_LINUX)
+		/* CAMPSYNC-3: the deathmatch branch above revives the announced aircraft; this branch relied on every peer
+		   being CPS_3D before SetUpPlayersAC ran (true in a quick mission). A co-op campaign peer is not, so its
+		   aircraft stayed removed. The announce proves the peer is flying: undo SetUpPlayersAC's removal. */
+		if (thisac->Status.deaded && !getenv("BOB_SETUPAC_OLD"))
+		{
+			MinAnimData* mad = (MinAnimData* )thisac->Anim;
+			mad->IsInvisible=0;
+			mad->itemstate=ALIVE;
+			thisac->Status.deaded=FALSE;
+			thisac->Status.deadtime=0;
+			if (getenv("BOB_TRACE_DPLAY")) { fprintf(stderr,"[mpcamp] slot %lu aircraft %u revived on its announce (SetUpPlayersAC had removed it)\n",(unsigned long)slot,(unsigned)id); fflush(stderr); }
+		}
+#endif
 
 		PlayerSync=true;
 		SwitchAIACToPlayerAC(thisac,slot);

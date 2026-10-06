@@ -12711,6 +12711,18 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
       the gate now leaves the shoot-down second out of its agreement check and says so. (2) In every campaign run the
       GUEST's aircraft carries `Status.deadtime=1` for the whole flight on both peers while it flies normally (QM:
       0 until a real kill). Not yet understood; worth checking what treats deadtime!=0 as dead.
+    - **CAMPSYNC-3 fix (2026-10-06) -- the guest flew a destroyed, invisible aircraft.** Traced (object addresses in
+      `[mppos]`; a watchpoint on the expansion-time object never fired because in flight the uid resolves to the
+      player's SEEN copy): `DPlay::SetUpPlayersAC` runs at the first 3-D frame and marks every seat whose H2H status is
+      not CPS_3D dead + invisible (`deaded`, `deadtime=1`, itemstate DEAD, IsInvisible) -- Rowan's removal of seats
+      nobody flies. A co-op campaign guest is still CPS_FRAG then, on both machines. The id announce revives the
+      aircraft only in the deathmatch branch; the QM/campaign branch never did (in a QM everyone is CPS_3D in time).
+      So on the host the guest's aircraft was flagged destroyed and invisible all flight, and on the guest its own.
+      87 sites treat deadtime!=0 as dead (AI targeting, collisions, the "enemies left" check). Fix: SetUpPlayersAC
+      never removes this machine's own aircraft, and the QM/campaign announce branch undoes the removal
+      (`BOB_SETUPAC_OLD=1` reverts both). Verified, campaign + AI pilots: every aircraft dead=0 deaded=0 inv=0 on both
+      peers, the host logs the revival of 4877, each side saw the other's whole path (39.7 / 41.7 km), peers within
+      1.1 m; QM co-op regression PASS. `BOB_WATCH_DEADTIME=1` + `bob_watch_here` remain as a gdb hook.
 * **NEXT (the remaining work; items 1 and 2 done):**
   1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,
