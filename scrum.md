@@ -12708,7 +12708,9 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
       judged -- host saw the guest's whole 42.0 km path, the guest saw the host's; peers within 16.6 m.
     - **Open, found in that run:** (1) the host was shot down at 459 s, and for that one sample the guest held the
       dead aircraft at the world origin (384 km off) before agreeing again -- a death-time glitch on the remote copy;
-      the gate now leaves the shoot-down second out of its agreement check and says so. (2) In every campaign run the
+      the gate now leaves the shoot-down second out of its agreement check and says so. Re-scored offline: six death/respawn
+      transitions in three QM co-op runs show no glitch (peers 0-6 m through each); the one campaign death showed it once
+      (one sample at the origin, then agreeing again). Rare and campaign-only; reproducing it needs a random kill. (2) In every campaign run the
       GUEST's aircraft carries `Status.deadtime=1` for the whole flight on both peers while it flies normally (QM:
       0 until a real kill). Not yet understood; worth checking what treats deadtime!=0 as dead.
     - **CAMPSYNC-3 fix (2026-10-06) -- the guest flew a destroyed, invisible aircraft.** Traced (object addresses in
