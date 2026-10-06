@@ -579,7 +579,15 @@ void DPlay::UIUpdateMainSheet ()
 	   the ready-room timer stops when the 3-D takes the screen; the port's dialog timers keep
 	   firing. Once this player is in the 3-D, the 3-D message pump owns the queue -- do nothing here.
 	   BOB_MP_UIPUMP_IN3D=1 reverts. */
-	if (Implemented && mySlot >= 0 && mySlot < MAXPLAYERS && H2H_Player[mySlot].status == CPS_3D && !getenv("BOB_MP_UIPUMP_IN3D"))
+	/* CAMPSYNC-1 (2026-10-06): the status test alone let a co-op CAMPAIGN guest's pump run in the first seconds of
+	   3-D -- its own H2H status was not yet CPS_3D -- and it took the aggregator packets its InitSyncPhase was
+	   waiting for (COMMS.CPP:564 from=1 len=5/22 during InitSync). The host passed its gate on the aggregate the
+	   guest lost, moved on to INIT, and the guest waited for an all-DUMMY aggregate that could never come again:
+	   csync=0 to the end (1 of 2 campaign runs). Being in the 3-D on THIS machine is what matters.
+	   BOB_MP_UIPUMP_STATUSONLY=1 restores the status-only test. */
+	if (Implemented && mySlot >= 0 && mySlot < MAXPLAYERS
+	    && (H2H_Player[mySlot].status == CPS_3D || (Inst3d::InThe3D() && !getenv("BOB_MP_UIPUMP_STATUSONLY")))
+	    && !getenv("BOB_MP_UIPUMP_IN3D"))
 	{
 		if (getenv("BOB_TRACE_AGG")) { static long n = 0; static time_t last = 0; time_t now = time(0); n++;
 			if (now != last) { last = now; fprintf(stderr, "[agg] UIUpdateMainSheet: in 3-D, pump left to the 3-D dispatcher (%ld ticks/s)\n", n); fflush(stderr); n = 0; } }
