@@ -12684,6 +12684,11 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
       trace is on. **Campaign co-op still unproven:** the E2-5 recipe flies only at the end of its run, giving 16 s of
       synced 3-D in which the host crept 1 m (check: SKIP), and the guest logged no `[mppos]` line for its OWN
       aircraft -- needs a run with a longer flight window.
+    - **Campaign co-op can stall at the aircraft-id exchange (found 2026-10-06, open).** Same recipe with a 2-min
+      flight window (SECS=820): both peers exchanged PacketID 50, entered 3-D and stayed at csync=0 to the end (one
+      draw-loop pass a second); the guest went back to probing for sessions. The 700 s run before it synced. 1 of 2
+      runs; logs `~/bob-gates/mppos_coop/camp2`. The gate reported PASS because its sync check ran only with
+      BOB_TRACE_AGG in the gate's own environment -- fixed: it now runs whenever the trace is in the log.
 * **NEXT (the remaining work; items 1 and 2 done):**
   1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,

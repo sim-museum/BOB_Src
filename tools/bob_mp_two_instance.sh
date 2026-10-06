@@ -131,11 +131,14 @@ if [ -n "$c2pid" ]; then   # E2-5: more than two players -- every aircraft disti
 fi
 if grep -aq '\[hist\] slot .* no aircraft' "$OUT/client.log" "$OUT/host.log"; then say "every slot has an aircraft" "FAIL"; fail=1
 else say "every slot has an aircraft" "PASS"; fi
-if [ -n "${BOB_TRACE_AGG:-}" ]; then
-  for who in host client; do
+# 2026-10-06: judge sync whenever the aggregator trace is in the log -- it used to run only when BOB_TRACE_AGG was in
+# the GATE's environment, so a trace switched on through HOST_ENV/CLIENT_ENV skipped the check, and a co-op campaign
+# run whose peers never synced (both stuck after the aircraft-id exchange, csync=0 to the end) reported PASS.
+for who in host client; do
+  if [ -n "${BOB_TRACE_AGG:-}" ] || grep -aq '^\[agg\]' "$OUT/$who.log"; then
     grep -aq 'synched=1 csync=1' "$OUT/$who.log" && say "$who comms-synced (csync=1)" "PASS" || { say "$who comms-synced (csync=1)" "FAIL"; fail=1; }
-  done
-fi
+  fi
+done
 # E2-5 (2026-10-06): "the guest sees the host move" -- with BOB_TRACE_MPPOS=1 in HOST_ENV and CLIENT_ENV. For each
 # player, the path its OWN peer logged is compared with the path the other peer logged for it, over the same wall
 # seconds: the other side must see at least half of it. A player that moved under 100 m gives nothing to see and is
