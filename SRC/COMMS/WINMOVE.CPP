@@ -192,6 +192,14 @@ bool	DPlay::CommsGameSync()
 				if (DPlay::H2H_Player[n].status==CPS_3D)
 					ActivePlayers |= (1 << n);
 			}
+#if defined(BOB_LINUX)
+			/* CAMPSYNC-2 (2026-10-06): a co-op campaign guest reaches its first 3-D frame before its own H2H status is
+			   CPS_3D (see CAMPSYNC-1), so its OWN bit was missing for the whole flight -- and ReceiveSyncPackets
+			   computes the players it needs as ActivePlayers^(1<<mySlot), which then ADDS itself: a resync on that
+			   guest waited for its own message. This machine is in the 3-D by definition. BOB_ACTIVE_OWNBIT_OLD=1 reverts. */
+			if (mySlot < MAXPLAYERS && !getenv("BOB_ACTIVE_OWNBIT_OLD"))
+				ActivePlayers |= (1 << mySlot);
+#endif
 
 #if defined(BOB_LINUX)
 /* MP-6 (2026-09-13): `Joining` is set in exactly one place, DPlay::JoinGame(), and on a normal

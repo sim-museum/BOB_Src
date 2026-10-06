@@ -12697,7 +12697,20 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
       Verified: campaign recipe 3/3 synced (was 1/2), the guest's pump took 0 relay packets during sync in each;
       QM co-op regression PASS (each side saw the other's 14.6 km path). The campaign players stay on the airfield
       (host 48 m in 544 s; the guest saw the same 48 m), so "sees the host move" in a campaign still wants a take-off;
-      and the guest logs no `[mppos]` line for its own aircraft there (open, trace-only so far).
+      and the guest logs no `[mppos]` line for its own aircraft there -- see CAMPSYNC-2.
+    - **Campaign "the guest sees the host move": PROVEN (2026-10-06).** Same recipe with both aircraft handed to the
+      AI pilot (`BOB_AI_PILOT=20`): the host flew 40.5 km and the guest saw 40,499 m of it; peers within 6.6 m.
+    - **CAMPSYNC-2 fix (2026-10-06):** the guest's OWN `ActivePlayers` bit was missing for the whole flight
+      (ActivePlayers is built on the first 3-D frame from H2H status, which a campaign guest does not yet have), and
+      `ReceiveSyncPackets` computes the players it needs as `ActivePlayers^(1<<mySlot)` -- which then ADDS itself, so a
+      resync on that guest waited for its own message. The own bit is now set (`BOB_ACTIVE_OWNBIT_OLD=1` reverts).
+      Verified, campaign + AI pilots: the guest logs its own aircraft (544 lines, was 0), and both aircraft are
+      judged -- host saw the guest's whole 42.0 km path, the guest saw the host's; peers within 16.6 m.
+    - **Open, found in that run:** (1) the host was shot down at 459 s, and for that one sample the guest held the
+      dead aircraft at the world origin (384 km off) before agreeing again -- a death-time glitch on the remote copy;
+      the gate now leaves the shoot-down second out of its agreement check and says so. (2) In every campaign run the
+      GUEST's aircraft carries `Status.deadtime=1` for the whole flight on both peers while it flies normally (QM:
+      0 until a real kill). Not yet understood; worth checking what treats deadtime!=0 as dead.
 * **NEXT (the remaining work; items 1 and 2 done):**
   1. ~~**Seats.**~~ **Done.** `BoBFrag::GetSquadronAndPos` maps seat buttons only through `CSQuick1::quickdef`, so on the campaign
      frag every seat resolves to squad -1 / pos -1. Fly then fails `AllPlayersHaveSlots` (IDS_NOTSLOTS modal,
