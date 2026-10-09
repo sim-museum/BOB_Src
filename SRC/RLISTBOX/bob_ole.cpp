@@ -896,10 +896,32 @@ extern "C" void bob_ole_dump_drawn_rects(CWnd* dialog) {
 static OleHost* g_focusHost = 0;
 
 extern "C" void bob_ole_clear_focus(void) { g_focusHost = 0; }
+/* MP2-BOB-3 (PO two-PC test, 2026-10-08): the Ready Room's chat line had the keyboard only after a click on it -- a
+   one-line strip at the bottom of the screen -- while Windows gives a dialog's edit the focus when the dialog opens.
+   The PO typed and nothing appeared (video: the line stayed empty), so nothing was ever sent. A dialog may now ask
+   for one of its edits to have the keyboard; the hosted control exists only once the screen has painted, so the
+   request is resolved at the first key that finds no focused control. A click elsewhere still moves the focus.
+   BOB_NO_CHAT_FOCUS=1 reverts. */
+static void* g_wantFocusDlg = 0;
+static int   g_wantFocusId = 0;
+extern "C" void bob_ole_want_focus(void* dlg, int id)
+{
+    if (getenv("BOB_NO_CHAT_FOCUS")) return;
+    g_wantFocusDlg = dlg; g_wantFocusId = id;
+}
 
 /* Deliver one keystroke to the focused hosted control. isText=1 for a printable character
    (SDL_TEXTINPUT), 0 for a virtual key (backspace/enter/arrows). Returns 1 if consumed. */
 extern "C" int bob_ole_key(int ch, int isText) {
+    if (!g_focusHost && g_wantFocusId) {
+        for (auto& kv : hosts())
+            if (kv.second->parentDlg == g_wantFocusDlg && kv.second->ctrlId == g_wantFocusId && kv.second->wantsKeys()) {
+                g_focusHost = kv.second;
+                g_focusHost->onFocus();
+                if (bob_ole_trace()) fprintf(stderr, "[ole] keyboard focus -> id=%d (the dialog's own request)\n", g_wantFocusId);
+                break;
+            }
+    }
     if (!g_focusHost) return 0;
     /* the focused host must still be a live, hosted control -- not a pointer left behind by a
        screen that has gone away. */

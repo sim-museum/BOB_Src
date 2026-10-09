@@ -126,6 +126,9 @@ BEGIN_EVENTSINK_MAP(CommsChat, CDialog)
 	//}}AFX_EVENTSINK_MAP
 END_EVENTSINK_MAP()
 
+#if defined(BOB_LINUX)
+extern "C" void bob_ole_want_focus(void* dlg, int id);
+#endif
 BOOL CommsChat::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
@@ -142,6 +145,11 @@ BOOL CommsChat::OnInitDialog()
 	rlistbox->AddColumn(30);
 	_DPlay.listptr=(UByteP)rlistbox;
 	_DPlay.UpdateChatBox();
+#if defined(BOB_LINUX)
+	/* MP2-BOB-3: this panel's line is the one that sends (OnReturnPressedPlayerchat -> UISendDialogue); CReadyRoom's
+	   own IDC_PLAYERCHAT handler is dead code (RDH 06/12/99). Typing goes here without a click on the line first. */
+	bob_ole_want_focus(this, IDC_PLAYERCHAT);
+#endif
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE

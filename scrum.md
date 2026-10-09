@@ -12807,6 +12807,15 @@ fix the root cause, durably; multiplayer must be easy to navigate.
 * 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
   floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
   both views before theorising. Same item in MA (MP2-MA-3).
-* 🔲 **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** In MA it
-  worked both ways in the same test; in BoB
-  (4x4 Quick Mission) it did not. Find where the message stops: send, transport, receive or display.
+* ✅ **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** Fixed.
+  The PO's video (Ready Room, 02:20-03:40): the chat line stays EMPTY while typing -- the keys never reached the
+  line that sends. Keys go only to a control with keyboard focus, and only a click set it, on a one-line strip.
+  Two edits share id 1923 on that screen: CommsChat's (the one that sends: OnReturnPressedPlayerchat ->
+  UISendDialogue) and CReadyRoom's, whose handler is Rowan's dead code (RDH 06/12/99). Windows gives a dialog's
+  edit the focus when it opens. Fix: `bob_ole_want_focus` (bob_ole.cpp) -- a dialog asks for one of its edits to
+  have the keyboard, resolved at the first key; CommsChat asks for its line. `BOB_NO_CHAT_FOCUS=1` reverts.
+  Measured, two copies, NO click on the line: host tx "hello_from_host" -> guest rx; guest tx "hi_from_client" ->
+  host rx; gate **10/10 PASS** (`~/Documents/261008/logs/mp2bob3_chat3`). The 09-26 run (h) passed only because
+  its recipe clicked the line first.
+  - 🔲 Follow-ups: SDL_TEXTINPUT keeps only ASCII 32..126 (bob_video.cpp), so é/ü/ß are dropped -- the audience
+    is international; both default player names are "Bob", so chat lines cannot be told apart.
