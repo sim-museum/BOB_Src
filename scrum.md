@@ -12767,6 +12767,21 @@ fix the root cause, durably; multiplayer must be easy to navigate.
   the session is unlisted until the host frags a flight and opens the campaign Ready Room. Both host runs were
   closed on the map. Fix: answer probes (and park a JOIN) while the host is on the map, and hold the guest in
   the Ready Room until the host frags. Same check for MA (MP2-MA-1).
+  - **Root cause (measured, 2026-10-08): there was no session to find.** Rowan creates the host's session when the
+    Ready Room opens (`CReadyRoom::OnInitDialog` -> `UINewPlayer`); a campaign host goes from the Locker Room to the
+    map and reaches its Ready Room only at the first frag. Host log: `Open(CREATE)` came AFTER `Frag`. Also, the
+    first map entry never set CPS_MAP, so the map timer's network pump (MAPDLG.CPP) would not have run anyway.
+  - **Fix (FULLPANE.CPP):** the campaign host creates the session (the Ready Room's own calls) before
+    `LaunchMapFirstTime`, and announces CPS_MAP. Reverts: `BOB_MP2_LATESESSION=1`, `BOB_MP2_NOMAPSTATUS=1`.
+  - **Measured** (two copies, `~/Documents/261008/logs/mp2bob1_*`): control = 242 searches, 0 sessions; fix =
+    session found at the guest's first search, guest joins while the host is on the map, loads the host's
+    savegame (449/467 packets). Harness: `BOB_MPCAMP_FRAG=<paint>,<s>`, highlighted-flight trace.
+  - **OPEN — host crash at launch after a map-time join (run 3, E2-5 recipe):** `Persons2::LoadSubPiece`
+    (Persons2.cpp:605) on a NULL `getdata` -- `bfields/runpack/runpack10.bf` missing; only runpack0-4 were
+    written (the harness wrote Package.dat when the host's wait began, then the map clock ran on). Guest then
+    died `Timed out (FCNB)`. Unknown yet whether this is the shared harness tree (host and guest write the same
+    runpack files; on two PCs they don't), the stale pre-fly save, or a real map-time-join defect. Next: give the
+    guest its own tree, and make a missing runpack file fail loudly instead of crashing.
 * 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
   floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
   both views before theorising. Same item in MA (MP2-MA-3).

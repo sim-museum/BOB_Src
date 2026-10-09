@@ -807,9 +807,17 @@ extern "C" void bob_frontend_tick(void)
 		  /* EPIC-MP-CAMPAIGN E2-5: BOB_MPCAMP_FRAG=<paint> -- on that map paint, a co-op campaign host makes the call
 		     the RAF/LW mission folder's Frag button makes (RAFMissionFolder::OnClickedRbuttonfrag ->
 		     CMainToolbar::OnClickedFrag2): save, send the savegame to the guests, open the campaign ready room. */
-		  { static int mf_paints = 0, mf_done = 0; const char* mf = getenv("BOB_MPCAMP_FRAG");
-			if (mf && !mf_done && RFullPanelDial::incomms && ++mf_paints >= atoi(mf)) { mf_done = 1;
-				fprintf(stderr, "[mpcamp] map paint %d: Frag (as the mission folder's button)\n", mf_paints);
+		  /* MP2-BOB-1: BOB_MPCAMP_FRAG=<paint>,<s> also waits <s> seconds from the first map paint, so a guest can join
+		     while the host is still on the map. */
+		  { static int mf_paints = 0, mf_done = 0; static unsigned mf_t0 = 0; const char* mf = getenv("BOB_MPCAMP_FRAG");
+			const char* mfs = mf ? strchr(mf, ',') : 0;
+			if (mf && !mf_t0 && RFullPanelDial::incomms) mf_t0 = timeGetTime();
+			if (mf && !mf_done && RFullPanelDial::incomms && mf_paints % 300 == 0)
+				fprintf(stderr, "[mpcamp] map paint %d: highlighted pack %d sq %d\n", mf_paints, (int)Todays_Packages.hipack, (int)Todays_Packages.hisquad);
+			if (mf && !mf_done && RFullPanelDial::incomms && ++mf_paints >= atoi(mf)
+			    && (!mfs || timeGetTime() - mf_t0 >= 1000u * (unsigned)atoi(mfs + 1))) { mf_done = 1;
+				fprintf(stderr, "[mpcamp] map paint %d: Frag (as the mission folder's button), highlighted pack %d sq %d\n",
+				        mf_paints, (int)Todays_Packages.hipack, (int)Todays_Packages.hisquad);
 				MainToolBar().OnClickedFrag2(); } }
 		  /* TABHEAD-1/TOTE-1: BOB_MAP_CLICKS="x,y,paint;x,y,paint;..." -- a SEQUENCE of map clicks,
 		     each on the given map paint (counted from the first map paint). BOB_MAP_CLICK drives

@@ -1661,6 +1661,29 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 		{
 			/* the host commands its side's campaign: the phase picked in the Locker Room, as Begin does in single
 			   player (campaignselect -> LaunchMapFirstTime) */
+			/* MP2-BOB-1 (PO two-PC test, 2026-10-08): CREATE THE SESSION NOW, before the map. Rowan creates it when the
+			   Ready Room opens (CReadyRoom::OnInitDialog), which in every other game type follows the Locker Room
+			   directly; a campaign host reaches its Ready Room only at its first frag, so until then there was no
+			   session to find -- a guest's search went unanswered for as long as the host planned on the map. Same
+			   calls as the Ready Room's (which then sees PlayerCreated and skips them). BOB_MP2_LATESESSION=1 reverts. */
+			if (!_DPlay.PlayerCreated && !getenv("BOB_MP2_LATESESSION"))
+			{
+				Bool made = _DPlay.Lobbied ? _DPlay.LobbyConnect()
+				                           : _DPlay.UINewPlayer(&_DPlay.PlayerName[0],&_DPlay.SessionName[0]);
+				if (made && !_DPlay.SetUpPlayerInfo(&_DPlay.PlayerName[0]))
+				{
+					RMessageBox(IDS_BOB,IDS_COULDNTSETUPPLAYER,NULL,IDS_OK);
+					made = FALSE;
+				}
+				else if (!made)
+					RMessageBox(IDS_BOB,IDS_NOTSESSION,NULL,IDS_OK);
+				if (!made)
+				{
+					LaunchDial(new CLockerRoom,0);
+					return FALSE;
+				}
+				fprintf(stderr,"[mpcamp] host session open before the map (PlayerCreated=%d)\n",(int)_DPlay.PlayerCreated);
+			}
 			whichcamp=_DPlay.GameIndex;
 			gamestate = COMMANDER;
 			gameside = _DPlay.Side ? SIDE_RAF : SIDE_LW;
@@ -1669,6 +1692,14 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 			LaunchMapFirstTime(fs);
 			MMC.playersquadron=-1;		// launch map first time sets these up so nobble again
 			MMC.playeracnum=-1;
+			/* MP2-BOB-1 (PO two-PC test, 2026-10-08): the host is now ON THE MAP and must say so, as ReturnToMap and
+			   ReturnToMapAfterReview do. The map's timer pumps the network only while the host's status is CPS_MAP
+			   (MAPDLG.CPP OnTimer), and this first entry left it at the Locker Room's status: nothing read the socket,
+			   so a guest's session search went unanswered until the host fragged a flight. With the status set the
+			   host lists the session, takes the join, and sends the joiner its current savegame from the map.
+			   BOB_MP2_NOMAPSTATUS=1 reverts (needs the session above). */
+			if (!getenv("BOB_MP2_NOMAPSTATUS"))
+				_DPlay.SendStatusChange(DPlay::CPS_MAP);
 			return FALSE;
 #endif
 //DeadCode AMM 21Feb100		}else if	(	(_DPlay.GameType == DPlay::COMMSCAMPAIGN)
