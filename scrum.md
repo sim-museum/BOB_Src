@@ -12807,6 +12807,9 @@ fix the root cause, durably; multiplayer must be easy to navigate.
 * 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
   floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
   both views before theorising. Same item in MA (MP2-MA-3).
+  - Evidence (PO video `261008_16_38_one_on_one_bob.mp4`, 4x4 QM, guest): 06:00 a dark slab at the screen's left
+    edge (x 0-12, y 108-195 of 800); 07:00 a large dark polygon with a straight edge across the view at 12,839 ft;
+    the grey oval with a dot (top left) is the indicator. Frames: `doc/reference/261008_mp2/black_shapes_0600_0700.png`.
 * ✅ **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** Fixed.
   The PO's video (Ready Room, 02:20-03:40): the chat line stays EMPTY while typing -- the keys never reached the
   line that sends. Keys go only to a control with keyboard focus, and only a click set it, on a one-line strip.
