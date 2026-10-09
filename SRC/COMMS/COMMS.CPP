@@ -3256,6 +3256,7 @@ static bool bob_sq_flyable(int p,int s)
 }
 static bool bob_pack_is_lw(int p) { return (int)Todays_Packages[p].attackmethod>=(int)Profile::AM_LWPACKS; }
 int	bob_mpcamp_guest_hostpack=-1, bob_mpcamp_guest_hostsq=-1;	/* the host's flight, as the guest received it */
+int	bob_mpcamp_nothing_flyable=0;	/* MP2-BOB-1 UX: the last opposite-side search found nothing for this guest */
 void	bob_mpcamp_opposite_side(int hostpack);
 /* BoBFrag::OnInitDialog on a co-op campaign guest: start from the host's flight and the host's side, then apply the
    guest's own (now committed) side. */
@@ -3313,6 +3314,25 @@ void	bob_mpcamp_opposite_side(int hostpack)
 	}
 	if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] opposite side: guest %s vs host pack %d (%s) -> pack %d sq %d (%s)\n",
 		guestLW?"Luftwaffe":"RAF", hostpack, hostLW?"LW":"RAF", found, foundsq, found>=0?how:"NOTHING FLYABLE");
+#if defined(BOB_LINUX)
+	/* MP2-BOB-1 UX (2026-10-09): the guest on the other side found nothing it may fly in this sortie (run 7: the raid the
+	   host intercepts has no squadron a player may fly). It used to see an empty frag with no explanation. Say so in the
+	   Ready Room chat box, once per sortie (hostpack changes per sortie). BOB_MP2_NO_NOTICE=1 reverts. */
+	bob_mpcamp_nothing_flyable = (found < 0);
+	if (found < 0 && !getenv("BOB_MP2_NO_NOTICE"))
+	{
+		static int last = -99;
+		if (hostpack != last)
+		{
+			last = hostpack;
+			char who[] = "Game";
+			char none[] = "Nothing on your side can take part in the host's mission this time. Wait for the next one, or change sides in the Locker Room.";
+			_DPlay.DisplayChatDialogue(who, none);
+			_DPlay.AddChatMessageToBuffer(who, none);
+			if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] guest notice: %s\n", none);
+		}
+	}
+#endif
 }
 #endif
 #if defined(BOB_LINUX)
@@ -3422,7 +3442,9 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 		{
 			static int last = -2;
 			int now = mpc_pack >= 0 ? 1 : 0;
-			if (now != last)
+			if (now && bob_mpcamp_nothing_flyable) now = 2;	/* the "nothing on your side" line said it already */
+			if (now == 2) last = 2;
+			else if (now != last)
 			{
 				last = now;
 				char who[] = "Game";

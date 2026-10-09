@@ -12806,7 +12806,9 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     change (COMMS.CPP ReceiveSaveGame; `BOB_MP2_NO_NOTICE=1` reverts). Measured (mp2bob1_notice2): line 1259 at the
     join, line 9750 when the host took pack 1. Harness note: an `H` step in HOST_CLICKS stops the campaign-fly scan
     (runs 12 and notice: the host never takes a flight) -- don't use H with BOB_CAMPAIGN_FLY.
-    Still open: an opposite-side guest whose host intercepted a raid with nothing flyable gets no message.
+    ✅ And an opposite-side guest with nothing to fly is told so ("Nothing on your side can take part in the host's
+    mission this time. Wait for the next one, or change sides in the Locker Room."), and not told to press Frag
+    (mp2bob1_notice3 showed both lines; notice4: only the right one).
   - Evidence (PO video `261008_16_38_one_on_one_bob.mp4`, 4x4 QM, guest): 06:00 a dark slab at the screen's left
     edge (x 0-12, y 108-195 of 800); 07:00 a large dark polygon with a straight edge across the view at 12,839 ft;
     the grey oval with a dot (top left) is the indicator. Frames: `doc/reference/261008_mp2/black_shapes_0600_0700.png`.
