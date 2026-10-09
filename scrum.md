@@ -12757,3 +12757,16 @@ Rowan cut BoB's co-op campaign twice (AMM 21Feb100, RDH 09/05/00). Revived so fa
   - NAT traversal (hosts must port-forward, as with iGOR);
   - latency simulation;
   - congestion control for very large sessions.
+
+## MPTEST-2 — the PO's first two-PC test of the 261006 AppImage (2026-10-08)
+Two PCs on the LAN (host 192.168.254.14, guest this PC). **Worked:** 4x4 Quick Mission, both directions.
+Logs and videos: `~/Documents/261008/` (`*_bob_*.log`, `261008_16_38_one_on_one_bob.mp4`). PO rule for every item:
+fix the root cause, durably; multiplayer must be easy to navigate.
+* 🔲 **MP2-BOB-1 — the guest cannot find a co-op campaign the host has started.** Cause (logs + code): the host
+  goes to the strategic map, where nothing calls `Receive`, so `bob_dplay.cpp pump()` never answers `MSG_PROBE`;
+  the session is unlisted until the host frags a flight and opens the campaign Ready Room. Both host runs were
+  closed on the map. Fix: answer probes (and park a JOIN) while the host is on the map, and hold the guest in
+  the Ready Room until the host frags. Same check for MA (MP2-MA-1).
+* 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
+  floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
+  both views before theorising. Same item in MA (MP2-MA-3).
