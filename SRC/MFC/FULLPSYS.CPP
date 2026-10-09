@@ -1825,6 +1825,17 @@ extern "C" void bob_frontend_tick(void)
 				if (got) { seq++; fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -> (%d,%d)\n", cid, ccol, crow, cx, cy); }
 				else fprintf(stderr,"[frontend] autoclick step #%d:%d.%d -- control not drawn yet (or no such row), retrying\n", cid, ccol, crow);
 			}
+			else if (p && (*p=='H' || *p=='G')) {
+				/* MP2-BOB-1: co-op campaign phases last as long as the campaign day makes them, so fixed waits miss.
+				   `H` (host) waits until the host has taken this sortie's flight (OnClickedFrag2); `G` (guest) waits
+				   until the host's flight has arrived in a savegame. */
+				extern int bob_mpcamp_hostpack, bob_mpcamp_guest_hostpack;
+				static unsigned long hg_log = 0;
+				bool ok = (*p=='H') ? bob_mpcamp_hostpack >= 0 : bob_mpcamp_guest_hostpack >= 0;
+				if (ok) { seq++; fprintf(stderr,"[frontend] autoclick step %c: done\n", *p); }
+				else if (timeGetTime() - hg_log > 10000) { hg_log = timeGetTime();
+					fprintf(stderr,"[frontend] autoclick step %c: waiting for the host's flight\n", *p); }
+			}
 			else if (p && *p=='a') {
 				/* E2-5: an `aN` step waits until at least N players are in the session and every one holds a seat
 				   (the condition the host's Fly checks, DPlay::AllPlayersHaveSlots) -- so a host presses Fly when

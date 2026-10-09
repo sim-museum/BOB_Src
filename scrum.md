@@ -12791,6 +12791,19 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     recipe, guest in `~/bob-test`: **10/10 PASS** (both in 3-D, own aircraft, csync=1 both, 0 crashes)
     (`~/Documents/261008/logs/mp2bob1_run6`). Single player gains the same: offers no longer accept themselves
     during a briefing.
+  - **Map-time join (2026-10-08, 9392d86):** a guest joining while the host plans was sent "the host's flight:
+    pack 0" (the map highlight) before the host had taken anything; now no selection is sent while the host is on
+    the map, and returning to the map clears it. Runs 7-11: the guest joins on the map, receives the host's real
+    flight when the host frags (pack 1/2), returns to its Ready Room (Rowan's FragChanged path), frags again and is
+    granted a seat in the host's flight (squadron 38 pos 4, run 10). **Not yet shown end to end:** the harness's
+    click timing cannot follow a campaign day whose first flyable flight comes after 1 to 15+ minutes (runs 10-12
+    failed on choreography: host clicked Frag on the map; host never offered a flight in 900 s). New state steps
+    `H`/`G` in BOB_AUTOCLICK (wait for the host's / the guest's knowledge of the host's flight). **Retro:** stop
+    tuning the choreography; the PO's next two-PC test is the end-to-end check for this path.
+  - 🔲 **UX follow-up:** a guest that frags while the host is still on the map sees an empty frag and is later sent
+    back to its Ready Room. Better: the guest's Ready Room says "the host is choosing a mission" and enables Frag
+    when the host's flight arrives. Also an opposite-side guest whose host intercepted a raid with nothing flyable
+    gets no message (run 7: "NOTHING FLYABLE" in the log only).
 * 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
   floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
   both views before theorising. Same item in MA (MP2-MA-3).
