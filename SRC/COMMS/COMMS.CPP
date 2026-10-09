@@ -3413,6 +3413,27 @@ bool	DPlay::ReceiveSaveGame(bool startup,ULong num,ULong size)
 
 		if (H2H_Player[mySlot].status==CPS_FRAG)	
 			FragChanged=true;		
+#if defined(BOB_LINUX)
+		/* MP2-BOB-1 follow-up (2026-10-09): a guest that joins while the host plans on the map, or whose frag is
+		   replaced by the host's new flight, was told nothing -- it saw an empty frag, then found itself back in
+		   its Ready Room. Say what is happening, in the Ready Room's own chat box (the buffer is shown when the
+		   chat panel opens). Once per change. BOB_MP2_NO_NOTICE=1 reverts. */
+		if (retval && GameType==COMMSCAMPAIGN && !Host && !getenv("BOB_MP2_NO_NOTICE"))
+		{
+			static int last = -2;
+			int now = mpc_pack >= 0 ? 1 : 0;
+			if (now != last)
+			{
+				last = now;
+				char who[] = "Game";
+				char planning[] = "The host is choosing a mission on the map. When the host takes a flight, press Frag to choose your seat in it.";
+				char taken[] = "The host has taken a flight. Press Frag to choose your seat in it.";
+				DisplayChatDialogue(who, now ? taken : planning);
+				AddChatMessageToBuffer(who, now ? taken : planning);
+				if (getenv("BOB_TRACE_DPLAY")) fprintf(stderr,"[mpcamp] guest notice: %s\n", now ? taken : planning);
+			}
+		}
+#endif
 	}
 
 	delete [] save;

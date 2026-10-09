@@ -12800,13 +12800,13 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     failed on choreography: host clicked Frag on the map; host never offered a flight in 900 s). New state steps
     `H`/`G` in BOB_AUTOCLICK (wait for the host's / the guest's knowledge of the host's flight). **Retro:** stop
     tuning the choreography; the PO's next two-PC test is the end-to-end check for this path.
-  - 🔲 **UX follow-up:** a guest that frags while the host is still on the map sees an empty frag and is later sent
-    back to its Ready Room. Better: the guest's Ready Room says "the host is choosing a mission" and enables Frag
-    when the host's flight arrives. Also an opposite-side guest whose host intercepted a raid with nothing flyable
-    gets no message (run 7: "NOTHING FLYABLE" in the log only).
-* 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
-  floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
-  both views before theorising. Same item in MA (MP2-MA-3).
+  - ✅ **UX follow-up (2026-10-09):** a guest joining during map time was told nothing (empty frag, then back in its
+    Ready Room). It now gets plain lines in the Ready Room chat box ("Game: The host is choosing a mission on the map.
+    When the host takes a flight, press Frag ..." / "Game: The host has taken a flight. Press Frag ..."), once per
+    change (COMMS.CPP ReceiveSaveGame; `BOB_MP2_NO_NOTICE=1` reverts). Measured (mp2bob1_notice2): line 1259 at the
+    join, line 9750 when the host took pack 1. Harness note: an `H` step in HOST_CLICKS stops the campaign-fly scan
+    (runs 12 and notice: the host never takes a flight) -- don't use H with BOB_CAMPAIGN_FLY.
+    Still open: an opposite-side guest whose host intercepted a raid with nothing flyable gets no message.
   - Evidence (PO video `261008_16_38_one_on_one_bob.mp4`, 4x4 QM, guest): 06:00 a dark slab at the screen's left
     edge (x 0-12, y 108-195 of 800); 07:00 a large dark polygon with a straight edge across the view at 12,839 ft;
     the grey oval with a dot (top left) is the indicator. Frames: `doc/reference/261008_mp2/black_shapes_0600_0700.png`.
