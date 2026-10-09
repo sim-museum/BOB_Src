@@ -397,8 +397,24 @@ void CMapDlg::OnDragItem(int m_buttonid)
 //	CTargetDossier::MakeSheet(CRect(180,180,0,0),(UniqueID)m_buttonid);
 }
 
+#if defined(BOB_LINUX)
+#include <execinfo.h>
+/* MP2-BOB-1: who plans packages while a co-op campaign host waits in its ready room? BOB_TRACE_PACKS=1 prints the
+   stack of the first few fuel warnings (they fire from Profile::CalcRoutePositionsAndTime on a new RAF package). */
+static void bob_trace_fuelwarning_stack(const char* what)
+{
+	static int n = 0;
+	if (!getenv("BOB_TRACE_PACKS") || n++ >= 3) return;
+	void* fr[24]; int k = backtrace(fr, 24);
+	fprintf(stderr, "[packs] fuel warning (%s), stack:\n", what); fflush(stderr);
+	backtrace_symbols_fd(fr, k, 2);
+}
+#endif
 void	PackageList::MessageBoxFuelWarning(SquadNum sq)
 {	//IDS_PHRASE_TITLE_ACFACTORYOUTBAD	//IDS_HIDC_RBUTTONDELETE
+#if defined(BOB_LINUX)
+	bob_trace_fuelwarning_stack("squadron");
+#endif
 	Squadron* s=Node_Data[sq];
 	CString message=s->FullName()+" ("+GetTargName(s->homeairfield)+")\n"+LoadResString(IDS_BINGOWARNING);
 	if (!RDialog::messageboxopen)

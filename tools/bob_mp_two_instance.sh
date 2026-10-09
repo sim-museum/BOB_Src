@@ -76,7 +76,10 @@ echo "bob MP-5 two-instance  (host $HOST_CLICKS + fly@$HOST_FLY_MS, client $CLIE
     "$BOB" ) >"$OUT/host.log" 2>&1 &
 hpid=$!
 sleep "$CLIENT_DELAY"
-( cd "$GD" && timeout -k 5 -s KILL "$((SECS - CLIENT_DELAY))" env BOB_RUN_INIT=1 BOB_DRIVE_C="$DC" \
+# MP2-BOB-1 (2026-10-08): CLIENT_GD/CLIENT_DC give the guest its OWN game tree. Sharing the host's, the two peers
+# write the same savegame/Package.dat/runpack files -- something two PCs never do -- and the host flew a package set
+# it had not saved (crash in Persons2::LoadSubPiece on a missing runpack10.bf).
+( cd "${CLIENT_GD:-$GD}" && timeout -k 5 -s KILL "$((SECS - CLIENT_DELAY))" env BOB_RUN_INIT=1 BOB_DRIVE_C="${CLIENT_DC:-$DC}" \
     ${CLIENT_ENV:-} BOB_WINPOS="$CLIENT_WINPOS" BOB_FRONTEND=1 BOB_OLE_DRAW=1 BOB_TRACE_DPLAY=1 BOB_TRACE_ADDPLAYER=1 BOB_TRACE_IAMIN=1 ${BOB_TRACE_ACMI:+BOB_TRACE_ACMI=1} BOB_AUTOCLICK="$CLIENT_CLICKS" \
     BOB_SDL_CLICK_MS="$CLIENT_ROW_MS" \
     "$BOB" ) >"$OUT/client.log" 2>&1 &

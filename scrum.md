@@ -12776,12 +12776,21 @@ fix the root cause, durably; multiplayer must be easy to navigate.
   - **Measured** (two copies, `~/Documents/261008/logs/mp2bob1_*`): control = 242 searches, 0 sessions; fix =
     session found at the guest's first search, guest joins while the host is on the map, loads the host's
     savegame (449/467 packets). Harness: `BOB_MPCAMP_FRAG=<paint>,<s>`, highlighted-flight trace.
-  - **OPEN — host crash at launch after a map-time join (run 3, E2-5 recipe):** `Persons2::LoadSubPiece`
-    (Persons2.cpp:605) on a NULL `getdata` -- `bfields/runpack/runpack10.bf` missing; only runpack0-4 were
-    written (the harness wrote Package.dat when the host's wait began, then the map clock ran on). Guest then
-    died `Timed out (FCNB)`. Unknown yet whether this is the shared harness tree (host and guest write the same
-    runpack files; on two PCs they don't), the stale pre-fly save, or a real map-time-join defect. Next: give the
-    guest its own tree, and make a missing runpack file fail loudly instead of crashing.
+  - **Host crash at launch — FIXED (2026-10-08), not caused by the session change and not by the shared tree.**
+    Control with `BOB_MP2_LATESESSION=1` crashed the same way; so did a host ALONE that waited 150 s in its ready
+    room. Stack of the first bingo-fuel warning: `bob_timers_tick -> InterceptOffered::OnOK -> InterceptSanctioned ->
+    CalcRoutePositionsAndTime`. An interception offer left open on the map kept counting down through the frag and
+    ready room (its OnTimer ignored `m_currentpage`, which stops the clock and every accel button) and auto-accepted
+    there: each accept planned a new RAF package after the frag's `SaveBin`, and the 3-D load (TANK.CPP, one runpack
+    file per package with waypoints) read 23 packages against 5 files. Earlier runs survived on STALE runpack5-9
+    files from September, i.e. they silently flew old data. Fix: both offer countdowns (InterceptOffered,
+    TakeOverOffered) wait while a full-screen page is up; `BOB_MP2_OFFERRUNS=1` reverts. Also: a missing
+    battlefield file is now a named `[bfield] ERROR` instead of a NULL read; `BOB_TRACE_PACKS=1` lists the
+    packages saved and loaded; the harness takes `CLIENT_GD`/`CLIENT_DC` (guest in its own tree).
+  - **Measured:** host alone, 150 s ready-room wait: 0 fuel warnings, 5 saved = 5 loaded, flies. Two copies, E2-5
+    recipe, guest in `~/bob-test`: **10/10 PASS** (both in 3-D, own aircraft, csync=1 both, 0 crashes)
+    (`~/Documents/261008/logs/mp2bob1_run6`). Single player gains the same: offers no longer accept themselves
+    during a briefing.
 * 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
   floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
   both views before theorising. Same item in MA (MP2-MA-3).

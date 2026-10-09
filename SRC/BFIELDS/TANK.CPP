@@ -690,6 +690,15 @@ FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 		{
 			GR_PackNum=-1;
 			GR_PackFilNum=0; 
+#if defined(BOB_LINUX)
+			if (getenv("BOB_TRACE_PACKS"))	/* MP2-BOB-1: the packages the 3-D is about to load, one runpack file each */
+			{
+				fprintf(stderr,"[packs] 3-D load: wpsused:");
+				for (int p=0;p<Profile::MAX_PACKS;p++)
+					if (Todays_Packages[p].wpsused) fprintf(stderr," %d(st%d)",p,(int)Todays_Packages[p].packagestatus);
+				fprintf(stderr,"\n"); fflush(stderr);
+			}
+#endif
 
 		}
 		case PACKNEXTPACKBF:	//INTENTIONAL FALL-THROUGH!

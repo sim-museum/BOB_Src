@@ -104,6 +104,17 @@ void	PackageList::SaveBin()
 			SaveBin(&pack[packs],f);
 			fnum=FileNum(fnum+1);
 		}
+#if defined(BOB_LINUX)
+	/* MP2-BOB-1: the 3-D loader (TANK.CPP PACKNEXTPACKBF) opens one runpack file per package with wpsused; this wrote
+	   one per package with wpsused AND not spare. BOB_TRACE_PACKS=1 lists both sets. */
+	if (getenv("BOB_TRACE_PACKS"))
+	{
+		fprintf(stderr,"[packs] SaveBin wrote %d runpack file(s); wpsused:",(int)(fnum-FIL_RUNTIMEPACK0));
+		for (int p=0;p<Profile::MAX_PACKS;p++)
+			if (pack[p].wpsused) fprintf(stderr," %d(st%d)",p,(int)pack[p].packagestatus);
+		fprintf(stderr,"\n"); fflush(stderr);
+	}
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////

@@ -601,6 +601,17 @@ void Persons2::LoadSubPiece(WorldStuff *worldptr, FileNum filenumber,int bfindex
 	fileblock	bfield_file(filenumber);
 string
 	bfieldptr = (string)getdata(bfield_file);
+#if defined(BOB_LINUX)
+	/* MP2-BOB-1: a battlefield file that is not there (the file manager already logged "missing file") was read
+	   through a NULL pointer -- the host crashed entering a co-op campaign flight on a missing runpack10.bf. Skip
+	   the piece and say which one, so a save/load mismatch shows as a named error instead of a signal 11. */
+	if (!bfieldptr)
+	{
+		fprintf(stderr,"[bfield] ERROR: battlefield file %x is missing -- skipped (slot %d)\n",(int)filenumber,bfindex);
+		fflush(stderr);
+		return;
+	}
+#endif
 
 	while (*(bfieldptr++));
 	LoadSubPiece(worldptr,bfieldptr,bfindex,scanning);

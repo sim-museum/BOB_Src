@@ -198,6 +198,16 @@ void TakeOverOffered::OnClickedCancel()
 void TakeOverOffered::OnTimer(UINT nIDEvent)
 {
 	CDialog::OnTimer(nIDEvent);
+#if defined(BOB_LINUX)
+	/* MP2-BOB-1 (2026-10-08): campaign time stops while a full-screen page is up -- the map clock (CMapDlg::OnTimer) and
+	   every accel button (TitleBar, RJS 29Oct00) already obey m_currentpage!=0, but this countdown did not. An offer
+	   left open on the map kept counting through the frag, briefing and ready room at the map's accel rate and
+	   auto-accepted there: each accept planned a new RAF package AFTER the frag had written the runpack files, and the
+	   3-D load read files that did not exist (a co-op campaign host crashed entering its flight; 23 packages to load,
+	   5 saved). The countdown now waits with the clock. BOB_MP2_OFFERRUNS=1 reverts. */
+	if (RDialog::m_pView && RDialog::m_pView->m_currentpage != 0 && !getenv("BOB_MP2_OFFERRUNS"))
+		return;
+#endif
 	if (MMC.accelrates[MMC.ACCEL_DIALOGSPEED]<MMC.curraccelrate)
 		countdown-=MMC.accelrates[MMC.ACCEL_DIALOGSPEED];
 	else
