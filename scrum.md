@@ -12901,3 +12901,8 @@ INVSRCALPHA at alpha 1 looks opaque, so most of the wrong state is invisible; wh
 clamp-vs-wrap texture edges, and sorting faults where an opaque draw skips ZWRITE.
 **Next (S4):** make replay the default and rerun the gates it touches (flag flip invalidates proofs), with
 BOB_NO_STATEBLOCKS=1 to revert.
+**S4 (2026-10-09, stopped part-way by the PO; committed at the PO's request):** replay is ON by default
+(`BOB_NO_STATEBLOCKS=1` reverts). Gate suite with replay on (`~/bob-gates/sb4/on.log`): GATE 1 14/14, modal, campaign,
+soak, strategic, r1, R9, mp_connect, dialslots, settings_nav, r16_viewdt, vsync_pace, r1_continuous all PASS;
+mp_packet/mp_uijoin FAIL in both passes (probe did not build -- harness). **Not run with replay on: parity** (it
+already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the captures, not the verdict).

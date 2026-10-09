@@ -3177,7 +3177,7 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
    last. D3D7 semantics: CreateStateBlock captures the CURRENT values of the type's states; ApplyStateBlock
    restores them. Pixel states captured: Z enable/write/func, alpha test, blend, dither, fog start/end/density,
    texture factor, and every texture-stage state except TEXCOORDINDEX and TEXTURETRANSFORMFLAGS.
-   Replay is opt-in while it is being proven: BOB_STATEBLOCKS=1. BOB_TRACE_STATEBLOCKS=1 reports each block's
+   Replay is ON by default since S4 (BOB_NO_STATEBLOCKS=1 reverts). BOB_TRACE_STATEBLOCKS=1 reports each block's
    blend/depth states at creation and every block's apply count every 20000 applies. */
 static DWORD g_rsShadow[256];
 static DWORD g_tssShadow[8][32];
@@ -4407,7 +4407,7 @@ static HRESULT DEV_DrawPrimitive(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, DWORD
 	draw_fvf(prim, (const unsigned char*)verts, count, fvf);
 	return D3D_OK;
 }
-static int bob_sb_enabled(void) { static int e = -1; if (e < 0) e = getenv("BOB_STATEBLOCKS") ? 1 : 0; return e; }
+static int bob_sb_enabled(void) { static int e = -1; if (e < 0) e = getenv("BOB_NO_STATEBLOCKS") ? 0 : 1; return e; }   /* S4: default ON */
 static int bob_sb_trace(void) { static int e = -1; if (e < 0) e = getenv("BOB_TRACE_STATEBLOCKS") ? 1 : 0; return e; }
 static HRESULT DEV_CreateStateBlock(IDirect3DDevice7*, DWORD type, LPDWORD h) {
 	bob_shadow_defaults();
@@ -4443,7 +4443,7 @@ static HRESULT DEV_ApplyStateBlock(IDirect3DDevice7* dev, DWORD h) {
 	if (bob_sb_trace()) { static unsigned long n = 0; if ((++n % 20000) == 0) {
 		fprintf(stderr, "[stateblock] after %lu applies:", n);
 		for (int i = 1; i < 64; i++) if (g_sb[i].used && g_sb[i].applies) fprintf(stderr, " #%d=%lu", i, g_sb[i].applies);
-		fprintf(stderr, "%s\n", bob_sb_enabled() ? "" : "  (replay OFF: BOB_STATEBLOCKS unset)");
+		fprintf(stderr, "%s\n", bob_sb_enabled() ? "" : "  (replay OFF: BOB_NO_STATEBLOCKS set)");
 		for (int i = 1; i < 64; i++) if (sbChanged[i]) {
 			fprintf(stderr, "[sbdiff] #%d changes state on %lu of %lu applies:", i, sbChanged[i], g_sb[i].applies);
 			for (int k = 0; k < SB_NRS; k++) if (sbDiffRS[i][k]) fprintf(stderr, " rs%d=%lu", k_sbPixelRS[k], sbDiffRS[i][k]);
