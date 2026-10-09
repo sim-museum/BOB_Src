@@ -3122,6 +3122,13 @@ bool	DPlay::SendSaveGame(bool score,bool startup)
 		{
 			int hp = bob_mpcamp_hostpack>=0 ? bob_mpcamp_hostpack : (int)Todays_Packages.hipack;	/* the flight the host TOOK */
 			int hs = bob_mpcamp_hostpack>=0 ? bob_mpcamp_hostsq   : (int)Todays_Packages.hisquad;
+			/* MP2-BOB-1: a guest that joins while the host plans on the map gets the savegame BEFORE the host has taken
+			   a flight; the fallback above then sent the map's highlight (pack 0, a Luftwaffe raid) as "the host's
+			   flight" and the guest fragged it. While the host is on the map it has taken nothing: send no selection,
+			   and the guest takes the host's flight from the savegame the host's frag sends. BOB_MP2_MAPHILIGHT=1
+			   reverts. */
+			if (bob_mpcamp_hostpack<0 && H2H_Player[mySlot].status==CPS_MAP && !getenv("BOB_MP2_MAPHILIGHT"))
+				hp = -1;
 			if (GameType==COMMSCAMPAIGN && hp>=0 && !getenv("BOB_NO_MPCAMP_HILIGHT"))
 				cd.PlayerID = (numpackets & 0xFFFF) | 0x80000000u | ((ULong)(UByte)hp << 16) | ((ULong)((UByte)hs & 0x7F) << 24);
 		}
@@ -4251,6 +4258,11 @@ void	DPlay::SendStatusChange(ULong status)
 		return;
 
 	H2H_Player[mySlot].status=status;
+#if defined(BOB_LINUX)
+	/* MP2-BOB-1: back on the map, the host has not taken this sortie's flight yet (OnClickedFrag2 sets it again) */
+	if (status==CPS_MAP && Host && !getenv("BOB_MP2_MAPHILIGHT"))
+		bob_mpcamp_hostpack=bob_mpcamp_hostsq=-1;
+#endif
 
 	pack.PacketID=PID_STATUSCHANGE;
 	pack.PlayerID=status;
