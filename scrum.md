@@ -12828,5 +12828,10 @@ fix the root cause, durably; multiplayer must be easy to navigate.
   Measured, two copies, NO click on the line: host tx "hello_from_host" -> guest rx; guest tx "hi_from_client" ->
   host rx; gate **10/10 PASS** (`~/Documents/261008/logs/mp2bob3_chat3`). The 09-26 run (h) passed only because
   its recipe clicked the line first.
-  - 🔲 Follow-ups: SDL_TEXTINPUT keeps only ASCII 32..126 (bob_video.cpp), so é/ü/ß are dropped -- the audience
-    is international; both default player names are "Bob", so chat lines cannot be told apart.
+  - ✅ Follow-up (2026-10-09): accented letters. SDL_TEXTINPUT (UTF-8) kept only ASCII 32..126 in two places (bob_video.cpp,
+    the REdit host); Latin-1 U+00A0..U+00FF now pass as one byte each (the fonts look up by code point; Rowan's OnChar
+    always accepted 8-bit). `BOB_ASCII_ONLY_TEXT=1` reverts. Measured: two copies, "café_für_søren" / "hej_ærø" tx and
+    rx intact, gate PASS; the Ready Room list renders "Bob café_für_søren". Outside Latin-1 (e.g. Polish ł, Greek)
+    is still dropped: the game's text is 8-bit.
+  - 🔲 Both default player names are "Bob" (Rowan's default, SAVEGAME.CPP; parity references depend on it), so chat
+    lines cannot be told apart unless players type a name in the Locker Room.

@@ -1063,10 +1063,15 @@ static void pump_events(void)
 				if (c && (!e || c < e) && !tfired[idx] && el >= (Uint32)T) {
 					tfired[idx] = 1;
 					int n = 0;
-					for (const char* q = c + 1; *q && q != e; q++, n++) {
+					for (const char* q = c + 1; *q && q != e; n++) {
+						/* one SDL_TEXTINPUT per UTF-8 CHARACTER (1-4 bytes), as SDL itself sends them */
+						int len = ((unsigned char)*q < 0x80) ? 1 : ((unsigned char)*q & 0xE0) == 0xC0 ? 2
+						        : ((unsigned char)*q & 0xF0) == 0xE0 ? 3 : 4;
 						SDL_Event ev; memset(&ev, 0, sizeof(ev));
-						ev.type = SDL_TEXTINPUT; ev.text.text[0] = *q; ev.text.text[1] = 0;
+						ev.type = SDL_TEXTINPUT;
+						for (int k = 0; k < len && q[k] && q + k != e; k++) ev.text.text[k] = q[k];
 						SDL_PushEvent(&ev);
+						for (int k = 0; k < len && *q && q != e; k++) q++;
 					}
 					fprintf(stderr, "[sdltextms] pushed %d SDL_TEXTINPUT chars at %ums (due %ldms)\n", n, (unsigned)el, T);
 					fflush(stderr);
@@ -1250,9 +1255,22 @@ static void pump_events(void)
 			   keyboard LAYOUT is the OS's business -- a scancode table would type the wrong
 			   letters on any non-US layout, which is the trap FreeFalcon's MP-1 hit from the
 			   other direction (the scancode posted in the wrong parameter, so Key was always 0). */
-			for (const char* c = e.text.text; *c; ++c)
-				if ((unsigned char)*c >= 32 && (unsigned char)*c < 127)
-					bob_fp_key((int)(unsigned char)*c, 1);
+			/* MP2-BOB-3 follow-up (2026-10-09): the text arrives as UTF-8, and only ASCII got through -- e, u, ss, o
+			   with accents were dropped, for an international audience. The game's text is 8-bit and its fonts are
+			   looked up by Unicode code point, so U+00A0..U+00FF go through as one byte each (Latin-1 = the first 256
+			   code points). Other characters (outside Latin-1) are still dropped. BOB_ASCII_ONLY_TEXT=1 reverts. */
+			static int asciiOnly = -1; if (asciiOnly < 0) asciiOnly = getenv("BOB_ASCII_ONLY_TEXT") ? 1 : 0;
+			for (const unsigned char* c = (const unsigned char*)e.text.text; *c; ) {
+				unsigned cp; int n;
+				if (*c < 0x80) { cp = *c; n = 1; }
+				else if ((*c & 0xE0) == 0xC0 && (c[1] & 0xC0) == 0x80) { cp = ((c[0] & 0x1Fu) << 6) | (c[1] & 0x3Fu); n = 2; }
+				else if ((*c & 0xF0) == 0xE0) { cp = 0xFFFF; n = (c[1] && c[2]) ? 3 : 1; }
+				else if ((*c & 0xF8) == 0xF0) { cp = 0xFFFF; n = (c[1] && c[2] && c[3]) ? 4 : 1; }
+				else { cp = 0xFFFF; n = 1; }
+				c += n;
+				if ((cp >= 32 && cp < 127) || (!asciiOnly && cp >= 0xA0 && cp <= 0xFF))
+					bob_fp_key((int)cp, 1);
+			}
 		}
 		else if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
 			int dik = sdl_to_dik(e.key.keysym.scancode);

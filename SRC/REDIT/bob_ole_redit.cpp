@@ -69,7 +69,7 @@ struct HostREdit : public CREditCtrl, public OleHost {
     int onKey(int ch, int isText) override {
         if (!GetEnabled()) return 0;
         if (isText) {
-            if (ch < 32 || ch > 126) return 0;
+            if (ch < 32 || (ch > 126 && ch < 0xA0) || ch > 0xFF) return 0;   /* ASCII and Latin-1 (bob_video.cpp) */
             /* ⭐ WINDOWS MESSAGE ORDER, and it is the whole bug. CREditCtrl::OnKeyDown OPENS with
                the word-list initialisation --
                    if (wordlist.IsEmpty()) { ...AddHead; currentword=&wordlist.GetHead(); }
