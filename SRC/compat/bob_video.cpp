@@ -139,7 +139,7 @@ static void bob_shot3d_maybe(void)
     }
     if (want < 0 && every <= 0) return;
     long f = ++n;
-    static int ab = -1; if (ab < 0) ab = getenv("BOB_TABLEFOG_AB") ? 1 : 0;
+    static int ab = -1; if (ab < 0) ab = (getenv("BOB_TABLEFOG_AB") || getenv("BOB_STATEBLOCKS_AB")) ? 1 : 0;
     int nofogShot = ab && g_tablefog_suppress;   /* this frame was drawn without fog */
     g_tablefog_suppress = 0;
     if (!nofogShot && !(f == want || (every > 0 && (f % every) == 0))) return;
@@ -3170,7 +3170,32 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 	}
 	return D3D_OK;
 }
+/* BOB-STATEBLOCK-1 (2026-10-09): D3D7 state blocks. Lib3D records its ten material set-ups with
+   CreateStateBlock(D3DSBT_PIXELSTATE) (LIB3D.CPP ~14194-14492) and switches material with ApplyStateBlock
+   (SetCurrentMaterial ~14685) -- e.g. block 5/7 "solid alpha" = additive (DESTBLEND=ONE), block 6 = a second
+   texture stage modulating colour and alpha. Here both calls were no-ops, so every draw kept whatever was set
+   last. D3D7 semantics: CreateStateBlock captures the CURRENT values of the type's states; ApplyStateBlock
+   restores them. Pixel states captured: Z enable/write/func, alpha test, blend, dither, fog start/end/density,
+   texture factor, and every texture-stage state except TEXCOORDINDEX and TEXTURETRANSFORMFLAGS.
+   Replay is opt-in while it is being proven: BOB_STATEBLOCKS=1. BOB_TRACE_STATEBLOCKS=1 reports each block's
+   blend/depth states at creation and every block's apply count every 20000 applies. */
+static DWORD g_rsShadow[256];
+static DWORD g_tssShadow[8][32];
+static const int k_sbPixelRS[] = { 7, 14, 15, 19, 20, 23, 24, 25, 26, 27, 36, 37, 38, 60 };
+#define SB_NRS ((int)(sizeof(k_sbPixelRS)/sizeof(k_sbPixelRS[0])))
+struct BobStateBlock { int used; DWORD type; DWORD rs[SB_NRS]; DWORD tss[8][32]; unsigned long applies; };
+static BobStateBlock g_sb[64];
+static void bob_shadow_defaults(void) {
+	static int done = 0; if (done) return; done = 1;
+	g_rsShadow[7] = 1; g_rsShadow[14] = 1; g_rsShadow[19] = 2 /*ONE*/; g_rsShadow[20] = 1 /*ZERO*/; g_rsShadow[23] = 4 /*LESSEQUAL*/;
+	g_rsShadow[25] = 8 /*ALWAYS*/; g_rsShadow[37] = 0x3f800000 /*1.0f*/; g_rsShadow[38] = 0x3f800000;
+	for (int s = 0; s < 8; s++) { g_tssShadow[s][1] = s ? 1 : 4; g_tssShadow[s][4] = s ? 1 : 2;
+		g_tssShadow[s][2] = 2 /*TEXTURE*/; g_tssShadow[s][3] = 1 /*CURRENT*/; g_tssShadow[s][5] = 2; g_tssShadow[s][6] = 1;
+		g_tssShadow[s][11] = s; g_tssShadow[s][12] = g_tssShadow[s][13] = g_tssShadow[s][14] = 1; }
+	g_tssShadow[0][3] = 0 /*DIFFUSE*/; g_tssShadow[0][6] = 0;
+}
 static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWORD v) {
+	bob_shadow_defaults(); if ((unsigned)st < 256) g_rsShadow[(unsigned)st] = v;
 	/* D3DRENDERSTATE_*: SRCBLEND=19, DESTBLEND=20, ALPHABLENDENABLE=27, ZENABLE=7, ZWRITEENABLE=14 */
 	switch ((int)st) {
 		case 27: g_devAlphaBlend=(int)v; if(g_win){ if(v) glEnable(GL_BLEND); else glDisable(GL_BLEND);} break;
@@ -3207,6 +3232,7 @@ static HRESULT DEV_GetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE, LPDWORD
    used to confirm the terrain's 2nd/3rd detail-texture stages stay COLOROP=DISABLE in this scene
    (the multitexture detail combiner, notes 4 bug #4, would need real per-stage state). */
 static HRESULT DEV_SetTextureStageState(IDirect3DDevice7*, DWORD stage, D3DTEXTURESTAGESTATETYPE type, DWORD val) {
+	bob_shadow_defaults(); if (stage < 8 && (unsigned)type < 32) g_tssShadow[stage][(unsigned)type] = val;
 	if (getenv("BOB_TRACE_TSS")) { static int n=0; if(n++<40)
 		fprintf(stderr,"[tss] stage=%lu type=%d val=%lu\n",(unsigned long)stage,(int)type,(unsigned long)val); }
 	/* R3.6: capture per-stage texture addressing so draw_fvf can apply the faithful GL wrap
@@ -3455,7 +3481,8 @@ static int bob_tablefog_begin(const unsigned char* base, DWORD n, int stride, in
 		if (mode) { p_glFogCoordPointer = (PFNGLFOGCOORDPOINTERPROC) SDL_GL_GetProcAddress("glFogCoordPointer");
 			if (!p_glFogCoordPointer) { mode = 0; fprintf(stderr, "[tablefog] glFogCoordPointer UNAVAILABLE -- no fog\n"); } } }
 	bob_tablefog_on = 0;
-	if (!mode || g_tablefog_suppress || !is2D || !g_fogEnable || !base || !n) return 0;
+	static int fogAB = -1; if (fogAB < 0) fogAB = getenv("BOB_TABLEFOG_AB") ? 1 : 0;
+	if (!mode || (fogAB && g_tablefog_suppress) || !is2D || !g_fogEnable || !base || !n) return 0;
 	if (g_fogTableMode == 3 ? !(g_fogEnd > g_fogStart) : (g_fogTableMode != 1 && g_fogTableMode != 2)) return 0;
 	static float* fc = 0; static DWORD cap = 0;
 	if (n > cap) { cap = n + 256; fc = (float*)realloc(fc, cap * sizeof(float)); if (!fc) { cap = 0; return 0; } }
@@ -4380,8 +4407,44 @@ static HRESULT DEV_DrawPrimitive(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, DWORD
 	draw_fvf(prim, (const unsigned char*)verts, count, fvf);
 	return D3D_OK;
 }
-static HRESULT DEV_CreateStateBlock(IDirect3DDevice7*, DWORD, LPDWORD h) { if(h)*h=1; return D3D_OK; }
-static HRESULT DEV_ApplyStateBlock(IDirect3DDevice7*, DWORD) { return D3D_OK; }
+static int bob_sb_enabled(void) { static int e = -1; if (e < 0) e = getenv("BOB_STATEBLOCKS") ? 1 : 0; return e; }
+static int bob_sb_trace(void) { static int e = -1; if (e < 0) e = getenv("BOB_TRACE_STATEBLOCKS") ? 1 : 0; return e; }
+static HRESULT DEV_CreateStateBlock(IDirect3DDevice7*, DWORD type, LPDWORD h) {
+	bob_shadow_defaults();
+	int i; for (i = 1; i < 64 && g_sb[i].used; i++) {}
+	if (i >= 64) { if (h) *h = 0; fprintf(stderr, "[stateblock] OUT OF BLOCKS\n"); return D3D_OK; }
+	BobStateBlock& b = g_sb[i]; b.used = 1; b.type = type; b.applies = 0;
+	for (int k = 0; k < SB_NRS; k++) b.rs[k] = g_rsShadow[k_sbPixelRS[k]];
+	memcpy(b.tss, g_tssShadow, sizeof b.tss);
+	if (h) *h = (DWORD)i;
+	if (bob_sb_trace())
+		fprintf(stderr, "[stateblock] create #%d type=%lu blend=%lu src=%lu dst=%lu zen=%lu zwr=%lu atest=%lu "
+		        "st0 col=%lu alp=%lu  st1 col=%lu alp=%lu\n", i, (unsigned long)type, (unsigned long)g_rsShadow[27],
+		        (unsigned long)g_rsShadow[19], (unsigned long)g_rsShadow[20], (unsigned long)g_rsShadow[7],
+		        (unsigned long)g_rsShadow[14], (unsigned long)g_rsShadow[15], (unsigned long)g_tssShadow[0][1],
+		        (unsigned long)g_tssShadow[0][4], (unsigned long)g_tssShadow[1][1], (unsigned long)g_tssShadow[1][4]);
+	return D3D_OK;
+}
+static HRESULT DEV_DeleteStateBlock(IDirect3DDevice7*, DWORD h) { if (h > 0 && h < 64) g_sb[h].used = 0; return D3D_OK; }
+static HRESULT DEV_ApplyStateBlock(IDirect3DDevice7* dev, DWORD h) {
+	if (h == 0 || h >= 64 || !g_sb[h].used) return D3D_OK;
+	BobStateBlock& b = g_sb[h]; b.applies++;
+	if (bob_sb_trace()) { static unsigned long n = 0; if ((++n % 20000) == 0) {
+		fprintf(stderr, "[stateblock] after %lu applies:", n);
+		for (int i = 1; i < 64; i++) if (g_sb[i].used && g_sb[i].applies) fprintf(stderr, " #%d=%lu", i, g_sb[i].applies);
+		fprintf(stderr, "%s\n", bob_sb_enabled() ? "" : "  (replay OFF: BOB_STATEBLOCKS unset)"); } }
+	static int sbAB = -1; if (sbAB < 0) sbAB = getenv("BOB_STATEBLOCKS_AB") ? 1 : 0;
+	if (!bob_sb_enabled() || (sbAB && g_tablefog_suppress)) return D3D_OK;   /* A/B frame: as before, last-set state */
+	for (int k = 0; k < SB_NRS; k++) DEV_SetRenderState(dev, (D3DRENDERSTATETYPE)k_sbPixelRS[k], b.rs[k]);
+	for (int s = 0; s < 8; s++) for (int t = 1; t < 32; t++) {
+		if (t == 11 || t == 24) continue;          /* not pixel state */
+		g_tssShadow[s][t] = b.tss[s][t];           /* direct: DEV_SetTextureStageState tags land textures */
+		if (t == 12) g_tssAddrU[s] = g_tssAddrV[s] = b.tss[s][t];
+		else if (t == 13) g_tssAddrU[s] = b.tss[s][t];
+		else if (t == 14) g_tssAddrV[s] = b.tss[s][t];
+	}
+	return D3D_OK;
+}
 static HRESULT DEV_EnumTextureFormats(IDirect3DDevice7*, void* cbv, LPVOID arg) {
 	/* report a handful of formats the game understands (RGB565/1555/4444 + 8bpp) */
 	typedef HRESULT (*TFCB)(LPDDPIXELFORMAT, LPVOID); TFCB cb=(TFCB)cbv; if(!cb) return DD_OK;
@@ -4469,6 +4532,7 @@ static void init_vtbls_once(void)
 	g_devVtbl.DrawPrimitiveVB=DEV_DrawPrimitiveVB; g_devVtbl.DrawIndexedPrimitiveVB=DEV_DrawIndexedPrimitiveVB;
 	g_devVtbl.DrawPrimitive=DEV_DrawPrimitive;
 	g_devVtbl.CreateStateBlock=DEV_CreateStateBlock; g_devVtbl.ApplyStateBlock=DEV_ApplyStateBlock;
+	g_devVtbl.DeleteStateBlock=DEV_DeleteStateBlock;
 	g_devVtbl.EnumTextureFormats=DEV_EnumTextureFormats; g_devVtbl.GetCaps=DEV_GetCaps;
 	g_devVtbl.ValidateDevice=DEV_ValidateDevice;
 	g_devVtbl.GetDirect3D=DEV_GetDirect3D;

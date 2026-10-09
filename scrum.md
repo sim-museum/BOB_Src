@@ -12869,3 +12869,16 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     is still dropped: the game's text is 8-bit.
   - 🔲 Both default player names are "Bob" (Rowan's default, SAVEGAME.CPP; parity references depend on it), so chat
     lines cannot be told apart unless players type a name in the Locker Room.
+
+## BOB-STATEBLOCK-1 (2026-10-09) -- PAUSED by the PO after sprint 1 (2 runs)
+Lib3D switches material with ApplyStateBlock; the port's Create/ApplyStateBlock were no-ops (DeleteStateBlock
+unwired). Built (bob_video.cpp): render/stage-state shadows, CreateStateBlock captures the D3D7 pixel states,
+ApplyStateBlock replays them -- **opt-in, BOB_STATEBLOCKS=1** (default unchanged); BOB_TRACE_STATEBLOCKS=1;
+BOB_STATEBLOCKS_AB=1 draws the frame after each shot without replay (`_nofog` suffix = feature off);
+tools/bob_stateblock.sh (SB_TAG, SB_EXTRA). Trace run (replay off): the game builds the ten blocks as the source
+says -- #5/#7 additive (DESTBLEND=ONE), translucent blocks ZWRITE off; block 6's stage 1 is DISABLED by the game
+itself (the port reports < 2 blend stages, so the overcast layer's second texture is the game's own fallback, not
+a port error); with apply a no-op every fog-range re-capture copies the last-set state (47,710 identical blocks).
+The port's depth mode ignores the game's ZWRITE (own rule by texture format), so replay changes blend/alpha
+test/addressing, not depth. Replay-on run (`~/bob-gates/r20/sb_on`, 30 same-scene pairs): flew, no crash.
+**Not yet done:** score the 30 pairs (expect: additive effects brighter, nothing else moved), then decide default.
