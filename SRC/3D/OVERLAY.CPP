@@ -7934,6 +7934,28 @@ void COverlay::DoThreat()
 				baseStickX = ((crd[i].X*sRADIUS)/THREAT_RANGE) + sRADIUS+sTOP_LEFT_X;
 				baseStickY = -((crd[i].Z*sY_RADIUS)/THREAT_RANGE) + sRADIUS+sTOP_LEFT_Y;
 				stickHeight = -(crd[i].Y*sRADIUS)/THREAT_ALT;
+#ifdef BOB_LINUX
+				/* MP2-BOB-2 (PO 2026-10-08): a dark slab beside the scope at the screen's left edge. Report every blip
+				   whose stalk leaves the scope's box, with its raw coordinates and the 16-bit results (SWord can wrap).
+				   BOB_TRACE_THREAT=1; at most one report per blip index every 2 s. */
+				if (getenv("BOB_TRACE_THREAT")) {
+					static unsigned long last[MAX_THREATS];
+					const float bx0 = sTOP_LEFT_X, bx1 = sTOP_LEFT_X + 2*sRADIUS, by0 = sTOP_LEFT_Y, by1 = sTOP_LEFT_Y + 2*sRADIUS;
+					const float fx = (float)crd[i].X*sRADIUS/THREAT_RANGE + sRADIUS + sTOP_LEFT_X;
+					const float fy = -(float)crd[i].Z*sY_RADIUS/THREAT_RANGE + sRADIUS + sTOP_LEFT_Y;
+					const float fh = -(float)crd[i].Y*sRADIUS/THREAT_ALT;
+					const bool out = fx < bx0 || fx > bx1 || fy < by0 || fy > by1 || fy + fh < by0 || fy + fh > by1;
+					unsigned long now = timeGetTime();
+					if (out && now - last[i] > 2000) {
+						last[i] = now;
+						fprintf(stderr, "[dothreat] blip %d OUTSIDE scope: crd=(%ld,%ld,%ld) col=%d -> base=(%d,%d) h=%d "
+						        "[float base=(%.0f,%.0f) h=%.0f] box=(%.0f,%.0f)-(%.0f,%.0f)\n", i, (long)crd[i].X, (long)crd[i].Y,
+						        (long)crd[i].Z, (int)col[i], (int)baseStickX, (int)baseStickY, (int)stickHeight, fx, fy, fh,
+						        bx0, by0, bx1, by1);
+						fflush(stderr);
+					}
+				}
+#endif
 
 				if (col[i])
 				{

@@ -12810,6 +12810,14 @@ fix the root cause, durably; multiplayer must be easy to navigate.
   - Evidence (PO video `261008_16_38_one_on_one_bob.mp4`, 4x4 QM, guest): 06:00 a dark slab at the screen's left
     edge (x 0-12, y 108-195 of 800); 07:00 a large dark polygon with a straight edge across the view at 12,839 ft;
     the grey oval with a dot (top left) is the indicator. Frames: `doc/reference/261008_mp2/black_shapes_0600_0700.png`.
+  - **2026-10-09, 2 runs, retro -> parked.** The grey oval is R3.9's threat scope (COverlay::DoThreat); each contact
+    is drawn as red/blue lines (stalk, tick, line to centre) from 16-bit (SWord) screen coordinates. New
+    `BOB_TRACE_THREAT` per-blip report (any stalk outside the scope box, with raw coordinates): real-GL campaign
+    flight 33 contacts, 0 outside; two-copy MP deathmatch PASS, 0 outside on both sides. So the slab is not shown to
+    be the scope. Its dark slate colour matches the distant ground in the 07:00 frame, whose straight-edged polygon
+    at 12,839 ft is the same colour: **hypothesis -- a landscape tile drawn at the screen edge / at the wrong height.**
+    Next: a One-on-One QM at ~13,000 ft with frames every second while banking, then `[bfield]`/tile traces on the
+    frame that shows it. "Indicator sometimes missing": not seen yet in either run.
 * ✅ **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** Fixed.
   The PO's video (Ready Room, 02:20-03:40): the chat line stays EMPTY while typing -- the keys never reached the
   line that sends. Keys go only to a control with keyboard focus, and only a click set it, on a one-line strip.
