@@ -12770,3 +12770,5 @@ fix the root cause, durably; multiplayer must be easy to navigate.
 * 🔲 **MP2-BOB-2 — enemy position indicator (PO, 2026-10-08).** Sometimes missing; sometimes a black square
   floats in the sky, apparently from the indicator. Watch for it in single player and multiplayer; capture
   both views before theorising. Same item in MA (MP2-MA-3).
+* 🔲 **MP2-BOB-3 — chat did not work (PO, 2026-10-08).** In MA chat worked both ways in the same test; in BoB
+  (4x4 Quick Mission) it did not. Find where the message stops: send, transport, receive or display.
