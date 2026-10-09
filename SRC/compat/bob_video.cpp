@@ -4189,6 +4189,43 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 		if(!seen && nk<64){ keys[nk++]=key;
 			fprintf(stderr,"[clouda] 4444 tex glTex=%u %dx%d blend=%d atest=%d srcB=0x%x dstB=0x%x is2D=%d ckey=%d count=%lu\n",
 			(unsigned)t->glTex,t->w,t->h,g_devAlphaBlend,g_alphaTest,(unsigned)g_srcBlend,(unsigned)g_dstBlend,is2D,t->ckeyOn,(unsigned long)count); fflush(stderr); } }
+	/* R20 S9 (2026-10-09): BOB_TRACE_SPRITEBOX names the draw that paints a SPRITE AS A BOX. R20 S7 caught the
+	   PO's floating square (a puff inside a dark rectangle) but S8 identified its sheet by signature only, and
+	   wrongly. This needs no frame and no pixel: for every blended/alpha-tested textured draw it samples, on the
+	   CPU, the bound texture's alpha inside the UV rectangle the draw actually uses. A sprite whose rectangle is
+	   >=95% opaque on a sheet that is mostly see-through is a box; a blended draw from a texture with no alpha
+	   format is a box too. One line per (texture, rectangle), with the Lib3D material it came from. */
+	if (t && t->bits && L.hasTex && base && (g_devAlphaBlend || g_alphaTest) && getenv("BOB_TRACE_SPRITEBOX")) {
+		extern unsigned short g_lib3d_uniqueTextID; extern unsigned char g_lib3d_isMasked;
+		const DWORD am = t->desc.ddpfPixelFormat.dwRGBAlphaBitMask;
+		static unsigned seenK[512], seenN[512]; static int nK = 0, nN = 0, fullSaid = 0;
+		float u0=1e9f,u1=-1e9f,v0=1e9f,v1=-1e9f; unsigned va=255;
+		for (DWORD i=0;i<count;i++){ const float* q=(const float*)(base+(size_t)i*L.stride+L.texOff);
+			if(q[0]<u0)u0=q[0]; if(q[0]>u1)u1=q[0]; if(q[1]<v0)v0=q[1]; if(q[1]>v1)v1=q[1];
+			if (L.hasCol) { unsigned a=(*(const unsigned*)(base+(size_t)i*L.stride+L.colOff))>>24; if(a<va)va=a; } }
+		int x0=(int)(u0*t->w), x1=(int)(u1*t->w), y0=(int)(v0*t->h), y1=(int)(v1*t->h);
+		unsigned key=(unsigned)t->glTex*2654435761u ^ (unsigned)(x0*31+x1)*40503u ^ (unsigned)(y0*37+y1)*9973u;
+		if (!am) key=(unsigned)t->glTex;   /* no alpha channel: one line per texture, not per rectangle */
+		unsigned* tab = am ? seenK : seenN; int* nt = am ? &nK : &nN;
+		int seen=0; for(int k=0;k<*nt;k++) if(tab[k]==key){seen=1;break;}
+		if (!seen && *nt>=512 && !fullSaid) { fullSaid=1; fprintf(stderr,"[spritebox] TABLE FULL (%s) at frame %ld -- later draws NOT checked\n", am?"alpha":"no-alpha", g_frameNo); }
+		if (!seen && *nt<512 && t->bpp==16 && x1>x0 && y1>y0) {
+			const unsigned short* px=(const unsigned short*)t->bits; int opq=0,n=0,sheetOpq=0,sheetN=0;
+			for (int sy=0; sy<16; sy++) for (int sx=0; sx<16; sx++) {
+				int x=x0+(x1-x0)*sx/16, y=y0+(y1-y0)*sy/16; x=((x%t->w)+t->w)%t->w; y=((y%t->h)+t->h)%t->h;
+				unsigned short p=px[y*t->w+x]; n++;
+				if (!am || (am==0x8000 ? (p&0x8000) : ((p>>12)>=14))) opq++; }
+			for (int y=0;y<t->h;y+=4) for (int x=0;x<t->w;x+=4) { unsigned short p=px[y*t->w+x]; sheetN++;
+				if (!am || (am==0x8000 ? (p&0x8000) : ((p>>12)>=14))) sheetOpq++; }
+			int box = (!am) || (opq*100>=95*n && sheetOpq*100<=60*sheetN);
+			tab[(*nt)++]=key;   /* checked once, reported or not */
+			if (box || getenv("BOB_TRACE_SPRITEBOX")[0]=='2') {
+				fprintf(stderr,"[spritebox] %s frame=%ld glTex=%u %dx%d amask=0x%x uv=(%.3f,%.3f)-(%.3f,%.3f) texels=(%d,%d)-(%d,%d) "
+					"rect_opaque=%d/%d sheet_opaque=%d%% vtxA=%u blend=%d src=0x%x dst=0x%x atest=%d is2D=%d prim=%d count=%lu "
+					"uniqueTextID=0x%04x masked=%u\n", box ? (am ? "BOX" : (va<255 ? "NOALPHA-TRANSLUCENT" : "noalpha")) : "ok", g_frameNo, (unsigned)t->glTex, t->w, t->h, (unsigned)am,
+					u0,v0,u1,v1,x0,y0,x1,y1, opq,n, sheetN?sheetOpq*100/sheetN:0, va, g_devAlphaBlend,(unsigned)g_srcBlend,(unsigned)g_dstBlend,
+					g_alphaTest, is2D,(int)prim,(unsigned long)count,(unsigned)g_lib3d_uniqueTextID,(unsigned)g_lib3d_isMasked);
+				fflush(stderr); } } }
 	if (t && !g_devAlphaBlend && !getenv("BOB_NOATEST")) {
 		glEnable(GL_ALPHA_TEST);
 		glAlphaFunc(g_alphaTest?g_alphaFunc:GL_GREATER, g_alphaTest?g_alphaRef:0.5f);

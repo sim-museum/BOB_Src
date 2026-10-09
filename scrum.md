@@ -12820,6 +12820,23 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     at 12,839 ft is the same colour: **hypothesis -- a landscape tile drawn at the screen edge / at the wrong height.**
     Next: a One-on-One QM at ~13,000 ft with frames every second while banking, then `[bfield]`/tile traces on the
     frame that shows it. "Indicator sometimes missing": not seen yet in either run.
+  - **2026-10-09 pass 2, S1 (2 runs) -- lead: the port never applies the game's FOG.** Retro first: R20 (Aug-Sep)
+    already reproduced "the floating square" (S7: 189x189, one colour (41,53,57)) and never fixed it; its S8 blamed
+    `MskMap16\CLOUD2.x8` by a "3 colour values" signature. Decoding the real file (IFF PBM, ALFA chunk) shows four
+    soft cloud puffs in alpha, and R20's glTex=30 dump is a different sheet (best alpha match over all 21 mask maps:
+    mean difference 38/255) -- S8's identification was wrong. The only non-land two-texture material is the
+    overcast cloud LAYER (LANDSCAP.CPP:1975; the port draws stage 0 only -- a separate fidelity gap, not a box).
+    New probe `BOB_TRACE_SPRITEBOX` (bob_video.cpp; tools/bob_r20_spritebox.sh): for every blended textured draw,
+    the alpha the texture really has inside the draw's UV rectangle. Run 1 lost to a full table on front-end art
+    (fixed: separate tables, TABLE FULL is printed); run 2 (campaign flight, 30 frames): **no cloud/smoke sprite
+    drawn from an opaque region** -- only 1-2 texel glyph interiors.
+    **The finding:** the PO's 07:00 frame is the GROUND, all one slate colour below a straight horizon; that slate
+    (41,53,57) is the game's daytime fog colour (144,184,232) x ~0.28 in every channel, and so is R20's square.
+    The port advertises every raster cap, incl. D3DPRASTERCAPS_FOGTABLE, so Lib3D (LIB3D.CPP:3958, 4036) picks
+    TABLE fog (FOGTABLEMODE=LINEAR + FOGSTART/END/COLOR) and expects the device to haze each pixel by depth -- and
+    the port applies no fog at all (GL fog only behind the old `BOB_FOG` experiment, on a guessed 0..1 z range).
+    Next (S2): implement D3D7 table fog in GL faithfully (linear, the game's own start/end on eye depth = 1/rhw),
+    with a revert switch, and A/B the distant ground at altitude against the day fog colour.
 * ✅ **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** Fixed.
   The PO's video (Ready Room, 02:20-03:40): the chat line stays EMPTY while typing -- the keys never reached the
   line that sends. Keys go only to a control with keyboard focus, and only a click set it, on a one-line strip.
