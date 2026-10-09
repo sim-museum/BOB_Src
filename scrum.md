@@ -12882,3 +12882,10 @@ a port error); with apply a no-op every fog-range re-capture copies the last-set
 The port's depth mode ignores the game's ZWRITE (own rule by texture format), so replay changes blend/alpha
 test/addressing, not depth. Replay-on run (`~/bob-gates/r20/sb_on`, 30 same-scene pairs): flew, no crash.
 **Not yet done:** score the 30 pairs (expect: additive effects brighter, nothing else moved), then decide default.
+**S2 (2026-10-09, 2 runs, inconclusive):** scored the 30 sb_on pairs: frames 300-7800 differ by 0.5-1.1 % of pixels,
+split evenly brighter/darker over the whole frame (looks like one-frame motion); 8100-9000 differ 3-9 % (take-off
+roll; f.8400 = a smoke column that moved, paler with replay on). Calibration (`SB_TAG=calib SB_EXTRA=BOB_STATEBLOCKS_AB=1`,
+replay off on both sides): run 1 wrote nothing (the script never created sb_<tag>/; fixed: mkdir -p); run 2 flew a
+different session -- **1920x1080 instead of 1024x768, and only 6 pairs (to frame 1800)** -- so its 4.5-7.5 % noise
+is not comparable with sb_on. **Next (S3):** pin the window to 1024x768, confirm the flight reaches frame 9000 before
+scoring, then compare calib vs sb_on per frame; replay stays opt-in until then.

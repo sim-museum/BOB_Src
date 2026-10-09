@@ -5,6 +5,7 @@ set -u
 ROOT=/home/admin/bob
 OUT=$HOME/bob-gates/r20
 rm -f "$OUT"/padlock/pres*.ppm
+mkdir -p "$OUT/sb_${SB_TAG:-trace}" "$OUT/padlock"
 export BOB_SCRATCH_DIR=/tmp/bob_scratch_f12_$$
 . "$ROOT/tools/bob_use_scratch.sh"
 ( cd "$GD" && timeout -k 5 -s KILL 600 env DISPLAY=:0 \
