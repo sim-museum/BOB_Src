@@ -12850,6 +12850,8 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     seen in these runs; its colour is the unfogged slate, so likely the same cause) -- the PO's eye decides.
     Left (separate, smaller): the overcast cloud layer's second texture (stage 1) is still not drawn; Lib3D's
     state blocks are still no-ops (blocks 5/7 additive "solid alpha" draw as normal blending).
+    Second 3-D path checked (run 3, tools/bob_mp2_tablefog_qm.sh): quick-mission boot flight 75 s, no crash, fog
+    applied (357 trace lines); parked pair identical except paler distant clouds (`qm_boot_nofog_left_fog_right.png`).
 * ✅ **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** Fixed.
   The PO's video (Ready Room, 02:20-03:40): the chat line stays EMPTY while typing -- the keys never reached the
   line that sends. Keys go only to a control with keyboard focus, and only a click set it, on a one-line strip.
