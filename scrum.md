@@ -12837,6 +12837,19 @@ fix the root cause, durably; multiplayer must be easy to navigate.
     the port applies no fog at all (GL fog only behind the old `BOB_FOG` experiment, on a guessed 0..1 z range).
     Next (S2): implement D3D7 table fog in GL faithfully (linear, the game's own start/end on eye depth = 1/rhw),
     with a revert switch, and A/B the distant ground at altitude against the day fog colour.
+  - **S2 (2 runs) -- FIXED: D3D7 table fog in GL** (bob_video.cpp `bob_tablefog_begin/end`, default on,
+    `BOB_NO_TABLEFOG=1` reverts, `BOB_TRACE_TABLEFOG=1` reports). Linear fog with the game's own FOGSTART/END
+    (eye distances: 314,573 .. 1,048,576 in flight) and FOGCOLOR, fog coordinate = eye depth 1/rhw per vertex (the
+    w-fog the caps advertise); colour only, alpha untouched, as in D3D. Trace in flight: mode 3, colour
+    (144,184,229) = the day haze table entry. **Same-scene A/B** (`BOB_TABLEFOG_AB=1`: the frame after each shot is
+    drawn without fog, `_nofog`; tools/bob_mp2_tablefog.sh), 17 pairs: slate pixels 3.5-19.9% without -> 0.5-3.0%
+    with, in every pair; without fog the sea/ground below the horizon is one flat slate slab with a straight edge
+    (the PO's "large dark polygon"), with it the ground fades into the haze at the horizon
+    (`doc/reference/261009_tablefog/nofog_left_fog_right.png`). Distant clouds are paler now -- hazed as the game
+    asks; the Windows cockpit reference shows the same washed, hazy look. Not claimed: R20's puff-in-a-box (not
+    seen in these runs; its colour is the unfogged slate, so likely the same cause) -- the PO's eye decides.
+    Left (separate, smaller): the overcast cloud layer's second texture (stage 1) is still not drawn; Lib3D's
+    state blocks are still no-ops (blocks 5/7 additive "solid alpha" draw as normal blending).
 * ✅ **MP2-BOB-3 — multiplayer chat between players on different PCs did not work (PO, 2026-10-08).** Fixed.
   The PO's video (Ready Room, 02:20-03:40): the chat line stays EMPTY while typing -- the keys never reached the
   line that sends. Keys go only to a control with keyboard focus, and only a click set it, on a one-line strip.

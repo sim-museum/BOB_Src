@@ -125,6 +125,9 @@ extern "C" void bob_save_preferences(void);   /* BOB-PADBOX-1: fullpane.cpp, sav
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
 extern void* g_bobGdiPresentCaller;     /* GOLDVID-BOB-3 S4: caller of the 2D presenter */
+/* MP2-BOB-2 S2: BOB_TABLEFOG_AB=1 (with BOB_SHOT3D_EVERY) draws the frame after each shot WITHOUT table fog and
+   saves it as <n+1>_nofog -- the same scene both ways, one frame apart. */
+static int g_tablefog_suppress = 0;
 static void bob_shot3d_maybe(void)
 {
     static long want = -2, every = 0, n = 0;
@@ -136,7 +139,11 @@ static void bob_shot3d_maybe(void)
     }
     if (want < 0 && every <= 0) return;
     long f = ++n;
-    if (!(f == want || (every > 0 && (f % every) == 0))) return;
+    static int ab = -1; if (ab < 0) ab = getenv("BOB_TABLEFOG_AB") ? 1 : 0;
+    int nofogShot = ab && g_tablefog_suppress;   /* this frame was drawn without fog */
+    g_tablefog_suppress = 0;
+    if (!nofogShot && !(f == want || (every > 0 && (f % every) == 0))) return;
+    if (ab && !nofogShot) g_tablefog_suppress = 1;
     int w = 0, h = 0;
     SDL_GL_GetDrawableSize(g_win, &w, &h);
     if (w <= 0 || h <= 0) return;
@@ -146,7 +153,7 @@ static void bob_shot3d_maybe(void)
     glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px);
     const char* base = getenv("BOB_SHOT3D_PATH");
     char path[512];
-    if (every > 0) snprintf(path, sizeof(path), "%s.%04ld.ppm", base ? base : "/tmp/bob3d", f);
+    if (every > 0) snprintf(path, sizeof(path), "%s.%04ld%s.ppm", base ? base : "/tmp/bob3d", nofogShot ? f - 1 : f, nofogShot ? "_nofog" : "");
     else           snprintf(path, sizeof(path), "%s", base ? base : "/tmp/bob3d.ppm");
     int ok = bob_write_ppm(path, px, w, h);
     fprintf(stderr, "[shot3d] frame %ld -> %s (%dx%d)%s\n", f, path, w, h,
@@ -2780,6 +2787,7 @@ static int g_zEnable = 1, g_zWrite = 1;
 static int    g_fogEnable = 0;
 static float  g_fogColor[4] = {0.5f,0.55f,0.6f,1.f};
 static float  g_fogStart = 0.f, g_fogEnd = 1.f;
+static float  g_fogDensity = 1.f;   /* D3DRS_FOGDENSITY (38), for the EXP/EXP2 table modes */
 static int    g_fogTableMode = 0, g_fogVertMode = 0;   /* D3DFOG_* (0=NONE,1=EXP,2=EXP2,3=LINEAR) */
 /* alpha test (masked-texture transparency: keyed texels have alpha 0 and must be discarded) */
 static int    g_alphaTest = 0;
@@ -3178,6 +3186,7 @@ static HRESULT DEV_SetRenderState(IDirect3DDevice7*, D3DRENDERSTATETYPE st, DWOR
 		case 35: g_fogTableMode=(int)v; break;
 		case 36: g_fogStart=*(float*)&v; break;
 		case 37: g_fogEnd=*(float*)&v; break;
+		case 38: g_fogDensity=*(float*)&v; break;
 		case 140: g_fogVertMode=(int)v; break;
 		/* alpha test: ALPHATESTENABLE=15, ALPHAREF=24 (0..255), ALPHAFUNC=25 (D3DCMP) */
 		case 15: g_alphaTest=(int)v; break;
@@ -3430,6 +3439,47 @@ static void bob_persp_measure(int prim, const unsigned char* base, DWORD nverts,
 	#undef BPT
 }
 
+/* MP2-BOB-2 S2 (2026-10-09): D3D7 TABLE FOG. The device caps advertise D3DPRASTERCAPS_FOGTABLE (and WFOG), so
+   Lib3D picks table fog (LIB3D.CPP ~3958/4036): FOGTABLEMODE=LINEAR, FOGSTART/FOGEND = eye distances (Zf times a
+   fraction, LIB3D.CPP ~6171), FOGCOLOR from the time-of-day haze -- and leaves the per-pixel blend toward the fog
+   colour to the device. This port applied none of it, so nothing faded into the haze: distant ground showed its
+   raw dark colour (the PO's slate "polygon" at 12,839 ft) instead of the pale day haze (144,184,232). For the
+   pre-transformed vertices the game sends, the eye depth D3D's w-fog uses is 1/rhw; GL gets it as a fog
+   coordinate per vertex. Fog only changes colour, never alpha, as in D3D. BOB_NO_TABLEFOG=1 reverts;
+   BOB_TRACE_TABLEFOG=1 reports the state and the eye-depth range of the first fogged draws. */
+static PFNGLFOGCOORDPOINTERPROC p_glFogCoordPointer;
+static int bob_tablefog_on = 0;
+static int bob_tablefog_begin(const unsigned char* base, DWORD n, int stride, int posOff, int is2D) {
+	static int mode = -1; if (mode < 0) {
+		mode = getenv("BOB_NO_TABLEFOG") || getenv("BOB_FOG") ? 0 : 1;
+		if (mode) { p_glFogCoordPointer = (PFNGLFOGCOORDPOINTERPROC) SDL_GL_GetProcAddress("glFogCoordPointer");
+			if (!p_glFogCoordPointer) { mode = 0; fprintf(stderr, "[tablefog] glFogCoordPointer UNAVAILABLE -- no fog\n"); } } }
+	bob_tablefog_on = 0;
+	if (!mode || g_tablefog_suppress || !is2D || !g_fogEnable || !base || !n) return 0;
+	if (g_fogTableMode == 3 ? !(g_fogEnd > g_fogStart) : (g_fogTableMode != 1 && g_fogTableMode != 2)) return 0;
+	static float* fc = 0; static DWORD cap = 0;
+	if (n > cap) { cap = n + 256; fc = (float*)realloc(fc, cap * sizeof(float)); if (!fc) { cap = 0; return 0; } }
+	float lo = 1e30f, hi = -1e30f;
+	for (DWORD i = 0; i < n; i++) { const float* p = (const float*)(base + (size_t)i * stride + posOff);
+		float w = p[3] > 1e-12f ? 1.f / p[3] : 1e12f; fc[i] = w; if (w < lo) lo = w; if (w > hi) hi = w; }
+	glEnable(GL_FOG);
+	if (g_fogTableMode == 3) { glFogi(GL_FOG_MODE, GL_LINEAR); glFogf(GL_FOG_START, g_fogStart); glFogf(GL_FOG_END, g_fogEnd); }
+	else { glFogi(GL_FOG_MODE, g_fogTableMode == 1 ? GL_EXP : GL_EXP2); glFogf(GL_FOG_DENSITY, g_fogDensity); }
+	glFogfv(GL_FOG_COLOR, g_fogColor);
+	glFogi(GL_FOG_COORD_SRC, GL_FOG_COORD);
+	glEnableClientState(GL_FOG_COORD_ARRAY); p_glFogCoordPointer(GL_FLOAT, 0, fc);
+	bob_tablefog_on = 1;
+	if (getenv("BOB_TRACE_TABLEFOG")) { static int k = 0; if (k++ < 12 || (k % 20000) == 0)
+		fprintf(stderr, "[tablefog] draw %d mode=%d start=%.1f end=%.1f colour=(%.0f,%.0f,%.0f) eye depth %.1f..%.1f (n=%lu)\n",
+		        k, g_fogTableMode, g_fogStart, g_fogEnd, g_fogColor[0]*255.f, g_fogColor[1]*255.f, g_fogColor[2]*255.f,
+		        lo, hi, (unsigned long)n); }
+	return 1;
+}
+static void bob_tablefog_end(void) {
+	if (!bob_tablefog_on) return;
+	glDisableClientState(GL_FOG_COORD_ARRAY); glFogi(GL_FOG_COORD_SRC, GL_FRAGMENT_DEPTH); glDisable(GL_FOG);
+	bob_tablefog_on = 0;
+}
 static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
 	if (g_curRT) { g_rttDraws++;
 		int ph = g_bob_mirror_phase; if (ph < 0 || ph > 2) ph = 0;
@@ -4246,7 +4296,9 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 
 	GLenum mode = (prim==1)?GL_POINTS : (prim==2)?GL_LINES : (prim==6)?GL_TRIANGLE_FAN :
 	              (prim==5)?GL_TRIANGLE_STRIP : GL_TRIANGLES;
-	if (!blobSkip) glDrawArrays(mode, 0, count);   /* S307: BOB_BLOB_SKIP omits this draw */
+	if (!fogExp) bob_tablefog_begin(base, count, L.stride, L.posOff, is2D);
+	if (!blobSkip) glDrawArrays(mode, 0, count);
+	bob_tablefog_end();   /* S307: BOB_BLOB_SKIP omits this draw */
 	/* S309: invalidate the game-side texture id after every draw. Only RenderTPolyList sets it,
 	   so without this a draw arriving by any OTHER path silently reports its predecessor's id --
 	   which the first version did, printing one id for five different textures. Better to say
@@ -4316,7 +4368,10 @@ static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE pr
 	if(L.hasCol){glEnableClientState(GL_COLOR_ARRAY); glColorPointer(GL_BGRA,GL_UNSIGNED_BYTE,L.stride,base+L.colOff);}
 	if(L.hasTex&&t){glEnableClientState(GL_TEXTURE_COORD_ARRAY); glTexCoordPointer(2,GL_FLOAT,L.stride,base+L.texOff);}
 	GLenum mode=(prim==1)?GL_POINTS:(prim==2)?GL_LINES:(prim==6)?GL_TRIANGLE_FAN:(prim==5)?GL_TRIANGLE_STRIP:GL_TRIANGLES;
+	{ DWORD nv = numv; for (DWORD i = 0; i < idxcount; ++i) if ((DWORD)idx[i] + 1 > nv) nv = (DWORD)idx[i] + 1;
+	  bob_tablefog_begin(base, nv, L.stride, L.posOff, is2D); }
 	glDrawElements(mode, idxcount, GL_UNSIGNED_SHORT, idx);
+	bob_tablefog_end();
 	glDisableClientState(GL_VERTEX_ARRAY); glDisableClientState(GL_COLOR_ARRAY); glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW); glPopMatrix();
 	return D3D_OK;
