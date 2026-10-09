@@ -4429,10 +4429,28 @@ static HRESULT DEV_DeleteStateBlock(IDirect3DDevice7*, DWORD h) { if (h > 0 && h
 static HRESULT DEV_ApplyStateBlock(IDirect3DDevice7* dev, DWORD h) {
 	if (h == 0 || h >= 64 || !g_sb[h].used) return D3D_OK;
 	BobStateBlock& b = g_sb[h]; b.applies++;
+	/* S3: which of the block's states differ from those already set -- what a replay actually changes. */
+	static unsigned long sbChanged[64], sbDiffRS[64][SB_NRS], sbDiffTSS[64][2][32];
+	if (bob_sb_trace()) {
+		int any = 0;
+		for (int k = 0; k < SB_NRS; k++) if (b.rs[k] != g_rsShadow[k_sbPixelRS[k]]) { sbDiffRS[h][k]++; any = 1; }
+		for (int s2 = 0; s2 < 2; s2++) for (int t = 1; t < 32; t++) {
+			if (t == 11 || t == 24) continue;
+			if (b.tss[s2][t] != g_tssShadow[s2][t]) { sbDiffTSS[h][s2][t]++; any = 1; }
+		}
+		if (any) sbChanged[h]++;
+	}
 	if (bob_sb_trace()) { static unsigned long n = 0; if ((++n % 20000) == 0) {
 		fprintf(stderr, "[stateblock] after %lu applies:", n);
 		for (int i = 1; i < 64; i++) if (g_sb[i].used && g_sb[i].applies) fprintf(stderr, " #%d=%lu", i, g_sb[i].applies);
-		fprintf(stderr, "%s\n", bob_sb_enabled() ? "" : "  (replay OFF: BOB_STATEBLOCKS unset)"); } }
+		fprintf(stderr, "%s\n", bob_sb_enabled() ? "" : "  (replay OFF: BOB_STATEBLOCKS unset)");
+		for (int i = 1; i < 64; i++) if (sbChanged[i]) {
+			fprintf(stderr, "[sbdiff] #%d changes state on %lu of %lu applies:", i, sbChanged[i], g_sb[i].applies);
+			for (int k = 0; k < SB_NRS; k++) if (sbDiffRS[i][k]) fprintf(stderr, " rs%d=%lu", k_sbPixelRS[k], sbDiffRS[i][k]);
+			for (int s2 = 0; s2 < 2; s2++) for (int t = 1; t < 32; t++) if (sbDiffTSS[i][s2][t])
+				fprintf(stderr, " st%d.%d=%lu", s2, t, sbDiffTSS[i][s2][t]);
+			fprintf(stderr, "\n");
+		} } }
 	static int sbAB = -1; if (sbAB < 0) sbAB = getenv("BOB_STATEBLOCKS_AB") ? 1 : 0;
 	if (!bob_sb_enabled() || (sbAB && g_tablefog_suppress)) return D3D_OK;   /* A/B frame: as before, last-set state */
 	for (int k = 0; k < SB_NRS; k++) DEV_SetRenderState(dev, (D3DRENDERSTATETYPE)k_sbPixelRS[k], b.rs[k]);

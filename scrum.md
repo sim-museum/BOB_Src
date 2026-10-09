@@ -12889,3 +12889,15 @@ replay off on both sides): run 1 wrote nothing (the script never created sb_<tag
 different session -- **1920x1080 instead of 1024x768, and only 6 pairs (to frame 1800)** -- so its 4.5-7.5 % noise
 is not comparable with sb_on. **Next (S3):** pin the window to 1024x768, confirm the flight reaches frame 9000 before
 scoring, then compare calib vs sb_on per frame; replay stays opt-in until then.
+**S3 (2026-10-09, 1 run, `~/bob-gates/r20/sb_diff.log`): measured the state, not the pixels.** New `[sbdiff]` lines
+(BOB_TRACE_STATEBLOCKS=1): per block, how many applies find a stored state different from the one already set, i.e.
+what a replay actually changes. With replay on, over one campaign flight (440,000 applies): opaque block #1 differs on
+174,396 applies (texture addressing st0.12 on all of them; blend on/src/dst and ZWRITE on 5,592-10,830); additive
+#5/#7 differ only in DESTBLEND (12,320 / 6,455: without replay they draw with INVSRCALPHA, not ONE, so glows are
+ordinary see-through layers, as S1 read); #4/#8/#9 differ in ALPHABLEND, ZWRITE, blend factors and stage-0 ops.
+**So the replay is not a no-op: without it a large share of material switches draw with the previous material's
+blend, depth-write and addressing.** Why the S2 pixel scores were small: an opaque texture blended SRCALPHA/
+INVSRCALPHA at alpha 1 looks opaque, so most of the wrong state is invisible; what can show is dimmer glows,
+clamp-vs-wrap texture edges, and sorting faults where an opaque draw skips ZWRITE.
+**Next (S4):** make replay the default and rerun the gates it touches (flag flip invalidates proofs), with
+BOB_NO_STATEBLOCKS=1 to revert.
