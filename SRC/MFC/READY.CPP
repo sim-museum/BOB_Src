@@ -474,7 +474,7 @@ void	DPlay::DisplayPlayerInfo()
 	if (getenv("BOB_TRACE_DPLAY"))
 		for (n=0;n<MAXPLAYERS;n++)
 			if (H2H_Player[n].status!=CPS_NONE)
-				fprintf(stderr,"[readyroom] list row: slot=%lu name=\"%s\" status=%d team=%d squadron=%d (mySlot=%lu)\n",
+				fprintf(stderr,"[readyroom] t=%lums list row: slot=%lu name=\"%s\" status=%d team=%d squadron=%d (mySlot=%lu)\n", (unsigned long)timeGetTime(),
 					(unsigned long)n,H2H_Player[n].name,(int)H2H_Player[n].status,(int)H2H_Player[n].MyTeam,
 					(int)H2H_Player[n].squadron,(unsigned long)_DPlay.mySlot), fflush(stderr);
 #endif

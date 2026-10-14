@@ -12925,3 +12925,17 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   loads 64x64 one colour with its shape in ALFA (`alpha=yes`), uploads 4444 with alpha; same frame 300: no box, a
   faint round sun glow in the haze (`~/bob-gates/slab1/mp3/f.0300.ppm` vs `mp2/f.0300.ppm`).
 * Ship check: the AppImage copies the same data tree, so the fix needs only the new binary.
+
+## MP2-BOB-5 (Opus 5.5, 2026-10-14) -- PO 10-13: "in bob, host does not initially show up in guest ready room"
+* PO video 23:00-24:00: the guest's Death Match Ready Room shows ONE row ("1 Bob Spitfire Dispersal") for 8 s, the PO
+  backs out, rejoins, again one row for 15 s, then flies.
+* S1 (3 runs, `~/bob-gates/rr1/`, two-instance MP on a scratch tree; `[readyroom]` lines now carry t=ms):
+  the guest's list DATA gains the host 78 ms after its own row on one box (base), 1.1 s with 30 % simulated loss
+  (`BOB_NET_LOSS=30` both sides; guaranteed sends retransmit) -- loss is not the cause. But the guest's front-end
+  presents (`BOB_SHOT2D_EVERY=1`, `paint/p.0006` and the late repaint `p.0007`, 105 s apart) both show ONE row,
+  while the list was last filled with slots 0 AND 1. So the screen never shows the host on one box either.
+* Retro: the 09-26 "fix" (MP S10, "Both Ready Rooms list BOTH players") was verified from this same trace -- list
+  DATA -- and its own after-picture `doc/reference/260926_mp/readyroom_player_list_after.png` shows ONE row. The
+  instrument measured memory, not the screen.
+* Not the control's size: IDC_RLIST_UN_PLAYER is 567x146 DU (ENGLISH/BOB.RC). Next (S2): trace the CRListBox paint
+  (rows per column, rect, which rows it draws) on the repaint after both slots are in.
