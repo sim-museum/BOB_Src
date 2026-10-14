@@ -1276,7 +1276,7 @@ unsigned long g_bob_ole_unanswered_n = 0;   /* cumulative, for gates */
    bob_timers_tick asks the front end for one repaint (bob_fp_timer_repaint, throttled).
    BOB_NO_TIMER_REPAINT=1 reverts. */
 int g_bob_in_timer = 0, g_bob_timer_dirty = 0;
-extern "C" void bob_fp_timer_repaint(void);
+extern "C" int bob_fp_timer_repaint(void);
 extern "C" void bob_ole_invoke(CWnd* self, DISPID id, WORD /*flags*/, VARTYPE vtRet, void* pvRet, const BYTE* /*pInfo*/, va_list ap) {
     /* S311 POSITIVE CONTROL. A front-end boot produces ZERO unanswered dispatches, so the branch
        below never runs and its trace never prints -- which is indistinguishable from a trace that
@@ -1511,7 +1511,9 @@ extern "C" void bob_timers_tick(void) {
     if (g_bob_timer_dirty) {
         g_bob_timer_dirty = 0;
         static int norep = -1; if (norep < 0) norep = getenv("BOB_NO_TIMER_REPAINT") ? 1 : 0;
-        if (!norep) bob_fp_timer_repaint();
+        /* MP2-BOB-5: a throttled repaint stays pending (BOB_REPAINT_DROP_THROTTLED=1: dropped, as before) */
+        static int drop = -1; if (drop < 0) drop = getenv("BOB_REPAINT_DROP_THROTTLED") ? 1 : 0;
+        if (!norep && !bob_fp_timer_repaint() && !drop) g_bob_timer_dirty = 1;
     }
 }
 

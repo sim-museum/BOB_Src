@@ -594,15 +594,19 @@ static void bob_fp_repaint(RFullPanelDial* fp)
    repaint the front-end screen, as WM_PAINT would have. Front end only (not the map, not 3-D), and at
    most 4 times a second so a timer that refills a list every pass cannot turn into a paint loop. */
 extern "C" int g_bob_map_active;
-extern "C" void bob_fp_timer_repaint(void)
+/* MP2-BOB-5 (2026-10-14): returns 0 when the throttle held the repaint back, so the caller keeps the request and
+   retries on a later tick. Dropping it lost the guest's SECOND Ready Room fill (the host's row, 78 ms after the
+   first): the list was never repainted and the host never showed. */
+extern "C" int bob_fp_timer_repaint(void)
 {
-	if (!g_bobActiveFP || !g_bobActiveFP->m_currentscreen || g_bob_map_active || Inst3d::InThe3D()) return;
+	if (!g_bobActiveFP || !g_bobActiveFP->m_currentscreen || g_bob_map_active || Inst3d::InThe3D()) return 1;
 	static unsigned long last = 0;
 	unsigned long now = timeGetTime();
-	if (last && now - last < 250) return;
+	if (last && now - last < 250) return 0;
 	last = now;
 	if (getenv("BOB_TRACE_DPLAY")) { static int n = 0; if (n++ < 20) fprintf(stderr, "[frontend] timer changed a control -> repaint\n"); }
 	bob_fp_repaint(g_bobActiveFP);
+	return 1;
 }
 /* R1.1b (Scrum Sprint 4): the QM pre-flight world setup that the game normally runs before
    StartFlying (factory init + node/squad tables + scramble campaign + the player's quick-

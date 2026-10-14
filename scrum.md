@@ -12939,3 +12939,13 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   instrument measured memory, not the screen.
 * Not the control's size: IDC_RLIST_UN_PLAYER is 567x146 DU (ENGLISH/BOB.RC). Next (S2): trace the CRListBox paint
   (rows per column, rect, which rows it draws) on the repaint after both slots are in.
+* **S2 -- FIXED (2 runs, `~/bob-gates/rr2/`).** New `BOB_TRACE_RLISTPAINT=1` (`[rlistpaint]`: what CRListBox's OnDraw
+  sees -- columns, rows, bounds, column-1 text). Run a: the list is painted at the guest's own fill
+  (`col1=[Name][Bob]`); the host's row lands 78 ms later and the list is NEVER painted again. Cause: the 09-26 timer
+  repaint (`bob_fp_timer_repaint`, FULLPSYS.CPP) throttles to 4/s by DROPPING a request inside 250 ms of the last
+  one -- and the host's row is exactly such a request. Fix: the function reports a throttled request and
+  `bob_timers_tick` (bob_ole.cpp) keeps it pending for a later tick (`BOB_REPAINT_DROP_THROTTLED=1` reverts).
+  Run b: `[rlistpaint] ... rows(col1)=3 col1=[Name][Bob][Bob]` 199 ms after the fill; the captured present shows
+  "1 Bob" and "2 Bob" (`rr2/b/p.0007.ppm`; before: `rr2/a`, one row on every present).
+* Not reproduced/not answered here: whether the PO's two PCs also differ in timing -- the fix covers any second
+  fill inside the window, whatever its cause.

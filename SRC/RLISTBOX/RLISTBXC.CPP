@@ -567,6 +567,24 @@ void CRListBoxCtrl::OnDraw(
 		pdc->SetMapMode(MM_TEXT);
 		m_bDrawing=TRUE;
 		CRect rc=rcBounds;
+#if defined(BOB_LINUX)
+		/* MP2-BOB-5 (2026-10-14): the Ready Room's player list holds the host and the guest but the screen shows
+		   one row. Say what the PAINT sees: columns, rows in each of the first two, the bounds, column 1's text. */
+		if (getenv("BOB_TRACE_RLISTPAINT") && m_list.GetCount() >= 8) {
+			POSITION pc = m_list.GetHeadPosition(); int ci = 0; char names[256]; names[0] = 0; int r0 = -1, r1 = -1;
+			while (pc && ci < 2) { CList<char*,char*>* col = m_list.GetNext(pc);
+				if (ci == 0) r0 = col ? (int)col->GetCount() : -1;
+				if (ci == 1) { r1 = col ? (int)col->GetCount() : -1;
+					if (col) { POSITION pr = col->GetHeadPosition();
+						while (pr) { char* t = col->GetNext(pr); size_t L = strlen(names);
+							snprintf(names + L, sizeof names - L, "[%s]", t ? t : "(null)"); } } }
+				ci++; }
+			fprintf(stderr, "[rlistpaint] t=%lums cols=%d rows(col0)=%d rows(col1)=%d bounds=(%d,%d)-(%d,%d) col1=%s\n",
+			        (unsigned long)timeGetTime(), (int)m_list.GetCount(), r0, r1,
+			        rcBounds.left, rcBounds.top, rcBounds.right, rcBounds.bottom, names);
+			fflush(stderr);
+		}
+#endif
 		CWnd* parent;
 		long offsets;
 		FileNum artnum=FIL_NULL;
