@@ -3559,6 +3559,14 @@ static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD cou
 						const float* qv = (const float*)(base + (size_t)vi*L.stride + L.posOff);
 						fprintf(stderr, "[pixprobe]   v%lu = (%.1f, %.1f, %.4f)\n",
 						        (unsigned long)vi, qv[0], qv[1], qv[2]); }
+					  /* MP2-BOB-4 (2026-10-14): a soft sprite drawn as a box -- say whether this draw can
+					     be transparent at all: the texture's alpha mask and the GL blend/alpha-test state. */
+					  { GLint bs=0, bd=0, af=0; GLfloat ar=0; glGetIntegerv(GL_BLEND_SRC, &bs);
+					    glGetIntegerv(GL_BLEND_DST, &bd); glGetIntegerv(GL_ALPHA_TEST_FUNC, &af);
+					    glGetFloatv(GL_ALPHA_TEST_REF, &ar);
+					    fprintf(stderr, "[pixprobe]   alphaMask=0x%08lx blend=%d src=0x%x dst=0x%x alphatest=%d func=0x%x ref=%.3f\n",
+					            pt ? (unsigned long)pt->desc.ddpfPixelFormat.dwRGBAlphaBitMask : 0ul,
+					            (int)glIsEnabled(GL_BLEND), bs, bd, (int)glIsEnabled(GL_ALPHA_TEST), af, ar); }
 					  /* ASPECT-1 S6: and NAME THE CALLER. The existing BOB_PIXPROBE_BT block sits
 					     inside the texture-dump guard, so a draw whose texture has no CPU bits --
 					     the mirror's -- never got one. Fire it here, outside that guard. */
