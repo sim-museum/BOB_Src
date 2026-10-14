@@ -12906,3 +12906,22 @@ BOB_NO_STATEBLOCKS=1 to revert.
 soak, strategic, r1, R9, mp_connect, dialslots, settings_nav, r16_viewdt, vsync_pace, r1_continuous all PASS;
 mp_packet/mp_uijoin FAIL in both passes (probe did not build -- harness). **Not run with replay on: parity** (it
 already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the captures, not the verdict).
+
+## MP2-BOB-4 (Opus 5.5, 2026-10-14) -- PO 10-13 two-PC test: "in bob, there is a grey square that floats in the sky" -- FIXED: it is the SUN
+* Evidence (PO video 261013, 26:00-26:52 = their 2nd flight's first minute): a solid (57,68,38) rectangle at the
+  screen's left edge, x 0-93 / y 80-285 of 1920x1080, drifting slowly, gone after ~60 s.
+* Reproduced (2 of 3 runs, `~/bob-gates/slab1/`, two-instance MP flight on a scratch tree): guest frame 300 shows a
+  pale 107x110 box in the sky. `BOB_PIXPROBE` (now also printing alphaMask + GL blend/alphatest) names it: a Lib3D
+  TPoly draw, 32x32, **alphaMask=0** with blend+alphatest on, imagemap dir 2 file 77, whose 1024 texels are ONE
+  colour (112,136,8) -- the PO's olive is that, hazed. The batch is flushed at the end of `LandScape::InfiniteStrip`
+  right after `DrawSphere(SUNMAPNO = 0x8000|589)`.
+* Cause: this install has the 2003-04 community patch. Its `MskMap16\DIR.DIR` names `SUNMAP.dds` (256x256 DXT5) at
+  file 77 where Rowan's table named `SUNMAP.X8`; the patched Windows exe decodes DDS, this engine's
+  `FixLbmImageMap` reads IFF only, so the sun loaded as a flat 32x32 opaque square. The other 61 .dds entries are
+  the patch's own clouds/lightning, which the Rowan code never loads; only SUNMAP has its original beside it
+  (checked over every DIR.DIR in the install).
+* Fix: `fileman::easyopennumberedfile` opens the same-stem `.X8` when the table names a `.dds` and the .X8 exists
+  (FILEMAN.CPP, logged once per name; `BOB_DDS_NO_X8=1` reverts). Run 3: `[fileman] dds->x8 ... SUNMAP.X8`, the map
+  loads 64x64 one colour with its shape in ALFA (`alpha=yes`), uploads 4444 with alpha; same frame 300: no box, a
+  faint round sun glow in the haze (`~/bob-gates/slab1/mp3/f.0300.ppm` vs `mp2/f.0300.ppm`).
+* Ship check: the AppImage copies the same data tree, so the fix needs only the new binary.

@@ -1062,9 +1062,44 @@ static FILE* bob_open_marker_x(const char* name)
 }
 #endif
 
+#if defined(BOB_LINUX)
+/* MP2-BOB-4 (2026-10-14): the PO's "grey square that floats in the sky" is the SUN. This install carries the
+   2003-04 community patch: its MskMap16\DIR.DIR names SUNMAP.dds (256x256 DXT5) where Rowan's table named
+   SUNMAP.X8, and its 62 .dds entries are the patch's new clouds/lightning plus the sun. The patched Windows
+   exe decodes DDS; this engine's imagemap loader (FixLbmImageMap) reads IFF only, so the sun came out as a
+   32x32 map of one colour with no alpha -- an opaque square wherever the sun is. Of the 62, only the sun is
+   loaded by the Rowan code and only the sun still has its original beside it, so: when a table names a
+   .dds and a same-stem .X8 exists, open the .X8. Logged once per name; BOB_DDS_NO_X8=1 reverts. */
+static FILE* bob_open_dds_as_x8(const char* name)
+{
+	if (!name || getenv("BOB_DDS_NO_X8")) return NULL;
+	size_t len = strlen(name);
+	if (len < 5 || len >= 1020 || strcasecmp(name + len - 4, ".dds") != 0) return NULL;
+	char buf[1024];
+	static const char* kExt[] = { ".X8", ".x8" };
+	for (int k = 0; k < 2; k++) {
+		memcpy(buf, name, len - 4); strcpy(buf + len - 4, kExt[k]);
+		FILE* f = fopen(buf, "rb");
+		if (f) {
+			static char s_logged[16][64]; static int s_n = 0; int seen = 0;
+			for (int i = 0; i < s_n; i++) if (!strncmp(s_logged[i], buf + (len > 60 ? len - 60 : 0), 63)) seen = 1;
+			if (!seen) {
+				if (s_n < 16) { strncpy(s_logged[s_n], buf + (len > 60 ? len - 60 : 0), 63); s_logged[s_n][63] = 0; s_n++; }
+				fprintf(stderr, "[fileman] dds->x8: '%s' -> '%s' (this engine reads IFF maps only)\n", name, buf);
+			}
+			return f;
+		}
+	}
+	return NULL;
+}
+#endif
+
 FILE*	fileman::easyopennumberedfile(FileNum	MyFile)
 {
 string	name=namenumberedfile(MyFile);
+#if defined(BOB_LINUX)
+		{ FILE* x8 = bob_open_dds_as_x8((const char*)name); if (x8) return x8; }
+#endif
 		FILE* rv=fopen(name,"rb");
 #if defined(BOB_LINUX)
 		if (!rv && !getenv("BOB_NO_MARKER_X")) rv = bob_open_marker_x((const char*)name);
