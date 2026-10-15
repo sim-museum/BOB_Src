@@ -19,6 +19,7 @@ add_library(bob_compat STATIC
     bob_dlgtemplate.cpp   # runtime .rc dialog-template parser (control positions)
     bob_music.cpp         # DirectMusic (game music path) -> FluidSynth
     bob_dplay.cpp         # R6.1: DirectPlay (CLSID_DirectPlay -> IDirectPlay4A) -> sockets
+    rowan_bdg.cpp         # bdg.txt reader (BDG patch switches; shared with MA)
     rowan_headtrack.cpp   # HEADTRACK-1: TrackIR/Delanclip via opentrack UDP (shared with MA)
     sgw_link.cpp          # EPIC-MATCHMAKER: the Serious Games Week matchmaker client (shared with MA)
     bob_eventsink.cpp     # S33: general OCX-event routing (ON_EVENT -> dialog handler via RTTI)

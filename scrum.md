@@ -13032,3 +13032,8 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   Env <P>HEADTRACK=0, <P>HEADTRACK_PORT, <P>HEADTRACK_SIGNS=y,p,r, <P>TRACE_HEADTRACK=1 (P = MA_ / BOB_).
 * Verified (~/bob-gates/headtrack, campaign flight): pose 20/-10/0 turns the cockpit view right and down;
   no pose = straight ahead. Same convention in ma and ff.
+* S3 (2026-10-15): bdg.txt reader (compat/rowan_bdg.cpp, identical in ma and bob: rowan_bdg_text/int/float; first
+  use of the BDG switches). PADLOCK_OVERRIDES_TRACKIR (default OFF, as BDG): with a tracker sending, DrawInPadlock
+  draws the inside view and the padlock only marks the target; ON = padlock turns the head. Roll only with
+  TRACKIR6DOF=ON (BDG used yaw/pitch alone otherwise).
+  BoB: built and inert without a tracker; the padlock branch is NOT yet run here (BoB has no forced-padlock hook).
