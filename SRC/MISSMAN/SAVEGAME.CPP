@@ -2653,8 +2653,8 @@ void SaveData::InitPreferences(int wh)
 		bis>>*this;
 #if BOB_LINUX
 		if (getenv("BOB_TRACE_PREFS"))
-			fprintf(stderr, "[prefs] parsed successfulLoad=%d  (0 => factory defaults are what the config screens show)\n",
-				(int)successfulLoad);
+			fprintf(stderr, "[prefs] parsed successfulLoad=%d hudinst=%d  (0 => factory defaults are what the config screens show)\n",
+				(int)successfulLoad, (int)(gamedifficulty[GD_HUDINSTACTIVE] ? 1 : 0));
 		if (getenv("BOB_TRACE_PREFS"))
 			fprintf(stderr, "[prefs] after load: padlock box / Aircraft names (DETAIL3D_PADLOCKCHEAT) = %d\n",
 				Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] ? 1 : 0);
@@ -2665,6 +2665,29 @@ void SaveData::InitPreferences(int wh)
 //DEADCODE MS 03/05/00 			HardwareConfigure(true,hWnd);
 		}
 //		ThreeDeeSound=false;
+#if BOB_LINUX
+		/* PO 2026-10-15: the threat indicator + ADI ('h', GD_HUDINSTACTIVE) ON by default for the host -- a guest
+		   takes the host's setting at the join (COMMS.CPP ProcessPrefsPacket, Rowan's rule, PO 10-14). The factory
+		   defaults (InitPreferences) already set it, but a saved settings.cfg with it off kept it off. Once per
+		   install a loaded file with it off gets the default; the marker (hud_default_v1 beside settings.cfg) is
+		   written by SavePreferences once that is on disk, so a host who then turns it off keeps it off.
+		   BOB_NO_HUD_DEFAULT=1 skips it. */
+		if (getenv("BOB_TEST_PREFS_HUDOFF"))   /* test hook: act as a settings.cfg saved with them off */
+			gamedifficulty %= GD_HUDINSTACTIVE;
+		if (!getenv("BOB_NO_HUD_DEFAULT")) {
+			extern char g_bob_hud_marker[];
+			snprintf(g_bob_hud_marker, 1024, "%s", File_Man.NameNumberedFile(sgfile));
+			char* sl = strrchr(g_bob_hud_marker, '/');
+			snprintf(sl ? sl + 1 : g_bob_hud_marker, 64, "hud_default_v1");
+			FILE* mk = fopen(g_bob_hud_marker, "r");
+			if (mk) { fclose(mk); g_bob_hud_marker[0] = 0; }
+			else if (!gamedifficulty[GD_HUDINSTACTIVE]) {
+				gamedifficulty |= GD_HUDINSTACTIVE;
+				fprintf(stderr, "[prefs] threat indicator + ADI were off in settings.cfg -- set to the default (on), "
+				                "once for this install\n");
+			}
+		}
+#endif
 	}
 //DEADCODE MS 03/05/00 	else
 //DEADCODE MS 03/05/00 		HardwareConfigure(true,hWnd);
@@ -2720,11 +2743,23 @@ void SaveData::InitPreferences(int wh)
 	//Don't put initialisation after this						//PD 11Feb99
 }	
 
+#if BOB_LINUX
+char g_bob_hud_marker[1024] = "";   /* PO 2026-10-15 HUD default: marker to write once saved */
+#endif
 void	SaveData::SavePreferences()
 {
 	FileNum	sgfile=File_Man.fakefile(FIL_SAVEGAMEDIR,"settings.cfg");
+	{
 	BOStream bos(File_Man.NameNumberedFile(sgfile));
 	bos<<Save_Data;
+	}
+#if BOB_LINUX
+	if (g_bob_hud_marker[0]) {   /* PO 2026-10-15 HUD default: the setting is now on disk */
+		FILE* mk = fopen(g_bob_hud_marker, "w");
+		if (mk) { fputs("threat indicator + ADI default applied once (PO 2026-10-15)\n", mk); fclose(mk); }
+		g_bob_hud_marker[0] = 0;
+	}
+#endif
 }
 /////////////////////////////////////////////////////////////////////////////////
 //

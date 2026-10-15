@@ -13011,3 +13011,13 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   scene changes (cloud), i.e. detector noise. The PO's ground-in-the-canopy flash did not recur in ~25 min of our
   flights. Item paused at 6 sprints: start strobes FIXED (SP + MP, shipped 261014c); the rare mid-flight flash needs
   per-frame full captures over a long flight to catch one.
+
+## MP2-HUD-2 (Opus 5.5, 2026-10-15) -- PO: "make on-screen enemy indicator and ADI default on the host, unless the host changes that"
+* The factory defaults (InitPreferences) already set GD_HUDINSTACTIVE; a saved settings.cfg with it off kept it off
+  (this PC's file: on; the PO's host on .14 evidently off, and the guest takes the host's word at the join).
+* Fix (SAVEGAME.CPP LoadPreferences): once per install, a loaded settings.cfg with it off gets it on; the marker
+  SAVEGAME/hud_default_v1 is written by SavePreferences once that is on disk, so a host who turns it off keeps it
+  off. BOB_NO_HUD_DEFAULT=1 skips; BOB_TEST_PREFS_HUDOFF=1 acts as a file saved with it off (test hook);
+  BOB_TRACE_PREFS now prints hudinst=.
+* Verified (~/bob-gates/slab1 hud3/hud4, campaign flight): file off -> "[prefs] threat indicator + ADI were off"
+  and the ADI drawn (region stdev 38); same with BOB_NO_HUD_DEFAULT=1 -> no ADI (stdev 0).
