@@ -13127,3 +13127,7 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   (-7251,0,17413) -- ~19 m/s if mm/s: several metres of miss at 300 m before the fix.
 * Round 3 S3: cloud randomness (4.4.2) NOT LOCATED in a short search -- the Math_Lib.rnd seeds near clouds in
   LANDSCAP.CPP are dead rain code; cloud placement code not identified. Low value; left.
+* Round 3 S4: BDG TIME DECELERATION (manual 2.2.4; Shift+F7 = command 330 in the PO's key map) -- DONE. STUB3D.CPP:
+  the key (not in MP, not while accelerated) toggles g_bob_decel; the move-cycle timer then skips every other cycle.
+  BOB_NO_BDG_DECEL=1 reverts; BOB_TRACE_DECEL=1. Verified (QM 0, Ctrl+A autopilot climb, Shift+F7 at 45 s,
+  ~/bob-gates/decel1): climb 33-34 m per 5 s before, 18 m per 5 s after -- half speed.

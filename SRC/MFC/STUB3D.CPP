@@ -2047,6 +2047,19 @@ void Mast3d::TimeProc(UINT uID, UINT uMsg, DWORD dw1, DWORD dw2 )
 		}	
 		else
 		{
+#if BOB_LINUX
+			/* PATCH-PORT-1, BDG 0.96 "Time deceleration" (manual 2.2.4; Shift+F7 = BDG command 330 in the PO's key
+			   map): while on, every other move cycle is skipped, so the world runs at half speed. BDG's own version
+			   showed the same jerky ground ("move normally, stop, catch up"). Off in multiplayer. Toggled in
+			   Inst3d's key handling (g_bob_decel). */
+			extern volatile int g_bob_decel;
+			if (g_bob_decel && (ticknum & 1))
+			{
+				if (currinst && currinst->viewedwin)
+					currinst->viewedwin->timeSinceLastMove += Timer_Code.FRAMETIME / 2;
+				continue;
+			}
+#endif
 			if (currinst && currinst->viewedwin)
 				currinst->viewedwin->timeSinceLastMove=0;
 			howcamehere=0xf00;
@@ -2252,6 +2265,16 @@ void	Inst3d::DoMoveCycle()
 					}
 				}
 			}
+#if BOB_LINUX
+			/* PATCH-PORT-1: BDG time deceleration toggle (Shift+F7 -> command 330). Not in multiplayer, not while
+			   accelerated. BOB_NO_BDG_DECEL=1 reverts; BOB_TRACE_DECEL=1 prints the toggle and move cycles per s. */
+			if (!getenv("BOB_NO_BDG_DECEL") && Key_Tests.KeyPress3d((KeyVal3D)(330*2)) && !_DPlay.Implemented && !Accel())
+			{
+				extern volatile int g_bob_decel;
+				g_bob_decel = !g_bob_decel;
+				if (getenv("BOB_TRACE_DECEL")) fprintf(stderr, "[decel] time deceleration %s\n", g_bob_decel ? "ON (half speed)" : "OFF");
+			}
+#endif
 			if (Key_Tests.KeyPress3d(RECORDTOGGLE))				//AMM 16Apr99
 			{													//AMM 16Apr99
 				_Replay.ToggleRecord();							//AMM 16Apr99
@@ -2711,3 +2734,7 @@ int COverlay::GetTime()
 {
 	return 0;	//Master_3d.currinst->timeofday;
 }
+
+#if BOB_LINUX
+volatile int g_bob_decel = 0;   /* PATCH-PORT-1: BDG time deceleration (half-speed world) */
+#endif
