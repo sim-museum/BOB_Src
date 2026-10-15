@@ -577,6 +577,12 @@ BOOL CMIGApp::InitInstance()
 			Save_Data.hardwareconfig |= HW_FLUFFYCLOUDS;
 			Save_Data.hardwareconfig |= HW_WEATHEREFFECTS;
 		}
+		/* MP2-HUD-1: BOB_HUD=1/0 forces the HUD instruments (threat indicator + ADI) on/off on the front-end path too,
+		   so a two-instance A/B can give host and guest different settings. */
+		if (const char* hud = getenv("BOB_HUD")) {
+			if (hud[0] == '0') Save_Data.gamedifficulty%=GD_HUDINSTACTIVE; else Save_Data.gamedifficulty|=GD_HUDINSTACTIVE;
+			fprintf(stderr,"[frontend] BOB_HUD=%s: HUD instruments %s\n", hud, hud[0] == '0' ? "off" : "on");
+		}
 		fprintf(stderr,"[frontend] device init (IntroSmackInit-equivalent): texQ=%d filtering=%d vol.sfx=%d\n",
 			(int)Save_Data.textureQuality,(int)Save_Data.filtering,(int)Save_Data.vol.sfx);
 	}
@@ -640,7 +646,10 @@ BOOL CMIGApp::InitInstance()
 		}
 		/* BOB_HUD: enable the in-flight HUD info bar (altitude/speed readout), normally toggled by
 		   the HUDTOGGLE key (GD_HUDINSTACTIVE, default off). Now safe to show since SetUnits() ran. */
-		if (getenv("BOB_HUD")) {
+		if (getenv("BOB_HUD") && atoi(getenv("BOB_HUD")) == 0 && getenv("BOB_HUD")[0] == '0') {
+			Save_Data.gamedifficulty%=GD_HUDINSTACTIVE;    /* MP2-HUD-1: BOB_HUD=0 forces it OFF (a host for the A/B) */
+			fprintf(stderr,"[boot] BOB_HUD=0: HUD instruments off\n");
+		} else if (getenv("BOB_HUD")) {
 			Save_Data.gamedifficulty|=GD_HUDINSTACTIVE;
 			fprintf(stderr,"[boot] BOB_HUD: HUD info bar (altitude/speed) enabled\n");
 		}

@@ -2475,6 +2475,13 @@ void	DPlay::ProcessPrefsPacket(char* pack)
 	bool	autopadlock;
 
 	autopadlock=Save_Data.gamedifficulty[GD_AUTOPADLOCKTOG];
+#if defined(BOB_LINUX)
+	/* MP2-HUD-1 (2026-10-14): the threat indicator and ADI ('h', GD_HUDINSTACTIVE) are a personal display choice like
+	   autopadlock, but the host's packet replaced the guest's whole gamedifficulty word -- so a guest took the host's
+	   setting at every join (BoB's default is off: no indicator, no ADI). Keep the guest's own. BOB_MP_HOST_HUDINST=1
+	   reverts. */
+	const bool myHudInst = Save_Data.gamedifficulty[GD_HUDINSTACTIVE];
+#endif
 
 	Save_Data.flightdifficulty	=	pUIPrefsData->flightdifficulty;
 	Save_Data.gamedifficulty	=	pUIPrefsData->gamedifficulty;
@@ -2501,6 +2508,12 @@ void	DPlay::ProcessPrefsPacket(char* pack)
 		Save_Data.gamedifficulty|=GD_AUTOPADLOCKTOG;
 	else
 		Save_Data.gamedifficulty%=GD_AUTOPADLOCKTOG;
+#if defined(BOB_LINUX)
+	if (!getenv("BOB_MP_HOST_HUDINST")) {
+		if (myHudInst) Save_Data.gamedifficulty|=GD_HUDINSTACTIVE;
+		else           Save_Data.gamedifficulty%=GD_HUDINSTACTIVE;
+	}
+#endif
 
 	if (pUIPrefsData->ACNames)
 		Save_Data.detail_3d|=DETAIL3D_PADLOCKCHEAT;

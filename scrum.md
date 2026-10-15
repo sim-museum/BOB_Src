@@ -12949,3 +12949,18 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   "1 Bob" and "2 Bob" (`rr2/b/p.0007.ppm`; before: `rr2/a`, one row on every present).
 * Not reproduced/not answered here: whether the PO's two PCs also differ in timing -- the fix covers any second
   fill inside the window, whatever its cause.
+
+## MP2-HUD-1 (Opus 5.5, 2026-10-14) -- PO 10-13: "the enemy position indicator (upper left) and the ADI (upper right) often disappeared, in both bob and ma"
+* PO video (guest = this PC): BoB -- neither overlay in either flight (top strips every 6 s, 24:00-29:00). MA -- both
+  present throughout; a per-frame edge detector flagged "scope missing" stretches, but every flagged PO frame I
+  opened shows the scope (faint over dark ground) -- detector misses, not drop-outs. The host's screen was not recorded.
+* Mechanism (both games, COMMS.CPP ProcessPrefsPacket): a guest takes the host's WHOLE gamedifficulty word at the
+  join, keeping only autopadlock. The threat indicator + ADI are one personal toggle, 'h' / GD_HUDINSTACTIVE
+  (OVERLAY.CPP DrawInfoBar), default OFF in BoB -- so a guest gets the host's setting, whatever it chose itself.
+* Fix: keep the guest's own GD_HUDINSTACTIVE, as Rowan kept autopadlock (`BOB_MP_HOST_HUDINST=1` reverts); same edit
+  in ma COMMS.CPP. `BOB_HUD=0|1` now also works on the front-end path (host and guest can differ in an A/B).
+* Verified (`~/bob-gates/hud/`): host BOB_HUD=0, guest BOB_HUD=1 -- fix3: the guest flies with the indicator and the
+  ADI; revert3: the guest has neither (the PO's BoB picture). (fix/revert and fix2/revert2 did not discriminate: the
+  BOB_HUD switch was on the QM boot path only, so both peers ran the saved setting.)
+* Not covered: a mid-flight drop-out. In flight only 'h' or Manual_Pilot.ControlledAC2==NULL hides them; BoB also has
+  in-flight message typing (Caps Lock = message lock) whose 'h' is a separate binding. Needs a PO sighting with a log.
