@@ -2079,6 +2079,20 @@ void ViewPoint::ControlViewSelect()
 	if (setDeath == DEATH_NULL && viewkeysallowed)
 	{
 		bool donereset=false;
+#if BOB_LINUX
+		/* PATCH-PORT-1, BDG Other Aircraft View: any other view key first gives the camera back to the player's
+		   aircraft, so no view lands in another aircraft's cockpit. */
+		extern MobileItemPtr g_bdgOtherAC;
+		if (g_bdgOtherAC)
+			for (decltype(ptr) q = viewee_list; q->viewcode; q++)
+				if (Key_Tests.KeyHeld3d(q->keynum))
+				{
+					currentvehicle = Persons2::PlayerSeenAC;
+					g_bdgOtherAC = NULL;
+					if (getenv("BOB_TRACE_OTHERAC")) fprintf(stderr, "[otherac] view key: camera back on the player\n");
+					break;
+				}
+#endif
 
 		for(ptr = viewee_list;	ptr->viewcode; 	ptr++)
 		{
@@ -2153,6 +2167,42 @@ void ViewPoint::ControlViewSelect()
 					InitFlyingView();
 				nextentry = FALSE;
 			}
+		}
+		/* PATCH-PORT-1, BDG "Other Aircraft View" (manual 2.2.8; Ctrl+I = BDG command 281 in the PO's key map):
+		   cycles an outside track view through the AI aircraft within 10 km of the player, the padlocked one first.
+		   The camera's currentvehicle is re-pointed (InitTrack follows it, as SetToMapItem does); the player keeps
+		   flying their own aircraft. BOB_NO_BDG_OTHERAC=1 reverts; BOB_TRACE_OTHERAC=1. */
+		if (!getenv("BOB_NO_BDG_OTHERAC") && Key_Tests.KeyPress3d((KeyVal3D)(281*2)) && Persons2::PlayerSeenAC)
+		{
+			MobileItemPtr me = (MobileItemPtr)Persons2::PlayerSeenAC;
+			MobileItemPtr pick = NULL, first = NULL;
+			bool passed = (g_bdgOtherAC == NULL);
+			if (!g_bdgOtherAC && trackeditem2 && trackeditem2 != (itemptr)me
+			    && trackeditem2->Status.size >= AIRSTRUCSIZE && GuyIsAlive((MobileItemPtr)trackeditem2))
+				pick = (MobileItemPtr)trackeditem2;
+			for (MobileItemPtr e = ACList; e && !pick; e = e->nextmobile)
+			{
+				if (e == me || !GuyIsAlive(e) || e->movecode == AUTO_NOPPILOT) continue;
+				const double dx = double(e->World.X) - me->World.X, dz = double(e->World.Z) - me->World.Z;
+				const double dy = double(e->World.Y) - me->World.Y;
+				if (dx * dx + dy * dy + dz * dz > 1e6 * 1e6) continue;   /* 10 km in cm */
+				if (!first) first = e;
+				if (passed) pick = e;
+				else if (e == g_bdgOtherAC) passed = true;
+			}
+			if (!pick) pick = first;   /* wrap */
+			if (pick)
+			{
+				g_bdgOtherAC = pick;
+				currentvehicle = (itemptr)pick;
+				InitTrack();
+				viewnum.viewmode = VM_Track;
+				viewnum.viewtarg = VT_Unlocked;
+				nextentry = FALSE;
+			}
+			if (getenv("BOB_TRACE_OTHERAC"))
+				fprintf(stderr, "[otherac] Ctrl+I: %s (uid %d)\n", pick ? "camera on another aircraft" : "no aircraft within 10 km",
+				        pick ? (int)pick->uniqueID.count : -1);
 		}
 #endif
 	}
@@ -6597,6 +6647,9 @@ void ViewPoint::AddViewRec()
 //Returns	
 //
 //------------------------------------------------------------------------------
+#if BOB_LINUX
+MobileItemPtr g_bdgOtherAC = NULL;   /* PATCH-PORT-1: BDG Other Aircraft View target, NULL = the player */
+#endif
 void ViewPoint::AddViewRecInside()
 {
 	ANGLES	ac_pitch,ac_hdg,ac_roll;

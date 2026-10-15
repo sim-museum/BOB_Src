@@ -13131,3 +13131,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   the key (not in MP, not while accelerated) toggles g_bob_decel; the move-cycle timer then skips every other cycle.
   BOB_NO_BDG_DECEL=1 reverts; BOB_TRACE_DECEL=1. Verified (QM 0, Ctrl+A autopilot climb, Shift+F7 at 45 s,
   ~/bob-gates/decel1): climb 33-34 m per 5 s before, 18 m per 5 s after -- half speed.
+* Round 3 S5: BDG OTHER AIRCRAFT VIEW (manual 2.2.8; Ctrl+I = command 281 in the PO's key map) -- DONE. VIEWSEL.CPP:
+  cycles an outside track view through the AI aircraft within 10 km (padlocked one first, then list order, wrap),
+  by re-pointing the camera's currentvehicle and InitTrack (the player keeps flying their own aircraft); any other
+  view key first gives the camera back to the player. BOB_NO_BDG_OTHERAC=1 reverts; BOB_TRACE_OTHERAC=1.
+  Verified (QM 20, Ctrl+I at 5/9 s, F1 at 13 s, ~/bob-gates/otherac1): uid 4930 then 4929, then "camera back on the
+  player"; frames: cockpit -> track view of other Spitfires (subject changes at the second press) -> F1's view.
