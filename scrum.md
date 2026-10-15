@@ -13125,3 +13125,5 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   drifted from the gun line by the full wind. The extra term is dropped (BOB_NO_BDG_WINDBULLET=1 reverts;
   BOB_TRACE_WINDBULLET=1). Verified (QM 7 Free Flight, Space fired, ~/bob-gates/wind1): the dropped wind was
   (-7251,0,17413) -- ~19 m/s if mm/s: several metres of miss at 300 m before the fix.
+* Round 3 S3: cloud randomness (4.4.2) NOT LOCATED in a short search -- the Math_Lib.rnd seeds near clouds in
+  LANDSCAP.CPP are dead rain code; cloud placement code not identified. Low value; left.
