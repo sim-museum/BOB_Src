@@ -2866,7 +2866,28 @@ void Model::MovePilotEye ()
 //DeadCode RJS 30Aug00 		_Miles.PlayBuffet(SLong(64.0 * TotalBuffet));//RJS 29Jan99
 	}
 
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG "Flap buffet fix" (manual 4.4.9): "the flap buffet sound was being played when on the ground
+	   with the flaps down". RJS 30Aug00 moved the sound out of the !GearTouched gate the eye shake above keeps; the
+	   flap device (AERODEV.CPP) sets TotalBuffet = 2 above its buffet speed, so a take-off roll with flaps down
+	   buffeted audibly. Silent while the wheels touch. BOB_NO_BDG_FLAPBUFFET=1 reverts; BOB_TRACE_BUFFET=1 counts
+	   ground buffets. */
+	{
+		static const bool bdgFlap = !getenv("BOB_NO_BDG_FLAPBUFFET");
+		SLong bvol = SLong(64.0 * TotalBuffet);
+		if (GearTouched && bvol && getenv("BOB_TRACE_BUFFET")) {
+			static int n = 0;
+			if ((n++ % 50) == 0)
+				fprintf(stderr, "[buffet] on the ground: TotalBuffet=%.2f vol=%d -> %s (n=%d)\n", (double)TotalBuffet,
+				        (int)bvol, bdgFlap ? "silenced" : "played", n);
+		}
+		if (bdgFlap && GearTouched)
+			bvol = 0;
+		_Miles.PlayBuffet(bvol);
+	}
+#else
 	_Miles.PlayBuffet(SLong(64.0 * TotalBuffet));						//RJS 30Aug00
+#endif
 
 	fastMath.FloatToInt(&EyePos.delta.X,DeltaEye.x);		//RJS 27Mar00
 	fastMath.FloatToInt(&EyePos.delta.Y,DeltaEye.y);		//RJS 27Mar00

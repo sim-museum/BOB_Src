@@ -13055,3 +13055,14 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   is guarded (GetWind returns 0 and callers test it: 3DCOM WindsockItemAnim, AUTOMOVE wind correction `if(!WindVel)`);
   the (wy<<16)/wx divisions in PARTICLE.CPP/SMKTRLS.CPP are inside a commented-out body. Verdict: not in this source,
   or already guarded; reopen only on a zero-wind CTD.
+* S5 Panning bug (manual 4.4.7): NOT FOUND in the key paths -- HandleRotate steps +-viewanglestep and the QV_Pan
+  snaps are symmetric; the asymmetry BDG fixed must be in the hat or mouse pan (ANALOGUE). Left for the next pass.
+* S6 Flap buffet on the ground (manual 4.4.9): FIXED. MODEL.CPP: RJS 30Aug00 moved _Miles.PlayBuffet out of the
+  !GearTouched gate that the eye shake keeps. Now silent while the wheels touch (BOB_NO_BDG_FLAPBUFFET=1 reverts;
+  BOB_TRACE_BUFFET=1). Verified: QM 0 "Take-off", full throttle, flaps down (V x4): revert -> 2601 ground frames
+  with buffet vol 42-43 played; fix -> the same frames silenced. (Level ~0.67 suggests the alpha buffet of a
+  nose-high taildragger contributes as well as the flaps.)
+* Item paused at 6 sprints. Open: BoB panning (hat/mouse), fuelcock evidence, Pampa (not located), gun/cannon
+  sounds (4.4.8), winds aloft (4.4.10), ground/radio turn (4.4.11), Stuka grunt (4.4.13), keyboard rudder (4.4.3),
+  cloud randomness (4.4.2); MA bingo RTB (needs a ground-attack scenario), waypoint-detail button, NO_FRIENDLY_
+  COLLISIONS, labels (Shift+T); then the bdg.txt feature switches.
