@@ -12967,3 +12967,17 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 
 * **2026-10-14 PO decision: REVERTED.** "guest should follow host re: on-screen Enemy indicator and ADI" -- ProcessPrefsPacket
   is back to Rowan's behaviour (the guest takes the host's GD_HUDINSTACTIVE). BOB_HUD=0|1 on the front-end path stays (test tool).
+
+## BOB-GLITCH-1 (Opus 5.5, 2026-10-14) -- PO: "flickering, flashes of polygons, especially when starting a bob 3D session"
+* PO video 261013 (transient-frame scan at 60 fps, frames unlike BOTH neighbours): 3-D start 1 (24:06): 1.5 s of
+  strobing -- black frames alternating with the cockpit drawn at ~half size in the lower-left corner over flat sky;
+  3-D start 2 (25:57): one such frame. Separately, one mid-flight frame at 1500.17 s shows a different view
+  (ground/cloud on the left) between two normal frames -- not yet explained.
+* Cause of the start strobe (`BOB_TRACE_PRESENT=1`, new `[present] site=...` lines for 120 presents after a mode
+  change): the first 12 3-D presents after the map(1920x1080)->3-D(1024x768) switch are rendered with the PREVIOUS
+  mode's viewport (1920x1080 into a 1024x768 drawable; the first 3 pure black), and each was swapped to the screen.
+  The PO's direction was the reverse (a 1024x768 viewport inside a 1920x1080 surface = the small corner cockpit).
+* Fix (bob_video.cpp, 3-D present): for the first 60 presents after a mode change, a frame whose viewport differs
+  from the drawable, or whose centre pixel is pure black, is NOT presented -- the screen keeps its last image.
+  `BOB_PRESENT_ALL=1` reverts. Verified (`~/bob-gates/slab1/gl2`): 12 frames held, every presented 3-D frame
+  1024x768 = drawable, flight normal to frame 8700.

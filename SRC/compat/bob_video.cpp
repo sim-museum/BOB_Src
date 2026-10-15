@@ -123,6 +123,8 @@ long g_bobZeroSceneFrames = 0;   /* presents with no scene drawn since the last 
 long g_bobSceneHist[10] = {0,0,0,0,0,0,0,0,0,0};
 extern "C" void bob_save_preferences(void);   /* BOB-PADBOX-1: fullpane.cpp, saves settings.cfg on exit */
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
+static int g_presentTraceLeft = 0;   /* BOB-GLITCH-1: presents left to trace after a mode change */
+static int g_presentGuardLeft = 0;   /* BOB-GLITCH-1: presents still guarded after a mode change */
 extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
 extern void* g_bobGdiPresentCaller;     /* GOLDVID-BOB-3 S4: caller of the 2D presenter */
 /* MP2-BOB-2 S2: BOB_TABLEFOG_AB=1 (with BOB_SHOT3D_EVERY) draws the frame after each shot WITHOUT table fog and
@@ -336,6 +338,8 @@ static void ensure_window(int w, int h)
 		if (g_scrW == lastW && g_scrH == lastH) return;   /* skip redundant resizes */
 		lastW = g_scrW; lastH = g_scrH;
 		bob_ui_extent_invalidate();   /* the old extent describes the old mode -- do not reuse it */
+		if (getenv("BOB_TRACE_PRESENT")) g_presentTraceLeft = 120;   /* BOB-GLITCH-1 */
+		g_presentGuardLeft = 60;
 		SDL_SetWindowSize(g_win, g_scrW, g_scrH);
 		SDL_DisplayMode dm;
 		/* MAPCLIP-1 (PO 2026-09-19, two screenshots, RAF and Luftwaffe Channel campaigns): "game
@@ -1704,6 +1708,10 @@ unsigned g_bob_frames = 0;
 
 static void bob_frame_tick(int site)
 {
+	if (g_presentTraceLeft > 0 && g_win) { g_presentTraceLeft--;
+		int dw = 0, dh = 0; SDL_GL_GetDrawableSize(g_win, &dw, &dh); GLint vp[4] = {0,0,0,0}; glGetIntegerv(GL_VIEWPORT, vp);
+		fprintf(stderr, "[present] site=%d mode=%dx%d drawable=%dx%d viewport=%d,%d %dx%d fullscreen=%d\n", site, g_scrW, g_scrH,
+		        dw, dh, vp[0], vp[1], vp[2], vp[3], (SDL_GetWindowFlags(g_win) & SDL_WINDOW_FULLSCREEN_DESKTOP) == SDL_WINDOW_FULLSCREEN_DESKTOP ? 1 : 0); }
     g_bob_frames++;
     bob_present_pace();   /* runs at every swap site, before the tracing gate */
     static int on = -1;
@@ -1845,6 +1853,24 @@ static void present_surface(GLSurface7* s)
 	/* 3D frame: the scene is already in the GL framebuffer; just swap it (don't upload
 	   the back buffer's untouched system-memory bits over the top). */
 	if (g_curRT && load_fbo_funcs()) { p_glBindFramebuffer(GL_FRAMEBUFFER, 0); glViewport(0,0,g_scrW,g_scrH); g_curRT=NULL; } /* safety: never present with an FBO bound */
+	/* BOB-GLITCH-1 (PO 10-13 video, both 3-D starts): for ~1.5 s the screen strobed between black and the cockpit
+	   drawn small in a corner. After a mode change the game renders its first frames with the PREVIOUS mode's
+	   viewport (measured: 12 presents with viewport 1920x1080 into a 1024x768 drawable) and the first 3 are pure
+	   black -- each was swapped to the screen. For the first 60 presents after a mode change, a frame whose viewport
+	   does not match the drawable, or whose centre is pure black, is not presented: the screen keeps its last image
+	   until a frame of the right size exists. BOB_PRESENT_ALL=1 reverts. */
+	if (g_devRendered && g_win && g_presentGuardLeft > 0) { g_presentGuardLeft--;
+		static int all = -1; if (all < 0) all = getenv("BOB_PRESENT_ALL") ? 1 : 0;
+		int dw = 0, dh = 0; SDL_GL_GetDrawableSize(g_win, &dw, &dh); GLint vp[4] = {0,0,0,0}; glGetIntegerv(GL_VIEWPORT, vp);
+		unsigned char c[3] = {0,0,0}; glReadPixels(dw / 2, dh / 2, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, c);
+		const int bad = (vp[2] != dw || vp[3] != dh) ? 1 : (c[0] == 0 && c[1] == 0 && c[2] == 0) ? 2 : 0;
+		if (bad && !all) {
+			g_devRendered = 0;
+			if (getenv("BOB_TRACE_PRESENT")) fprintf(stderr, "[present] held: %s (viewport %dx%d, drawable %dx%d)\n",
+				bad == 1 ? "viewport from the previous mode" : "black frame", (int)vp[2], (int)vp[3], dw, dh);
+			return;
+		}
+	}
 	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(1); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(2); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
