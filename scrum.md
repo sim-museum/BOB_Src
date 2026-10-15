@@ -13021,3 +13021,14 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   BOB_TRACE_PREFS now prints hudinst=.
 * Verified (~/bob-gates/slab1 hud3/hud4, campaign flight): file off -> "[prefs] threat indicator + ADI were off"
   and the ADI drawn (region stdev 38); same with BOB_NO_HUD_DEFAULT=1 -> no ADI (stdev 0).
+
+## HEADTRACK-1 (2026-10-15) -- TrackIR / Delanclip head tracking via opentrack (PO: "consider how TrackIR was patched into ma and bob")
+* BDG design followed (BDG MA 0.85F readme; BDG BoB 0.99 manual 2.1.2.20-21): the tracker's absolute angles turn the
+  head in the inside views (pilot and, in BoB, gunner), and the keyboard/mouse/hat views come back when poses stop.
+  Deviation: on whenever opentrack is sending (the PO's bdg.txt has TRACKIR=OFF only because no tracker was
+  attached). Not yet: PADLOCK_OVERRIDES_TRACKIR, TRACKIR6DOF (z -> FOV, MA) -- they need a bdg.txt reader (item 39).
+* compat/rowan_headtrack.cpp (identical in ma and bob): opentrack "UDP over network" on 127.0.0.1:4242, six
+  doubles; pose stale after 500 ms. Hook: ViewPoint::AddViewRecInside adds the head angles (65536 = 360 deg).
+  Env <P>HEADTRACK=0, <P>HEADTRACK_PORT, <P>HEADTRACK_SIGNS=y,p,r, <P>TRACE_HEADTRACK=1 (P = MA_ / BOB_).
+* Verified (~/bob-gates/headtrack, campaign flight): pose 20/-10/0 turns the cockpit view right and down;
+  no pose = straight ahead. Same convention in ma and ff.
