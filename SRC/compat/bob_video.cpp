@@ -125,7 +125,9 @@ extern "C" void bob_save_preferences(void);   /* BOB-PADBOX-1: fullpane.cpp, sav
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 static int g_presentTraceLeft = 0;   /* BOB-GLITCH-1: presents left to trace after a mode change */
 static int g_presentGuardLeft = 0;   /* BOB-GLITCH-1: presents still guarded after a mode change */
+static Uint32 g_presentGuardUntil = 0;   /* ...until this SDL tick (3 s after the change) */
 extern long g_bobLandSincePresent;
+extern long g_bobDrawsSincePresent; static long g_bobLastFrameDraws = 0;   /* BOB-GLITCH-1 S4 */
 /* BOB-GLITCH-1 S2: one-frame flash detector (BOB_TRACE_FLASH=1) -- see bob_flash_probe */
 static void bob_flash_probe(void);
 extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
@@ -342,7 +344,7 @@ static void ensure_window(int w, int h)
 		lastW = g_scrW; lastH = g_scrH;
 		bob_ui_extent_invalidate();   /* the old extent describes the old mode -- do not reuse it */
 		if (getenv("BOB_TRACE_PRESENT")) g_presentTraceLeft = 120;   /* BOB-GLITCH-1 */
-		g_presentGuardLeft = 60;
+		g_presentGuardLeft = 1; g_presentGuardUntil = 0;   /* armed: the 3 s start at the first 3-D present (MP waits to sync first) */
 		SDL_SetWindowSize(g_win, g_scrW, g_scrH);
 		SDL_DisplayMode dm;
 		/* MAPCLIP-1 (PO 2026-09-19, two screenshots, RAF and Luftwaffe Channel campaigns): "game
@@ -1862,7 +1864,10 @@ static void present_surface(GLSurface7* s)
 	   black -- each was swapped to the screen. For the first 60 presents after a mode change, a frame whose viewport
 	   does not match the drawable, or whose centre is pure black, is not presented: the screen keeps its last image
 	   until a frame of the right size exists. BOB_PRESENT_ALL=1 reverts. */
-	if (g_devRendered && g_win && g_presentGuardLeft > 0) { g_presentGuardLeft--;
+	if (g_devRendered) { g_bobLastFrameDraws = g_bobDrawsSincePresent; g_bobDrawsSincePresent = 0; }
+	if (g_presentGuardLeft > 0 && g_devRendered && g_presentGuardUntil == 0) g_presentGuardUntil = SDL_GetTicks() + 3000;
+	if (g_presentGuardLeft > 0 && g_presentGuardUntil != 0 && SDL_GetTicks() > g_presentGuardUntil) g_presentGuardLeft = 0;
+	if (g_devRendered && g_win && g_presentGuardLeft > 0) {
 		static int all = -1; if (all < 0) all = getenv("BOB_PRESENT_ALL") ? 1 : 0;
 		int dw = 0, dh = 0; SDL_GL_GetDrawableSize(g_win, &dw, &dh); GLint vp[4] = {0,0,0,0}; glGetIntegerv(GL_VIEWPORT, vp);
 		unsigned char c[3] = {0,0,0};
@@ -1875,16 +1880,19 @@ static void present_surface(GLSurface7* s)
 		/* (noWorld -- no LandScape::RenderLandscape since the last present -- was tried as a fourth test for the
 		   multiplayer start strobe and held EVERY frame: RenderLandscape is not called per frame. Not used.) */
 		(void)noWorld;
-		const int bad = (vp[2] != dw || vp[3] != dh) ? 1 : 0;
+		/* S4: the multiplayer start presents ~60 frames that draw ONLY the cockpit (17 primitive draws, measured; a
+		   world frame draws 365-518) over whatever the two buffers last held -- the Ready Room in one, sky in the
+		   other: a strobe. Inside the guard window, hold a frame with fewer than 40 draws. */
+		const int bad = (vp[2] != dw || vp[3] != dh) ? 1 : (g_bobLastFrameDraws < 40) ? 3 : 0;
 		if (bad && !all) {
 			g_devRendered = 0;
 			if (getenv("BOB_TRACE_PRESENT")) fprintf(stderr, "[present] held: %s (viewport %dx%d, drawable %dx%d)\n",
-				bad == 1 ? "viewport from the previous mode" : bad == 2 ? "black frame" : "no landscape drawn", (int)vp[2], (int)vp[3], dw, dh);
+				bad == 1 ? "viewport from the previous mode" : "cockpit only (no world drawn)", (int)vp[2], (int)vp[3], dw, dh);
 			g_bobLandSincePresent = 0;
 			return;
 		}
 	}
-	if (g_devRendered) g_bobLandSincePresent = 0;
+	if (g_devRendered) { g_bobLandSincePresent = 0; }
 	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_flash_probe(); bob_shot3d_maybe(); bob_frame_tick(1); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(2); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
@@ -3137,6 +3145,7 @@ extern "C" const void* bob_imagemap_ptr_of(long);      /* SIGHT-1 S2: ImageMapNu
 static long g_rttDraws = 0;
 long g_bobLandFrames = 0;   /* BOB-GLITCH-1 S3: LandScape::RenderLandscape calls */
 long g_bobLandSincePresent = 0;   /* ...since the last 3-D present (the guard) */
+long g_bobDrawsSincePresent = 0;  /* BOB-GLITCH-1 S4: primitive draws since the last 3-D present */
 static long g_rtSwitches = 0;   /* BOB-GLITCH-1 S2: SetRenderTarget calls since the last 3-D present */
 static long g_rttDrawsPhase[3] = {0,0,0};   /* R3.4: [0] other, [1] mirror landscape, [2] mirror objects */
 /* BOB-GLITCH-1 S2 (2026-10-14): the PO's video shows rare single frames where the LEFT canopy area holds ground and
@@ -3158,6 +3167,7 @@ static void bob_flash_probe(void)
 	if (++n < 3) return;
 	static long sw[3]; sw[0] = sw[1]; sw[1] = sw[2]; sw[2] = g_rtSwitches; g_rtSwitches = 0;
 	static long lf[3]; lf[0] = lf[1]; lf[1] = lf[2]; lf[2] = g_bobLandFrames; g_bobLandFrames = 0;
+	static long dr[3]; dr[0] = dr[1]; dr[1] = dr[2]; dr[2] = g_bobLastFrameDraws;
 	static GLint vpH[3][4]; for (int k = 0; k < 2; k++) for (int j = 0; j < 4; j++) vpH[k][j] = vpH[k + 1][j];
 	glGetIntegerv(GL_VIEWPORT, vpH[2]);
 	float d01 = 0, d12 = 0, d02 = 0;
@@ -3168,6 +3178,7 @@ static void bob_flash_probe(void)
 		        hist[1][0], hist[1][1], hist[1][2], hist[0][0], hist[0][1], hist[0][2], hist[2][0], hist[2][1], hist[2][2],
 		        rtt[1][0], rtt[1][1], rtt[1][2], rtt[0][0], rtt[0][1], rtt[0][2]),
 		fprintf(stderr, "[flash]   landscape renders this frame %ld (neighbours %ld/%ld)\n", lf[1], lf[0], lf[2]),
+		fprintf(stderr, "[flash]   primitive draws this frame %ld (neighbours %ld/%ld)\n", dr[1], dr[0], dr[2]),
 		fprintf(stderr, "[flash]   render-target switches %ld (neighbours %ld/%ld), viewport at present %d,%d %dx%d (neighbours %dx%d / %dx%d)\n",
 		        sw[1], sw[0], sw[2], vpH[1][0], vpH[1][1], vpH[1][2], vpH[1][3], vpH[0][2], vpH[0][3], vpH[2][2], vpH[2][3]);
 }
@@ -3584,6 +3595,7 @@ static void bob_tablefog_end(void) {
 	bob_tablefog_on = 0;
 }
 static void draw_fvf(D3DPRIMITIVETYPE prim, const unsigned char* base, DWORD count, DWORD fvf) {
+	{ extern long g_bobDrawsSincePresent; g_bobDrawsSincePresent++; }
 	if (g_curRT) { g_rttDraws++;
 		int ph = g_bob_mirror_phase; if (ph < 0 || ph > 2) ph = 0;
 		g_rttDrawsPhase[ph]++; }   /* R3.4: which half of the mirror pass drew it */
@@ -4435,6 +4447,7 @@ static HRESULT DEV_DrawPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, LPD
 	return D3D_OK;
 }
 static HRESULT DEV_DrawIndexedPrimitiveVB(IDirect3DDevice7*, D3DPRIMITIVETYPE prim, LPDIRECT3DVERTEXBUFFER7 vb, DWORD start, DWORD numv, LPWORD idx, DWORD idxcount, DWORD) {
+	{ extern long g_bobDrawsSincePresent; g_bobDrawsSincePresent++; }
 	GLVB7* v=(GLVB7*)vb; if(!v||!v->data||!idx) return D3D_OK;
 	FvfLayout L=fvf_layout(v->d.dwFVF);
 	/* draw via indices: build is overkill for now; draw the indexed verts directly */

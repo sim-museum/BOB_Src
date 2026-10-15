@@ -12999,3 +12999,10 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   - Mid-flight: one clean record (flash1 frame 1287): 70 render-to-texture draws in the flash frame, none in either
     neighbour -- an off-screen pass ran that frame and the frame came out wrong. Next: which RTT, and what state it
     leaves behind (viewport is restored; check scissor, matrices, depth range).
+* **S4-S5 -- FIXED: the multiplayer start strobe.** Per-frame draw count (`[flash] primitive draws this frame`):
+  the ~60 alternating MP start frames draw ONLY the cockpit -- 17 primitive draws each -- while world frames draw
+  365-518 (flash7). The start guard now also holds a 3-D frame with fewer than 40 draws, for 3 s counted from the
+  FIRST 3-D present after a mode change (a frame-count window failed: held frames skip vsync, so 300 frames passed
+  in a blink; a timer started at the mode change failed too: MP waits seconds to sync before the first 3-D frame).
+  Verified: MP (flash10) 5409 cockpit-only frames held, ZERO flash frames all flight; SP (gl7) only the 12
+  stale-viewport frames held, flight normal. `BOB_PRESENT_ALL=1` reverts all of it.
