@@ -591,6 +591,10 @@ void	ManualPilot::MainManualPilot()
 
 ///////////////////////////////////////////
 //tmp fix should not be running acm on player ac in final version//RDH 20Aug96
+#if BOB_LINUX
+		if (getenv("BOB_TRACE_KEYRUDDER")) { static int n = 0; if ((n++ % 200) == 0)
+			fprintf(stderr, "[keyrudder] controlmode=%d (MANUAL=%d) frame %d\n", (int)controlmode, (int)MANUAL, n); }
+#endif
 		if(controlmode == MANUAL)
 		{
 			if((Persons2::PlayerGhostAC->timeofday & 0x07ff == 0) && (Persons2::PlayerGhostAC->slowdownleader))

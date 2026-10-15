@@ -13090,3 +13090,11 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   Test: QM 0 + Insert held 3 s at 10 s and at 50 s of process time -> no [keyrudder] line in either arm: injected
   keys did not reach KeyHeld3d(RUDDER_LEFT) in this harness (a stick is attached here; unexplored). Next: confirm
   the 3-D is up when the key lands, and whether the joystick path pre-empts GetStickKeys.
+* Round 2 S2: FIX_KEYBOARD_RUDDER VERIFIED. The earlier "keys never arrive" was my test: Rowan's key name "insert"
+  is Raw_insert = DIK_NUMPAD0 (keypad 0/Ins), not the Insert key (which the installed map binds to aileron trim).
+  QM 0, keypad 0 held 3 s: ON -> rudder at 32767; OFF -> 24575 (75%, keysensitivity 3). FLYMODEL.CPP gained a
+  [keyrudder] controlmode trace (BOB_TRACE_KEYRUDDER).
+* Key-map scare checked and CLEARED: ~/bob-gates/keymap/compare.py decodes the installed (BDG) keyb3d.bin and
+  keys.xml by name under this source's KEYMAPS.H numbering -- all 147 commands this source knows agree; no
+  renumbering. The 64 names this source lacks are BDG-only commands (FOV_SMALL/MEDIUM/JIB, TOGGLE_DECEL, WinAmp...):
+  item 39 feature work, and the list of keys BDG added.
