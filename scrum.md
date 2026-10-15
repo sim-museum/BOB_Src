@@ -13066,3 +13066,10 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   sounds (4.4.8), winds aloft (4.4.10), ground/radio turn (4.4.11), Stuka grunt (4.4.13), keyboard rudder (4.4.3),
   cloud randomness (4.4.2); MA bingo RTB (needs a ground-attack scenario), waypoint-detail button, NO_FRIENDLY_
   COLLISIONS, labels (Shift+T); then the bdg.txt feature switches.
+
+## BoB co-op death-moment origin sample (2026-10-15) -- PARKED after a desk check
+* Retro: one sample in one campaign run (host death at 459 s, guest's [mppos] read the host at the world origin,
+  then agreed again); six QM co-op deaths clean. Comms code has no path that zeroes a remote World on a death.
+* Likeliest: an instrument artefact -- [mppos] resolves the slot's uid each second, and at a death that uid can
+  name the respawn item before it is first positioned. Nothing on screen evidences it (a one-frame vanish inside the
+  explosion at most). Reopen only with a frame capture showing it.
