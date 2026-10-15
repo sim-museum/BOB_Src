@@ -97,6 +97,9 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 #include	"myangles.h"
 #include	"enumbits.m"
 #include	"mytime.h"											//RDH 25Apr96
+#if BOB_LINUX
+#include	"keytest.h"	/* PATCH-PORT-1: BDG autopilot key */
+#endif
 //MATHABLE	(ANGLES)
 #include	"mymath.h"
 #include	"vertex.h"
@@ -268,6 +271,26 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	   YOUR aircraft at normal speed and the Tacview export records it at its full rate -- the gold standard for
 	   replaylab. (In the game the only hand-over is accelerated time, which records at a fraction of the rate.)
 	   Also traces the player's movecode every 10 s, which names the AI routine flying it. Default off. */
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG "Autopilot" (manual 2.2.7, Ctrl+A = BDG command 286 in the PO's key map): hands the player's
+	   aircraft to the game's AI and back, with the game's own AutoToggle(TOGGLE) -- the hand-over accelerated time
+	   uses. (BDG also forced an outside view to dodge problems of its own; not copied.) BOB_NO_BDG_AUTOPILOT=1
+	   reverts; BOB_TRACE_AUTOPILOT=1 prints the toggle and the altitude every 5 s after it. */
+	if (entry == Persons2::PlayerSeenAC && !getenv("BOB_NO_BDG_AUTOPILOT")) {
+		static time_t apAt = 0, apTrace = 0;
+		if (Key_Tests.KeyPress3d((KeyVal3D)(286*2))) {
+			Manual_Pilot.AutoToggle(ManualPilot::TOGGLE);
+			apAt = time(0);
+			if (getenv("BOB_TRACE_AUTOPILOT"))
+				fprintf(stderr, "[autopilot] Ctrl+A: AutoToggle(TOGGLE), movecode now %d\n", (int)entry->movecode);
+		}
+		if (apAt && getenv("BOB_TRACE_AUTOPILOT") && time(0) - apTrace >= 5) {
+			apTrace = time(0);
+			fprintf(stderr, "[autopilot] +%lds movecode=%d alt=%.0f m vel=%d\n", (long)(apTrace - apAt),
+			        (int)entry->movecode, entry->World.Y / 100.0, (int)entry->vel_);
+		}
+	}
+#endif
 	if (getenv("BOB_AI_PILOT") && entry == Persons2::PlayerSeenAC) {
 		static time_t t0 = 0, lastTrace = 0;
 		static int handed = 0;

@@ -13107,3 +13107,8 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   Shift+F9; Shift+F11 alone -> whole-cockpit 80-degree view; revert run holds Rowan's 45 throughout.
   Other BDG commands with free numbers in the PO's map, same recipe: TOGGLE_DECEL 330 (Shift+F7), PCENEMY 272 (S),
   AUTOPILOTTOGGLE 286 (Ctrl+A), OTHERACVIEW 281 (Ctrl+I), RCAM* 282-285 (Alt+V/B/G/F), DISPLAY_FPS 333 (Shift+F).
+* Round 2 S4: BDG AUTOPILOT (manual 2.2.7, Ctrl+A = BDG command 286 in the PO's key map) -- DONE. MOVEALL.CPP: the
+  key calls the game's own Manual_Pilot.AutoToggle(TOGGLE) (BDG's forced outside view not copied).
+  BOB_NO_BDG_AUTOPILOT=1 reverts; BOB_TRACE_AUTOPILOT=1. Verified (QM 0 Take-off, ~/bob-gates/ap1-2): Ctrl+A on the
+  runway -> AI takes off and climbs to 305 m, levels; a second Ctrl+A at 50 s -> controlmode back to MANUAL (the
+  unflown aircraft then dives in -> PILOTDEAD, as expected with no stick input).
