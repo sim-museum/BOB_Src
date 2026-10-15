@@ -13112,3 +13112,10 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   BOB_NO_BDG_AUTOPILOT=1 reverts; BOB_TRACE_AUTOPILOT=1. Verified (QM 0 Take-off, ~/bob-gates/ap1-2): Ctrl+A on the
   runway -> AI takes off and climbs to 305 m, levels; a second Ctrl+A at 50 s -> controlmode back to MANUAL (the
   unflown aircraft then dives in -> PILOTDEAD, as expected with no stick input).
+* Round 2 S5: BDG PADLOCK CENTRE (S = BDG command 272 in the PO's key map; bdg.txt PC_HDG/PC_PITCH = 10) -- DONE.
+  VIEWSEL.CPP view-key block: the enemy nearest the centre of the current view within +-PC_HDG/+-PC_PITCH is
+  padlocked through InitEnemy's own steps. BOB_NO_BDG_PCENEMY=1 reverts; BOB_TRACE_PCENEMY=1. Verified (QM 20
+  "Front attack against Bombers", S at 5/10/15/20 s, ~/bob-gates/pc1): 44 enemies in range; each press padlocked
+  the one nearest the centre (5.2, 1.4, 0.2, 6.2 deg off) -- small offsets confirm the angle convention.
+* HEADTRACK-1 BoB padlock branch: NOW EXERCISED in the same run (opentrack imitator sending) -- "[headtrack] padlock:
+  tracker keeps the head (PADLOCK_OVERRIDES_TRACKIR=OFF)".
