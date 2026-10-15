@@ -2163,7 +2163,32 @@ FP Model::CalcFuelRate (AirStrucPtr const ControlledAC)
 //------------------------------------------------------------------------------
 void Model::SetFuelTank(AirStrucPtr const ControlledAC, bool player)
 {
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG 0.97 "Fuelcock fix" (manual 4.4.19: "a non initialized variable caused the inability of
+	   setting the fuel cock in the Me109 and Hurricane"). With engine management on, the player's branch below is
+	   skipped, so fly.FuelCockPos -- set nowhere else but a replay restore -- keeps whatever the allocation held:
+	   ProcessEngines then indexes FuelCockTanks[FuelCockPos] past the table, and the FC_4POSITION keys (KEYFLY.CPP)
+	   cannot step an out-of-range value back. An out-of-range position now takes the game's own automatic choice.
+	   BOB_NO_BDG_FUELCOCK=1 reverts; BOB_TRACE_FUELCOCK=1 prints the value. */
+	static const bool bdgFuelcock = !getenv("BOB_NO_BDG_FUELCOCK");
+	/* test hooks: BOB_TEST_ENGINEMGMT=1 acts as engine management on; BOB_TEST_FUELCOCK_POS=n plants the player's
+	   first position, as an uninitialised allocation would on Windows */
+	static const bool testEM = getenv("BOB_TEST_ENGINEMGMT") != NULL;
+	if (testEM) Save_Data.flightdifficulty |= FD_ENGINEMANAGMENT;
+	static bool planted = false;
+	if (player && !planted && getenv("BOB_TEST_FUELCOCK_POS")) {
+		planted = true;
+		ControlledAC->fly.FuelCockPos = (SWord)atoi(getenv("BOB_TEST_FUELCOCK_POS"));
+	}
+	const bool cockInvalid = ControlledAC->fly.FuelCockPos < 0 || ControlledAC->fly.FuelCockPos > 3;
+	if (getenv("BOB_TRACE_FUELCOCK"))
+		fprintf(stderr, "[fuelcock] SetFuelTank player=%d enginemgmt=%d FuelCockPos=%d%s\n", (int)player,
+		        (int)(Save_Data.flightdifficulty[FD_ENGINEMANAGMENT] ? 1 : 0), (int)ControlledAC->fly.FuelCockPos,
+		        cockInvalid ? " (out of range)" : "");
+	if((!player) || (!Save_Data.flightdifficulty[FD_ENGINEMANAGMENT]) || (bdgFuelcock && cockInvalid))
+#else
 	if((!player) || (!Save_Data.flightdifficulty[FD_ENGINEMANAGMENT]))
+#endif
 	{
 		bool usingdroptanks = false;
 		SLong maxfuel  = 0;

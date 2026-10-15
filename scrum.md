@@ -13040,3 +13040,14 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * S4: BoB padlock branch still not run: F1 (ENEMYVIEW, KEYMAPS.H:947) pushed 30 s into the slab1 campaign flight did
   nothing visible -- no enemy in that quiet flight (frames stay in the cockpit at the head pose). Needs an engagement
   (MP harness or a QM with bandits); PO hardware test covers it too.
+
+## PATCH-PORT-1 (2026-10-15) -- the BDG patch fixes and features into the port (PO; WinAmp/Win95/MSVC items dropped)
+* Retro: EPIC M (MA) closed rows from BUILD evidence cheaply and stalled on per-row reproduction; Release P (BoB) never
+  inventoried. No BDG source is public (search 10-15: only BoB II material), so fixes are re-implemented from the
+  0.99 manual (section 4.4 names causes) and the MA 0.85F readme.
+* S1 Fuelcock (manual 4.4.19, "a non initialized variable"): fly.FuelCockPos is set only by SetFuelTank's automatic
+  branch and a replay restore; with engine management on, the player's position was never set, and ProcessEngines
+  indexes FuelCockTanks[FuelCockPos]. Guard (MODEL.CPP SetFuelTank): an out-of-range position takes the automatic
+  choice (BOB_NO_BDG_FUELCOCK=1 reverts). Evidence is weak and recorded as such: in the port the first value is 0
+  (zeroed allocation) and a planted 7 (BOB_TEST_FUELCOCK_POS, BOB_TEST_ENGINEMGMT) is 3 by the next call WITH OR
+  WITHOUT the guard (fc2/fc3) -- something else rewrites it. Kept as a guard against an out-of-table read.
