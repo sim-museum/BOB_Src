@@ -13037,3 +13037,6 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   draws the inside view and the padlock only marks the target; ON = padlock turns the head. Roll only with
   TRACKIR6DOF=ON (BDG used yaw/pitch alone otherwise).
   BoB: built and inert without a tracker; the padlock branch is NOT yet run here (BoB has no forced-padlock hook).
+* S4: BoB padlock branch still not run: F1 (ENEMYVIEW, KEYMAPS.H:947) pushed 30 s into the slab1 campaign flight did
+  nothing visible -- no enemy in that quiet flight (frames stay in the cockpit at the head pose). Needs an engagement
+  (MP harness or a QM with bandits); PO hardware test covers it too.
