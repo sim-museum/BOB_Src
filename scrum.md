@@ -13006,3 +13006,8 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   in a blink; a timer started at the mode change failed too: MP waits seconds to sync before the first 3-D frame).
   Verified: MP (flash10) 5409 cockpit-only frames held, ZERO flash frames all flight; SP (gl7) only the 12
   stale-viewport frames held, flight normal. `BOB_PRESENT_ALL=1` reverts all of it.
+* **S6 (flash11, 10-min MP flight):** 2 mid-flight detector hits, neither distinctive -- the same 128x128 RTT and 2
+  render-target switches as their neighbours, normal draw counts (420-608), moderate patch changes: likely real
+  scene changes (cloud), i.e. detector noise. The PO's ground-in-the-canopy flash did not recur in ~25 min of our
+  flights. Item paused at 6 sprints: start strobes FIXED (SP + MP, shipped 261014c); the rare mid-flight flash needs
+  per-frame full captures over a long flight to catch one.

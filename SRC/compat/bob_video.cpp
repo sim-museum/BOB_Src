@@ -3147,6 +3147,7 @@ long g_bobLandFrames = 0;   /* BOB-GLITCH-1 S3: LandScape::RenderLandscape calls
 long g_bobLandSincePresent = 0;   /* ...since the last 3-D present (the guard) */
 long g_bobDrawsSincePresent = 0;  /* BOB-GLITCH-1 S4: primitive draws since the last 3-D present */
 static long g_rtSwitches = 0;   /* BOB-GLITCH-1 S2: SetRenderTarget calls since the last 3-D present */
+static int g_rtLastW = 0, g_rtLastH = 0;   /* S6: size of the last RTT bound */
 static long g_rttDrawsPhase[3] = {0,0,0};   /* R3.4: [0] other, [1] mirror landscape, [2] mirror objects */
 /* BOB-GLITCH-1 S2 (2026-10-14): the PO's video shows rare single frames where the LEFT canopy area holds ground and
    cloud between two frames of sky. Average a 64x64 patch there each 3-D present; when frame n-1 differs from both
@@ -3179,6 +3180,7 @@ static void bob_flash_probe(void)
 		        rtt[1][0], rtt[1][1], rtt[1][2], rtt[0][0], rtt[0][1], rtt[0][2]),
 		fprintf(stderr, "[flash]   landscape renders this frame %ld (neighbours %ld/%ld)\n", lf[1], lf[0], lf[2]),
 		fprintf(stderr, "[flash]   primitive draws this frame %ld (neighbours %ld/%ld)\n", dr[1], dr[0], dr[2]),
+		fprintf(stderr, "[flash]   last render target bound %dx%d\n", g_rtLastW, g_rtLastH),
 		fprintf(stderr, "[flash]   render-target switches %ld (neighbours %ld/%ld), viewport at present %d,%d %dx%d (neighbours %dx%d / %dx%d)\n",
 		        sw[1], sw[0], sw[2], vpH[1][0], vpH[1][1], vpH[1][2], vpH[1][3], vpH[0][2], vpH[0][3], vpH[2][2], vpH[2][3]);
 }
@@ -3215,6 +3217,7 @@ static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 targe
 			p_glBindFramebuffer(GL_FRAMEBUFFER, s->fbo);
 			glViewport(0,0,s->w,s->h);
 			g_curRT = s;
+			g_rtLastW = s->w; g_rtLastH = s->h;
 			/* R3.4: dump the target's contents AT BIND, before this pass's draws. The mirror reads
 			   back as a uniform grey after 140 textured draws; comparing bind-time against
 			   switch-time contents says whether those draws contribute ANYTHING, which decides
