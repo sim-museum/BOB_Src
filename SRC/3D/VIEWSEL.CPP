@@ -2168,6 +2168,24 @@ void ViewPoint::ControlViewSelect()
 				nextentry = FALSE;
 			}
 		}
+		/* PATCH-PORT-1, BDG roving camera (Alt+V = BDG command 282 in the PO's key map): Rowan's free camera
+		   (InitRovingCamera/DrawRovingCamera) had no key. Alt+V starts it at the current vehicle and, pressed again,
+		   returns to the cockpit. BOB_NO_BDG_RCAM=1 reverts; BOB_TRACE_RCAM=1. */
+		if (!getenv("BOB_NO_BDG_RCAM") && Key_Tests.KeyPress3d((KeyVal3D)(282*2)))
+		{
+			if (viewdrawrtn == &ViewPoint::DrawRovingCamera)
+			{
+				currentvehicle = Persons2::PlayerSeenAC;
+				InitInside();
+				viewnum.viewmode = VM_Inside;
+				if (getenv("BOB_TRACE_RCAM")) fprintf(stderr, "[rcam] Alt+V: roving camera off, back in the cockpit\n");
+			}
+			else
+			{
+				InitRovingCamera();
+				if (getenv("BOB_TRACE_RCAM")) fprintf(stderr, "[rcam] Alt+V: roving camera on\n");
+			}
+		}
 		/* PATCH-PORT-1, BDG "Other Aircraft View" (manual 2.2.8; Ctrl+I = BDG command 281 in the PO's key map):
 		   cycles an outside track view through the AI aircraft within 10 km of the player, the padlocked one first.
 		   The camera's currentvehicle is re-pointed (InitTrack follows it, as SetToMapItem does); the player keeps
@@ -5367,7 +5385,12 @@ void ViewPoint::DrawRovingCamera()
 	if (Key_Tests.KeyHeld3d(ROTRIGHT) ||
 		Key_Tests.KeyHeld3d(ROTUPRIGHT) ||
 		Key_Tests.KeyHeld3d(ROTDNRIGHT))
+#if BOB_LINUX
+		/* PATCH-PORT-1: Rowan's right turn subtracted too (both directions turned left) */
+		rovingData.rovingH += getenv("BOB_NO_BDG_RCAM") ? -Angles(frameT) : Angles(frameT);
+#else
 	 	rovingData.rovingH-=Angles(frameT);
+#endif
 
 	if (Key_Tests.KeyPress3d(ZOOMIN))
 	{
@@ -5375,6 +5398,23 @@ void ViewPoint::DrawRovingCamera()
 		if (rovingData.rovingT>8)
 			rovingData.rovingT=8;
 	}
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG roving camera keys (Alt+G faster = 283, Alt+B slower = 284, Alt+F reset = 285 in the PO's
+	   key map); BDG 0.98 "increased maximum roving cam speed": the speed step may go to 12 (Rowan's ZOOMIN stops at 8). */
+	if (!getenv("BOB_NO_BDG_RCAM"))
+	{
+		if (Key_Tests.KeyPress3d((KeyVal3D)(283*2)) && rovingData.rovingT < 12) rovingData.rovingT++;
+		if (Key_Tests.KeyPress3d((KeyVal3D)(284*2)) && rovingData.rovingT > -8) rovingData.rovingT--;
+		if (Key_Tests.KeyPress3d((KeyVal3D)(285*2)))
+		{
+			rovingData.rovingH = ANGLES_0Deg; rovingData.rovingP = ANGLES_0Deg; rovingData.rovingT = 0;
+		}
+		if (getenv("BOB_TRACE_RCAM")) { static int n = 0; if ((n++ % 60) == 0)
+			fprintf(stderr, "[rcam] hdg=%d pitch=%d speedstep=%d pos=(%d,%d,%d)\n", (int)(UWord)rovingData.rovingH,
+			        (int)(SWord)rovingData.rovingP, (int)rovingData.rovingT, (int)rovingData.World.X,
+			        (int)rovingData.World.Y, (int)rovingData.World.Z); }
+	}
+#endif
 	if (Key_Tests.KeyPress3d(ZOOMOUT))
 	{
 	 	rovingData.rovingT--;

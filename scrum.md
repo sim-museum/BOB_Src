@@ -13137,3 +13137,10 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   view key first gives the camera back to the player. BOB_NO_BDG_OTHERAC=1 reverts; BOB_TRACE_OTHERAC=1.
   Verified (QM 20, Ctrl+I at 5/9 s, F1 at 13 s, ~/bob-gates/otherac1): uid 4930 then 4929, then "camera back on the
   player"; frames: cockpit -> track view of other Spitfires (subject changes at the second press) -> F1's view.
+* Round 3 S6: BDG ROVING CAMERA KEYS -- DONE, one part unverified. Rowan's free camera (Init/DrawRovingCamera) had no
+  key: Alt+V (282) starts it and, again, returns to the cockpit; Alt+G/Alt+B (283/284) step its speed, up to 12 (BDG
+  0.98 "increased maximum roving cam speed"; Rowan's ZOOMIN stops at 8); Alt+F (285) resets. Rowan bug fixed: the
+  ROTRIGHT branch also SUBTRACTED, so both turn keys turned left. BOB_NO_BDG_RCAM=1 reverts; BOB_TRACE_RCAM=1.
+  Verified (QM 7, ~/bob-gates/rcam1): on -> speed steps 0..3 double the camera speed each step -> off, back in the
+  cockpit. NOT verified: the right-turn sign (DIK taps are too short for KeyHeld3d; the SDL hold came after the
+  unflown Free Flight had already ended ~42 s in, in both runs). Item 39 round 3 closed at 6 sprints.
