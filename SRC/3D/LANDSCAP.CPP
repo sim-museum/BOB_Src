@@ -455,6 +455,9 @@ void LandScape::RenderLandscape(	CLib3D *lib3d )
 //DEADCODE JON 4/6/00 									ULong& wx, ULong& wy, ULong& wz,
 //DEADCODE JON 4/6/00 									ANGLES heading)
 {
+#if defined(BOB_LINUX)
+	{ extern long g_bobLandFrames, g_bobLandSincePresent; g_bobLandFrames++; g_bobLandSincePresent++; }   /* BOB-GLITCH-1 S3: was the world drawn this frame? */
+#endif
 	g_lpLib3d=lib3d;								    
 
 	Bool	old_xprod;

@@ -125,6 +125,9 @@ extern "C" void bob_save_preferences(void);   /* BOB-PADBOX-1: fullpane.cpp, sav
 static void bob_frame_tick(int site);   /* R16: defined below, used by earlier swap sites */
 static int g_presentTraceLeft = 0;   /* BOB-GLITCH-1: presents left to trace after a mode change */
 static int g_presentGuardLeft = 0;   /* BOB-GLITCH-1: presents still guarded after a mode change */
+extern long g_bobLandSincePresent;
+/* BOB-GLITCH-1 S2: one-frame flash detector (BOB_TRACE_FLASH=1) -- see bob_flash_probe */
+static void bob_flash_probe(void);
 extern unsigned g_bob_frames;           /* ASPECT-1 S14: frame counter, defined at bob_frame_tick */
 extern void* g_bobGdiPresentCaller;     /* GOLDVID-BOB-3 S4: caller of the 2D presenter */
 /* MP2-BOB-2 S2: BOB_TABLEFOG_AB=1 (with BOB_SHOT3D_EVERY) draws the frame after each shot WITHOUT table fog and
@@ -1862,16 +1865,27 @@ static void present_surface(GLSurface7* s)
 	if (g_devRendered && g_win && g_presentGuardLeft > 0) { g_presentGuardLeft--;
 		static int all = -1; if (all < 0) all = getenv("BOB_PRESENT_ALL") ? 1 : 0;
 		int dw = 0, dh = 0; SDL_GL_GetDrawableSize(g_win, &dw, &dh); GLint vp[4] = {0,0,0,0}; glGetIntegerv(GL_VIEWPORT, vp);
-		unsigned char c[3] = {0,0,0}; glReadPixels(dw / 2, dh / 2, 1, 1, GL_RGB, GL_UNSIGNED_BYTE, c);
-		const int bad = (vp[2] != dw || vp[3] != dh) ? 1 : (c[0] == 0 && c[1] == 0 && c[2] == 0) ? 2 : 0;
+		unsigned char c[3] = {0,0,0};
+		/* S3: in a multiplayer start the game presents ~60 frames that draw only the cockpit (no landscape) over
+		   whatever the two buffers last held -- the Ready Room in one, sky in the other: a strobe. Hold those too. */
+		const int noWorld = (g_bobLandSincePresent == 0);
+		/* (A pure-black centre pixel was a third test; it held every multiplayer frame -- the cockpit is black there --
+		   and the first black frames are caught by the viewport test anyway. Not used.) */
+		(void)c;
+		/* (noWorld -- no LandScape::RenderLandscape since the last present -- was tried as a fourth test for the
+		   multiplayer start strobe and held EVERY frame: RenderLandscape is not called per frame. Not used.) */
+		(void)noWorld;
+		const int bad = (vp[2] != dw || vp[3] != dh) ? 1 : 0;
 		if (bad && !all) {
 			g_devRendered = 0;
 			if (getenv("BOB_TRACE_PRESENT")) fprintf(stderr, "[present] held: %s (viewport %dx%d, drawable %dx%d)\n",
-				bad == 1 ? "viewport from the previous mode" : "black frame", (int)vp[2], (int)vp[3], dw, dh);
+				bad == 1 ? "viewport from the previous mode" : bad == 2 ? "black frame" : "no landscape drawn", (int)vp[2], (int)vp[3], dw, dh);
+			g_bobLandSincePresent = 0;
 			return;
 		}
 	}
-	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(1); SDL_GL_SwapWindow(g_win); } return; }
+	if (g_devRendered) g_bobLandSincePresent = 0;
+	if (g_devRendered) { g_devRendered = 0; if (g_win) { brighten_pass(); present_dbg("3d-fb"); bob_flash_probe(); bob_shot3d_maybe(); bob_frame_tick(1); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_win || !s || !s->bits || s->w<=0 || s->h<=0) { if (g_win) { present_dbg("3d-fb"); bob_shot3d_maybe(); bob_frame_tick(2); SDL_GL_SwapWindow(g_win); } return; }
 	if (!g_presentTex) { glGenTextures(1, &g_presentTex); }
 	glBindTexture(GL_TEXTURE_2D, g_presentTex);
@@ -3121,7 +3135,42 @@ static void ensure_rtt_fbo(GLSurface7* s) {
 extern "C" long bob_imagemap_number_of(const void*);   /* R3.9: pointer -> ImageMapNumber */
 extern "C" const void* bob_imagemap_ptr_of(long);      /* SIGHT-1 S2: ImageMapNumber -> pointer */
 static long g_rttDraws = 0;
+long g_bobLandFrames = 0;   /* BOB-GLITCH-1 S3: LandScape::RenderLandscape calls */
+long g_bobLandSincePresent = 0;   /* ...since the last 3-D present (the guard) */
+static long g_rtSwitches = 0;   /* BOB-GLITCH-1 S2: SetRenderTarget calls since the last 3-D present */
 static long g_rttDrawsPhase[3] = {0,0,0};   /* R3.4: [0] other, [1] mirror landscape, [2] mirror objects */
+/* BOB-GLITCH-1 S2 (2026-10-14): the PO's video shows rare single frames where the LEFT canopy area holds ground and
+   cloud between two frames of sky. Average a 64x64 patch there each 3-D present; when frame n-1 differs from both
+   n-2 and n by more than a threshold while n-2 and n agree, report it with the render-to-texture work done in that
+   frame (mirror landscape/objects, other RTT), which names the pass that wrote it. One small readback per frame. */
+static void bob_flash_probe(void)
+{
+	static int on = -1; if (on < 0) on = getenv("BOB_TRACE_FLASH") ? 1 : 0;
+	if (!on || !g_win) return;
+	static float hist[3][3]; static long rtt[3][3]; static long n = 0, lastRtt[3] = {0,0,0};
+	int dw = 0, dh = 0; SDL_GL_GetDrawableSize(g_win, &dw, &dh);
+	static unsigned char px[64 * 64 * 3];
+	glReadPixels(dw / 12, dh * 5 / 8, 64, 64, GL_RGB, GL_UNSIGNED_BYTE, px);
+	float m[3] = {0,0,0}; for (int i = 0; i < 64 * 64; i++) for (int c = 0; c < 3; c++) m[c] += px[i * 3 + c];
+	for (int c = 0; c < 3; c++) m[c] /= 64.f * 64.f;
+	for (int k = 0; k < 2; k++) for (int c = 0; c < 3; c++) { hist[k][c] = hist[k + 1][c]; rtt[k][c] = rtt[k + 1][c]; }
+	for (int c = 0; c < 3; c++) { hist[2][c] = m[c]; rtt[2][c] = g_rttDrawsPhase[c] - lastRtt[c]; lastRtt[c] = g_rttDrawsPhase[c]; }
+	if (++n < 3) return;
+	static long sw[3]; sw[0] = sw[1]; sw[1] = sw[2]; sw[2] = g_rtSwitches; g_rtSwitches = 0;
+	static long lf[3]; lf[0] = lf[1]; lf[1] = lf[2]; lf[2] = g_bobLandFrames; g_bobLandFrames = 0;
+	static GLint vpH[3][4]; for (int k = 0; k < 2; k++) for (int j = 0; j < 4; j++) vpH[k][j] = vpH[k + 1][j];
+	glGetIntegerv(GL_VIEWPORT, vpH[2]);
+	float d01 = 0, d12 = 0, d02 = 0;
+	for (int c = 0; c < 3; c++) { d01 += fabsf(hist[1][c] - hist[0][c]); d12 += fabsf(hist[1][c] - hist[2][c]); d02 += fabsf(hist[0][c] - hist[2][c]); }
+	if (d01 > 60 && d12 > 60 && d02 < 0.4f * (d01 < d12 ? d01 : d12))
+		fprintf(stderr, "[flash] frame %ld: left-canopy patch (%.0f,%.0f,%.0f) between (%.0f,%.0f,%.0f) and (%.0f,%.0f,%.0f); "
+		        "rtt draws this frame other=%ld mirrorLand=%ld mirrorObj=%ld (neighbours %ld/%ld/%ld)\n", n - 1,
+		        hist[1][0], hist[1][1], hist[1][2], hist[0][0], hist[0][1], hist[0][2], hist[2][0], hist[2][1], hist[2][2],
+		        rtt[1][0], rtt[1][1], rtt[1][2], rtt[0][0], rtt[0][1], rtt[0][2]),
+		fprintf(stderr, "[flash]   landscape renders this frame %ld (neighbours %ld/%ld)\n", lf[1], lf[0], lf[2]),
+		fprintf(stderr, "[flash]   render-target switches %ld (neighbours %ld/%ld), viewport at present %d,%d %dx%d (neighbours %dx%d / %dx%d)\n",
+		        sw[1], sw[0], sw[2], vpH[1][0], vpH[1][1], vpH[1][2], vpH[1][3], vpH[0][2], vpH[0][3], vpH[2][2], vpH[2][3]);
+}
 extern int g_bob_mirror_phase;
 static void dump_rtt_fbo(GLSurface7* s) {
 	if (!s || !s->fbo || !getenv("BOB_DUMP_RTT") || !load_fbo_funcs()) return;
@@ -3137,6 +3186,7 @@ static void dump_rtt_fbo(GLSurface7* s) {
 }
 
 static HRESULT DEV_SetRenderTarget(IDirect3DDevice7*, LPDIRECTDRAWSURFACE7 target, DWORD) {
+	g_rtSwitches++;
 	GLSurface7* s = (GLSurface7*)target;
 	if (s && s->magic==GLSURF_MAGIC && s->isRTT) {
 		gl_bind_thread();

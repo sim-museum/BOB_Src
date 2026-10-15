@@ -12987,3 +12987,15 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   pass (rear-view mirror or the landscape render target) landing in the main frame for one frame (hypothesis).
   Frames: /tmp scratch, re-extract with ffmpeg at those times. Next: per-frame shots over a long flight with the
   mirror on, and a trace of which pass last wrote the main framebuffer before each swap.
+* **S2-S3 (2026-10-14, 6 runs, `~/bob-gates/flash1..6`, gl3/gl4):** new `BOB_TRACE_FLASH=1` detector at the 3-D present
+  (64x64 left-canopy patch, a frame unlike both neighbours; with render-target switches, RTT draws, viewport).
+  - MULTIPLAYER START, a second strobe: ~60 frames right after the viewport frames alternate between sky and the
+    Ready Room's blue in the canopy -- present site 1 every time, viewport correct, no render-target switches. The
+    game draws only the cockpit over whatever each of the two buffers last held. Not in single-player (3 frames).
+    Two discriminators tried and REMOVED: a pure-black centre pixel (held every MP frame -- the cockpit is black
+    there) and "no LandScape::RenderLandscape since the last present" (held every frame -- it is not per-frame).
+    Next: count draws per frame (world frames draw thousands) or find what the game skips in those frames.
+  - The black-centre test is gone from the start guard; the viewport test alone holds the 12 stale frames (gl4).
+  - Mid-flight: one clean record (flash1 frame 1287): 70 render-to-texture draws in the flash frame, none in either
+    neighbour -- an off-screen pass ran that frame and the frame came out wrong. Next: which RTT, and what state it
+    leaves behind (viewport is restored; check scissor, matrices, depth range).
