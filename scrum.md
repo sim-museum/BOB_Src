@@ -13098,3 +13098,12 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   keys.xml by name under this source's KEYMAPS.H numbering -- all 147 commands this source knows agree; no
   renumbering. The 64 names this source lacks are BDG-only commands (FOV_SMALL/MEDIUM/JIB, TOGGLE_DECEL, WinAmp...):
   item 39 feature work, and the list of keys BDG added.
+* Round 2 S3: BDG FIELD-OF-VIEW KEYS -- DONE. The PO's keyb3d.bin already sends Shift+F9/F10/F11/F12 to BDG commands
+  326-329 (bits 652-658; ~/bob-gates/keymap/compare.py), numbers this source never used, so the keys did nothing.
+  3DCODE.CPP: FOV_SMALL/MEDIUM/LARGE jump to the bdg.txt angles, FOV_TOGGLE flips FOV_TOGGLE_SMALL/LARGE; the zoom
+  range is FOV_MINIMAL..FOV_MAXIMAL (18..80 for the PO; Rowan 45..60 without bdg.txt); a flight starts at
+  FOV_INITIAL (60). BOB_NO_BDG_FOV=1 reverts; BOB_TRACE_FOV=1; BOB_DIK_MS taps Shift+Fn (0x2A modifier).
+  Verified (QM 0, ~/bob-gates/fov1..3): [fov] 25 -> 80 -> toggle 35; frames: start wide (60), close-in after
+  Shift+F9; Shift+F11 alone -> whole-cockpit 80-degree view; revert run holds Rowan's 45 throughout.
+  Other BDG commands with free numbers in the PO's map, same recipe: TOGGLE_DECEL 330 (Shift+F7), PCENEMY 272 (S),
+  AUTOPILOTTOGGLE 286 (Ctrl+A), OTHERACVIEW 281 (Ctrl+I), RCAM* 282-285 (Alt+V/B/G/F), DISPLAY_FPS 333 (Shift+F).

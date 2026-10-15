@@ -509,6 +509,12 @@ void ThreeDee::Init3D(CLib3D *lib3d,ViewPoint*	vp)
 	g_lpLib3d=lib3d;
 
 	Save_Data.fieldOfView=ANGLES_45Deg;
+#if BOB_LINUX
+	if (!getenv("BOB_NO_BDG_FOV")) {   /* PATCH-PORT-1: BDG's FOV_INITIAL (bdg.txt) is the field of view a flight starts with */
+		extern double rowan_bdg_float(const char*, double);
+		Save_Data.fieldOfView = (ANGLES)(UWord)(rowan_bdg_float("FOV_INITIAL", 45.0) * 65536.0 / 360.0 + 0.5);
+	}
+#endif
 
 	CockpitBuf	buffetData;
  	buffetData.hdg=
@@ -897,6 +903,44 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
 		else if (Key_Tests.KeyHeld3d(NEXTSHAPEUP))
 			Save_Data.fieldOfView-=ANGLES_2Deg;
 
+#if BOB_LINUX
+		/* PATCH-PORT-1, BDG field-of-view keys (manual 2.1.1 "Field of View Configuration"; bdg.txt FOV_*): the
+		   installed keyb3d.bin already sends Shift+F9/F10/F11/F12 to BDG's commands 326-329 (decoded from the PO's
+		   keys.xml, ~/bob-gates/keymap/compare.py) -- this source never defined them, so the keys did nothing.
+		   FOV_SMALL / FOV_MEDIUM / FOV_LARGE jump to those angles, FOV_TOGGLE flips between FOV_TOGGLE_SMALL and
+		   FOV_TOGGLE_LARGE; the zoom range becomes FOV_MINIMAL..FOV_MAXIMAL (Rowan's 45..60 when bdg.txt has none).
+		   BOB_NO_BDG_FOV=1 reverts; BOB_TRACE_FOV=1. */
+		static int bdgfov = -1;
+		static double fovSmall, fovMedium, fovLarge, fovTS, fovTL, fovMin, fovMax;
+		if (bdgfov < 0) {
+			extern double rowan_bdg_float(const char*, double);
+			bdgfov = getenv("BOB_NO_BDG_FOV") ? 0 : 1;
+			fovSmall = rowan_bdg_float("FOV_SMALL", 25.0);   fovMedium = rowan_bdg_float("FOV_MEDIUM", 50.0);
+			fovLarge = rowan_bdg_float("FOV_LARGE", 70.0);   fovTS = rowan_bdg_float("FOV_TOGGLE_SMALL", 35.0);
+			fovTL = rowan_bdg_float("FOV_TOGGLE_LARGE", 70.0);
+			fovMin = rowan_bdg_float("FOV_MINIMAL", 45.0);   fovMax = rowan_bdg_float("FOV_MAXIMAL", 60.0);
+		}
+		if (bdgfov) {
+			const KeyVal3D kSmall = (KeyVal3D)(326*2), kMedium = (KeyVal3D)(327*2), kLarge = (KeyVal3D)(328*2),
+			               kToggle = (KeyVal3D)(329*2);
+			double want = -1;
+			if (Key_Tests.KeyPress3d(kSmall))  want = fovSmall;
+			if (Key_Tests.KeyPress3d(kMedium)) want = fovMedium;
+			if (Key_Tests.KeyPress3d(kLarge))  want = fovLarge;
+			if (Key_Tests.KeyPress3d(kToggle)) {
+				const double cur = (UWord)Save_Data.fieldOfView * 360.0 / 65536.0;
+				want = (cur - fovTS) * (cur - fovTS) < (cur - fovTL) * (cur - fovTL) ? fovTL : fovTS;
+			}
+			if (want > 0) {
+				Save_Data.fieldOfView = (ANGLES)(UWord)(want * 65536.0 / 360.0 + 0.5);
+				if (getenv("BOB_TRACE_FOV")) fprintf(stderr, "[fov] key -> %.1f deg\n", want);
+			}
+			const ANGLES aMin = (ANGLES)(UWord)(fovMin * 65536.0 / 360.0 + 0.5);
+			const ANGLES aMax = (ANGLES)(UWord)(fovMax * 65536.0 / 360.0 + 0.5);
+			if ((UWord)Save_Data.fieldOfView < (UWord)aMin) Save_Data.fieldOfView = aMin;
+			else if ((UWord)Save_Data.fieldOfView > (UWord)aMax) Save_Data.fieldOfView = aMax;
+		} else
+#endif
 		if (Save_Data.fieldOfView<ANGLES_45Deg)
 			Save_Data.fieldOfView=ANGLES_45Deg;
 		else if (Save_Data.fieldOfView>ANGLES_60Deg)
