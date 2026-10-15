@@ -13073,3 +13073,7 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * Likeliest: an instrument artefact -- [mppos] resolves the slot's uid each second, and at a death that uid can
   name the respawn item before it is first positioned. Nothing on screen evidences it (a one-frame vanish inside the
   explosion at most). Reopen only with a frame capture showing it.
+* BOB-GLITCH-1 revisit (2026-10-15), desk check of the "RTT pass drew into the screen" hypothesis: REJECTED.
+  ensure_rtt_fbo always leaves an RTT surface with an FBO (incomplete ones too -- GL discards draws into them), and
+  the flash1 record counted its 70 draws as RTT draws, i.e. bound to an FBO. Still parked; next evidence must be a
+  per-frame capture of a real occurrence.
