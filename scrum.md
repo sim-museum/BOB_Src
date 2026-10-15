@@ -12981,3 +12981,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   from the drawable, or whose centre pixel is pure black, is NOT presented -- the screen keeps its last image.
   `BOB_PRESENT_ALL=1` reverts. Verified (`~/bob-gates/slab1/gl2`): 12 frames held, every presented 3-D frame
   1024x768 = drawable, flight normal to frame 8700.
+* **Open half: one-frame flashes in flight.** Scan of both PO BoB flights (5 min): 4 transient frames, all in one 2 s
+  cluster (1499.18, 1500.13, 1500.85, 1501.13 s), none elsewhere. In each, the LEFT canopy area shows dark green
+  ground + white cloud + a pale vertical bar where the neighbouring frames show sky -- content from another render
+  pass (rear-view mirror or the landscape render target) landing in the main frame for one frame (hypothesis).
+  Frames: /tmp scratch, re-extract with ffmpeg at those times. Next: per-frame shots over a long flight with the
+  mirror on, and a trace of which pass last wrote the main framebuffer before each swap.
