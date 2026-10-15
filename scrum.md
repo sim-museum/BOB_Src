@@ -13146,3 +13146,7 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   unflown Free Flight had already ended ~42 s in, in both runs). Item 39 round 3 closed at 6 sprints.
 * Round 4 S1: roving-camera right turn VERIFIED (QM 7 kept airborne with Ctrl+A, Alt+V, keypad 6 held 2 s then
   keypad 4 held 2 s via BOB_SDL_KEY_MS, ~/bob-gates/rcam3): heading 0 -> 4151 (right), then back to 29 (left).
+* Round 4 S4: labels are NOT a Rowan feature to extend: no "label" anywhere in SRC/3D, and "Aircraft names"
+  (DETAIL3D_PADLOCKCHEAT) only draws the padlock box. BDG wrote a LABEL unit from scratch (colours, fading,
+  short labels, obscured by the cockpit). Not started: an assist, and the PO rule is historical realism first --
+  asked in the status note.
