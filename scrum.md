@@ -13144,3 +13144,5 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   Verified (QM 7, ~/bob-gates/rcam1): on -> speed steps 0..3 double the camera speed each step -> off, back in the
   cockpit. NOT verified: the right-turn sign (DIK taps are too short for KeyHeld3d; the SDL hold came after the
   unflown Free Flight had already ended ~42 s in, in both runs). Item 39 round 3 closed at 6 sprints.
+* Round 4 S1: roving-camera right turn VERIFIED (QM 7 kept airborne with Ctrl+A, Alt+V, keypad 6 held 2 s then
+  keypad 4 held 2 s via BOB_SDL_KEY_MS, ~/bob-gates/rcam3): heading 0 -> 4151 (right), then back to 29 (left).
