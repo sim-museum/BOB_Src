@@ -13051,3 +13051,7 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   choice (BOB_NO_BDG_FUELCOCK=1 reverts). Evidence is weak and recorded as such: in the port the first value is 0
   (zeroed allocation) and a planted 7 (BOB_TEST_FUELCOCK_POS, BOB_TEST_ENGINEMGMT) is 3 by the next call WITH OR
   WITHOUT the guard (fc2/fc3) -- something else rewrites it. Kept as a guard against an out-of-table read.
+* S2 Pampa bug (manual 4.4.14, "division by zero ... for zero wind"): NOT LOCATED -- every wind divisor in compiled code
+  is guarded (GetWind returns 0 and callers test it: 3DCOM WindsockItemAnim, AUTOMOVE wind correction `if(!WindVel)`);
+  the (wy<<16)/wx divisions in PARTICLE.CPP/SMKTRLS.CPP are inside a commented-out body. Verdict: not in this source,
+  or already guarded; reopen only on a zero-wind CTD.
