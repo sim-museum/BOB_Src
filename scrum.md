@@ -13060,8 +13060,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * S6 Flap buffet on the ground (manual 4.4.9): FIXED. MODEL.CPP: RJS 30Aug00 moved _Miles.PlayBuffet out of the
   !GearTouched gate that the eye shake keeps. Now silent while the wheels touch (BOB_NO_BDG_FLAPBUFFET=1 reverts;
   BOB_TRACE_BUFFET=1). Verified: QM 0 "Take-off", full throttle, flaps down (V x4): revert -> 2601 ground frames
-  with buffet vol 42-43 played; fix -> the same frames silenced. (Level ~0.67 suggests the alpha buffet of a
-  nose-high taildragger contributes as well as the flaps.)
+  with buffet vol 42-43 played; fix -> the same frames silenced. CORRECTION (same day): the V presses at 5-8 s
+  fired before the flight (the key clock counts from process launch), so that ground buffet was the alpha buffet of the
+  nose-high taildragger, not flaps -- the same sound, the same gate; the fix stands.
 * Item paused at 6 sprints. Open: BoB panning (hat/mouse), fuelcock evidence, Pampa (not located), gun/cannon
   sounds (4.4.8), winds aloft (4.4.10), ground/radio turn (4.4.11), Stuka grunt (4.4.13), keyboard rudder (4.4.3),
   cloud randomness (4.4.2); MA bingo RTB (needs a ground-attack scenario), waypoint-detail button, NO_FRIENDLY_
@@ -13077,3 +13078,15 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   ensure_rtt_fbo always leaves an RTT surface with an FBO (incomplete ones too -- GL discards draws into them), and
   the flash1 record counted its 70 draws as RTT draws, i.e. bound to an FBO. Still parked; next evidence must be a
   per-frame capture of a real occurrence.
+
+## PATCH-PORT-1 round 2 (2026-10-15)
+* Retro of round 1: fixes landed where the manual names the cause AND a scenario exists (QM Take-off, campaign fly);
+  rows without one stalled. Round 2 picks rows with both.
+* 4.4.8 cannon sound with no shells: SKIPPED -- the player's gun sound is one looped sample per aircraft
+  (classtype->gunsnd[cockpit]); a fix needs an MG-only sample choice (BDG asset work).
+* FIX_KEYBOARD_RUDDER (bdg.txt, manual 2.1.2.17 / 4.4.3): BUILT, NOT VERIFIED. Keys share the aileron's limit
+  (32767*keysensitivity/4 = 24575 at the default 3); ON lifts the rudder keys to 32767 (MAXRUDDER, as an axis).
+  The PO's bdg.txt has it OFF (right for a twist-grip pilot). rowan_bdg_text now honours env BDG_<KEY> overrides.
+  Test: QM 0 + Insert held 3 s at 10 s and at 50 s of process time -> no [keyrudder] line in either arm: injected
+  keys did not reach KeyHeld3d(RUDDER_LEFT) in this harness (a stick is attached here; unexplored). Next: confirm
+  the 3-D is up when the key lands, and whether the joystick path pre-empts GetStickKeys.

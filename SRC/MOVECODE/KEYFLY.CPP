@@ -1014,8 +1014,27 @@ void	ManualPilot::GetStickKeys (AirStrucPtr const ControlledAC)
 					ControlledAC->fly.rudder -= Delta2; 
 			}
 		}
+#if BOB_LINUX
+		/* PATCH-PORT-1, BDG 0.96 FIX_KEYBOARD_RUDDER (bdg.txt; manual 2.1.2.17 / 4.4.3): "allow the keyboard to fully
+		   deflect the rudder to the same degree a joystick would" -- the keys share the aileron's sensitivity limit
+		   (32767 * keysensitivity / 4: 75% at the default 3), a rudder axis reaches MAXRUDDER. ON = full deflection. */
+		if(KeyPressed)
+		{
+			extern int rowan_bdg_int(const char*, int);
+			static int fixkr = -1;
+			if (fixkr < 0) fixkr = rowan_bdg_int("FIX_KEYBOARD_RUDDER", 0);
+			MODLIMIT(ControlledAC->fly.rudder, fixkr ? (UWord)32767 : LimitVal);
+			if (getenv("BOB_TRACE_KEYRUDDER")) {
+				static int n = 0;
+				if ((n++ % 20) == 0)
+					fprintf(stderr, "[keyrudder] rudder=%d limit=%d (FIX_KEYBOARD_RUDDER=%d)\n", (int)ControlledAC->fly.rudder,
+					        fixkr ? 32767 : (int)LimitVal, fixkr);
+			}
+		}
+#else
 		if(KeyPressed)
 			MODLIMIT(ControlledAC->fly.rudder, LimitVal);
+#endif
 
 
 //joystick control
