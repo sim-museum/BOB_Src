@@ -12964,3 +12964,6 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   BOB_HUD switch was on the QM boot path only, so both peers ran the saved setting.)
 * Not covered: a mid-flight drop-out. In flight only 'h' or Manual_Pilot.ControlledAC2==NULL hides them; BoB also has
   in-flight message typing (Caps Lock = message lock) whose 'h' is a separate binding. Needs a PO sighting with a log.
+
+* **2026-10-14 PO decision: REVERTED.** "guest should follow host re: on-screen Enemy indicator and ADI" -- ProcessPrefsPacket
+  is back to Rowan's behaviour (the guest takes the host's GD_HUDINSTACTIVE). BOB_HUD=0|1 on the front-end path stays (test tool).
