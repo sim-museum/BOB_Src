@@ -4901,6 +4901,21 @@ TransObj::LaunchUnguidedMissile(	mobileitem* launcher,
 			SLong wx = 0, wy = 0, wz = 0;
 			if((launcher == Persons2::PlayerSeenAC) && (Persons2::PlayerSeenAC->classtype->aerobaticfactor != AEROBATIC_LOW))
 				MissManCampSky().GetWind(launcher->World.Y, wx, wy, wz);
+#if BOB_LINUX
+			/* PATCH-PORT-1, BDG "Winds aloft correction" (manual 4.4.10): the launcher's velocity is already its
+			   ground velocity (Model: AirVel = wind - Vel), so adding the wind again made the player's bullets drift
+			   away from the aircraft by the full wind speed -- "relative to the airplane the bullets behave as in zero
+			   wind". Bullets get no per-frame wind (AddWindDrift is for bombs, smoke, flak, chutes). The extra term
+			   is dropped. BOB_NO_BDG_WINDBULLET=1 reverts; BOB_TRACE_WINDBULLET=1 prints the dropped wind. */
+			if ((wx || wy || wz) && getenv("BOB_TRACE_WINDBULLET")) {
+				static int n = 0;
+				if ((n++ % 50) == 0)
+					fprintf(stderr, "[windbullet] player bullet: wind (%d,%d,%d) %s\n", (int)wx, (int)wy, (int)wz,
+					        getenv("BOB_NO_BDG_WINDBULLET") ? "ADDED (revert)" : "not added");
+			}
+			if (!getenv("BOB_NO_BDG_WINDBULLET"))
+				wx = wy = wz = 0;
+#endif
 	
 			newitem->vel_x = launcher->vel_x + wx;
 			newitem->vel_y = launcher->vel_y + wy;

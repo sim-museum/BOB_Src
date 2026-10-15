@@ -13119,3 +13119,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   the one nearest the centre (5.2, 1.4, 0.2, 6.2 deg off) -- small offsets confirm the angle convention.
 * HEADTRACK-1 BoB padlock branch: NOW EXERCISED in the same run (opentrack imitator sending) -- "[headtrack] padlock:
   tracker keeps the head (PADLOCK_OVERRIDES_TRACKIR=OFF)".
+* Round 3 S2: BDG WINDS-ALOFT CORRECTION (manual 4.4.10) -- FIXED. TRANSITE.CPP bullet launch: the player's
+  bullets started at launcher->vel + wind, but the launcher velocity is already ground velocity (Model: AirVel =
+  wind - Vel), and bullets get no per-frame wind (AddWindDrift serves bombs/smoke/flak/chutes only) -- so each bullet
+  drifted from the gun line by the full wind. The extra term is dropped (BOB_NO_BDG_WINDBULLET=1 reverts;
+  BOB_TRACE_WINDBULLET=1). Verified (QM 7 Free Flight, Space fired, ~/bob-gates/wind1): the dropped wind was
+  (-7251,0,17413) -- ~19 m/s if mm/s: several metres of miss at 300 m before the fix.
