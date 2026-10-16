@@ -859,13 +859,28 @@ void COverlay::DrawTopText()
 	xpos = x_offsets[g_languageIndex][SPEED_X];						//RJS 7Dec00;
 	PrintAt2(xpos, TOPLINE_Y, temp);
 
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG HIDE_POWER_INFO / HIDE_AMMO_COUNTER (bdg.txt; the PO's are both ON): the info line drops the
+	   thrust and the ammunition count -- the pilot reads power from the cockpit gauges and has no round counter. */
+	static int hidePower = -1, hideAmmo = -1;
+	if (hidePower < 0) { extern int rowan_bdg_int(const char*, int); hidePower = rowan_bdg_int("HIDE_POWER_INFO", 0);
+	                     hideAmmo = rowan_bdg_int("HIDE_AMMO_COUNTER", 0); }
+	if (!hidePower)
+#endif
+	{
 	sprintf(temp, "%s %3d", OThrustText.text, thrust);
 	xpos = x_offsets[g_languageIndex][THRUST_X];						//RJS 7Dec00;
 	PrintAt2(xpos, TOPLINE_Y, temp);
+	}
 
+#if BOB_LINUX
+	if (!hideAmmo)
+#endif
+	{
 	sprintf(temp, "%s %4d", OAmmoText.text, ammocount);
 	xpos = x_offsets[g_languageIndex][AMMO_X];						//RJS 7Dec00;
 	PrintAt2(xpos, TOPLINE_Y, temp);
+	}
 
 //DeadCode CSB 15Sep00 	SWord bupxpos=xpos;
 //DeadCode CSB 15Sep00 	sprintf(temp,"%s: %3d%s",OSpeedText.text,speed2,speedUnitStr);

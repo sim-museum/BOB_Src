@@ -13245,3 +13245,6 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   As decoded, BDG's per-axis x/z sign tests are the reverse of Rowan's (they would accelerate the round); applied
   here along the velocity instead. Verified ([bulletdrag], QM 12 player fire): 862 m/s -5.23 m/s per 4 cs frame
   (131 m/s^2), 771 m/s 105 m/s^2 -- ~7% speed lost over 400 yd. BOB_TRACE_BULLETDRAG=1.
+* 10-16 HIDE_POWER_INFO / HIDE_AMMO_COUNTER (bdg.txt; the PO's both ON): DrawTopText skips the Power and Gun Ammo
+  fields. Verified (QM 7 frame 900): OFF "Alt 1620ft Hdg 0 Speed 195Kts Power 0 Gun Ammo. 2800"; ON "Alt 1618ft
+  Hdg 0 Speed 195Kts".
