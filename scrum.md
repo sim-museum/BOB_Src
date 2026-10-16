@@ -13177,3 +13177,12 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   318 m). BOB_NO_BDG_GROUNDTURN=1 reverts; BOB_TRACE_GROUNDTURN=1 (refusals + the player's group every 5 s).
 * Verified (g7): the call at 4 s is refused for the player and the wingmen (127-132 cm up); wingman 0x1301 takes
   off normally and engages by itself at +34 s, 36 m up, then fights (manoeuvres 12/19/58/17).
+
+## PATCH-PORT-1: campaign convoy-loss sacking (BDG manual 3.1.3), 2026-10-15 night -- NOT PRESENT (desk check)
+* BDG: a damaged dock was counted against the RAF player again every day, "even if you stopped all the attacks",
+  so you were sacked around 4 Aug. This source (NODEBOB.CPP UndefendedConvoyChecks, RJS/MS Nov 2000 revision)
+  counts per LW PACKAGE flown that day against a convoy/dock/London/naval base that is now damaged, and only when
+  that package lost nothing (numacditched includes shot down: "Left+ditched=original"); a day without one takes 2
+  off. A dock damaged yesterday therefore does not count today unless an unharmed raid hit it again. Checked that
+  Directives::LW::AI (called just before) does not plant tomorrow's packages: its body is dead code. Reopen only
+  with a campaign where the counter rises on a day with no raid on such a target.
