@@ -13236,3 +13236,6 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   re-sectored), BOB_TEST_COLLISIONS=1 (forces the Collisions difficulty option, which gates the player's test).
 * Verified (~/bob-gates/grunt c_ON/c_OFF, QM 6 Formation Flying, ram at 10 s): OFF "uid=0x1302 COLLIDED with
   uid=0x1300"; ON 0 collisions, friendly pairs skipped.
+* 10-16 CONVERGENCE (bdg.txt, yards; the PO's 250): Model::CalcLauncherVel's fixed 22500 cm becomes the setting
+  (yd*91.44; Rowan's value when absent or outside 50-1000). Player guns only, as Rowan's block. Verified the value
+  is read: BDG_CONVERGENCE=400 -> 36576 cm ([convergence], BOB_TRACE_CONVERGENCE=1). 250 yd = 22860 cm.

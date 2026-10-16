@@ -3939,7 +3939,21 @@ void	Model::CalcLauncherVel(SLong mvel, SLong &vx, SLong &vy, SLong &vz, SLong g
 		&& (this == Persons2::PlayerSeenAC->fly.pModel)					//RJS 21Aug00
 		&&	!SHAPE.UsingRearGunner()	)	//RJS 21Aug00
 	{
+#if BOB_LINUX
+		/* PATCH-PORT-1, BDG "Gun Convergence" (manual 2.1.2.30; bdg.txt CONVERGENCE in yards, BDG default 250 -- the
+		   PO's 250): the distance where the player's bullet streams meet. Rowan's fixed 22500 cm when absent. */
+		static Float CONVERGENCE = -1;
+		if (CONVERGENCE < 0)
+		{
+			extern double rowan_bdg_float(const char*, double);
+			const double yd = rowan_bdg_float("CONVERGENCE", 0.0);
+			CONVERGENCE = (yd >= 50.0 && yd <= 1000.0) ? Float(yd * 91.44) : Float(22500);
+			if (getenv("BOB_TRACE_CONVERGENCE"))
+				fprintf(stderr, "[convergence] bdg.txt CONVERGENCE=%.0f yd -> %.0f cm (Rowan 22500)\n", yd, (double)CONVERGENCE);
+		}
+#else
 		const Float CONVERGENCE = 22500;	//250 yards		45000;	//500 yards
+#endif
 		FP velx = FP(mvel) * ((Pos.x + CONVERGENCE * Ori.z.x + 100.0 * Ori.y.x) - FP(gunposx)) / CONVERGENCE + 10000.0 * Vel.x;
 		FP vely = FP(mvel) * ((Pos.y + CONVERGENCE * Ori.z.y + 100.0 * Ori.y.y) - FP(gunposy)) / CONVERGENCE + 10000.0 * Vel.y;
 		FP velz = FP(mvel) * ((Pos.z + CONVERGENCE * Ori.z.z + 100.0 * Ori.y.z) - FP(gunposz)) / CONVERGENCE + 10000.0 * Vel.z;
