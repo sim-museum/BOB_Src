@@ -1284,6 +1284,35 @@ void ManualPilot::SecondaryControls (AirStrucPtr const ControlledAC2)
 	}
 
 	// Elevator Trim
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG "Trimming the aircraft" (manual 2.2.5): hold the key and the trim wheel turns slowly, then
+	   faster the longer it is held. Decoded from BDG's bob.exe (0x547c2b): a 37-step table; holding trim-up starts at
+	   step 35 (Rowan: a fixed 16 per frame) and moves one entry per frame up to 320, trim-down the mirror image;
+	   letting go resets it. Clamped to MaxElevatorTrim as before. BOB_NO_BDG_TRIM=1 reverts; BOB_TRACE_TRIM=1. */
+	static const SLong trimStep[37] = { -320, -310, -300, -280, -260, -230, -200, -160, -140, -120, -100, -80, -70, -60, -50,
+	                                    -40, -35, -30, 0, 30, 35, 40, 50, 60, 70, 80, 100, 120, 140, 160, 200, 230, 260, 280,
+	                                    300, 310, 320 };
+	static int trimIdx = 19;
+	if (!getenv("BOB_NO_BDG_TRIM"))
+	{
+		const bool up = Key_Tests.KeyHeld3d (ELEVTRIMUP), down = Key_Tests.KeyHeld3d (ELEVTRIMDOWN);
+		if (up)			trimIdx = (trimIdx > 19) ? ((trimIdx < 36) ? trimIdx + 1 : 36) : 20;
+		else if (down)	trimIdx = (trimIdx < 19) ? ((trimIdx > 0) ? trimIdx - 1 : 0) : 17;
+		else			trimIdx = 19;
+		if (up || down)
+		{
+			SLong t = SLong(pModel->ElevatorTrim) + trimStep[trimIdx];
+			if (t >  SLong(pModel->MaxElevatorTrim)) t =  pModel->MaxElevatorTrim;
+			if (t < -SLong(pModel->MaxElevatorTrim)) t = -pModel->MaxElevatorTrim;
+			pModel->ElevatorTrim = t;
+			if (getenv("BOB_TRACE_TRIM")) { static int n = 0; if ((n++ % 10) == 0)
+				fprintf(stderr, "[trim] step %d -> elevator trim %d (max %d)\n", (int)trimStep[trimIdx], (int)pModel->ElevatorTrim,
+				        (int)pModel->MaxElevatorTrim); }
+		}
+	}
+	else
+	{
+#endif
 	if (Key_Tests.KeyHeld3d (ELEVTRIMUP))
 		if (pModel->ElevatorTrim < pModel->MaxElevatorTrim)
 			pModel->ElevatorTrim += 16;
@@ -1291,6 +1320,9 @@ void ManualPilot::SecondaryControls (AirStrucPtr const ControlledAC2)
 	if (Key_Tests.KeyHeld3d (ELEVTRIMDOWN))
 		if (pModel->ElevatorTrim > -pModel->MaxElevatorTrim)
 			pModel->ElevatorTrim -= 16;
+#if BOB_LINUX
+	}
+#endif
 
 	// Aileron Trim
 	if (Key_Tests.KeyHeld3d (AILTRIMUP))

@@ -13291,3 +13291,8 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   Port bug found on the way: the BDG hooks before MoveList's loop (autopilot, test hooks) only ever see the list's
   first entry -- fine for the player, who is first; the bomber check is called inside the loop.
   Not done: BDG's gunners being wounded/killed (second part of 2.2.3), BOB_FIGHTERFIX (undocumented).
+* 10-16 Trim acceleration (manual 2.2.5): decoded BDG's elevator-trim key code (bob.exe 0x547c2b: a 37-entry step
+  table -320..-30,0,30..320; holding starts at 35 and advances one entry per frame to 320; release resets) and ported
+  it into KEYFLY.CPP (Rowan: a fixed 16 per frame). Verified (QM 7, Ctrl+Home held 1.5 s): steps 35 -> 200 -> 320,
+  trim 35 -> 1055 -> 4096 (MaxElevatorTrim). BOB_NO_BDG_TRIM=1 reverts; BOB_TRACE_TRIM=1. BDG's "maximum trim
+  increased" not located (its code clamps to the same MaxElevatorTrim field); aileron/rudder trim unchanged.
