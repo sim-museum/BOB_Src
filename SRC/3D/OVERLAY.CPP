@@ -8583,10 +8583,23 @@ void COverlay::DoClippedLine(SWord x1,SWord y1,SWord x2,SWord y2,Colour col,
 void COverlay::DoArtHoriz()
 {
 	//display artificial horizon in the top right corner of the screen
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG "Artificial Horizon Size" (manual 2.1.2.26; bdg.txt ART_HORIZON_SIZE, BDG default 50, the
+	   PO's 40): the instrument's size, read here on Rowan's 640-wide scale (Rowan's own size is 64), still anchored
+	   10 from the top-right corner. Absent = Rowan's 64. */
+	static SWord adiSize = 0;
+	if (!adiSize) { extern double rowan_bdg_float(const char*, double); const double v = rowan_bdg_float("ART_HORIZON_SIZE", 64.0);
+	                adiSize = SWord((v >= 16.0 && v <= 200.0) ? v : 64.0); }
+	const SWord THREAT_X=640-adiSize-10;
+	const SWord THREAT_Y=10;
+	const SWord THREAT_W=adiSize;
+	const SWord THREAT_H=adiSize;
+#else
 	const SWord THREAT_X=640-64-10;
 	const SWord THREAT_Y=10;
 	const SWord THREAT_W=64;
 	const SWord THREAT_H=64;
+#endif
 //DeadCode JON 20Oct00 	const SWord THREAT_CX=31;
 //DeadCode JON 20Oct00 	const SWord THREAT_CY=31;
 //DeadCode JON 20Oct00 	const SWord THREAT_RAD=29;

@@ -13276,3 +13276,6 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   to the view centre (off-centre 0.8 deg)"; frame 360 (S held) shows the box at +-171 px. Port note: overlay LINES
   (DrawLine -> DrawTransformedLine) queued here never showed in captures; four 2-px SmokedGlassBox bars with
   TOGGLE_GLOBAL2DZDEPTH 1 (as the info strip) do -- drawn dark grey, the box's colour argument is not honoured.
+* 10-16 ART_HORIZON_SIZE (manual 2.1.2.26: size in pixels, BDG default 50; the PO's 40): DoArtHoriz size read on
+  Rowan's 640 scale (Rowan 64), anchored 10 from the top-right corner. Verified (QM 7): 40 visibly smaller than 64.
+  Not in MA: MA's ADI is pinned at 128 px because any other scale tiles the rotated ball (the kaleidoscope fix).
