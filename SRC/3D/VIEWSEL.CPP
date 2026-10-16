@@ -6271,6 +6271,19 @@ void ViewPoint::HandleRotate(ZmRtFlags flags)
 		else
 			viewanglestep = Angles(frameTimeMSecs * rotate_rate);	//RJS 19Sep00
 
+#if BOB_LINUX
+		/* PATCH-PORT-1, BDG "Pan Speed Factor" (manual 2.1.2.25; bdg.txt PAN_SPEED_FACTOR, default 1, the PO's 3): a
+		   multiplier on the view panning speed. BOB_TRACE_PAN=1 prints the step. */
+		{
+			static double panFactor = -1;
+			if (panFactor < 0) { extern double rowan_bdg_float(const char*, double); panFactor = rowan_bdg_float("PAN_SPEED_FACTOR", 1.0);
+			                     if (panFactor < 0.1 || panFactor > 10.0) panFactor = 1.0; }
+			const int before = (int)viewanglestep;
+			viewanglestep = Angles(SLong(double(SWord(viewanglestep)) * panFactor));
+			if (getenv("BOB_TRACE_PAN")) { static int n = 0; if ((n++ % 30) == 0)
+				fprintf(stderr, "[pan] step %d -> %d (PAN_SPEED_FACTOR %.1f)\n", before, (int)viewanglestep, panFactor); }
+		}
+#endif
 		if (!(int)viewanglestep)											//PD 05Apr96
 			viewanglestep = ANGLES_FifthDeg;							//PD 05Apr96
 		KeySteps++;

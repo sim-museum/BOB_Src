@@ -13279,3 +13279,6 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * 10-16 ART_HORIZON_SIZE (manual 2.1.2.26: size in pixels, BDG default 50; the PO's 40): DoArtHoriz size read on
   Rowan's 640 scale (Rowan 64), anchored 10 from the top-right corner. Verified (QM 7): 40 visibly smaller than 64.
   Not in MA: MA's ADI is pinned at 128 px because any other scale tiles the rotated ball (the kaleidoscope fix).
+* 10-16 PAN_SPEED_FACTOR (manual 2.1.2.25, default 1; the PO's 3): HandleRotate's view step is multiplied by it.
+  Verified (QM 7, keypad 4 held): "[pan] step 272 -> 816". BOB_TRACE_PAN=1. Covers key/hat panning (HandleRotate);
+  BDG also names the campaign photo screen and death views -- not covered.
