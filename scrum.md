@@ -13270,3 +13270,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   up both stay Rowan's (white on the strip), as BDG describes. Verified (QM 7 frame 600): red "Alt 1357ft Hdg 359
   Speed 223Kts" with no strip. BOB_TRACE_INFOLINE=1. TRACKVIEWRANGE (256) and PERIPHERAL_VISION_RANGE (4000) in the
   PO's file equal Rowan's built-in values (TrackViewRec 0x0100; the 4 km dots): nothing to change.
+* 10-16 DRAW_PADLOCK_CENTER_BOX (the PO's ON) + S on release, as BDG MiG Alley (decoded there; same feature/switch
+  in BDG BoB): DoCheatBox draws the +-PC_HDG x +-PC_PITCH box while S (272) is held; VIEWSEL.CPP padlocks on release.
+  Verified (~/bob-gates/grunt pcb/pcb5, QM 20, S held 3 s): release -> "44 enemies in range, padlocked the nearest
+  to the view centre (off-centre 0.8 deg)"; frame 360 (S held) shows the box at +-171 px. Port note: overlay LINES
+  (DrawLine -> DrawTransformedLine) queued here never showed in captures; four 2-px SmokedGlassBox bars with
+  TOGGLE_GLOBAL2DZDEPTH 1 (as the info strip) do -- drawn dark grey, the box's colour argument is not honoured.

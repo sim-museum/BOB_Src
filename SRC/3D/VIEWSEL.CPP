@@ -2124,7 +2124,17 @@ void ViewPoint::ControlViewSelect()
 		   +-PC_PITCH of it, through the same steps InitEnemy uses. The look-at angles follow this file's own
 		   camera convention (hdg = HighArcTan(cam.X - tgt.X, tgt.Z - cam.Z), pitch = HighArcTan(cam.Y - tgt.Y,
 		   range)). BOB_NO_BDG_PCENEMY=1 reverts; BOB_TRACE_PCENEMY=1. */
-		if (!bPadlockNotPossible && !getenv("BOB_NO_BDG_PCENEMY") && Key_Tests.KeyPress3d((KeyVal3D)(272*2)))
+		/* BDG picks on RELEASE of S (flag set while held, action when let go -- decoded in BDG MiG Alley), so the
+		   DRAW_PADLOCK_CENTER_BOX box (OVERLAY.CPP) can show the area while the key is down */
+		static bool s_pcHeld = false;
+		bool pcRelease = false;
+		{
+			Key_Tests.KeyPress3d((KeyVal3D)(272*2));	/* consume the edge */
+			const bool held = Key_Tests.KeyHeld3d((KeyVal3D)(272*2));
+			pcRelease = s_pcHeld && !held;
+			s_pcHeld = held;
+		}
+		if (!bPadlockNotPossible && !getenv("BOB_NO_BDG_PCENEMY") && pcRelease)
 		{
 			extern double rowan_bdg_float(const char*, double);
 			static const double pcHdg = rowan_bdg_float("PC_HDG", 10.0), pcPitch = rowan_bdg_float("PC_PITCH", 10.0);

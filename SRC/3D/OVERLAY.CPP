@@ -8233,6 +8233,42 @@ void COverlay::SetupCheatBox()
 void COverlay::DoCheatBox()
 {
 	const float CHEATBOXSIZEMINSIZE = 10.f;
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG DRAW_PADLOCK_CENTER_BOX (bdg.txt; the PO's is ON): while S (Padlock Centre, BDG key 272) is
+	   held, a box marks the PC_HDG x PC_PITCH area it will pick from; the padlock happens on release (VIEWSEL.CPP).
+	   As BDG MiG Alley (decoded there, Mig.exe 0x42c171) -- same switch and feature in BDG BoB. Linear deg->px from
+	   Save_Data.fieldOfView (full horizontal FOV). BOB_TRACE_PCBOX=1. */
+	{
+		static int boxOn = -1;
+		static double pcH = 10, pcP = 10;
+		if (boxOn < 0)
+		{
+			extern int rowan_bdg_int(const char*, int); extern double rowan_bdg_float(const char*, double);
+			boxOn = rowan_bdg_int("DRAW_PADLOCK_CENTER_BOX", 0);
+			pcH = rowan_bdg_float("PC_HDG", 10.0); pcP = rowan_bdg_float("PC_PITCH", 10.0);
+		}
+		if (boxOn && Key_Tests.KeyHeld3d((KeyVal3D)(272*2)))
+		{
+			GetSurfaceDimensions(physicalWidth,physicalHeight);
+			double fov = double(UWord(Save_Data.fieldOfView)) * 360.0 / 65536.0;
+			if (fov < 5.0) fov = 60.0;
+			const double pxPerDeg = double(physicalWidth) / fov;
+			const float hw = float(pcH * pxPerDeg), hh = float(pcP * pxPerDeg);
+			const float cx = float(physicalWidth) / 2.f, cy = float(physicalHeight) / 2.f;
+			/* four 2-pixel bars: overlay lines (DrawTransformedLine) do not show at this point in the frame in
+			   this port, the info strip's smoked-glass boxes do */
+			const SLong x0 = SLong(cx-hw), y0 = SLong(cy-hh), w = SLong(2*hw), h = SLong(2*hh);
+			g_lpLib3d->SetGlobal( TOGGLE_GLOBAL2DZDEPTH, 1 );	/* as the info strip: in front of the cockpit */
+			SmokedGlassBox(x0, y0, w, 2, 0xFFFFFF, 220);
+			SmokedGlassBox(x0, y0+h-2, w, 2, 0xFFFFFF, 220);
+			SmokedGlassBox(x0, y0, 2, h, 0xFFFFFF, 220);
+			SmokedGlassBox(x0+w-2, y0, 2, h, 0xFFFFFF, 220);
+			g_lpLib3d->SetGlobal( TOGGLE_GLOBAL2DZDEPTH, ULong(0) );
+			if (getenv("BOB_TRACE_PCBOX")) { static int n = 0; if ((n++ % 30) == 0)
+				fprintf(stderr, "[pcbox] S held: box +-%.0f x +-%.0f px (FOV %.0f deg, PC %.0f x %.0f deg)\n", hw, hh, fov, pcH, pcP); }
+		}
+	}
+#endif
 // hmmmm, see if cheat box works properly in comms yet, probably not...
 
 #if BOB_LINUX
