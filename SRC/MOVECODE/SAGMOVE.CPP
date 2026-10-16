@@ -6064,6 +6064,19 @@ void	Profile::Squad::ApplyFlyingLosses(int acbitslaunched)
 
 	MMC.thisweekreview.Note(squadron.AcType(),PeriodReview::DESTROY,numacditched-numacrecoveredmed);
 	MMC.thisweekreview.Note(squadron.AcType(),PeriodReview::DAMAGE,numacrecoveredlow+numacrecoveredmed);
+#if defined(BOB_LINUX)
+	/* PATCH-PORT-1, BDG "Negative Aircraft Count" (manual 3.1.2): acavail is a UByte; a badly damaged flight whose
+	   losses were applied twice took it below zero, which wrapped to ~250 aircraft appearing from nowhere. Never
+	   below zero, as pilotsavail just below (MS 17Nov00). BOB_NO_BDG_ACCOUNT=1 reverts; BOB_TRACE_ACCOUNT=1. */
+	if (!getenv("BOB_NO_BDG_ACCOUNT") && int(squadron.acavail) < int(numacditched+numacrecoveredlow))
+	{
+		if (getenv("BOB_TRACE_ACCOUNT"))
+			fprintf(stderr, "[account] squadron %d: %d available, %d lost -> 0 (was going to wrap)\n",
+			        (int)squadnum, (int)squadron.acavail, (int)(numacditched+numacrecoveredlow));
+		squadron.acavail=0;
+	}
+	else
+#endif
 	squadron.acavail-=numacditched+numacrecoveredlow;					//JIM 6Sep00
 	squadron.acquickrepairable+=numacrecoveredlow;
 	squadron.acslowrepairable+=numacrecoveredmed;

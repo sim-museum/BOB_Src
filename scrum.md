@@ -13186,3 +13186,10 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   off. A dock damaged yesterday therefore does not count today unless an unharmed raid hit it again. Checked that
   Directives::LW::AI (called just before) does not plant tomorrow's packages: its body is dead code. Reopen only
   with a campaign where the counter rises on a day with no raid on such a target.
+
+## PATCH-PORT-1: Negative aircraft count (BDG manual 3.1.2), 2026-10-15 night -- FIXED (code read; not run)
+* Profile::Squad::ApplyFlyingLosses (SAGMOVE.CPP) subtracted numacditched+numacrecoveredlow from the UByte acavail
+  with no floor (pilotsavail, three lines on, has one: MS 17Nov00). Losses applied twice to a badly damaged flight
+  wrapped it to ~250 -- BDG's "approximately 250 aircraft appeared out of nowhere". Now floored at 0.
+  BOB_NO_BDG_ACCOUNT=1 reverts; BOB_TRACE_ACCOUNT=1 prints each time the floor is hit. The double application
+  itself is not located; the floor is BDG's stated fix. No run: the case cannot be produced on demand here.
