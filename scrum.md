@@ -13239,3 +13239,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * 10-16 CONVERGENCE (bdg.txt, yards; the PO's 250): Model::CalcLauncherVel's fixed 22500 cm becomes the setting
   (yd*91.44; Rowan's value when absent or outside 50-1000). Player guns only, as Rowan's block. Verified the value
   is read: BDG_CONVERGENCE=400 -> 36576 cm ([convergence], BOB_TRACE_CONVERGENCE=1). 250 yd = 22860 cm.
+* 10-16 Bullet_DragGravity (bdg.txt; the PO's ON): Rowan's bullets had gravity but no drag (MobileBullet passes
+  dragfactor 0). BDG's drag decoded from its exe (dragfactor 999 into its rewritten GAndFriction 0x454484): a
+  transonic coefficient table (0 below 252 m/s; 70..183..141 up to 810 m/s; 141 above) x FRAMETIME x 0.125e-11 x v^2.
+  As decoded, BDG's per-axis x/z sign tests are the reverse of Rowan's (they would accelerate the round); applied
+  here along the velocity instead. Verified ([bulletdrag], QM 12 player fire): 862 m/s -5.23 m/s per 4 cs frame
+  (131 m/s^2), 771 m/s 105 m/s^2 -- ~7% speed lost over 400 yd. BOB_TRACE_BULLETDRAG=1.

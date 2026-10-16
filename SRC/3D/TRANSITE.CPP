@@ -5393,7 +5393,42 @@ void TransObj::MobileBullet(TransientItemPtr transit,WorldStuff& world)
 		}
 
 		if (transit->LaunchTime>0)	
+		{
+#if BOB_LINUX
+			/* PATCH-PORT-1, BDG "Bullet_DragGravity" (bdg.txt; the PO's is ON): air drag on bullets, which Rowan left
+			   out (dragfactor 0 here: gravity only). BDG's drag, decoded from its bob.exe (MobileBullet passes 999 to its
+			   rewritten GAndFriction, 0x454484): a speed-dependent coefficient, the transonic rise of a rifle bullet --
+			   0 below 252 m/s, 70 81 90 110 147 174 183 173 157 141 in the bands from 252/269/290/315/348/396/460/538/
+			   624/715 m/s, 141 above 810 -- times FRAMETIME * 0.125e-11, times v^2. BDG applied it per axis and its x/z
+			   sign tests are the reverse of Rowan's (as decoded they would speed the round up); here it acts along the
+			   velocity, so it always slows the round. ~100 m/s^2 at 740 m/s. BOB_TRACE_BULLETDRAG=1 samples it. */
+			static int dragOn = -1;
+			if (dragOn < 0) { extern int rowan_bdg_int(const char*, int); dragOn = rowan_bdg_int("Bullet_DragGravity", 0); }
+			if (dragOn)
+			{
+				static const double S[10] = { 2520000, 2690000, 2900000, 3150000, 3480000, 3960000, 4600000, 5380000, 6240000, 7150000 };
+				static const double C[10] = { 70, 81, 90, 110, 147, 174, 183, 173, 157, 141 };
+				const double vx = transit->vel_x, vy = transit->vel_y, vz = transit->vel_z;
+				const double v = sqrt(vx*vx + vy*vy + vz*vz);
+				double c = 0;
+				if (v > 8100000.0) c = 141;
+				else for (int i = 9; i >= 0; i--) if (v > S[i]) { c = C[i]; break; }
+				if (c > 0)
+				{
+					const double dv = c * double(Timer_Code.FRAMETIME) * 0.125e-11 * v * v;	/* speed lost this frame */
+					const double sc = (dv < v) ? (v - dv) / v : 0.0;
+					transit->vel_x = SLong(vx * sc);
+					transit->vel_y = SLong(vy * sc);
+					transit->vel_z = SLong(vz * sc);
+					if (getenv("BOB_TRACE_BULLETDRAG")) { static int n = 0; if ((n++ % 400) == 0)
+						fprintf(stderr, "[bulletdrag] %.0f m/s: coefficient %.0f, -%.2f m/s this frame (%d cs) = %.0f m/s^2\n",
+						        v / 10000.0, c, dv / 10000.0, (int)Timer_Code.FRAMETIME,
+						        dv / 10000.0 / (double(Timer_Code.FRAMETIME) / 100.0)); }
+				}
+			}
+#endif
 			GAndFriction(transit,0);	//OrdinaryDrag);		//JIM 24Sep96
+		}
 	}
 
 	if (transit->LaunchTime<=0)
