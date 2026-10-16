@@ -13150,3 +13150,18 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   (DETAIL3D_PADLOCKCHEAT) only draws the padlock box. BDG wrote a LABEL unit from scratch (colours, fading,
   short labels, obscured by the cockpit). Not started: an assist, and the PO rule is historical realism first --
   asked in the status note.
+
+## PATCH-PORT-1: Stuka grunt (BDG manual 4.4.13), 2026-10-15 night -- FIXED
+* Retro: never attempted. Measured first (~/bob-gates/grunt, QM boot BOB_QM_INDEX, player on autopilot via
+  BOB_DIK_MS Ctrl+A so the flight lasts): LaunchParachute only lets a pilot out when CANOPY == BS_DEAD. The full-model
+  BailOut asked for the canopy with ACM.CanopyOpen(), which only sets ACM_CANOPYOUT -- a flag NOTHING reads. Aircraft
+  that start with no canopy part (CANOPY 255: all 15 forced bail-outs in QM 20) got out; a Stuka (QM 16 "Dive Bomb
+  Attack", uid 0x1300, CANOPY 0) hung inverted pushing the stick for ever: the grunt.
+* Fix: BailOut PHASE0 jettisons the canopy with Trans_Obj.LaunchCanopyEject, as SimpleBailOut always did (Rowan's
+  own jam chance for a damaged canopy and the 4000 ft AI floor stay). If the pilot is still in at the parachute
+  attempt: two more jettison tries, 2 s apart (PHASE3/4), then MANOEUVRE_MAKEFORFRIENDLY (head for home). The same
+  give-up added to SimpleBailOut, which could hang the same way when the jettison fails. BOB_NO_BDG_GRUNT=1 reverts;
+  BOB_TRACE_BAILOUT=1. Test hooks: BOB_TEST_BAILOUT_AFTER=<s> (+ BOB_TEST_BAILOUT_ALL=1), BOB_TEST_JAMCANOPY=1.
+* Verified: QM 16 forced bail-out of 0x1300: before "canopy=0 -> STUCK"; after "canopy=255 -> bails out". Jammed
+  (BOB_TEST_JAMCANOPY): "tries the canopy again" x2, then "gives up, heads for home". The SimpleBailOut give-up is
+  built but not yet seen (one natural stuck LaunchParachute from uid 0x1312 in run b8, not reproduced).

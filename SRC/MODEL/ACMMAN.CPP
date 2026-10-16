@@ -5174,6 +5174,28 @@ void AirStruc::SetDesiredVel()
 //------------------------------------------------------------------------------
 void	ACMAirStruc::ManualACM ()
 {
+#if defined(BOB_LINUX)
+	/* test hook (PATCH-PORT-1 Stuka grunt): BOB_TEST_BAILOUT_AFTER=<s> -- s seconds after the first ACM frame, the
+	   next AI aircraft through here starts the bail-out manoeuvre (once) */
+	{
+		static int after = -2; static time_t t0 = 0; static bool done = false;
+		if (after == -2) { const char* e = getenv("BOB_TEST_BAILOUT_AFTER"); after = e ? atoi(e) : -1; }
+		if (after >= 0 && !done && !AcIsPlayer())
+		{
+			if (!t0) t0 = time(0);
+			if (time(0) - t0 >= after)
+			{
+				done = !getenv("BOB_TEST_BAILOUT_ALL");	/* _ALL: every AI aircraft, each once (ManStep restarts below only on entry) */
+				if (ai.manoeuvre != MANOEUVRE_BAILOUT)
+				{
+					ai.manoeuvre = MANOEUVRE_BAILOUT;
+					ai.ManStep = PHASE0;
+					fprintf(stderr, "[bailout] test: uid=0x%x nat=%d forced into BAILOUT\n", (unsigned)uniqueID.count, (int)nationality);
+				}
+			}
+		}
+	}
+#endif
 //DeadCode CSB 28/04/99		PrintString(0, 22, "ManualACM ");
 	
 //DEADCODE DAW 26/11/99 	if(Key_Tests.KeyPress3d (RPM_50))	//CSB 18/3/99	

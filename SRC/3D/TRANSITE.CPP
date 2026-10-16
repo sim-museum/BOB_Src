@@ -2007,6 +2007,14 @@ void	TransObj::LaunchParachute(mobileitem* launcher,Coords3D& pos, SWord relpos,
 	Squad_Diary.SetAC(launcher,launcher->Anim);							//RJS 21Sep00
 																		//RJS 18Feb98
 	// Canopy must have been blown.....									//RJS 18Feb98
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_BAILOUT")) { static int n = 0; static unsigned seen[256]; static int nseen = 0; n++;
+		bool first = true; for (int q = 0; q < nseen; q++) if (seen[q] == launcher->uniqueID.count) first = false;
+		if (first && nseen < 256) seen[nseen++] = launcher->uniqueID.count;
+		if (first)
+		fprintf(stderr, "[bailout] LaunchParachute call #%d: uid=0x%x detailed=%d canopy=%d -> %s\n", n,
+		        (unsigned)launcher->uniqueID.count, acadptr ? 1 : 0, (int)canopyVal, canopyVal == BS_DEAD ? "bails out" : "STUCK (canopy on)"); }
+#endif
 	if (canopyVal == BS_DEAD)											//RJS 7Jun00
 	{																	//RJS 18Feb98
 		if (launcher->Status.size == AIRSTRUCSIZE)				//RJS 31May99

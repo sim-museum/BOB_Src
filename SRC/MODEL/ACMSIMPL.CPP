@@ -3965,6 +3965,10 @@ void	ACMAirStruc::SimpleBailOut()
 			break;
 		}
 		case PHASE2:
+#if defined(BOB_LINUX)
+		case PHASE3:	/* BDG Stuka grunt: canopy retries (see ACMAI.CPP BailOut) */
+		case PHASE4:
+#endif
 		{
 			SimpleMoveToRoll(ANGLES_180Deg);
 			PitchIntercept = ANGLES_30Deg;
@@ -3972,6 +3976,29 @@ void	ACMAirStruc::SimpleBailOut()
 			if(!TimeLeft())
 			{
 				Trans_Obj.LaunchParachute(this,this->World,0,*mobileitem::currworld);//RJS 06Dec99
+#if defined(BOB_LINUX)
+				/* PATCH-PORT-1, BDG "Stuka-grunt-bug": the canopy did not come off (jammed, or below the 4000 ft AI
+				   jettison floor): try twice more, then head for home instead of hanging inverted for ever.
+				   BOB_NO_BDG_GRUNT=1 reverts; BOB_TRACE_BAILOUT=1. */
+				if (!weap.Ejected && !getenv("BOB_NO_BDG_GRUNT"))
+				{
+					if (ai.ManStep < PHASE4)
+					{
+						if (!getenv("BOB_TEST_JAMCANOPY"))
+							Trans_Obj.LaunchCanopyEject(this,*mobileitem::currworld);
+						ai.ManStep = (ai.ManStep == PHASE2) ? PHASE3 : PHASE4;
+						SetManoeuvreTime(200);
+					}
+					else
+					{
+						ai.manoeuvre = MANOEUVRE_MAKEFORFRIENDLY;
+						ai.ManStep = PHASE0;
+					}
+					if (getenv("BOB_TRACE_BAILOUT"))
+						fprintf(stderr, "[bailout] (simple) uid=0x%x could not get out -> %s\n", (unsigned)uniqueID.count,
+						        ai.manoeuvre == MANOEUVRE_MAKEFORFRIENDLY ? "gives up, heads for home" : "tries the canopy again");
+				}
+#endif
 //DeadCode CSB 14Nov00 				Manual_Pilot.DeathSequenceOverrideDiary(this, AUTO_DEATHSEQUENCE);	//RJS 31Oct00
 
 				if((nationality == NAT_RAF) && (!PlayerInGroup()) && (!Math_Lib.rnd(20)))

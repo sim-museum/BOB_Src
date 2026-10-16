@@ -583,6 +583,13 @@ void	ACMAirStruc::BailOut()
 	ACMMODEL& ACM = *fly.pAcmModel;
 	MODEL& MOD = *fly.pModel;
 
+#if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_BAILOUT")) { static int lastStep = -1; static unsigned lastUid = 0; static int n = 0;
+		if ((ai.ManStep != lastStep || uniqueID.count != lastUid) && n++ < 40)
+			fprintf(stderr, "[bailout] BailOut uid=0x%x ManStep=%d roll=%d timeleft=%d\n", (unsigned)uniqueID.count,
+			        (int)ai.ManStep, (int)(SWord)roll, (int)TimeLeft());
+		lastStep = ai.ManStep; lastUid = uniqueID.count; }
+#endif
 	switch (ai.ManStep)
 	{
 		case PHASE0:
@@ -590,6 +597,15 @@ void	ACMAirStruc::BailOut()
 			ACM.Thrust(0);	 
 //DEADCODE CB 18/11/99 			Trans_Obj.LaunchCanopyEject(this,*mobileitem::currworld);
 			ACM.CanopyOpen();
+#if defined(BOB_LINUX)
+			/* PATCH-PORT-1, BDG 0.99 "Stuka-grunt-bug" (manual 4.4.13): ACM.CanopyOpen only sets ACM_CANOPYOUT, which
+			   nothing reads, so an aircraft whose canopy is still on (Stuka: CANOPY 0) could never let its pilot out:
+			   LaunchParachute needs CANOPY == BS_DEAD, and the pilot hung inverted pushing the stick for ever.
+			   Jettison it as SimpleBailOut does; LaunchCanopyEject keeps Rowan's own rules (a damaged canopy may
+			   jam; no AI jettison below 4000 ft). BOB_NO_BDG_GRUNT=1 reverts; BOB_TRACE_BAILOUT=1. */
+			if (!getenv("BOB_NO_BDG_GRUNT") && !getenv("BOB_TEST_JAMCANOPY"))	/* test: the canopy will not open */
+				Trans_Obj.LaunchCanopyEject(this,*mobileitem::currworld);
+#endif
 			AirStrucPtr	unfriendly = *ai.unfriendly;
 			unfriendly->SetUnfriendly(NULL);							//CSB 1Aug00
 //DeadCode CSB 1Aug00 			unfriendly->ai.unfriendly = NULL;
@@ -608,12 +624,38 @@ void	ACMAirStruc::BailOut()
 			break;
 		}
 		case PHASE2:
+#if defined(BOB_LINUX)
+		case PHASE3:	/* BDG Stuka grunt: canopy retries */
+		case PHASE4:
+#endif
 		{
 			ACM.Roll(ANGLES_180Deg);
 			ACM.SetElevator(16384);
 			if(!TimeLeft())
 			{
 				Trans_Obj.LaunchParachute(this,this->World,0,*mobileitem::currworld);//RJS 06Dec99
+#if defined(BOB_LINUX)
+				/* the canopy is still on (jammed, or too low to jettison): try twice more, 2 s apart, then give the
+				   bail-out up and head for home instead of pushing inverted until the ground */
+				if (!weap.Ejected && !getenv("BOB_NO_BDG_GRUNT"))
+				{
+					if (ai.ManStep < PHASE4)
+					{
+						if (!getenv("BOB_TEST_JAMCANOPY"))
+							Trans_Obj.LaunchCanopyEject(this,*mobileitem::currworld);
+						ai.ManStep = (ai.ManStep == PHASE2) ? PHASE3 : PHASE4;
+						SetManoeuvreTime(200);
+					}
+					else
+					{
+						ai.manoeuvre = MANOEUVRE_MAKEFORFRIENDLY;
+						ai.ManStep = PHASE0;
+					}
+					if (getenv("BOB_TRACE_BAILOUT"))
+						fprintf(stderr, "[bailout] uid=0x%x could not get out -> %s\n", (unsigned)uniqueID.count,
+						        ai.manoeuvre == MANOEUVRE_MAKEFORFRIENDLY ? "gives up, heads for home" : "tries the canopy again");
+				}
+#endif
 //DeadCode CSB 14Nov00 				Manual_Pilot.DeathSequenceOverrideDiary(this, AUTO_DEATHSEQUENCE);	//RJS 31Oct00
 				
 				if((nationality == NAT_RAF) && (!PlayerInGroup()) && (!Math_Lib.rnd(20)))
