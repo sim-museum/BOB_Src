@@ -168,6 +168,26 @@ PrintVar(40, 16, "Raw Ailn %.0f  ", (FP)ControlledAC->fly.aileron);
 PrintVar(40, 17, "Raw Rudd %.0f  ", (FP)ControlledAC->fly.rudder);
 #endif
 
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG BOB_SMOOTHER_DEADZONE (bdg.txt, BDG default ON, the PO's ON; manual 2.2.12): "a smoother
+	   transition from the centre point of the dead zone to the maximum deflection". Decoded from BDG's bob.exe
+	   (0x545f0f..0x545fba): with the switch on all three axes go through Rowan's own ApplyDeadZone3 (0x546da7: the
+	   5x/3x dead-zone curve), which this source has but never calls, whatever the realism mode. */
+	static int smoother = -1;
+	if (smoother < 0) { extern int rowan_bdg_int(const char*, int); smoother = rowan_bdg_int("BOB_SMOOTHER_DEADZONE", 0); }
+	if (smoother)
+	{
+		ApplyDeadZone3(ControlledAC, ControlledAC->fly.elevator, pModel->Elevator, _Analogue.tune[AU_ELEVATOR].deadzones);
+		ApplyDeadZone3(ControlledAC, ControlledAC->fly.aileron,  pModel->Aileron,  _Analogue.tune[AU_AILERON].deadzones);
+		ApplyDeadZone3(ControlledAC, ControlledAC->fly.rudder,   pModel->Rudder,   _Analogue.tune[AU_RUDDER].deadzones);
+		if (getenv("BOB_TRACE_DEADZONE")) { static time_t last = 0; if (time(0) - last >= 1) { last = time(0);
+			fprintf(stderr, "[deadzone] smoother: stick ail %d -> %d, elev %d -> %d (dead zones %d/%d)\n",
+			        (int)ControlledAC->fly.aileron, (int)pModel->Aileron, (int)ControlledAC->fly.elevator, (int)pModel->Elevator,
+			        (int)_Analogue.tune[AU_AILERON].deadzones, (int)_Analogue.tune[AU_ELEVATOR].deadzones); } }
+	}
+	else
+	{
+#endif
 	if(_Analogue.tune[AU_ELEVATOR].mode == AM_REALISTIC)	
 		ApplyDeadZone (ControlledAC, ControlledAC->fly.elevator, pModel->Elevator, _Analogue.tune[AU_ELEVATOR].deadzones);
 	else
@@ -182,6 +202,9 @@ PrintVar(40, 17, "Raw Rudd %.0f  ", (FP)ControlledAC->fly.rudder);
 		ApplyDeadZone (ControlledAC, ControlledAC->fly.rudder,   pModel->Rudder,   _Analogue.tune[AU_RUDDER].deadzones);
 	else
 		ApplyDeadZone2(ControlledAC, ControlledAC->fly.rudder,   pModel->Rudder,   _Analogue.tune[AU_RUDDER].deadzones);
+#if BOB_LINUX
+	}
+#endif
 
 	FP temp = 1.0 - pModel->Speed / pModel->ControlLossV1;
 	if(temp < 0.0)	temp = 0.0;

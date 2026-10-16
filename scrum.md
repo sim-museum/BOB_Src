@@ -13254,3 +13254,8 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   Verified: QM 15 (Luftwaffe) "Alt 4048m Hdg 153 Speed 412km/h"; QM 7 (RAF) "Alt 1618ft ... Speed 195Kts".
   HIDE_AMMO_COUNTER now keeps the counter in the Bf 110 ("the only aircraft to carry an on-board ammunition counter
   in 1940", same manual section) -- code read, no Bf 110 flight run.
+* 10-16 BOB_SMOOTHER_DEADZONE (bdg.txt; the PO's ON): decoded -- BDG routes all three axes through Rowan's own,
+  never-called ApplyDeadZone3 (0x546da7 = its 5x/3x dead-zone curve) instead of ApplyDeadZone/ApplyDeadZone2. Ported
+  the same. Measured with the PO's dead zones 0 ([deadzone], BOB_TRACE_DEADZONE=1): stick -96 -> -47, elevator
+  221 -> 110 (half slope in the middle range), keyboard full aileron -24575 -> -13566; full deflection still
+  reaches 32767 (EndCurve2). Note for the PO: keyboard flyers get less authority with it ON, as in BDG.
