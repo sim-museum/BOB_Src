@@ -13193,3 +13193,13 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   wrapped it to ~250 -- BDG's "approximately 250 aircraft appeared out of nowhere". Now floored at 0.
   BOB_NO_BDG_ACCOUNT=1 reverts; BOB_TRACE_ACCOUNT=1 prints each time the floor is hit. The double application
   itself is not located; the floor is BDG's stated fix. No run: the case cannot be produced on demand here.
+
+## PATCH-PORT-1: Wake-up problem, flying for a specific squadron (BDG manual 3.1.4) -- FIXED (code read; not run)
+* UIMSG.CPP: the fly offer (TakeOverOffered) only compared the ONE squadron named by the event (sqf/sqt) with the
+  forced / favourite squadron, so a player squadron that was in the package but not the event's squadron (not
+  the first one chosen) was never woken. Now, failing that, every squadron of both packages is searched for
+  MMC.fav.forcesquadron (or the favourite RAF squadron) and the dialogue is offered for it.
+  BOB_NO_BDG_WAKEUP=1 reverts; BOB_TRACE_WAKEUP=1.
+* Also: Rowan's flyon branch for the TARGET side passed packf,sqf (its own comment says packt,sqt), i.e. -1
+  when the friendly side is not ours. Now packt,sqt.
+* Not run: needs a campaign day with the favourite squadron tasked second in an interception.

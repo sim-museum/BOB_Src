@@ -308,7 +308,11 @@ void	IntelBuffer::ChangeAccelOn(AccelSwitches actiontype,UniqueID friendly,Uniqu
 			if (!doneone && packt!=-1)
 				if ((Todays_Packages[packt].attackmethod&Profile::AM_GROUPMASK)==mysidemethod)
 				{
+#if defined(BOB_LINUX)
+					OpenTakeOffOffered(packt,sqt, latest);	/* Rowan passed packf,sqf here (-1 when the friendly side is not ours) */
+#else
 					OpenTakeOffOffered(packf,sqf, latest);	//launch fly dialogue for packt,sqt
+#endif
 					doneone=true;
 				}
 
@@ -417,6 +421,32 @@ void	IntelBuffer::ChangeAccelOn(AccelSwitches actiontype,UniqueID friendly,Uniqu
 			} 	
 		}
 		
+#if defined(BOB_LINUX)
+		/* PATCH-PORT-1, BDG "Wake Up Problem when Flying for a Specific Squadron" (manual 3.1.4): the offer only looked
+		   at the ONE squadron the event names (sqf/sqt), so when the player's squadron was in the package but was not
+		   the squadron the event was about -- not the first one chosen -- the fly dialogue never came up. Look through
+		   every squadron of both packages for the forced squadron, or the favourite RAF squadron.
+		   BOB_NO_BDG_WAKEUP=1 reverts; BOB_TRACE_WAKEUP=1. */
+		if (!doneone && !getenv("BOB_NO_BDG_WAKEUP"))
+		{
+			SquadNum want = SQ_MAX;
+			if (MMC.fav.forcesquadron)
+				want = SquadNum(MMC.fav.forcesquadron);
+			else if (MMC.fav.flyonfav[actiontype] && Todays_Packages.localplayer==NAT_RAF && MMC.fav.squadron)
+				want = SquadNum(MMC.fav.squadron);
+			int packs[2] = {packf, packt};
+			for (int k = 0; k < 2 && want != SQ_MAX && !doneone; k++)
+				if (packs[k] != -1 && (Todays_Packages[packs[k]].attackmethod&Profile::AM_GROUPMASK)==mysidemethod)
+					for (int i = 0, m = Todays_Packages[packs[k]].squadlist; i < m && !doneone; i++)
+						if (Todays_Packages[packs[k]][i].squadnum == want)
+						{
+							if (getenv("BOB_TRACE_WAKEUP"))
+								fprintf(stderr, "[wakeup] squadron %d is squad %d of package %d -> fly offered\n", (int)want, i, packs[k]);
+							OpenTakeOffOffered(packs[k], i, latest);
+							doneone = true;
+						}
+		}
+#endif
 		if (!doneone && MMC.fav.forcesquadron)
 		{
 			if (packf!=-1 && Todays_Packages[packf][sqf].squadnum==MMC.fav.forcesquadron)
