@@ -324,6 +324,33 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 		}
 	}
 #endif
+#if BOB_LINUX
+	/* test hook (NO_FRIENDLY_COLLISIONS): BOB_TEST_RAM_AT=<s> -- once, s seconds into the flight, put the player 2 m
+	   above the nearest friendly aircraft (re-sectored), so the collision code must decide */
+	if (entry == Persons2::PlayerSeenAC && getenv("BOB_TEST_RAM_AT")) {
+		struct BdgRam : ArtInt { static AirStruc* Ac(int i) { return ACArray[i]; } static int N() { return ACARRAYSIZE; } };
+		static time_t t0 = 0; static bool done = false;
+		if (!t0) t0 = time(0);
+		AirStrucPtr me = (AirStrucPtr)entry;
+		if (!done && time(0) - t0 >= atoi(getenv("BOB_TEST_RAM_AT")) && me->fly.pModel) {
+			done = true;
+			AirStrucPtr best = NULL; FP bd = 0;
+			for (int i = 0; i < BdgRam::N(); i++) {
+				AirStrucPtr a = BdgRam::Ac(i);
+				if (!a || a == me || a->nationality != me->nationality) continue;
+				FP d = me->Distance3DSquared(&a->World);
+				if (!best || d < bd) { best = a; bd = d; }
+			}
+			if (best) {
+				currworld->RemoveFromWorld(me);
+				me->fly.pModel->ResetPosition(me, best->World.X, best->World.Y + 200, best->World.Z);
+				currworld->AddToWorld(me);
+				fprintf(stderr, "[friendcoll] test: player put 2 m above friendly uid=0x%x (was %.0f m away)\n",
+				        (unsigned)best->uniqueID.count, sqrt(double(bd)) / 100.0);
+			}
+		}
+	}
+#endif
 	if (getenv("BOB_AI_PILOT") && entry == Persons2::PlayerSeenAC) {
 		static time_t t0 = 0, lastTrace = 0;
 		static int handed = 0;

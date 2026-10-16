@@ -10549,6 +10549,9 @@ void TransObj::PilotedACHit()
 	TargetSize	tsz = Save_Data.targetsize;
 	Save_Data.targetsize = TS_MIN;
 
+#if BOB_LINUX
+	if (getenv("BOB_TEST_COLLISIONS")) Save_Data.gamedifficulty |= GD_COLLISIONS;	/* test: the Collisions option on */
+#endif
 	if (	Save_Data.gamedifficulty[GD_COLLISIONS]				//RJS 25Jan99
 		&&	!(Manual_Pilot.ControlledAC2->Status.deadtime)
 		&&	(Manual_Pilot.ControlledAC2->classtype->aerobaticfactor != AEROBATIC_LOW)

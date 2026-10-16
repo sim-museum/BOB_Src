@@ -13226,3 +13226,13 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   -11464 (x0.62), roll rate ~75 deg/s; OFF -18429, ~117 deg/s. Ratio 0.64.
 * Also checked: BDG's models/*.acd + *.acm are an export of Rowan's own tables (FLYINIT.CPP / DT_*.CPP): every
   differing value is the same number written another way (ANGLES_180Deg=32768, FT_30000=914400, 80*MAPSCALE=88).
+
+## PATCH-PORT-1: NO_FRIENDLY_COLLISIONS (the PO's bdg.txt ON) -- DONE
+* Decoded from BDG's bob.exe: the switch byte (0xa15a4f) is read in the collision pairing (0x467df8: both items
+  aircraft and the same nationality bits -> no collision test) and by a key handler that toggles it in flight (the
+  key is not wired here). Port: BoxCol::TargetAllowed (JIMCOL.CPP; every candidate in SectorCol passes it) returns
+  false for aircraft vs aircraft of the same nationality. Bullets are transients -- friendly fire is unchanged.
+  BOB_TRACE_FRIENDCOLL=1. Test hooks: BOB_TEST_RAM_AT=<s> (player put 2 m above the nearest friendly aircraft,
+  re-sectored), BOB_TEST_COLLISIONS=1 (forces the Collisions difficulty option, which gates the player's test).
+* Verified (~/bob-gates/grunt c_ON/c_OFF, QM 6 Formation Flying, ram at 10 s): OFF "uid=0x1302 COLLIDED with
+  uid=0x1300"; ON 0 collisions, friendly pairs skipped.
