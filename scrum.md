@@ -13259,3 +13259,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   the same. Measured with the PO's dead zones 0 ([deadzone], BOB_TRACE_DEADZONE=1): stick -96 -> -47, elevator
   221 -> 110 (half slope in the middle range), keyboard full aileron -24575 -> -13566; full deflection still
   reaches 32767 (EndCurve2). Note for the PO: keyboard flyers get less authority with it ON, as in BDG.
+* 10-16 Pilot eye positions (manual 2.2.17; the PO's bdg.txt EYE_Z_POS_109 -6000, _110 -11000, _87 -6000,
+  _SPITFIRE 8000, _HURRICANE -7000, EYE_X/Y/Z_POS 0): decoded (cockpit set-up 0x59ec43: eff Z = EYE_Z_POS +
+  EYE_Z_POS_<type>; draw 0x50f773 adds X/Y/eff Z to the cockpit eye offset). 3DCODE.CPP adds them to the eyepos
+  from GetCockpitShape (1/1024 units, pilot seat only). Verified (QM 7 Spitfire frame 600): 8000 vs 0 -- the eye
+  moves forward (screen frame and sight larger, canopy arch out of view). BOB_TRACE_EYEPOS=1. BDG's lean offset
+  (shifted in the same place) is not ported.

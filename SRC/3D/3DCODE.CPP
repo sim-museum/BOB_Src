@@ -1607,6 +1607,36 @@ void ThreeDee::add_cockpit(rotitem& viewpoint,PitTypes pittype,ANGLES h,ANGLES p
 //DeadCode RJS 28Feb00	if (View_Point->viewnum.viewmode!=VM_InPadlock)	shape=clstyp->cockpit1;
 //DeadCode RJS 28Feb00	else 											shape=clstyp->cockpit2;
 	shape = SHAPE.GetCockpitShape(eyepos);								//RJS 28Feb00
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG "Aircraft Independent Pilot Positions" (manual 2.2.17; the PO's bdg.txt sets EYE_Z_POS_109
+	   -6000, _110 -11000, _87 -6000, _SPITFIRE 8000, _HURRICANE -7000): the pilot's eye point. Decoded from BDG's
+	   bob.exe (cockpit set-up 0x59ec43.., draw 0x50f773): eye X += EYE_X_POS, Y += EYE_Y_POS, Z += EYE_Z_POS + the
+	   aircraft's EYE_Z_POS_<type>, in the same 1/1024 units as Rowan's eye offset (no unit, as BDG says). The pilot
+	   seat only; gunner positions keep Rowan's. BOB_TRACE_EYEPOS=1 prints the offset once per type. */
+	if (!SHAPE.UsingRearGunner())
+	{
+		extern double rowan_bdg_float(const char*, double);
+		static double ex = -1e30, ey, ez;
+		if (ex < -1e29) { ex = rowan_bdg_float("EYE_X_POS", 0); ey = rowan_bdg_float("EYE_Y_POS", 0); ez = rowan_bdg_float("EYE_Z_POS", 0); }
+		const char* key = NULL;
+		switch (clstyp->planetext)
+		{
+			case PT_ME109:	key = "EYE_Z_POS_109";	break;
+			case PT_ME110:	key = "EYE_Z_POS_110";	break;
+			case PT_JU87:	key = "EYE_Z_POS_87";	break;
+			case PT_SPIT_A: case PT_SPIT_B:	key = "EYE_Z_POS_SPITFIRE";	break;
+			case PT_HURR_A: case PT_HURR_B:	key = "EYE_Z_POS_HURRICANE";	break;
+			default: break;
+		}
+		const double tz = key ? rowan_bdg_float(key, 0) : 0;
+		eyepos.X += SLong(ex);
+		eyepos.Y += SLong(ey);
+		eyepos.Z += SLong(ez + tz);
+		if (getenv("BOB_TRACE_EYEPOS")) { static int lastType = -1; if (lastType != clstyp->planetext) { lastType = clstyp->planetext;
+			fprintf(stderr, "[eyepos] type %d (%s): eye offset (%.0f, %.0f, %.0f) -> eyepos (%d, %d, %d)\n", lastType, key ? key : "default",
+			        ex, ey, ez + tz, (int)eyepos.X, (int)eyepos.Y, (int)eyepos.Z); } }
+	}
+#endif
 
 //DeadCode RJS 23Oct00 	Obj3D obj3d,*obj3dptr=&obj3d;
 	Obj3D obj3d;													//RJS 23Oct00
