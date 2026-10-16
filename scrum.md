@@ -13296,3 +13296,30 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   it into KEYFLY.CPP (Rowan: a fixed 16 per frame). Verified (QM 7, Ctrl+Home held 1.5 s): steps 35 -> 200 -> 320,
   trim 35 -> 1055 -> 4096 (MaxElevatorTrim). BOB_NO_BDG_TRIM=1 reverts; BOB_TRACE_TRIM=1. BDG's "maximum trim
   increased" not located (its code clamps to the same MaxElevatorTrim field); aileron/rudder trim unchanged.
+
+## AI-TACTICS-1 story a: Bf 109 boom and zoom against Spitfires (PO 2026-10-16; Shaw, "Fighter Combat") -- DONE, 6 sprints
+* PO: in the one-on-one QM the Bf 109 should boom and zoom, not turn and shoot (which favours the Spitfire).
+* Shaw ch. 4 "Low Wing Loading versus High Thrust-to-Weight" (pdf p. 141-151): the high-T/W fighter "should concentrate
+  on energy tactics ... build a large energy margin ... zoom well above his opponent and position for a high-to-low gun
+  attack" (margin ~ one turn radius); "should not expect a lengthy tracking gun shot"; a slow attacker diving on a fast
+  angles fighter is met by a pull-up "nearly head-on".
+* Rowan's Bf109/110 branch of SelectNextEngageManoeuvre (MODEL/ACMMAN.CPP) chose TURNINGFIGHT whenever in or near the
+  firing envelope; Rowan's DiveAndZoom only ever ran against bombers (first tactic), and its firing phase ended only at
+  100 m, so a 109 tracking a turning Spitfire inside 500 m stayed in a turning gun fight.
+* Change (BOB_NO_AI_ENERGY=1 reverts; BOB_TRACE_ENERGY=1): a 109/110 against a Spitfire/Hurricane, unless it made a
+  "bad" skill roll or is being shot at (Rowan's breaks stay): in the envelope or energy-height margin >= 1000 ft ->
+  DIVEANDZOOM; hunted and > 1000 ft lower in energy -> STEEPDIVE; 1000 ft up but slow -> GAINSPEED; fast -> ZOOM.
+  The energy pass is time-limited in DiveAndZoom (MODEL/ACMAI.CPP bdg_energymode): 20 s run-in, 4 s tracking, then ZOOM.
+  One selector serves the full and the simple ACM, so campaign AI-vs-AI fights get it too.
+* Rig (new hooks): BOB_TEST_SPOTPLAYER_AT=<s> (MOVEALL: nearest enemy spots the player, player SetEngage'd back) +
+  Ctrl+A autopilot (BOB_DIK_MS=3000,30,29, needs VD=x11) turns QM 12 "One on One" into an AI-vs-AI duel. Traces:
+  BOB_TRACE_ACM (manoeuvre changes + 1 s samples incl. hdg/pitch), BOB_TRACE_ACPOS=<odd n>, BOB_TRACE_DUEL (damage/death),
+  BOB_TRACE_SEEN. Runner ~/bob-gates/grunt/duels.sh; analyser scratch duel.py. (Unattended, QM 12 never fights: the
+  109 follows its waypoints and the sweep checks the pair every ~25 s while they drift apart.)
+* Iterations: v1 dived away at any energy deficit (lost height, mean -154 m); v2 ZOOM/DIVEANDZOOM looped every frame
+  (Zoom stops at 1000 ft up while dE still said "zoom"); v3 fixed the loop with a height rule but the pass hung in
+  PHASE2 (36-45% hard turning); v4 time limits; v5 height without energy -> GAINSPEED (v4's two hits on the 109 were
+  slow diving passes with dE < 0, Shaw's head-on pull-up).
+* Measured, 300 s duels, 109 vs AI Spitfire: baseline (5 runs) mean height over the Spitfire +84 m, >= 300 m above 16%
+  of the time, Spitfire hit 0, 109 hit 1. v5 (4 runs): +483 m, 53%, Spitfire hit 2, 109 hit 0. TURNINGFIGHT only on
+  "bad" rolls (0-12%). Small samples; the trend is what counts. Not measured: against a human Spitfire [PO].

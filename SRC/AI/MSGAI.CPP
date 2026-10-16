@@ -1910,7 +1910,7 @@ void	ArtInt::VisibleAcCheck()
 								for(AirStrucPtr ltrg = LTrg; (ltrg) && (!breakout); ltrg = ltrg->fly.nextflight)
 									for(AirStrucPtr trg = ltrg; (trg) && (!breakout); trg = trg->Follower())
 										if((!trg->Status.deadtime) && (trg->movecode != AUTO_NOPPILOT) && (trg->movecode != AUTOSAG_DESTROYED))
-											if(Seen(eye, trg))
+											if([&]{ bool s = Seen(eye, trg); if (getenv("BOB_TRACE_SEEN")) { static int n = 0; if (n++ < 30 || (n % 40) == 0) fprintf(stderr, "[seen] n=%d eye=%d mc=%d trg=%d range=%d seen=%d\n", n, int(eye->uniqueID.count), int(eye->movecode), int(trg->uniqueID.count), int(eye->Distance3D(&trg->World) / 100), int(s)); } return s; }())	/* AI-TACTICS-1 BOB_TRACE_SEEN */
 											{
 												if (Save_Data.gamedifficulty[GD_TACTICALRANGE])
 													OverLay.CancelAccel();

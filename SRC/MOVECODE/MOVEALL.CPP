@@ -367,12 +367,16 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	/* test hook (PATCH-PORT-1 ground/radio turn, BDG manual 4.4.11): BOB_TEST_BANDITCALL_AT=<s> -- s seconds into the
 	   flight the player "tells his comrades" about the nearest enemy aircraft: ArtInt::SpottedUnfriendly(player,
 	   enemy), exactly what the radio Bandit call does once it has found the padlocked target. */
-	if (entry == Persons2::PlayerSeenAC && getenv("BOB_TEST_BANDITCALL_AT")) {
+	/* AI-TACTICS-1: BOB_TEST_SPOTPLAYER_AT=<s> -- the reverse: the nearest enemy spots the player (SpottedUnfriendly(enemy,
+	   player)), so a one-on-one QM becomes a fight; with Ctrl+A (BOB_DIK_MS=3000,30,29) both sides are AI-flown. */
+	if (entry == Persons2::PlayerSeenAC && (getenv("BOB_TEST_BANDITCALL_AT") || getenv("BOB_TEST_SPOTPLAYER_AT"))) {
+		const char* atS = getenv("BOB_TEST_SPOTPLAYER_AT") ? getenv("BOB_TEST_SPOTPLAYER_AT") : getenv("BOB_TEST_BANDITCALL_AT");
 		struct BdgSpot : ArtInt { static bool Call(AirStruc* a, AirStruc* t) { return ((BdgSpot&)Art_Int).SpottedUnfriendly(a, t); }
+		                          static void Engage(AirStruc* a, AirStruc* t) { ((BdgSpot&)Art_Int).SetEngage(a, t, MANOEUVRE_SELECT, ANGLES_0Deg, ANGLES_0Deg, false); }
 		                          static AirStruc* Ac(int i) { return ACArray[i]; } static int N() { return ACARRAYSIZE; } };
 		static time_t t0 = 0; static bool done = false;
 		if (!t0) t0 = time(0);
-		if (!done && time(0) - t0 >= atoi(getenv("BOB_TEST_BANDITCALL_AT"))) {
+		if (!done && time(0) - t0 >= atoi(atS)) {
 			done = true;
 			AirStrucPtr me = (AirStrucPtr)entry, best = NULL; FP bd = 0;
 			for (int i = 0; i < BdgSpot::N(); i++) {
@@ -383,7 +387,8 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 			}
 			fprintf(stderr, "[groundturn] test: player calls bandit uid=0x%x at %.0f m\n", best ? (unsigned)best->uniqueID.count : 0u,
 			        best ? sqrt(double(bd)) / 100.0 : 0.0);
-			if (best && !getenv("BOB_TEST_BANDITCALL_DRY")) BdgSpot::Call(me, best);	/* _DRY: trace only (baseline) */
+			if (best && getenv("BOB_TEST_SPOTPLAYER_AT")) { BdgSpot::Call(best, me); BdgSpot::Engage(me, best); }	/* both sides engage (the player's own spot call waits on the radio) */
+			else if (best && !getenv("BOB_TEST_BANDITCALL_DRY")) BdgSpot::Call(me, best);	/* _DRY: trace only (baseline) */
 		}
 		static time_t lastG = 0;
 		if (done && getenv("BOB_TRACE_GROUNDTURN") && time(0) - lastG >= 5) {
@@ -502,10 +507,37 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	}
 #endif
 
+#if BOB_LINUX
+	/* AI-TACTICS-1: BOB_TRACE_ACPOS=<n> dumps every aircraft each n list passes */
+	static unsigned s_posTick = 0; static int s_posN = -1;
+	if (s_posN < 0) { const char* e = getenv("BOB_TRACE_ACPOS"); s_posN = e ? atoi(e) : 0; }
+	if (s_posN > 0) s_posTick++;
+#endif
 	while (entry)
 	{
 #if BOB_LINUX
 		bdg_bomberfix(entry);	/* every aircraft in the list, not just its head */
+		if (entry->Status.size == AirStrucSize && getenv("BOB_TRACE_DUEL")) {	/* AI-TACTICS-1: outcome per aircraft */
+			AirStrucPtr ac = AirStrucPtr(entry); static unsigned s_id[64]; static int s_st[64]; static time_t s_t0 = 0;
+			if (!s_t0) s_t0 = time(0);
+			int slot = ac->uniqueID.count & 63;
+			int st = (ac->AircraftDamaged() ? 1 : 0) | ((ac->Status.deadtime || ac->Status.deaded) ? 2 : 0)
+			       | ((ac->movecode == AUTO_NOPPILOT || ac->movecode == AUTOSAG_DESTROYED) ? 4 : 0);
+			if (s_id[slot] != ac->uniqueID.count) { s_id[slot] = ac->uniqueID.count; s_st[slot] = 0; }
+			if (st != s_st[slot]) {
+				AirStrucPtr k = AirStrucPtr(ac->ai.attacker);
+				fprintf(stderr, "[duel] +%lds id=%d type=%d state %d->%d (1 damaged, 2 dead, 4 no pilot/destroyed) alt=%d attacker=%d\n",
+					long(time(0) - s_t0), int(ac->uniqueID.count), ac->fly.pModel ? int(ac->fly.pModel->Type) : -1, s_st[slot], st,
+					int(ac->World.Y / 100), k ? int(k->uniqueID.count) : -1);
+				s_st[slot] = st;
+			}
+		}
+		if (s_posN > 0 && (s_posTick % s_posN) == 0 && entry->Status.size == AirStrucSize) {
+			AirStrucPtr ac = AirStrucPtr(entry); AirStrucPtr u = AirStrucPtr(ac->ai.unfriendly);
+			fprintf(stderr, "[acpos] t=%u id=%d nat=%d type=%d mc=%d man=%d pos=(%d,%d,%d) vel=%d unf=%d dead=%d\n", s_posTick,
+				int(ac->uniqueID.count), int(ac->nationality), ac->fly.pModel ? int(ac->fly.pModel->Type) : -1, int(ac->movecode), int(ac->ai.manoeuvre),
+				int(ac->World.X / 100), int(ac->World.Y / 100), int(ac->World.Z / 100), int(ac->vel_), u ? int(u->uniqueID.count) : -1, int(ac->Status.deaded));
+		}
 #endif
 		ULong state=_Replay.GetState();
 

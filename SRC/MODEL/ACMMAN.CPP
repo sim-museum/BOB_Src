@@ -1340,6 +1340,37 @@ void ACMAirStruc::SelectNextEngageManoeuvre()
 
 	if((fly.pModel->Type == AT_BF109) || (fly.pModel->Type == AT_BF110))
 	{
+#if defined(BOB_LINUX)
+		/* AI-TACTICS-1 (PO 2026-10-16; Shaw, "Fighter Combat", ch. 4 "Low Wing Loading versus High Thrust-to-Weight"): the
+		   high-wing-loaded fighter "should concentrate on energy tactics when he is engaging a low-wing-loaded opponent. Lag
+		   pursuit and vertical/oblique maneuvers ... build a large energy margin, allowing him to zoom well above his opponent
+		   and position for a high-to-low gun attack" -- the Bf 109's boom and zoom against Spitfires and Hurricanes. Rowan's
+		   branch below put it into TURNINGFIGHT whenever it was in or near the firing envelope, the Spitfire's fight. Here,
+		   against a Spitfire/Hurricane and unless the pilot made a "bad" skill roll (novices did get dragged into turning
+		   fights) or is being shot at (Rowan's defensive breaks stay): in the envelope or with an energy-height margin of
+		   1000 ft (Rowan's own DiveAndZoom threshold; Shaw: about one turn radius) -> DIVEANDZOOM (height alone is not
+		   enough: a slow 109 diving on a fast Spitfire meets it pulling up head-on, Shaw p. 150), one firing pass then
+		   zoom; hunted and more than the margin lower in energy -> STEEPDIVE (half-roll and dive away); otherwise rebuild energy: ZOOM when fast and
+		   not yet 1000 ft up, else GAINSPEED. BOB_NO_AI_ENERGY=1 reverts; BOB_TRACE_ENERGY=1 prints each decision. */
+		static int s_noEnergy = -1;
+		if (s_noEnergy < 0) s_noEnergy = getenv("BOB_NO_AI_ENERGY") ? 1 : 0;
+		if (	!s_noEnergy && !choosebad && (combatstatus != CS_THREATENED)
+			&&	((unf->classtype->visible == SPIT) || (unf->classtype->visible == HURR))	)
+		{
+			FP v = FP(vel_) / 10000.0, vu = FP(unf->vel_) / 10000.0;				/* m/s */
+			FP dE = FP(World.Y - unf->World.Y) / 100.0 + (v * v - vu * vu) / 19.62;	/* energy-height advantage, m */
+			const FP margin = FP(FT_1000) / 100.0;
+			if ((combatstatus == CS_THREATENING) || (dE >= margin))	ai.manoeuvre = MANOEUVRE_DIVEANDZOOM;
+			else if ((combatstatus == CS_HUNTED) && (dE < -margin))			ai.manoeuvre = MANOEUVRE_STEEPDIVE;
+			else if (World.Y - unf->World.Y >= FT_1000)			ai.manoeuvre = MANOEUVRE_GAINSPEED;	/* high but slow: Zoom() would stop at once */
+			else if (vel_ > 2 * classtype->minvel)					ai.manoeuvre = MANOEUVRE_ZOOM;
+			else													ai.manoeuvre = MANOEUVRE_GAINSPEED;
+			if (getenv("BOB_TRACE_ENERGY"))
+				fprintf(stderr, "[energy] id=%d status=%d dE=%.0f m dh=%.0f m v=%.0f vu=%.0f -> man=%d\n", int(uniqueID.count),
+				        int(combatstatus), double(dE), double(World.Y - unf->World.Y) / 100.0, double(v), double(vu), int(ai.manoeuvre));
+			return;
+		}
+#endif
 		switch(combatstatus)
 		{
 			case CS_THREATENING:
@@ -2372,6 +2403,20 @@ void	AirStruc::AirCombat()
 
 	ACMMODEL& ACM = *fly.pAcmModel;
 	MODEL& MOD = *fly.pModel;
+	{	// AI-TACTICS-1: BOB_TRACE_ACM logs each manoeuvre change and a ~1 s sample (type, alt m, speed, target alt)
+		static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_ACM") ? 1 : 0;
+		if (tr) {
+			static UWord lastid[64]; static int lastman[64]; int slot = uniqueID.count & 63;
+			AirStrucPtr u = AirStrucPtr(ai.unfriendly);
+			if (lastid[slot] != uniqueID.count || lastman[slot] != int(ai.manoeuvre) || !(MOD.FrameCount & 63))
+				fprintf(stderr, "[acm] f=%u id=%d type=%d %s man=%d step=%d alt=%d vel=%d hdg=%d pitch=%d skill=%d simple=%d unf=%d ualt=%d uvel=%d range=%d\n",
+					unsigned(MOD.FrameCount), int(uniqueID.count), int(fly.pModel->Type),
+					(lastid[slot] == uniqueID.count && lastman[slot] == int(ai.manoeuvre)) ? "smp" : "chg",
+					int(ai.manoeuvre), int(ai.ManStep), int(World.Y / 100), int(vel_), int(UWord(hdg)) * 360 / 65536, int(SWord(pitch)) * 360 / 65536, int(ai.combatskill), int(ai.simpleacm),
+					u ? int(u->uniqueID.count) : -1, u ? int(u->World.Y / 100) : 0, u ? int(u->vel_) : 0, u ? int(Distance3D(&u->World) / 100) : 0);
+			lastid[slot] = uniqueID.count; lastman[slot] = int(ai.manoeuvre);
+		}
+	}
 
 	UWord EveryXcs;	
 	if((ai.simpleacm) && (AirStrucPtr(ai.unfriendly) != Persons2::PlayerGhostAC))

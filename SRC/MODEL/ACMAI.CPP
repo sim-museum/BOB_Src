@@ -1142,6 +1142,20 @@ void	ACMAirStruc::MultiWave()
 //Returns	
 //
 //------------------------------------------------------------------------------
+#if defined(BOB_LINUX)
+/* AI-TACTICS-1: true when a Bf 109/110 fights a Spitfire/Hurricane with the energy tactics of SelectNextEngageManoeuvre
+   (BOB_NO_AI_ENERGY=1 reverts). Its DiveAndZoom pass is then time-limited: Shaw, ch. 4 -- "the pilot of the energy fighter
+   should not expect a lengthy tracking gun shot against a well-flown low-wing-loaded fighter" -- so the run-in may take
+   20 s and the tracking/firing phase 4 s, then it zooms away to rebuild height instead of following the turn (Rowan's
+   pass ended only at 100 m, and a 109 tracking a turning Spitfire inside 500 m never got there: a turning gun fight). */
+static bool bdg_energymode(ACMAirStruc* me)
+{
+	static int no = -1; if (no < 0) no = getenv("BOB_NO_AI_ENERGY") ? 1 : 0;
+	AirStrucPtr unf = AirStrucPtr(me->ai.unfriendly);
+	return	!no && unf && me->fly.pModel && ((me->fly.pModel->Type == AT_BF109) || (me->fly.pModel->Type == AT_BF110))
+		&&	((unf->classtype->visible == SPIT) || (unf->classtype->visible == HURR));
+}
+#endif
 void ACMAirStruc::DiveAndZoom()
 {
    	ACMMODEL& ACM = *fly.pAcmModel;
@@ -1157,6 +1171,9 @@ void ACMAirStruc::DiveAndZoom()
 			}
 			ACM.Thrust(100);
 			ai.ManStep = PHASE1;
+#if defined(BOB_LINUX)
+			if (bdg_energymode(this)) SetManoeuvreTime(2000);	/* AI-TACTICS-1: 20 s run-in */
+#endif
 		}
 		case PHASE1:
 		{
@@ -1169,7 +1186,15 @@ void ACMAirStruc::DiveAndZoom()
 			else
 				ACM.VelPitch(SWord(PitchIntercept) / 2);
 			if(Range < WEAPONSRANGE)
+			{
 				ai.ManStep = PHASE2;
+#if defined(BOB_LINUX)
+				if (bdg_energymode(this)) SetManoeuvreTime(400);	/* AI-TACTICS-1: 4 s of tracking */
+#endif
+			}
+#if defined(BOB_LINUX)
+			else if (bdg_energymode(this) && !TimeLeft()) { ai.manoeuvre = MANOEUVRE_ZOOM; ai.ManStep = PHASE0; }
+#endif
 			break;
 		}
 		case PHASE2:
@@ -1178,7 +1203,11 @@ void ACMAirStruc::DiveAndZoom()
 			SLong desroll = 5 * SLong(SWord(HdgIntercept - hdg));
 			MODLIMIT(desroll, ANGLES_75_5Deg);
 			ACM.FastRoll(desroll);
-			if(Range < WEAPONSRANGE / 5)
+			if((Range < WEAPONSRANGE / 5)
+#if defined(BOB_LINUX)
+				|| (bdg_energymode(this) && !TimeLeft())	/* AI-TACTICS-1: snapshot taken, pull off */
+#endif
+				)
 			{
 				ai.manoeuvre = MANOEUVRE_ZOOM;
 				ai.ManStep = PHASE0;
