@@ -187,6 +187,32 @@ PrintVar(40, 17, "Raw Rudd %.0f  ", (FP)ControlledAC->fly.rudder);
 	if(temp < 0.0)	temp = 0.0;
 	ControlledAC->fly.rudder = temp * ControlledAC->fly.rudder;
 	pModel->Rudder = temp * pModel->Rudder;
+#if BOB_LINUX
+	/* PATCH-PORT-1, BDG "Aero Surface Deflection" (manual 2.2.24; bdg.txt REDUCE_SURFACE_DEFLECTION, the PO's is ON):
+	   aileron and elevator deflection fall with speed, so high-speed manoeuvres take more stick and fast dives are
+	   dangerous. BDG's numbers, decoded from its bob.exe (0x546096/0x54612c, defaults at 0x50b5d5): from 30 m/s the
+	   input is scaled by 1 - (v-30)/(300-30), never below 0.1 (reached at 273 m/s). The rudder keeps Rowan's own
+	   1 - Speed/ControlLossV1 just above. BOB_TRACE_DEFLECTION=1 prints the factor every 2 s. */
+	{
+		static int on = -1;
+		if (on < 0) { extern int rowan_bdg_int(const char*, int); on = rowan_bdg_int("REDUCE_SURFACE_DEFLECTION", 0); }
+		if (getenv("BOB_TRACE_DEFLECTION") || (on && pModel->Speed > 30.0))
+		{
+			FP f = (pModel->Speed - 30.0) / (300.0 - 30.0);
+			f = (f > 0.9) ? 0.1 : 1.0 - f;
+			if (!on || pModel->Speed <= 30.0) f = 1.0;
+			if (getenv("BOB_TRACE_DEFLECTION")) { static time_t last = 0; if (time(0) - last >= 1) { last = time(0);
+				fprintf(stderr, "[deflection] speed %.0f m/s: aileron/elevator x %.2f (model aileron %d -> %d) roll %.0f deg\n",
+				        (double)pModel->Speed, (double)f, (int)pModel->Aileron, (int)(f * pModel->Aileron),
+				        (double)(SWord)ControlledAC->roll * 180.0 / 32768.0); } }
+			/* the model's surfaces only: they are rebuilt from the stick every frame by ApplyDeadZone above, while
+			   fly.aileron/elevator is the stick state that keyboard flying accumulates -- scaling that every frame
+			   would compound (BDG skips one input device here, likely for this reason) */
+			pModel->Aileron = f * pModel->Aileron;
+			pModel->Elevator = f * pModel->Elevator;
+		}
+	}
+#endif
 
 	SecondaryControls (ControlledAC2);
 	

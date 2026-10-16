@@ -13215,3 +13215,14 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   (2.0 m at 366 m); 18 samples (~900 rounds) from 7 AI fighters via the clone path, 1.48-10.90 mrad, all inside
   10.94, mean 7.8 (uniform disc: 7.3). Hand-gun cone not yet seen (no gunner fired in either run).
 * Test note: BOB_SDL_KEY_MS needs a real window (VD=x11) -- under the dummy driver nothing is pushed.
+
+## PATCH-PORT-1: Aero surface deflection (BDG manual 2.2.24; the PO's bdg.txt REDUCE_SURFACE_DEFLECTION=ON) -- DONE
+* BDG's numbers decoded from its bob.exe: readers of the switch byte (0xa15a3a) at 0x546096/0x54612c scale aileron
+  and elevator by f = 1 - (v-30)/(300-30) above 30 m/s, f = 0.1 once (v-30)/270 > 0.9 (constants 0.9 at 0x5beab8,
+  0.1 at 0x5bde38; per-model defaults 30/300 written at 0x50b5d5..). The rudder block next to them is Rowan's own
+  1 - Speed/ControlLossV1 (kept). KEYFLY.CPP applies f to pModel->Aileron/Elevator only (rebuilt from the stick every
+  frame by ApplyDeadZone; scaling fly.aileron would compound for keyboard flying). BOB_TRACE_DEFLECTION=1.
+* Verified (~/bob-gates/grunt f_on/f_off, QM 7 Free Flight, left arrow held 4 s, ~132 m/s): ON aileron -18429 ->
+  -11464 (x0.62), roll rate ~75 deg/s; OFF -18429, ~117 deg/s. Ratio 0.64.
+* Also checked: BDG's models/*.acd + *.acm are an export of Rowan's own tables (FLYINIT.CPP / DT_*.CPP): every
+  differing value is the same number written another way (ANGLES_180Deg=32768, FT_30000=914400, 80*MAPSCALE=88).
