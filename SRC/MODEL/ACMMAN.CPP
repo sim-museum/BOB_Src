@@ -5175,6 +5175,14 @@ void AirStruc::SetDesiredVel()
 void	ACMAirStruc::ManualACM ()
 {
 #if defined(BOB_LINUX)
+	if (getenv("BOB_TRACE_GROUNDTURN") && fly.pModel && fly.pModel->GearTouched && !AcIsPlayer())
+	{	static unsigned seen[64]; static int nseen = 0; bool first = true;
+		for (int q = 0; q < nseen; q++) if (seen[q] == uniqueID.count) first = false;
+		if (first && nseen < 64) { seen[nseen++] = uniqueID.count;
+			fprintf(stderr, "[groundturn] uid=0x%x nat=%d movecode=%d manoeuvre=%d ON THE GROUND in combat ACM\n",
+			        (unsigned)uniqueID.count, (int)nationality, (int)movecode, (int)ai.manoeuvre); } }
+#endif
+#if defined(BOB_LINUX)
 	/* test hook (PATCH-PORT-1 Stuka grunt): BOB_TEST_BAILOUT_AFTER=<s> -- s seconds after the first ACM frame, the
 	   next AI aircraft through here starts the bail-out manoeuvre (once) */
 	{

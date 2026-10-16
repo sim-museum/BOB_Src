@@ -291,6 +291,39 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 		}
 	}
 #endif
+#if BOB_LINUX
+	/* test hook (PATCH-PORT-1 ground/radio turn, BDG manual 4.4.11): BOB_TEST_BANDITCALL_AT=<s> -- s seconds into the
+	   flight the player "tells his comrades" about the nearest enemy aircraft: ArtInt::SpottedUnfriendly(player,
+	   enemy), exactly what the radio Bandit call does once it has found the padlocked target. */
+	if (entry == Persons2::PlayerSeenAC && getenv("BOB_TEST_BANDITCALL_AT")) {
+		struct BdgSpot : ArtInt { static bool Call(AirStruc* a, AirStruc* t) { return ((BdgSpot&)Art_Int).SpottedUnfriendly(a, t); }
+		                          static AirStruc* Ac(int i) { return ACArray[i]; } static int N() { return ACARRAYSIZE; } };
+		static time_t t0 = 0; static bool done = false;
+		if (!t0) t0 = time(0);
+		if (!done && time(0) - t0 >= atoi(getenv("BOB_TEST_BANDITCALL_AT"))) {
+			done = true;
+			AirStrucPtr me = (AirStrucPtr)entry, best = NULL; FP bd = 0;
+			for (int i = 0; i < BdgSpot::N(); i++) {
+				AirStrucPtr a = BdgSpot::Ac(i);
+				if (!a || a->nationality == me->nationality) continue;
+				FP d = me->Distance3DSquared(&a->World);
+				if (!best || d < bd) { best = a; bd = d; }
+			}
+			fprintf(stderr, "[groundturn] test: player calls bandit uid=0x%x at %.0f m\n", best ? (unsigned)best->uniqueID.count : 0u,
+			        best ? sqrt(double(bd)) / 100.0 : 0.0);
+			if (best && !getenv("BOB_TEST_BANDITCALL_DRY")) BdgSpot::Call(me, best);	/* _DRY: trace only (baseline) */
+		}
+		static time_t lastG = 0;
+		if (done && getenv("BOB_TRACE_GROUNDTURN") && time(0) - lastG >= 5) {
+			lastG = time(0);
+			for (AirStrucPtr nf = ((AirStrucPtr)entry)->FindFormpos0(); nf; nf = nf->fly.nextflight)
+				for (AirStrucPtr f = nf; f; f = f->Follower())
+					fprintf(stderr, "[groundturn] +%lds uid=0x%x movecode=%d manoeuvre=%d gear=%d alt=%.0fm vel=%d\n",
+					        (long)(lastG - t0), (unsigned)f->uniqueID.count, (int)f->movecode, (int)f->ai.manoeuvre,
+					        f->fly.pModel ? (int)f->fly.pModel->GearTouched : -1, f->World.Y / 100.0, (int)f->vel_);
+		}
+	}
+#endif
 	if (getenv("BOB_AI_PILOT") && entry == Persons2::PlayerSeenAC) {
 		static time_t t0 = 0, lastTrace = 0;
 		static int handed = 0;

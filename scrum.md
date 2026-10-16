@@ -13165,3 +13165,15 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * Verified: QM 16 forced bail-out of 0x1300: before "canopy=0 -> STUCK"; after "canopy=255 -> bails out". Jammed
   (BOB_TEST_JAMCANOPY): "tries the canopy again" x2, then "gives up, heads for home". The SimpleBailOut give-up is
   built but not yet seen (one natural stuck LaunchParachute from uid 0x1312 in run b8, not reproduced).
+
+## PATCH-PORT-1: Ground turn / radio turn (BDG manual 4.4.11), 2026-10-15 night -- FIXED
+* Reproduced (~/bob-gates/grunt g4/g5, QM 18 "Low level attack" with BOB_QM_SIDE=0 = RAF on its airfield; new test
+  hook BOB_TEST_BANDITCALL_AT=<s> = the player's bandit call, ArtInt::SpottedUnfriendly(player, nearest enemy); _DRY
+  traces only): without the call the wingmen sit in AUTO_TAKEOFF (4); with it at 4 s the whole group, still at
+  ground level, switched to AUTO_COMBAT (63) with combat manoeuvres -- the "synchronized swimmers".
+* Fix: ArtInt::SetEngage (every switch into AUTO_COMBAT/PRECOMBAT in SPOTTED.CPP goes through it) refuses an aircraft
+  in a ground movecode (WAIT4TIME/TAXI/TAKEOFF/GROUND_TAXI) that is below 10 m above the ground. The height test is
+  needed: AUTO_TAKEOFF lasts the whole climb-out (a first movecode-only guard kept a wingman out of the fight up to
+  318 m). BOB_NO_BDG_GROUNDTURN=1 reverts; BOB_TRACE_GROUNDTURN=1 (refusals + the player's group every 5 s).
+* Verified (g7): the call at 4 s is refused for the player and the wingmen (127-132 cm up); wingman 0x1301 takes
+  off normally and engages by itself at +34 s, 36 m up, then fights (manoeuvres 12/19/58/17).

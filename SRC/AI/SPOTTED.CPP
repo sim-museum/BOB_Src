@@ -3089,6 +3089,29 @@ void	ArtInt::PrepareForCombat(AirStrucPtr caller)
 void	ArtInt::SetEngage(AirStrucPtr caller,AirStrucPtr trg,MANOEUVRE manoeuvre,ANGLES   desiredhdg,ANGLES   desiredpitch, bool surprised)
 {
 #if defined(BOB_LINUX)
+	/* PATCH-PORT-1, BDG 0.95 "Ground turn or Radio turn bug" (manual 4.4.11): wingmen still on the airfield, told of
+	   approaching raiders, went straight into combat manoeuvres on the runway ("synchronized swimmers"; measured QM 18
+	   on the RAF side: AUTO_TAKEOFF -> AUTO_COMBAT at ground level). No aerobatics on the ground: an aircraft still
+	   waiting, taxiing or taking off and below 10 m keeps taking off; once airborne the normal spotting engages it.
+	   BOB_NO_BDG_GROUNDTURN=1 reverts; BOB_TRACE_GROUNDTURN=1 prints each refusal. */
+	if (	!getenv("BOB_NO_BDG_GROUNDTURN")
+		&&	(	caller->movecode == AUTO_WAIT4TIME || caller->movecode == AUTO_TAXI
+			||	caller->movecode == AUTO_TAKEOFF || caller->movecode == GROUND_TAXI)	)
+	{
+		/* the take-off movecode lasts the whole climb-out (measured: still AUTO_TAKEOFF at 275 m), so "on the ground"
+		   also needs the height: below 10 m above the ground */
+		const SLong agl = caller->World.Y - Land_Scape.GetGroundLevel(caller);
+		if (agl < 1000)
+		{
+			if (getenv("BOB_TRACE_GROUNDTURN")) { static int n = 0; if (n++ < 20)
+				fprintf(stderr, "[groundturn] SetEngage refused: uid=0x%x is on the ground (movecode %d, %d cm up)\n",
+				        (unsigned)caller->uniqueID.count, (int)caller->movecode, (int)agl); }
+			return;
+		}
+	}
+#endif
+
+#if defined(BOB_LINUX)
 	/* S202: does the AI ever decide to ENGAGE? S201 measured zero AUTO_COMBAT ticks across
 	   1.46M movecode dispatches, so combat never starts -- but "never starts" has several
 	   causes and this is the gate between deciding and doing. Count entries and whether the
