@@ -217,6 +217,31 @@ inline Colour MAKE_SOFT_COL(ULong inp)
 static OString OSpeedText(IDS_INFOPANEL_SPEED);
 static OString OAltitudeText(IDS_ALT);
 static OString OMachText(IDS_MACH);
+#if BOB_LINUX
+/* PATCH-PORT-1, BDG USE_NATIONAL_UNITS (bdg.txt; the PO's is ON; manual 2.2.18): "German aircraft always display
+   metric units while RAF aircraft feature imperial units", overriding the Units preference -- in the overlay only, so
+   the saved preference and the map are untouched. */
+extern const DistanceFactors& bob_units_dist(int);
+extern const AltitudeFactors& bob_units_alt(int);
+extern const SpeedFactors& bob_units_speed(int);
+static int OvNational()	/* -1 = use the preference, 0 = metric, 1 = imperial */
+{
+	static int on = -1;
+	if (on < 0) { extern int rowan_bdg_int(const char*, int); on = rowan_bdg_int("USE_NATIONAL_UNITS", 0); }
+	if (!on || !Persons2::PlayerSeenAC) return -1;
+	return (Persons2::PlayerSeenAC->nationality == NAT_LUF) ? 0 : 1;
+}
+static const DistanceFactors& OvDist()	{ int n = OvNational(); return n < 0 ? Save_Data.dist : bob_units_dist(n); }
+static const AltitudeFactors& OvAlt()	{ int n = OvNational(); return n < 0 ? Save_Data.alt : bob_units_alt(n); }
+static const SpeedFactors& OvSpeed()	{ int n = OvNational(); return n < 0 ? Save_Data.speed : bob_units_speed(n); }
+#define OV_DIST		OvDist()
+#define OV_ALT		OvAlt()
+#define OV_SPEED	OvSpeed()
+#else
+#define OV_DIST		Save_Data.dist
+#define OV_ALT		Save_Data.alt
+#define OV_SPEED	Save_Data.speed
+#endif
 static OString OAmmoText(IDS_GUNAMMO);		 
 static OString OHdgText(IDS_HDG);
 static OString OThrustText(IDS_THRUST);
@@ -705,10 +730,10 @@ void COverlay::DrawInfoBar()
 		if (!fIsWide)	box_height=10;
 		else			box_height=18;
 	
-		longDistUnitStr=LdStr(Save_Data.dist.longabbr);
-		shortDistUnitStr=LdStr(Save_Data.dist.mediumabbr);
-		heightUnitStr=LdStr(Save_Data.alt.mediumabbr);
-		speedUnitStr=LdStr(Save_Data.speed.perhrabbr);
+		longDistUnitStr=LdStr(OV_DIST.longabbr);
+		shortDistUnitStr=LdStr(OV_DIST.mediumabbr);
+		heightUnitStr=LdStr(OV_ALT.mediumabbr);
+		speedUnitStr=LdStr(OV_SPEED.perhrabbr);
 	
 		PreFormatViewText();
 	
@@ -808,9 +833,9 @@ void COverlay::DrawTopText()
 
 	SLong speed2,altitude2; float speedey;
 
-	altitude2=(altitude*305)/Save_Data.alt.mediummm;
-//DeadCode CSB 23/06/99		speedey=(float(speed)/.5147)*Save_Data.speed.mmpcs2perhr;
-	speedey = float(speed) * Save_Data.speed.mmpcs2perhr;	//CSB 23/06/99	
+	altitude2=(altitude*305)/OV_ALT.mediummm;
+//DeadCode CSB 23/06/99		speedey=(float(speed)/.5147)*OV_SPEED.mmpcs2perhr;
+	speedey = float(speed) * OV_SPEED.mmpcs2perhr;	//CSB 23/06/99	
 	speed2=SLong(speedey);
 
 //DeadCode JON 10Oct00 	const SLong doubleSpace=StrPixelLen2((char*)&"  ");
@@ -874,7 +899,9 @@ void COverlay::DrawTopText()
 	}
 
 #if BOB_LINUX
-	if (!hideAmmo)
+	/* ...except in the Bf 110: "historically the only aircraft to carry an on-board ammunition counter in 1940"
+	   (BDG manual 2.2.18) */
+	if (!hideAmmo || (Persons2::PlayerSeenAC && Persons2::PlayerSeenAC->classtype->planetext == PT_ME110))
 #endif
 	{
 	sprintf(temp, "%s %4d", OAmmoText.text, ammocount);
@@ -1082,13 +1109,13 @@ void COverlay::DrawViewText()
 		char *distUnits=longDistUnitStr;
 
 		//try converting range to large units (km or miles)
-		trange=targRange/Save_Data.dist.longcm;
+		trange=targRange/OV_DIST.longcm;
 
 		if (trange<2)
 		{
 			//try meters or yards instead
 			distUnits=shortDistUnitStr;
-			trange=(targRange*10)/Save_Data.dist.mediummm;
+			trange=(targRange*10)/OV_DIST.mediummm;
 			sprintf(str,"%s: %d%s",ORangeText.text,trange,distUnits);
 		}
 		else if (trange>=100)
@@ -1097,12 +1124,12 @@ void COverlay::DrawViewText()
 		}
 		else
 		{
-			trange=(targRange*10)/Save_Data.dist.longcm;
+			trange=(targRange*10)/OV_DIST.longcm;
 			sprintf(str,"%s: %.1f%s",ORangeText.text,float(trange)/10,distUnits);
 		}
 		PrintAt2(viewrange_x,pos_y,str);
 
-		talt=(targRelAlt*10)/Save_Data.alt.mediummm;
+		talt=(targRelAlt*10)/OV_ALT.mediummm;
 		tbrg=((SLong(targRelBrg)&0xFFFF)*360)>>16;
 
 		sprintf(str,"%s: %03d",ORelBrgText.text,tbrg);
@@ -3795,12 +3822,12 @@ void MapScr::UpdateWaypointDisplay()
 			localX=saveX+8*32;
 			localY=saveY;
 			COORDS3D pos=*(wpp->FindDesPos());
-			pos.Y=(pos.Y*10)/Save_Data.alt.mediummm;
+			pos.Y=(pos.Y*10)/OV_ALT.mediummm;
 			pos.Y+=50;
 			pos.Y-=(pos.Y%100);
 			sprintf(temp,"%d",pos.Y);
 			cs=temp;
-			resid=Save_Data.alt.mediumabbr;
+			resid=OV_ALT.mediumabbr;
 			theString=OverLay.LdStr(resid);
 			cs+=theString;
 			delete[]theString;

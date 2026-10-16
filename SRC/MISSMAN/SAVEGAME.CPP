@@ -2409,6 +2409,12 @@ Mass[]=
 	}
 };
 void	SetFiltersFromSaveGame();
+#if BOB_LINUX
+/* BDG USE_NATIONAL_UNITS: the overlay asks for the metric (0) or imperial (1) table directly (OVERLAY.CPP OvDist..) */
+const DistanceFactors& bob_units_dist(int u)	{ return Distance[u ? SaveData::IMPERIAL : SaveData::METRIC]; }
+const AltitudeFactors& bob_units_alt(int u)		{ return Altitude[u ? SaveData::IMPERIAL : SaveData::METRIC]; }
+const SpeedFactors& bob_units_speed(int u)		{ return Speed[u ? SaveData::IMPERIAL : SaveData::METRIC]; }
+#endif
 void SaveData::SetUnits()
 {
 	if (Save_Data.gamedifficulty [GD_UNITS])

@@ -13248,3 +13248,9 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * 10-16 HIDE_POWER_INFO / HIDE_AMMO_COUNTER (bdg.txt; the PO's both ON): DrawTopText skips the Power and Gun Ammo
   fields. Verified (QM 7 frame 900): OFF "Alt 1620ft Hdg 0 Speed 195Kts Power 0 Gun Ammo. 2800"; ON "Alt 1618ft
   Hdg 0 Speed 195Kts".
+* 10-16 USE_NATIONAL_UNITS (bdg.txt; the PO's ON; manual 2.2.18): every unit read in OVERLAY.CPP goes through
+  OvDist/OvAlt/OvSpeed -- metric for a Luftwaffe player aircraft, imperial for RAF, the preference otherwise or with
+  the switch OFF; the saved preference and the map are untouched (tables exposed by bob_units_* in SAVEGAME.CPP).
+  Verified: QM 15 (Luftwaffe) "Alt 4048m Hdg 153 Speed 412km/h"; QM 7 (RAF) "Alt 1618ft ... Speed 195Kts".
+  HIDE_AMMO_COUNTER now keeps the counter in the Bf 110 ("the only aircraft to carry an on-board ammunition counter
+  in 1940", same manual section) -- code read, no Bf 110 flight run.
