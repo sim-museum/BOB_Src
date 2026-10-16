@@ -13265,3 +13265,8 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
   from GetCockpitShape (1/1024 units, pilot seat only). Verified (QM 7 Spitfire frame 600): 8000 vs 0 -- the eye
   moves forward (screen frame and sight larger, canopy arch out of view). BOB_TRACE_EYEPOS=1. BDG's lean offset
   (shifted in the same place) is not ported.
+* 10-16 Infoline configuration (manual 2.2.18; the PO's bdg.txt INFOLINE_COLOUR=ddcc0000, SHOW_INFOLINE_BACKGROUND
+  =OFF): OVERLAY.CPP draws the info line in the AARRGGBB colour and skips the dark strip; while message lines are
+  up both stay Rowan's (white on the strip), as BDG describes. Verified (QM 7 frame 600): red "Alt 1357ft Hdg 359
+  Speed 223Kts" with no strip. BOB_TRACE_INFOLINE=1. TRACKVIEWRANGE (256) and PERIPHERAL_VISION_RANGE (4000) in the
+  PO's file equal Rowan's built-in values (TrackViewRec 0x0100; the 4 km dots): nothing to change.

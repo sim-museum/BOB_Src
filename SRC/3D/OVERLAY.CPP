@@ -766,9 +766,28 @@ void COverlay::DrawInfoBar()
 			g_lpLib3d->SetGlobal( TOGGLE_GLOBAL2DZDEPTH, 1 );
 //DeadCode JON 13Jul00 			SmokedGlassBox(0,physicalHeight-local_box_height,physicalWidth+1,local_box_height+1) ;
 //DeadCode JON 25Sep00 			SmokedGlassBox(0,physicalHeight-local_box_height,physicalWidth+1,local_box_height+1,INFO_BAR_COL,INFO_BAR_ALPHA);
+#if BOB_LINUX
+			/* PATCH-PORT-1, BDG infoline configuration (manual 2.2.18; the PO's bdg.txt INFOLINE_COLOUR=ddcc0000,
+			   SHOW_INFOLINE_BACKGROUND=OFF): the info line in the chosen AARRGGBB colour, with or without the dark
+			   strip. While message lines are up they keep Rowan's white on the strip, as BDG describes. */
+			static int bdgBg = -1; static ULong bdgCol = TEXT_MAP_WHITE;
+			if (bdgBg < 0)
+			{
+				extern int rowan_bdg_int(const char*, int); extern const char* rowan_bdg_text(const char*);
+				bdgBg = rowan_bdg_int("SHOW_INFOLINE_BACKGROUND", 1);
+				if (const char* c = rowan_bdg_text("INFOLINE_COLOUR")) bdgCol = ULong(strtoul(c, NULL, 16));
+				if (getenv("BOB_TRACE_INFOLINE")) fprintf(stderr, "[infoline] colour 0x%08lx background %s\n", (unsigned long)bdgCol, bdgBg ? "on" : "off");
+			}
+			const bool msgs = messageTimer && (Save_Data.gamedifficulty[GD_DISPLAYMESSAGES] || !otherText->IsEmpty());
+			if (bdgBg || msgs)
+#endif
 			SmokedGlassBox(0,physicalHeight-local_box_height,physicalWidth,local_box_height,INFO_BAR_COL,INFO_BAR_ALPHA);
 //TempCode JON 14Jul00 			SmokedGlassBox(0,physicalHeight-local_box_height,physicalWidth+1,local_box_height+1,bCol,bAlpha);
+#if BOB_LINUX
+			g_lpLib3d->SetFontColour(msgs ? TEXT_MAP_WHITE : bdgCol);
+#else
 			g_lpLib3d->SetFontColour(TEXT_MAP_WHITE);
+#endif
 //TempCode JON 14Jul00 			g_lpLib3d->SetFontColour(tCol);
 		}
 
