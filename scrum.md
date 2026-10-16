@@ -13203,3 +13203,15 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * Also: Rowan's flyon branch for the TARGET side passed packf,sqf (its own comment says packt,sqt), i.e. -1
   when the friendly side is not ours. Now packt,sqt.
 * Not run: needs a campaign day with the favourite squadron tasked second in an interception.
+
+## PATCH-PORT-1: Bullet dispersion (BDG manual 2.2.22; the PO's bdg.txt Bullet_Dispersion=ON) -- DONE
+* TRANSITE.CPP bdg_disperse(): each round leaves the gun line by a random angle, uniform over a disc of radius
+  4 m at 400 yd (10.9 mrad) for fixed guns, 16 m (43.7 mrad) for hand-operated guns; applied to the round's velocity
+  relative to the shooter. Called from LaunchOneGunBullet (player and single rounds; hand = gun with its own
+  hdg/pitch) and MobileCloneGun (the AI's burst clones -- without it every clone repeats the first round's line;
+  hand = LT_MOVEGUN). Own LCG, not Math_Lib.rnd: the game's random sequence (replay/MP) is untouched. Off unless
+  bdg.txt Bullet_Dispersion=ON (BDG default OFF). BOB_TRACE_DISPERSION=1 prints one round in 50.
+* Verified (~/bob-gates/grunt d6/d8, QM 12/21, real window, BOB_SDL_KEY_MS_LAUNCHREL fire): player round 5.59 mrad
+  (2.0 m at 366 m); 18 samples (~900 rounds) from 7 AI fighters via the clone path, 1.48-10.90 mrad, all inside
+  10.94, mean 7.8 (uniform disc: 7.3). Hand-gun cone not yet seen (no gunner fired in either run).
+* Test note: BOB_SDL_KEY_MS needs a real window (VD=x11) -- under the dummy driver nothing is pushed.

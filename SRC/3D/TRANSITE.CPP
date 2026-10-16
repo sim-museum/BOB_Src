@@ -1281,6 +1281,44 @@ void	TransObj::DropAllStores(mobileitem* ac,WorldStuff& world)
 //Returns	
 //
 //------------------------------------------------------------------------------
+#if BOB_LINUX
+/* PATCH-PORT-1, BDG "Bullet dispersion" (manual 2.2.22; bdg.txt Bullet_Dispersion, default OFF, the PO's is ON): each
+   round leaves the gun line by a random angle inside a cone -- 4 m at 400 yd (366 m) for fixed fighter guns, 16 m for
+   hand-operated guns, i.e. the spread grows 1 m per 100 m. Uniform over the disc, applied to the round's velocity
+   relative to the shooter. Both launch paths call it: LaunchOneGunBullet (each round) and MobileCloneGun (the AI's
+   burst clones, which otherwise all repeat the first round's line). Its own generator, not Math_Lib.rnd, so the
+   game's random sequence (replays, multiplayer) is untouched. BOB_TRACE_DISPERSION=1 prints one round in 50. */
+static void bdg_disperse(SLong& vx, SLong& vy, SLong& vz, mobileitem* shooter, bool hand)
+{
+	static int on = -1;
+	if (on < 0) { extern int rowan_bdg_int(const char*, int); on = rowan_bdg_int("Bullet_Dispersion", 0); }
+	if (!on || !shooter)
+		return;
+	const double mx = double(vx - shooter->vel_x), my = double(vy - shooter->vel_y), mz = double(vz - shooter->vel_z);
+	const double m = sqrt(mx*mx + my*my + mz*mz);
+	if (m <= 0)
+		return;
+	static unsigned s_seed = 0x9e3779b9u;
+	s_seed = s_seed * 1664525u + 1013904223u; const double u1 = (s_seed >> 8) * (1.0 / 16777216.0);
+	s_seed = s_seed * 1664525u + 1013904223u; const double u2 = (s_seed >> 8) * (1.0 / 16777216.0);
+	const double rmax = (hand ? 16.0 : 4.0) / 365.76;	/* radians */
+	const double rr = rmax * sqrt(u1), th = 6.283185307179586 * u2;
+	const double dx = mx / m, dy = my / m, dz = mz / m;
+	/* e1 = d x up (horizontal, across the line of fire), e2 = e1 x d */
+	double e1x = dz, e1y = 0.0, e1z = -dx, e1 = sqrt(e1x*e1x + e1z*e1z);
+	if (e1 < 1e-6) { e1x = 1.0; e1z = 0.0; e1 = 1.0; }
+	e1x /= e1; e1z /= e1;
+	const double e2x = e1y*dz - e1z*dy, e2y = e1z*dx - e1x*dz, e2z = e1x*dy - e1y*dx;
+	const double a = rr * cos(th) * m, b = rr * sin(th) * m;
+	vx += SLong(a*e1x + b*e2x);
+	vy += SLong(a*e1y + b*e2y);
+	vz += SLong(a*e1z + b*e2z);
+	if (getenv("BOB_TRACE_DISPERSION")) { static int n = 0; if ((n++ % 50) == 0)
+		fprintf(stderr, "[dispersion] uid=0x%x %s gun: %.2f mrad off the line (max %.2f) = %.1f m at 366 m\n",
+		        (unsigned)shooter->uniqueID.count, hand ? "hand" : "fixed", rr*1000.0, rmax*1000.0, rr*365.76); }
+}
+#endif
+
 TransientItem* TransObj::LaunchOneGunBullet(mobileitem* launcher,SLong MuzVel,ShapeNum	weapshape,SLong xpos, SLong ypos, SLong zpos, WorldStuff& worldptr,const SWord& weapHdg, const SWord& weapPitch)
 {
 	TransientItem* newitem;
@@ -1398,6 +1436,9 @@ TransientItem* TransObj::LaunchOneGunBullet(mobileitem* launcher,SLong MuzVel,Sh
 //DeadCode RJS 13Mar00 			newitem->vel_x = velhori * sin_ang; //CSB 08/11/99
 //DeadCode RJS 13Mar00 			newitem->vel_z = velhori * cos_ang; //CSB 08/11/99
 		}
+#if BOB_LINUX
+		bdg_disperse(newitem->vel_x, newitem->vel_y, newitem->vel_z, launcher, (weapHdg || weapPitch) != 0);
+#endif
 
  		newitem->isArmed = 1;											//MS 7Jul00
 //DeadCode MS 7Jul00 		newitem->isArmed = 0;											//AMM 3Jul00
@@ -8372,6 +8413,10 @@ void	TransObj::MobileCloneGun(TransientItemPtr transit, WorldStuff& world)
 						pitch = transit->pitch;
 					}
 
+#if BOB_LINUX
+					if (mcode == MOBILE_BULLET)
+						bdg_disperse(velx, vely, velz, theShooter, (weapanim->LauncherType & LT_MASK) == LT_MOVEGUN);
+#endif
 					Bool	isArmed;								//RJS 27May99
 					if (transit->Status.deadtime)					//RJS 27May99
 						isArmed = FALSE;							//RJS 27May99
