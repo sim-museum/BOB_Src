@@ -13282,3 +13282,12 @@ already FAILs in the replay-off baseline `~/bob-gates/sb4/off`, so compare the c
 * 10-16 PAN_SPEED_FACTOR (manual 2.1.2.25, default 1; the PO's 3): HandleRotate's view step is multiplied by it.
   Verified (QM 7, keypad 4 held): "[pan] step 272 -> 816". BOB_TRACE_PAN=1. Covers key/hat panning (HandleRotate);
   BDG also names the campaign photo screen and death views -- not covered.
+* 10-16 BOB_BOMBERFIX (the PO's ON; manual 2.2.3), first part -- damaged bombers leave the formation. Own
+  implementation on Rowan's machinery (BDG's ~1 KB routine not decoded): a Luftwaffe AEROBATIC_LOW bomber on
+  AUTO_FOLLOWWP with an engine at BS_DAMLV1+ decides once, 50/50 (Math_Lib.rnd, so replays agree; off in MP), to
+  BreakForm() and fly MANOEUVRE_SCREWYOUGUYSIMGOINGHOME (full throttle to the home base, then the egress route).
+  Verified (~/bob-gates/grunt bf3, QM 20, BOB_TEST_BOMBERDAMAGE_AT=15 damaged 3 left engines): 0x1312 left, 0x1311
+  and 0x1310 stayed; 0x1312 drew away 341 -> 3630 m from the formation in 40 s, then movecode 0/23 (egress).
+  Port bug found on the way: the BDG hooks before MoveList's loop (autopilot, test hooks) only ever see the list's
+  first entry -- fine for the player, who is first; the bomber check is called inside the loop.
+  Not done: BDG's gunners being wounded/killed (second part of 2.2.3), BOB_FIGHTERFIX (undocumented).

@@ -245,6 +245,78 @@ static UByte dontmove=0;
 //Returns	
 //
 //------------------------------------------------------------------------------
+#if BOB_LINUX
+static void bdg_bomberfix(MobileItemPtr entry)
+{
+	/* PATCH-PORT-1, BDG BOB_BOMBERFIX (bdg.txt; the PO's is ON; manual 2.2.3): "a bomber with only one good engine and
+	   the second on fire or feathered will not be able to keep up with the rest of the formation ... If a bomber has an
+	   engine start to smoke due to damage, there is now a chance that it will pull out of formation and try to make it
+	   back home. Every bomber will not do this." Not BDG's code (its new routine was not decoded): a Luftwaffe bomber
+	   (AEROBATIC_LOW) flying in formation whose engine is damaged (BS_DAMLV1 or worse) decides once, 50/50 on the
+	   game's own random generator, to break formation (Rowan's BreakForm) and head for home with Rowan's
+	   MANOEUVRE_SCREWYOUGUYSIMGOINGHOME (full throttle, home base, then the egress route). Off in multiplayer.
+	   BOB_TRACE_BOMBERFIX=1; test hook BOB_TEST_BOMBERDAMAGE_AT=<s> damages one engine of the first 3 bombers met. */
+	static unsigned s_bfLeft[64]; static int s_bfNLeft = 0; static AirStrucPtr s_bfLead[64];
+	if (entry->Status.size == AirStrucSize && getenv("BOB_TRACE_BOMBERFIX"))
+		for (int q = 0; q < s_bfNLeft; q++)
+			if (s_bfLeft[q] == entry->uniqueID.count)
+			{
+				static time_t last[64];
+				if (time(0) - last[q] >= 5) { last[q] = time(0);
+					AirStrucPtr b = (AirStrucPtr)entry, L = s_bfLead[q];
+					const double d = L ? sqrt(double(b->Distance3DSquared(&L->World))) / 100.0 : -1;
+					fprintf(stderr, "[bomberfix] uid=0x%x after leaving: movecode %d manoeuvre %d, %.0f m from its old leader uid=0x%x\n",
+					        (unsigned)b->uniqueID.count, (int)b->movecode, (int)b->ai.manoeuvre, d, L ? (unsigned)L->uniqueID.count : 0u); }
+			}
+	if (entry->Status.size == AirStrucSize && !_DPlay.Implemented)
+	{
+		static int on = -1;
+		if (on < 0) { extern int rowan_bdg_int(const char*, int); on = rowan_bdg_int("BOB_BOMBERFIX", 0); }
+		AirStrucPtr b = (AirStrucPtr)entry;
+		if (getenv("BOB_TRACE_BOMBERFIX") && b->nationality == NAT_LUF && b->classtype->aerobaticfactor == AEROBATIC_LOW)
+		{	static unsigned seenU[64]; static int ns = 0; bool f = true;
+			for (int q = 0; q < ns; q++) if (seenU[q] == b->uniqueID.count) f = false;
+			if (f && ns < 64) { seenU[ns++] = b->uniqueID.count;
+				fprintf(stderr, "[bomberfix] bomber uid=0x%x movecode %d anim %d numinsag %d formpos 0x%x\n", (unsigned)b->uniqueID.count,
+				        (int)b->movecode, (int)SHAPESTUFF.GetShapePtr(b->shape)->AnimDataSize, (int)b->fly.numinsag, (int)b->formpos); } }
+		if (on && b != Persons2::PlayerSeenAC && b != Persons2::PlayerGhostAC && b->nationality == NAT_LUF
+			&& b->classtype->aerobaticfactor == AEROBATIC_LOW && b->movecode == AUTO_FOLLOWWP && !b->Status.deadtime
+			&& SHAPESTUFF.GetShapePtr(b->shape)->AnimDataSize == AIRCRAFTANIM)
+		{
+			AircraftAnimData* ad = (AircraftAnimData*)b->Anim;
+			static int testAt = -2; static time_t t0 = 0; static int damaged = 0;
+			if (testAt == -2) { const char* e = getenv("BOB_TEST_BOMBERDAMAGE_AT"); testAt = e ? atoi(e) : -1; }
+			if (testAt >= 0) { if (!t0) t0 = time(0); if (damaged < 3 && time(0) - t0 >= testAt && ad->ENGINELEFT < BS_DAMLV1) {
+				ad->ENGINELEFT = BS_DAMLV2; damaged++;
+				fprintf(stderr, "[bomberfix] test: left engine of uid=0x%x damaged\n", (unsigned)b->uniqueID.count); } }
+			if (ad->ENGINELEFT >= BS_DAMLV1 || ad->ENGINERIGHT >= BS_DAMLV1)
+			{
+				static unsigned decided[256]; static int nd = 0;
+				bool seen = false;
+				for (int q = 0; q < nd; q++) if (decided[q] == b->uniqueID.count) seen = true;
+				if (!seen && nd < 256)
+				{
+					decided[nd++] = b->uniqueID.count;
+					const bool leave = Math_Lib.rnd(2) == 0;
+					if (getenv("BOB_TRACE_BOMBERFIX"))
+						fprintf(stderr, "[bomberfix] uid=0x%x engines %d/%d: %s\n", (unsigned)b->uniqueID.count,
+						        (int)ad->ENGINELEFT, (int)ad->ENGINERIGHT, leave ? "leaves the formation for home" : "stays in formation");
+					if (leave && s_bfNLeft < 64) { s_bfLead[s_bfNLeft] = b->FindFormpos0(); if (s_bfLead[s_bfNLeft] == b) s_bfLead[s_bfNLeft] = b->Follower(); s_bfLeft[s_bfNLeft++] = b->uniqueID.count; }
+					if (leave)
+					{
+						b->BreakForm();
+						b->movecode = AUTO_COMBAT;
+						b->ai.manoeuvre = MANOEUVRE_SCREWYOUGUYSIMGOINGHOME;
+						b->ai.ManStep = 0;
+						b->manoeuvretime = 0;
+					}
+				}
+			}
+		}
+	}
+}
+#endif
+
 void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 {
 #if BOB_LINUX
@@ -432,6 +504,9 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 
 	while (entry)
 	{
+#if BOB_LINUX
+		bdg_bomberfix(entry);	/* every aircraft in the list, not just its head */
+#endif
 		ULong state=_Replay.GetState();
 
 		if (_Replay.IsCampState(state))
