@@ -364,6 +364,37 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	}
 #endif
 #if BOB_LINUX
+	/* BOB-QM-ENGAGE-1 (PO 10-16: in QM One on One the 109 "flies away with no clear purpose" for minutes before its boom
+	   and zoom, and the Enemy Position Indicator stays blank meanwhile): a duel's premise is that both pilots know of
+	   each other, but Rowan's spot sweep (MSGAI Seen(), one probabilistic look per pair about every 25 s) left the 109 on
+	   its waypoints until luck had it see the player. When the flight holds exactly one aircraft per side, the enemy
+	   spots the player 2 s in (SpottedUnfriendly -- what a successful Seen() does). Once per flight (a 5 s gap in the
+	   calls = a new flight), and only if the enemy has no target yet. BOB_NO_DUEL_AWARE=1 reverts; BOB_TRACE_DUEL_AWARE=1 traces. */
+	if (entry == Persons2::PlayerSeenAC) {
+		static int s_off = -1; if (s_off < 0) s_off = getenv("BOB_NO_DUEL_AWARE") ? 1 : 0;
+		static time_t s_t0 = 0, s_last = 0; static bool s_done = false;
+		time_t now = time(0);
+		if (!s_last || now - s_last > 5) { s_t0 = now; s_done = false; }
+		s_last = now;
+		if (!s_off && !s_done && now - s_t0 >= 2) {
+			s_done = true;
+			struct DuelSpot : ArtInt { static bool Call(AirStruc* a, AirStruc* t) { return ((DuelSpot&)Art_Int).SpottedUnfriendly(a, t); }
+			                           static AirStruc* Ac(int i) { return ACArray[i]; } static int N() { return ACARRAYSIZE; } };
+			AirStrucPtr me = (AirStrucPtr)entry, foe = NULL; int nf = 0, ne = 0;
+			for (int i = 0; i < DuelSpot::N(); i++) {
+				AirStrucPtr a = DuelSpot::Ac(i);
+				if (!a || a->Status.deadtime) continue;
+				if (a->nationality == me->nationality) nf++; else { ne++; foe = a; }
+			}
+			bool fire = (nf == 1 && ne == 1 && foe && !foe->ai.unfriendly);
+			if (fire) DuelSpot::Call(foe, me);
+			if (getenv("BOB_TRACE_DUEL_AWARE"))
+				fprintf(stderr, "[duelaware] friends=%d enemies=%d foe=0x%x -> %s\n", nf, ne, foe ? (unsigned)foe->uniqueID.count : 0u,
+				        fire ? "enemy spots the player" : "no change");
+		}
+	}
+#endif
+#if BOB_LINUX
 	/* test hook (PATCH-PORT-1 ground/radio turn, BDG manual 4.4.11): BOB_TEST_BANDITCALL_AT=<s> -- s seconds into the
 	   flight the player "tells his comrades" about the nearest enemy aircraft: ArtInt::SpottedUnfriendly(player,
 	   enemy), exactly what the radio Bandit call does once it has found the padlocked target. */
