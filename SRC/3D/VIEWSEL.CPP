@@ -2379,6 +2379,37 @@ void ViewPoint::ControlViewSelect()
 	{
 		bool	headmoved = false;
 
+#if BOB_LINUX
+		/* BOB-PATCH-REST-1 40d, BDG manual 2.2.2: "The Q and W keys are now sticky, meaning that you press the key
+		   once, and you will remain in that position until you press the key a second time to return to the centre
+		   view." Q/W (HEADOUTVIEWL/R) toggle a lean that holds; the other key switches sides; FLOORVIEW stays
+		   hold-to-look. BOB_NO_BDG_STICKYLEAN=1 restores Rowan's hold-to-lean. */
+		static int s_sticky = -1; if (s_sticky < 0) s_sticky = getenv("BOB_NO_BDG_STICKYLEAN") ? 0 : 1;
+		if (s_sticky)
+		{
+			static int s_lean = 0;					/* 0 centre, 1 left, 2 right */
+			static bool s_prevL = false, s_prevR = false;
+			bool l = Key_Tests.KeyHeld3d(HEADOUTVIEWL) != 0, r = Key_Tests.KeyHeld3d(HEADOUTVIEWR) != 0;
+			if (l && !s_prevL) s_lean = (s_lean == 1) ? 0 : 1;
+			if (r && !s_prevR) s_lean = (s_lean == 2) ? 0 : 2;
+			if ((l && !s_prevL) || (r && !s_prevR))
+				if (getenv("BOB_TRACE_LEAN")) fprintf(stderr, "[lean] %s\n", s_lean == 1 ? "left" : s_lean == 2 ? "right" : "centre");
+			s_prevL = l; s_prevR = r;
+			{ static int s_f = 0; if (getenv("BOB_TRACE_LEAN") && !(s_f++ % 60)) fprintf(stderr, "[lean] state=%d eyeDeltaX=%d\n", s_lean, int(eyeDeltaX)); }
+			if (s_lean)
+			{
+				HandleHead(s_lean == 1 ? ZR_HeadLeft : ZR_HeadRight);
+				headmoved = true;
+			}
+			if (Key_Tests.KeyHeld3d(FLOORVIEW))
+			{
+				HandleHead(ZR_HeadDown);
+				headmoved = true;
+			}
+		}
+		else
+#endif
+		{
 		ptr2 = viewhead_list;
 		for(;ptr2->viewcode;ptr2++)
 			if(Key_Tests.KeyHeld3d(ptr2->keynum))
@@ -2386,6 +2417,7 @@ void ViewPoint::ControlViewSelect()
 				(this->*(ptr2->viewcode)) (ptr2->zr_flags);
 				headmoved = true;
 			}
+		}
 
 		if (!headmoved && eyeDeltaX)
 			HandleHead(ZR_NULL);
