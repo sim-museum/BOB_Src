@@ -391,7 +391,7 @@ static void bdg_gunnerfix(MobileItemPtr entry)
    he unloads. A tired pilot has less stick force (slower, lazier rolls at speed) and pulls less sustained G, which an
    opponent can see and use. Roll capacity 1 = Rowan's maxrollrate, which a fresh pilot keeps up to k * (300 mph IAS)^2.
    Per-pilot endurance 0.8..1.25 (hash of the uid). BOB_NO_FATIGUE=1 reverts; BOB_TRACE_FATIGUE=1 traces every 2 s. */
-struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs, bo, pull; bool seen; };
+struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs, bo, pull; SWord ohdg; bool seen; };
 static BdgPilot s_bdg_pil[2048];
 static BdgPilot* bdg_pil(AirStrucPtr a, bool create)
 {
@@ -442,6 +442,67 @@ bool bdg_blacked_out(AirStrucPtr a) { if (!bdg_fatigue_on()) return false; BdgPi
 float bdg_g_capacity(AirStrucPtr a)	// flight model: share of full pull, fed back from the felt G
 { if (!bdg_fatigue_on()) return 1.0f; BdgPilot* p = bdg_pil(a, false); return !p ? 1.0f : (p->bo > 0) ? 0.0f : p->pull; }
 void bdg_fatigue_roll(AirStrucPtr a, float rollfrac) { if (bdg_fatigue_on()) { BdgPilot* p = bdg_pil(a, true); if (rollfrac > p->roll) p->roll = rollfrac; } }
+/* PILOT-MODEL-1 49b (PO 10-17): theory of mind -- each AI pilot builds a model of the bandit he is fighting from what
+   he can SEE of it (its flight path; never its internal state), and the model sharpens the longer they fight. Shaw
+   p.180: the energy fighter "can assess his opponent's energy management by observing the bogey's angular gains";
+   p.131: assess the type and magnitude of a disadvantage; PO: rolls get less crisp as a pilot tires. Observed here:
+   acquaintance (time in contact, faster for a better pilot), the bandit's sustained turn rate against his own when both
+   pull hard (who out-turns whom), and the bandit's roll crispness (recent peak roll rate vs the best seen). */
+struct BdgTom { unsigned bandit; float acq, turn, crisp, best, peak, win, tr; SWord broll, bhdg; float bvx, bvy, bvz, bg; int nref; bool seen; };
+static BdgTom s_bdg_tom[2048];
+static BdgTom* bdg_tom(AirStrucPtr me, bool create)
+{
+	BdgPilot* p = bdg_pil(me, create);
+	return p ? &s_bdg_tom[p - s_bdg_pil] : 0;
+}
+static float bdg_tom_skill(AirStrucPtr me)	// how fast and how well he reads a bandit: novice 0.4 .. ace 1.0
+{
+	const int s = me->ai.combatskill;
+	return (s >= SKILL_ACE) ? 1.0f : (s >= SKILL_VETERAN) ? 0.85f : (s >= SKILL_REGULAR) ? 0.7f : 0.4f;
+}
+float bdg_tom_knowledge(AirStrucPtr me)	// 0 = knows nothing of this bandit, 1 = has his measure
+{
+	if (!bdg_fatigue_on()) return 0; BdgTom* t = bdg_tom(me, false);
+	return (t && me->ai.unfriendly && t->bandit == me->ai.unfriendly->uniqueID.count) ? t->acq * bdg_tom_skill(me) : 0;
+}
+float bdg_tom_turn(AirStrucPtr me) { BdgTom* t = bdg_tom(me, false); const float k = bdg_tom_knowledge(me); return t ? 1.0f + (t->turn - 1.0f) * k : 1.0f; }
+float bdg_tom_crisp(AirStrucPtr me) { BdgTom* t = bdg_tom(me, false); const float k = bdg_tom_knowledge(me); return t ? 1.0f + (t->crisp - 1.0f) * k : 1.0f; }
+static void bdg_tom_tick(AirStrucPtr me, BdgPilot* p, float dt, float myg)
+{
+	BdgTom& t = s_bdg_tom[p - s_bdg_pil];
+	AirStrucPtr b = (me->ai.unfriendly && me->ai.unfriendly->Status.size == AIRSTRUCSIZE) ? AirStrucPtr(me->ai.unfriendly) : 0;
+	if (!b) { t.acq -= dt / 300.0f; if (t.acq < 0) t.acq = 0; return; }
+	if (t.bandit != b->uniqueID.count) { t.bandit = b->uniqueID.count; t.acq = 0; t.turn = 1; t.crisp = 1; t.best = 0; t.peak = 0; t.win = 0; t.tr = 0; t.bg = 1; t.nref = 0; t.seen = false; }
+	const float dx = float(b->World.X - me->World.X), dy = float(b->World.Y - me->World.Y), dz = float(b->World.Z - me->World.Z);
+	const bool sees = (dx * dx + dy * dy + dz * dz < 2.5e5f * 2.5e5f) && p->bo <= 0;	// within 2.5 km, not blacked out
+	const float bvx = float(b->vel_x) * 1e-4f, bvy = float(b->vel_y) * 1e-4f, bvz = float(b->vel_z) * 1e-4f;
+	if (sees && t.seen) {
+		t.acq += dt * bdg_tom_skill(me) / 90.0f; if (t.acq > 1) t.acq = 1;
+		const float rr = fabsf(float(SWord(SWord(b->roll) - t.broll))) * 5.4932e-3f / dt;	// deg/s
+		if (rr < 720.0f) { if (rr > t.peak) t.peak = rr; }
+		const float ax = (bvx - t.bvx) / dt, ay = (bvy - t.bvy) / dt + 9.80665f, az = (bvz - t.bvz) / dt;
+		float bg = sqrtf(ax * ax + ay * ay + az * az) / 9.80665f; if (bg > 9.0f) bg = 9.0f;
+		t.bg += (bg - t.bg) * (dt < 1.0f ? dt : 1.0f); bg = t.bg;
+		const float bw = fabsf(float(SWord(SWord(b->hdg) - t.bhdg))) * 5.4932e-3f / dt;
+		const float mw = fabsf(float(SWord(SWord(me->hdg) - p->ohdg))) * 5.4932e-3f / dt;
+		if (bg > 2.5f && myg > 2.5f && bw < 60.0f && mw > 5.0f && mw < 60.0f && bw > 5.0f)	// both pulling hard: who gains?
+			t.turn += (bw / mw - t.turn) * dt / 20.0f;
+		if ((t.win += dt) >= 8.0f) {	// 8 s windows: his peak roll rate now vs his fresh one (mean of the first 6 hard-rolling windows)
+			if (t.peak > 30.0f) {
+				if (t.nref < 6) { t.best = (t.best * t.nref + t.peak) / (t.nref + 1); t.nref++; }
+				else t.crisp += (t.peak / t.best - t.crisp) * 0.25f;
+			}
+			t.peak = 0; t.win = 0;
+		}
+	}
+	t.broll = SWord(b->roll); t.bhdg = SWord(b->hdg); t.bvx = bvx; t.bvy = bvy; t.bvz = bvz; t.seen = true;
+	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_TOM") ? 1 : 0;
+	if (tr && (t.tr += dt) >= 5.0f) {
+		t.tr = 0;
+		fprintf(stderr, "[tom] id=%u skill=%d bandit=%u shape=%d sees=%d acq=%.2f know=%.2f turn=%.2f crisp=%.2f best=%.0f\n", p->id,
+		        int(me->ai.combatskill), t.bandit, int(b->classtype->visible), int(sees), t.acq, bdg_tom_knowledge(me), t.turn, t.crisp, t.best);
+	}
+}
 void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = load factor the pilot feels, < 0: from his path
 {
 	if (!bdg_fatigue_on()) return;
@@ -476,6 +537,8 @@ void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = loa
 		fprintf(stderr, "[fatigue] id=%u shape=%d path=%d mc=%d g=%.2f ias=%.0f roll=%.2f force=%.2f F=%.3f rollcap=%.2f gcap=%.2f glim=%.1f\n", p->id,
 		        int(a->classtype->visible), path, int(a->movecode), g, 300.0 * sqrt(q), p->roll, force, p->F, bdg_roll_capacity(a), bdg_g_capacity(a), bdg_g_limit(a));
 	}
+	if (a->movecode == AUTO_COMBAT) bdg_tom_tick(a, p, dt, g);
+	p->ohdg = SWord(a->hdg);
 	p->roll = 0;
 }
 #endif

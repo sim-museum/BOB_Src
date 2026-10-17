@@ -1224,6 +1224,28 @@ void ACMAirStruc::SelectNextEngageManoeuvre()
 		choosegood = true;
 	else if(rnd < badval)
 		choosebad = true;
+#if defined(BOB_LINUX)
+	/* PILOT-MODEL-1 49b (PO 10-17): theory of mind. What this pilot has learned of THIS bandit by watching it (MOVEALL.CPP
+	   bdg_tom_*: knowledge grows with time in contact, faster for better pilots) turns some of his bad choices into sound
+	   ones and some sound ones into good ones; and when the bandit's rolls have gone lazy (a tiring pilot) he presses the
+	   attack. BOB_NO_TOM=1 reverts; BOB_TRACE_TOM=1 traces. */
+	{
+		extern float bdg_tom_knowledge(AirStrucPtr), bdg_tom_crisp(AirStrucPtr);
+		static int s_noTom = -1; if (s_noTom < 0) s_noTom = getenv("BOB_NO_TOM") ? 1 : 0;
+		const float know = s_noTom ? 0.0f : bdg_tom_knowledge(this);
+		if (know > 0.05f)
+		{
+			const bool wasbad = choosebad, wasgood = choosegood;
+			const bool tired = (bdg_tom_crisp(this) < 0.7f) && (combatstatus <= CS_HUNTER);
+			const int r2 = Math_Lib.rnd(65536);
+			if (choosebad && (r2 < int(know * 0.6f * 65536.0f)))	choosebad = false;
+			else if (!choosegood && (tired || (r2 < int(know * 0.25f * 65536.0f))))	{ choosegood = true; choosebad = false; }
+			if (getenv("BOB_TRACE_TOM") && ((wasbad != choosebad) || (wasgood != choosegood)))
+				fprintf(stderr, "[tom] id=%d decide status=%d know=%.2f crisp=%.2f %s -> %s\n", int(uniqueID.count), int(combatstatus), double(know),
+				        double(bdg_tom_crisp(this)), wasbad ? "bad" : wasgood ? "good" : "plain", choosebad ? "bad" : choosegood ? (tired ? "good (bandit tiring)" : "good") : "plain");
+		}
+	}
+#endif
 
 	if(unf->classtype->aerobaticfactor == AEROBATIC_LOW) 
 	{
@@ -1359,7 +1381,8 @@ void ACMAirStruc::SelectNextEngageManoeuvre()
 		   then slash down in a high-speed pass and zoom straight back up; they are above it except while diving. REGULAR to
 		   VETERAN pilots fly the simpler boom and zoom below (no sun, 1000 ft margin) and still turn and burn on a bad roll;
 		   below REGULAR, Rowan's turning fight. */
-		if (	!s_noEnergy && !choosebad && (ai.combatskill >= SKILL_REGULAR) && (combatstatus != CS_THREATENED)
+		extern float bdg_tom_turn(AirStrucPtr);	/* 49b: a lesser pilot who has learned the Spitfire out-turns him fights in the vertical too */
+		if (	!s_noEnergy && !choosebad && ((ai.combatskill >= SKILL_REGULAR) || (bdg_tom_turn(this) > 1.15f)) && (combatstatus != CS_THREATENED)
 			&&	((unf->classtype->visible == SPIT) || (unf->classtype->visible == HURR))	)
 		{
 			FP v = FP(vel_) / 10000.0, vu = FP(unf->vel_) / 10000.0;				/* m/s */
