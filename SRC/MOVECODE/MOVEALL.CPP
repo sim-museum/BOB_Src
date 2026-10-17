@@ -317,6 +317,54 @@ static void bdg_bomberfix(MobileItemPtr entry)
 }
 #endif
 
+#if BOB_LINUX
+/* BOB-PATCH-REST-1 40c, BDG BOB_FIGHTERFIX (bdg.txt, undocumented; the PO's is ON). Decoded from BDG 0.99 bob.exe:
+   the AI move (0x54858e) calls a new routine (0x543ea2) for each aircraft when the switch is on; once per aircraft it
+   rolls Math_Lib 1 in 3 and tests engine damage -- single-engine: the engine byte > 80.0 (0xa15740); Bf 110 (shape
+   0x18 = ME110): the average of both engines > 80 * 0.667 -- then calls 0x450b11 = TransObj::LaunchCanopyEject (it
+   matches line for line: not the player, not below FT_4000 = 0x1dc40). In words: an AI fighter pilot whose engine is
+   hit may bail out. Port: an AI Spitfire/Hurricane/Bf 109/Bf 110 in combat (AUTO_COMBAT with a target) whose engine
+   damage crosses those thresholds (BS_DAMLV1 = 85, so any engine damage on a single; one engine at BS_DAMLV2 or both
+   damaged on a 110) decides once, 1 in 3, to bail out with Rowan's own MANOEUVRE_BAILOUT (throttle off,
+   LaunchCanopyEject, inverted). Off in multiplayer. BOB_TRACE_FIGHTERFIX=1; test hooks BOB_TEST_FIGHTERDAMAGE_AT=<s>
+   (damage the first enemy fighter's engine at s seconds) and BOB_TEST_FIGHTERFIX_ALWAYS=1 (skip the 1 in 3 roll). */
+static void bdg_fighterfix(MobileItemPtr entry)
+{
+	if (entry->Status.size != AirStrucSize || _DPlay.Implemented) return;
+	static int on = -1;
+	if (on < 0) { extern int rowan_bdg_int(const char*, int); on = rowan_bdg_int("BOB_FIGHTERFIX", 0); }
+	if (!on) return;
+	AirStrucPtr a = (AirStrucPtr)entry;
+	if (a == Persons2::PlayerSeenAC || a == Persons2::PlayerGhostAC || a->Status.deadtime || a->weap.Ejected) return;
+	const ShapeNum vis = a->classtype->visible;
+	if (vis != SPIT && vis != HURR && vis != ME109 && vis != ME110) return;
+	if (SHAPESTUFF.GetShapePtr(a->shape)->AnimDataSize != AIRCRAFTANIM) return;
+	AircraftAnimData* ad = (AircraftAnimData*)a->Anim;
+	static int testAt = -2; static time_t t0 = 0; static bool testDone = false;
+	if (testAt == -2) { const char* e = getenv("BOB_TEST_FIGHTERDAMAGE_AT"); testAt = e ? atoi(e) : -1; }
+	if (testAt >= 0 && !testDone && Persons2::PlayerSeenAC && a->nationality != Persons2::PlayerSeenAC->nationality) {
+		if (!t0) t0 = time(0);
+		if (time(0) - t0 >= testAt) { testDone = true; ad->ENGINELEFT = BS_DAMLV1;
+			fprintf(stderr, "[fighterfix] test: engine of uid=0x%x damaged (alt %.0f m)\n", (unsigned)a->uniqueID.count, a->World.Y / 100.0); } }
+	if (a->movecode != AUTO_COMBAT || !a->ai.unfriendly) return;
+	const int L = ad->ENGINELEFT, R = ad->ENGINERIGHT;
+	const bool hit = (vis == ME110) ? ((L + R) / 2.0 > 80.0 * 0.667) : (((L > R) ? L : R) > 80);
+	if (!hit) return;
+	static unsigned decided[256]; static int nd = 0;
+	for (int q = 0; q < nd; q++) if (decided[q] == a->uniqueID.count) return;
+	if (nd < 256) decided[nd++] = a->uniqueID.count;
+	const bool bail = getenv("BOB_TEST_FIGHTERFIX_ALWAYS") || Math_Lib.rnd(3) == 0;
+	if (getenv("BOB_TRACE_FIGHTERFIX"))
+		fprintf(stderr, "[fighterfix] uid=0x%x shape %d engines %d/%d alt %.0f m: %s\n", (unsigned)a->uniqueID.count, (int)vis, L, R,
+		        a->World.Y / 100.0, bail ? (a->World.Y >= FT_4000 ? "bails out" : "would bail, below 4000 ft") : "stays with it");
+	if (bail && a->World.Y >= FT_4000)
+	{
+		a->ai.manoeuvre = MANOEUVRE_BAILOUT;
+		a->ai.ManStep = PHASE0;
+	}
+}
+#endif
+
 void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 {
 #if BOB_LINUX
@@ -550,6 +598,7 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	{
 #if BOB_LINUX
 		bdg_bomberfix(entry);	/* every aircraft in the list, not just its head */
+		bdg_fighterfix(entry);
 		if (entry->Status.size == AirStrucSize && getenv("BOB_TRACE_DUEL")) {	/* AI-TACTICS-1: outcome per aircraft */
 			AirStrucPtr ac = AirStrucPtr(entry); static unsigned s_id[64]; static int s_st[64]; static time_t s_t0 = 0;
 			if (!s_t0) s_t0 = time(0);
