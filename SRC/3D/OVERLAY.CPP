@@ -8089,6 +8089,9 @@ void COverlay::DoThreat()
 //Author		Jon.   
 //Date			Tue 11 Apr 2000
 //------------------------------------------------------------------------------
+#if BOB_LINUX
+static int bdg_cheatbox_vm = -1;	/* BOB-PADLOCK-DIAMOND-1 trace: viewmode seen by SetupCheatBox, read by DoCheatBox */
+#endif
 void COverlay::SetupCheatBox()
 {
 	cheatBoxX = -1.f;													//RJS 28Jul00
@@ -8102,6 +8105,7 @@ void COverlay::SetupCheatBox()
 			static int last = -12345;
 			int flag = Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] ? 1 : 0;
 			int vm = pvp ? (int)pvp->viewnum.viewmode : -1;
+			bdg_cheatbox_vm = vm;
 			int tr = (pvp && pvp->trackeditem2) ? 1 : 0;
 			int key = flag * 10000 + (vm + 1) * 10 + tr;
 			if (key != last) { last = key;
@@ -8273,10 +8277,13 @@ void COverlay::DoCheatBox()
 
 #if BOB_LINUX
 	{ static int on = -1; if (on < 0) on = getenv("BOB_TRACE_CHEATBOX") ? 1 : 0;
-	  static int n = 0;
-	  if (on && Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT] && n++ % 60 == 0 && n < 1200)
-	  { fprintf(stderr, "[cheatbox] DoCheatBox x=%.1f y=%.1f z=%.2f scale=%.4f -> %s\n", cheatBoxX, cheatBoxY, cheatBoxZ, cheatBoxScale,
-	            (cheatBoxX > -0.5f && cheatBoxZ > 1.f) ? "DRAW" : "skip"); fflush(stderr); } }
+	  static int last = -1; static unsigned n = 0, nd = 0;	/* BOB-PADLOCK-DIAMOND-1: one line per change of (viewmode, draw), with counts */
+	  if (on && Save_Data.detail_3d[DETAIL3D_PADLOCKCHEAT])
+	  { int draw = (cheatBoxX > -0.5f && cheatBoxZ > 1.f) ? 1 : 0; n++; nd += draw;
+	    int vm = bdg_cheatbox_vm; int key = vm * 2 + draw;
+	    if (key != last) { last = key;
+	      fprintf(stderr, "[cheatbox] DoCheatBox viewmode=%d x=%.1f y=%.1f z=%.2f -> %s (calls=%u drawn=%u)\n", vm, cheatBoxX, cheatBoxY, cheatBoxZ,
+	              draw ? "DRAW" : "skip", n, nd); fflush(stderr); } } }
 #endif
 //DeadCode AMM 12Oct00 	if (!_DPlay.Implemented)
 	{

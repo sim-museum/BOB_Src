@@ -1271,6 +1271,17 @@ void ThreeDee::render3d(ViewPoint* vp,WorldStuff *world)//PD 22Apr96
  									viewer_x,viewer_y,viewer_z,		
  									vp->hdg);
 
+#if BOB_LINUX
+	{	/* BOB-PADLOCK-DIAMOND-1: BOB_TRACE_VIEWANG=1 prints the camera angles per frame (first 40 frames of each view mode) */
+		static int s_on = -1; if (s_on < 0) s_on = getenv("BOB_TRACE_VIEWANG") ? 1 : 0;
+		static int s_vm = -99, s_n = 0;
+		if (s_on) { int vm = (int)View_Point->viewnum.viewmode; if (vm != s_vm) { s_vm = vm; s_n = 0; }
+			if (s_n++ < 40) fprintf(stderr, "[viewang] vp=%p%s vphdg=%d vm=%d hdg=%d pitch=%d roll=%d pos=(%d,%d,%d)\n", (void*)vp,
+				(void*)vp == (void*)View_Point ? "(=View_Point)" : "", int(UWord(vp->hdg)) * 360 / 65536, vm,
+				int(UWord(View_Point->hdg)) * 360 / 65536, int(SWord(View_Point->pitch)) * 360 / 65536, int(SWord(View_Point->roll)) * 360 / 65536,
+				int(View_Point->World.X), int(View_Point->World.Y), int(View_Point->World.Z)); }
+	}
+#endif
 	g_lpLib3d->BeginScene(RENDERTARGET_PRIMARY);
 	g_lpLib3d->LoadIdentity(MATRIX_VIEWER);
 	g_lpLib3d->Rotate(MATRIX_VIEWER,AXIS_HEADING,(Angles)(int)View_Point->hdg);
