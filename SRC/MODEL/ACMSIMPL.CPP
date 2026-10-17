@@ -342,6 +342,48 @@ UWord AirStruc::CalcMaxPitchRate()
 //Returns	
 //
 //------------------------------------------------------------------------------
+#if BOB_LINUX
+/* BOB-CLONE-ATTACK-1 (PO 10-16: "when a wing of hurricanes meet a formation of german bombers, the hurricanes peal off
+   and line up behind the bombers one after the other, with exactly the same cloned trajectory"): every fighter flew at
+   the same lead point and arrived dead astern in a matching line. 1940 attacks came from every quarter, so each pilot
+   holds his own approach offset from the bomber's track (stable per aircraft: lateral +-400 m, vertical -150..+250 m),
+   full beyond 1.5 km, fading to none at 400 m, where the firing run is Rowan's. Bomber = Do 17, He 111, Ju 88, Ju 87,
+   Ju 52. BOB_NO_ATTACK_SPREAD=1 reverts; BOB_TRACE_SPREAD=1 samples each fighter's approach angle to its bomber. */
+static bool bdg_is_bomber(AirStrucPtr u)
+{
+	const ShapeNum v = u->classtype->visible;
+	return v == DO17 || v == HE11 || v == JU88 || v == JU87 || v == JU52;
+}
+static void bdg_attack_offset(ACMAirStruc* me, AirStrucPtr unf, COORDS3D& t)
+{
+	static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_ATTACK_SPREAD") ? 1 : 0;
+	if (s_no || !unf || !bdg_is_bomber(unf)) return;
+	const ULong h = ULong(me->uniqueID.count) * 2654435761u;
+	const FP lat = (FP((h >> 8) & 0xff) / 255.0 * 2.0 - 1.0) * 40000.0;
+	const FP ver = FP((h >> 16) & 0xff) / 255.0 * 40000.0 - 15000.0;
+	const FP d = FSqrt(me->Distance3DSquared(&unf->World));
+	FP fade = (d - FP(INSIDEWEAPONSRANGE)) / (150000.0 - FP(INSIDEWEAPONSRANGE));
+	MODMAXMIN(fade, 0.0, 1.0);
+	const FP vh = FSqrt(FP(unf->vel_x) * FP(unf->vel_x) + FP(unf->vel_z) * FP(unf->vel_z));
+	if (vh < 1.0) return;
+	t.X = FP(t.X) + fade * lat * (-FP(unf->vel_z) / vh);
+	t.Z = FP(t.Z) + fade * lat * ( FP(unf->vel_x) / vh);
+	t.Y = FP(t.Y) + fade * ver;
+}
+static void bdg_trace_spread(ACMAirStruc* me, AirStrucPtr unf)
+{
+	static int s_tr = -1; if (s_tr < 0) s_tr = getenv("BOB_TRACE_SPREAD") ? 1 : 0;
+	static unsigned s_n = 0;
+	if (!s_tr || !unf || !bdg_is_bomber(unf) || (s_n++ & 15)) return;
+	const FP dx = FP(me->World.X - unf->World.X), dy = FP(me->World.Y - unf->World.Y), dz = FP(me->World.Z - unf->World.Z);
+	const FP r = FSqrt(dx * dx + dy * dy + dz * dz);
+	const FP vh = FSqrt(FP(unf->vel_x) * FP(unf->vel_x) + FP(unf->vel_z) * FP(unf->vel_z)) + 1e-6;
+	const FP along = (dx * FP(unf->vel_x) + dz * FP(unf->vel_z)) / vh, side = (dx * -FP(unf->vel_z) + dz * FP(unf->vel_x)) / vh;
+	fprintf(stderr, "[spread] id=%d unf=%d range=%.0f az=%.0f el=%.0f\n", int(me->uniqueID.count), int(unf->uniqueID.count), double(r / 100.0),
+	        double(atan2(double(side), double(-along)) * 57.29578), double(atan2(double(dy), sqrt(double(along * along + side * side))) * 57.29578));
+}
+#endif
+
 void	ACMAirStruc::SimpleTurningFight()
 {
 	if((ai.unfriendly) && (AirStrucPtr(ai.unfriendly)->classtype->aerobaticfactor == AEROBATIC_LOW))
@@ -385,6 +427,11 @@ void	ACMAirStruc::SimpleTurningFight()
 			target.X = ai.unfriendly->World.X;
 			target.Y = ai.unfriendly->World.Y;
 			target.Z = ai.unfriendly->World.Z;
+#if BOB_LINUX
+			if (Distance3DSquared(&unf->World) > FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE))
+				bdg_attack_offset(this, unf, target);
+			bdg_trace_spread(this, unf);
+#endif
 			InterceptandRange (&target);
 
 			reqdeltahdg   =	HdgIntercept - hdg;
@@ -591,7 +638,13 @@ void ACMAirStruc::SimpleTurningFightBomber()
 				despos.X = FP(despos.X) + time * FP(unf->vel_x);
 				despos.Y = FP(despos.Y) + time * FP(unf->vel_y);
 				despos.Z = FP(despos.Z) + time * FP(unf->vel_z);
+#if BOB_LINUX
+				bdg_attack_offset(this, unf, despos);
+#endif
 			}
+#if BOB_LINUX
+			bdg_trace_spread(this, unf);
+#endif
 			
 			InterceptandRange(&despos);
 

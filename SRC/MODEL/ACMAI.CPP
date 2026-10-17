@@ -6379,6 +6379,18 @@ void ACMAirStruc::PeelOff()
 							numac++;
 					}
 			SetManoeuvreTime(50 * numac);
+#if BOB_LINUX
+			/* BOB-CLONE-ATTACK-1: every pilot flew the identical peel (90 deg roll, 1 s level pull, 0.5 s spacing), so the
+			   squadron came off as one cloned arc. Each pilot now has his own (stable per aircraft): roll 75..105 deg,
+			   pull 0.8..1.3 s, pitch -5..+10 deg, up to 0.3 s later. BOB_NO_ATTACK_SPREAD=1 reverts. */
+			if (!getenv("BOB_NO_ATTACK_SPREAD"))
+			{
+				const ULong h = ULong(uniqueID.count) * 2246822519u;
+				const SWord droll = SWord((FP((h >> 4) & 0xff) / 255.0 * 30.0 - 15.0) * 65536.0 / 360.0);
+				ai.desiredroll = (Angles)(SWord(ai.desiredroll) + ((ai.desiredroll == ANGLES_90Deg) ? droll : -droll));
+				SetManoeuvreTime(50 * numac + int((h >> 12) & 0x1f));
+			}
+#endif
 		}
 		case PHASE1:
 		{
@@ -6389,6 +6401,14 @@ void ACMAirStruc::PeelOff()
 				ai.ManStep = PHASE2;
 				SetManoeuvreTime(100);
 				ai.desiredpitch = ANGLES_0Deg;
+#if BOB_LINUX
+				if (!getenv("BOB_NO_ATTACK_SPREAD"))	/* BOB-CLONE-ATTACK-1: per-pilot pull time and pitch (see PHASE0) */
+				{
+					const ULong h = ULong(uniqueID.count) * 2246822519u;
+					SetManoeuvreTime(80 + int((h >> 20) & 0x3f) * 50 / 63);
+					ai.desiredpitch = (Angles)SWord((FP((h >> 26) & 0x3f) / 63.0 * 15.0 - 5.0) * 65536.0 / 360.0);
+				}
+#endif
 				InterceptandRange(Persons2::PlayerGhostAC);
 				SWord dhdg = HdgIntercept - hdg;
 				if(ai.desiredroll < 0)	dhdg = -dhdg;
