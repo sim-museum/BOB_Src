@@ -223,6 +223,24 @@ void AcmModel::Pilot (AirStrucPtr const ControlledAC)
 	}
 
 	SWord MaxDelta = 6553 * MODEL_DT;
+#if BOB_LINUX
+	// PILOT-MODEL-1 49a: stick force and fatigue (MOVEALL.CPP) -- less aileron at speed when tired, less pull, lazier stick
+	if ((ControlledAC->movecode == AUTO_COMBAT) && (ControlledAC->Status.size == AIRSTRUCSIZE))
+	{
+		extern bool bdg_fatigue_on(); extern float bdg_roll_capacity(AirStrucPtr), bdg_g_capacity(AirStrucPtr), bdg_pilot_fatigue(AirStrucPtr);
+		extern void bdg_fatigue_roll(AirStrucPtr, float); extern void bdg_fatigue_tick(AirStrucPtr, float, int);
+		if (bdg_fatigue_on())
+		{
+			const FP ail = 32767.0 * bdg_roll_capacity(ControlledAC), pull = 32767.0 * bdg_g_capacity(ControlledAC);
+			if (pModel->Aileron > ail) pModel->Aileron = SWord(ail);
+			if (pModel->Aileron < -ail) pModel->Aileron = SWord(-ail);
+			if (pModel->Elevator < -pull) pModel->Elevator = SWord(-pull);
+			MaxDelta = SWord(MaxDelta * (1.0 - 0.4 * bdg_pilot_fatigue(ControlledAC)));
+			bdg_fatigue_roll(ControlledAC, float(pModel->Aileron < 0 ? -pModel->Aileron : pModel->Aileron) / 32767.0f);
+			bdg_fatigue_tick(ControlledAC, float(pModel->NettForce.y / (pModel->Mass * GRAVITY)), 1);
+		}
+	}
+#endif
 
 	if(pModel->Elevator > OldElevator + MaxDelta)
 		pModel->Elevator = OldElevator + MaxDelta;

@@ -8868,6 +8868,10 @@ SLong AirStruc::CalcHdg ()
 
 //	Stop the simple aircraft from turning faster than the flight model aircraft can	//CSB 01/06/99	
 		int maxdelta = (CalcMaxPitchRate() * Timer_Code.FRAMETIME) / 100;	//CSB 01/06/99	
+#if BOB_LINUX
+		extern float bdg_g_capacity(AirStrucPtr);	// PILOT-MODEL-1 49a: a tired pilot pulls less sustained G
+		if ((movecode == AUTO_COMBAT) && (Status.size == AIRSTRUCSIZE)) maxdelta = int(maxdelta * bdg_g_capacity(AirStrucPtr(this)));
+#endif
 		if(deltahdg > maxdelta)												//CSB 01/06/99	
 			deltahdg = maxdelta;											//CSB 01/06/99	
 		if(-deltahdg > maxdelta)											//CSB 03/06/99	
@@ -8878,6 +8882,13 @@ SLong AirStruc::CalcHdg ()
 
 //rads per cs
 	MOD.Inst.I_Turn = (MOD.Inst.I_Turn + (Rowan2Rads(deltahdg) ) / Timer_Code.FRAMETIME)/2;
+#if BOB_LINUX
+	if (Status.size == AIRSTRUCSIZE)
+	{
+		extern void bdg_fatigue_tick(AirStrucPtr, float, int);
+		bdg_fatigue_tick(AirStrucPtr(this), -1.0f, 0);
+	}
+#endif
 	
 	return(deltahdg);
 
@@ -10093,7 +10104,12 @@ SWord AirStruc::RequiredDRollSub (SWord reqroll)
 	{
 		AircraftAnimData* adptr = (AircraftAnimData*) Anim;
 		FP damage = FP(adptr->LEFTWINGOUT + adptr->LEFTWINGIN + adptr->RIGHTWINGIN + adptr->RIGHTWINGOUT) * (1.0 / 1024.0);
+#if BOB_LINUX
+		extern float bdg_roll_capacity(AirStrucPtr);	// PILOT-MODEL-1 49a: stick force and fatigue
+		deltaroll = FP(deltaroll) * (1.0 - damage) * bdg_roll_capacity(AirStrucPtr(this));
+#else
 		deltaroll = FP(deltaroll) * (1.0 - damage);
+#endif
 	}
 
 	if (deltaroll > reqdeltaroll_pos)
@@ -10101,6 +10117,10 @@ SWord AirStruc::RequiredDRollSub (SWord reqroll)
 		deltaroll = reqdeltaroll_pos;
 		fly.aileron = 0;
 	}
+#if BOB_LINUX
+	if ((movecode == AUTO_COMBAT) && (Status.size == AIRSTRUCSIZE) && classtype->maxrollrate)
+	{ extern void bdg_fatigue_roll(AirStrucPtr, float); bdg_fatigue_roll(AirStrucPtr(this), float(deltaroll) * 100.0f / (float(classtype->maxrollrate) * Timer_Code.FRAMETIME)); }
+#endif
 
 	if (reqdeltaroll_sign == MathLib::NEGATIVE)
 	{

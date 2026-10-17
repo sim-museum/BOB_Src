@@ -73,6 +73,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 //DeadCode RJS 11Jul00 #define		DBGMEMTEST
 
 #include <time.h>
+#include <math.h>
 #include	"dosdefs.h"											//JIM 17Nov96
 	#define F_COMMON
 	#define F_GRAFIX
@@ -381,6 +382,85 @@ static void bdg_gunnerfix(MobileItemPtr entry)
 }
 #endif
 
+#if BOB_LINUX
+/* PILOT-MODEL-1 49a (PO 10-17): AI pilot fatigue. Shaw (preface; roll performance, appendix 1): 1940 fighters needed
+   physical strength -- no hydraulic boost -- and the aileron stick force grows with dynamic pressure, so at high IAS a
+   pilot can hold only part of the deflection (RAE 1940: Spitfire I fabric ailerons, ~1/5 aileron with 30-50 lb at
+   400 mph); sustained lag pursuit at higher load factor is "very taxing physically". Model per AI pilot: fatigue F in
+   0..1 grows with sustained G above 2 and with the share of his strength spent on the ailerons; it recovers slowly when
+   he unloads. A tired pilot has less stick force (slower, lazier rolls at speed) and pulls less sustained G, which an
+   opponent can see and use. Roll capacity 1 = Rowan's maxrollrate, which a fresh pilot keeps up to k * (300 mph IAS)^2.
+   Per-pilot endurance 0.8..1.25 (hash of the uid). BOB_NO_FATIGUE=1 reverts; BOB_TRACE_FATIGUE=1 traces every 2 s. */
+struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs; bool seen; };
+static BdgPilot s_bdg_pil[2048];
+static BdgPilot* bdg_pil(AirStrucPtr a, bool create)
+{
+	const unsigned id = a->uniqueID.count;
+	BdgPilot& p = s_bdg_pil[((id * 2654435761u) >> 9) & 2047];
+	if (p.id != id) {
+		if (!create) return 0;
+		unsigned h = id * 2246822519u; h ^= h >> 13;
+		p.id = id; p.F = 0; p.roll = 0; p.tr = 0; p.gs = 1.0f; p.seen = false; p.tiring = 0.8f + 0.45f * float(h & 1023) / 1023.0f;
+	}
+	return &p;
+}
+bool bdg_fatigue_on() { static int on = -1; if (on < 0) on = getenv("BOB_NO_FATIGUE") ? 0 : 1; return on != 0; }
+static float bdg_roll_k(AirStrucPtr a)
+{
+	switch (a->classtype->visible) {
+	case SPIT: return 1.15f;	// fabric ailerons, summer 1940
+	case HURR: return 0.9f;
+	case ME109: return 1.0f;
+	case ME110: return 1.25f;
+	default: return 1.4f;
+	}
+}
+static float bdg_q300(AirStrucPtr a)	// (IAS / 300 mph)^2, standard atmosphere
+{
+	float s = 1.0f - 2.2558e-5f * float(a->World.Y) * 0.01f; if (s < 0.2f) s = 0.2f;
+	const float v = float(a->vel_) / float(VEL_1MPH * 300);
+	return v * v * powf(s, 4.2559f);
+}
+float bdg_pilot_fatigue(AirStrucPtr a) { if (!bdg_fatigue_on()) return 0; BdgPilot* p = bdg_pil(a, false); return p ? p->F : 0; }
+float bdg_roll_capacity(AirStrucPtr a)	// share of Rowan's roll rate the pilot can deliver now
+{
+	if (!bdg_fatigue_on()) return 1.0f;
+	BdgPilot* p = bdg_pil(a, false); const float F = p ? p->F : 0;
+	const float need = bdg_roll_k(a) * bdg_q300(a), have = 1.0f - 0.45f * F;
+	return ((need > have) ? have / need : 1.0f) * (1.0f - 0.2f * F);
+}
+float bdg_g_capacity(AirStrucPtr a) { return 1.0f - 0.25f * bdg_pilot_fatigue(a); }
+void bdg_fatigue_roll(AirStrucPtr a, float rollfrac) { if (bdg_fatigue_on()) { BdgPilot* p = bdg_pil(a, true); if (rollfrac > p->roll) p->roll = rollfrac; } }
+void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = load factor the pilot feels, < 0: from his path
+{
+	if (!bdg_fatigue_on()) return;
+	BdgPilot* p = bdg_pil(a, a->movecode == AUTO_COMBAT);
+	if (!p) return;
+	const float dt = Timer_Code.FRAMETIME * 0.01f, q = bdg_q300(a);
+	if (g < 0) {	// load factor from the change of the velocity vector (simple movecode): |dv/dt - gravity| / g
+		const float vx = float(a->vel_x) * 1e-4f, vy = float(a->vel_y) * 1e-4f, vz = float(a->vel_z) * 1e-4f;
+		if (p->seen) {
+			const float ax = (vx - p->vx) / dt, ay = (vy - p->vy) / dt + 9.80665f, az = (vz - p->vz) / dt;
+			g = sqrtf(ax * ax + ay * ay + az * az) / 9.80665f; if (g > 9.0f) g = 9.0f;
+		} else g = 1.0f;
+		p->vx = vx; p->vy = vy; p->vz = vz; p->seen = true;
+	}
+	float force = p->roll * bdg_roll_k(a) * q; if (force > 1.0f) force = 1.0f;	// share of his strength on the stick
+	p->gs += (g - p->gs) * (dt < 1.0f ? dt : 1.0f);	// sustained G: 1 s average
+	g = p->gs;
+	float ge = (g - 2.0f) * 0.25f; if (ge < 0) ge = 0;
+	float d = (ge * ge / 40.0f + force * 0.015f) * p->tiring;
+	if (g < 1.8f && force < 0.2f) d -= 0.003f;
+	p->F += d * dt; if (p->F < 0) p->F = 0; if (p->F > 1) p->F = 1;
+	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_FATIGUE") ? 1 : 0;
+	if (tr && (p->tr += dt) >= 2.0f) {
+		p->tr = 0;
+		fprintf(stderr, "[fatigue] id=%u shape=%d path=%d mc=%d g=%.2f ias=%.0f roll=%.2f force=%.2f F=%.3f rollcap=%.2f gcap=%.2f\n", p->id,
+		        int(a->classtype->visible), path, int(a->movecode), g, 300.0 * sqrt(q), p->roll, force, p->F, bdg_roll_capacity(a), bdg_g_capacity(a));
+	}
+	p->roll = 0;
+}
+#endif
 #if BOB_LINUX
 /* BOB-PATCH-REST-1 40c, BDG BOB_FIGHTERFIX (bdg.txt, undocumented; the PO's is ON). Decoded from BDG 0.99 bob.exe:
    the AI move (0x54858e) calls a new routine (0x543ea2) for each aircraft when the switch is on; once per aircraft it
