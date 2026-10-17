@@ -814,7 +814,18 @@ void	LiveList::Event()
 //do summat
 //for each mobile launcher in item
 
+#if BOB_LINUX
+	extern bool bdg_gunner_silenced(ItemPtr);	/* BOB-PATCH-REST-1 40b: BDG skips an aircraft whose gunner is hit (0x481d4a) */
+	static int s_trGun = -1; if (s_trGun < 0) s_trGun = getenv("BOB_TRACE_GUNNERS") ? 1 : 0;
+	if (s_trGun && aaalist[0][aaaind] && aaalist[0][aaaind]->Status.size == AIRSTRUCSIZE)
+	{	static unsigned seen[64]; static int ns = 0; bool f = true;
+		for (int q = 0; q < ns; q++) if (seen[q] == aaalist[0][aaaind]->uniqueID.count) f = false;
+		if (f && ns < 64) { seen[ns++] = aaalist[0][aaaind]->uniqueID.count;
+			fprintf(stderr, "[gunners] LiveList: aircraft uid=0x%x has live turret guns\n", (unsigned)aaalist[0][aaaind]->uniqueID.count); } }
+	if (aaalist[0][aaaind] && !bdg_gunner_silenced(aaalist[0][aaaind]))
+#else
 	if (aaalist[0][aaaind])
+#endif
 	{
 //DeadCode JIM 06Jan97 	CheckE3();
 		ItemPtr		weapitem=aaalist[0][aaaind];

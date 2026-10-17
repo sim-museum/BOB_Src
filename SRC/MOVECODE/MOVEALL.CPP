@@ -318,6 +318,70 @@ static void bdg_bomberfix(MobileItemPtr entry)
 #endif
 
 #if BOB_LINUX
+/* BOB-PATCH-REST-1 40b, BDG gunners wounded/killed (manual 2.2.3, part of BOB_BOMBERFIX: "It is now possible to kill
+   and wound the gunners in the bombers, including the Ju-87 and the Me-110"). Decoded from BDG 0.99 bob.exe:
+   - Ju 87 / Bf 110 (shapes 0x20/0x18, routine 0x543df6): crew-area damage (CANOPY, anim 0x9d) > 2.0 and < 0xfd ->
+     gunner hit, once (plus a radio call 1 in 2, not ported);
+   - Do 17 / He 111 / Ju 88 (routine 0x543a38, second damage stage): average engine damage > 150, average wing damage
+     (LEFT/RIGHT WINGOUT/IN) > 200 or crew-area damage > 100 -> gunner hit 1 in 2 / 1 in 3 / 1 in 2 (Ju 52 never);
+   - effect (Rowan's LiveList::Event, BDG's skip at 0x481d4a): an aircraft whose gunner is hit fires no turret guns.
+   AI aircraft only; off in multiplayer; same switch as the bomber fix (BOB_BOMBERFIX). BOB_TRACE_GUNNERS=1. */
+static unsigned s_gunHit[512]; static int s_gunHitN = 0;
+bool bdg_gunner_silenced(ItemPtr it)
+{
+	if (!s_gunHitN || !it || it->Status.size != AirStrucSize) return false;
+	for (int q = 0; q < s_gunHitN; q++) if (s_gunHit[q] == it->uniqueID.count) {
+		static unsigned told[64]; static int nt = 0; bool t = false;
+		for (int k = 0; k < nt; k++) if (told[k] == it->uniqueID.count) t = true;
+		if (!t && nt < 64 && getenv("BOB_TRACE_GUNNERS")) { told[nt++] = it->uniqueID.count;
+			fprintf(stderr, "[gunners] uid=0x%x: turret turn skipped (gunner hit)\n", (unsigned)it->uniqueID.count); }
+		return true; }
+	return false;
+}
+static void bdg_gunnerfix(MobileItemPtr entry)
+{
+	if (entry->Status.size != AirStrucSize || _DPlay.Implemented) return;
+	static int on = -1;
+	if (on < 0) { extern int rowan_bdg_int(const char*, int); on = rowan_bdg_int("BOB_BOMBERFIX", 0); }
+	if (!on) return;
+	AirStrucPtr a = (AirStrucPtr)entry;
+	if (a == Persons2::PlayerSeenAC || a == Persons2::PlayerGhostAC || a->Status.deadtime) return;
+	const ShapeNum vis = a->classtype->visible;
+	const bool twoSeat = (vis == JU87 || vis == ME110), bomber = (vis == DO17 || vis == HE11 || vis == JU88);
+	if (!twoSeat && !bomber) return;
+	if (SHAPESTUFF.GetShapePtr(a->shape)->AnimDataSize != AIRCRAFTANIM) return;
+	static unsigned decided[512]; static int nd = 0;
+	for (int q = 0; q < nd; q++) if (decided[q] == a->uniqueID.count) return;
+	AircraftAnimData* ad = (AircraftAnimData*)a->Anim;
+	{	/* test hook: BOB_TEST_GUNNERDAMAGE_AT=<s> hits the crew area (CANOPY = BS_DAMLV2) of the first 3 bombers/two-seaters met */
+		static int testAt = -2; static time_t t0 = 0; static int n = 0;
+		if (testAt == -2) { const char* e = getenv("BOB_TEST_GUNNERDAMAGE_AT"); testAt = e ? atoi(e) : -1; }
+		if (testAt >= 0 && n < 3) { if (!t0) t0 = time(0); if (time(0) - t0 >= testAt && ad->CANOPY < BS_DAMLV1) { ad->CANOPY = BS_DAMLV2; n++;
+			fprintf(stderr, "[gunners] test: crew area of uid=0x%x hit\n", (unsigned)a->uniqueID.count); } }
+	}
+	bool stage, hit;
+	if (twoSeat)
+	{
+		stage = (ad->CANOPY > 2 && ad->CANOPY < 0xfd);
+		hit = stage;
+	}
+	else
+	{
+		const float eng = (ad->ENGINELEFT + ad->ENGINERIGHT) / 2.0f;
+		const float wing = (ad->LEFTWINGOUT + ad->LEFTWINGIN + ad->RIGHTWINGOUT + ad->RIGHTWINGIN) / 4.0f;
+		stage = (eng > 150.0f || wing > 200.0f || ad->CANOPY > 100);
+		hit = stage && (Math_Lib.rnd(vis == HE11 ? 3 : 2) == 0);
+	}
+	if (!stage) return;
+	if (nd < 512) decided[nd++] = a->uniqueID.count;
+	if (hit && s_gunHitN < 512) s_gunHit[s_gunHitN++] = a->uniqueID.count;
+	if (getenv("BOB_TRACE_GUNNERS"))
+		fprintf(stderr, "[gunners] uid=0x%x shape %d engines %d/%d canopy %d: %s\n", (unsigned)a->uniqueID.count, (int)vis,
+		        (int)ad->ENGINELEFT, (int)ad->ENGINERIGHT, (int)ad->CANOPY, hit ? "gunner hit -- turret silent" : "gunner unhurt");
+}
+#endif
+
+#if BOB_LINUX
 /* BOB-PATCH-REST-1 40c, BDG BOB_FIGHTERFIX (bdg.txt, undocumented; the PO's is ON). Decoded from BDG 0.99 bob.exe:
    the AI move (0x54858e) calls a new routine (0x543ea2) for each aircraft when the switch is on; once per aircraft it
    rolls Math_Lib 1 in 3 and tests engine damage -- single-engine: the engine byte > 80.0 (0xa15740); Bf 110 (shape
@@ -599,6 +663,7 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 #if BOB_LINUX
 		bdg_bomberfix(entry);	/* every aircraft in the list, not just its head */
 		bdg_fighterfix(entry);
+		bdg_gunnerfix(entry);
 		if (entry->Status.size == AirStrucSize && getenv("BOB_TRACE_DUEL")) {	/* AI-TACTICS-1: outcome per aircraft */
 			AirStrucPtr ac = AirStrucPtr(entry); static unsigned s_id[64]; static int s_st[64]; static time_t s_t0 = 0;
 			if (!s_t0) s_t0 = time(0);
