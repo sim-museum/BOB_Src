@@ -1354,12 +1354,32 @@ void ACMAirStruc::SelectNextEngageManoeuvre()
 		   not yet 1000 ft up, else GAINSPEED. BOB_NO_AI_ENERGY=1 reverts; BOB_TRACE_ENERGY=1 prints each decision. */
 		static int s_noEnergy = -1;
 		if (s_noEnergy < 0) s_noEnergy = getenv("BOB_NO_AI_ENERGY") ? 1 : 0;
-		if (	!s_noEnergy && !choosebad && (combatstatus != CS_THREATENED)
+		/* PO 10-16 after flying it: BnZ done right is the top pilot's game -- ACE and better (skill >= 180) climb at the best
+		   climb rate INTO THE SUN to 2000 ft above the Spitfire (Shaw ch.4 Fig.4-7: extension and pitch-back toward the sun),
+		   then slash down in a high-speed pass and zoom straight back up; they are above it except while diving. REGULAR to
+		   VETERAN pilots fly the simpler boom and zoom below (no sun, 1000 ft margin) and still turn and burn on a bad roll;
+		   below REGULAR, Rowan's turning fight. */
+		if (	!s_noEnergy && !choosebad && (ai.combatskill >= SKILL_REGULAR) && (combatstatus != CS_THREATENED)
 			&&	((unf->classtype->visible == SPIT) || (unf->classtype->visible == HURR))	)
 		{
 			FP v = FP(vel_) / 10000.0, vu = FP(unf->vel_) / 10000.0;				/* m/s */
 			FP dE = FP(World.Y - unf->World.Y) / 100.0 + (v * v - vu * vu) / 19.62;	/* energy-height advantage, m */
 			const FP margin = FP(FT_1000) / 100.0;
+			if ((ai.combatskill >= SKILL_ACE) && (Distance3D(&unf->World) >= 200000))
+			{	/* the ace with room (Spitfire 2 km+ away): best-rate climb toward the sun to 2000 ft above, then the pass.
+				   Inside 2 km the simpler rules below (measured 10-16: a slow climb or an extension near the Spitfire got
+				   the 109 shot or left it low -- the AI Spitfire is as fast as the 109 in this flight model). */
+				SLong dh = World.Y - unf->World.Y;
+				if ((combatstatus == CS_THREATENING) || ((dh >= 2 * FT_1000) && (dE >= margin)))
+																		ai.manoeuvre = MANOEUVRE_DIVEANDZOOM;	/* high and fast enough: the slashing pass */
+				else if ((combatstatus == CS_HUNTED) && (dE < -margin))	ai.manoeuvre = MANOEUVRE_STEEPDIVE;
+				else													ai.manoeuvre = MANOEUVRE_GAINHEIGHT;	/* best-rate climb into the sun (ACMAI GainHeight) */
+				if (getenv("BOB_TRACE_ENERGY"))
+					fprintf(stderr, "[energy] ace id=%d status=%d dE=%.0f m dh=%.0f m v=%.0f vu=%.0f sunhdg=%d -> man=%d\n", int(uniqueID.count),
+					        int(combatstatus), double(dE), double(dh) / 100.0, double(v), double(vu),
+					        mobileitem::currworld ? int(UWord(mobileitem::currworld->sunhdg)) * 360 / 65536 : -1, int(ai.manoeuvre));
+				return;
+			}
 			if ((combatstatus == CS_THREATENING) || (dE >= margin))	ai.manoeuvre = MANOEUVRE_DIVEANDZOOM;
 			else if ((combatstatus == CS_HUNTED) && (dE < -margin))			ai.manoeuvre = MANOEUVRE_STEEPDIVE;
 			else if (World.Y - unf->World.Y >= FT_1000)			ai.manoeuvre = MANOEUVRE_GAINSPEED;	/* high but slow: Zoom() would stop at once */

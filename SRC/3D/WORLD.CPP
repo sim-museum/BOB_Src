@@ -592,7 +592,12 @@ void	WorldStuff::MakeSunPos(ViewPoint*	View_Point)
 		sunang=(Angles)(((currtime-MissManDawnTime())<<15)/(MissManDuskTime()-MissManDawnTime()));
 //DeadCode RJS 21Dec99		sunang=ANGLES_45Deg;							
 	}
-	else sunang = ANGLES_45Deg;								
+	else sunang = ANGLES_45Deg;
+#if BOB_LINUX
+	{	static int s_n = 0; if (getenv("BOB_TRACE_SUN") && !(s_n++ % 500))
+			fprintf(stderr, "[sun] timeofday=%d dawn=%d dusk=%d sunang=%d\n", View_Point ? int(View_Point->TimeOfDay()) : -1,
+			        MissManDawnTime(), MissManDuskTime(), int(UWord(sunang)) * 360 / 65536); }
+#endif								
 
 	sunrot=sunang;
 	Math_Lib.high_sin_cos(sunang,sinang,cosang);

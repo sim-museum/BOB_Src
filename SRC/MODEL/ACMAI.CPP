@@ -3841,6 +3841,10 @@ void	ACMAirStruc::GainHeight ( )
 			SWord reqdeltahdg = 	hdg - HdgIntercept;
 			ACM.Thrust (ThrustfromFF());
 			SetManoeuvreTime (1500);
+#if defined(BOB_LINUX)
+			if (bdg_energymode(this) && (ai.combatskill >= SKILL_ACE))
+				SetManoeuvreTime (600);		/* AI-TACTICS-1: the ace re-checks the fight every 6 s while climbing */
+#endif
 			ai.ManStep = PHASE1;
 		}
 		case PHASE1:
@@ -3863,6 +3867,37 @@ void	ACMAirStruc::GainHeight ( )
 //DeadCode CSB 9Nov00 				reqroll = ANGLES_30Deg;
 //DeadCode CSB 9Nov00 			if (reqroll < ANGLES_330Deg)
 //DeadCode CSB 9Nov00 				reqroll = ANGLES_330Deg;
+#if defined(BOB_LINUX)
+			/* AI-TACTICS-1 (PO 10-16; Shaw ch.4 Fig.4-7): a 109 ace climbs toward the sun's bearing, wings level once on
+			   it, so it comes down on the Spitfire out of the sun; beyond 4 km it turns back toward the Spitfire instead. */
+			if (bdg_energymode(this) && (ai.combatskill >= SKILL_ACE) && getenv("BOB_TRACE_ENERGY"))
+			{	static unsigned s_m = 0; if (!(s_m++ % 50))
+					fprintf(stderr, "[sunclimb] gate world=%d sunpos=(%d,%d,%d) sunhdg=%d range=%d\n", mobileitem::currworld ? 1 : 0,
+					        mobileitem::currworld ? int(mobileitem::currworld->sunpos.X) : 0, mobileitem::currworld ? int(mobileitem::currworld->sunpos.Y) : 0,
+					        mobileitem::currworld ? int(mobileitem::currworld->sunpos.Z) : 0,
+					        mobileitem::currworld ? int(UWord(mobileitem::currworld->sunhdg)) * 360 / 65536 : 0, int(Range / 100)); }
+			if (	bdg_energymode(this) && (ai.combatskill >= SKILL_ACE) && mobileitem::currworld
+				&&	(mobileitem::currworld->sunpos.Y > 0) && (Range < 400000)	)	/* sunpitch reads 0 (Intercept on SUNELEVDIST); sunhdg is good */
+			{
+				reqdeltahdg = SWord(mobileitem::currworld->sunhdg) - hdg;
+				{	static unsigned s_n = 0; if (getenv("BOB_TRACE_ENERGY") && !(s_n++ % 50))
+						fprintf(stderr, "[sunclimb] hdg=%d sunhdg=%d sunpitch=%d delta=%d range=%d\n", int(UWord(hdg)) * 360 / 65536,
+						        int(UWord(mobileitem::currworld->sunhdg)) * 360 / 65536, int(SWord(mobileitem::currworld->sunpitch)) * 360 / 65536,
+						        int(reqdeltahdg) * 360 / 65536, int(Range / 100)); }
+				if ((reqdeltahdg < SWord(ANGLES_10Deg)) && (reqdeltahdg > -SWord(ANGLES_10Deg)))
+				{
+					ACM.FastRoll(ANGLES_0Deg);
+					if (!ManoeuvreTimeLeft())
+						ai.manoeuvre = MANOEUVRE_SELECT;
+					break;
+				}
+				/* off the sun's bearing: a 60 deg climbing turn onto it (30 deg at climb speed took ~45 s for 180 deg) */
+				ACM.FastRoll((reqdeltahdg > 0) ? ANGLES_60Deg : ANGLES_300Deg);
+				if (!ManoeuvreTimeLeft())
+					ai.manoeuvre = MANOEUVRE_SELECT;
+				break;
+			}
+#endif
 			if(reqdeltahdg > 0)
 				ACM.FastRoll(ANGLES_30Deg);
 			else

@@ -388,6 +388,8 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 			}
 			bool fire = (nf == 1 && ne == 1 && foe && !foe->ai.unfriendly);
 			if (fire) DuelSpot::Call(foe, me);
+			if (foe && nf == 1 && ne == 1 && getenv("BOB_TEST_FOE_SKILL"))	/* AI-TACTICS-1 test: the duel opponent's skill (180 = ACE) */
+				foe->ai.combatskill = atoi(getenv("BOB_TEST_FOE_SKILL"));
 			if (getenv("BOB_TRACE_DUEL_AWARE"))
 				fprintf(stderr, "[duelaware] friends=%d enemies=%d foe=0x%x -> %s\n", nf, ne, foe ? (unsigned)foe->uniqueID.count : 0u,
 				        fire ? "enemy spots the player" : "no change");
