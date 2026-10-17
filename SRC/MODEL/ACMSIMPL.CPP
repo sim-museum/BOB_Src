@@ -249,7 +249,19 @@ UWord AirStruc::CalcMaxPitchRate()
 		return(classtype->maxpitchrate);
 
 	FP ff = 0.5 + FlyingFactor() / 512.0;
+#if defined(BOB_LINUX)
+	/* PILOT-MODEL-1 49a: the pilot's G tolerance (MOVEALL.CPP, Shaw p.377) caps Rowan's 7 G in combat; blacked out: 1 G */
+	FP gmax = 7.0;
+	if ((movecode == AUTO_COMBAT) && (Status.size == AIRSTRUCSIZE))
+	{
+		extern float bdg_g_limit(AirStrucPtr);
+		const FP n = bdg_g_limit(AirStrucPtr(this));
+		if (n - 1.0 < gmax * ff) gmax = (n < 2.0) ? 1.0 / ff : (n - 1.0) / ff;	/* felt G = turn G + up to 1 G of gravity */
+	}
+	ULong pitchrateMG = (1023000000.0 * gmax * ff) / FP(vel_);	//rowans/sec for max g
+#else
 	ULong pitchrateMG = (1023000000.0 * 7.0 * ff) / FP(vel_);	//rowans/sec for max g
+#endif
 
 	SWord maxrotrate = ANGLES_45Deg;
 	switch(classtype->visible)

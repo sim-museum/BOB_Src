@@ -74,6 +74,7 @@ http://www.simhq.com/cgi-bin/boards/cgi-bin/forumdisplay.cgi?action=topics&forum
 
 #include <time.h>
 #include <math.h>
+#include <string.h>
 #include	"dosdefs.h"											//JIM 17Nov96
 	#define F_COMMON
 	#define F_GRAFIX
@@ -391,7 +392,7 @@ static void bdg_gunnerfix(MobileItemPtr entry)
    he unloads. A tired pilot has less stick force (slower, lazier rolls at speed) and pulls less sustained G, which an
    opponent can see and use. Roll capacity 1 = Rowan's maxrollrate, which a fresh pilot keeps up to k * (300 mph IAS)^2.
    Per-pilot endurance 0.8..1.25 (hash of the uid). BOB_NO_FATIGUE=1 reverts; BOB_TRACE_FATIGUE=1 traces every 2 s. */
-struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs, bo, pull; SWord ohdg; bool seen; };
+struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs, bo, pull, sax, say, saz; SWord ohdg; bool seen; };
 static BdgPilot s_bdg_pil[2048];
 static BdgPilot* bdg_pil(AirStrucPtr a, bool create)
 {
@@ -400,7 +401,7 @@ static BdgPilot* bdg_pil(AirStrucPtr a, bool create)
 	if (p.id != id) {
 		if (!create) return 0;
 		unsigned h = id * 2246822519u; h ^= h >> 13;
-		p.id = id; p.F = 0; p.roll = 0; p.tr = 0; p.gs = 1.0f; p.bo = 0; p.pull = 1.0f; p.seen = false; p.tiring = 0.8f + 0.45f * float(h & 1023) / 1023.0f;
+		p.id = id; p.F = 0; p.roll = 0; p.tr = 0; p.gs = 1.0f; p.bo = 0; p.pull = 1.0f; p.sax = 0; p.say = 9.80665f; p.saz = 0; p.seen = false; p.tiring = 0.8f + 0.45f * float(h & 1023) / 1023.0f;
 	}
 	return &p;
 }
@@ -448,7 +449,7 @@ void bdg_fatigue_roll(AirStrucPtr a, float rollfrac) { if (bdg_fatigue_on()) { B
    p.131: assess the type and magnitude of a disadvantage; PO: rolls get less crisp as a pilot tires. Observed here:
    acquaintance (time in contact, faster for a better pilot), the bandit's sustained turn rate against his own when both
    pull hard (who out-turns whom), and the bandit's roll crispness (recent peak roll rate vs the best seen). */
-struct BdgTom { unsigned bandit; float acq, turn, crisp, best, peak, win, tr; SWord broll, bhdg; float bvx, bvy, bvz, bg; int nref; bool seen; };
+struct BdgTom { unsigned bandit; float acq, turn, crisp, best, peak, win, tr; SWord broll, bhdg; float bvx, bvy, bvz, bg, pt; int nref, pman; unsigned char fail[128], ok[128]; bool seen; };
 static BdgTom s_bdg_tom[2048];
 static BdgTom* bdg_tom(AirStrucPtr me, bool create)
 {
@@ -467,12 +468,42 @@ float bdg_tom_knowledge(AirStrucPtr me)	// 0 = knows nothing of this bandit, 1 =
 }
 float bdg_tom_turn(AirStrucPtr me) { BdgTom* t = bdg_tom(me, false); const float k = bdg_tom_knowledge(me); return t ? 1.0f + (t->turn - 1.0f) * k : 1.0f; }
 float bdg_tom_crisp(AirStrucPtr me) { BdgTom* t = bdg_tom(me, false); const float k = bdg_tom_knowledge(me); return t ? 1.0f + (t->crisp - 1.0f) * k : 1.0f; }
+/* Sprint 3, learning from the bandit's answers (Shaw, preface: "almost any tactic can be defeated if it is totally
+   predictable"): when he is threatened (bandit inside 800 m, behind him, nose on him) the defence he picks is
+   remembered; 8 s later it worked (bandit off his tail) or failed. A defence that keeps failing against THIS bandit is
+   dropped and Rowan's selector rolls again -- after one net failure for a veteran/ace, two for a regular, three below. */
+bool bdg_tom_threatened(AirStrucPtr me)
+{
+	if (!me->ai.unfriendly || me->ai.unfriendly->Status.size != AIRSTRUCSIZE) return false;
+	AirStrucPtr b = AirStrucPtr(me->ai.unfriendly);
+	const float dx = float(me->World.X - b->World.X), dy = float(me->World.Y - b->World.Y), dz = float(me->World.Z - b->World.Z);
+	const float r = sqrtf(dx * dx + dy * dy + dz * dz); if (r > 100000.0f || r < 1.0f) return false;
+	const float bv = sqrtf(float(b->vel_x) * b->vel_x + float(b->vel_y) * b->vel_y + float(b->vel_z) * b->vel_z) + 1.0f;
+	const float mv = sqrtf(float(me->vel_x) * me->vel_x + float(me->vel_y) * me->vel_y + float(me->vel_z) * me->vel_z) + 1.0f;
+	const float nose = (dx * b->vel_x + dy * b->vel_y + dz * b->vel_z) / (r * bv);	// bandit pointing at me: 1
+	const float tail = (dx * me->vel_x + dy * me->vel_y + dz * me->vel_z) / (r * mv);	// bandit behind me: -1 (dx is me - bandit)
+	return nose > 0.766f && tail > 0.342f;	// inside 1 km, his nose within 40 deg, he is within 70 deg of my tail
+}
+static int bdg_tom_need(AirStrucPtr me) { const int s = me->ai.combatskill; return (s >= SKILL_VETERAN) ? 1 : (s >= SKILL_REGULAR) ? 2 : 3; }
+bool bdg_tom_failed(AirStrucPtr me, int man)
+{
+	if (!bdg_fatigue_on() || getenv("BOB_NO_TOM") || man < 0 || man >= 128) return false;
+	BdgTom* t = bdg_tom(me, false);
+	return t && me->ai.unfriendly && t->bandit == me->ai.unfriendly->uniqueID.count && t->fail[man] >= t->ok[man] + bdg_tom_need(me);
+}
+void bdg_tom_tried(AirStrucPtr me, int man) { BdgTom* t = bdg_tom(me, false); if (t && man >= 0 && man < 128) { t->pman = man; t->pt = 8.0f; } }
 static void bdg_tom_tick(AirStrucPtr me, BdgPilot* p, float dt, float myg)
 {
 	BdgTom& t = s_bdg_tom[p - s_bdg_pil];
 	AirStrucPtr b = (me->ai.unfriendly && me->ai.unfriendly->Status.size == AIRSTRUCSIZE) ? AirStrucPtr(me->ai.unfriendly) : 0;
 	if (!b) { t.acq -= dt / 300.0f; if (t.acq < 0) t.acq = 0; return; }
-	if (t.bandit != b->uniqueID.count) { t.bandit = b->uniqueID.count; t.acq = 0; t.turn = 1; t.crisp = 1; t.best = 0; t.peak = 0; t.win = 0; t.tr = 0; t.bg = 1; t.nref = 0; t.seen = false; }
+	if (t.bandit != b->uniqueID.count) { t.bandit = b->uniqueID.count; t.acq = 0; t.turn = 1; t.crisp = 1; t.best = 0; t.peak = 0; t.win = 0; t.tr = 0; t.bg = 1; t.nref = 0; t.pt = 0; t.pman = -1; memset(t.fail, 0, sizeof t.fail); memset(t.ok, 0, sizeof t.ok); t.seen = false; }
+	if (t.pt > 0 && (t.pt -= dt) <= 0 && t.pman >= 0) {
+		const bool still = bdg_tom_threatened(me);
+		unsigned char& c = still ? t.fail[t.pman] : t.ok[t.pman]; if (c < 255) c++;
+		if (getenv("BOB_TRACE_TOM")) fprintf(stderr, "[tom] id=%u learn man=%d %s (failed %d, worked %d)\n", p->id, t.pman, still ? "FAILED" : "worked", t.fail[t.pman], t.ok[t.pman]);
+		t.pman = -1;
+	}
 	const float dx = float(b->World.X - me->World.X), dy = float(b->World.Y - me->World.Y), dz = float(b->World.Z - me->World.Z);
 	const bool sees = (dx * dx + dy * dy + dz * dz < 2.5e5f * 2.5e5f) && p->bo <= 0;	// within 2.5 km, not blacked out
 	const float bvx = float(b->vel_x) * 1e-4f, bvy = float(b->vel_y) * 1e-4f, bvz = float(b->vel_z) * 1e-4f;
@@ -512,21 +543,27 @@ void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = loa
 	if (g < 0) {	// load factor from the change of the velocity vector (simple movecode): |dv/dt - gravity| / g
 		const float vx = float(a->vel_x) * 1e-4f, vy = float(a->vel_y) * 1e-4f, vz = float(a->vel_z) * 1e-4f;
 		if (p->seen) {
-			const float ax = (vx - p->vx) / dt, ay = (vy - p->vy) / dt + 9.80665f, az = (vz - p->vz) / dt;
-			g = sqrtf(ax * ax + ay * ay + az * az) / 9.80665f; if (g > 9.0f) g = 9.0f;
+			const float k = (dt < 0.5f) ? dt / 0.5f : 1.0f;	// signed 0.5 s average first: frame-to-frame velocity jitter cancels
+			float ax = (vx - p->vx) / dt, ay = (vy - p->vy) / dt + 9.80665f, az = (vz - p->vz) / dt;
+			const float am = sqrtf(ax * ax + ay * ay + az * az);	// one-frame jumps (speed set directly, resets): clip to 10 G
+			if (am > 98.0665f) { const float s = 98.0665f / am; ax *= s; ay *= s; az *= s; }
+			p->sax += (ax - p->sax) * k; p->say += (ay - p->say) * k; p->saz += (az - p->saz) * k;
+			g = sqrtf(p->sax * p->sax + p->say * p->say + p->saz * p->saz) / 9.80665f; if (g > 9.0f) g = 9.0f;
 		} else g = 1.0f;
 		p->vx = vx; p->vy = vy; p->vz = vz; p->seen = true;
 	}
 	float force = p->roll * bdg_roll_k(a) * q; if (force > 1.0f) force = 1.0f;	// share of his strength on the stick
+	if (path == 0) { const float lim = bdg_g_lim(a, *p); if (lim > 1.0f && g > lim) g = lim; }	// simple movecode: some manoeuvres set pitch and heading
+		// directly, past any physical rate -- that excess is the model's, not the pilot's; he flies at most at his limit
 	p->gs += (g - p->gs) * (dt < 1.0f ? dt : 1.0f);	// sustained G: 1 s average
 	g = p->gs;
-	float ge = (g - 2.0f) * 0.25f; if (ge < 0) ge = 0;
-	float d = (ge * ge / 40.0f + force * 0.015f) * p->tiring;
-	if (g < 1.8f && force < 0.2f) d -= 0.003f;
+	float ge = (g - 2.5f) / 2.5f; if (ge < 0) ge = 0;	// 1940: no G suit, no straining drill (Shaw p.377 is the trained modern pilot)
+	float d = (ge * ge / 40.0f + force * 0.006f) * p->tiring;	// roll term light: the simple movecode always rolls at full rate
+	if (g < 2.0f && force < 0.3f) d -= 0.003f;
 	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_FATIGUE") ? 1 : 0;
 	const float tol = bdg_g_tol(*p);
 	if (p->bo > 0) { if ((p->bo -= dt) <= 0 && tr) fprintf(stderr, "[fatigue] id=%u comes round\n", p->id); }
-	else if (g > tol + 0.7f) {
+	else if (path == 1 && g > tol + 0.7f) {	// blackout on the flight model only, where the G is physical
 		p->bo = 3.0f + 3.0f * p->F;
 		if (tr) fprintf(stderr, "[fatigue] id=%u shape=%d BLACKOUT g=%.2f tol=%.2f skill=%d F=%.2f for %.1f s\n", p->id, int(a->classtype->visible), g, tol, int(a->ai.combatskill), p->F, p->bo);
 	}

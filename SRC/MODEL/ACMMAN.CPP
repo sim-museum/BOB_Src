@@ -2653,6 +2653,21 @@ void	AirStruc::AirCombat()
 				}
 			}
 			ACMAS().SelectNextEngageManoeuvre ();
+#if defined(BOB_LINUX)
+			{	// PILOT-MODEL-1 49b sprint 3: drop a defence that keeps failing against this bandit, roll once more (MOVEALL.CPP)
+				extern bool bdg_tom_threatened(AirStrucPtr), bdg_tom_failed(AirStrucPtr, int); extern void bdg_tom_tried(AirStrucPtr, int);
+				if ((movecode == AUTO_COMBAT) && ai.unfriendly && bdg_tom_threatened(this))
+				{
+					const int was = int(ai.manoeuvre);
+					if (bdg_tom_failed(this, was))
+					{
+						ACMAS().SelectNextEngageManoeuvre ();
+						if (getenv("BOB_TRACE_TOM")) fprintf(stderr, "[tom] id=%d drops man=%d (keeps failing vs this bandit) -> man=%d\n", int(uniqueID.count), was, int(ai.manoeuvre));
+					}
+					bdg_tom_tried(this, int(ai.manoeuvre));
+				}
+			}
+#endif
 		}
 		if((movecode == AUTO_COMBAT) && (ai.manoeuvre == MANOEUVRE_SELECT))
 		{

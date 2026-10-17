@@ -8869,17 +8869,7 @@ SLong AirStruc::CalcHdg ()
 //	Stop the simple aircraft from turning faster than the flight model aircraft can	//CSB 01/06/99	
 		int maxdelta = (CalcMaxPitchRate() * Timer_Code.FRAMETIME) / 100;	//CSB 01/06/99	
 #if BOB_LINUX
-		extern float bdg_g_limit(AirStrucPtr);	// PILOT-MODEL-1 49a: G tolerance, less when tired; 0 = blacked out
-		if ((movecode == AUTO_COMBAT) && (Status.size == AIRSTRUCSIZE))
-		{
-			const float n = bdg_g_limit(AirStrucPtr(this));
-			if (n <= 1.0f) maxdelta /= 8;
-			else if (n < 20.0f && vel_ > 0)
-			{
-				const float lim = sqrtf(n * n - 1.0f) * 9.80665f / (vel_ * 1e-4f) * Timer_Code.FRAMETIME * 104.3038f;
-				if (lim < maxdelta) maxdelta = int(lim);
-			}
-		}
+		// PILOT-MODEL-1 49a: the G tolerance cap is in CalcMaxPitchRate (ACMSIMPL.CPP)
 #endif
 		if(deltahdg > maxdelta)												//CSB 01/06/99	
 			deltahdg = maxdelta;											//CSB 01/06/99	
