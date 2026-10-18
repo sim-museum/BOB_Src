@@ -449,7 +449,7 @@ void bdg_fatigue_roll(AirStrucPtr a, float rollfrac) { if (bdg_fatigue_on()) { B
    p.131: assess the type and magnitude of a disadvantage; PO: rolls get less crisp as a pilot tires. Observed here:
    acquaintance (time in contact, faster for a better pilot), the bandit's sustained turn rate against his own when both
    pull hard (who out-turns whom), and the bandit's roll crispness (recent peak roll rate vs the best seen). */
-struct BdgTom { unsigned bandit; float acq, turn, crisp, best, peak, win, tr; SWord broll, bhdg; float bvx, bvy, bvz, bg, pt; int nref, pman; unsigned char fail[128], ok[128]; bool seen; };
+struct BdgTom { unsigned bandit; float acq, turn, crisp, best, peak, win, tr; SWord broll, bhdg; float bvx, bvy, bvz, bg, pt; int nref, pman; unsigned char fail[128], ok[128]; float w3[3], rrs; bool seen; };
 static BdgTom s_bdg_tom[2048];
 static BdgTom* bdg_tom(AirStrucPtr me, bool create)
 {
@@ -497,7 +497,7 @@ static void bdg_tom_tick(AirStrucPtr me, BdgPilot* p, float dt, float myg)
 	BdgTom& t = s_bdg_tom[p - s_bdg_pil];
 	AirStrucPtr b = (me->ai.unfriendly && me->ai.unfriendly->Status.size == AIRSTRUCSIZE) ? AirStrucPtr(me->ai.unfriendly) : 0;
 	if (!b) { t.acq -= dt / 300.0f; if (t.acq < 0) t.acq = 0; return; }
-	if (t.bandit != b->uniqueID.count) { t.bandit = b->uniqueID.count; t.acq = 0; t.turn = 1; t.crisp = 1; t.best = 0; t.peak = 0; t.win = 0; t.tr = 0; t.bg = 1; t.nref = 0; t.pt = 0; t.pman = -1; memset(t.fail, 0, sizeof t.fail); memset(t.ok, 0, sizeof t.ok); t.seen = false; }
+	if (t.bandit != b->uniqueID.count) { t.bandit = b->uniqueID.count; t.acq = 0; t.turn = 1; t.crisp = 1; t.best = 0; t.peak = 0; t.win = 0; t.tr = 0; t.bg = 1; t.rrs = 0; t.nref = 0; t.pt = 0; t.pman = -1; memset(t.fail, 0, sizeof t.fail); memset(t.ok, 0, sizeof t.ok); t.seen = false; }
 	if (t.pt > 0 && (t.pt -= dt) <= 0 && t.pman >= 0) {
 		const bool still = bdg_tom_threatened(me);
 		unsigned char& c = still ? t.fail[t.pman] : t.ok[t.pman]; if (c < 255) c++;
@@ -510,7 +510,8 @@ static void bdg_tom_tick(AirStrucPtr me, BdgPilot* p, float dt, float myg)
 	if (sees && t.seen) {
 		t.acq += dt * bdg_tom_skill(me) / 90.0f; if (t.acq > 1) t.acq = 1;
 		const float rr = fabsf(float(SWord(SWord(b->roll) - t.broll))) * 5.4932e-3f / dt;	// deg/s
-		if (rr < 720.0f) { if (rr > t.peak) t.peak = rr; }
+		if (rr < 720.0f) t.rrs += (rr - t.rrs) * (dt < 0.3f ? dt / 0.3f : 1.0f);	// 0.3 s smoothing: a sustained roll, not a one-frame flick
+		if (rr < 720.0f && t.rrs > t.peak) t.peak = t.rrs;
 		const float ax = (bvx - t.bvx) / dt, ay = (bvy - t.bvy) / dt + 9.80665f, az = (bvz - t.bvz) / dt;
 		float bg = sqrtf(ax * ax + ay * ay + az * az) / 9.80665f; if (bg > 9.0f) bg = 9.0f;
 		t.bg += (bg - t.bg) * (dt < 1.0f ? dt : 1.0f); bg = t.bg;
@@ -520,8 +521,13 @@ static void bdg_tom_tick(AirStrucPtr me, BdgPilot* p, float dt, float myg)
 			t.turn += (bw / mw - t.turn) * dt / 20.0f;
 		if ((t.win += dt) >= 8.0f) {	// 8 s windows: his peak roll rate now vs his fresh one (mean of the first 6 hard-rolling windows)
 			if (t.peak > 30.0f) {
-				if (t.nref < 6) { t.best = (t.best * t.nref + t.peak) / (t.nref + 1); t.nref++; }
-				else t.crisp += (t.peak / t.best - t.crisp) * 0.25f;
+				if (t.nref < 6) { t.best = (t.best * t.nref + t.peak) / (t.nref + 1); t.w3[t.nref % 3] = t.peak; t.nref++; }
+				else {	// his best roll in the last 3 rolling windows: one window without a hard roll is not fatigue
+					t.w3[t.nref % 3] = t.peak; t.nref++;
+					const float m = (t.w3[0] > t.w3[1]) ? ((t.w3[0] > t.w3[2]) ? t.w3[0] : t.w3[2]) : ((t.w3[1] > t.w3[2]) ? t.w3[1] : t.w3[2]);
+					if (m > t.best) t.best = m;	// his best roll so far: the read only falls when he can no longer match it
+					t.crisp += (m / t.best - t.crisp) * 0.25f;
+				}
 			}
 			t.peak = 0; t.win = 0;
 		}
