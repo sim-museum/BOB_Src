@@ -7561,6 +7561,14 @@ void	ACMAirStruc::TurningFight()
 				target = ai.unfriendly->World;
 
 		//DEADCODE CSB 25/01/00 	TurnWithPitchChange(HdgIntercept, TRUE, target);
+#if BOB_LINUX
+			{	/* BOB-CLONE-SWEEP-1 (ACMSIMPL.CPP): a fighter shared with another of his side is bracketed, not queued for */
+				extern void bdg_pursuit_offset(ACMAirStruc*, AirStrucPtr, COORDS3D&, MobileItemPtr);
+				const COORDS3D was = target;
+				bdg_pursuit_offset(this, AirStrucPtr(ai.unfriendly), target, ACList);
+				if (was.X != target.X || was.Y != target.Y || was.Z != target.Z) InterceptandRange(&target);
+			}
+#endif
 			if(AirStrucPtr(ai.unfriendly)->classtype->aerobaticfactor == AEROBATIC_LOW)
 				TurnFightSub(HdgIntercept, FALSE, ANGLES_0Deg, target);
 			else
@@ -8046,6 +8054,9 @@ void ACMAirStruc::InterceptHigh()
 //DeadCode CSB 3Nov00 			despos = ai.unfriendly->World;
 //DeadCode CSB 3Nov00 			despos.Y += FT_500;
 //DeadCode CSB 3Nov00 			InterceptandRange(&despos);
+#if BOB_LINUX
+			{ extern void bdg_pursuit_resteer(ACMAirStruc*, MobileItemPtr); bdg_pursuit_resteer(this, ACList); }	/* BOB-CLONE-SWEEP-1 (ACMSIMPL.CPP) */
+#endif
 			SWord dhdg = HdgIntercept - hdg;
 			if(dhdg < 0)	dhdg = -dhdg;
 			PitchIntercept += Angles(dhdg / 4);
@@ -8146,6 +8157,9 @@ void ACMAirStruc::InterceptLow()
 //DeadCode CSB 3Nov00 			despos = ai.unfriendly->World;
 //DeadCode CSB 3Nov00 			despos.Y -= FT_500;
 //DeadCode CSB 3Nov00 			InterceptandRange(&despos);
+#if BOB_LINUX
+			{ extern void bdg_pursuit_resteer(ACMAirStruc*, MobileItemPtr); bdg_pursuit_resteer(this, ACList); }	/* BOB-CLONE-SWEEP-1 (ACMSIMPL.CPP) */
+#endif
 			SWord dhdg = HdgIntercept - hdg;
 			if(dhdg < 0)	dhdg = -dhdg;
 			PitchIntercept += Angles(dhdg / 4);

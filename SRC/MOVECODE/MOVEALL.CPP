@@ -178,6 +178,79 @@ void mobileitem::MoveAll(WorldStuff& world)
 	MoveList(ACList, world);
 
 #if defined(BOB_LINUX)
+	{ extern long bdg_simtime_cs; bdg_simtime_cs += Timer_Code.FRAMETIME; }	/* sim clock for the per-pilot wander (ACMSIMPL.CPP) */
+	extern long bdg_pursuit_count;
+	{	/* BOB-CLONE-SWEEP-1 (item 50, PO 10-17): find AI aircraft flying as clones in combat. Every 1 s each aircraft in
+		   AUTO_COMBAT is sampled; every 10 s each same-side pair is tested over its last 10 s for a TRAIL clone (one flies
+		   within 50 m of where the other was 1..8 s earlier) or a SIDE clone (a constant offset to within 15 m while more
+		   than 60 m apart). BOB_TRACE_CLONE=1 prints each pair at most every 30 s with both manoeuvres. */
+		static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_CLONE") ? 1 : 0;
+		if (tr)
+		{
+			enum { NS = 512, RH = 64 };
+			struct CS { unsigned id; int run, head; float x[RH], y[RH], z[RH]; AirStrucPtr ac; unsigned frame; };
+			static CS cs[NS]; static long t = 0, tnext = 100, tpair = 1000; static unsigned frame = 0;
+			static unsigned lastrep[NS][NS / 32]; static long s_pairs, s_trail, s_side;	/* bit set: reported in this 30 s block */
+			t += Timer_Code.FRAMETIME;
+			if (t >= tnext) {
+				tnext += 100; frame++;
+				for (AirStrucPtr ac = AirStrucPtr(ACList); ac; ac = AirStrucPtr(ac->nextmobile)) {
+					CS& c = cs[(unsigned(ac->uniqueID.count) * 2654435761u >> 9) & (NS - 1)];
+					if (c.id != unsigned(ac->uniqueID.count)) { c.id = ac->uniqueID.count; c.run = 0; c.head = 0; }
+					if (ac->movecode != AUTO_COMBAT || ac->Status.deaded) { c.run = 0; continue; }
+					c.head = (c.head + 1) % RH; c.x[c.head] = ac->World.X * 0.01f; c.y[c.head] = ac->World.Y * 0.01f; c.z[c.head] = ac->World.Z * 0.01f;
+					c.run++; c.ac = ac; c.frame = frame;
+				}
+				if (t >= tpair) {
+					tpair += 1000;
+					{	/* census (cumulative, every 10 s): the detector can only speak when aircraft are in combat, and fights differ
+						   in length, so compare clones per 1000 same-side pair tests */
+						int nc = 0; for (int i = 0; i < NS; i++) if (cs[i].frame == frame && cs[i].run > 0) nc++;
+						extern long bdg_pursuit_count;
+						fprintf(stderr, "[clone] census t=%lds in_combat=%d pairs=%ld trail=%ld side=%ld per1000=%.1f pursuit_offsets=%ld\n", t / 100, nc,
+						        s_pairs, s_trail, s_side, s_pairs ? 1000.0 * double(s_trail + s_side) / double(s_pairs) : 0.0, bdg_pursuit_count);
+					}
+					if ((tpair / 1000) % 3 == 0) memset(lastrep, 0, sizeof lastrep);
+					for (int i = 0; i < NS; i++) {
+						CS& A = cs[i]; if (A.run < 18 || A.frame != frame) continue;
+						for (int j = i + 1; j < NS; j++) {
+							CS& B = cs[j]; if (B.run < 18 || B.frame != frame || A.ac->nationality != B.ac->nationality) continue;
+							if (lastrep[i][j >> 5] & (1u << (j & 31))) continue;
+							s_pairs++;
+							#define CPOS(C, k, v) C.v[((C.head - (k)) % RH + RH) % RH]
+							float ox = 0, oy = 0, oz = 0;
+							for (int k = 0; k < 10; k++) { ox += CPOS(B, k, x) - CPOS(A, k, x); oy += CPOS(B, k, y) - CPOS(A, k, y); oz += CPOS(B, k, z) - CPOS(A, k, z); }
+							ox /= 10; oy /= 10; oz /= 10;
+							float side = 0;
+							for (int k = 0; k < 10; k++) { const float ex = CPOS(B, k, x) - CPOS(A, k, x) - ox, ey = CPOS(B, k, y) - CPOS(A, k, y) - oy, ez = CPOS(B, k, z) - CPOS(A, k, z) - oz; side += sqrtf(ex * ex + ey * ey + ez * ez); }
+							side /= 10;
+							const float sep = sqrtf(ox * ox + oy * oy + oz * oz);
+							float best = 1e9f; int blag = 0;
+							for (int lag = 1; lag <= 8; lag++) for (int dir = 0; dir < 2; dir++) {
+								CS& P = dir ? A : B; CS& Q = dir ? B : A;	/* P follows Q's path lag s later */
+								if (Q.run < 10 + lag) continue;
+								float e = 0;
+								for (int k = 0; k < 10; k++) { const float ex = CPOS(P, k, x) - CPOS(Q, k + lag, x), ey = CPOS(P, k, y) - CPOS(Q, k + lag, y), ez = CPOS(P, k, z) - CPOS(Q, k + lag, z); e += sqrtf(ex * ex + ey * ey + ez * ez); }
+								e /= 10; if (e < best) { best = e; blag = dir ? lag : -lag; }
+							}
+							#undef CPOS
+							const bool trail = best < 50.0f && sep > 60.0f, sidec = side < 15.0f && sep > 60.0f;
+							if (trail || sidec) {
+								lastrep[i][j >> 5] |= 1u << (j & 31); if (trail) s_trail++; else s_side++;
+								fprintf(stderr, "[clone] t=%lds %s a=%d shape=%d man=%d b=%d shape=%d man=%d sep=%.0f trail_err=%.0f lag=%d side_err=%.0f lead=%d skill=%d,%d unf=%d,%d\n", t / 100,
+								        trail ? "TRAIL" : "SIDE", int(A.ac->uniqueID.count), int(A.ac->classtype->visible), int(A.ac->ai.manoeuvre),
+								        int(B.ac->uniqueID.count), int(B.ac->classtype->visible), int(B.ac->ai.manoeuvre), sep, best, blag, side,
+								        int(A.ac->Follower() == B.ac || B.ac->Follower() == A.ac), int(A.ac->ai.combatskill), int(B.ac->ai.combatskill),
+								        A.ac->ai.unfriendly ? int(A.ac->ai.unfriendly->uniqueID.count) : -1, B.ac->ai.unfriendly ? int(B.ac->ai.unfriendly->uniqueID.count) : -1);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+#endif
+#if defined(BOB_LINUX)
 	/* MP-6 (2026-09-13): DOES A REMOTE PLAYER'S AIRCRAFT EXIST IN THIS WORLD?
 	   MA measured exactly this and found it does NOT: its host alone has 8 aircraft, and with a
 	   client joined it still has 8, while ~1900 packets a side cross in flight. MP-5 proved BoB's

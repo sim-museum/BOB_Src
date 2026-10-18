@@ -366,13 +366,22 @@ static bool bdg_is_bomber(AirStrucPtr u)
 	const ShapeNum v = u->classtype->visible;
 	return v == DO17 || v == HE11 || v == JU88 || v == JU87 || v == JU52;
 }
+/* BOB-CLONE-SWEEP-1: a stable offset alone makes two pursuers fly rigidly parallel (the clone detector's SIDE case); real
+   station-keeping wanders. Each pilot's offset drifts +-80 m on his own 20..40 s cycle (sim time from MOVEALL.CPP). */
+extern long bdg_simtime_cs;
+static FP bdg_wander(ULong h, int salt)
+{
+	const ULong k = h * (2654435761u + ULong(salt) * 40503u);
+	const FP period = 2000.0 + FP((k >> 7) & 0x7ff) / 2047.0 * 2000.0, phase = FP((k >> 19) & 0x3ff) / 1023.0 * 6.2831853;
+	return 8000.0 * sin(6.2831853 * FP(bdg_simtime_cs) / period + phase);
+}
 static void bdg_attack_offset(ACMAirStruc* me, AirStrucPtr unf, COORDS3D& t)
 {
 	static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_ATTACK_SPREAD") ? 1 : 0;
 	if (s_no || !unf || !bdg_is_bomber(unf)) return;
 	const ULong h = ULong(me->uniqueID.count) * 2654435761u;
-	const FP lat = (FP((h >> 8) & 0xff) / 255.0 * 2.0 - 1.0) * 40000.0;
-	const FP ver = FP((h >> 16) & 0xff) / 255.0 * 40000.0 - 15000.0;
+	const FP lat = (FP((h >> 8) & 0xff) / 255.0 * 2.0 - 1.0) * 40000.0 + bdg_wander(h, 1);
+	const FP ver = FP((h >> 16) & 0xff) / 255.0 * 40000.0 - 15000.0 + 0.5 * bdg_wander(h, 2);
 	const FP d = FSqrt(me->Distance3DSquared(&unf->World));
 	FP fade = (d - FP(INSIDEWEAPONSRANGE)) / (150000.0 - FP(INSIDEWEAPONSRANGE));
 	MODMAXMIN(fade, 0.0, 1.0);
@@ -381,6 +390,53 @@ static void bdg_attack_offset(ACMAirStruc* me, AirStrucPtr unf, COORDS3D& t)
 	t.X = FP(t.X) + fade * lat * (-FP(unf->vel_z) / vh);
 	t.Z = FP(t.Z) + fade * lat * ( FP(unf->vel_x) / vh);
 	t.Y = FP(t.Y) + fade * ver;
+}
+/* BOB-CLONE-SWEEP-1 (item 50, PO 10-17: find other places where AI aircraft "all behave identically in an immersion-
+   killing way"). The clone detector (MOVEALL.CPP, BOB_TRACE_CLONE) found it in QM 20: every Bf 109 after the same
+   fighter flew pure pursuit at one point (InterceptHigh/Low steer straight at it, TurningFight at its lead point), so
+   the Schwarm merged into one trail, each 109 on the path of the one ahead (79 reports in 330 s). 1940 fighters
+   bracketed a shared target from either side and from above; so when another fighter of his side is after the same
+   aircraft, each pilot holds his own offset from its track (stable per aircraft: lateral +-300 m, vertical
+   -100..+250 m), full beyond 1.2 km, fading to none at 500 m, where the firing run is Rowan's. A lone pursuer (a duel)
+   is unchanged; bombers keep the 46 offset. BOB_NO_PURSUIT_SPREAD=1 reverts. */
+static bool bdg_shared_target(AirStrucPtr me, AirStrucPtr unf, MobileItemPtr list)
+{
+	for (AirStrucPtr ac = AirStrucPtr(list); ac; ac = AirStrucPtr(ac->nextmobile))
+		if (ac != me && ItemPtr(ac->ai.unfriendly) == ItemPtr(unf) && ac->movecode == AUTO_COMBAT && ac->nationality == me->nationality && !ac->Status.deaded)
+			return true;
+	return false;
+}
+long bdg_pursuit_count = 0;
+long bdg_simtime_cs = 0;
+void bdg_pursuit_offset(ACMAirStruc* me, AirStrucPtr unf, COORDS3D& t, MobileItemPtr list)
+{
+	if (!unf) return;
+	if (bdg_is_bomber(unf)) { bdg_attack_offset(me, unf, t); return; }
+	static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_PURSUIT_SPREAD") ? 1 : 0;
+	if (s_no || unf->Status.size != AIRSTRUCSIZE || !list || !bdg_shared_target(AirStrucPtr(me), unf, list)) return;
+	const FP d = FSqrt(me->Distance3DSquared(&unf->World));
+	FP fade = (d - 50000.0) / (120000.0 - 50000.0);
+	MODMAXMIN(fade, 0.0, 1.0);
+	if (fade <= 0.0) return;
+	const ULong h = ULong(me->uniqueID.count) * 2246822519u;
+	const FP lat = (FP((h >> 5) & 0xff) / 255.0 * 2.0 - 1.0) * 30000.0 + bdg_wander(h, 3);
+	const FP ver = FP((h >> 13) & 0xff) / 255.0 * 35000.0 - 10000.0 + 0.5 * bdg_wander(h, 4);
+	const FP vh = FSqrt(FP(unf->vel_x) * FP(unf->vel_x) + FP(unf->vel_z) * FP(unf->vel_z));
+	if (vh < 1.0) return;
+	{ extern long bdg_pursuit_count; bdg_pursuit_count++; }
+	t.X = FP(t.X) + fade * lat * (-FP(unf->vel_z) / vh);
+	t.Z = FP(t.Z) + fade * lat * ( FP(unf->vel_x) / vh);
+	t.Y = FP(t.Y) + fade * ver;
+}
+void bdg_pursuit_resteer(ACMAirStruc* me, MobileItemPtr list)	// InterceptHigh/Low: steer at the bracketing point instead of the bandit itself
+{
+	if (!me->ai.unfriendly || me->ai.unfriendly->Status.size != AIRSTRUCSIZE) return;
+	AirStrucPtr unf = AirStrucPtr(me->ai.unfriendly);
+	if (bdg_is_bomber(unf)) return;
+	COORDS3D p = unf->World;
+	bdg_pursuit_offset(me, unf, p, list);
+	if (p.X == unf->World.X && p.Y == unf->World.Y && p.Z == unf->World.Z) return;
+	const SLong r = me->Range; me->InterceptandRange(&p); me->Range = r;
 }
 static void bdg_trace_spread(ACMAirStruc* me, AirStrucPtr unf)
 {
@@ -441,7 +497,7 @@ void	ACMAirStruc::SimpleTurningFight()
 			target.Z = ai.unfriendly->World.Z;
 #if BOB_LINUX
 			if (Distance3DSquared(&unf->World) > FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE))
-				bdg_attack_offset(this, unf, target);
+				bdg_pursuit_offset(this, unf, target, ACList);
 			bdg_trace_spread(this, unf);
 #endif
 			InterceptandRange (&target);
@@ -651,7 +707,7 @@ void ACMAirStruc::SimpleTurningFightBomber()
 				despos.Y = FP(despos.Y) + time * FP(unf->vel_y);
 				despos.Z = FP(despos.Z) + time * FP(unf->vel_z);
 #if BOB_LINUX
-				bdg_attack_offset(this, unf, despos);
+				bdg_pursuit_offset(this, unf, despos, ACList);
 #endif
 			}
 #if BOB_LINUX
@@ -6491,6 +6547,24 @@ void ACMAirStruc::SimpleDisengaged()
 				manoeuvretime = 0;
 			else
 			{
+#if BOB_LINUX
+				/* BOB-CLONE-SWEEP-1: every pilot steered straight at the same leader and the flight left the fight as one
+				   trail. Each rejoins at his own slot on the leader: 80..200 m to his side (stable per aircraft) and 100 m
+				   behind. BOB_NO_PURSUIT_SPREAD=1 reverts. */
+				static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_PURSUIT_SPREAD") ? 1 : 0;
+				const FP vh = FSqrt(FP(lead->vel_x) * FP(lead->vel_x) + FP(lead->vel_z) * FP(lead->vel_z));
+				if (!s_no && vh > 1.0)
+				{
+					const ULong h = ULong(uniqueID.count) * 2654435761u;
+					const FP side = ((h >> 11) & 1 ? 1.0 : -1.0) * (8000.0 + FP((h >> 3) & 0xff) / 255.0 * 12000.0);
+					const FP ux = FP(lead->vel_x) / vh, uz = FP(lead->vel_z) / vh;
+					COORDS3D slot = lead->World;
+					slot.X = FP(slot.X) - 10000.0 * ux + side * -uz;
+					slot.Z = FP(slot.Z) - 10000.0 * uz + side *  ux;
+					InterceptandRange(&slot);
+				}
+				else
+#endif
 				InterceptandRange(lead);
 				SWord pi = PitchIntercept;
 				MODLIMIT(pi, ANGLES_10Deg);
@@ -7084,6 +7158,9 @@ void ACMAirStruc::SimpleInterceptHigh()
 //DeadCode CSB 3Nov00 			despos.Y += FT_500;
 //DeadCode CSB 3Nov00 			InterceptandRange(&despos);
 //DeadCode CSB 3Nov00 			PitchIntercept += PitchIntercept;
+#if BOB_LINUX
+			bdg_pursuit_resteer(this, ACList);	/* BOB-CLONE-SWEEP-1: a shared target is bracketed, not queued for */
+#endif
 			SWord dhdg = HdgIntercept - hdg;
 			if(dhdg < 0)	dhdg = -dhdg;
 			PitchIntercept += Angles(dhdg / 4);
@@ -7129,6 +7206,9 @@ void ACMAirStruc::SimpleInterceptLow()
 //DeadCode CSB 3Nov00 			despos.Y -= FT_500;
 //DeadCode CSB 3Nov00 			InterceptandRange(&despos);
 //DeadCode CSB 3Nov00 			PitchIntercept += PitchIntercept;
+#if BOB_LINUX
+			bdg_pursuit_resteer(this, ACList);	/* BOB-CLONE-SWEEP-1: a shared target is bracketed, not queued for */
+#endif
 			SWord dhdg = HdgIntercept - hdg;
 			if(dhdg < 0)	dhdg = -dhdg;
 			PitchIntercept -= Angles(dhdg / 4);
