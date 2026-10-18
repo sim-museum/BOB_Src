@@ -179,6 +179,58 @@ void mobileitem::MoveAll(WorldStuff& world)
 
 #if defined(BOB_LINUX)
 	{ extern long bdg_simtime_cs; bdg_simtime_cs += Timer_Code.FRAMETIME; }	/* sim clock for the per-pilot wander (ACMSIMPL.CPP) */
+	{	/* LOS-BFM-1 (item 48, PO 10-16 "lose sight, lose the fight"): in combat Rowan's AI never loses its bandit
+		   (ArtInt::Seen runs only for pilots not yet in combat). Census, every 1 s, for single-seat fighters in AUTO_COMBAT:
+		   where in the pilot's own body frame (bank included) are (a) his target and (b) each enemy within 1.5 km that is
+		   attacking him -- visible, under the nose, under the belly/wings, behind (armour, headrest, tail), in the sun, or
+		   beyond 4 km. Also a roll-sign check (roll vs heading rate). BOB_TRACE_SIGHT=1. */
+		static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_SIGHT") ? 1 : 0;
+		static long t = 0, tnext = 100, trep = 3000; static long cnt[2][6], rsame, ropp;
+		if (tr && (t += Timer_Code.FRAMETIME) >= tnext)
+		{
+			tnext += 100;
+			const float K = 6.2831853f / 65536.0f;
+			const COORDS3D& sun = mobileitem::currworld->sunpos;
+			for (AirStrucPtr ac = AirStrucPtr(ACList); ac; ac = AirStrucPtr(ac->nextmobile))
+			{
+				if (ac->movecode != AUTO_COMBAT || ac->Status.deaded) continue;
+				const int vis = int(ac->classtype->visible);
+				if (vis != SPIT && vis != HURR && vis != ME109) continue;
+				const float h = float(UWord(ac->hdg)) * K, pt = float(SWord(ac->pitch)) * K, rl = float(SWord(ac->roll)) * K;
+				const float fx = sinf(h) * cosf(pt), fy = sinf(pt), fz = cosf(h) * cosf(pt);
+				const float rx = cosf(h), ry = 0, rz = -sinf(h);
+				const float ux = -sinf(h) * sinf(pt), uy = cosf(pt), uz = -cosf(h) * sinf(pt);
+				const float R1x = rx * cosf(rl) - ux * sinf(rl), R1y = ry * cosf(rl) - uy * sinf(rl), R1z = rz * cosf(rl) - uz * sinf(rl);
+				const float U1x = ux * cosf(rl) + rx * sinf(rl), U1y = uy * cosf(rl) + ry * sinf(rl), U1z = uz * cosf(rl) + rz * sinf(rl);
+				if (ac->fly.pModel && fabsf(rl) > 0.5f && fabsf(rl) < 1.4f) { const float dh = float(ac->fly.dhdg);
+					if (dh != 0) { if ((dh > 0) == (rl > 0)) rsame++; else ropp++; } }
+				auto zone = [&](AirStrucPtr o) -> int {
+					const float dx = float(o->World.X - ac->World.X), dy = float(o->World.Y - ac->World.Y), dz = float(o->World.Z - ac->World.Z);
+					const float d = sqrtf(dx * dx + dy * dy + dz * dz); if (d < 1) return 0;
+					if (d > 400000.0f) return 5;
+					const float sx = float(sun.X - ac->World.X), sy = float(sun.Y - ac->World.Y), sz = float(sun.Z - ac->World.Z);
+					const float sd = sqrtf(sx * sx + sy * sy + sz * sz);
+					if (sd > 1 && (dx * sx + dy * sy + dz * sz) / (d * sd) > 0.985f) return 4;	/* within 10 deg of the sun */
+					const float bx = (dx * fx + dy * fy + dz * fz), by = (dx * R1x + dy * R1y + dz * R1z), bz = (dx * U1x + dy * U1y + dz * U1z);
+					const float az = atan2f(by, bx) * 57.3f, el = atan2f(bz, sqrtf(bx * bx + by * by)) * 57.3f;
+					if (el < -20.0f) return 2;						/* under the belly / wings */
+					if (fabsf(az) < 20.0f && el < -5.0f) return 1;	/* under the nose */
+					if (fabsf(az) > 155.0f && el < 15.0f) return 3;	/* behind: armour, headrest, tail */
+					return 0; };
+				AirStrucPtr u = (ac->ai.unfriendly && ac->ai.unfriendly->Status.size == AIRSTRUCSIZE) ? AirStrucPtr(ac->ai.unfriendly) : NULL;
+				if (u) cnt[0][zone(u)]++;
+				for (AirStrucPtr e = AirStrucPtr(ACList); e; e = AirStrucPtr(e->nextmobile))
+					if (e->nationality != ac->nationality && e->ai.unfriendly == ac && !e->Status.deaded
+					    && ac->Distance3DSquared(&e->World) < 150000.0 * 150000.0)
+						cnt[1][zone(e)]++;
+			}
+			if (t >= trep) { trep += 3000;
+				for (int k = 0; k < 2; k++) { long n = 0; for (int z = 0; z < 6; z++) n += cnt[k][z];
+					fprintf(stderr, "[sight] t=%lds %s n=%ld visible=%ld nose=%ld belly=%ld behind=%ld sun=%ld far=%ld\n", t / 100,
+						k ? "threat" : "target", n, cnt[k][0], cnt[k][1], cnt[k][2], cnt[k][3], cnt[k][4], cnt[k][5]); }
+				fprintf(stderr, "[sight] rollsign same=%ld opp=%ld (roll>0 with dhdg>0)\n", rsame, ropp); }
+		}
+	}
 	extern long bdg_pursuit_count;
 	{	/* BOB-CLONE-SWEEP-1 (item 50, PO 10-17): find AI aircraft flying as clones in combat. Every 1 s each aircraft in
 		   AUTO_COMBAT is sampled; every 10 s each same-side pair is tested over its last 10 s for a TRAIL clone (one flies
