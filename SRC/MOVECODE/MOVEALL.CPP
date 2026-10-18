@@ -423,12 +423,17 @@ static float bdg_q300(AirStrucPtr a)	// (IAS / 300 mph)^2, standard atmosphere
 	return v * v * powf(s, 4.2559f);
 }
 float bdg_pilot_fatigue(AirStrucPtr a) { if (!bdg_fatigue_on()) return 0; BdgPilot* p = bdg_pil(a, false); return p ? p->F : 0; }
+/* Pulling out of a dive near the ground is an emergency, not sustained manoeuvring: the pilot pulls with everything he
+   has. The roll/G limits and blackout onset stand aside in MANOEUVRE_LOWALT (a blackout already under way runs its
+   course). Found in the MA port (MA-KILL-RATIO-1): tired pilots flew into the ground in the pull-out. */
+static bool bdg_emergency(AirStrucPtr a, const BdgPilot* p) { return a->ai.manoeuvre == MANOEUVRE_LOWALT && !(p && p->bo > 0); }
 float bdg_roll_capacity(AirStrucPtr a)	// share of Rowan's roll rate the pilot can deliver now
 {
 	if (!bdg_fatigue_on()) return 1.0f;
 	BdgPilot* p = bdg_pil(a, false); const float F = p ? p->F : 0;
 	const float need = bdg_roll_k(a) * bdg_q300(a), have = 1.0f - 0.45f * F;
 	if (p && p->bo > 0) return 0.0f;	// blacked out: hands off
+	if (bdg_emergency(a, p)) return 1.0f;
 	return ((need > have) ? have / need : 1.0f) * (1.0f - 0.2f * F);
 }
 /* Sprint 2, G tolerance (Shaw p.377): "most fighter pilots, with training, can learn to sustain about 5 Gs for a
@@ -438,10 +443,10 @@ float bdg_roll_capacity(AirStrucPtr a)	// share of Rowan's roll rate the pilot c
 static float bdg_g_tol(const BdgPilot& p) { return 5.4f - 0.8f * (p.tiring - 1.0f) - p.F; }
 static float bdg_g_lim(AirStrucPtr a, const BdgPilot& p) { return (p.bo > 0) ? 0.0f : bdg_g_tol(p) + ((a->ai.combatskill < SKILL_REGULAR) ? 1.5f : 0.0f); }
 float bdg_g_limit(AirStrucPtr a)	// sustained G this pilot will pull now; 0 = blacked out
-{ if (!bdg_fatigue_on()) return 99.0f; BdgPilot* p = bdg_pil(a, false); return p ? bdg_g_lim(a, *p) : 99.0f; }
+{ if (!bdg_fatigue_on()) return 99.0f; BdgPilot* p = bdg_pil(a, false); return !p || bdg_emergency(a, p) ? 99.0f : bdg_g_lim(a, *p); }
 bool bdg_blacked_out(AirStrucPtr a) { if (!bdg_fatigue_on()) return false; BdgPilot* p = bdg_pil(a, false); return p && p->bo > 0; }
 float bdg_g_capacity(AirStrucPtr a)	// flight model: share of full pull, fed back from the felt G
-{ if (!bdg_fatigue_on()) return 1.0f; BdgPilot* p = bdg_pil(a, false); return !p ? 1.0f : (p->bo > 0) ? 0.0f : p->pull; }
+{ if (!bdg_fatigue_on()) return 1.0f; BdgPilot* p = bdg_pil(a, false); return !p || bdg_emergency(a, p) ? 1.0f : (p->bo > 0) ? 0.0f : p->pull; }
 void bdg_fatigue_roll(AirStrucPtr a, float rollfrac) { if (bdg_fatigue_on()) { BdgPilot* p = bdg_pil(a, true); if (rollfrac > p->roll) p->roll = rollfrac; } }
 /* PILOT-MODEL-1 49b (PO 10-17): theory of mind -- each AI pilot builds a model of the bandit he is fighting from what
    he can SEE of it (its flight path; never its internal state), and the model sharpens the longer they fight. Shaw
@@ -561,6 +566,7 @@ void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = loa
 	float force = p->roll * bdg_roll_k(a) * q; if (force > 1.0f) force = 1.0f;	// share of his strength on the stick
 	if (path == 0) { const float lim = bdg_g_lim(a, *p); if (lim > 1.0f && g > lim) g = lim; }	// simple movecode: some manoeuvres set pitch and heading
 		// directly, past any physical rate -- that excess is the model's, not the pilot's; he flies at most at his limit
+	const float graw = g;
 	p->gs += (g - p->gs) * (dt < 1.0f ? dt : 1.0f);	// sustained G: 1 s average
 	g = p->gs;
 	float ge = (g - 2.5f) / 2.5f; if (ge < 0) ge = 0;	// 1940: no G suit, no straining drill (Shaw p.377 is the trained modern pilot)
@@ -569,11 +575,13 @@ void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = loa
 	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_FATIGUE") ? 1 : 0;
 	const float tol = bdg_g_tol(*p);
 	if (p->bo > 0) { if ((p->bo -= dt) <= 0 && tr) fprintf(stderr, "[fatigue] id=%u comes round\n", p->id); }
-	else if (path == 1 && g > tol + 0.7f) {	// blackout on the flight model only, where the G is physical
+	else if (path == 1 && g > tol + 0.7f && !bdg_emergency(a, p)) {	// blackout on the flight model only, where the G is physical
 		p->bo = 3.0f + 3.0f * p->F;
 		if (tr) fprintf(stderr, "[fatigue] id=%u shape=%d BLACKOUT g=%.2f tol=%.2f skill=%d F=%.2f for %.1f s\n", p->id, int(a->classtype->visible), g, tol, int(a->ai.combatskill), p->F, p->bo);
 	}
-	if (path == 1) { p->pull += (g > bdg_g_lim(a, *p) - ((a->ai.combatskill < SKILL_REGULAR) ? 0.0f : 0.3f)) ? -0.5f * dt : 0.25f * dt; if (p->pull < 0.3f) p->pull = 0.3f; if (p->pull > 1.0f) p->pull = 1.0f; }
+	if (path == 1 && !bdg_emergency(a, p)) {	// he feels the grey-out coming and eases the pull, in proportion to the overshoot
+		const float over = graw - (bdg_g_lim(a, *p) - ((a->ai.combatskill < SKILL_REGULAR) ? 0.0f : 0.3f));
+		p->pull += (over > 0) ? -(1.0f + 2.0f * over) * dt : 0.3f * dt; if (p->pull < 0.1f) p->pull = 0.1f; if (p->pull > 1.0f) p->pull = 1.0f; }
 	p->F += d * dt; if (p->F < 0) p->F = 0; if (p->F > 1) p->F = 1;
 	if (tr && (p->tr += dt) >= 2.0f) {
 		p->tr = 0;
