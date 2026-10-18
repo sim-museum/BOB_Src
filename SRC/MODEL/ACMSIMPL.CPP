@@ -438,6 +438,27 @@ void bdg_pursuit_resteer(ACMAirStruc* me, MobileItemPtr list)	// InterceptHigh/L
 	if (p.X == unf->World.X && p.Y == unf->World.Y && p.Z == unf->World.Z) return;
 	const SLong r = me->Range; me->InterceptandRange(&p); me->Range = r;
 }
+/* BOB-CLONE-SWEEP-1 sprint 5: the firing run on a bomber. The clone detector found Hurricanes, each on his own bomber of
+   one formation, sitting astern of them in rigid parallel lines (QM 21: 12 SIDE reports): Rowan held the firing position
+   up to 15 s, and on the simple path every pilot's aim weave ran off the shared time of day, so all weaved in step. 1940
+   practice was a 2..4 s burst and a break-away before the gunners had the range. Each pilot now weaves on his own phase
+   and breaks away after his own 3..6 s inside 400 m (stable per aircraft), low or high. BOB_NO_ATTACK_SPREAD=1 reverts. */
+static long s_bdg_fire_t0[2048];
+int bdg_bomber_phase(ACMAirStruc* me) { static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_ATTACK_SPREAD") ? 1 : 0; return s_no ? 0 : int((ULong(me->uniqueID.count) * 2654435761u >> 20) & 0xff); }
+MANOEUVRE bdg_bomber_pass_done(ACMAirStruc* me, bool inside)	// MANOEUVRE_SELECT = keep firing
+{
+	static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_ATTACK_SPREAD") ? 1 : 0;
+	if (s_no) return MANOEUVRE_SELECT;
+	long& t0 = s_bdg_fire_t0[(ULong(me->uniqueID.count) * 2654435761u >> 9) & 2047];
+	if (!inside) { t0 = 0; return MANOEUVRE_SELECT; }
+	if (!t0) t0 = bdg_simtime_cs + 1;
+	const ULong h = ULong(me->uniqueID.count) * 2246822519u;
+	const long fire = 300 + long((h >> 9) & 0xff) * 300 / 255;	// 3..6 s
+	if (bdg_simtime_cs - t0 < fire) return MANOEUVRE_SELECT;
+	t0 = 0;
+	if (getenv("BOB_TRACE_SPREAD")) fprintf(stderr, "[spread] id=%d breaks away after %.1f s\n", int(me->uniqueID.count), double(fire) / 100.0);
+	return ((h >> 17) & 3) ? MANOEUVRE_BREAKLOW : MANOEUVRE_BREAKHIGH;
+}
 static void bdg_trace_spread(ACMAirStruc* me, AirStrucPtr unf)
 {
 	static int s_tr = -1; if (s_tr < 0) s_tr = getenv("BOB_TRACE_SPREAD") ? 1 : 0;
@@ -681,7 +702,16 @@ void ACMAirStruc::SimpleTurningFightBomber()
 				return;
 			}
 
+#if BOB_LINUX
+			{	/* BOB-CLONE-SWEEP-1 sprint 6: each pilot pushes his own throttle on the approach (90..100%), so attackers
+				   closing on a rigid formation do not stay rigidly abreast (QM 21) */
+				static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_ATTACK_SPREAD") ? 1 : 0;
+				const bool far = Distance3DSquared(&unf->World) > FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE);
+				SimpleMoveToThrust((s_no || !far) ? 100 : 90 + int((ULong(uniqueID.count) * 2654435761u >> 23) % 11));
+			}
+#else
 			SimpleMoveToThrust(100);
+#endif
 
 			if(Distance3DSquared(&unf->World) < FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE))
 			{
@@ -718,11 +748,22 @@ void ACMAirStruc::SimpleTurningFightBomber()
 
 			if(Range < INSIDEWEAPONSRANGE)
 			{
+#if BOB_LINUX
+				const int ph = bdg_bomber_phase(this);	/* own phase: the weave was in step for every pilot */
+				FP delta = (448.0 - ai.combatskill) * SByte(timeofday * 2 + ph) / 128.0;
+				PitchIntercept += delta;
+				delta = (448.0 - ai.combatskill) * SByte(timeofday + 3 * ph) / 128.0;
+				HdgIntercept += delta;
+#else
 				FP delta = (448.0 - ai.combatskill) * SByte(timeofday * 2) / 128.0;
 				PitchIntercept += delta;
 				delta = (448.0 - ai.combatskill) * SByte(timeofday) / 128.0;
 				HdgIntercept += delta;
+#endif
 			}
+#if BOB_LINUX
+			{ const MANOEUVRE brk = bdg_bomber_pass_done(this, Range < INSIDEWEAPONSRANGE); if (brk != MANOEUVRE_SELECT) { ai.manoeuvre = brk; ai.ManStep = PHASE0; return; } }
+#endif
 			AutoCalcPitch();
 			SLong desroll = 5 * SWord(HdgIntercept - hdg);
 			MODLIMIT(desroll, ANGLES_75_5Deg);

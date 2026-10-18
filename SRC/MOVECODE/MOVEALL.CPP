@@ -237,11 +237,13 @@ void mobileitem::MoveAll(WorldStuff& world)
 							const bool trail = best < 50.0f && sep > 60.0f, sidec = side < 15.0f && sep > 60.0f;
 							if (trail || sidec) {
 								lastrep[i][j >> 5] |= 1u << (j & 31); if (trail) s_trail++; else s_side++;
-								fprintf(stderr, "[clone] t=%lds %s a=%d shape=%d man=%d b=%d shape=%d man=%d sep=%.0f trail_err=%.0f lag=%d side_err=%.0f lead=%d skill=%d,%d unf=%d,%d\n", t / 100,
+								fprintf(stderr, "[clone] t=%lds %s a=%d shape=%d man=%d b=%d shape=%d man=%d sep=%.0f trail_err=%.0f lag=%d side_err=%.0f lead=%d skill=%d,%d unf=%d,%d urange=%.0f,%.0f\n", t / 100,
 								        trail ? "TRAIL" : "SIDE", int(A.ac->uniqueID.count), int(A.ac->classtype->visible), int(A.ac->ai.manoeuvre),
 								        int(B.ac->uniqueID.count), int(B.ac->classtype->visible), int(B.ac->ai.manoeuvre), sep, best, blag, side,
 								        int(A.ac->Follower() == B.ac || B.ac->Follower() == A.ac), int(A.ac->ai.combatskill), int(B.ac->ai.combatskill),
-								        A.ac->ai.unfriendly ? int(A.ac->ai.unfriendly->uniqueID.count) : -1, B.ac->ai.unfriendly ? int(B.ac->ai.unfriendly->uniqueID.count) : -1);
+								        A.ac->ai.unfriendly ? int(A.ac->ai.unfriendly->uniqueID.count) : -1, B.ac->ai.unfriendly ? int(B.ac->ai.unfriendly->uniqueID.count) : -1,
+								        A.ac->ai.unfriendly ? sqrtf(float(A.ac->Distance3DSquared(&A.ac->ai.unfriendly->World))) * 0.01f : -1.0f,
+								        B.ac->ai.unfriendly ? sqrtf(float(B.ac->Distance3DSquared(&B.ac->ai.unfriendly->World))) * 0.01f : -1.0f);
 							}
 						}
 					}

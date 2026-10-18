@@ -7609,7 +7609,16 @@ void ACMAirStruc::TurningFightBomber()
 			}
 
 			ACMMODEL& ACM = *fly.pAcmModel;
+#if BOB_LINUX
+			{	/* BOB-CLONE-SWEEP-1 sprint 6: closing on a rigid formation at the same full throttle kept the attackers rigidly
+				   abreast (QM 21 SIDE clones at 0.8..2.2 km); each pilot pushes his own throttle on the approach, 90..100%. */
+				static int s_no = -1; if (s_no < 0) s_no = getenv("BOB_NO_ATTACK_SPREAD") ? 1 : 0;
+				const bool far = Distance3DSquared(&unf->World) > FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE);
+				ACM.Thrust((s_no || !far) ? 100 : 90 + int((ULong(uniqueID.count) * 2654435761u >> 23) % 11));
+			}
+#else
 			ACM.Thrust(100);
+#endif
 
 			if(Distance3DSquared(&unf->World) < FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE))
 			{
@@ -7634,7 +7643,17 @@ void ACMAirStruc::TurningFightBomber()
 				despos.X = FP(despos.X) + time * FP(unf->vel_x);
 				despos.Y = FP(despos.Y) + time * FP(unf->vel_y);
 				despos.Z = FP(despos.Z) + time * FP(unf->vel_z);
+#if BOB_LINUX
+				{ extern void bdg_pursuit_offset(ACMAirStruc*, AirStrucPtr, COORDS3D&, MobileItemPtr); bdg_pursuit_offset(this, unf, despos, ACList); }	/* 46 approach offset (ACMSIMPL.CPP) */
+#endif
 			}
+#if BOB_LINUX
+			{	/* BOB-CLONE-SWEEP-1 sprint 5: break away after this pilot's own firing time (ACMSIMPL.CPP) */
+				extern MANOEUVRE bdg_bomber_pass_done(ACMAirStruc*, bool);
+				const MANOEUVRE brk = bdg_bomber_pass_done(this, Distance3DSquared(&unf->World) < FP(INSIDEWEAPONSRANGE) * FP(INSIDEWEAPONSRANGE));
+				if (brk != MANOEUVRE_SELECT) { ai.manoeuvre = brk; ai.ManStep = 0; return; }
+			}
+#endif
 			
 			InterceptandRange(&despos);
 
