@@ -170,6 +170,75 @@ void AFX_CDECL AfxTrace(LPCTSTR lpszFormat, ...);
 //Returns	
 //
 //------------------------------------------------------------------------------
+/* LOS-BFM-1 (item 48): where o is in ac's body frame (bank included): 0 visible, 1 under the nose, 2 under the belly or
+   wings, 3 behind (armour, headrest, tail), 4 within 10 deg of the sun, 5 beyond 4 km */
+int bdg_sight_zone(AirStrucPtr ac, AirStrucPtr o)
+{
+	const float K = 6.2831853f / 65536.0f;
+	const float h = float(UWord(ac->hdg)) * K, pt = float(SWord(ac->pitch)) * K, rl = float(SWord(ac->roll)) * K;
+	const float fx = sinf(h) * cosf(pt), fy = sinf(pt), fz = cosf(h) * cosf(pt);
+	const float rx = cosf(h), ry = 0, rz = -sinf(h);
+	const float ux = -sinf(h) * sinf(pt), uy = cosf(pt), uz = -cosf(h) * sinf(pt);
+	const float R1x = rx * cosf(rl) - ux * sinf(rl), R1y = ry * cosf(rl) - uy * sinf(rl), R1z = rz * cosf(rl) - uz * sinf(rl);
+	const float U1x = ux * cosf(rl) + rx * sinf(rl), U1y = uy * cosf(rl) + ry * sinf(rl), U1z = uz * cosf(rl) + rz * sinf(rl);
+	const float dx = float(o->World.X - ac->World.X), dy = float(o->World.Y - ac->World.Y), dz = float(o->World.Z - ac->World.Z);
+	const float d = sqrtf(dx * dx + dy * dy + dz * dz); if (d < 1) return 0;
+	if (d > 400000.0f) return 5;
+	const COORDS3D& sun = mobileitem::currworld->sunpos;
+	const float sx = float(sun.X - ac->World.X), sy = float(sun.Y - ac->World.Y), sz = float(sun.Z - ac->World.Z);
+	const float sd = sqrtf(sx * sx + sy * sy + sz * sz);
+	if (sd > 1 && (dx * sx + dy * sy + dz * sz) / (d * sd) > 0.985f) return 4;
+	const float bx = (dx * fx + dy * fy + dz * fz), by = (dx * R1x + dy * R1y + dz * R1z), bz = (dx * U1x + dy * U1y + dz * U1z);
+	const float az = atan2f(by, bx) * 57.3f, el = atan2f(bz, sqrtf(bx * bx + by * by)) * 57.3f;
+	if (el < -20.0f) return 2;
+	if (fabsf(az) < 20.0f && el < -5.0f) return 1;
+	if (fabsf(az) > 155.0f && el < 15.0f) return 3;
+	return 0;
+}
+
+/* LOS-BFM-1 (item 48, PO 10-16 "BFM depends on line of sight - lose sight, lose the fight"): an AI fighter pilot whose
+   target stays out of sight (bdg_sight_zone != 0) longer than he can keep track of it from memory -- 3 s for a novice,
+   +1 s per 20 skill points (regular 7.5 s, ace 12 s; twice that for a bomber) -- loses it: Rowan's ArtInt::BreakOff (back to his waypoints, no
+   target), and he must spot it again through ArtInt::Seen like any other bandit. A target held under the nose inside
+   300 m (a tracking shot) is not lost. Sampled every 0.25 s. BOB_NO_SIGHT_LOSS=1 reverts; BOB_TRACE_SIGHT=1 traces. */
+static void bdg_sight_loss(MobileItemPtr list)
+{
+	static int on = -1, tr = 0; if (on < 0) { on = getenv("BOB_NO_SIGHT_LOSS") ? 0 : 1; tr = getenv("BOB_TRACE_SIGHT") ? 1 : 0; }
+	static long t = 0, tnext = 25, nlost = 0;
+	if (!on || (t += Timer_Code.FRAMETIME) < tnext) return;
+	tnext += 25;
+	enum { NS = 1024 };
+	static struct { unsigned id, uid; long unseen; } s[NS];
+	static struct { unsigned id; long t; } s_lost[NS];	/* trace: time each pilot lost his target */
+	if (tr) for (AirStrucPtr ac = AirStrucPtr(list); ac; ac = AirStrucPtr(ac->nextmobile)) {
+		auto& g = s_lost[(unsigned(ac->uniqueID.count) * 2654435761u >> 8) & (NS - 1)];
+		if (g.id == unsigned(ac->uniqueID.count) && g.t && ac->movecode == AUTO_COMBAT) {
+			fprintf(stderr, "[sightregain] id=%d back in combat after %.1fs\n", int(ac->uniqueID.count), (t - g.t) / 100.0); g.t = 0; } }
+	for (AirStrucPtr ac = AirStrucPtr(list); ac; ac = AirStrucPtr(ac->nextmobile))
+	{
+		if (ac->movecode != AUTO_COMBAT || ac->Status.deaded || ac == Persons2::PlayerSeenAC || ac == Persons2::PlayerGhostAC) continue;
+		const int vis = int(ac->classtype->visible);
+		if (vis != SPIT && vis != HURR && vis != ME109) continue;
+		if (!ac->ai.unfriendly || ac->ai.unfriendly->Status.size != AIRSTRUCSIZE) continue;
+		AirStrucPtr u = AirStrucPtr(ac->ai.unfriendly);
+		auto& e = s[(unsigned(ac->uniqueID.count) * 2654435761u >> 8) & (NS - 1)];
+		if (e.id != unsigned(ac->uniqueID.count) || e.uid != unsigned(u->uniqueID.count)) { e.id = ac->uniqueID.count; e.uid = u->uniqueID.count; e.unseen = 0; }
+		const int z = bdg_sight_zone(ac, u);
+		if (z == 0 || (z == 1 && ac->Distance3DSquared(&u->World) < 30000.0 * 30000.0)) { e.unseen = 0; continue; }
+		e.unseen += 25;
+		long limit = 300 + long(ac->ai.combatskill) * 5;
+		if (u->classtype->aerobaticfactor == AEROBATIC_LOW) limit *= 2;	/* a bomber formation is big and flies straight on */
+		if (e.unseen < limit) continue;
+		nlost++;
+		if (tr) fprintf(stderr, "[sightlost] t=%lds id=%d skill=%d target=%d zone=%d unseen=%.1fs range=%.0f m man=%d total=%ld\n", t / 100,
+			int(ac->uniqueID.count), int(ac->ai.combatskill), int(u->uniqueID.count), z, e.unseen / 100.0,
+			sqrt(ac->Distance3DSquared(&u->World)) / 100.0, int(ac->ai.manoeuvre), nlost);
+		e.unseen = 0;
+		Art_Int.BreakOff(ac);
+		if (tr) { auto& g = s_lost[(unsigned(ac->uniqueID.count) * 2654435761u >> 8) & (NS - 1)]; g.id = ac->uniqueID.count; g.t = t; }
+	}
+}
+
 void mobileitem::MoveAll(WorldStuff& world)
 {
 	for(AirStrucPtr ac = AirStrucPtr(ACList); ac; ac = AirStrucPtr(ac->nextmobile))
@@ -179,6 +248,7 @@ void mobileitem::MoveAll(WorldStuff& world)
 
 #if defined(BOB_LINUX)
 	{ extern long bdg_simtime_cs; bdg_simtime_cs += Timer_Code.FRAMETIME; }	/* sim clock for the per-pilot wander (ACMSIMPL.CPP) */
+	bdg_sight_loss(ACList);
 	{	/* LOS-BFM-1 (item 48, PO 10-16 "lose sight, lose the fight"): in combat Rowan's AI never loses its bandit
 		   (ArtInt::Seen runs only for pilots not yet in combat). Census, every 1 s, for single-seat fighters in AUTO_COMBAT:
 		   where in the pilot's own body frame (bank included) are (a) his target and (b) each enemy within 1.5 km that is
@@ -196,27 +266,10 @@ void mobileitem::MoveAll(WorldStuff& world)
 				if (ac->movecode != AUTO_COMBAT || ac->Status.deaded) continue;
 				const int vis = int(ac->classtype->visible);
 				if (vis != SPIT && vis != HURR && vis != ME109) continue;
-				const float h = float(UWord(ac->hdg)) * K, pt = float(SWord(ac->pitch)) * K, rl = float(SWord(ac->roll)) * K;
-				const float fx = sinf(h) * cosf(pt), fy = sinf(pt), fz = cosf(h) * cosf(pt);
-				const float rx = cosf(h), ry = 0, rz = -sinf(h);
-				const float ux = -sinf(h) * sinf(pt), uy = cosf(pt), uz = -cosf(h) * sinf(pt);
-				const float R1x = rx * cosf(rl) - ux * sinf(rl), R1y = ry * cosf(rl) - uy * sinf(rl), R1z = rz * cosf(rl) - uz * sinf(rl);
-				const float U1x = ux * cosf(rl) + rx * sinf(rl), U1y = uy * cosf(rl) + ry * sinf(rl), U1z = uz * cosf(rl) + rz * sinf(rl);
-				if (ac->fly.pModel && fabsf(rl) > 0.5f && fabsf(rl) < 1.4f) { const float dh = float(ac->fly.dhdg);
-					if (dh != 0) { if ((dh > 0) == (rl > 0)) rsame++; else ropp++; } }
-				auto zone = [&](AirStrucPtr o) -> int {
-					const float dx = float(o->World.X - ac->World.X), dy = float(o->World.Y - ac->World.Y), dz = float(o->World.Z - ac->World.Z);
-					const float d = sqrtf(dx * dx + dy * dy + dz * dz); if (d < 1) return 0;
-					if (d > 400000.0f) return 5;
-					const float sx = float(sun.X - ac->World.X), sy = float(sun.Y - ac->World.Y), sz = float(sun.Z - ac->World.Z);
-					const float sd = sqrtf(sx * sx + sy * sy + sz * sz);
-					if (sd > 1 && (dx * sx + dy * sy + dz * sz) / (d * sd) > 0.985f) return 4;	/* within 10 deg of the sun */
-					const float bx = (dx * fx + dy * fy + dz * fz), by = (dx * R1x + dy * R1y + dz * R1z), bz = (dx * U1x + dy * U1y + dz * U1z);
-					const float az = atan2f(by, bx) * 57.3f, el = atan2f(bz, sqrtf(bx * bx + by * by)) * 57.3f;
-					if (el < -20.0f) return 2;						/* under the belly / wings */
-					if (fabsf(az) < 20.0f && el < -5.0f) return 1;	/* under the nose */
-					if (fabsf(az) > 155.0f && el < 15.0f) return 3;	/* behind: armour, headrest, tail */
-					return 0; };
+				{ const float rl = float(SWord(ac->roll)) * K;
+				  if (ac->fly.pModel && fabsf(rl) > 0.5f && fabsf(rl) < 1.4f) { const float dh = float(ac->fly.dhdg);
+					if (dh != 0) { if ((dh > 0) == (rl > 0)) rsame++; else ropp++; } } }
+				auto zone = [&](AirStrucPtr o) -> int { return bdg_sight_zone(ac, o); };
 				AirStrucPtr u = (ac->ai.unfriendly && ac->ai.unfriendly->Status.size == AIRSTRUCSIZE) ? AirStrucPtr(ac->ai.unfriendly) : NULL;
 				if (u) cnt[0][zone(u)]++;
 				for (AirStrucPtr e = AirStrucPtr(ACList); e; e = AirStrucPtr(e->nextmobile))
