@@ -572,7 +572,7 @@ static void bdg_gunnerfix(MobileItemPtr entry)
    he unloads. A tired pilot has less stick force (slower, lazier rolls at speed) and pulls less sustained G, which an
    opponent can see and use. Roll capacity 1 = Rowan's maxrollrate, which a fresh pilot keeps up to k * (300 mph IAS)^2.
    Per-pilot endurance 0.8..1.25 (hash of the uid). BOB_NO_FATIGUE=1 reverts; BOB_TRACE_FATIGUE=1 traces every 2 s. */
-struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs, bo, pull, sax, say, saz; SWord ohdg; bool seen; };
+struct BdgPilot { unsigned id; float F, tiring, roll, tr; float vx, vy, vz, gs, gsus, bo, pull, sax, say, saz; SWord ohdg; bool seen; };
 static BdgPilot s_bdg_pil[2048];
 static BdgPilot* bdg_pil(AirStrucPtr a, bool create)
 {
@@ -581,7 +581,7 @@ static BdgPilot* bdg_pil(AirStrucPtr a, bool create)
 	if (p.id != id) {
 		if (!create) return 0;
 		unsigned h = id * 2246822519u; h ^= h >> 13;
-		p.id = id; p.F = 0; p.roll = 0; p.tr = 0; p.gs = 1.0f; p.bo = 0; p.pull = 1.0f; p.sax = 0; p.say = 9.80665f; p.saz = 0; p.seen = false; p.tiring = 0.8f + 0.45f * float(h & 1023) / 1023.0f;
+		p.id = id; p.F = 0; p.roll = 0; p.tr = 0; p.gs = 1.0f; p.gsus = 1.0f; p.bo = 0; p.pull = 1.0f; p.sax = 0; p.say = 9.80665f; p.saz = 0; p.seen = false; p.tiring = 0.8f + 0.45f * float(h & 1023) / 1023.0f;
 	}
 	return &p;
 }
@@ -622,8 +622,18 @@ float bdg_roll_capacity(AirStrucPtr a)	// share of Rowan's roll rate the pilot c
    Trained pilots hold the G just under their tolerance; novices (combatskill < REGULAR) snap it on past it. */
 static float bdg_g_tol(const BdgPilot& p) { return 5.4f - 0.8f * (p.tiring - 1.0f) - p.F; }
 static float bdg_g_lim(AirStrucPtr a, const BdgPilot& p) { return (p.bo > 0) ? 0.0f : bdg_g_tol(p) + ((a->ai.combatskill < SKILL_REGULAR) ? 1.5f : 0.0f); }
-float bdg_g_limit(AirStrucPtr a)	// sustained G this pilot will pull now; 0 = blacked out
-{ if (!bdg_fatigue_on()) return 99.0f; BdgPilot* p = bdg_pil(a, false); return !p || bdg_emergency(a, p) ? 99.0f : bdg_g_lim(a, *p); }
+/* Ported from MA (ma ae99259, PO 10-18): the tolerance above is for SUSTAINED G (blackout follows G held for some seconds;
+   the brain's oxygen reserve covers ~4-6 s). A pilot fresh in G may pull up to 1.5 G more for a short tracking pull; the
+   allowance shrinks as the ~5 s mean G builds. In MA, capping every instant at the sustained figure (and easing off on
+   measured-G spikes) halved the MiG's kills and took its slashing pass away. */
+static float bdg_g_inst(AirStrucPtr a, const BdgPilot& p)
+{
+	const float lim = bdg_g_lim(a, p); if (lim <= 1.0f) return lim;
+	float f = (lim - p.gsus) / (lim - 1.0f); if (f < 0) f = 0; if (f > 1) f = 1;
+	return lim + 1.5f * f;
+}
+float bdg_g_limit(AirStrucPtr a)	// G this pilot will pull now; 0 = blacked out
+{ if (!bdg_fatigue_on()) return 99.0f; BdgPilot* p = bdg_pil(a, false); return !p || bdg_emergency(a, p) ? 99.0f : bdg_g_inst(a, *p); }
 bool bdg_blacked_out(AirStrucPtr a) { if (!bdg_fatigue_on()) return false; BdgPilot* p = bdg_pil(a, false); return p && p->bo > 0; }
 float bdg_g_capacity(AirStrucPtr a)	// flight model: share of full pull, fed back from the felt G
 { if (!bdg_fatigue_on()) return 1.0f; BdgPilot* p = bdg_pil(a, false); return !p || bdg_emergency(a, p) ? 1.0f : (p->bo > 0) ? 0.0f : p->pull; }
@@ -744,10 +754,11 @@ void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = loa
 		p->vx = vx; p->vy = vy; p->vz = vz; p->seen = true;
 	}
 	float force = p->roll * bdg_roll_k(a) * q; if (force > 1.0f) force = 1.0f;	// share of his strength on the stick
-	if (path == 0) { const float lim = bdg_g_lim(a, *p); if (lim > 1.0f && g > lim) g = lim; }	// simple movecode: some manoeuvres set pitch and heading
+	if (path == 0) { const float lim = bdg_g_inst(a, *p); if (lim > 1.0f && g > lim) g = lim; }	// simple movecode: some manoeuvres set pitch and heading
 		// directly, past any physical rate -- that excess is the model's, not the pilot's; he flies at most at his limit
 	const float graw = g;
-	p->gs += (g - p->gs) * (dt < 1.0f ? dt : 1.0f);	// sustained G: 1 s average
+	p->gs += (g - p->gs) * (dt < 1.0f ? dt : 1.0f);	// felt G: 1 s average
+	p->gsus += (graw - p->gsus) * (dt < 5.0f ? dt / 5.0f : 1.0f);	// sustained G: ~5 s mean (blackout, ease-off)
 	g = p->gs;
 	float ge = (g - 2.5f) / 2.5f; if (ge < 0) ge = 0;	// 1940: no G suit, no straining drill (Shaw p.377 is the trained modern pilot)
 	float d = (ge * ge / 40.0f + force * 0.006f) * p->tiring;	// roll term light: the simple movecode always rolls at full rate
@@ -755,18 +766,19 @@ void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = loa
 	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_FATIGUE") ? 1 : 0;
 	const float tol = bdg_g_tol(*p);
 	if (p->bo > 0) { if ((p->bo -= dt) <= 0 && tr) fprintf(stderr, "[fatigue] id=%u comes round\n", p->id); }
-	else if (path == 1 && g > tol + 0.7f && !bdg_emergency(a, p)) {	// blackout on the flight model only, where the G is physical
+	else if (path == 1 && p->gsus > tol + 0.7f && !bdg_emergency(a, p)) {	// blackout on the flight model only, where the G is physical
 		p->bo = 3.0f + 3.0f * p->F;
 		if (tr) fprintf(stderr, "[fatigue] id=%u shape=%d BLACKOUT g=%.2f tol=%.2f skill=%d F=%.2f for %.1f s\n", p->id, int(a->classtype->visible), g, tol, int(a->ai.combatskill), p->F, p->bo);
 	}
 	if (path == 1 && !bdg_emergency(a, p)) {	// he feels the grey-out coming and eases the pull, in proportion to the overshoot
-		const float over = graw - (bdg_g_lim(a, *p) - ((a->ai.combatskill < SKILL_REGULAR) ? 0.0f : 0.3f));
-		p->pull += (over > 0) ? -(1.0f + 2.0f * over) * dt : 0.3f * dt; if (p->pull < 0.1f) p->pull = 0.1f; if (p->pull > 1.0f) p->pull = 1.0f; }
+		const float o1 = p->gsus - (bdg_g_lim(a, *p) - ((a->ai.combatskill < SKILL_REGULAR) ? 0.0f : 0.3f)), o2 = p->gs - bdg_g_inst(a, *p);
+		const float over = (o1 > o2) ? o1 : o2;
+		p->pull += (over > 0) ? -(1.0f + 2.0f * over) * dt : 1.0f * dt; if (p->pull < 0.1f) p->pull = 0.1f; if (p->pull > 1.0f) p->pull = 1.0f; }
 	p->F += d * dt; if (p->F < 0) p->F = 0; if (p->F > 1) p->F = 1;
 	if (tr && (p->tr += dt) >= 2.0f) {
 		p->tr = 0;
-		fprintf(stderr, "[fatigue] id=%u shape=%d path=%d mc=%d g=%.2f ias=%.0f roll=%.2f force=%.2f F=%.3f rollcap=%.2f gcap=%.2f glim=%.1f\n", p->id,
-		        int(a->classtype->visible), path, int(a->movecode), g, 300.0 * sqrt(q), p->roll, force, p->F, bdg_roll_capacity(a), bdg_g_capacity(a), bdg_g_limit(a));
+		fprintf(stderr, "[fatigue] id=%u shape=%d path=%d mc=%d g=%.2f ias=%.0f roll=%.2f force=%.2f F=%.3f rollcap=%.2f gcap=%.2f glim=%.1f gsus=%.2f\n", p->id,
+		        int(a->classtype->visible), path, int(a->movecode), g, 300.0 * sqrt(q), p->roll, force, p->F, bdg_roll_capacity(a), bdg_g_capacity(a), bdg_g_limit(a), p->gsus);
 	}
 	if (a->movecode == AUTO_COMBAT) bdg_tom_tick(a, p, dt, g);
 	p->ohdg = SWord(a->hdg);
