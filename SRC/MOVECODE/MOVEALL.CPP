@@ -802,7 +802,7 @@ static const char* const s_shaw_esec[] = { "-", "alone", "welded", "mutual-suppo
 static const char* const s_shaw_epost[] = { "-", "offensive", "energy", "angles", "extending", "neutral" };
 struct BdgShawRec { unsigned char mine, theirs, size, dissimilar, section, post[2], role[2], energy, pos, esec, epost, plan; };
 static bool operator==(const BdgShawRec& a, const BdgShawRec& b) { return !memcmp(&a, &b, sizeof a); }
-struct BdgShaw { unsigned id; float next; BdgShawRec rec, cand; unsigned bid; float bt, brange, bv[3]; };	// b*: the bandit as last seen
+struct BdgShaw { unsigned id; float next; BdgShawRec rec, cand; unsigned bid; float bt, brange, bv[3];  float steer_at;};	// b*: the bandit as last seen
 static BdgShaw s_bdg_shaw[1024];
 static float s_shaw_t;				// sim seconds, advanced by one owning aircraft (re-elected when it stops ticking)
 static unsigned s_shaw_owner, s_shaw_orphan;
@@ -922,6 +922,35 @@ static BdgShawRec bdg_shaw_assess(AirStrucPtr L, AirStrucPtr W, BdgShaw& s)
 	else r.plan = PL_PRESS;
 	return r;
 }
+/* SHAW-TACTIC-1 (57) steering (PO 10-20: the plan may steer hero pilots' flying; port of ma). Only the FREE member is
+   moved, and only onto a bandit: an engaged fighter is never pulled off his fight, so Rowan's manoeuvres are
+   untouched. free-attack: the free fighter attacks the bandit seen on the defensive member's tail (p.213); two-v-one:
+   the free fighter takes the engaged member's bandit (p.241). Through Rowan's SetEngage, which also hands the decision
+   to the multiplayer owner. BOB_NO_SHAW_STEER=1 keeps the record read-only; BOB_TRACE_SHAW=1 logs each steer. */
+static bool bdg_shaw_steer_on() { static int on = -1; if (on < 0) on = getenv("BOB_NO_SHAW_STEER") ? 0 : 1; return on != 0; }
+static void bdg_shaw_steer(AirStrucPtr L, AirStrucPtr W, const BdgShawRec& r, float& steer_at)
+{
+	if (s_shaw_t - steer_at < 30.0f) return;	// once per 30 s: Rowan takes the target back, and each SetEngage restarts his manoeuvre
+	if (!bdg_shaw_steer_on() || !W || W->Status.size != AIRSTRUCSIZE || (r.plan != PL_FREEATTACK && r.plan != PL_TWOVONE)) return;
+	AirStrucPtr F, E;
+	if (r.role[0] == RO_FREE && r.role[1] == RO_ENGAGED) { F = L; E = W; }
+	else if (r.role[1] == RO_FREE && r.role[0] == RO_ENGAGED) { F = W; E = L; }
+	else return;
+	AirStrucPtr t = 0;
+	if (r.plan == PL_TWOVONE) t = bdg_shaw_bandit(E);
+	else {
+		float dmin = 1e9f;
+		for (AirStrucPtr ac = AirStrucPtr(mobileitem::GetACList()); ac; ac = AirStrucPtr(ac->nextmobile)) {
+			if (ac->nationality != E->nationality && bdg_shaw_live(ac) && bdg_shaw_on_tail(ac, E)) { const float d = bdg_shaw_rng(ac, E); if (d < dmin) { dmin = d; t = ac; } }
+		}
+	}
+	if (!t || !bdg_shaw_live(t) || bdg_shaw_bandit(F) == t) return;
+	Art_Int.SetEngage(F, t, MANOEUVRE_SELECT, ANGLES_0Deg, ANGLES_0Deg, false);
+	steer_at = s_shaw_t;
+	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_SHAW") ? 1 : 0;
+	if (tr) fprintf(stderr, "[shaws] t=%.0f %s: free %u -> bandit %u (engaged %u)\n", double(s_shaw_t), s_shaw_plan[r.plan],
+	                unsigned(F->uniqueID.count), unsigned(t->uniqueID.count), unsigned(E->uniqueID.count));
+}
 static void bdg_shaw_tick(AirStrucPtr a, float dt)
 {
 	if (!bdg_shaw_on() || !bdg_shaw_live(a)) return;
@@ -931,14 +960,16 @@ static void bdg_shaw_tick(AirStrucPtr a, float dt)
 	if (!getenv("BOB_AI_PILOT") && (a->InPlayersElement() || a->PlayerInFlight())) return;
 	const unsigned id = a->uniqueID.count;
 	BdgShaw& s = s_bdg_shaw[((id * 2654435761u) >> 9) & 1023];
-	if (s.id != id) { s.id = id; s.next = 0; memset(&s.rec, 0, sizeof s.rec); s.cand = s.rec; }
+	if (s.id != id) { s.id = id; s.next = 0; memset(&s.rec, 0, sizeof s.rec); s.cand = s.rec; s.steer_at = -1e9f; }
 	if (s_shaw_t < s.next) return;
 	s.next = s_shaw_t + 2.0f;
 	AirStrucPtr W = a->Follower();
 	const BdgShawRec v = bdg_shaw_assess(a, (W && W->Status.size == AIRSTRUCSIZE) ? W : AirStrucPtr(0), s);
-	if (v == s.rec) { s.cand = v; return; }
-	if (!(v == s.cand)) { s.cand = v; return; }				// hysteresis: two assessments 2 s apart must agree
-	s.rec = v;
+	const bool changed = !(v == s.rec) && v == s.cand;			// hysteresis: two assessments 2 s apart must agree
+	s.cand = v;
+	if (changed) s.rec = v;
+	bdg_shaw_steer(a, (W && W->Status.size == AIRSTRUCSIZE) ? W : AirStrucPtr(0), s.rec, s.steer_at);
+	if (!changed) return;
 	AirStrucPtr b = bdg_shaw_bandit(a); const bool w = W && W->Status.size == AIRSTRUCSIZE;
 	char txt[320];
 	snprintf(txt, sizeof txt, "Shaw: %s (%dv%d)%s; %s; lead %s/%s man%d; wing %d %s/%s man%d; energy %s; %s; enemy %s/%s; plan %s",
