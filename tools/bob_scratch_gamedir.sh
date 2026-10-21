@@ -60,5 +60,8 @@ done
 for w in VIDEOS; do
   if [ -e "$REAL/$w" ]; then rm -rf "$SCRATCH/$w"; cp -a "$REAL/$w" "$SCRATCH/$w"; fi
 done
+# acmi_current.txt is written fresh by every flight (compat/bob_acmi.cpp, relative to the game dir): a link here made
+# every scratch run write the PLAYER's file, and parallel runs interleave into one corrupt track (57 census, 10-21).
+rm -f "$SCRATCH/acmi_current.txt"
 [ -d "$SCRATCH/SAVEGAME" ] || { echo "scratch build FAILED: no SAVEGAME copy" >&2; exit 1; }
 echo "scratch game dir: $SCRATCH  ($n linked, SAVEGAME copied$([ -d "$SCRATCH/VIDEOS" ] && echo ', VIDEOS real'))"
