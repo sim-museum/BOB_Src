@@ -705,6 +705,9 @@ BOOL CMIGApp::InitInstance()
 			   the player choose. BOB_QM_SIDE=0|1 overrides the table's side so the scaffold can
 			   fly what the PO flew. */
 			if (getenv("BOB_QM_SIDE")) q.plside = atoi(getenv("BOB_QM_SIDE")) ? 1 : 0;
+			/* 40a test hook: BOB_QM_TARGET=<uid, e.g. 0x3375> picks the take-off quick mission's airfield, as the setup
+			   screen's airfield combo does, so the BDG pen start can be checked at every field */
+			if (getenv("BOB_QM_TARGET")) q.target = (UniqueID)strtol(getenv("BOB_QM_TARGET"), 0, 0);
 			/* GOLDMATCH-BOB-3 S3: the setup screen also sets TIME and WEATHER, and S2 measured our
 			   lit scene at ~half the gold's luminance with unlit UI identical. Print what the scaffold
 			   flies, and let a run override it so time can be swept against the gold. */
