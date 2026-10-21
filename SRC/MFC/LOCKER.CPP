@@ -397,6 +397,10 @@ void CLockerRoom::UpDateDPlay()
 		strncpy(_DPlay.Password,buffer,10);
 		_DPlay.Password[10]='\0';
 	}
+#if defined(BOB_LINUX)
+	/* 55 test hook: BOB_MP_PASSWORD stands in for the password typed into this field (two-instance harness) */
+	if (getenv("BOB_MP_PASSWORD")) { strncpy(_DPlay.Password,getenv("BOB_MP_PASSWORD"),10); _DPlay.Password[10]='\0'; }
+#endif
 
 //		strcpy(_DPlay.Password,buffer);
 

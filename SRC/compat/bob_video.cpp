@@ -2057,10 +2057,11 @@ extern "C" void bob_gdi_present(void) {
 	                                              (before the window check, so it works headless) */
 		int nz=0; for (size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++) if (g_gdiFB[i]&0xFFFFFF) nz++;
 		char gpath[512]; { const char* home=getenv("HOME"); snprintf(gpath,sizeof gpath,"%s/bob-gates/gdi/bobgdi.ppm", (home&&*home)?home:"."); }   /* R20 S5: never /tmp */
-		int fd=::open(gpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
+		char gtmp[540]; snprintf(gtmp,sizeof gtmp,"%s.tmp",gpath);	/* write then rename: a run killed mid-write keeps the last whole frame */
+		int fd=::open(gtmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
 		if(fd>=0){ char h[64]; int n=snprintf(h,sizeof(h),"P6\n%d %d\n255\n",g_gdiW,g_gdiH); if(write(fd,h,n)<0){}
 			for(size_t i=0;i<(size_t)g_gdiW*g_gdiH;i++){ unsigned p=g_gdiFB[i]; unsigned char rgb[3]={(unsigned char)(p>>16),(unsigned char)(p>>8),(unsigned char)p}; if(write(fd,rgb,3)<0){} }
-			close(fd); fprintf(stderr,"[gdi] framebuffer %dx%d nonblack=%d/%lu -> %s\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH),gpath); }
+			close(fd); rename(gtmp,gpath); fprintf(stderr,"[gdi] framebuffer %dx%d nonblack=%d/%lu -> %s\n",g_gdiW,g_gdiH,nz,(unsigned long)((size_t)g_gdiW*g_gdiH),gpath); }
 	}
 	if (!g_win || !g_gdiFB) return;
 	gl_bind_thread();

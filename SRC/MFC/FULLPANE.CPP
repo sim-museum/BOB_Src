@@ -1589,8 +1589,13 @@ Bool RFullPanelDial::CreatePlayer(FullScreen*&fs)
 				if (res==(ULong)0x88770118)	/* MP S11: timeout, not a wrong password */
 					RMessageBox(IDS_BOB,IDS_NOTCONTACTHOST,NULL,IDS_OK);
 				else
+				{
+					if (getenv("BOB_TRACE_DPLAY")) { fprintf(stderr,"[mp] join refused: the host's game is locked -> Incorrect password box (res=0x%lx)\n",(unsigned long)res); fflush(stderr); }
 #endif
 				RMessageBox(IDS_BOB,IDS_INCORRECTPASSWORD,NULL,IDS_OK);
+#if defined(BOB_LINUX)
+				}
+#endif
 			}
 		}
 //		else
