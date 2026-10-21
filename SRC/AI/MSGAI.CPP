@@ -2897,6 +2897,13 @@ MANOEUVRE ArtInt::ChooseEvasiveManoeuvre(AirStrucPtr trg, AirStrucPtr agg)
 		||	(trg->ai.manoeuvre == MANOEUVRE_STRAIGHTDIVE)	)
 		return(trg->ai.manoeuvre);
 
+#if defined(BOB_LINUX)
+	{	/* SHAW-BFM-1 (PO 10-21): a hero pilot shot at by a fighter defends as Shaw says (MOVEALL.CPP bdg_shaw_bfm) */
+		extern int bdg_shaw_bfm(AirStrucPtr, AirStrucPtr, bool);
+		const int sm = bdg_shaw_bfm(trg, agg, true);
+		if (sm >= 0) return MANOEUVRE(sm);
+	}
+#endif
 	if(trg->ai.combatskill < 30)
 		return(trg->ai.manoeuvre);
 

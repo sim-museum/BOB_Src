@@ -929,7 +929,8 @@ static BdgShawRec bdg_shaw_assess(AirStrucPtr L, AirStrucPtr W, BdgShaw& s)
    to the multiplayer owner. OPT-IN: BOB_SHAW_STEER=1 (census 10-20, BoB
    hero QMs: QM 20 losses unchanged, QM 13 RAF losses 0 -> 3); without it the record stays read-only.
    BOB_TRACE_SHAW=1 logs each steer. */
-static bool bdg_shaw_steer_on() { static int on = -1; if (on < 0) on = getenv("BOB_SHAW_STEER") ? 1 : 0; return on != 0; }
+static bool bdg_shaw_steer_on() { static int on = -1; if (on < 0) { const char* e = getenv("BOB_SHAW_STEER"); on = e ? (atoi(e) != 0) : 1; } return on != 0; }
+static bool bdg_shaw_side(AirStrucPtr a);
 static void bdg_shaw_steer(AirStrucPtr L, AirStrucPtr W, const BdgShawRec& r, float& steer_at)
 {
 	if (s_shaw_t - steer_at < 30.0f) return;	// once per 30 s: Rowan takes the target back, and each SetEngage restarts his manoeuvre
@@ -946,12 +947,95 @@ static void bdg_shaw_steer(AirStrucPtr L, AirStrucPtr W, const BdgShawRec& r, fl
 			if (ac->nationality != E->nationality && bdg_shaw_live(ac) && bdg_shaw_on_tail(ac, E)) { const float d = bdg_shaw_rng(ac, E); if (d < dmin) { dmin = d; t = ac; } }
 		}
 	}
-	if (!t || !bdg_shaw_live(t) || bdg_shaw_bandit(F) == t) return;
+	if (!t || !bdg_shaw_live(t) || bdg_shaw_bandit(F) == t || !bdg_shaw_side(F)) return;
 	Art_Int.SetEngage(F, t, MANOEUVRE_SELECT, ANGLES_0Deg, ANGLES_0Deg, false);
 	steer_at = s_shaw_t;
 	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_SHAW") ? 1 : 0;
 	if (tr) fprintf(stderr, "[shaws] t=%.0f %s: free %u -> bandit %u (engaged %u)\n", double(s_shaw_t), s_shaw_plan[r.plan],
 	                unsigned(F->uniqueID.count), unsigned(t->uniqueID.count), unsigned(E->uniqueID.count));
+}
+/* SHAW-BFM-1 (PO 10-21: "use shaw, not rowan, for hero pilots"): a hero pilot's next manoeuvre against a fighter is
+   chosen here from Shaw's 1v1 geometry, and Rowan's code only flies it (ACMMAN SelectNextEngageManoeuvre, and MSGAI
+   ChooseEvasiveManoeuvre when he is shot at). Rowan keeps the decisions that are not BFM: going home, disengaging on
+   fuel/ammo/morale, bomber attacks. Posture (Shaw ch.2): DEFENSIVE = the bandit's nose within 30 deg of me and he is
+   behind my 3/9 line, inside 1.5 km; OFFENSIVE = my nose within 60 deg of him and I am within 60 deg of his tail,
+   inside 3 km; HEAD-ON = both noses within 30 deg, closing, inside 2 km; else NEUTRAL. Head-on: the angles fighter
+   takes the gun pass and the energy fighter zooms (census 10-21, QM 13 x 8 starts: a lead turn or a jink at the
+   merge gave up the Spitfire's shot -- 109 kills per run 2.9 -> 1.25). Defensive: guns defence (out-of-plane jink)
+   when he is inside 800 m with his nose on; an extension (half-roll and dive) only for the energy fighter out of guns range and not slower (p.97); otherwise break
+   into him, which also forces his overshoot (p.86). Offensive: in range and nose on, track (lead pursuit); closing fast
+   with angle-off, lag pursuit so as not to overshoot (p.27, the yo-yo's purpose); the energy fighter with height
+   makes a slashing pass and zooms (ch.4); else lead pursuit to close. Neutral: close after an overshoot, reverse into
+   him (p.92); the energy fighter goes vertical or rebuilds energy and never turns with the angles fighter (ch.4);
+   the angles fighter turns. Outnumbered (plan singleton, ch.7): no sustained turning -- a slashing attack, else extend.
+   Angles/energy fighter (ch.4): Spitfire/Hurricane are the angles fighters against Bf 109/110; similar types fight
+   angles unless one has a 300 m energy-height margin. BOB_NO_SHAW_BFM=1 hands the choice back to Rowan;
+   BOB_TRACE_SHAW=1 logs each choice ([shawm]). Returns -1 for "Rowan decides". */
+static bool bdg_shaw_bfm_on() { static int on = -1; if (on < 0) on = getenv("BOB_NO_SHAW_BFM") ? 0 : 1; return on != 0; }
+static bool bdg_shaw_side(AirStrucPtr a)	// test hook BOB_SHAW_NAT=1|2 (RAF|Luftwaffe): only that side flies Shaw, the other Rowan
+{
+	static int nat = -2; if (nat == -2) nat = getenv("BOB_SHAW_NAT") ? atoi(getenv("BOB_SHAW_NAT")) : -1;
+	return nat < 0 || int(a->nationality) == nat;
+}
+static int bdg_shaw_style(AirStrucPtr m, AirStrucPtr b)	// +1 energy fighter, -1 angles fighter, 0 similar
+{
+	const int mt = m->fly.pModel->Type, bt = b->fly.pModel->Type;
+	const bool mE = mt == AT_BF109 || mt == AT_BF110, bE = bt == AT_BF109 || bt == AT_BF110;
+	const bool mA = mt == AT_SPITFIRE || mt == AT_HURRICANE, bA = bt == AT_SPITFIRE || bt == AT_HURRICANE;
+	return (mE && bA) ? 1 : (mA && bE) ? -1 : 0;
+}
+int bdg_shaw_bfm(AirStrucPtr m, AirStrucPtr b, bool shot)
+{
+	if (!bdg_shaw_on() || !bdg_shaw_bfm_on() || !m || !b || m->ai.combatskill < SKILL_HERO || !bdg_shaw_live(m) || !bdg_shaw_live(b)
+	    || !m->fly.pModel || !b->fly.pModel || b->classtype->aerobaticfactor == AEROBATIC_LOW || !bdg_shaw_side(m)) return -1;
+	const float dx = float(b->World.X - m->World.X) * 0.01f, dy = float(b->World.Y - m->World.Y) * 0.01f, dz = float(b->World.Z - m->World.Z) * 0.01f;
+	const float R = sqrtf(dx * dx + dy * dy + dz * dz) + 0.1f;
+	const float mx = float(m->vel_x) * 1e-4f, my = float(m->vel_y) * 1e-4f, mz = float(m->vel_z) * 1e-4f;
+	const float bx = float(b->vel_x) * 1e-4f, by = float(b->vel_y) * 1e-4f, bz = float(b->vel_z) * 1e-4f;
+	const float vm = sqrtf(mx * mx + my * my + mz * mz) + 0.1f, vb = sqrtf(bx * bx + by * by + bz * bz) + 0.1f;
+	const float ata = (dx * mx + dy * my + dz * mz) / (R * vm);		// cos of my nose to him
+	const float bata = -(dx * bx + dy * by + dz * bz) / (R * vb);		// cos of his nose to me
+	const float tail = (dx * bx + dy * by + dz * bz) / (R * vb);		// cos of my angle off his tail (1 = dead astern)
+	const float vc = ((mx - bx) * dx + (my - by) * dy + (mz - bz) * dz) / R;	// closure, m/s
+	const float dE = bdg_shaw_es(m) - bdg_shaw_es(b);
+	const int style0 = bdg_shaw_style(m, b), style = style0 ? style0 : (dE > 300.0f ? 1 : -1);
+	const AirStrucPtr L = m->leader ? AirStrucPtr(m->leader) : m;
+	const BdgShaw& s = s_bdg_shaw[((L->uniqueID.count * 2654435761u) >> 9) & 1023];
+	const bool alone = s.id == L->uniqueID.count && s.rec.plan == PL_SINGLETON;
+	const char* post; int man;
+	if (bata > 0.866f && ata > 0.866f && R < 2000.0f && vc > 0.0f) {
+		post = "head-on";			// guns head-on pass: the angles fighter takes the shot (Spitfire/Hurricane batteries win it here,
+		man = (style > 0) ? MANOEUVRE_ZOOM : MANOEUVRE_TURNINGFIGHT;	// census 10-21); the energy fighter zooms through it
+	} else if (bata > 0.866f && ata < 0.0f && R < 1500.0f) {
+		post = "defensive";
+		if (R < 800.0f && bata > 0.94f)										man = (vm > 100.0f) ? MANOEUVRE_HIGBARRELROLL : MANOEUVRE_JINK;
+		else if (style > 0 && R > 900.0f && vm >= vb && !shot)				man = MANOEUVRE_SPLITS;
+		else																man = MANOEUVRE_BREAKTURN;
+	} else if (ata > 0.5f && tail > 0.5f && R < 3000.0f) {
+		post = "offensive";
+		if (R < 400.0f && ata > 0.94f)										man = MANOEUVRE_TURNINGFIGHT;
+		else if (alone)														man = MANOEUVRE_SLASHINGATTACK;
+		else if (R < 800.0f && vc > 40.0f && tail < 0.87f)					man = MANOEUVRE_LAGPURSUIT;
+		else if (style > 0 && dE >= 0.0f)									man = MANOEUVRE_DIVEANDZOOM;
+		else																man = MANOEUVRE_TURNINGFIGHT;
+	} else {
+		post = "neutral";
+		if (R < 400.0f && vc < 0.0f && ata > 0.0f)							man = (style > 0) ? MANOEUVRE_ZOOM : MANOEUVRE_REVERSETURN;
+		else if (alone)														man = (dE > 300.0f) ? MANOEUVRE_DIVEANDZOOM : MANOEUVRE_EXTENSION;
+		else if (style > 0)
+		{
+			if (dE >= 300.0f)												man = MANOEUVRE_DIVEANDZOOM;
+			else if (vm > 1.5f * vb || (vm > 120.0f && R < 1500.0f))		man = MANOEUVRE_ZOOM;
+			else															man = MANOEUVRE_GAINSPEED;
+		}
+		else																man = MANOEUVRE_TURNINGFIGHT;
+	}
+	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_SHAW") ? 1 : 0;
+	if (tr) fprintf(stderr, "[shawm] t=%.0f id=%u v %u %s%s%s R=%.0f ata=%.0f bata=%.0f tail=%.0f vc=%.0f dE=%.0f %s -> man%d\n", double(s_shaw_t),
+	                unsigned(m->uniqueID.count), unsigned(b->uniqueID.count), post, alone ? " alone" : "", shot ? " shot" : "", double(R),
+	                double(acosf(fmaxf(-1.f, fminf(1.f, ata))) * 57.3f), double(acosf(fmaxf(-1.f, fminf(1.f, bata))) * 57.3f),
+	                double(acosf(fmaxf(-1.f, fminf(1.f, tail))) * 57.3f), double(vc), double(dE), style > 0 ? "energy" : "angles", man);
+	return man;
 }
 static void bdg_shaw_tick(AirStrucPtr a, float dt)
 {

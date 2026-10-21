@@ -1213,6 +1213,13 @@ void ACMAirStruc::SelectNextEngageManoeuvre()
 		return;
 	}
 
+#if defined(BOB_LINUX)
+	{	/* SHAW-BFM-1 (PO 10-21): a hero pilot's manoeuvre against a fighter is Shaw's (MOVEALL.CPP bdg_shaw_bfm); Rowan flies it */
+		extern int bdg_shaw_bfm(AirStrucPtr, AirStrucPtr, bool);
+		const int sm = bdg_shaw_bfm(this, unf, false);
+		if (sm >= 0) { ai.manoeuvre = MANOEUVRE(sm); return; }
+	}
+#endif
 	bool choosegood = false;
 	bool choosebad  = false;
 
