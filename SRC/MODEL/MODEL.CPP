@@ -3030,6 +3030,18 @@ void	Model::HandleHead(SLong	flags, SLong frameTime, SWord& eyeDeltaX)	//RJS 12O
 		desdelta = -MaxHeadX;
 	else if(flags == ZR_HeadRight)
 		desdelta = MaxHeadX;
+#if BOB_LINUX
+	/* 40f-2, BDG 0.99 bob.exe 0x50f90e: lean state 0x45 = behind the gunsight, eye +3 (settles at +2); with bdg.txt
+	   ALWAYS_BEHIND_GUNSIGHT=ON the Bf 109's centre view is there too (=OFF: the historical off-centre Revi) */
+	else if(flags == 0x45)
+		desdelta = 3;
+	else if(Type == AT_BF109)
+	{
+		extern int rowan_bdg_int(const char*, int);
+		static int abg = -1; if (abg < 0) abg = rowan_bdg_int("ALWAYS_BEHIND_GUNSIGHT", 0);
+		if (abg) desdelta = 3;
+	}
+#endif
 
 	stretchyNeck = (stretchyNeck + desdelta) / 2;
 	eyeDeltaX = stretchyNeck;

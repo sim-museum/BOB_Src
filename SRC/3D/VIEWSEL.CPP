@@ -2361,7 +2361,12 @@ void ViewPoint::ControlViewSelect()
 
 	Bool quickviewselected=FALSE;
 
-	if (!deathview && viewkeysallowed && !_Analogue.usingMouseToPan && !eyeDeltaX
+	if (!deathview && viewkeysallowed && !_Analogue.usingMouseToPan
+#if BOB_LINUX
+		&& eyeDeltaX >= -3 && eyeDeltaX <= 3		/* 40f-2: an eye behind the 109's Revi (+2) still counts as centre */
+#else
+		&& !eyeDeltaX
+#endif
 		&& !flybytimeleft	)									//RJS 25Sep100
 	{
 		for (Quick_ViewP ptr3=quickview_list;ptr3->viewcode;ptr3++)
@@ -2387,20 +2392,38 @@ void ViewPoint::ControlViewSelect()
 		static int s_sticky = -1; if (s_sticky < 0) s_sticky = getenv("BOB_NO_BDG_STICKYLEAN") ? 0 : 1;
 		if (s_sticky)
 		{
-			static int s_lean = 0;					/* 0 centre, 1 left, 2 right */
+			/* 40f-2 (PO 10-20), decoded from BDG 0.99 bob.exe 0x46db8e..0x46dc84: BDG's lean state -- 0 centre,
+			   ZR_HeadLeft, ZR_HeadRight, or 0x45 "behind the gunsight" (Model::HandleHead: eye +3). Other aircraft:
+			   either key from a lean returns to the centre. Bf 109 with bdg.txt ALWAYS_BEHIND_GUNSIGHT=ON: the centre
+			   view is already behind the Revi; from a lean either key comes back behind the sight. =OFF, the historical
+			   off-centre Revi: W once = behind the sight, W again = lean right; Q from behind the sight = centre. */
+			const int L = ZR_HeadLeft, R = ZR_HeadRight, S = 0x45;
+			extern int rowan_bdg_int(const char*, int);
+			static int s_abg = -1; if (s_abg < 0) s_abg = rowan_bdg_int("ALWAYS_BEHIND_GUNSIGHT", 0);
+			const bool is109 = Persons2::PlayerSeenAC && Persons2::PlayerSeenAC->fly.pModel && Persons2::PlayerSeenAC->fly.pModel->Type == AT_BF109;
+			static int s_lean = 0;
 			static bool s_prevL = false, s_prevR = false;
 			bool l = Key_Tests.KeyHeld3d(HEADOUTVIEWL) != 0, r = Key_Tests.KeyHeld3d(HEADOUTVIEWR) != 0;
-			if (l && !s_prevL) s_lean = (s_lean == 1) ? 0 : 1;
-			if (r && !s_prevR) s_lean = (s_lean == 2) ? 0 : 2;
+			static const char* s_keys = getenv("BOB_LEAN_KEYS");	/* test hook: one Q/W press per 100 cockpit frames, e.g. "WWQ" */
+			static int s_kf = 0;
+			if (s_keys && *s_keys && ++s_kf % 100 == 0) { if (*s_keys == 'Q') l = true; else if (*s_keys == 'W') r = true; s_keys++; }
+			if (l && !s_prevL)
+				s_lean = !is109 ? ((s_lean == L || s_lean == R) ? 0 : L) : s_abg ? ((s_lean == L || s_lean == R) ? S : L)
+				       : (s_lean == L || s_lean == S) ? 0 : (s_lean == R) ? S : L;
+			if (r && !s_prevR)
+				s_lean = !is109 ? ((s_lean == L || s_lean == R) ? 0 : R) : s_abg ? ((s_lean == L || s_lean == R) ? S : R)
+				       : (s_lean == L) ? 0 : (s_lean == S) ? R : S;
 			if ((l && !s_prevL) || (r && !s_prevR))
-				if (getenv("BOB_TRACE_LEAN")) fprintf(stderr, "[lean] %s\n", s_lean == 1 ? "left" : s_lean == 2 ? "right" : "centre");
+				if (getenv("BOB_TRACE_LEAN")) fprintf(stderr, "[lean] %s\n", s_lean == L ? "left" : s_lean == R ? "right" : s_lean == S ? "behind-sight" : "centre");
 			s_prevL = l; s_prevR = r;
-			{ static int s_f = 0; if (getenv("BOB_TRACE_LEAN") && !(s_f++ % 60)) fprintf(stderr, "[lean] state=%d eyeDeltaX=%d\n", s_lean, int(eyeDeltaX)); }
+			{ static int s_f = 0; if (getenv("BOB_TRACE_LEAN") && !(s_f++ % 60)) fprintf(stderr, "[lean] state=0x%x eyeDeltaX=%d bf109=%d always_behind=%d\n", s_lean, int(eyeDeltaX), is109 ? 1 : 0, s_abg); }
 			if (s_lean)
 			{
-				HandleHead(s_lean == 1 ? ZR_HeadLeft : ZR_HeadRight);
+				HandleHead(ZmRtFlags(s_lean));
 				headmoved = true;
 			}
+			else if (is109 && s_abg)
+				HandleHead(ZR_NULL);			/* BDG calls it every centre frame: Model::HandleHead puts the eye behind the Revi */
 			if (Key_Tests.KeyHeld3d(FLOORVIEW))
 			{
 				HandleHead(ZR_HeadDown);
