@@ -926,8 +926,10 @@ static BdgShawRec bdg_shaw_assess(AirStrucPtr L, AirStrucPtr W, BdgShaw& s)
    moved, and only onto a bandit: an engaged fighter is never pulled off his fight, so Rowan's manoeuvres are
    untouched. free-attack: the free fighter attacks the bandit seen on the defensive member's tail (p.213); two-v-one:
    the free fighter takes the engaged member's bandit (p.241). Through Rowan's SetEngage, which also hands the decision
-   to the multiplayer owner. BOB_NO_SHAW_STEER=1 keeps the record read-only; BOB_TRACE_SHAW=1 logs each steer. */
-static bool bdg_shaw_steer_on() { static int on = -1; if (on < 0) on = getenv("BOB_NO_SHAW_STEER") ? 0 : 1; return on != 0; }
+   to the multiplayer owner. OPT-IN: BOB_SHAW_STEER=1 (census 10-20, BoB
+   hero QMs: QM 20 losses unchanged, QM 13 RAF losses 0 -> 3); without it the record stays read-only.
+   BOB_TRACE_SHAW=1 logs each steer. */
+static bool bdg_shaw_steer_on() { static int on = -1; if (on < 0) on = getenv("BOB_SHAW_STEER") ? 1 : 0; return on != 0; }
 static void bdg_shaw_steer(AirStrucPtr L, AirStrucPtr W, const BdgShawRec& r, float& steer_at)
 {
 	if (s_shaw_t - steer_at < 30.0f) return;	// once per 30 s: Rowan takes the target back, and each SetEngage restarts his manoeuvre
