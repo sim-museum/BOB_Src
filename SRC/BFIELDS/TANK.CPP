@@ -1653,3 +1653,8 @@ void	Persons2::SetUpDiary()
 	Squad_Diary.EmptyDiary();
 	Squad_Diary.CreateQuickEntry(GR_Scram_Alt,GR_Scram_AC,GR_Scram_Squad,0,CSQuick1::quickdef.target);
 }
+
+#if defined(BOB_LINUX)
+/* PATCH-PORT-1 40a (MODEL.CPP, START_FROM_PEN): the airfield chosen in the Basic/Take-off quick mission, else 0 */
+int bdg_quick_takeoff_field() { return CSQuick1::currquickmiss == 0 ? int(CSQuick1::quickdef.target) : 0; }
+#endif

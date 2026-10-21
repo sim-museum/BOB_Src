@@ -440,6 +440,43 @@ void Model::Initialise (AirStrucPtr const ControlledAC, Bool status)
 #endif
 
 //	ControlledAC->World.Y = FT_20000;		//temp rdh
+#if defined(BOB_LINUX)
+	/* PATCH-PORT-1 40a, BDG START_FROM_PEN (bdg.txt, manual 2.2.13; the PO's is ON): the Basic/Take-off quick mission
+	   starts in the aircraft pen instead of on the field. Decoded from BDG 0.99 bob.exe Model::Initialise (0x50ba60):
+	   for the airfield chosen in the take-off QM, ResetAngles(hdg, pitch 1792 = 9.8 deg tail-down, 0) and
+	   ResetPosition(X, 170 + elevation, Z) from a table of seven fields; Wissant has no pen, other fields keep the
+	   field start. Here only when the player really starts on the ground within 4 km of that pen. Not ported (yet):
+	   BDG's in-pen ground-height override (0x511da6/0x51785c) and the Kenley/Tangmere aircraft-class condition.
+	   BOB_NO_PEN=1 reverts; BOB_TRACE_PEN=1 traces. */
+	if (Controlled && ControlledAC->vel_ < ControlledAC->classtype->minvel && !getenv("BOB_NO_PEN"))
+	{
+		extern int rowan_bdg_int(const char*, int); extern int bdg_quick_takeoff_field();
+		static const struct { int uid; SLong x, elev, z; UWord hdg; } pens[] = {
+			{ 0x3375, 0x1d5d651, 0x28eb, 0x2649d37, 0x871c },	// Debden
+			{ 0x3377, 0x1b4dc7a, 0x35e0, 0x1f941a8, 0xfd27 },	// Kenley
+			{ 0x3379, 0x1c0aa00, 0x3a6c, 0x1fd7641, 0xa71c },	// Biggin Hill
+			{ 0x337a, 0x17bac2d, 0x0493, 0x1b225c5, 0xfdde },	// Tangmere
+			{ 0x34e5, 0x1d4c948, 0x01dc, 0x0e6769b, 0x8b60 },	// Le Havre
+			{ 0x34f4, 0x2748ade, 0x01a4, 0x1cd281a, 0xc666 },	// Marck
+			{ 0x34ff, 0x277584d, 0x04ac, 0x1497fe5, 0x16c1 } };	// Abbeville
+		const int af = rowan_bdg_int("START_FROM_PEN", 0) ? bdg_quick_takeoff_field() : 0;
+		for (int i = 0; af && i < int(sizeof pens / sizeof pens[0]); i++)
+			if (pens[i].uid == af)
+			{
+				const double dx = double(ControlledAC->World.X - pens[i].x), dz = double(ControlledAC->World.Z - pens[i].z);
+				const bool nearby = dx * dx + dz * dz < 4.0e5 * 4.0e5;
+				if (getenv("BOB_TRACE_PEN"))
+					fprintf(stderr, "[pen] field 0x%x: player %.0f m from its pen -> %s\n", af, sqrt(dx * dx + dz * dz) / 100.0,
+					        nearby ? "start in the pen" : "field start");
+				if (nearby)
+				{
+					ResetAngles(ControlledAC, pens[i].hdg, 1792, 0);
+					ResetPosition(ControlledAC, pens[i].x, 170 + pens[i].elev, pens[i].z);
+				}
+				break;
+			}
+	}
+#endif
 	UpdateModel (ControlledAC);
 	SetupAircraft (ControlledAC);
 	UpdateAirStruc (ControlledAC);
