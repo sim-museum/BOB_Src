@@ -239,14 +239,25 @@ static void bdg_sight_loss(MobileItemPtr list)
 	}
 }
 
+#if defined(BOB_LINUX)
+int bdg_rnd_who = 0;
+void bdg_rnd_hook(void* ra) { fprintf(stderr, "[rndw] %p\n", ra); }
+#endif
 void mobileitem::MoveAll(WorldStuff& world)
 {
 	for(AirStrucPtr ac = AirStrucPtr(ACList); ac; ac = AirStrucPtr(ac->nextmobile))
 		ac->ai.moved = FALSE;
 
+#if defined(BOB_LINUX)
+	static int bdg_trr = -1; if (bdg_trr < 0) bdg_trr = getenv("BOB_TRACE_RND") ? 1 : 0;	/* BOB_TRACE_RND=1: Rowan's shared rnd counter */
+	static int bdg_rf = 0; unsigned bdg_rc0 = (unsigned)Math_Lib.GetRndCount();		/* around the sim move, first 100 frames */
+	bdg_rnd_who = bdg_trr && bdg_rf < 100;
+#endif
 	MoveList(ACList, world);
 
 #if defined(BOB_LINUX)
+	bdg_rnd_who = 0;
+	if (bdg_trr && bdg_rf < 100) fprintf(stderr, "[rnd] f=%d in=%u out=%u\n", bdg_rf++, bdg_rc0, (unsigned)Math_Lib.GetRndCount());
 	{ extern long bdg_simtime_cs; bdg_simtime_cs += Timer_Code.FRAMETIME; }	/* sim clock for the per-pilot wander (ACMSIMPL.CPP) */
 	bdg_sight_loss(ACList);
 	{	/* LOS-BFM-1 (item 48, PO 10-16 "lose sight, lose the fight"): in combat Rowan's AI never loses its bandit
@@ -735,8 +746,209 @@ static void bdg_tom_tick(AirStrucPtr me, BdgPilot* p, float dt, float myg)
 		        int(me->ai.combatskill), t.bandit, int(b->classtype->visible), int(sees), t.acq, bdg_tom_knowledge(me), t.turn, t.crisp, t.best);
 	}
 }
+/* SHAW-TACTIC-1 (57, PO 10-19; port of ma sprints 1-5): every hero-level AI fighter unit carries the Shaw picture it is fighting in, shared by
+   the unit and re-assessed every 2 s. PO 10-19: the state is a RECORD of the whole picture as Shaw sees it -- several
+   tactics and considerations apply at once -- not one label. Layers (Shaw chapter): fight size, mine v theirs (ch.3-8);
+   similar or dissimilar aircraft (ch.3 v ch.4); section mode (ch.5-6: welded wing, loose deuce = engaged + free,
+   sandwich, bracket, split = two separate 1v1s); per member a 1v1 posture (angles / energy / defensive / extend) and
+   role (engaged / free); energy state and position of the leader against his bandit. The enemy's tactic AS PERCEIVED
+   (theory of mind, item 49) is a later layer. The unit is the element (leader + follower); the record lives with the
+   element leader. Hero = SKILL_HERO (the top AI skill); units led by the player are left alone (under BOB_AI_PILOT the
+   player's jet is AI-flown, so its unit counts as AI-led). Sprint 1 is READ-ONLY: assessed and logged, nothing in the
+   flying reads it yet. Counts use the true positions within 5 km for now (SENSE limits come with the perceived layer).
+   BOB_NO_SHAW=1 turns it off; BOB_TRACE_SHAW=1 logs the whole record whenever any layer changes. */
+extern "C" void bob_acmi_event(unsigned long id, const char* type, const char* text);
+static AirStrucPtr bdg_shaw_bandit(AirStrucPtr me) { return (me->ai.unfriendly && me->ai.unfriendly->Status.size == AIRSTRUCSIZE) ? AirStrucPtr(me->ai.unfriendly) : AirStrucPtr(0); }
+enum { SZ_NONE, SZ_1V1, SZ_2V1, SZ_1V2, SZ_2V2, SZ_FEWVMANY, SZ_MANYVFEW, SZ_DIVISION };
+enum { SEC_ALONE, SEC_WELDED, SEC_LOOSE, SEC_SANDWICH, SEC_BRACKET, SEC_SPLIT };
+enum { PO_NONE, PO_ANGLES, PO_ENERGY, PO_DEFENSIVE, PO_EXTEND };
+enum { RO_NONE, RO_ENGAGED, RO_FREE };
+enum { EN_NONE, EN_ADV, EN_PAR, EN_DIS };
+enum { PS_NONE, PS_OFF, PS_NEU, PS_DEF };
+static const char* const s_shaw_size[] = { "none", "1v1", "2v1", "1v2", "2v2", "few-v-many", "many-v-few", "division" };
+static const char* const s_shaw_sec[] = { "alone", "welded-wing", "loose-deuce", "sandwich", "bracket", "split" };
+static const char* const s_shaw_post[] = { "-", "angles", "energy", "defensive", "extend" };
+static const char* const s_shaw_role[] = { "-", "engaged", "free" };
+static const char* const s_shaw_en[] = { "-", "advantage", "parity", "disadvantage" };
+static const char* const s_shaw_pos[] = { "-", "offensive", "neutral", "defensive" };
+/* The PLAN: the section tactic Shaw prescribes for this picture (ch.5-6). Read-only like the rest of the record.
+   press      -- engaged fighter presses the attack, free fighter covers (double attack / loose deuce, pp.203-204, 212)
+   switch     -- engaged fighter losing the offensive (energy depleted): call the free fighter in, roles reverse (p.204, 213)
+   free-attack-- engaged fighter defensive, partner near: "the free fighter is obligated to attack the bogey
+                 immediately, while the engaged fighter pilot does his best not to get shot" (p.213)
+   bracket    -- 2v2 with mutual support: brackets and drags to eliminate one bogey (p.264)
+   separate   -- two separate 1v1s, sound only with a performance or position superiority (p.264)
+   regain     -- separated without that superiority: regain mutual support (p.264)
+   singleton  -- alone against two or more: hit and run, both bogeys on one side, high energy, watch for escape (p.235) */
+enum { PL_NONE, PL_1V1, PL_PRESS, PL_SWITCH, PL_FREEATTACK, PL_BRACKET, PL_SEPARATE, PL_REGAIN, PL_SINGLETON };
+static const char* const s_shaw_plan[] = { "-", "1v1", "press", "switch", "free-attack", "bracket", "separate", "regain", "singleton" };
+/* The ENEMY AS PERCEIVED (item 49's theory of mind; PO 10-19: inferred from what is seen, never read from his state,
+   so a hero cannot cheat). From positions and velocities only: his section -- the bandit's nearest other aircraft
+   of his side: welded (< 1 km), mutual support (< 3 km), separated, alone (none within 5 km); his posture --
+   offensive (on my tail), energy (flight path 20 deg or more off the horizon, up or down, range not opening: zoom,
+   climb, slashing dive), angles (turning 6 deg/s or harder over the last 2 s, about the jets' sustained rate at
+   height), extending (range opening and his velocity pointed away from me), else neutral.
+   Calibrated on QM 4 (BOB_TRACE_SHAW=2 prints [shawp] every assessment): steep flight separates Rowan's energy
+   manoeuvres from TURNINGFIGHT (climb q10/q90 -0.69/+0.61 v -0.21/+0.32); turn rate does not -- TURNINGFIGHT's
+   median is 1.6 deg/s, the label covering fast slashing attacks too -- so the turn limit is physical, not fitted. */
+enum { ES_NONE, ES_ALONE, ES_WELDED, ES_MUTUAL, ES_SEPARATED };
+enum { EP_NONE, EP_OFF, EP_ENERGY, EP_ANGLES, EP_EXTEND, EP_NEUTRAL };
+static const char* const s_shaw_esec[] = { "-", "alone", "welded", "mutual-support", "separated" };
+static const char* const s_shaw_epost[] = { "-", "offensive", "energy", "angles", "extending", "neutral" };
+struct BdgShawRec { unsigned char mine, theirs, size, dissimilar, section, post[2], role[2], energy, pos, esec, epost, plan; };
+static bool operator==(const BdgShawRec& a, const BdgShawRec& b) { return !memcmp(&a, &b, sizeof a); }
+struct BdgShaw { unsigned id; float next; BdgShawRec rec, cand; unsigned bid; float bt, brange, bv[3]; };	// b*: the bandit as last seen
+static BdgShaw s_bdg_shaw[1024];
+static float s_shaw_t;				// sim seconds, advanced by one owning aircraft (re-elected when it stops ticking)
+static unsigned s_shaw_owner, s_shaw_orphan;
+static bool bdg_shaw_on() { static int on = -1; if (on < 0) on = getenv("BOB_NO_SHAW") ? 0 : 1; return on != 0; }
+static bool bdg_shaw_live(AirStrucPtr a)
+{
+	return a && a->Status.size == AIRSTRUCSIZE && !a->Status.deaded && a->movecode != AUTO_SPIRAL2GROUND
+	    && a->movecode != AUTO_DEATHSEQUENCE && a->movecode != AUTO_CRASHSKID && a->movecode != AUTO_CRASHROLL;
+}
+static float bdg_shaw_rng(AirStrucPtr a, AirStrucPtr b)	// m
+{
+	const float dx = float(a->World.X - b->World.X), dy = float(a->World.Y - b->World.Y), dz = float(a->World.Z - b->World.Z);
+	return sqrtf(dx * dx + dy * dy + dz * dz) * 0.01f;
+}
+static float bdg_shaw_es(AirStrucPtr a)	// energy height, m
+{
+	const float vx = float(a->vel_x) * 0.0001f, vy = float(a->vel_y) * 0.0001f, vz = float(a->vel_z) * 0.0001f;	// BoB: 0.0001 m/s
+	return float(a->World.Y) * 0.01f + (vx * vx + vy * vy + vz * vz) / (2.0f * 9.80665f);
+}
+static bool bdg_shaw_on_tail(AirStrucPtr att, AirStrucPtr vic)	// att inside 1.5 km, nose within 40 deg of vic, vic within 70 deg of his tail
+{
+	const float dx = float(vic->World.X - att->World.X), dy = float(vic->World.Y - att->World.Y), dz = float(vic->World.Z - att->World.Z);
+	const float r = sqrtf(dx * dx + dy * dy + dz * dz); if (r > 150000.0f || r < 1.0f) return false;
+	const float av = sqrtf(float(att->vel_x) * att->vel_x + float(att->vel_y) * att->vel_y + float(att->vel_z) * att->vel_z) + 1.0f;
+	const float vv = sqrtf(float(vic->vel_x) * vic->vel_x + float(vic->vel_y) * vic->vel_y + float(vic->vel_z) * vic->vel_z) + 1.0f;
+	return (dx * att->vel_x + dy * att->vel_y + dz * att->vel_z) / (r * av) > 0.766f && (dx * vic->vel_x + dy * vic->vel_y + dz * vic->vel_z) / (r * vv) > 0.342f;
+}
+static AirStrucPtr bdg_shaw_engaged(AirStrucPtr m) { return (bdg_shaw_live(m) && m->movecode == AUTO_COMBAT) ? bdg_shaw_bandit(m) : AirStrucPtr(0); }
+static int bdg_shaw_post(AirStrucPtr m)	// one fighter's 1v1 posture against his bandit
+{
+	AirStrucPtr b = bdg_shaw_engaged(m); if (!b) return PO_NONE;
+	if (bdg_shaw_on_tail(b, m)) return PO_DEFENSIVE;
+	switch (int(m->ai.manoeuvre)) {
+	case MANOEUVRE_EXTENSION: case MANOEUVRE_DIVEFORHOME: case MANOEUVRE_GOHOME: case MANOEUVRE_MOVEAWAY:
+	case MANOEUVRE_CLIMBFORHOME: case MANOEUVRE_MAKEFORFRIENDLY: case MANOEUVRE_STRAIGHTDIVE: return PO_EXTEND;
+	case MANOEUVRE_DIVEANDZOOM: case MANOEUVRE_ZOOM: case MANOEUVRE_ZOOMANDDROP:	/* BoB dead-coded HIGHYOYO (CSB 7Sep00) */
+	case MANOEUVRE_GAINHEIGHT: case MANOEUVRE_INTERCEPTHIGH: return PO_ENERGY;
+	}
+	// Shaw ch.3: the energy fighter keeps an energy advantage and stays out of the opponent's turn
+	return (bdg_shaw_es(m) > bdg_shaw_es(b) + 500.0f && m->World.Y > b->World.Y) ? PO_ENERGY : PO_ANGLES;
+}
+static int bdg_shaw_section(AirStrucPtr L, AirStrucPtr W, AirStrucPtr bL, AirStrucPtr bW)
+{
+	const bool wl = W && bdg_shaw_live(W);
+	if (!wl) return SEC_ALONE;
+	const bool welded = W->ai.manoeuvre == MANOEUVRE_WELDEDWINGMAN;
+	const float d = bdg_shaw_rng(L, W);
+	if (bL && bW) {
+		if (welded || (bL == bW && d < 600.0f)) return SEC_WELDED;
+		if ((bdg_shaw_on_tail(bW, L) && !bdg_shaw_on_tail(bW, W)) || (bdg_shaw_on_tail(bL, W) && !bdg_shaw_on_tail(bL, L))) return SEC_SANDWICH;
+		if (bL == bW) return SEC_BRACKET;
+		return (d > 3000.0f) ? SEC_SPLIT : SEC_LOOSE;
+	}
+	if (welded) return SEC_WELDED;
+	return (d < 3000.0f) ? SEC_LOOSE : SEC_SPLIT;		// one engaged, the partner free (Shaw ch.6) -- or gone off alone
+}
+static BdgShawRec bdg_shaw_assess(AirStrucPtr L, AirStrucPtr W, BdgShaw& s)
+{
+	BdgShawRec r; memset(&r, 0, sizeof r);
+	AirStrucPtr bL = bdg_shaw_engaged(L), bW = bdg_shaw_engaged(W);
+	if (!bL && !bW) return r;
+	AirStrucPtr me = bL ? L : W, b = bL ? bL : bW;		// the member whose fight describes the unit's energy/position
+	int mine = 0, theirs = 0;
+	for (MobileItemPtr e = mobileitem::GetACList(); e; e = e->nextmobile) {
+		AirStrucPtr ac = (AirStrucPtr)e;
+		if (!bdg_shaw_live(ac) || bdg_shaw_rng(L, ac) > 5000.0f) continue;
+		if (ac->nationality == L->nationality) { if (ac->movecode == AUTO_COMBAT) mine++; }
+		else theirs++;
+	}
+	if (mine < 1) mine = 1; if (theirs < 1) theirs = 1;
+	r.mine = (unsigned char)(mine > 255 ? 255 : mine); r.theirs = (unsigned char)(theirs > 255 ? 255 : theirs);
+	r.size = (mine == 1 && theirs == 1) ? SZ_1V1 : (mine == 2 && theirs == 1) ? SZ_2V1 : (mine == 1 && theirs == 2) ? SZ_1V2
+	       : (mine == 2 && theirs == 2) ? SZ_2V2 : (mine <= 2 && theirs >= 3) ? SZ_FEWVMANY : (mine >= 3 && theirs <= 2) ? SZ_MANYVFEW
+	       : SZ_DIVISION;
+	r.dissimilar = (me->classtype != b->classtype) ? 1 : 0;
+	{	// the enemy as perceived
+		float dmin = 5000.0f;
+		for (MobileItemPtr e = mobileitem::GetACList(); e; e = e->nextmobile) {
+			AirStrucPtr ac = (AirStrucPtr)e;
+			if (ac != b && bdg_shaw_live(ac) && ac->nationality == b->nationality) { const float d = bdg_shaw_rng(b, ac); if (d < dmin) dmin = d; }
+		}
+		r.esec = (dmin < 1000.0f) ? ES_WELDED : (dmin < 3000.0f) ? ES_MUTUAL : (dmin < 5000.0f) ? ES_SEPARATED : ES_ALONE;
+		const float vx = float(b->vel_x), vy = float(b->vel_y), vz = float(b->vel_z), vm = sqrtf(vx * vx + vy * vy + vz * vz) + 1.0f;
+		const float bv[3] = { vx / vm, vy / vm, vz / vm }, rng = bdg_shaw_rng(me, b);
+		float turn = 0.0f;			// deg/s since the last look, if it was this bandit 0.5-5 s ago
+		if (s.bid == b->uniqueID.count && s_shaw_t - s.bt > 0.5f && s_shaw_t - s.bt < 5.0f) {
+			float c = bv[0] * s.bv[0] + bv[1] * s.bv[1] + bv[2] * s.bv[2]; c = c > 1.0f ? 1.0f : c < -1.0f ? -1.0f : c;
+			turn = acosf(c) * 57.29578f / (s_shaw_t - s.bt);
+		}
+		const float ax = float(b->World.X - me->World.X), ay = float(b->World.Y - me->World.Y), az = float(b->World.Z - me->World.Z);
+		const float am = sqrtf(ax * ax + ay * ay + az * az) + 1.0f;
+		const bool opening = s.bid == b->uniqueID.count && rng > s.brange + 100.0f && (bv[0] * ax + bv[1] * ay + bv[2] * az) / am > 0.5f;
+		r.epost = bdg_shaw_on_tail(b, me) ? EP_OFF : (fabsf(bv[1]) > 0.342f) ? (opening ? EP_EXTEND : EP_ENERGY) : (turn > 6.0f) ? EP_ANGLES
+		        : opening ? EP_EXTEND : EP_NEUTRAL;
+		static int pr = -1; if (pr < 0) { const char* t = getenv("BOB_TRACE_SHAW"); pr = (t && atoi(t) >= 2) ? 1 : 0; }
+		if (pr && turn > 0.0f)		// every assessment, for calibrating the perception against the bandit's true manoeuvre
+			fprintf(stderr, "[shawp] t=%.0f bandit=%u man%d turn=%.1f climb=%.2f open=%d tail=%d\n", double(s_shaw_t),
+			        unsigned(b->uniqueID.count), int(b->ai.manoeuvre), double(turn), double(bv[1]), opening ? 1 : 0, bdg_shaw_on_tail(b, me) ? 1 : 0);
+		s.bid = b->uniqueID.count; s.bt = s_shaw_t; s.brange = rng; s.bv[0] = bv[0]; s.bv[1] = bv[1]; s.bv[2] = bv[2];
+	}
+	r.section = (unsigned char)bdg_shaw_section(L, W, bL, bW);
+	r.post[0] = (unsigned char)bdg_shaw_post(L); r.role[0] = bL ? RO_ENGAGED : (L && bdg_shaw_live(L)) ? RO_FREE : RO_NONE;
+	r.post[1] = W ? (unsigned char)bdg_shaw_post(W) : PO_NONE; r.role[1] = bW ? RO_ENGAGED : (W && bdg_shaw_live(W)) ? RO_FREE : RO_NONE;
+	const float de = bdg_shaw_es(me) - bdg_shaw_es(b);
+	r.energy = (de > 500.0f) ? EN_ADV : (de < -500.0f) ? EN_DIS : EN_PAR;
+	r.pos = bdg_shaw_on_tail(me, b) ? PS_OFF : bdg_shaw_on_tail(b, me) ? PS_DEF : PS_NEU;
+	const bool pair = r.section != SEC_ALONE, near = pair && r.section != SEC_SPLIT;
+	const bool def = r.post[0] == PO_DEFENSIVE || r.post[1] == PO_DEFENSIVE;
+	if (r.mine < 2 && r.theirs >= 2) r.plan = PL_SINGLETON;		// alone here against two or more, whatever the partner does
+	else if (pair && !near) r.plan = (r.pos == PS_OFF || r.energy == EN_ADV) ? PL_SEPARATE : PL_REGAIN;
+	else if (!pair || r.mine < 2) r.plan = (r.pos == PS_OFF) ? PL_PRESS : PL_1V1;
+	else if (def) r.plan = PL_FREEATTACK;
+	else if (r.pos == PS_OFF && r.energy == EN_DIS) r.plan = PL_SWITCH;
+	else if (r.theirs >= 2) r.plan = PL_BRACKET;
+	else r.plan = PL_PRESS;
+	return r;
+}
+static void bdg_shaw_tick(AirStrucPtr a, float dt)
+{
+	if (!bdg_shaw_on() || !bdg_shaw_live(a)) return;
+	if (!s_shaw_owner || ++s_shaw_orphan > 400) { s_shaw_owner = a->uniqueID.count; s_shaw_orphan = 0; }
+	if (a->uniqueID.count == s_shaw_owner) { s_shaw_t += dt; s_shaw_orphan = 0; }
+	if (a->leader || a->ai.combatskill < SKILL_HERO) return;			// element leaders only; hero only
+	if (!getenv("BOB_AI_PILOT") && (a->InPlayersElement() || a->PlayerInFlight())) return;
+	const unsigned id = a->uniqueID.count;
+	BdgShaw& s = s_bdg_shaw[((id * 2654435761u) >> 9) & 1023];
+	if (s.id != id) { s.id = id; s.next = 0; memset(&s.rec, 0, sizeof s.rec); s.cand = s.rec; }
+	if (s_shaw_t < s.next) return;
+	s.next = s_shaw_t + 2.0f;
+	AirStrucPtr W = a->Follower();
+	const BdgShawRec v = bdg_shaw_assess(a, (W && W->Status.size == AIRSTRUCSIZE) ? W : AirStrucPtr(0), s);
+	if (v == s.rec) { s.cand = v; return; }
+	if (!(v == s.cand)) { s.cand = v; return; }				// hysteresis: two assessments 2 s apart must agree
+	s.rec = v;
+	AirStrucPtr b = bdg_shaw_bandit(a); const bool w = W && W->Status.size == AIRSTRUCSIZE;
+	char txt[320];
+	snprintf(txt, sizeof txt, "Shaw: %s (%dv%d)%s; %s; lead %s/%s man%d; wing %d %s/%s man%d; energy %s; %s; enemy %s/%s; plan %s",
+	         s_shaw_size[v.size], int(v.mine), int(v.theirs), v.dissimilar ? " dissimilar" : "", s_shaw_sec[v.section],
+	         s_shaw_role[v.role[0]], s_shaw_post[v.post[0]], int(a->ai.manoeuvre),
+	         w ? int(W->uniqueID.count) : -1, s_shaw_role[v.role[1]], s_shaw_post[v.post[1]], w ? int(W->ai.manoeuvre) : -1,
+	         s_shaw_en[v.energy], s_shaw_pos[v.pos], s_shaw_esec[v.esec], s_shaw_epost[v.epost], s_shaw_plan[v.plan]);
+	bob_acmi_event(a->uniqueID.count, "Message", txt);		// BoB's ACMI object id is uniqueID.count (REPLAY.CPP _oid)
+	static int tr = -1; if (tr < 0) tr = getenv("BOB_TRACE_SHAW") ? 1 : 0;
+	if (tr)
+		fprintf(stderr, "[shaw] t=%.0f unit=%u nat=%d %s; bandit=%d man%d range=%.0f\n", double(s_shaw_t), id, int(a->nationality), txt,
+		        b ? int(b->uniqueID.count) : -1, b ? int(b->ai.manoeuvre) : -1, b ? double(bdg_shaw_rng(a, b)) : -1.0);
+}
+
 void bdg_fatigue_tick(AirStrucPtr a, float g, int path)	// once a frame; g = load factor the pilot feels, < 0: from his path
 {
+	bdg_shaw_tick(a, Timer_Code.FRAMETIME * 0.01f);
 	if (!bdg_fatigue_on()) return;
 	BdgPilot* p = bdg_pil(a, a->movecode == AUTO_COMBAT);
 	if (!p) return;
@@ -888,11 +1100,14 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	   calls = a new flight), and only if the enemy has no target yet. BOB_NO_DUEL_AWARE=1 reverts; BOB_TRACE_DUEL_AWARE=1 traces. */
 	if (entry == Persons2::PlayerSeenAC) {
 		static int s_off = -1; if (s_off < 0) s_off = getenv("BOB_NO_DUEL_AWARE") ? 1 : 0;
-		static time_t s_t0 = 0, s_last = 0; static bool s_done = false;
+		/* the 2 s is SIM time (bdg_simtime_cs): a wall-clock second made the spot land 0.5-2 s into the sim at random,
+		   so no QM run repeated (57 SHAW-TACTIC-1 read-only proof); the wall clock only spots a new flight */
+		extern long bdg_simtime_cs;
+		static time_t s_last = 0; static long s_t0 = 0; static bool s_done = false;
 		time_t now = time(0);
-		if (!s_last || now - s_last > 5) { s_t0 = now; s_done = false; }
+		if (!s_last || now - s_last > 5) { s_t0 = bdg_simtime_cs; s_done = false; }
 		s_last = now;
-		if (!s_off && !s_done && now - s_t0 >= 2) {
+		if (!s_off && !s_done && bdg_simtime_cs - s_t0 >= 200) {
 			s_done = true;
 			struct DuelSpot : ArtInt { static bool Call(AirStruc* a, AirStruc* t) { return ((DuelSpot&)Art_Int).SpottedUnfriendly(a, t); }
 			                           static AirStruc* Ac(int i) { return ACArray[i]; } static int N() { return ACARRAYSIZE; } };
@@ -980,7 +1195,10 @@ void mobileitem::MoveList(MobileItemPtr entry,WorldStuff& world)
 	if (getenv("BOB_AI_PILOT") && entry == Persons2::PlayerSeenAC) {
 		static time_t t0 = 0, lastTrace = 0;
 		static int handed = 0;
-		time_t now = time(0);
+		/* SIM seconds, not time(0): a wall-clock handover lands at a different game time whenever the run is
+		   slower or faster, so two identical AI-v-AI runs diverged at +1.6 s (SHAW-TACTIC-1 57 read-only proof). */
+		static double simt = 0; simt += Timer_Code.FRAMETIME * 0.01;
+		time_t now = (time_t)simt;
 		if (!t0) t0 = now;
 		if (!handed && now - t0 >= atoi(getenv("BOB_AI_PILOT"))) {
 			handed = 1;

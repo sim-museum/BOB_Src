@@ -1830,8 +1830,14 @@ RndVal	MathLib::Query()
 	}
 }
 	
+#if defined(BOB_LINUX)
+extern int bdg_rnd_who; void bdg_rnd_hook(void* ra);	/* BOB_TRACE_RND: who draws (MOVEALL.CPP) */
+#endif
 RndVal	MathLib::rnd()
 {
+#if defined(BOB_LINUX)
+	if (bdg_rnd_who) bdg_rnd_hook(__builtin_return_address(0));
+#endif
 	rndcount++;													//ARM 03Sep96
 
 // 	return RND10PC;

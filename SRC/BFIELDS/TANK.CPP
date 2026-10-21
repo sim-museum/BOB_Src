@@ -548,6 +548,13 @@ FileNum	Persons2::FindNextBf (BattlefieldType &nextbftype)
 
 							GR_Scram_AC[glind]=CSQuick1::quickdef.line[s][w][g].flights*acperflight;
 							GR_Scram_Skill[glind]=CSQuick1::quickdef.line[s][w][g].skill;
+#if defined(BOB_LINUX)
+							{	/* SHAW-TACTIC-1 (57) test hook: BOB_QM_SKILL overrides every quick-mission line's pilot skill (both sides),
+							   e.g. 225 = SKILL_HERO, so the hero-only Shaw record can be read in an AI v AI quick mission */
+								const char* v = getenv("BOB_QM_SKILL");
+								if (v) GR_Scram_Skill[glind] = atoi(v);
+							}
+#endif
 							GR_Scram_Squad[glind]=CSQuick1::quickdef.line[s][w][g].actype;
 							glind++;
 						}
